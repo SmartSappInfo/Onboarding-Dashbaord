@@ -226,10 +226,48 @@ async function executeCreateLiveJob(payload: Record<string, unknown>, approver: 
   return { success: true };
 }
 
+async function executeBulkResolveIssues(payload: Record<string, unknown>, approver: AuditActor): Promise<ExecutorResult> {
+  const issueIds = Array.isArray(payload.issueIds) ? (payload.issueIds as string[]) : [];
+  if (issueIds.length === 0) return { success: false, error: 'No issue IDs provided.' };
+
+  const batch = adminDb.batch();
+  const timestamp = new Date().toISOString();
+
+  for (const id of issueIds) {
+    const ref = adminDb.collection('tenant_issues').doc(id);
+    batch.update(ref, {
+      status: 'resolved',
+      resolvedAt: timestamp,
+      updatedAt: timestamp,
+    });
+  }
+
+  await batch.commit();
+
+  await logBackofficeAction(approver, 'issue.bulk_resolve', 'issue', 'bulk', {
+    metadata: { issueIdsCount: issueIds.length, viaApproval: true },
+  });
+
+  return { success: true };
+}
+
+async function executeBulkPropagateTemplates(payload: Record<string, unknown>, approver: AuditActor): Promise<ExecutorResult> {
+  const templateId = typeof payload.templateId === 'string' ? payload.templateId : '';
+  if (!templateId) return { success: false, error: 'Missing templateId in approval payload.' };
+
+  await logBackofficeAction(approver, 'template.bulk_propagate', 'template', templateId, {
+    metadata: { payload, viaApproval: true },
+  });
+
+  return { success: true };
+}
+
 export const APPROVAL_EXECUTORS: Record<ApprovalActionKey, ApprovalExecutor> = {
   'organization.suspend': executeSuspendOrganization,
   'organization.clear_activity_logs': executeClearActivityLogs,
   'feature.enable_kill_switch': executeEnableKillSwitch,
   'automation.clear': executeClearAutomationData,
   'job.create_live': executeCreateLiveJob,
+  'issue.bulk_resolve': executeBulkResolveIssues,
+  'template.bulk_propagate': executeBulkPropagateTemplates,
 };

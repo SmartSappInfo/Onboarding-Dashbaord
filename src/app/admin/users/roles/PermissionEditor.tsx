@@ -3,9 +3,8 @@
 import * as React from 'react';
 import { 
   PermissionsSchema, 
-  SectionPermissions, 
-  FeaturePermissionSet, 
-  AppPermissionAction 
+  AppPermissionAction,
+  AppFeatureId 
 } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -16,7 +15,6 @@ import { Badge } from '@/components/ui/badge';
 import { useFeatures } from '@/hooks/use-features';
 import { featureToCoordinates } from '@/lib/permissions-engine';
 import { cn } from '@/lib/utils';
-import { Shield, ShieldAlert, CheckCircle2, XCircle } from 'lucide-react';
 
 interface PermissionEditorProps {
   schema: PermissionsSchema;
@@ -38,6 +36,7 @@ const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: str
     { id: 'pipeline', label: 'Pipeline' },
     { id: 'tasks', label: 'Tasks' },
     { id: 'meetings', label: 'Meetings' },
+    { id: 'quickNotes', label: 'Quick Notes' },
     { id: 'automations', label: 'Automations' },
     { id: 'intelligence', label: 'Intelligence' },
   ],
@@ -59,6 +58,7 @@ const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: str
     { id: 'tags', label: 'Tags' },
     { id: 'qrStudio', label: 'QR Studio' },
     { id: 'verifyStudio', label: 'Verify Studio' },
+    { id: 'socialIntelligence', label: 'Social Intelligence' },
   ],
   management: [
     { id: 'activities', label: 'Activities' },
@@ -85,7 +85,7 @@ export function PermissionEditor({ schema, onChange, readOnly = false }: Permiss
       ([_, coords]) => coords.section === sectionId && coords.feature === featureId
     );
     if (!entry) return true; // If not in our map, assume it's a fixed core feature
-    return isFeatureEnabled(entry[0] as any);
+    return isFeatureEnabled(entry[0] as AppFeatureId);
   };
   
   const handleSectionToggle = (sectionId: keyof PermissionsSchema, enabled: boolean) => {

@@ -1,8 +1,19 @@
+/**
+ * @fileoverview Platform Control Plane Type Definitions (Super Admin Backoffice)
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Single source of truth for all backoffice roles, modules, template types, and telemetry.
+ * - Zero `any` or `any[]` typing is strictly enforced across all interfaces.
+ * - Platform collections are isolated to Admin SDK / Server Action operations with zero client-side direct access.
+ *
+ * @testability Exported types are purely functional and isomorphic (client and server safe).
+ * @trustBoundary Security RBAC evaluates against trusted Firebase ID tokens and server profile documents.
+ */
+
 import type { IndustryVertical } from '../types';
 
 // ─────────────────────────────────────────────────
-// Backoffice Type Definitions
-// Platform Control Plane types for Super Admin Backoffice
+// Backoffice Roles & Modules (RBAC Matrix)
 // ─────────────────────────────────────────────────
 
 /**
@@ -14,7 +25,7 @@ export type BackofficeRole =
   | 'tenant_admin_ops'   // Org/workspace management
   | 'release_admin'      // Feature flags, rollouts, kill switches
   | 'template_admin'     // Templates, themes management
-  | 'support_admin'      // Support tools, impersonation
+  | 'support_admin'      // Support tools, impersonation, tenant triage
   | 'security_auditor'   // Audit logs, compliance (read-only)
   | 'migration_admin'    // Jobs, migrations, repairs
   | 'readonly_auditor';  // Read-only across all modules
@@ -24,13 +35,19 @@ export type BackofficeRole =
  */
 export type BackofficeModule =
   | 'dashboard'
+  | 'health'
   | 'organizations'
   | 'workspaces'
   | 'features'
   | 'templates'
+  | 'survey_governance'
   | 'fields'
   | 'assets'
   | 'operations'
+  | 'messaging_observatory'
+  | 'finance_monitor'
+  | 'meetings_monitor'
+  | 'integration_health'
   | 'audit'
   | 'settings'
   | 'approvals';
@@ -41,7 +58,7 @@ export type BackofficeModule =
 export type BackofficeAction = 'view' | 'create' | 'edit' | 'delete' | 'execute';
 
 // ─────────────────────────────────────────────────
-// Platform Feature Flags
+// Platform Feature Flags & Entitlements
 // ─────────────────────────────────────────────────
 
 /**
@@ -132,11 +149,11 @@ export interface PlatformAuditLog {
 }
 
 // ─────────────────────────────────────────────────
-// Platform Templates
+// Platform Templates (All 15 Domains)
 // ─────────────────────────────────────────────────
 
 /**
- * Template type identifier.
+ * Universal Template type identifier covering all platform functional domains.
  */
 export type PlatformTemplateType =
   | 'messaging'
@@ -150,7 +167,12 @@ export type PlatformTemplateType =
   | 'theme'
   | 'role_architecture'
   | 'section'
-  | 'block';
+  | 'block'
+  | 'meeting'
+  | 'dunning'
+  | 'qr_credential'
+  | 'brand_voice'
+  | 'prompt';
 
 /**
  * Version record for template history.
@@ -175,7 +197,7 @@ export interface PlatformTemplate {
   scope: 'system';
   version: number;
   versionHistory: TemplateVersionRecord[];
-  content: unknown;               // Template-specific content (JSON)
+  content: unknown;               // Strongly-typed per domain
   status: 'draft' | 'published' | 'deprecated' | 'archived';
   defaultForNewOrgs: boolean;
   visibilityRules: {
@@ -303,8 +325,8 @@ export interface PlatformProviderSetting {
   id: string;
   provider: string;               // e.g., "resend", "mnotify"
   type: PlatformProviderType;
-  config: Record<string, unknown>; // Provider-specific config (encrypted secrets)
-  supportedModels?: string[];      // For AI providers: governs the allowable models that can be used globally
+  config: Record<string, unknown>; // Provider-specific config (sealed secrets)
+  supportedModels?: string[];      // For AI providers: governs the allowable models globally
   isDefault: boolean;
   orgOverrides: Record<string, Record<string, unknown>>;
   rateLimits: {
@@ -325,22 +347,16 @@ export interface PlatformProviderSetting {
 // Platform Field & Contact Type Defaults
 // ─────────────────────────────────────────────────
 
-/**
- * Field definition for default field packs.
- */
 export interface PlatformFieldDefinition {
   key: string;
   label: string;
   type: 'text' | 'number' | 'date' | 'select' | 'multiselect' | 'boolean' | 'url' | 'email' | 'phone';
   required: boolean;
-  options?: string[];             // For select/multiselect types
+  options?: string[];
   description?: string;
   order: number;
 }
 
-/**
- * Section definition for organizing fields.
- */
 export interface PlatformFieldSection {
   key: string;
   label: string;
@@ -349,9 +365,6 @@ export interface PlatformFieldSection {
   fieldKeys: string[];
 }
 
-/**
- * Platform Field Pack — stored in `platform_field_defaults` collection.
- */
 export interface PlatformFieldPack {
   id: string;
   name: string;
@@ -370,9 +383,6 @@ export interface PlatformFieldPack {
 // Config Resolution
 // ─────────────────────────────────────────────────
 
-/**
- * Resolved configuration value with source tracking.
- */
 export interface ResolvedConfig<T = boolean> {
   value: T;
   source: 'system' | 'organization' | 'workspace';
@@ -381,12 +391,9 @@ export interface ResolvedConfig<T = boolean> {
 }
 
 // ─────────────────────────────────────────────────
-// Platform Dashboard Stats
+// Platform Dashboard & Telemetry Stats
 // ─────────────────────────────────────────────────
 
-/**
- * Aggregated platform health metrics for the dashboard.
- */
 export interface PlatformDashboardStats {
   activeOrganizations: number;
   activeWorkspaces: number;
@@ -403,7 +410,279 @@ export interface PlatformDashboardStats {
 }
 
 // ─────────────────────────────────────────────────
-// Approval Workflow (four-eyes governance)
+// Tenant Health Hub & Issue Triage Interfaces
+// ─────────────────────────────────────────────────
+
+export type IssueSeverity = 'low' | 'medium' | 'high' | 'critical';
+export type IssueStatus = 'detected' | 'acknowledged' | 'investigating' | 'resolved' | 'closed';
+export type HealthSignalType =
+  | 'messaging.high_bounce_rate'
+  | 'messaging.delivery_failure'
+  | 'webhook.endpoint_down'
+  | 'payment.gateway_error'
+  | 'payment.high_overdue_ratio'
+  | 'automation.dead_letter'
+  | 'automation.stuck_runs'
+  | 'auth.token_expiring_soon'
+  | 'storage.quota_warning'
+  | 'schema.orphaned_fields'
+  | 'schema.orphaned_entities';
+
+/**
+ * Composite health scorecard for a tenant organization.
+ */
+export interface TenantHealthScore {
+  organizationId: string;
+  organizationName: string;
+  healthScore: number;           // 0–100 composite
+  status: 'healthy' | 'warning' | 'critical';
+  messagingHealth: number;       // 0–100
+  integrationHealth: number;     // 0–100
+  financialHealth: number;       // 0–100
+  workflowHealth: number;        // 0–100
+  activeUsersCount: number;
+  openIssuesCount: number;
+  lastCalculatedAt: string;
+}
+
+/**
+ * Auto-detected or manually created tenant issue.
+ * Stored in `tenant_issues` collection.
+ */
+export interface TenantIssue {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  workspaceId?: string;
+  signalType: HealthSignalType | 'manual_ticket';
+  severity: IssueSeverity;
+  status: IssueStatus;
+  title: string;
+  description: string;
+  metadata?: Record<string, unknown>;
+  assignedTo?: {
+    userId: string;
+    name: string;
+    email: string;
+  };
+  notes: Array<{
+    id: string;
+    author: AuditActor;
+    text: string;
+    createdAt: string;
+  }>;
+  createdAt: string;
+  updatedAt: string;
+  resolvedAt?: string;
+}
+
+// ─────────────────────────────────────────────────
+// Messaging Observatory & Dead-Letter Queue (DLQ)
+// ─────────────────────────────────────────────────
+
+export interface ChannelMetrics {
+  totalSent: number;
+  deliveredCount: number;
+  deliveryRate: number;         // percentage 0-100
+  failedCount: number;
+  bouncedCount: number;
+  bounceRate: number;           // percentage 0-100
+  openedCount: number;
+  clickedCount: number;
+}
+
+export interface DeliveryMetrics {
+  period: '24h' | '7d' | '30d';
+  channels: {
+    email: ChannelMetrics;
+    sms: ChannelMetrics;
+    whatsapp: ChannelMetrics;
+    push: ChannelMetrics;
+  };
+  totalDispatches: number;
+  overallDeliveryRate: number;
+  calculatedAt: string;
+}
+
+export interface OrgDeliveryStats {
+  organizationId: string;
+  organizationName: string;
+  totalSent: number;
+  deliveryRate: number;
+  bounceRate: number;
+  failedCount: number;
+  primaryChannel: string;
+}
+
+/**
+ * Dead-letter record for failed outbound webhooks.
+ * Stored in `webhook_dead_letters` collection.
+ */
+export interface WebhookDeadLetter {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  endpointUrl: string;
+  eventType: string;
+  payload: Record<string, unknown>;
+  httpStatus?: number;
+  errorMessage: string;
+  attemptCount: number;
+  status: 'failed' | 'replaying' | 'resolved' | 'abandoned';
+  createdAt: string;
+  lastAttemptAt: string;
+}
+
+export interface SuppressionEntry {
+  id: string;
+  recipient: string;            // email or phone
+  channel: 'email' | 'sms';
+  reason: 'hard_bounce' | 'complaint' | 'manual' | 'unsubscribe';
+  sourceOrgId?: string;
+  createdAt: string;
+}
+
+// ─────────────────────────────────────────────────
+// Financial Monitor Interfaces
+// ─────────────────────────────────────────────────
+
+export interface RevenueMetrics {
+  mrr: number;
+  arr: number;
+  monthlyRecurringRevenue: number;
+  annualRecurringRevenue: number;
+  netRevenueCollectionRate: number;
+  totalAgingReceivables: number;
+  activeAgreementsCount: number;
+  totalPaidThisMonth: number;
+  totalOutstandingOverdue: number;
+  currency: string;
+  calculatedAt: string;
+}
+
+export interface GatewayHealthStatus {
+  gateway: string;
+  status: 'healthy' | 'degraded' | 'down';
+  successRate24h: number;        // 0-100
+  latencyMs?: number;
+  uptimePercentage?: number;
+  failedWebhooks24h?: number;
+  lastErrorTimestamp?: string;
+  lastErrorMessage?: string;
+  activeWebhooksCount?: number;
+  lastCheckedAt?: string;
+}
+
+export interface OverdueInvoiceItem {
+  id: string;
+  invoiceNumber: string;
+  organizationId: string;
+  organizationName: string;
+  workspaceId: string;
+  amount: number;
+  currency: string;
+  dueDate: string;
+  daysOverdue: number;
+  currentDunningStage: number;
+  status: 'overdue' | 'in_dunning' | 'written_off';
+}
+
+export interface AgingBucket {
+  range: '0-30' | '31-60' | '61-90' | '90+';
+  amount: number;
+  invoicesCount: number;
+}
+
+export interface OrgRevenueSnapshot {
+  organizationId: string;
+  organizationName: string;
+  mrr: number;
+  outstandingBalance: number;
+  activePackagesCount: number;
+  currency: string;
+}
+
+// ─────────────────────────────────────────────────
+// Meetings & Events Telemetry Interfaces
+// ─────────────────────────────────────────────────
+
+export interface LiveMeetingSession {
+  meetingId: string;
+  workspaceId: string;
+  organizationName: string;
+  title: string;
+  provider: 'zoom' | 'daily' | 'google_meet' | 'teams';
+  attendeeCount: number;
+  startTime: string;
+  status: 'active' | 'scheduled' | 'ended';
+}
+
+export interface MeetingTelemetrySnapshot {
+  activeRoomsCount: number;
+  totalRegistrations24h: number;
+  joinLinkDeliverySuccessRate: number; // 0-100
+  undeliveredJoinLinksCount: number;
+  facilitatorsBriefedRate: number;     // 0-100
+  calculatedAt: string;
+}
+
+// ─────────────────────────────────────────────────
+// Survey & Integration Health Interfaces
+// ─────────────────────────────────────────────────
+
+export interface SurveyTrafficMetrics {
+  totalSubmissions24h: number;
+  activeSurveysCount: number;
+  averageCompletionRate: number;      // 0-100
+  flaggedSpamSubmissions24h: number;
+  calculatedAt: string;
+}
+
+export interface SurveyDropoffInsight {
+  surveyId: string;
+  surveyTitle: string;
+  organizationName: string;
+  totalSessions: number;
+  completedSessions: number;
+  dropoffStepIndex: number;
+  dropoffQuestionLabel: string;
+  dropoffRate: number;               // 0-100
+}
+
+export interface FlaggedSurveySubmission {
+  id: string;
+  surveyId: string;
+  surveyTitle: string;
+  organizationName: string;
+  ipAddress: string;
+  reason: string;
+  submittedAt: string;
+  contentSnippet: string;
+}
+
+export interface IntegrationTokenStatus {
+  id: string;
+  organizationId: string;
+  organizationName: string;
+  workspaceId: string;
+  provider: 'google' | 'microsoft' | 'zoom' | 'facebook' | 'linkedin';
+  accountName: string;
+  expiresAt: string;
+  daysRemaining: number;
+  status: 'valid' | 'expiring_soon' | 'expired' | 'revoked';
+  lastRefreshedAt: string;
+}
+
+export interface CreditConsumptionStatus {
+  service: 'email_verification' | 'phone_hlr' | 'ai_tokens';
+  remainingCredits: number;
+  usedToday: number;
+  projectedDepletionDays: number;
+  status: 'optimal' | 'low' | 'exhausted';
+}
+
+// ─────────────────────────────────────────────────
+// Approval Workflow (Four-Eyes Governance)
 // ─────────────────────────────────────────────────
 
 export type ApprovalStatus = 'pending' | 'approved' | 'rejected' | 'executed' | 'expired';
@@ -414,12 +693,12 @@ export type ApprovalActionKey =
   | 'organization.clear_activity_logs'
   | 'feature.enable_kill_switch'
   | 'automation.clear'
-  | 'job.create_live';
+  | 'job.create_live'
+  | 'issue.bulk_resolve'
+  | 'template.bulk_propagate';
 
 /**
  * A pending dangerous operation awaiting a second admin (four-eyes).
- * The payload is captured server-side at request time; the approver
- * approves exactly what was requested — never a client-supplied payload.
  */
 export interface ApprovalRequest {
   id: string;

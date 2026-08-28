@@ -19,6 +19,7 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { InAppNotification } from '@/lib/types';
+import DOMPurify from 'isomorphic-dompurify';
 
 export default function NotificationCenter() {
     const firestore = useFirestore();
@@ -103,7 +104,7 @@ export default function NotificationCenter() {
                                         </div>
                                         <div className="flex-1 min-w-0 pr-6">
                                             <p className="text-xs font-bold leading-tight mb-1">{n.title}</p>
-                                            {n.body && <div className="text-[10px] text-muted-foreground mb-2 line-clamp-2" dangerouslySetInnerHTML={{ __html: n.body }} />}
+                                            {n.body && <div className="text-[10px] text-muted-foreground mb-2 line-clamp-2" dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(n.body, { USE_PROFILES: { html: true } }) }} />}
                                             <div className="flex items-center gap-3 text-[9px] font-semibold text-muted-foreground opacity-60">
                                                 <span className="flex items-center gap-1">{formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}</span>
                                             </div>

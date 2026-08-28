@@ -24,6 +24,7 @@ import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
 import { getDefaultStyle } from '@/lib/services/style-resolver';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import Link from 'next/link';
+import DOMPurify from 'isomorphic-dompurify';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -57,6 +58,36 @@ import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { useAudiences } from '@/lib/audience-hooks';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
+import type { InvitationRecipient } from '@/lib/contacts/contact-repository';
+
+interface CSVRecord {
+    [key: string]: string;
+}
+
+interface SavedAudienceFilter {
+    field: string;
+    operator: string;
+    value?: string[];
+}
+
+interface SavedAudienceItem {
+    id: string;
+    name: string;
+    filters?: SavedAudienceFilter[];
+}
+
+interface SurveyAnswerItem {
+    questionId: string;
+    value: unknown;
+}
+
+interface FailedSendEntity {
+    entityId: string;
+    entityName: string;
+    contactName?: string;
+    contactDetail?: string;
+    error: string;
+}
 
 // ─── Schema ───────────────────────────────────────────────────────────────────
 const formSchema = z.object({
@@ -81,7 +112,7 @@ const formSchema = z.object({
     isScheduled: z.boolean().default(false),
     scheduledAt: z.date().optional(),
     // Variables & bindings
-    variables: z.record(z.any()).default({}),
+    variables: z.record(z.unknown()).default({}),
     sourceMeetingId: z.string().optional(),
     sourceSurveyId: z.string().optional(),
     sourceResponseId: z.string().optional(),
@@ -192,7 +223,7 @@ interface ComposerWizardProps {
 export default function ComposerWizard({ composerContext }: ComposerWizardProps = {}) {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { activeWorkspace, activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+    const { activeWorkspace, activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -202,7 +233,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     const [isRefining, setIsRefining] = React.useState(false);
     const [selectedTone, setSelectedTone] = React.useState<'formal'|'friendly'|'urgent'|'concise'>('formal');
-    const [csvData, setCsvData] = React.useState<any[]>([]);
+    const [csvData, setCsvData] = React.useState<CSVRecord[]>([]);
     const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
     const [columnMapping, setColumnMapping] = React.useState<Record<string, string>>({});
     const [tagSegment, setTagSegment] = React.useState<TagSegment>({ includeTagIds: [], excludeTagIds: [], includeLogic: 'OR' });
@@ -213,17 +244,11 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         success: boolean;
         totalSent: number;
         totalFailed: number;
-        failedEntities: Array<{
-            entityId: string;
-            entityName: string;
-            contactName?: string;
-            contactDetail?: string;
-            error: string;
-        }>;
+        failedEntities: FailedSendEntity[];
         logIds: string[];
     } | null>(null);
     const [showSummaryDialog, setShowSummaryDialog] = React.useState(false);
-    const [sampleVariables, setSampleVariables] = React.useState<Record<string, any>>({});
+    const [sampleVariables, setSampleVariables] = React.useState<Record<string, string>>({});
     const [jobProgress, setJobProgress] = React.useState(0);
     const [jobStatus, setJobStatus] = React.useState<string | null>(null);
     const [jobProcessed, setJobProcessed] = React.useState(0);
@@ -266,7 +291,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [assigneeFilter, setAssigneeFilter] = React.useState<'all' | 'mine'>('all');
     const [selectedRoles, setSelectedRoles] = React.useState<string[]>([]);
     const [availableRoles, setAvailableRoles] = React.useState<{ key: string; label: string }[]>([]);
-    const [filteredRecipients, setFilteredRecipients] = React.useState<any[]>([]);
+    const [filteredRecipients, setFilteredRecipients] = React.useState<InvitationRecipient[]>([]);
     const [isResolvingRecipients, setIsResolvingRecipients] = React.useState(false);
 
     const { audiences: savedAudiences } = useAudiences(activeWorkspaceId);
@@ -274,7 +299,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     // Fetch contact roles
     React.useEffect(() => {
         if (!activeWorkspaceId) return;
-        const scope = (activeWorkspace?.contactScope || 'institution') as any;
+        const scope = (activeWorkspace?.contactScope || 'institution') as 'institution' | 'family' | 'person';
         let cancelled = false;
         getEffectiveContactTypes(scope, activeOrganizationId, activeWorkspaceId)
             .then((types) => {
@@ -293,21 +318,21 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     const handleSavedAudienceChange = React.useCallback((audienceId: string) => {
         setSavedAudienceId(audienceId);
-        const aud = savedAudiences.find((a: any) => a.id === audienceId);
+        const aud = (savedAudiences as SavedAudienceItem[]).find((a) => a.id === audienceId);
         if (aud && aud.filters) {
-            const includeTagFilter = aud.filters.find((f: any) => f.field === 'tags' && (f.operator === 'any_of' || f.operator === 'all_of'));
-            const excludeTagFilter = aud.filters.find((f: any) => f.field === 'tags' && f.operator === 'is_not');
+            const includeTagFilter = aud.filters.find((f) => f.field === 'tags' && (f.operator === 'any_of' || f.operator === 'all_of'));
+            const excludeTagFilter = aud.filters.find((f) => f.field === 'tags' && f.operator === 'is_not');
             const inc = includeTagFilter?.value || [];
             const exc = excludeTagFilter?.value || [];
-            const logic = includeTagFilter?.operator === 'all_of' ? 'AND' : 'OR';
+            const logic: 'AND' | 'OR' = includeTagFilter?.operator === 'all_of' ? 'AND' : 'OR';
             setTagSegment({
                 includeTagIds: inc,
                 excludeTagIds: exc,
-                includeLogic: logic as any,
+                includeLogic: logic,
             });
             setValue('tagSegmentInclude', inc);
             setValue('tagSegmentExclude', exc);
-            setValue('tagSegmentLogic', logic as any);
+            setValue('tagSegmentLogic', logic);
         }
     }, [savedAudiences, setValue]);
 
@@ -502,7 +527,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         fetchContextualData('SurveyResponse', watchedSourceResponseId, watchedSourceSurveyId).then(res => {
             if (res.success && res.data) {
                 setValue('variables.score', res.data.score || 0);
-                res.data.answers?.forEach((a: any) => setValue(`variables.${a.questionId}`, typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value)));
+                (res.data.answers as SurveyAnswerItem[] | undefined)?.forEach((a) => setValue(`variables.${a.questionId}`, typeof a.value === 'object' ? JSON.stringify(a.value) : String(a.value)));
             }
         });
     }, [watchedSourceResponseId, watchedSourceSurveyId, setValue]);
@@ -522,15 +547,15 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         fetchContextualData('Entity', watchedSelectedEntityIds[0], undefined, activeWorkspace?.id).then(res => {
             if (res.success && res.data) {
                 const contacts = res.data.entityContacts || [];
-                const primary = contacts.find((c: any) => c.isPrimary) || contacts[0];
+                const primary = contacts.find((c: { isPrimary?: boolean; name?: string; email?: string; phone?: string }) => Boolean(c.isPrimary)) || contacts[0];
                 const contactName = primary?.name || res.data.displayName || '';
                 setSampleVariables({
-                    name: res.data.displayName || res.data.name,
-                    school_name: res.data.displayName || res.data.name,
+                    name: res.data.displayName || res.data.name || '',
+                    school_name: res.data.displayName || res.data.name || '',
                     email: res.data.primaryEmail || primary?.email || '',
                     phone: res.data.primaryPhone || primary?.phone || '',
                     contact_name: contactName,
-                    first_name: (contactName || '').split(' ')[0],
+                    first_name: (contactName || '').split(' ')[0] || '',
                 });
             }
         });
@@ -587,13 +612,13 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         if (!file) return;
         const reader = new FileReader();
         reader.onload = (ev) => {
-            const text = ev.target?.result as string;
+            const text = (ev.target?.result as string) || '';
             const rows = text.split('\n').filter(r => r.trim());
             if (rows.length < 2) { toast({ variant: 'destructive', title: 'Invalid CSV' }); return; }
             const headers = rows[0].split(',').map(h => h.trim());
-            const data = rows.slice(1).map(row => {
+            const data: CSVRecord[] = rows.slice(1).map(row => {
                 const vals = row.split(',').map(v => v.trim());
-                return headers.reduce((o, h, i) => { o[h] = vals[i]; return o; }, {} as any);
+                return headers.reduce<CSVRecord>((o, h, i) => { o[h] = vals[i] || ''; return o; }, {});
             });
             setCsvHeaders(headers); setCsvData(data);
             const mapping: Record<string, string> = {};
@@ -615,8 +640,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             const result = await refineMessage({ text: selectedTemplate.body, tone: selectedTone, channel: contactResolutionChannel(watchedChannel) });
             setValue('variables.ai_refined_body', result.refinedText);
             toast({ title: 'AI Refinement Applied' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Refinement Failed', description: e.message });
+        } catch (e: unknown) {
+            const errMsg = e instanceof Error ? e.message : 'Refinement failed';
+            toast({ variant: 'destructive', title: 'Refinement Failed', description: errMsg });
         } finally { setIsRefining(false); }
     };
 
@@ -1091,7 +1117,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                                             { id: 'signatories',label: 'Signatories', desc: 'Decision makers only.' },
                                                             { id: 'all',        label: 'Blast All',   desc: 'Every recorded contact.' },
                                                         ].map(s => (
-                                                            <div key={s.id} onClick={() => setValue('contactScope', s.id as any)}
+                                                            <div key={s.id} onClick={() => setValue('contactScope', s.id as 'primary' | 'signatories' | 'all')}
                                                                 className={cn('cursor-pointer border-2 rounded-xl p-3.5 transition-all relative overflow-hidden',
                                                                     watchedContactScope === s.id ? 'border-primary bg-primary/5 shadow-md' : 'border-border hover:border-primary/30'
                                                                 )}>
@@ -1167,7 +1193,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                                         <button
                                                             key={opt.id}
                                                             type="button"
-                                                            onClick={() => setValue('contactScope', opt.id as any)}
+                                                            onClick={() => setValue('contactScope', opt.id as 'primary' | 'signatories' | 'roles' | 'all')}
                                                             className={cn('flex items-center justify-center p-3 rounded-xl border transition-all text-[11px] font-bold h-11',
                                                                 watchedContactScope === opt.id
                                                                     ? 'bg-primary text-white border-primary shadow-sm'
@@ -1238,7 +1264,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                                         <SelectValue placeholder="Choose an audience..." />
                                                     </SelectTrigger>
                                                     <SelectContent className="rounded-xl">
-                                                        {savedAudiences.map((a: any) => (
+                                                        {(savedAudiences as SavedAudienceItem[]).map((a) => (
                                                             <SelectItem key={a.id} value={a.id} className="text-xs font-semibold">
                                                                 {a.name} ({a.filters?.length || 0} filters)
                                                             </SelectItem>
@@ -1645,7 +1671,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     <Label className="text-xs font-bold text-red-900 uppercase tracking-widest ml-1">Error Logs</Label>
                                     <div className="max-h-36 overflow-y-auto rounded-xl border border-red-200 bg-red-50/50 p-2">
                                         <div className="space-y-2">
-                                            {sendSummary.failedEntities.map((f: any, i: number) => (
+                                            {sendSummary.failedEntities.map((f: FailedSendEntity, i: number) => (
                                                 <div key={i} className="p-2.5 rounded-lg bg-card border border-red-200 space-y-0.5 shadow-sm">
                                                     <div className="flex items-center gap-1.5">
                                                         <Building className="h-3 w-3 text-red-600" />
@@ -1697,9 +1723,9 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 }
 
 // ─── MessagePreviewer ─────────────────────────────────────────────────────────
-function MessagePreviewer({ template, variables, styles = [] }: { template: MessageTemplate; variables: Record<string, any>; styles?: MessageStyle[] }) {
+function MessagePreviewer({ template, variables, styles = [] }: { template: MessageTemplate; variables: Record<string, unknown>; styles?: MessageStyle[] }) {
     const { activeOrganizationId, activeWorkspaceId, activeOrganization } = useWorkspace();
-    const combinedVars = { ...variables };
+    const combinedVars = { ...variables } as Record<string, unknown>;
 
     if (variables.ai_refined_body) {
         return (
@@ -1709,7 +1735,7 @@ function MessagePreviewer({ template, variables, styles = [] }: { template: Mess
                     <span className="text-[10px] font-bold">AI Polished Draft</span>
                 </div>
                 <div className="whitespace-pre-wrap font-medium leading-relaxed text-sm prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: resolveVariables(variables.ai_refined_body, combinedVars) }} />
+                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resolveVariables(variables.ai_refined_body, combinedVars), { USE_PROFILES: { html: true } }) }} />
             </div>
         );
     }
@@ -1734,12 +1760,12 @@ function MessagePreviewer({ template, variables, styles = [] }: { template: Mess
 
         if (styleWrapper) {
             const brandingData = {
-                name: combinedVars.org_name || activeOrganization?.name || 'Your Organization',
-                logoUrl: combinedVars.org_logo_url || activeOrganization?.logoUrl || '',
-                email: combinedVars.org_email || activeOrganization?.email || '',
-                phone: combinedVars.org_phone || activeOrganization?.phone || '',
-                address: combinedVars.org_address || activeOrganization?.address || '',
-                website: combinedVars.org_website || activeOrganization?.website || '',
+                name: String(combinedVars.org_name || activeOrganization?.name || 'Your Organization'),
+                logoUrl: String(combinedVars.org_logo_url || activeOrganization?.logoUrl || ''),
+                email: String(combinedVars.org_email || activeOrganization?.email || ''),
+                phone: String(combinedVars.org_phone || activeOrganization?.phone || ''),
+                address: String(combinedVars.org_address || activeOrganization?.address || ''),
+                website: String(combinedVars.org_website || activeOrganization?.website || ''),
                 footerHtml: activeStyle.footerHtml,
                 footerEnabled: activeStyle.footerEnabled !== false
             };

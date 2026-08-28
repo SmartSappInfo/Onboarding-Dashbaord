@@ -6,18 +6,12 @@ import type { AutomationJob } from '@/lib/types';
 // Enforce dynamic execution
 export const dynamic = 'force-dynamic';
 
-const SECRET = process.env.CLOUD_TASKS_SECRET || 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf';
+import { isAuthorizedCloudTaskRequest } from '@/lib/security/cloud-tasks-auth';
 
 export async function POST(request: NextRequest) {
   try {
-    // 1. Security Check: Validate Secret Header Handshake or GCP Cloud Tasks Proxy Header
-    const clientSecret = request.headers.get('x-cloud-tasks-secret');
-    const gcpQueueHeader = request.headers.get('x-cloudtasks-queuename') || request.headers.get('x-appengine-queuename');
-    const validSecrets = new Set([SECRET, 'cc6442af1b849d2250ab115c340ac11b7635b0a27c47d98741659fb98c7f1aaf', 'local-secret']);
-
-    const isAuthorized = (clientSecret && validSecrets.has(clientSecret)) || Boolean(gcpQueueHeader);
-
-    if (!isAuthorized) {
+    // 1. Security Check: Validate Secret Header Handshake
+    if (!isAuthorizedCloudTaskRequest(request.headers)) {
       console.warn('[AUTOMATION-WORKER] Unauthorized request attempt.');
       return NextResponse.json({ error: 'Unauthorized handshake signature' }, { status: 401 });
     }

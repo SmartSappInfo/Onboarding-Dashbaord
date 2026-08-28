@@ -1,24 +1,41 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getActivitiesForContact } from '@/lib/activity-actions';
 import { logActivity } from '@/lib/activity-logger';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+import type { ActivityType, ActivityMetadata, EntityType } from '@/lib/types';
 
 /**
  * @fileOverview Activities API endpoint with entityId support
  * Requirements: 24.1, 24.2, 24.5
+ *
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - Security: Protected by `authenticateApiRequest` ensuring callers can only query and log
+ *   activities within workspaces they are authorized to access.
+ * - Traceability: All operational activity writes record the verified caller's ID and timestamps.
+ * - Zero `any` or `any[]` typing.
  */
+
+interface PostActivityRequestBody {
+  workspaceId?: string;
+  type?: ActivityType;
+  description?: string;
+  entityId?: string;
+  entityType?: string;
+  metadata?: ActivityMetadata;
+  organizationId?: string;
+}
 
 /**
  * GET /api/activities
- * Query activities for a contact using either entityId or entityId
+ * Query activities for a contact using entityId
  */
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const workspaceId = searchParams.get('workspaceId');
     const entityId = searchParams.get('entityId');
-    const type = searchParams.get('type');
-    const limit = parseInt(searchParams.get('limit') || '50');
-    const startAfter = searchParams.get('startAfter');
+    const type = searchParams.get('type') as ActivityType | null;
+    const limit = parseInt(searchParams.get('limit') || '50', 10);
 
     if (!workspaceId) {
       return NextResponse.json(
@@ -34,6 +51,15 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    // Authenticate caller and verify workspace membership
+    const authResult = await authenticateApiRequest(request, {
+      requiredWorkspaceId: workspaceId,
+    });
+
+    if (!authResult.success) {
+      return authResult.errorResponse;
+    }
+
     // Get activities using server action
     const activities = await getActivitiesForContact(entityId, workspaceId, limit);
 
@@ -43,21 +69,16 @@ export async function GET(request: NextRequest) {
       filteredActivities = filteredActivities.filter(activity => activity.type === type);
     }
 
-    const headers: Record<string, string> = {};
-
-    // Return both identifiers in response (Requirement 24.2)
-    return NextResponse.json(
-      {
-        activities: filteredActivities,
-        total: filteredActivities.length,
-        nextCursor: null // Pagination not implemented yet
-      },
-      { headers }
-    );
-  } catch (error: any) {
+    return NextResponse.json({
+      activities: filteredActivities,
+      total: filteredActivities.length,
+      nextCursor: null,
+    });
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     console.error('[API:ACTIVITIES:GET] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errMsg },
       { status: 500 }
     );
   }
@@ -69,16 +90,15 @@ export async function GET(request: NextRequest) {
  */
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
+    const body = (await request.json()) as PostActivityRequestBody;
     const {
       workspaceId,
       type,
       description,
       entityId,
       entityType,
-      userId,
       metadata,
-      organizationId
+      organizationId,
     } = body;
 
     // Validate required fields
@@ -96,25 +116,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Log activity with dual-write support (Requirement 24.2)
+    // Authenticate caller and verify workspace membership
+    const authResult = await authenticateApiRequest(request, {
+      requiredWorkspaceId: workspaceId,
+      requiredOrgId: organizationId,
+    });
+
+    if (!authResult.success) {
+      return authResult.errorResponse;
+    }
+
+    const { user } = authResult;
+    const callerId = user.uid;
+    const callerOrgId = organizationId || user.profile.organizationId || 'default';
+
+    // Log activity
     await logActivity({
       workspaceId,
       type,
       description,
-      // Prefer entityId when both provided (Requirement 24.1)
       entityId: entityId || null,
-      entityType: entityType || null,
-      userId: userId || null,
+      entityType: (entityType as EntityType) || null,
+      userId: callerId,
       metadata: metadata || {},
-      organizationId: organizationId || 'default',
-      source: 'api'
+      organizationId: callerOrgId,
+      source: 'api',
     });
-
-    const headers: Record<string, string> = {};
 
     const timestamp = new Date().toISOString();
 
-    // Return activity with both identifiers (Requirement 24.2)
     return NextResponse.json(
       {
         workspaceId,
@@ -122,17 +152,18 @@ export async function POST(request: NextRequest) {
         description,
         entityId: entityId || null,
         entityType: entityType || null,
-        userId,
+        userId: callerId,
         timestamp,
-        metadata,
-        createdAt: timestamp
+        metadata: metadata || {},
+        createdAt: timestamp,
       },
-      { status: 201, headers }
+      { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     console.error('[API:ACTIVITIES:POST] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errMsg },
       { status: 500 }
     );
   }

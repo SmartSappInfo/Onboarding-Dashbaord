@@ -21,6 +21,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import Link from 'next/link';
+import DOMPurify from 'isomorphic-dompurify';
 
 interface EntityCommsTabProps {
   entityId: string;
@@ -112,7 +113,7 @@ const MessageCard = React.memo(function MessageCard({ log }: { log: MessageLog }
           {log.channel === 'email' ? (
             <div
               className="prose prose-sm max-w-none text-foreground dark:prose-invert text-xs leading-relaxed rounded-xl bg-muted/20 p-3 max-h-48 overflow-y-auto"
-              dangerouslySetInnerHTML={{ __html: log.body }}
+              dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(log.body, { USE_PROFILES: { html: true } }) }}
             />
           ) : (
             <div className="bg-muted/20 rounded-xl p-3">

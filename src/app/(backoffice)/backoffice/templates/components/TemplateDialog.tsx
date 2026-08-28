@@ -10,13 +10,16 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Badge } from '@/components/ui/badge';
-import { X, Info, AlertCircle, Check } from 'lucide-react';
+import { Info, AlertCircle, Check, Sliders, Code } from 'lucide-react';
 import { PlatformTemplate, PlatformTemplateType } from '@/lib/backoffice/backoffice-types';
 import { createTemplateAction, updateTemplateAction } from '@/lib/backoffice/backoffice-template-actions';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import { getEnabledIndustries } from '@/lib/industry-config';
+import { PermissionEditor } from '@/app/admin/users/roles/PermissionEditor';
+import { normalizePermissionsSchema, getBlankPermissions } from '@/lib/permissions-engine';
+import type { PermissionsSchema } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface TemplateDialogProps {
   readonly template: PlatformTemplate | null;
@@ -26,18 +29,23 @@ interface TemplateDialogProps {
 }
 
 const TEMPLATE_TYPES: PlatformTemplateType[] = [
+  'messaging',
+  'meeting',
+  'survey',
+  'form',
+  'automation',
+  'pipeline',
   'page',
   'section',
   'block',
-  'messaging',
-  'form',
-  'survey',
-  'pdf',
-  'automation',
-  'pipeline',
-  'task',
   'theme',
-  'role_architecture'
+  'pdf',
+  'dunning',
+  'qr_credential',
+  'brand_voice',
+  'role_architecture',
+  'prompt',
+  'task',
 ];
 
 export default function TemplateDialog({ template, open, onOpenChange, onSuccess }: TemplateDialogProps) {
@@ -53,6 +61,8 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
   const [jsonText, setJsonText] = React.useState('{}');
   const [jsonError, setJsonError] = React.useState<string | null>(null);
   const [changelog, setChangelog] = React.useState('');
+  const [editorMode, setEditorMode] = React.useState<'visual' | 'json'>('visual');
+  const [permissionSchema, setPermissionSchema] = React.useState<PermissionsSchema>(getBlankPermissions());
 
   const enabledIndustries = React.useMemo(() => getEnabledIndustries(), []);
 
@@ -65,6 +75,9 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
       setDefaultForNewOrgs(template.defaultForNewOrgs);
       setSelectedVerticals(template.visibilityRules?.workspaceTypes || []);
       setJsonText(JSON.stringify(template.content, null, 2));
+      if (template.type === 'role_architecture') {
+        setPermissionSchema(normalizePermissionsSchema(template.content));
+      }
       setJsonError(null);
       setChangelog('');
     } else {
@@ -75,10 +88,31 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
       setDefaultForNewOrgs(false);
       setSelectedVerticals([]);
       setJsonText('{\n  "sections": []\n}');
+      setPermissionSchema(getBlankPermissions());
       setJsonError(null);
       setChangelog('');
     }
   }, [template, open]);
+
+  // Handler for type change
+  const handleTypeChange = (newType: PlatformTemplateType) => {
+    setType(newType);
+    if (newType === 'role_architecture') {
+      const initialSchema = template?.type === 'role_architecture' && template.content
+        ? normalizePermissionsSchema(template.content)
+        : getBlankPermissions();
+      setPermissionSchema(initialSchema);
+      setJsonText(JSON.stringify(initialSchema, null, 2));
+      setJsonError(null);
+    }
+  };
+
+  // Handler for visual permission editor changes
+  const handlePermissionChange = (updated: PermissionsSchema) => {
+    setPermissionSchema(updated);
+    setJsonText(JSON.stringify(updated, null, 2));
+    setJsonError(null);
+  };
 
   // JSON Validation check
   const handleJsonChange = (val: string) => {
@@ -88,7 +122,10 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
         setJsonError('JSON payload cannot be empty');
         return;
       }
-      JSON.parse(val);
+      const parsed = JSON.parse(val);
+      if (type === 'role_architecture') {
+        setPermissionSchema(normalizePermissionsSchema(parsed));
+      }
       setJsonError(null);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Invalid JSON format';
@@ -113,7 +150,14 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
 
     let parsedContent: unknown;
     try {
-      parsedContent = JSON.parse(jsonText);
+      if (type === 'role_architecture' && editorMode === 'visual') {
+        parsedContent = permissionSchema;
+      } else {
+        parsedContent = JSON.parse(jsonText);
+        if (type === 'role_architecture') {
+          parsedContent = normalizePermissionsSchema(parsedContent);
+        }
+      }
     } catch {
       toast({ variant: 'destructive', title: 'Invalid JSON', description: 'Failed to parse JSON text content.' });
       return;
@@ -226,7 +270,7 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
             <div className="space-y-1.5">
               <Label htmlFor="tpl-type" className="text-xs font-semibold text-muted-foreground">Template Type</Label>
-              <Select value={type} onValueChange={(v: PlatformTemplateType) => setType(v)}>
+              <Select value={type} onValueChange={(v: PlatformTemplateType) => handleTypeChange(v)}>
                 <SelectTrigger id="tpl-type" className="h-10 bg-background border-border text-foreground rounded-xl text-sm">
                   <SelectValue />
                 </SelectTrigger>
@@ -281,37 +325,85 @@ export default function TemplateDialog({ template, open, onOpenChange, onSuccess
             </p>
           </div>
 
-          {/* JSON Schema Content Editor */}
-          <div className="space-y-1.5 border-t border-border pt-4">
-            <div className="flex justify-between items-center mb-1">
-              <Label htmlFor="tpl-content" className="text-xs font-semibold text-muted-foreground">JSON Payload Configuration</Label>
-              {jsonError ? (
-                <span className="text-[10px] text-red-400 flex items-center gap-1 font-mono">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  JSON Error
-                </span>
+          {/* Schema & Permissions Content Editor */}
+          <div className="space-y-3 border-t border-border pt-4">
+            <div className="flex justify-between items-center">
+              <div>
+                <Label htmlFor="tpl-content" className="text-xs font-semibold text-muted-foreground">
+                  {type === 'role_architecture' ? 'Role Architecture Permissions' : 'JSON Payload Configuration'}
+                </Label>
+              </div>
+
+              {type === 'role_architecture' ? (
+                <div className="flex items-center gap-1.5 bg-background border border-border p-1 rounded-xl">
+                  <Button
+                    type="button"
+                    variant={editorMode === 'visual' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setEditorMode('visual')}
+                    className={cn(
+                      "h-7 px-2.5 text-[11px] font-semibold rounded-lg transition-all active:scale-[0.97]",
+                      editorMode === 'visual' ? "bg-emerald-600 text-white" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Sliders className="h-3 w-3 mr-1" />
+                    Visual Matrix
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={editorMode === 'json' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setEditorMode('json')}
+                    className={cn(
+                      "h-7 px-2.5 text-[11px] font-semibold rounded-lg transition-all active:scale-[0.97]",
+                      editorMode === 'json' ? "bg-emerald-600 text-white" : "text-muted-foreground hover:text-foreground"
+                    )}
+                  >
+                    <Code className="h-3 w-3 mr-1" />
+                    Raw JSON
+                  </Button>
+                </div>
               ) : (
-                <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
-                  <Check className="h-3.5 w-3.5" />
-                  JSON Valid
-                </span>
+                jsonError ? (
+                  <span className="text-[10px] text-red-400 flex items-center gap-1 font-mono">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    JSON Error
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-mono">
+                    <Check className="h-3.5 w-3.5" />
+                    JSON Valid
+                  </span>
+                )
               )}
             </div>
-            <Textarea
-              id="tpl-content"
-              required
-              rows={8}
-              value={jsonText}
-              onChange={e => handleJsonChange(e.target.value)}
-              className={`font-mono text-[11px] bg-background text-foreground rounded-xl leading-relaxed ${
-                jsonError ? 'border-red-500/30 focus:border-red-500/50' : 'border-border focus:border-emerald-500/50'
-              }`}
-              placeholder={'{\n  "sections": []\n}'}
-            />
-            {jsonError && (
-              <p className="text-[10px] text-red-400 font-mono bg-red-500/5 p-2 rounded-lg border border-red-500/10 mt-1">
-                {jsonError}
-              </p>
+
+            {type === 'role_architecture' && editorMode === 'visual' ? (
+              <div className="max-h-[380px] overflow-y-auto rounded-xl border border-border bg-background/50 p-2 shadow-inner">
+                <PermissionEditor
+                  schema={permissionSchema}
+                  onChange={handlePermissionChange}
+                />
+              </div>
+            ) : (
+              <div>
+                <Textarea
+                  id="tpl-content"
+                  required
+                  rows={8}
+                  value={jsonText}
+                  onChange={e => handleJsonChange(e.target.value)}
+                  className={`font-mono text-[11px] bg-background text-foreground rounded-xl leading-relaxed ${
+                    jsonError ? 'border-red-500/30 focus:border-red-500/50' : 'border-border focus:border-emerald-500/50'
+                  }`}
+                  placeholder={'{\n  "sections": []\n}'}
+                />
+                {jsonError && (
+                  <p className="text-[10px] text-red-400 font-mono bg-red-500/5 p-2 rounded-lg border border-red-500/10 mt-1">
+                    {jsonError}
+                  </p>
+                )}
+              </div>
             )}
           </div>
 

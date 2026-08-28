@@ -935,6 +935,7 @@ export interface UserProfile {
   facilitatorBio?: string;
 
   createdAt: string;
+  updatedAt?: string;
 }
 
 export interface OnboardingStage {
@@ -3077,7 +3078,18 @@ export interface Activity {
   timestamp: string;
   createdAt?: string; // Alias for timestamp for backward compatibility
   description: string;
-  metadata?: any;
+  metadata?: Record<string, unknown>;
+}
+
+export type ActivityType = string;
+export type ActivityMetadata = Record<string, unknown>;
+export type EntityCustomData = string | number | boolean | string[] | null | undefined;
+export interface AssignedUser {
+  userId: string | null;
+  name: string | null;
+  email: string | null;
+  id?: string;
+  role?: string;
 }
 
 export interface Task {

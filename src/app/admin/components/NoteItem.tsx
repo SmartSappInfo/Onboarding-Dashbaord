@@ -38,12 +38,14 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false);
-    const [editedContent, setEditedContent] = React.useState(note.metadata?.content || '');
+    const [editedContent, setEditedContent] = React.useState(
+        typeof note.metadata?.content === 'string' ? note.metadata.content : ''
+    );
 
     const canEdit = user?.uid === note.userId;
 
     const handleSave = async () => {
-        if (editedContent === note.metadata?.content) {
+        if (editedContent === (typeof note.metadata?.content === 'string' ? note.metadata.content : '')) {
             setIsEditing(false);
             return;
         }
@@ -123,7 +125,7 @@ export default function NoteItem({ note, userProfile }: NoteItemProps) {
                             </div>
                         </div>
                     ) : (
-                        <p className="whitespace-pre-wrap">{note.metadata?.content}</p>
+                        <p className="whitespace-pre-wrap">{String(note.metadata?.content || '')}</p>
                     )}
                 </div>
             </div>

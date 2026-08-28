@@ -3,19 +3,18 @@ import { adminDb } from '@/lib/firebase-admin';
 import { SocialProviderFactory } from '@/lib/social-providers/SocialProviderFactory';
 import type { SocialPost, SocialAccount } from '@/lib/types';
 
+import { authenticateCronRequest } from '@/lib/security/cron-auth';
+
 /**
  * GET /api/cron/social-publisher
  * background sweep engine. Triggers scheduled publishes.
- * Security: Verifies Authorization headers or local dev bypass rules.
+ * Security: Verifies Authorization headers (fail-closed).
  */
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('Authorization') || '';
-    const cronSecret = process.env.CRON_SECRET || 'dev-secret';
-    const isDev = process.env.NODE_ENV === 'development' || request.nextUrl.searchParams.get('bypass') === 'true';
-
-    if (!isDev && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: 'Unauthorized cron sweep trigger.' }, { status: 401 });
+    const auth = authenticateCronRequest(request);
+    if (!auth.isAuthorized) {
+      return auth.errorResponse || NextResponse.json({ error: 'Unauthorized cron sweep trigger.' }, { status: 401 });
     }
 
     const nowIso = new Date().toISOString();

@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Platform Template Matrix Catalog & Governance Client Component
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Central control plane matrix for all 15 platform template domains.
+ * - Supports tab-based category navigation, search filtering, and live propagation fan-out.
+ * - Touch targets maintain >= 44px height (`min-h-[44px]` / `h-11`) for mobile accessibility.
+ * - Button active states use `active:scale-[0.97]` for responsive tactile feedback (emilkowal-animations).
+ *
+ * @testability Client component consuming `listAllTemplates`, `publishTemplate`, `deprecateTemplate`, and `propagateTemplateToWorkspaces`.
+ */
+
 'use client';
 
 import * as React from 'react';
@@ -13,7 +25,23 @@ import {
   RefreshCw,
   Plus,
   Loader2,
-  Edit
+  Edit,
+  Send,
+  MessageSquare,
+  Video,
+  BarChart3,
+  FormInput,
+  Workflow,
+  Kanban,
+  FileCode,
+  Layers,
+  FileText,
+  Banknote,
+  QrCode,
+  Sparkles,
+  ShieldCheck,
+  BrainCircuit,
+  ListTodo,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -45,22 +73,33 @@ import { seedPlatformPageTemplatesAction } from '@/app/actions/seed-platform-pag
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import { useBackoffice } from '../../context/BackofficeProvider';
-import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
+import type { PlatformTemplate, PlatformTemplateType } from '@/lib/backoffice/backoffice-types';
 import TemplateDialog from './TemplateDialog';
+import PropagateTemplateDialog from './PropagateTemplateDialog';
 
 const STATUS_COLORS: Record<string, string> = {
-  draft: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
-  published: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  deprecated: 'bg-red-500/15 text-red-400 border-red-500/20',
+  draft: 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20',
+  published: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20',
+  deprecated: 'bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/20',
   archived: 'bg-slate-500/15 text-muted-foreground border-slate-500/20',
 };
 
-const TYPE_COLORS: Record<string, string> = {
-  messaging: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  form: 'bg-purple-500/15 text-purple-400 border-purple-500/20',
-  survey: 'bg-pink-500/15 text-pink-400 border-pink-500/20',
-  automation: 'bg-yellow-500/15 text-yellow-400 border-yellow-500/20',
-};
+const CATEGORY_TABS: Array<{
+  id: string;
+  label: string;
+  types: PlatformTemplateType[];
+  icon: React.ElementType;
+}> = [
+  { id: 'all', label: 'All Templates', types: [], icon: FileStack },
+  { id: 'messaging', label: 'Messaging', types: ['messaging'], icon: MessageSquare },
+  { id: 'meetings', label: 'Meetings', types: ['meeting'], icon: Video },
+  { id: 'surveys', label: 'Surveys & Forms', types: ['survey', 'form'], icon: BarChart3 },
+  { id: 'automations', label: 'Automations & Pipelines', types: ['automation', 'pipeline'], icon: Workflow },
+  { id: 'pages', label: 'CMS & Portals', types: ['page', 'section', 'block', 'theme'], icon: Layers },
+  { id: 'documents', label: 'PDFs & Dunning', types: ['pdf', 'dunning'], icon: FileText },
+  { id: 'credentials', label: 'QR & Credentials', types: ['qr_credential'], icon: QrCode },
+  { id: 'governance', label: 'Roles & Prompts', types: ['role_architecture', 'brand_voice', 'prompt', 'task'], icon: ShieldCheck },
+];
 
 export default function TemplateListClient() {
   const { can } = useBackoffice();
@@ -70,11 +109,43 @@ export default function TemplateListClient() {
   const [templates, setTemplates] = React.useState<PlatformTemplate[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [search, setSearch] = React.useState('');
-  const [typeFilter, setTypeFilter] = React.useState('all');
+  const [activeTab, setActiveTab] = React.useState('all');
   const [statusFilter, setStatusFilter] = React.useState('all');
   const [isSyncing, setIsSyncing] = React.useState(false);
   const [selectedTemplate, setSelectedTemplate] = React.useState<PlatformTemplate | null>(null);
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [propagationTemplate, setPropagationTemplate] = React.useState<PlatformTemplate | null>(null);
+  const [isPropagateOpen, setIsPropagateOpen] = React.useState(false);
+
+  const fetchTemplates = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const idToken = await getToken();
+      const res = await listAllTemplates(idToken);
+      if (res.success && res.data) {
+        setTemplates(res.data);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Failed to load templates',
+          description: res.error || 'Unknown error',
+        });
+      }
+    } catch (error: unknown) {
+      console.error('Failed to fetch templates:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to fetch templates. Check your permissions.',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  }, [getToken, toast]);
+
+  React.useEffect(() => {
+    fetchTemplates();
+  }, [fetchTemplates]);
 
   function handleNewTemplate() {
     setSelectedTemplate(null);
@@ -86,12 +157,20 @@ export default function TemplateListClient() {
     setIsDialogOpen(true);
   }
 
+  function handleOpenPropagate(tpl: PlatformTemplate) {
+    setPropagationTemplate(tpl);
+    setIsPropagateOpen(true);
+  }
+
   async function handleSyncPresets() {
-    if (!(await confirm({
-      title: 'Sync Page & Section Presets?',
-      description: 'This will seed or overwrite the standard system templates in the global catalog.',
-      confirmText: 'Sync Presets'
-    }))) return;
+    if (
+      !(await confirm({
+        title: 'Sync Page & Platform Presets?',
+        description: 'This will seed or update the standard system templates in the global catalog.',
+        confirmText: 'Sync Presets',
+      }))
+    )
+      return;
 
     setIsSyncing(true);
     try {
@@ -99,336 +178,400 @@ export default function TemplateListClient() {
       const result = await seedPlatformPageTemplatesAction(idToken);
       if (result.success && result.seededCount) {
         toast({
-          title: 'Sync completed',
-          description: `Successfully synchronized ${result.seededCount.pages} pages and ${result.seededCount.sections} sections.`
+          title: 'Presets Synced',
+          description: `Successfully seeded/updated ${result.seededCount} standard template presets.`,
         });
-        loadTemplates();
+        fetchTemplates();
       } else {
         toast({
           variant: 'destructive',
-          title: 'Sync failed',
-          description: result.error ?? 'Unknown error occurred.'
+          title: 'Sync Failed',
+          description: result.error || 'Failed to sync presets',
         });
       }
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : String(err);
+    } catch {
       toast({
         variant: 'destructive',
-        title: 'Authentication error',
-        description: msg
+        title: 'Error',
+        description: 'Failed to trigger preset sync',
       });
     } finally {
       setIsSyncing(false);
     }
   }
 
-  const loadTemplates = React.useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const idToken = await getToken();
-      const result = await listAllTemplates(idToken);
-      if (result.success && result.data) {
-        setTemplates(result.data);
-      } else if (result.error) {
-        toast({ variant: 'destructive', title: 'Failed to load templates', description: result.error });
-      }
-    } catch {
-      // Auth not ready yet — the AuthorizationGate handles redirects.
-    } finally {
-      setIsLoading(false);
-    }
-  }, [getToken, toast]);
-
-  React.useEffect(() => {
-    loadTemplates();
-  }, [loadTemplates]);
-
-  // Filter templates
-  const filteredTemplates = React.useMemo(() => {
-    return templates.filter((tpl) => {
-      const matchesSearch =
-        !search ||
-        tpl.name.toLowerCase().includes(search.toLowerCase());
-
-      const matchesType = typeFilter === 'all' || tpl.type === typeFilter;
-      const matchesStatus = statusFilter === 'all' || tpl.status === statusFilter;
-
-      return matchesSearch && matchesType && matchesStatus;
-    });
-  }, [templates, search, typeFilter, statusFilter]);
-
-  const types = React.useMemo(() => {
-    const s = new Set(templates.map(t => t.type));
-    return Array.from(s).sort();
-  }, [templates]);
-
   async function handlePublish(tpl: PlatformTemplate) {
-    if (!(await confirm({ title: 'Publish template?', description: 'It will become available to all active organizations.', confirmText: 'Publish' }))) return;
+    if (
+      !(await confirm({
+        title: `Publish "${tpl.name}"?`,
+        description:
+          'Publishing makes this template available for tenant organizations and workspaces.',
+        confirmText: 'Publish Template',
+      }))
+    )
+      return;
 
     try {
       const idToken = await getToken();
-      const result = await publishTemplate(tpl.id, idToken);
-      if (result.success) {
-        loadTemplates();
+      const res = await publishTemplate(tpl.id, idToken);
+      if (res.success) {
+        toast({ title: 'Template Published', description: `"${tpl.name}" is now published.` });
+        fetchTemplates();
       } else {
-        toast({ variant: 'destructive', title: 'Publish failed', description: result.error ?? 'You may not have permission for this action.' });
+        toast({
+          variant: 'destructive',
+          title: 'Publish Failed',
+          description: res.error || 'Could not publish template.',
+        });
       }
     } catch {
-      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+      });
     }
   }
 
   async function handleDeprecate(tpl: PlatformTemplate) {
-    if (!(await confirm({ title: 'Deprecate template?', description: 'Orgs missing it cannot select it anymore, but existing users keep it.', confirmText: 'Deprecate', variant: 'destructive' }))) return;
+    if (
+      !(await confirm({
+        title: `Deprecate "${tpl.name}"?`,
+        description:
+          'Deprecated templates will no longer be offered as defaults for new tenant workspaces.',
+        confirmText: 'Deprecate Template',
+      }))
+    )
+      return;
 
     try {
       const idToken = await getToken();
-      const result = await deprecateTemplate(tpl.id, idToken);
-      if (result.success) {
-        loadTemplates();
+      const res = await deprecateTemplate(tpl.id, idToken);
+      if (res.success) {
+        toast({ title: 'Template Deprecated', description: `"${tpl.name}" has been deprecated.` });
+        fetchTemplates();
       } else {
-        toast({ variant: 'destructive', title: 'Deprecate failed', description: result.error ?? 'You may not have permission for this action.' });
+        toast({
+          variant: 'destructive',
+          title: 'Deprecate Failed',
+          description: res.error || 'Could not deprecate template.',
+        });
       }
     } catch {
-      toast({ variant: 'destructive', title: 'Authentication required', description: 'Please sign in again.' });
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'An unexpected error occurred.',
+      });
     }
   }
 
+  // Filter templates by search, active category tab, and status
+  const filteredTemplates = React.useMemo(() => {
+    const currentTab = CATEGORY_TABS.find((t) => t.id === activeTab);
+    const tabTypes = currentTab?.types || [];
+
+    return templates.filter((t) => {
+      const matchesSearch =
+        search === '' ||
+        t.name.toLowerCase().includes(search.toLowerCase()) ||
+        t.description.toLowerCase().includes(search.toLowerCase()) ||
+        t.category.toLowerCase().includes(search.toLowerCase());
+
+      const matchesTab = tabTypes.length === 0 || tabTypes.includes(t.type);
+      const matchesStatus = statusFilter === 'all' || t.status === statusFilter;
+
+      return matchesSearch && matchesTab && matchesStatus;
+    });
+  }, [templates, search, activeTab, statusFilter]);
+
+  // Compute counts per category tab
+  const tabCounts = React.useMemo(() => {
+    const counts: Record<string, number> = { all: templates.length };
+    for (const tab of CATEGORY_TABS) {
+      if (tab.id === 'all') continue;
+      counts[tab.id] = templates.filter((t) => tab.types.includes(t.type)).length;
+    }
+    return counts;
+  }, [templates]);
+
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
+      {/* Header Bar */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-foreground tracking-tight">
-            System Templates
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+            <FileStack className="h-6 w-6 text-emerald-500" />
+            Global Template Governance Matrix
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage globally available system templates across all organizations.
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Author, version, preview, and propagate master templates across all 15 operational domains.
           </p>
         </div>
-        <div className="flex items-center gap-3">
+
+        <div className="flex items-center gap-2.5 flex-wrap">
           {can('templates', 'create') && (
-             <Button
-               onClick={handleSyncPresets}
-               disabled={isSyncing}
-               variant="outline"
-               className="border-border text-foreground hover:bg-accent rounded-xl h-10 px-4 cursor-pointer"
-             >
-                {isSyncing ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4 mr-2" />
-                )}
-                Sync Presets
-             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleSyncPresets}
+              disabled={isSyncing}
+              className="h-11 rounded-xl text-xs font-semibold active:scale-[0.97] transition-all gap-2"
+            >
+              {isSyncing ? (
+                <Loader2 className="h-4 w-4 animate-spin text-emerald-500" />
+              ) : (
+                <RefreshCw className="h-4 w-4 text-emerald-500" />
+              )}
+              {isSyncing ? 'Syncing...' : 'Sync Presets'}
+            </Button>
           )}
+
           {can('templates', 'create') && (
-             <Button className="bg-emerald-600 hover:bg-emerald-700 text-foreground rounded-xl h-10 px-4 cursor-pointer">
-                <Plus className="h-4 w-4 mr-2" /> New Template
-             </Button>
+            <Button
+              onClick={handleNewTemplate}
+              className="h-11 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-600/20 active:scale-[0.97] transition-all gap-2"
+            >
+              <Plus className="h-4 w-4" />
+              Create Template
+            </Button>
           )}
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex items-center gap-3 flex-wrap">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+      {/* Category Tabs */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {CATEGORY_TABS.map((tab) => {
+          const isActive = activeTab === tab.id;
+          const count = tabCounts[tab.id] ?? 0;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all active:scale-[0.97] ${
+                isActive
+                  ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 shadow-sm'
+                  : 'bg-muted/40 text-muted-foreground hover:bg-muted hover:text-foreground border border-transparent'
+              }`}
+            >
+              <tab.icon className="h-3.5 w-3.5" />
+              <span>{tab.label}</span>
+              <span
+                className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                  isActive
+                    ? 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-muted text-muted-foreground'
+                }`}
+              >
+                {count}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Filter Bar */}
+      <div className="flex flex-col sm:flex-row items-center gap-3">
+        <div className="relative flex-1 w-full">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search templates..."
+            placeholder="Search templates by name, description, or category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="pl-10 h-10 bg-muted/50 border-border text-foreground placeholder:text-slate-600 rounded-xl focus:border-emerald-500/50 focus:ring-emerald-500/20"
+            className="pl-10 h-11 rounded-xl bg-card border-border text-xs"
           />
         </div>
-        <Select value={typeFilter} onValueChange={setTypeFilter}>
-          <SelectTrigger className="w-40 h-10 bg-muted/50 border-border text-foreground rounded-xl">
-            <SelectValue placeholder="Type" />
-          </SelectTrigger>
-          <SelectContent className="bg-muted border-border">
-            <SelectItem value="all">All Types</SelectItem>
-            {types.map((t) => (
-              <SelectItem key={t} value={t} className="capitalize">{t}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-40 h-10 bg-muted/50 border-border text-foreground rounded-xl">
-            <SelectValue placeholder="Status" />
-          </SelectTrigger>
-          <SelectContent className="bg-muted border-border">
-            <SelectItem value="all">All Statuses</SelectItem>
-            <SelectItem value="draft">Draft</SelectItem>
-            <SelectItem value="published">Published</SelectItem>
-            <SelectItem value="deprecated">Deprecated</SelectItem>
-            <SelectItem value="archived">Archived</SelectItem>
-          </SelectContent>
-        </Select>
-        <Badge
-          variant="outline"
-          className="text-xs text-muted-foreground border-border px-3 h-10 flex items-center"
-        >
-          {filteredTemplates.length} templates
-        </Badge>
+
+        <div className="flex items-center gap-2.5 w-full sm:w-auto">
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-11 w-full sm:w-[150px] rounded-xl bg-card border-border text-xs font-semibold">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all">All Statuses</SelectItem>
+              <SelectItem value="published">Published</SelectItem>
+              <SelectItem value="draft">Draft</SelectItem>
+              <SelectItem value="deprecated">Deprecated</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
-      {/* Data Table */}
-      <div className="rounded-2xl border border-border bg-muted/30 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-border hover:bg-transparent">
-              <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
-                Template
-              </TableHead>
-              <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">
-                Type
-              </TableHead>
-              <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center">
-                Status
-              </TableHead>
-              <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold text-center">
-                Version & Usage
-              </TableHead>
-              <TableHead className="text-muted-foreground text-[10px] uppercase tracking-widest font-semibold w-12" />
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {isLoading ? (
-              // Skeleton rows
-              Array.from({ length: 5 }).map((_, i) => (
-                <TableRow key={i} className="border-border">
-                  <TableCell>
-                    <div className="flex items-center gap-3">
-                      <div className="h-9 w-9 rounded-lg bg-accent animate-pulse" />
-                      <div>
-                        <div className="h-4 w-32 bg-accent rounded animate-pulse" />
-                        <div className="h-3 w-20 bg-accent rounded animate-pulse mt-1" />
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell><div className="h-4 w-24 bg-accent rounded animate-pulse" /></TableCell>
-                  <TableCell className="text-center"><div className="h-5 w-16 bg-accent rounded-full animate-pulse mx-auto" /></TableCell>
-                  <TableCell className="text-center"><div className="h-4 w-12 bg-accent rounded animate-pulse mx-auto" /></TableCell>
-                  <TableCell />
+      {/* Table Card */}
+      <div className="rounded-2xl border border-border bg-card shadow-xl overflow-hidden">
+        {isLoading ? (
+          <div className="p-12 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+            <p className="text-xs font-medium">Loading templates catalog...</p>
+          </div>
+        ) : filteredTemplates.length === 0 ? (
+          <div className="p-12 flex flex-col items-center justify-center gap-3 text-center">
+            <div className="h-12 w-12 rounded-2xl bg-muted/40 flex items-center justify-center text-muted-foreground">
+              <FileStack className="h-6 w-6" />
+            </div>
+            <div className="space-y-1">
+              <p className="text-sm font-bold text-foreground">No templates found</p>
+              <p className="text-xs text-muted-foreground max-w-sm">
+                No templates matched your current filters. Adjust your search or create a new template.
+              </p>
+            </div>
+            {can('templates', 'create') && (
+              <Button
+                onClick={handleNewTemplate}
+                variant="outline"
+                size="sm"
+                className="mt-2 h-10 rounded-xl text-xs font-semibold active:scale-[0.97]"
+              >
+                <Plus className="h-4 w-4 mr-1.5" />
+                Create Template
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-border hover:bg-transparent">
+                  <TableHead className="text-xs font-bold uppercase tracking-wider py-4">Template Name</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider">Domain</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider">Category</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider">Version</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider">Status</TableHead>
+                  <TableHead className="text-xs font-bold uppercase tracking-wider text-right pr-6">Actions</TableHead>
                 </TableRow>
-              ))
-            ) : filteredTemplates.length === 0 ? (
-              <TableRow className="border-border">
-                <TableCell colSpan={5} className="text-center py-12">
-                  <FileStack className="h-8 w-8 text-slate-700 mx-auto mb-3" />
-                  <p className="text-sm text-muted-foreground">No templates found.</p>
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredTemplates.map((tpl) => (
-                <TableRow
-                  key={tpl.id}
-                  className="border-border hover:bg-accent/20 transition-colors cursor-pointer"
-                >
-                  <TableCell>
-                    <Link
-                      href={`/backoffice/templates/${tpl.id}`}
-                      className="flex items-center gap-3"
-                    >
-                      <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 bg-accent/50 border border-border`}>
-                        <FileStack className="h-4 w-4 text-muted-foreground" />
+              </TableHeader>
+              <TableBody>
+                {filteredTemplates.map((tpl) => (
+                  <TableRow key={tpl.id} className="border-border/60 hover:bg-muted/40 transition-colors">
+                    <TableCell className="py-4">
+                      <div className="space-y-0.5">
+                        <Link
+                          href={`/backoffice/templates/${tpl.id}`}
+                          className="font-bold text-xs sm:text-sm text-foreground hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors"
+                        >
+                          {tpl.name}
+                        </Link>
+                        <p className="text-[11px] text-muted-foreground line-clamp-1 max-w-md">
+                          {tpl.description}
+                        </p>
                       </div>
-                      <div>
-                        <p className="text-sm font-semibold text-foreground truncate max-w-[200px]">{tpl.name}</p>
-                        <p className="text-[10px] text-muted-foreground truncate max-w-[200px]" title={tpl.description}>{tpl.description || 'No description'}</p>
-                      </div>
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-[9px] uppercase font-bold px-1.5 h-4 ${TYPE_COLORS[tpl.type] || 'bg-slate-500/15 text-muted-foreground border-slate-500/20'}`}
-                      >
-                        {tpl.type}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" className="capitalize text-[10px] font-semibold rounded-lg px-2 py-0.5 border-border">
+                        {tpl.type.replace('_', ' ')}
                       </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                      <Badge
-                        variant="outline"
-                        className={`text-[9px] uppercase font-bold px-2 h-5 ${STATUS_COLORS[tpl.status]}`}
-                      >
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs font-medium text-muted-foreground">{tpl.category || 'General'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs font-mono font-bold text-muted-foreground">v{tpl.version}</span>
+                    </TableCell>
+                    <TableCell>
+                      <Badge className={`capitalize text-[10px] font-bold rounded-lg border ${STATUS_COLORS[tpl.status] || ''}`}>
                         {tpl.status}
                       </Badge>
-                  </TableCell>
-                  <TableCell className="text-center">
-                      <div className="flex flex-col gap-1 items-center">
-                         <span className="text-xs text-foreground font-mono bg-accent px-1.5 rounded">v{tpl.version}</span>
-                         <span className="text-[10px] text-muted-foreground">{tpl.usageCount} uses</span>
-                      </div>
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-muted-foreground hover:text-foreground cursor-pointer"
-                          aria-label={`Actions for ${tpl.name}`}
-                        >
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent
-                        align="end"
-                        className="w-48 bg-muted border-border rounded-xl"
-                      >
-                        <DropdownMenuItem asChild className="cursor-pointer rounded-lg">
-                          <Link href={`/backoffice/templates/${tpl.id}`}>
-                            <Eye className="h-4 w-4 mr-2" />
-                            View Details
-                          </Link>
-                        </DropdownMenuItem>
-                        {can('templates', 'edit') && (
-                          <DropdownMenuItem
-                            onClick={() => handleEditTemplate(tpl)}
-                            className="cursor-pointer rounded-lg"
+                    </TableCell>
+                    <TableCell className="text-right pr-6">
+                      <div className="flex items-center justify-end gap-1.5">
+                        {tpl.status === 'published' && can('templates', 'execute') && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleOpenPropagate(tpl)}
+                            title="Propagate to Workspaces"
+                            className="h-9 px-2.5 rounded-lg text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 active:scale-[0.97] transition-all gap-1.5 text-xs font-semibold"
                           >
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit Template
-                          </DropdownMenuItem>
+                            <Send className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Propagate</span>
+                          </Button>
                         )}
-                        {can('templates', 'edit') ? (
-                          <>
-                            <DropdownMenuSeparator className="bg-accent" />
-                            {tpl.status === 'draft' && (
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-lg active:scale-[0.97]">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl w-48">
+                            <DropdownMenuItem asChild className="text-xs font-semibold cursor-pointer">
+                              <Link href={`/backoffice/templates/${tpl.id}`} className="flex items-center gap-2">
+                                <Eye className="h-4 w-4 text-muted-foreground" />
+                                View Details
+                              </Link>
+                            </DropdownMenuItem>
+
+                            {can('templates', 'edit') && (
                               <DropdownMenuItem
-                                onClick={() => handlePublish(tpl)}
-                                className="cursor-pointer rounded-lg text-emerald-400 focus:text-emerald-400"
+                                onClick={() => handleEditTemplate(tpl)}
+                                className="text-xs font-semibold cursor-pointer flex items-center gap-2"
                               >
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Publish Now
+                                <Edit className="h-4 w-4 text-muted-foreground" />
+                                Edit Template
                               </DropdownMenuItem>
                             )}
-                            {tpl.status === 'published' && (
+
+                            {tpl.status === 'published' && can('templates', 'execute') && (
+                              <DropdownMenuItem
+                                onClick={() => handleOpenPropagate(tpl)}
+                                className="text-xs font-semibold cursor-pointer flex items-center gap-2 text-emerald-600 dark:text-emerald-400"
+                              >
+                                <Send className="h-4 w-4" />
+                                Propagate to Workspaces
+                              </DropdownMenuItem>
+                            )}
+
+                            {tpl.status !== 'published' && can('templates', 'edit') && (
+                              <DropdownMenuItem
+                                onClick={() => handlePublish(tpl)}
+                                className="text-xs font-semibold cursor-pointer flex items-center gap-2 text-emerald-600 dark:text-emerald-400"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                                Publish
+                              </DropdownMenuItem>
+                            )}
+
+                            {tpl.status === 'published' && can('templates', 'edit') && (
                               <DropdownMenuItem
                                 onClick={() => handleDeprecate(tpl)}
-                                className="cursor-pointer rounded-lg text-amber-400 focus:text-amber-400"
+                                className="text-xs font-semibold cursor-pointer flex items-center gap-2 text-rose-500"
                               >
-                                <Archive className="h-4 w-4 mr-2" />
+                                <Archive className="h-4 w-4" />
                                 Deprecate
                               </DropdownMenuItem>
                             )}
-                          </>
-                        ) : null}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
       </div>
 
+      {/* Template Authoring / Edit Dialog */}
       <TemplateDialog
         template={selectedTemplate}
         open={isDialogOpen}
         onOpenChange={setIsDialogOpen}
-        onSuccess={loadTemplates}
+        onSuccess={() => {
+          setIsDialogOpen(false);
+          fetchTemplates();
+        }}
+      />
+
+      {/* Multi-Tenant Propagation Dialog */}
+      <PropagateTemplateDialog
+        template={propagationTemplate}
+        open={isPropagateOpen}
+        onOpenChange={setIsPropagateOpen}
+        onSuccess={() => {
+          setIsPropagateOpen(false);
+          fetchTemplates();
+        }}
       />
     </div>
   );

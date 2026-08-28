@@ -1,3 +1,15 @@
+/**
+ * @fileoverview Platform Control Plane Sidebar Navigation
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Groups navigation items into Platform, Control, and Operations sections.
+ * - Items are strictly filtered on the client using `can(module, 'view')`.
+ * - Touch targets maintain >= 44px height (`min-h-[44px]` / `h-11`) for mobile accessibility.
+ * - Button active states use `active:scale-[0.97]` for responsive tactile feedback (emilkowal-animations).
+ *
+ * @testability Client component with zero server-side side effects.
+ */
+
 'use client';
 
 import * as React from 'react';
@@ -5,6 +17,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
+  HeartPulse,
   Building2,
   Layers,
   ToggleRight,
@@ -20,6 +33,11 @@ import {
   Code,
   Palette,
   CheckSquare,
+  MailWarning,
+  Banknote,
+  Video,
+  BarChart3,
+  Plug2,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -35,11 +53,6 @@ import {
 import { useBackoffice } from '../context/BackofficeProvider';
 import type { BackofficeModule } from '@/lib/backoffice/backoffice-types';
 
-// ─────────────────────────────────────────────────
-// Backoffice Sidebar Navigation
-// Premium dark-mode design with role-based visibility.
-// ─────────────────────────────────────────────────
-
 interface NavItem {
   href: string;
   icon: React.ElementType;
@@ -47,27 +60,42 @@ interface NavItem {
   module: BackofficeModule;
 }
 
+// ─────────────────────────────────────────────────
+// Section 1: Platform (Tenants & Infrastructure)
+// ─────────────────────────────────────────────────
 const platformNavItems: NavItem[] = [
   { href: '/backoffice', icon: LayoutDashboard, label: 'Dashboard', module: 'dashboard' },
+  { href: '/backoffice/health', icon: HeartPulse, label: 'Tenant Health', module: 'health' },
   { href: '/backoffice/organizations', icon: Building2, label: 'Organizations', module: 'organizations' },
   { href: '/backoffice/workspaces', icon: Layers, label: 'Workspaces', module: 'workspaces' },
   { href: '/backoffice/settings/system-defaults', icon: Sparkles, label: 'System Defaults', module: 'settings' },
 ];
 
+// ─────────────────────────────────────────────────
+// Section 2: Control (Configuration & Blueprints)
+// ─────────────────────────────────────────────────
 const controlNavItems: NavItem[] = [
   { href: '/backoffice/features', icon: ToggleRight, label: 'Features & Rollouts', module: 'features' },
-  { href: '/backoffice/templates', icon: FileStack, label: 'Templates', module: 'templates' },
+  { href: '/backoffice/templates', icon: FileStack, label: 'Template Matrix', module: 'templates' },
   { href: '/backoffice/prompts', icon: Sparkles, label: 'Global Prompts', module: 'templates' },
   { href: '/backoffice/messaging/blueprints', icon: MessageSquare, label: 'System Blueprints', module: 'templates' },
   { href: '/backoffice/messaging/styles', icon: Palette, label: 'Global Styles', module: 'templates' },
+  { href: '/backoffice/survey-governance', icon: BarChart3, label: 'Survey Governance', module: 'survey_governance' },
   { href: '/backoffice/integrations', icon: MessageSquare, label: 'WhatsApp Registry', module: 'templates' },
   { href: '/backoffice/fields', icon: Database, label: 'Fields & Variables', module: 'fields' },
   { href: '/backoffice/assets', icon: Image, label: 'Assets', module: 'assets' },
   { href: '/backoffice/developer', icon: Code, label: 'Developer & API', module: 'settings' },
 ];
 
+// ─────────────────────────────────────────────────
+// Section 3: Operations (Monitoring & Action)
+// ─────────────────────────────────────────────────
 const operationsNavItems: NavItem[] = [
-  { href: '/backoffice/operations', icon: Wrench, label: 'Operations', module: 'operations' },
+  { href: '/backoffice/operations', icon: Wrench, label: 'Operations & Jobs', module: 'operations' },
+  { href: '/backoffice/messaging-observatory', icon: MailWarning, label: 'Messaging Obs.', module: 'messaging_observatory' },
+  { href: '/backoffice/finance-monitor', icon: Banknote, label: 'Financial Monitor', module: 'finance_monitor' },
+  { href: '/backoffice/meetings-monitor', icon: Video, label: 'Meetings Monitor', module: 'meetings_monitor' },
+  { href: '/backoffice/integration-health', icon: Plug2, label: 'Integration Health', module: 'integration_health' },
   { href: '/backoffice/approvals', icon: CheckSquare, label: 'Approvals', module: 'approvals' },
   { href: '/backoffice/audit', icon: ScrollText, label: 'Audit Logs', module: 'audit' },
   { href: '/backoffice/settings', icon: Settings, label: 'Settings', module: 'settings' },
@@ -106,7 +134,7 @@ function NavGroup({
                 asChild
                 isActive={isActive}
                 tooltip={item.label}
-                className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-emerald-500/15 data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:shadow-lg data-[active=true]:shadow-emerald-500/5 rounded-xl h-11 transition-all duration-200"
+                className="text-muted-foreground hover:text-foreground hover:bg-muted/60 data-[active=true]:bg-emerald-500/15 data-[active=true]:text-emerald-600 dark:data-[active=true]:text-emerald-400 data-[active=true]:shadow-lg data-[active=true]:shadow-emerald-500/5 rounded-xl h-11 transition-all duration-200 active:scale-[0.97]"
               >
                 <Link href={item.href}>
                   <item.icon className="h-5 w-5 shrink-0" />
@@ -135,11 +163,11 @@ export default function BackofficeSidebar() {
       <SidebarHeader className="p-4 group-data-[collapsible=icon]:p-2">
         <Link
           href="/backoffice"
-          className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center"
+          className="flex items-center gap-3 group-data-[collapsible=icon]:justify-center active:scale-[0.97] transition-transform duration-150"
           aria-label="Backoffice Dashboard"
         >
           <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-            <Shield className="h-5 w-5 text-foreground" />
+            <Shield className="h-5 w-5 text-white" />
           </div>
           <div className="flex flex-col group-data-[collapsible=icon]:hidden">
             <span className="font-bold text-sm tracking-tight text-foreground">SmartSapp</span>
@@ -161,18 +189,18 @@ export default function BackofficeSidebar() {
         </div>
       </SidebarContent>
 
-      {/* Footer */}
-      <SidebarFooter className="p-4 border-t border-border bg-black/5 dark:bg-black/20">
+      {/* Footer: Link to Workspace App */}
+      <SidebarFooter className="p-4 border-t border-border group-data-[collapsible=icon]:p-2">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              tooltip="Back to Workspace App"
-              className="text-muted-foreground hover:text-foreground transition-all h-10 group-data-[collapsible=icon]:justify-center"
+              tooltip="Back to Workspace"
+              className="text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl h-11 active:scale-[0.97] transition-all duration-200"
             >
               <Link href="/admin">
-                <Layers className="h-4 w-4 shrink-0" />
-                <span className="font-semibold text-[10px] group-data-[collapsible=icon]:hidden">
+                <Layers className="h-5 w-5 shrink-0" />
+                <span className="font-semibold text-xs tracking-wide group-data-[collapsible=icon]:hidden">
                   Workspace App
                 </span>
               </Link>

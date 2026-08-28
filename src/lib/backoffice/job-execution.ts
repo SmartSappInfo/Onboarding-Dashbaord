@@ -10,6 +10,9 @@ import { processRbacMigration } from './rbac-migration-logic';
 import { processMessagingTemplatesFer } from './messaging-templates-fer-logic';
 import { processMeetingsFer } from './meetings-fer-logic';
 import { processEncryptPlatformSecrets } from './encrypt-secrets-logic';
+import { processRepairContacts } from './repair-contacts-logic';
+import { processRebuildVariables } from './rebuild-variables-logic';
+import { processReplayWebhooks } from './replay-webhooks-logic';
 import type { AuditActor, PlatformJob } from './backoffice-types';
 
 /**
@@ -62,11 +65,6 @@ export async function executeJob(
       case 'migrate_hierarchical_rbac':
         return await processRbacMigration(jobId, actor);
 
-      // 'migrate_legacy_saas_fields' (company_metrics → saas_operations
-      // re-parenting) was retired after being applied in all environments;
-      // nothing creates company_metrics fields anymore. The type stays in
-      // PlatformJobType so historical job documents still render.
-
       case 'migrate_messaging_templates_fer':
         return await processMessagingTemplatesFer(jobId, actor);
 
@@ -76,11 +74,15 @@ export async function executeJob(
       case 'encrypt_platform_secrets':
         return await processEncryptPlatformSecrets(jobId, actor);
 
-      // NOTE: the former generic job types (reseed_templates, reindex_search,
-      // repair_contacts, backfill_analytics, migrate_data, rebuild_variables,
-      // fix_duplicate_slugs, replay_webhooks, retry_campaigns, restore_archived)
-      // were removed — they executed a no-op processor that logged a fabricated
-      // success message. Re-add a type only together with a real handler.
+      case 'repair_contacts':
+        return await processRepairContacts(jobId, actor);
+
+      case 'rebuild_variables':
+        return await processRebuildVariables(jobId, actor);
+
+      case 'replay_webhooks':
+        return await processReplayWebhooks(jobId, actor);
+
       default:
         throw new Error(`Execution logic for job type "${job.type}" is not yet implemented.`);
     }

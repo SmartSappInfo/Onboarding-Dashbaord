@@ -114,7 +114,12 @@ export default function FeatureDetailClient({ featureId }: { featureId: string }
       const result = await toggleFeatureKillSwitch(feature.id, newState, idToken);
 
       if (result.success && result.pendingApproval) {
-        toast({ title: 'Sent for approval', description: 'Enabling a kill switch requires a second admin. Track it in Approvals.' });
+        toast({
+          title: 'Sent for approval',
+          description: 'Enabling a kill switch requires a second admin.',
+          actionConfig: { label: 'View Approvals', path: '/backoffice/approvals' },
+          duration: 10000,
+        });
       } else if (result.success) {
         loadFeature();
       } else {

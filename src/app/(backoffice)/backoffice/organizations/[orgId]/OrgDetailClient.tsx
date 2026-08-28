@@ -475,7 +475,9 @@ function ActivityControlPane({
       if (result.success && result.pendingApproval) {
         toast({
           title: 'Sent for approval',
-          description: 'Deleting all activity logs requires a second admin. Track it in Approvals.',
+          description: 'Deleting all activity logs requires a second admin.',
+          actionConfig: { label: 'View Approvals', path: '/backoffice/approvals' },
+          duration: 10000,
         });
         setShowConfirmModal(false);
         setConfirmSlug('');

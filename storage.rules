@@ -1,40 +1,61 @@
-
 rules_version = '2';
-
-// Triggering synchronization. This comment forces a redeployment.
-// Triggering synchronization.
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow public read access to all files for simplicity.
-    match /{allPaths=**} {
-      allow read;
+    // Helper function for authenticated users
+    function isSignedIn() {
+      return request.auth != null;
     }
 
-    // Restrict write access (uploads, updates, deletes) to authenticated users.
-    match /media/{allPaths=**} {
-      allow write: if request.auth != null;
+    // Helper function for max file size (25MB max)
+    function isUnderMaxSize(maxBytes) {
+      return request.resource.size < maxBytes;
     }
-    
-    // Allow users to write to their own profile picture path.
+
+    // 1. Profile Pictures: Publicly readable; writable only by the profile owner
+    match /profile-pictures/{userId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId &&
+        isUnderMaxSize(5 * 1024 * 1024) &&
+        request.resource.contentType.matches('image/.*');
+    }
+
     match /profile-pictures/{userId} {
-      allow write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Allow uploads to survey-uploads path for any authenticated user
-    match /survey-uploads/{allPaths=**} {
-      allow write: if request.auth != null;
+      allow read: if true;
+      allow write: if isSignedIn() && request.auth.uid == userId &&
+        isUnderMaxSize(5 * 1024 * 1024) &&
+        request.resource.contentType.matches('image/.*');
     }
 
-    // Allow admins to upload to the pdfs path
+    // 2. Public Static Assets (logos, public media, brand templates)
+    match /public/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isUnderMaxSize(10 * 1024 * 1024);
+    }
+
+    // 3. Media Library: Public read for published media; authenticated write with size limits
+    match /media/{allPaths=**} {
+      allow read: if true;
+      allow write: if isSignedIn() && isUnderMaxSize(50 * 1024 * 1024);
+    }
+
+    // 4. PDFs & Documents
     match /pdfs/{allPaths=**} {
-      allow write: if request.auth != null;
+      allow read: if true;
+      allow write: if isSignedIn() && isUnderMaxSize(30 * 1024 * 1024);
     }
 
-    // Allow authenticated users to upload Quick Notes attachments
-    // (images, videos, files, and re-hosted link thumbnails).
+    // 5. Survey Uploads: Allow public/authenticated submission uploads with size caps & safe MIME types
+    match /survey-uploads/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isUnderMaxSize(20 * 1024 * 1024) &&
+        request.resource.contentType.matches('image/.*|application/pdf|text/.*|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+    }
+
+    // 6. Quick Notes Attachments
     match /quick-notes/{allPaths=**} {
-      allow write: if request.auth != null;
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && isUnderMaxSize(25 * 1024 * 1024);
     }
   }
 }

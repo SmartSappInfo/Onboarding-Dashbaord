@@ -1,19 +1,16 @@
 import type { OrgBranding } from '@/lib/types';
+import DOMPurify from 'isomorphic-dompurify';
 
 /**
- * Strips out script blocks, javascript: protocols, and inline on-event handlers
- * to prevent XSS vulnerability vectors when rendering custom HTML templates.
+ * Strips out script blocks, javascript: protocols, iframes, and dangerous handlers
+ * using DOMPurify to prevent XSS vectors when rendering custom HTML templates.
  */
 export function sanitizeCustomHtml(html: string): string {
   if (!html) return '';
-  return html
-    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Strip script blocks
-    .replace(/href\s*=\s*"javascript:[^"]*?"/gi, 'href="#"')            // Strip JS protocols in double quotes
-    .replace(/href\s*=\s*'javascript:[^']*?'/gi, 'href="#"')            // Strip JS protocols in single quotes
-    .replace(/href\s*=\s*javascript:[^\s>]+/gi, 'href="#"')             // Strip unquoted JS protocols
-    .replace(/\s+on\w+\s*=\s*"[^"]*?"/gi, '')                           // Strip onEvent="handler" in double quotes
-    .replace(/\s+on\w+\s*=\s*'[^']*?'/gi, '')                           // Strip onEvent='handler' in single quotes
-    .replace(/\s+on\w+\s*=\s*[^\s>]+/gi, '');                           // Strip unquoted onEvent=handler
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    ADD_ATTR: ['target', 'rel'],
+  });
 }
 
 /**
@@ -22,7 +19,7 @@ export function sanitizeCustomHtml(html: string): string {
 export function resolveCustomFooterHtml(template: string, org: OrgBranding): string {
   const currentYear = new Date().getFullYear().toString();
   const sanitized = sanitizeCustomHtml(template);
-  
+
   return sanitized
     .replaceAll('{{org_name}}', org.name || '')
     .replaceAll('{{logo_url}}', org.logoUrl || '')

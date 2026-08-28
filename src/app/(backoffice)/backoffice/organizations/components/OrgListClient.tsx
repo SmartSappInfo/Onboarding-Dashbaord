@@ -186,7 +186,12 @@ export default function OrgListClient() {
       const idToken = await getToken();
       const result = await suspendOrganization(orgId, reason, idToken);
       if (result.success && result.pendingApproval) {
-        toast({ title: 'Sent for approval', description: 'Suspending an organization requires a second admin. Track it in Approvals.' });
+        toast({
+          title: 'Sent for approval',
+          description: 'Suspending an organization requires a second admin.',
+          actionConfig: { label: 'View Approvals', path: '/backoffice/approvals' },
+          duration: 10000,
+        });
       } else if (result.success) {
         loadOrgs();
       } else {

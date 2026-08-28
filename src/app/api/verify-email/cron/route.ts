@@ -1,30 +1,24 @@
 import { NextResponse } from 'next/server';
 import { BulkVerificationService } from '@/lib/bulk-verifier';
 import { ContactHygieneRepository } from '@/lib/hygiene-repository';
-
-const CRON_SECRET = process.env.CRON_SECRET;
+import { authenticateCronRequest } from '@/lib/security/cron-auth';
 
 /**
  * GET /api/verify-email/cron
  *
  * Background sweeper endpoint for automatic email verification.
  * Discovers unchecked contact emails from Firestore entities and
- * verifies them in batches. Designed to be triggered by:
- *   - GCP Cloud Scheduler
- *   - Vercel Cron
- *   - GitHub Actions
- *   - Manual curl with authorization header
+ * verifies them in batches.
  *
- * Protected by CRON_SECRET environment variable.
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - Security: Protected by `authenticateCronRequest` (fail-closed).
+ * - Zero `any` or `any[]` typing.
  */
 export async function GET(req: Request) {
   try {
-    // Auth guard: require secret token
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (CRON_SECRET && token !== CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = authenticateCronRequest(req);
+    if (!auth.isAuthorized) {
+      return auth.errorResponse || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse optional limit from query params (default: 50, max: 100)
@@ -65,10 +59,11 @@ export async function GET(req: Request) {
       processedCount: results.length,
       emails: uncheckedEmails,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown cron error';
     console.error('[verify-email/cron] Sweep error:', error);
     return NextResponse.json(
-      { error: 'Cron sweep failed.', details: error.message },
+      { error: 'Cron sweep failed.', details: errMsg },
       { status: 500 }
     );
   }

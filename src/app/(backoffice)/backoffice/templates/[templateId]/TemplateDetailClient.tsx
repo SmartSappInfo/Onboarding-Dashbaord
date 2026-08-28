@@ -11,7 +11,7 @@ import {
   Code as CodeIcon,
   CheckCircle,
   Archive,
-  AlertTriangle
+  Sliders
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +21,8 @@ import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { PlatformTemplate } from '@/lib/backoffice/backoffice-types';
+import { PermissionEditor } from '@/app/admin/users/roles/PermissionEditor';
+import { normalizePermissionsSchema } from '@/lib/permissions-engine';
 
 const STATUS_COLORS: Record<string, string> = {
   draft: 'bg-amber-500/15 text-amber-400 border-amber-500/20',
@@ -230,8 +232,16 @@ export default function TemplateDetailClient({ templateId }: { templateId: strin
 
         {/* Right Column: JSON Metadata / History Viewer */}
         <div className="md:col-span-2">
-           <Tabs defaultValue="metadata" className="h-full flex flex-col">
+           <Tabs defaultValue={template.type === 'role_architecture' ? 'matrix' : 'metadata'} className="h-full flex flex-col">
               <TabsList className="bg-muted/50 border border-border rounded-xl p-1 h-auto flex flex-wrap gap-1">
+                 {template.type === 'role_architecture' && (
+                   <TabsTrigger
+                      value="matrix"
+                      className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none"
+                    >
+                      <Sliders className="h-3.5 w-3.5 mr-2" /> Permission Matrix
+                    </TabsTrigger>
+                 )}
                  <TabsTrigger
                     value="metadata"
                     className="rounded-lg text-xs font-semibold data-[state=active]:bg-emerald-500/15 data-[state=active]:text-emerald-400 cursor-pointer flex-1 sm:flex-none"
@@ -245,6 +255,18 @@ export default function TemplateDetailClient({ templateId }: { templateId: strin
                     <History className="h-3.5 w-3.5 mr-2" /> Version History
                   </TabsTrigger>
               </TabsList>
+
+              {template.type === 'role_architecture' && (
+                 <TabsContent value="matrix" className="flex-1 mt-4">
+                    <div className="rounded-2xl border border-border bg-background/50 p-4 h-[420px] overflow-y-auto">
+                       <PermissionEditor
+                          schema={normalizePermissionsSchema(template.content)}
+                          onChange={() => {}}
+                          readOnly={true}
+                       />
+                    </div>
+                 </TabsContent>
+              )}
               
               <TabsContent value="metadata" className="flex-1 mt-4">
                  <div className="rounded-2xl border border-border bg-background p-4 h-full relative overflow-hidden group">

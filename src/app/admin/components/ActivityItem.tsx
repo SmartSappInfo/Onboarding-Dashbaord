@@ -38,16 +38,22 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
   const Icon = getActivityIcon(activity.type);
   const isSystemEvent = !activity.userId || activity.source === 'system';
   
-  const hasContent = (activity.type === 'note' || activity.type === 'call' || activity.type === 'visit' || activity.type === 'email' || activity.type === 'note_added') && (activity.metadata?.content || activity.metadata?.contentPreview);
+  const hasContent: boolean = Boolean(
+    (activity.type === 'note' || activity.type === 'call' || activity.type === 'visit' || activity.type === 'email' || activity.type === 'note_added') && 
+    (activity.metadata?.content || activity.metadata?.contentPreview)
+  );
 
   // Use denormalized entity information if available, fallback to legacy fields (Requirement 4.3, 23.5)
-  const contactName = activity.displayName || activity.entityName || (activity as any).schoolName;
-  const contactId = activity.entityId || (activity as any).schoolId;
-  const contactSlug = activity.entitySlug || (activity as any).schoolSlug;
+  const rec = activity as unknown as Record<string, unknown>;
+  const contactName: string = activity.displayName || activity.entityName || (typeof rec.schoolName === 'string' ? rec.schoolName : '');
+  const contactId: string = activity.entityId || (typeof rec.schoolId === 'string' ? rec.schoolId : '');
+  const contactSlug: string = activity.entitySlug || (typeof rec.schoolSlug === 'string' ? rec.schoolSlug : '');
   const entityType = activity.entityType;
-  const isLegacy = !activity.entityId && !!(activity as any).schoolId;
+  const isLegacy: boolean = !activity.entityId && Boolean(rec.schoolId);
   
-  const EntityIcon = entityType ? ENTITY_TYPE_ICONS[entityType] : Building;
+  const EntityIcon = (entityType && entityType in ENTITY_TYPE_ICONS) 
+    ? ENTITY_TYPE_ICONS[entityType as keyof typeof ENTITY_TYPE_ICONS] 
+    : Building;
 
   return (
     <div className="relative pl-10 group/item">
@@ -66,13 +72,13 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
       <div className="flex flex-col gap-1.5">
         {/* Header Line */}
         <div className="flex items-center flex-wrap gap-x-2 text-[11px] font-bold uppercase tracking-tight">
-            {!isSystemEvent && user ? (
+            {(!isSystemEvent && Boolean(user)) ? (
                 <div className="flex items-center gap-2">
                     <Avatar className="h-6 w-6 rounded-lg ring-2 ring-primary/5">
-                        <AvatarImage src={user.photoURL} alt={user.name} />
-                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{getInitials(user.name)}</AvatarFallback>
+                        <AvatarImage src={user?.photoURL} alt={user?.name || ''} />
+                        <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{getInitials(user?.name)}</AvatarFallback>
                     </Avatar>
-                    <span className="font-black text-foreground">{user.name}</span>
+                    <span className="font-black text-foreground">{user?.name}</span>
                 </div>
             ) : (
                 <span className="font-black flex items-center gap-2 text-primary opacity-60">
@@ -83,18 +89,18 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
             
             <span className="text-muted-foreground/80 font-medium normal-case tracking-normal">
                 {activity.description}
-                {showEntityName && contactName && contactId && (
+                {Boolean(showEntityName && contactName && contactId) && (
                     <> in <Link href={`/admin/entities/${contactId}`} className="font-black text-foreground hover:text-primary transition-colors inline-flex items-center gap-1.5 group/link">
                         <div className="p-1 rounded-md bg-muted/30 group-hover/link:bg-primary/10 transition-colors">
                           <EntityIcon className="h-3 w-3" />
                         </div>
                         {contactName}
-                        {entityType && (
+                        {Boolean(entityType) && (
                             <Badge className="bg-primary/10 text-primary border-none text-[8px] h-4 px-1.5 font-bold ml-1">
-                                {entityType}
+                                {String(entityType)}
                             </Badge>
                         )}
-                        {isLegacy && (
+                        {Boolean(isLegacy) && (
                             <Badge variant="outline" className="text-[8px] h-4 px-1.5 opacity-20 ml-1">
                                 legacy
                             </Badge>
@@ -114,16 +120,16 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
             </time>
 
             {/* Effort & Lead Score Points Badges */}
-            {activity.metadata?.effortPoints !== undefined && (
+            {activity.metadata && activity.metadata.effortPoints !== undefined && (
               <span className="flex items-center gap-1 ml-1.5 animate-bounce-short">
                 <Badge variant="outline" className="text-[9px] font-extrabold uppercase rounded-lg border-indigo-500/20 text-indigo-500 bg-indigo-500/5 px-1.5 py-0 h-4 flex items-center gap-0.5">
                   <Flame className="h-2.5 w-2.5 fill-current" />
-                  +{activity.metadata.effortPoints} Effort
+                  +{String(activity.metadata.effortPoints)} Effort
                 </Badge>
               </span>
             )}
 
-            {activity.metadata?.leadScoreChange !== undefined && (
+            {activity.metadata && activity.metadata.leadScoreChange !== undefined && (
               <span className="flex items-center gap-1 ml-1.5">
                 <Badge variant="outline" className={`text-[9px] font-extrabold uppercase rounded-lg px-1.5 py-0 h-4 flex items-center gap-0.5
                   ${Number(activity.metadata.leadScoreChange) >= 0 
@@ -132,7 +138,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
                   }
                 `}>
                   <Sparkles className="h-2.5 w-2.5" />
-                  {Number(activity.metadata.leadScoreChange) >= 0 ? '+' : ''}{activity.metadata.leadScoreChange} Lead Score
+                  {Number(activity.metadata.leadScoreChange) >= 0 ? '+' : ''}{String(activity.metadata.leadScoreChange)} Lead Score
                 </Badge>
               </span>
             )}
@@ -144,7 +150,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
             <Card className="bg-muted/10 border-none rounded-2xl shadow-inner">
                 <CardContent className="p-4 text-xs font-medium leading-relaxed italic text-muted-foreground/80">
                     <p className="before:content-['“'] after:content-['”']">
-                      {activity.metadata?.content || activity.metadata?.contentPreview}
+                      {String(activity.metadata?.content || activity.metadata?.contentPreview || '')}
                     </p>
                 </CardContent>
             </Card>

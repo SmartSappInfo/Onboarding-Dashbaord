@@ -40,38 +40,17 @@ export const VARIABLE_TOKEN_REGEX = /\{\{([^}]+)\}\}/g;
  * interpolateWithMap('Hello {{contact_name}}!', {})                        // → 'Hello !'
  * interpolateWithMap('Hello {{contact_name}}!', {}, true)                  // → 'Hello {{contact_name}}!'
  */
-export function sanitizeHtml(html: string): string {
-  if (typeof window === 'undefined') return html;
-  const parser = new DOMParser();
-  const doc = parser.parseFromString(html, 'text/html');
-  
-  const sanitizeNode = (node: Node) => {
-    if (node.nodeType === Node.ELEMENT_NODE) {
-      const el = node as HTMLElement;
-      const tagName = el.tagName.toLowerCase();
-      
-      if (['script', 'iframe', 'object', 'embed', 'link', 'style', 'form', 'input', 'button', 'textarea'].includes(tagName)) {
-        el.parentNode?.removeChild(el);
-        return;
-      }
-      
-      const attrs = Array.from(el.attributes);
-      attrs.forEach(attr => {
-        if (attr.name.startsWith('on') || attr.value.toLowerCase().includes('javascript:')) {
-          el.removeAttribute(attr.name);
-        }
-      });
-    }
-    
-    const children = Array.from(node.childNodes);
-    children.forEach(sanitizeNode);
-  };
-  
-  sanitizeNode(doc.body);
-  return doc.body.innerHTML.replace(/&amp;/g, '&');
-}
-
+import DOMPurify from 'isomorphic-dompurify';
 import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
+
+export function sanitizeHtml(html: string): string {
+  if (!html) return '';
+  return DOMPurify.sanitize(html, {
+    USE_PROFILES: { html: true },
+    FORBID_TAGS: ['form', 'iframe', 'script', 'object', 'embed'],
+    ADD_ATTR: ['target', 'rel'],
+  });
+}
 
 export function interpolateWithMap(
   text: string | undefined | null,
@@ -81,7 +60,7 @@ export function interpolateWithMap(
   // Fast path: null/undefined → empty string
   if (!text) return '';
   if (!text.includes('{{')) {
-    return text.includes('<') ? sanitizeHtml(text) : text;
+    return text;
   }
 
   const map = new Map<string, unknown>();
@@ -91,12 +70,7 @@ export function interpolateWithMap(
     });
   }
 
-  const result = resolveTextWithMap(text, map, keepMissing);
-
-  if (result.includes('<')) {
-    return sanitizeHtml(result);
-  }
-  return result;
+  return resolveTextWithMap(text, map, keepMissing);
 }
 
 /**
@@ -126,7 +100,6 @@ export function interpolateManyWithMap(
   return texts.map((text) => {
     if (!text) return '';
     if (!text.includes('{{')) return text;
-    const result = resolveTextWithMap(text, map, keepMissing);
-    return result.includes('<') ? sanitizeHtml(result) : result;
+    return resolveTextWithMap(text, map, keepMissing);
   });
 }

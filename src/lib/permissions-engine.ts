@@ -243,3 +243,210 @@ export function mergePermissionsSchemas(schemas: PermissionsSchema[]): Permissio
 
   return result;
 }
+
+/**
+ * Normalizes an unknown or partial schema into a valid, strictly typed PermissionsSchema.
+ * Fills any missing sections or features with safe default false flags.
+ * Guarantees deep isolation, memory safety, and backward compatibility.
+ *
+ * Caution: Never mutate inputs directly. Always produces a clean, new PermissionsSchema instance.
+ */
+export function normalizePermissionsSchema(raw: unknown): PermissionsSchema {
+  const base = getBlankPermissions();
+  if (!raw || typeof raw !== 'object') {
+    return base;
+  }
+
+  const rawObj = raw as Record<string, unknown>;
+  const sections: (keyof PermissionsSchema)[] = ['operations', 'finance', 'studios', 'management'];
+
+  for (const sectionKey of sections) {
+    const rawSection = rawObj[sectionKey];
+    if (rawSection && typeof rawSection === 'object') {
+      const secObj = rawSection as Record<string, unknown>;
+      base[sectionKey].enabled = Boolean(secObj.enabled);
+
+      if (secObj.features && typeof secObj.features === 'object') {
+        const rawFeatures = secObj.features as Record<string, unknown>;
+        for (const [featKey, featVal] of Object.entries(rawFeatures)) {
+          if (featVal && typeof featVal === 'object') {
+            const fObj = featVal as Record<string, unknown>;
+            base[sectionKey].features[featKey] = {
+              view: Boolean(fObj.view),
+              ...(fObj.create !== undefined ? { create: Boolean(fObj.create) } : {}),
+              ...(fObj.edit !== undefined ? { edit: Boolean(fObj.edit) } : {}),
+              ...(fObj.delete !== undefined ? { delete: Boolean(fObj.delete) } : {}),
+            };
+          }
+        }
+      }
+    }
+  }
+
+  return base;
+}
+
+/**
+ * Flattens a hierarchical PermissionsSchema into a legacy string permission array.
+ * Guarantees backward compatibility for components and Firestore rules expecting flat AppPermissionId[].
+ */
+export function flattenPermissionsSchema(schema: PermissionsSchema): string[] {
+  const perms = new Set<string>();
+  const normalized = normalizePermissionsSchema(schema);
+
+  // Operations
+  if (normalized.operations.enabled) {
+    const ops = normalized.operations.features;
+    if (ops.campuses?.view) perms.add('schools_view');
+    if (ops.campuses?.edit || ops.campuses?.create || ops.campuses?.delete) perms.add('schools_edit');
+    if (ops.pipeline?.view) perms.add('prospects_view');
+    if (ops.tasks?.view) perms.add('tasks_view');
+    if (ops.tasks?.create || ops.tasks?.edit || ops.tasks?.delete) perms.add('tasks_manage');
+    if (ops.meetings?.view) perms.add('meetings_view');
+    if (ops.meetings?.create || ops.meetings?.edit || ops.meetings?.delete) perms.add('meetings_manage');
+    if (ops.dashboard?.view) perms.add('dashboard_view');
+    if (ops.dashboard?.edit) perms.add('dashboard_manage');
+  }
+
+  // Finance
+  if (normalized.finance.enabled) {
+    const fin = normalized.finance.features;
+    if (Object.values(fin).some(f => f.view)) perms.add('finance_view');
+    if (Object.values(fin).some(f => f.create || f.edit || f.delete)) perms.add('finance_manage');
+    if (fin.agreements?.delete) perms.add('contracts_delete');
+  }
+
+  // Studios
+  if (normalized.studios.enabled) {
+    const std = normalized.studios.features;
+    if (Object.values(std).some(f => f.view)) perms.add('studios_view');
+    if (Object.values(std).some(f => f.create || f.edit || f.delete)) perms.add('studios_edit');
+    if (std.forms?.create || std.forms?.edit || std.forms?.delete) perms.add('forms_manage');
+    if (std.tags?.view) perms.add('tags_view');
+    if (std.tags?.create || std.tags?.edit || std.tags?.delete) perms.add('tags_manage');
+  }
+
+  // Management
+  if (normalized.management.enabled) {
+    const mgt = normalized.management.features;
+    if (mgt.activities?.view) perms.add('activities_view');
+    if (mgt.users?.view) perms.add('users_view');
+    if (mgt.users?.create || mgt.users?.edit || mgt.users?.delete) perms.add('users_manage');
+    if (mgt.fields?.view) perms.add('fields_view');
+    if (mgt.fields?.create || mgt.fields?.edit || mgt.fields?.delete) perms.add('fields_manage');
+  }
+
+  return Array.from(perms);
+}
+
+/**
+ * Migrates a legacy flat array of permission strings into a normalized PermissionsSchema.
+ * Preserves legacy role authorizations when upgrading or editing existing roles.
+ */
+export function migrateToPermissionsSchema(legacyPermissions: string[]): PermissionsSchema {
+  const schema = getBlankPermissions();
+  if (!Array.isArray(legacyPermissions) || legacyPermissions.length === 0) {
+    return schema;
+  }
+
+  const perms = new Set(legacyPermissions);
+
+  // Operations
+  if (perms.has('schools_view') || perms.has('schools_edit')) {
+    schema.operations.enabled = true;
+    schema.operations.features.campuses = {
+      view: true,
+      create: perms.has('schools_edit'),
+      edit: perms.has('schools_edit'),
+      delete: false,
+    };
+  }
+  if (perms.has('prospects_view')) {
+    schema.operations.enabled = true;
+    schema.operations.features.pipeline = { view: true, create: true, edit: true, delete: false };
+  }
+  if (perms.has('tasks_view') || perms.has('tasks_manage')) {
+    schema.operations.enabled = true;
+    schema.operations.features.tasks = {
+      view: true,
+      create: perms.has('tasks_manage'),
+      edit: perms.has('tasks_manage'),
+      delete: false,
+    };
+  }
+  if (perms.has('meetings_view') || perms.has('meetings_manage')) {
+    schema.operations.enabled = true;
+    schema.operations.features.meetings = {
+      view: true,
+      create: perms.has('meetings_manage'),
+      edit: perms.has('meetings_manage'),
+      delete: false,
+    };
+  }
+  if (perms.has('dashboard_view') || perms.has('dashboard_manage')) {
+    schema.operations.enabled = true;
+    schema.operations.features.dashboard = { view: true, edit: perms.has('dashboard_manage') };
+  }
+
+  // Finance
+  if (perms.has('finance_view') || perms.has('finance_manage') || perms.has('contracts_delete')) {
+    schema.finance.enabled = true;
+    const canManage = perms.has('finance_manage');
+    const canDeleteContracts = perms.has('contracts_delete');
+
+    schema.finance.features.agreements = { view: true, create: canManage, edit: canManage, delete: canDeleteContracts };
+    schema.finance.features.invoices = { view: true, create: canManage, edit: canManage, delete: canManage };
+    schema.finance.features.packages = { view: true, create: canManage, edit: canManage, delete: canManage };
+    schema.finance.features.cycles = { view: true, create: canManage, edit: canManage, delete: canManage };
+    schema.finance.features.billingSetup = { view: true, create: canManage, edit: canManage, delete: false };
+  }
+
+  // Studios
+  if (perms.has('studios_view') || perms.has('studios_edit') || perms.has('forms_manage') || perms.has('tags_view') || perms.has('tags_manage')) {
+    schema.studios.enabled = true;
+    const canEditStudios = perms.has('studios_edit');
+
+    schema.studios.features.publicPortals = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.landingPages = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.media = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.surveys = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.messaging = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.qrStudio = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.verifyStudio = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+    schema.studios.features.socialIntelligence = { view: true, create: canEditStudios, edit: canEditStudios, delete: false };
+
+    if (perms.has('forms_manage')) {
+      schema.studios.features.forms = { view: true, create: true, edit: true, delete: false };
+    }
+    if (perms.has('tags_view') || perms.has('tags_manage')) {
+      schema.studios.features.tags = { view: true, create: perms.has('tags_manage'), edit: perms.has('tags_manage'), delete: false };
+    }
+  }
+
+  // Management
+  if (perms.has('activities_view')) {
+    schema.management.enabled = true;
+    schema.management.features.activities = { view: true };
+  }
+  if (perms.has('users_view') || perms.has('users_manage') || perms.has('management_users')) {
+    schema.management.enabled = true;
+    const canManageUsers = perms.has('users_manage') || perms.has('management_users');
+    schema.management.features.users = {
+      view: true,
+      create: canManageUsers,
+      edit: canManageUsers,
+      delete: canManageUsers,
+    };
+  }
+  if (perms.has('fields_view') || perms.has('fields_manage')) {
+    schema.management.enabled = true;
+    schema.management.features.fields = {
+      view: true,
+      create: perms.has('fields_manage'),
+      edit: perms.has('fields_manage'),
+      delete: false,
+    };
+  }
+
+  return normalizePermissionsSchema(schema);
+}

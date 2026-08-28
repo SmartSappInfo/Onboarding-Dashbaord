@@ -189,8 +189,14 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                             actorType,
                             actorId: activityData.userId || 'system-scoring-engine',
                             metadata: {
-                                ...(activityData.metadata || {}),
-                                activityId: docRefId
+                                activityId: docRefId || '',
+                                ...(typeof activityData.metadata === 'object' && activityData.metadata !== null
+                                    ? Object.fromEntries(
+                                        Object.entries(activityData.metadata).filter(
+                                            ([, v]) => typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
+                                        )
+                                    )
+                                    : {}),
                             }
                         });
                     } catch (err: unknown) {

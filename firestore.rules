@@ -142,6 +142,10 @@ service cloud.firestore {
     match /platform_audit_logs/{id}            { allow read, write: if false; }
     // Governance: approval queue is server-only (four-eyes enforced in actions).
     match /platform_approval_requests/{id}     { allow read, write: if false; }
+    // Operations & Telemetry: zero-trust server control plane
+    match /tenant_issues/{id}                  { allow read, write: if false; }
+    match /webhook_dead_letters/{id}           { allow read, write: if false; }
+    match /suppression_list/{id}               { allow read, write: if false; }
 
     // --- Shared Reference Data ---
     match /countries/{countryId} {
@@ -191,8 +195,21 @@ service cloud.firestore {
 
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
-      allow list: if isAuthorized();
-      allow write: if isAuthorized() && isSystemAdmin();
+      allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        (isOrgMatch(request.resource.data.organizationId) && (hasPermission('users_manage') || hasPermission('management_users')))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() || 
+        (isOrgMatch(resource.data.organizationId) && 
+         request.resource.data.organizationId == resource.data.organizationId &&
+         (hasPermission('users_manage') || hasPermission('management_users')))
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        (isOrgMatch(resource.data.organizationId) && (hasPermission('users_manage') || hasPermission('management_users')))
+      );
     }
 
     match /billing_profiles/{profileId} {
@@ -219,7 +236,7 @@ service cloud.firestore {
 
     // --- Operational Layer (Workspace Shared Array) ---
     match /schools/{schoolId} {
-      allow get: if !isAuthorized() || canAccessWorkspace(resource.data.workspaceIds);
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
       allow list: if isAuthorized();
       allow create: if isAuthorized();
       allow update: if isAuthorized() && (
@@ -258,16 +275,9 @@ service cloud.firestore {
     }
 
     match /deals/{dealId} {
-      allow get: if isAuthorized() && (
+      allow get, list: if isAuthorized() && (
         isSystemAdmin() || 
         hasWorkspaceAccess(resource.data.workspaceId)
-      );
-      // Allow list if user is system admin or authorized with workspace access
-      // Special case: admin@smartsapp.com always has access
-      allow list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        (isAuthorized() && getUserData() != null && getUserData().workspaceIds.size() > 0)
       );
       allow create: if isAuthorized() && (
         isSystemAdmin() || 
@@ -464,8 +474,8 @@ service cloud.firestore {
     }
 
     match /payment_transactions/{txId} {
-      allow read, create: if true;
-      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false; // Server-side writes only via Admin SDK & Server Actions
     }
 
     match /meeting_compliance_policies/{policyId} {
@@ -689,8 +699,7 @@ service cloud.firestore {
 
     match /gateway_webhook_events/{eventId} {
       allow get, list: if isAuthorized() && isSystemAdmin();
-      allow create: if true; // Webhook ingestion from payment providers
-      allow update, delete: if isAuthorized() && isSystemAdmin();
+      allow write: if false; // Server-side webhook ingestion only via Admin SDK
     }
 
     match /surveys/{surveyId} {
@@ -1254,7 +1263,8 @@ service cloud.firestore {
       allow read, list: if isAuthorized();
     }
     match /campaign_sessions/{sId} {
-      allow read, list, create, update: if true;
+      allow get, create, update: if true; // Public campaign visitor session
+      allow list, delete: if isAuthorized() && isSystemAdmin();
     }
 
     // --- Scoring & Productivity Performance Engine ---
@@ -1411,31 +1421,48 @@ service cloud.firestore {
     match /community_posts/{postId} {
       allow get, list: if true;
       allow create: if isSignedIn() || isAuthorized();
-      allow update, delete: if isSignedIn() || isAuthorized();
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.authorId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
     }
 
     // --- {{Org_name}} Experience Platform — Community Comments ---
     match /community_comments/{commentId} {
       allow get, list: if true;
       allow create: if isSignedIn() || isAuthorized();
-      allow update, delete: if isSignedIn() || isAuthorized();
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.authorId == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
     }
 
     // --- {{Org_name}} Experience Platform — Community Polls & Votes ---
     match /community_polls/{pollId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn() || isAuthorized();
+      allow create: if isSignedIn() || isAuthorized();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
     }
 
     match /poll_votes/{voteId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn() || isAuthorized();
+      allow create: if isSignedIn() || isAuthorized();
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.userId == request.auth.uid
+      );
     }
 
     // --- {{Org_name}} Experience Platform — Community Reactions ---
     match /community_reactions/{reactionId} {
       allow get, list: if true;
-      allow create, update, delete: if isSignedIn() || isAuthorized();
+      allow create: if isSignedIn() || isAuthorized();
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.userId == request.auth.uid
+      );
     }
 
     // --- {{Org_name}} Experience Platform — Moderation Reports ---
@@ -1458,7 +1485,11 @@ service cloud.firestore {
 
     match /member_onboarding_progress/{progressId} {
       allow get, list: if isSignedIn() || isAuthorized();
-      allow create, update, delete: if isSignedIn() || isAuthorized();
+      allow create: if isSignedIn() || isAuthorized();
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        resource.data.userId == request.auth.uid
+      );
     }
 
     match /member_tasks/{taskId} {

@@ -2,12 +2,36 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateEntityAction } from '@/lib/entity-actions';
 import { updateWorkspaceEntityAction } from '@/lib/workspace-entity-actions';
-import type { Entity, WorkspaceEntity } from '@/lib/types';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+import type { Entity, WorkspaceEntity, EntityContact, EntityCustomData, AssignedUser } from '@/lib/types';
 
 /**
  * @fileOverview Contact detail API endpoint
  * Requirements: 24.1, 24.2
+ *
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - Security: Protected by `authenticateApiRequest` ensuring callers can only read/update
+ *   contacts in workspaces they are authorized to access.
+ * - Traceability: All operational updates record the actual authenticated user UID.
+ * - Zero `any` or `any[]` typing.
  */
+
+interface PatchContactRequestBody {
+  workspaceId?: string;
+  name?: string;
+  contacts?: EntityContact[];
+  globalTags?: string[];
+  financeData?: Record<string, EntityCustomData>;
+  industryData?: Record<string, EntityCustomData>;
+  logoUrl?: string;
+  location?: string;
+  interests?: string[];
+  familyData?: Record<string, EntityCustomData>;
+  personData?: Record<string, EntityCustomData>;
+  assignedTo?: AssignedUser;
+  workspaceTags?: string[];
+  status?: 'active' | 'archived' | 'inactive';
+}
 
 /**
  * GET /api/contacts/[entityId]
@@ -29,9 +53,18 @@ export async function GET(
       );
     }
 
+    // Authenticate caller and verify workspace access
+    const authResult = await authenticateApiRequest(request, {
+      requiredWorkspaceId: workspaceId,
+    });
+
+    if (!authResult.success) {
+      return authResult.errorResponse;
+    }
+
     // Fetch entity data
     const entityDoc = await adminDb.collection('entities').doc(entityId).get();
-    
+
     if (!entityDoc.exists) {
       return NextResponse.json(
         { error: 'Contact not found' },
@@ -40,6 +73,14 @@ export async function GET(
     }
 
     const entity = { id: entityDoc.id, ...entityDoc.data() } as Entity;
+
+    // Verify organization matching (system admin bypasses)
+    if (!authResult.user.isSystemAdmin && entity.organizationId !== authResult.user.profile.organizationId) {
+      return NextResponse.json(
+        { error: 'Forbidden: Access to entity in different organization is denied.' },
+        { status: 403 }
+      );
+    }
 
     // Fetch workspace-specific data
     const workspaceEntityId = `${workspaceId}_${entityId}`;
@@ -56,7 +97,7 @@ export async function GET(
         assignedTo: workspaceEntity.assignedTo,
         workspaceTags: workspaceEntity.workspaceTags,
         lastContactedAt: workspaceEntity.lastContactedAt,
-        status: workspaceEntity.status
+        status: workspaceEntity.status,
       };
     }
 
@@ -81,12 +122,13 @@ export async function GET(
       personData: entity.personData,
       workspaceData,
       createdAt: entity.createdAt,
-      updatedAt: entity.updatedAt
+      updatedAt: entity.updatedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     console.error('[API:CONTACTS:GET] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errMsg },
       { status: 500 }
     );
   }
@@ -102,7 +144,7 @@ export async function PATCH(
 ) {
   try {
     const { entityId } = await params;
-    const body = await request.json();
+    const body = (await request.json()) as PatchContactRequestBody;
     const {
       workspaceId,
       // Identity fields (go to entities collection)
@@ -119,7 +161,7 @@ export async function PATCH(
       // Operational fields (go to workspace_entities collection)
       assignedTo,
       workspaceTags,
-      status
+      status,
     } = body;
 
     if (!workspaceId) {
@@ -129,15 +171,39 @@ export async function PATCH(
       );
     }
 
+    // Authenticate caller and verify workspace access
+    const authResult = await authenticateApiRequest(request, {
+      requiredWorkspaceId: workspaceId,
+    });
+
+    if (!authResult.success) {
+      return authResult.errorResponse;
+    }
+
+    const { user } = authResult;
+    const callerId = user.uid;
+    const callerOrgId = user.profile.organizationId || 'default';
+
     // Update entity if identity fields provided (Requirement 11.4)
-    const hasIdentityUpdates = name || contacts || globalTags || financeData || industryData || logoUrl || location || interests || familyData || personData;
+    const hasIdentityUpdates =
+      name ||
+      contacts ||
+      globalTags ||
+      financeData ||
+      industryData ||
+      logoUrl ||
+      location ||
+      interests ||
+      familyData ||
+      personData;
+
     if (hasIdentityUpdates) {
       const entityResult = await updateEntityAction(
         entityId,
         { name, contacts, financeData, industryData, logoUrl, location, interests, familyData, personData },
-        'api-user',
+        callerId,
         workspaceId,
-        'default' // organizationId fallback
+        callerOrgId
       );
 
       if (!entityResult.success) {
@@ -153,10 +219,14 @@ export async function PATCH(
     if (hasOperationalUpdates) {
       const workspaceEntityResult = await updateWorkspaceEntityAction({
         workspaceEntityId: `${workspaceId}_${entityId}`,
-        userId: 'api-user', // TODO: Get from auth token
-        assignedTo,
+        userId: callerId,
+        assignedTo: assignedTo ? {
+          userId: assignedTo.userId ?? assignedTo.id ?? null,
+          name: assignedTo.name ?? null,
+          email: assignedTo.email ?? null,
+        } : undefined,
         workspaceTags,
-        status
+        status: status === 'archived' ? 'archived' : status === 'active' ? 'active' : undefined,
       });
 
       if (!workspaceEntityResult.success) {
@@ -183,7 +253,7 @@ export async function PATCH(
         workspaceId: workspaceEntity.workspaceId,
         assignedTo: workspaceEntity.assignedTo,
         workspaceTags: workspaceEntity.workspaceTags,
-        status: workspaceEntity.status
+        status: workspaceEntity.status,
       };
     }
 
@@ -193,12 +263,13 @@ export async function PATCH(
       name: entity.name,
       globalTags: entity.globalTags,
       workspaceData,
-      updatedAt: entity.updatedAt
+      updatedAt: entity.updatedAt,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Internal server error';
     console.error('[API:CONTACTS:PATCH] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: errMsg },
       { status: 500 }
     );
   }

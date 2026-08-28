@@ -5,14 +5,14 @@ import { refreshGoogleToken } from '@/lib/services/integrations/google-calendar'
 import { refreshZoomToken } from '@/lib/services/integrations/zoom-meeting';
 import { refreshMicrosoftToken } from '@/lib/services/integrations/microsoft-teams';
 import { encryptToken } from '@/lib/crypto';
+import { authenticateCronRequest } from '@/lib/security/cron-auth';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest): Promise<NextResponse> {
-  // Simple auth token verification to prevent arbitrary execution
-  const authHeader = request.headers.get('authorization');
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  const auth = authenticateCronRequest(request);
+  if (!auth.isAuthorized) {
+    return auth.errorResponse || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
   const firestore = adminDb;
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         if (conn.provider === 'google_calendar') {
           const tokens = await refreshGoogleToken(conn);
           const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-          
+
           await doc.ref.update({
             accessToken: encryptToken(tokens.access_token),
             expiresAt,
@@ -48,7 +48,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else if (conn.provider === 'zoom') {
           const tokens = await refreshZoomToken(conn);
           const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-          
+
           await doc.ref.update({
             accessToken: encryptToken(tokens.access_token),
             refreshToken: encryptToken(tokens.refresh_token),
@@ -59,7 +59,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
         } else if (conn.provider === 'microsoft_teams') {
           const tokens = await refreshMicrosoftToken(conn);
           const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString();
-          
+
           await doc.ref.update({
             accessToken: encryptToken(tokens.access_token),
             refreshToken: encryptToken(tokens.refresh_token),

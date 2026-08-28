@@ -2,31 +2,24 @@ import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { BulkPhoneVerificationService, PhoneVerificationInput } from '@/lib/bulk-phone-verifier';
 import { PhoneHygieneRepository } from '@/lib/phone-hygiene-repository';
-
-const CRON_SECRET = process.env.CRON_SECRET;
+import { authenticateCronRequest } from '@/lib/security/cron-auth';
 
 /**
  * GET /api/verify-phone/cron
  *
  * Background sweeper endpoint for automatic phone verification.
  * Discovers unchecked contact phones from workspace_entities and verifies
- * them in batches. Legacy local-format numbers are parsed with the owning
- * organization's default country. Designed to be triggered by:
- *   - GCP Cloud Scheduler
- *   - Vercel Cron
- *   - GitHub Actions
- *   - Manual curl with authorization header
+ * them in batches.
  *
- * Protected by CRON_SECRET environment variable.
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * - Security: Protected by `authenticateCronRequest` (fail-closed).
+ * - Zero `any` or `any[]` typing.
  */
 export async function GET(req: Request) {
   try {
-    // Auth guard: require secret token
-    const authHeader = req.headers.get('authorization');
-    const token = authHeader?.replace('Bearer ', '');
-
-    if (CRON_SECRET && token !== CRON_SECRET) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    const auth = authenticateCronRequest(req);
+    if (!auth.isAuthorized) {
+      return auth.errorResponse || NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse optional limit from query params (default: 50, max: 100)
@@ -53,17 +46,19 @@ export async function GET(req: Request) {
     // Resolve each org's default country once (for legacy local-format parsing)
     const orgIds = Array.from(new Set(unchecked.map((u) => u.organizationId).filter(Boolean))) as string[];
     const defaultCountryByOrg = new Map<string, string>();
-    await Promise.all(orgIds.map(async (orgId) => {
-      try {
-        const snap = await adminDb.collection('organizations').doc(orgId).get();
-        const code = snap.data()?.defaultCountryCode;
-        if (typeof code === 'string' && code.length === 2) {
-          defaultCountryByOrg.set(orgId, code);
+    await Promise.all(
+      orgIds.map(async (orgId) => {
+        try {
+          const snap = await adminDb.collection('organizations').doc(orgId).get();
+          const code = snap.data()?.defaultCountryCode;
+          if (typeof code === 'string' && code.length === 2) {
+            defaultCountryByOrg.set(orgId, code);
+          }
+        } catch {
+          // No default country — E.164-stored numbers still verify fine
         }
-      } catch {
-        // No default country — E.164-stored numbers still verify fine
-      }
-    }));
+      })
+    );
 
     const inputs: PhoneVerificationInput[] = unchecked.map((u) => ({
       phone: u.phone,
@@ -87,10 +82,11 @@ export async function GET(req: Request) {
       processedCount: results.length,
       phones: unchecked.map((u) => u.phone),
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown phone sweep failure';
     console.error('[verify-phone/cron] Sweep error:', error);
     return NextResponse.json(
-      { error: 'Cron sweep failed.', details: error.message },
+      { error: 'Cron sweep failed.', details: errMsg },
       { status: 500 }
     );
   }
