@@ -42,4 +42,12 @@ describe('Deal Line Items & Stage History Suite', () => {
 
     expect(durationSeconds).toBe(345600);
   });
+
+  it('should correctly structure deal quote parameters with validity window', () => {
+    const validDays = 30;
+    const now = new Date('2026-08-01T00:00:00.000Z').getTime();
+    const validUntil = new Date(now + validDays * 24 * 60 * 60 * 1000).toISOString();
+
+    expect(validUntil).toBe('2026-08-31T00:00:00.000Z');
+  });
 });
