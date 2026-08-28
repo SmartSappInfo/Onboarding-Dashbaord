@@ -47,7 +47,6 @@ import {
     TooltipTrigger
 } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
 import { savePipelineAction, clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -56,7 +55,6 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 export default function PipelineClient() {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
-  const { activeOrganizationId } = useTenant();
   const { user } = useUser();
   const { toast } = useToast();
   const { plural } = useTerminology();
@@ -245,7 +243,16 @@ export default function PipelineClient() {
   [firestore, activeWorkspaceId, currentPipelineId]);
   const { data: pipelineDeals } = useCollection<import('@/lib/types').Deal>(pipelineDealsQuery);
 
-  const handleNavigateToBoardWithFilter = React.useCallback((_preset?: string) => {
+  const handleNavigateToBoardWithFilter = React.useCallback((preset?: string) => {
+    if (preset === 'sla_breached') {
+      setFilters(prev => ({ ...prev, healthStatus: 'stalled' }));
+    } else if (preset === 'at_risk') {
+      setFilters(prev => ({ ...prev, healthStatus: 'at_risk' }));
+    } else if (preset === 'closing_soon') {
+      const today = new Date().toISOString().split('T')[0];
+      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      setFilters(prev => ({ ...prev, closeDateFrom: today, closeDateTo: nextWeek }));
+    }
     setActiveView('board');
   }, []);
 
@@ -254,6 +261,10 @@ export default function PipelineClient() {
       const today = new Date().toISOString().split('T')[0];
       const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       setFilters(prev => ({ ...prev, closeDateFrom: today, closeDateTo: nextWeek }));
+    } else if (preset === 'sla_breached') {
+      setFilters(prev => ({ ...prev, healthStatus: 'stalled' }));
+    } else if (preset === 'no_next_step') {
+      setFilters(prev => ({ ...prev, healthStatus: 'at_risk' }));
     }
     setActiveView('list');
   }, []);

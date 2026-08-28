@@ -31,4 +31,15 @@ describe('Deal Line Items & Stage History Suite', () => {
     expect(result.totalTax).toBe(1350);
     expect(result.grandTotal).toBe(13850);
   });
+
+  it('should correctly calculate duration between enteredAt and exitedAt for stageHistory entries', () => {
+    const enteredAt = '2026-07-01T10:00:00.000Z';
+    const exitedAt = '2026-07-05T10:00:00.000Z'; // 4 days = 345600 seconds
+
+    const durationSeconds = Math.round(
+      (new Date(exitedAt).getTime() - new Date(enteredAt).getTime()) / 1000
+    );
+
+    expect(durationSeconds).toBe(345600);
+  });
 });

@@ -1093,17 +1093,22 @@ export async function bulkUpdateDealsStageAction(
                     if (snap.exists) {
                         const d = snap.data() as Deal;
                         if (!d.workspaceId || d.workspaceId === workspaceId) {
+                            // ARCHITECTURAL POINTER (Rule 10 - Standardized Automation Trigger Payload):
+                            // Provide top-level payload properties matching single-deal transition structure
+                            // so trigger evaluators accurately match stageId, pipelineId, and deal value.
                             await triggerAutomationProtocols('DEAL_STAGE_CHANGED', {
-                                workspaceId: d.workspaceId || workspaceId,
+                                dealId,
                                 entityId: d.entityId,
+                                entityType: 'deal',
+                                pipelineId: d.pipelineId,
+                                stageId: targetStageId,
+                                stageName,
+                                dealName: d.name,
+                                dealValue: d.value || 0,
+                                workspaceId: d.workspaceId || workspaceId,
                                 organizationId: d.organizationId || 'default',
-                                payload: {
-                                    dealId,
-                                    pipelineId: d.pipelineId,
-                                    stageId: targetStageId,
-                                    stageName,
-                                    value: d.value,
-                                }
+                                focalContacts: d.focalContacts || [],
+                                customFields: d.customFields || {},
                             });
                         }
                     }

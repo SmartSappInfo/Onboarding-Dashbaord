@@ -71,6 +71,7 @@ export function isFilterActive(f: KanbanFilters): boolean {
 export function activeFilterCount(f: KanbanFilters): number {
   let count = 0;
   if (f.status !== 'all') count++;
+  if (f.healthStatus && f.healthStatus !== 'all') count++;
   if (f.assignedToId !== null && f.assignedToId !== 'all') count++;
   if (f.valueMin !== null || f.valueMax !== null) count++;
   if (f.closeDateFrom !== null || f.closeDateTo !== null) count++;

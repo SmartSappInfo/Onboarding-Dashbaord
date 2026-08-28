@@ -97,10 +97,21 @@ export default function QuickEditDealModal({
         }
       }
 
-      const selectedStage = stages.find((s) => s.id === stageId);
-      const stageName = selectedStage?.name || deal.stageName;
+      // ARCHITECTURAL POINTER (Rule 10 - Sequential Stage Transition Integrity):
+      // When stage changes, execute `updateDealStageAction` FIRST to record the previous stage's
+      // duration in `stageHistory` and update `stageEnteredAt`. Omit `stageId`/`stageName` from
+      // `updateDealAction` so the database stage is not prematurely updated before history logging.
+      if (stageId && stageId !== deal.stageId) {
+        const stageRes = await updateDealStageAction(deal.id, stageId, {
+          status,
+          userId: user?.uid,
+        });
+        if (!stageRes.success) {
+          throw new Error(stageRes.error || 'Failed to update deal stage.');
+        }
+      }
 
-      // 1. Update core deal properties
+      // Update remaining non-stage deal properties
       const res = await updateDealAction(
         deal.id,
         {
@@ -109,8 +120,6 @@ export default function QuickEditDealModal({
           status,
           expectedCloseDate: expectedCloseDate ? new Date(expectedCloseDate).toISOString() : null,
           assignedTo: assignedToObj,
-          stageId,
-          stageName,
         },
         activeWorkspaceId,
         user?.uid
@@ -118,14 +127,6 @@ export default function QuickEditDealModal({
 
       if (!res.success) {
         throw new Error(res.error || 'Failed to update deal.');
-      }
-
-      // 2. If stage changed, trigger stage transition protocol
-      if (stageId && stageId !== deal.stageId) {
-        await updateDealStageAction(deal.id, stageId, {
-          status,
-          userId: user?.uid,
-        });
       }
 
       toast({

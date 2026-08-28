@@ -520,30 +520,28 @@ export default function DealDetailsPage() {
                 ? new Date(expectedCloseDate).toISOString()
                 : (effectiveCloseDate || null);
 
+            // ARCHITECTURAL POINTER (Rule 10 - Sequential Stage Transition Integrity):
+            // 1. If stage changed, update stage FIRST to record stageHistory duration from previous stage.
+            if (stageId && stageId !== deal.stageId) {
+                const stageRes = await updateDealStageAction(deal.id, stageId, { status });
+                if (stageRes.error) throw new Error(stageRes.error);
+            } else if (status !== deal.status) {
+                const statusRes = await updateDealStatusAction(deal.id, status);
+                if (statusRes.error) throw new Error(statusRes.error);
+            }
+
+            // 2. Update Core Details via updateDealDetailsAction (omit stageId to prevent overwriting stage history)
             const detailsRes = await updateDealDetailsAction(deal.id, {
                 name,
                 value: parseFloat(value) || 0,
                 description: description || null,
                 pipelineId: pipelineId || deal.pipelineId,
-                stageId: stageId || deal.stageId,
                 expectedCloseDate: resolvedCloseDate,
                 assignedTo,
                 focalContacts
             });
 
             if (detailsRes.error) throw new Error(detailsRes.error);
-
-            // 2. Update Stage if changed
-            if (stageId && stageId !== deal.stageId) {
-                const stageRes = await updateDealStageAction(deal.id, stageId);
-                if (stageRes.error) throw new Error(stageRes.error);
-            }
-
-            // 3. Update Status if changed
-            if (status !== deal.status) {
-                const statusRes = await updateDealStatusAction(deal.id, status);
-                if (statusRes.error) throw new Error(statusRes.error);
-            }
 
             toast({ title: 'Deal Updated', description: 'Deal parameters successfully synchronized.' });
         } catch (err: unknown) {

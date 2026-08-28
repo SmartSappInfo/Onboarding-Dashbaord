@@ -130,13 +130,21 @@ export default function DealsForecastView({
     });
 
     for (const deal of filteredDeals) {
+      // ARCHITECTURAL POINTER (Rule 10 - Forecast Isolation):
+      // Won deals automatically belong to 'closed'. Lost deals MUST be isolated into 'omitted'
+      // to guarantee they never pollute active pipeline columns (Commit, Best Case, Pipeline)
+      // or inflate weighted revenue projections.
       const cat: ForecastCategory = deal.status === 'won'
         ? 'closed'
+        : deal.status === 'lost'
+        ? 'omitted'
         : (deal.forecastCategory || 'pipeline');
 
       const group = groups.get(cat) || groups.get('pipeline')!;
       const val = Number.isFinite(deal.value) ? deal.value : 0;
-      const prob = deal.probability ?? (cat === 'closed' ? 100 : (cat === 'commit' ? 90 : (cat === 'best_case' ? 70 : 40)));
+      const prob = deal.status === 'lost'
+        ? 0
+        : (deal.probability ?? (cat === 'closed' ? 100 : (cat === 'commit' ? 90 : (cat === 'best_case' ? 70 : 40))));
 
       group.deals.push(deal);
       group.totalValue += val;
@@ -286,7 +294,7 @@ export default function DealsForecastView({
                       {/* Forecast Category Switcher */}
                       <div className="pt-1">
                         <Select 
-                          value={deal.forecastCategory || 'pipeline'}
+                          value={deal.status === 'won' ? 'closed' : deal.status === 'lost' ? 'omitted' : (deal.forecastCategory || 'pipeline')}
                           onValueChange={(val: ForecastCategory) => handleCategoryChange(deal.id, val)}
                         >
                           <SelectTrigger className="h-7 text-[10px] font-bold rounded-lg bg-muted/30 border-border/50">

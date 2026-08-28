@@ -139,6 +139,15 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
     setIsGeneratingQuote(true);
 
     try {
+      // ARCHITECTURAL POINTER (Rule 10 - Auto-Save Pre-Flight):
+      // Automatically persist current in-memory line items before quote creation
+      // to guarantee the generated commercial quote reflects the latest UI inputs.
+      const saveRes = await saveDealLineItemsAction(deal.id, items, user?.uid);
+      if (!saveRes.success) {
+        throw new Error(saveRes.error || 'Failed to synchronize line items before quote generation.');
+      }
+      onDealUpdated?.();
+
       const res = await createDealQuoteAction(deal.id, {
         notes: quoteNotes,
         terms: quoteTerms,

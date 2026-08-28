@@ -54,12 +54,42 @@ export async function saveDealLineItemsAction(
       }
     }
 
+    // ARCHITECTURAL POINTER (Rule 10 - Numerical Invariant Hardening):
+    // Sanitize item rows server-side to prevent negative quantities, negative prices,
+    // or discount percentages > 100% from corrupting deal valuation.
+    const sanitizedItems: DealLineItem[] = lineItems.map(item => {
+      const quantity = Math.max(1, typeof item.quantity === 'number' && !Number.isNaN(item.quantity) ? Math.floor(item.quantity) : 1);
+      const unitPrice = Math.max(0, typeof item.unitPrice === 'number' && !Number.isNaN(item.unitPrice) ? item.unitPrice : 0);
+      const discount = Math.max(0, typeof item.discount === 'number' && !Number.isNaN(item.discount) ? item.discount : 0);
+      const discountPercent = Math.min(100, Math.max(0, typeof item.discountPercent === 'number' && !Number.isNaN(item.discountPercent) ? item.discountPercent : 0));
+      const taxRate = Math.max(0, typeof item.taxRate === 'number' && !Number.isNaN(item.taxRate) ? item.taxRate : 0);
+
+      const rowSubtotal = quantity * unitPrice;
+      let rowDiscount = discount;
+      if (discountPercent > 0) {
+        rowDiscount += (rowSubtotal * discountPercent) / 100;
+      }
+      const taxable = Math.max(0, rowSubtotal - rowDiscount);
+      const rowTax = (taxable * taxRate) / 100;
+      const total = Math.max(0, taxable + rowTax);
+
+      return {
+        ...item,
+        quantity,
+        unitPrice,
+        discount,
+        discountPercent,
+        taxRate,
+        total,
+      };
+    });
+
     // Server-side calculation of line item totals
-    const totals = calculateLineItemsTotals(lineItems);
+    const totals = calculateLineItemsTotals(sanitizedItems);
     const timestamp = new Date().toISOString();
 
     await dealRef.update({
-      lineItems,
+      lineItems: sanitizedItems,
       value: totals.grandTotal,
       updatedAt: timestamp,
     });

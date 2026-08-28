@@ -81,7 +81,7 @@ export default function DealsOverviewView({
   }, [stages, deals]);
 
   const healthTotal = metrics.healthyDealsCount + metrics.atRiskDealsCount + metrics.stalledDealsCount;
-  const healthyPercent = healthTotal > 0 ? Math.round((metrics.healthyDealsCount / healthTotal) * 100) : 100;
+  const healthyPercent = healthTotal > 0 ? Math.round((metrics.healthyDealsCount / healthTotal) * 100) : 0;
   const atRiskPercent = healthTotal > 0 ? Math.round((metrics.atRiskDealsCount / healthTotal) * 100) : 0;
   const stalledPercent = healthTotal > 0 ? Math.round((metrics.stalledDealsCount / healthTotal) * 100) : 0;
 

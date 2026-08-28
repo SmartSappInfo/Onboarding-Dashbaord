@@ -109,4 +109,17 @@ describe('Deal Health & Velocity Engine', () => {
     expect(metrics.totalActiveDeals).toBe(1);
     expect(metrics.winRatePercentage).toBe(50); // 1 won out of 2 closed (won + lost)
   });
+
+  it('should guarantee lost deals contribute zero to weighted active forecast', () => {
+    const lostDeal: Deal = {
+      ...baseDeal,
+      id: 'd-lost',
+      value: 100000,
+      probability: 0,
+      status: 'lost',
+    };
+
+    expect(calculateWeightedValue(lostDeal.value, 0)).toBe(0);
+    expect(calculateDealHealth(lostDeal, baseStage).status).toBe('closed');
+  });
 });

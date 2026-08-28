@@ -83,5 +83,23 @@ export function applyDealFilters(
     });
   }
 
+  // H. Health Status filter ('healthy' | 'at_risk' | 'stalled')
+  if (filters.healthStatus && filters.healthStatus !== 'all') {
+    temp = temp.filter(d => {
+      if (d.healthStatus) {
+        return d.healthStatus === filters.healthStatus;
+      }
+      // If healthStatus is not yet populated on legacy doc, calculate dynamically
+      if (d.status === 'won' || d.status === 'lost') {
+        return false;
+      }
+      const daysInStage = Math.max(0, Math.floor((Date.now() - new Date(d.stageEnteredAt || d.createdAt).getTime()) / (1000 * 60 * 60 * 24)));
+      if (filters.healthStatus === 'stalled') return daysInStage > 14;
+      if (filters.healthStatus === 'at_risk') return daysInStage > 7;
+      if (filters.healthStatus === 'healthy') return daysInStage <= 7;
+      return true;
+    });
+  }
+
   return temp;
 }
