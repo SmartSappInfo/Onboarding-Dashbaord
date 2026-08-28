@@ -944,7 +944,20 @@ export interface OnboardingStage {
   name: string;
   order: number;
   color?: string;
+  probability?: number;
+  slaDays?: number;
+  requirements?: string[];
+  isWon?: boolean;
+  isLost?: boolean;
+  customFields?: Array<{ key: string; label: string; type: string }>;
+  createdAt?: string;
+  updatedAt?: string;
 }
+
+/**
+ * Semantic type alias for DealStage mapping to OnboardingStage
+ */
+export type DealStage = OnboardingStage;
 
 export interface School {
   id: string;
@@ -1279,6 +1292,7 @@ export interface Deal {
   stageName?: string;         // Denormalized at creation — avoids client-side stage collection lookups
   name: string;               // e.g., "Lincoln Academy Expansion 2026"
   value: number;              // Deal value
+  currency?: string;          // ISO Currency Code (e.g. "USD", "GHS", "EUR")
   propertyId?: string;        // Optional property reference for real estate deals
   status: 'open' | 'won' | 'lost';
   lostReason?: string | null; // Captures why the deal was closed lost
@@ -1291,12 +1305,38 @@ export interface Deal {
   } | null;
   expectedCloseDate?: string | null;
   description?: string | null;
-  source?: 'manual' | 'bulk_import' | 'automation';
+  source?: 'manual' | 'bulk_import' | 'automation' | 'marketing_campaign' | 'call_centre' | 'lead_conversion';
+  campaignId?: string;
+  leadId?: string;
   isBulkImport?: boolean;
-  customFields?: Record<string, any>; // Persists across workspaces
+  
+  // Deals 2.0 Velocity, Health & Commercials
+  stageEnteredAt?: string;
+  stageHistory?: import('./deals/deal-types').DealStageHistory[];
+  lineItems?: import('./deals/deal-types').DealLineItem[];
+  probability?: number;
+  forecastCategory?: import('./deals/deal-types').ForecastCategory;
+  weightedValue?: number;
+  healthStatus?: import('./deals/deal-types').DealHealthStatus;
+  stalledReason?: string | null;
+  nextStep?: import('./deals/deal-types').DealNextStep | null;
+
+  customFields?: Record<string, string | number | boolean | null>; // Persists across workspaces
+  tags?: string[];
   createdAt: string;
   updatedAt: string;
 }
+
+export type {
+  DealLineItem,
+  DealStageHistory,
+  DealHealthStatus,
+  ForecastCategory,
+  DealNextStep,
+  DealQuote,
+  DealsOverviewMetrics,
+  Deal2
+} from './deals/deal-types';
 
 /**
  * Unified contact object returned by the adapter layer (Requirement 18)

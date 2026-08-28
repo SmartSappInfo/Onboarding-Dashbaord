@@ -17,7 +17,7 @@
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Deal } from '@/lib/types';
+import type { Deal, DealStage } from '@/lib/types';
 import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -30,7 +30,10 @@ import {
     AlertCircle,
     Clock,
     CalendarCheck,
-    CalendarOff
+    CalendarOff,
+    CheckCircle2,
+    AlertTriangle,
+    Target
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -53,6 +56,7 @@ import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { deleteDealAction } from '@/app/actions/deal-actions';
 import { formatCurrency } from '@/lib/currency-utils';
+import { calculateDealHealth, calculateDaysInStage, calculateWeightedValue } from '@/lib/deals/deal-health-engine';
 import QuickEditDealModal from './QuickEditDealModal';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
@@ -65,6 +69,7 @@ const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: strin
 
 interface DealCardProps {
     deal: Deal;
+    stage?: DealStage;
     isOverlay?: boolean;
     onDelete?: (dealId: string) => void;
     /**
@@ -78,7 +83,7 @@ interface DealCardProps {
 /**
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
-export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealCardProps) {
+export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }: DealCardProps) {
   const { singular } = useTerminology();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -108,6 +113,17 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
   const urgency = getForecastUrgency(deal.expectedCloseDate);
   const UrgencyIcon = URGENCY_ICON[urgency.level];
   const focalContacts = deal.focalContacts ?? [];
+
+  const health = React.useMemo(() => {
+    return calculateDealHealth(deal, stage, deal.updatedAt);
+  }, [deal, stage]);
+
+  const daysInStage = React.useMemo(() => {
+    return calculateDaysInStage(deal.stageEnteredAt, deal.createdAt);
+  }, [deal.stageEnteredAt, deal.createdAt]);
+
+  const probability = deal.probability ?? stage?.probability ?? 50;
+  const weightedVal = calculateWeightedValue(deal.value, probability);
 
   /**
    * Triggers confirmation dialog and handles deal deletion.
@@ -174,7 +190,22 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
                         name={deal.name} 
                         className="h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 ring-2 ring-background"
                     />
-                    <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-background shadow-sm" style={{ backgroundColor: statusColor }} />
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div 
+                                className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-background shadow-sm flex items-center justify-center cursor-help"
+                                style={{ 
+                                    backgroundColor: health.status === 'healthy' ? '#10b981' : health.status === 'at_risk' ? '#f59e0b' : health.status === 'stalled' ? '#ef4444' : '#64748b' 
+                                }}
+                            >
+                                {health.status === 'at_risk' && <span className="h-1.5 w-1.5 rounded-full bg-white animate-pulse" />}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-xs font-semibold">
+                            <p className="font-bold capitalize">{health.status} Deal</p>
+                            <p className="text-[10px] text-muted-foreground">{health.reason}</p>
+                        </TooltipContent>
+                    </Tooltip>
                 </div>
                 <div className="min-w-0 flex-1 text-left">
                     <Tooltip>
@@ -266,7 +297,7 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
             </DropdownMenu>
         </CardHeader>
 
-        <CardContent className="p-4 pt-3 space-y-4">
+        <CardContent className="p-4 pt-2.5 space-y-2.5">
             <div className="flex items-center justify-between gap-2 overflow-hidden">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                     <div className="flex flex-col text-left shrink-0">
@@ -297,6 +328,40 @@ export default function DealCard({ deal, isOverlay, onDelete, taskStats }: DealC
                         {deal.status}
                     </Badge>
                 </div>
+            </div>
+
+            {/* Velocity & Probability Badges */}
+            <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 text-[9px]">
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className={cn(
+                            "flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md border",
+                            health.isSlaBreached 
+                                ? "bg-destructive/10 border-destructive/30 text-destructive"
+                                : "bg-muted/40 border-border/40 text-muted-foreground"
+                        )}>
+                            <Clock className="h-2.5 w-2.5 shrink-0" />
+                            <span>{daysInStage}d</span>
+                            {stage?.slaDays ? <span className="opacity-60 text-[8px]">/{stage.slaDays}d</span> : null}
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-[10px]">
+                        <span>Time in current stage: {daysInStage} days {stage?.slaDays ? `(SLA: ${stage.slaDays}d)` : ''}</span>
+                    </TooltipContent>
+                </Tooltip>
+
+                <Tooltip>
+                    <TooltipTrigger asChild>
+                        <div className="flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md bg-primary/5 border border-primary/20 text-primary cursor-help">
+                            <Target className="h-2.5 w-2.5 shrink-0" />
+                            <span>{probability}%</span>
+                        </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="text-[10px]">
+                        <p className="font-bold">Win Probability: {probability}%</p>
+                        <p className="text-muted-foreground">Weighted: {formatCurrency(weightedVal)}</p>
+                    </TooltipContent>
+                </Tooltip>
             </div>
         </CardContent>
         </Card>

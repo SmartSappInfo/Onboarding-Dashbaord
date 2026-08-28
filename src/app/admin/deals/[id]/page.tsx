@@ -54,6 +54,8 @@ import { useEntitySearch } from '@/hooks/use-entity-search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import dynamic from 'next/dynamic';
 import EntityNotesTab from '../../entities/components/EntityNotesTab';
+import DealLineItemsTab from './components/DealLineItemsTab';
+import DealAiIntelligencePanel from './components/DealAiIntelligencePanel';
 import { PageContainer } from '@/components/ui/page-container';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency-utils';
 
@@ -774,6 +776,12 @@ export default function DealDetailsPage() {
                                         </div>
                                     </CardContent>
                                 </Card>
+
+                                {/* Deal Line Items & Commercials */}
+                                <DealLineItemsTab deal={deal} />
+
+                                {/* AI Intelligence & Next-Best-Actions */}
+                                <DealAiIntelligencePanel deal={deal} />
 
                                 <Card className="border-border/50 rounded-2xl bg-card shadow-sm">
                                     <CardHeader className="border-b bg-card/20 pb-4 flex flex-row items-center justify-between">

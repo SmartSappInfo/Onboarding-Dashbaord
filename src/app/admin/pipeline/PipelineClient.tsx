@@ -7,6 +7,8 @@ import PipelineConfigView from './components/PipelineConfigView';
 import DealsListView from './components/DealsListView';
 import PipelineActionsView from './components/PipelineActionsView';
 import PipelineFilterBar from './components/PipelineFilterBar';
+import DealsOverviewView from './components/DealsOverviewView';
+import DealsForecastView from './components/DealsForecastView';
 import CreateDealModal from '../entities/components/CreateDealModal';
 import {
     Workflow,
@@ -22,7 +24,9 @@ import {
     Search,
     X,
     ChevronDown,
-    Zap
+    Zap,
+    TrendingUp,
+    Target
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -57,7 +61,7 @@ export default function PipelineClient() {
   const { toast } = useToast();
   const { plural } = useTerminology();
   
-  const [activeView, setActiveView] = React.useState<'board' | 'list' | 'config' | 'actions'>('board');
+  const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'list' | 'forecast' | 'config' | 'actions'>('board');
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
 
@@ -228,6 +232,31 @@ export default function PipelineClient() {
     ) : null,
   [firestore, currentPipelineId]);
   const { data: filterStages } = useCollection<OnboardingStage>(filterStagesQuery);
+
+  // Deals for current pipeline to power Overview KPIs and Attention panels
+  const pipelineDealsQuery = useMemoFirebase(() =>
+    firestore && activeWorkspaceId && currentPipelineId
+      ? query(
+          collection(firestore, 'deals'),
+          where('workspaceId', '==', activeWorkspaceId),
+          where('pipelineId', '==', currentPipelineId)
+        )
+      : null,
+  [firestore, activeWorkspaceId, currentPipelineId]);
+  const { data: pipelineDeals } = useCollection<import('@/lib/types').Deal>(pipelineDealsQuery);
+
+  const handleNavigateToBoardWithFilter = React.useCallback((_preset?: string) => {
+    setActiveView('board');
+  }, []);
+
+  const handleNavigateToListWithFilter = React.useCallback((preset?: string) => {
+    if (preset === 'closing_soon') {
+      const today = new Date().toISOString().split('T')[0];
+      const nextWeek = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      setFilters(prev => ({ ...prev, closeDateFrom: today, closeDateTo: nextWeek }));
+    }
+    setActiveView('list');
+  }, []);
 
   const updateFilter = React.useCallback(<K extends keyof KanbanFilters>(key: K, value: KanbanFilters[K]) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -541,18 +570,20 @@ export default function PipelineClient() {
                         <Plus className="h-4 w-4" /> Add Deal
                     </Button>
 
-                    <div className="flex items-center gap-1.5 bg-muted/30 p-1 rounded-xl border shadow-inner">
-                        <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'board' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="mr-1.5 h-3.5 w-3.5" /> Board</Button>
-                        <Button variant="ghost" onClick={() => setActiveView('list')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'list' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><List className="mr-1.5 h-3.5 w-3.5" /> List</Button>
-                        <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all", activeView === 'config' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="mr-1.5 h-3.5 w-3.5" /> Config</Button>
-                        <Button variant="ghost" onClick={() => setActiveView('actions')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-4 transition-all flex items-center gap-1.5", activeView === 'actions' ? "bg-card shadow-md text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Actions</Button>
+                    <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-xl border shadow-inner">
+                        <Button variant="ghost" onClick={() => setActiveView('overview')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'overview' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><TrendingUp className="h-3.5 w-3.5" /> Overview</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'board' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="h-3.5 w-3.5" /> Board</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('list')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'list' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><List className="h-3.5 w-3.5" /> List</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('forecast')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'forecast' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Target className="h-3.5 w-3.5" /> Forecast</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'config' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="h-3.5 w-3.5" /> Config</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('actions')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'actions' ? "bg-card shadow-md text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Actions</Button>
                     </div>
                 </div>
             </div>
         </header>
 
         {/* Inline workspace-scoped filter card */}
-        {activeView !== 'config' && activeView !== 'actions' && (
+        {activeView !== 'config' && activeView !== 'actions' && activeView !== 'overview' && activeView !== 'forecast' && (
             <PipelineFilterBar
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
@@ -568,7 +599,43 @@ export default function PipelineClient() {
 
         <div className="flex-1 overflow-hidden relative">
             <AnimatePresence mode="wait">
-                {activeView === 'board' ? (
+                {activeView === 'overview' ? (
+                    <motion.div key={`overview-${currentPipelineId}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full w-full overflow-hidden">
+                        {currentPipeline ? (
+                            <DealsOverviewView
+                                pipeline={currentPipeline}
+                                stages={filterStages || []}
+                                deals={pipelineDeals || []}
+                                onCreateDeal={() => setIsCreateDealOpen(true)}
+                                onNavigateToBoard={handleNavigateToBoardWithFilter}
+                                onNavigateToList={handleNavigateToListWithFilter}
+                                onOpenDeal={(deal) => {
+                                    window.open(`/admin/deals/${deal.id}`, '_blank');
+                                }}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">
+                                <Workflow size={120} />
+                                <p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p>
+                            </div>
+                        )}
+                    </motion.div>
+                ) : activeView === 'forecast' ? (
+                    <motion.div key={`forecast-${currentPipelineId}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full w-full overflow-hidden">
+                        {currentPipeline ? (
+                            <DealsForecastView
+                                pipelineId={currentPipeline.id}
+                                stages={filterStages || []}
+                                deals={pipelineDeals || []}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">
+                                <Workflow size={120} />
+                                <p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p>
+                            </div>
+                        )}
+                    </motion.div>
+                ) : activeView === 'board' ? (
                     <motion.div key={`board-${currentPipelineId}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
                         {currentPipelineId ? <KanbanBoard pipelineId={currentPipelineId} pipelineName={currentPipeline?.name} customWidth={columnWidth} filters={mergedFilters} automations={automations || undefined} /> : <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>}
                     </motion.div>

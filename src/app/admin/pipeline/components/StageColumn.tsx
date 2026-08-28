@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { useDroppable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 
 import type { Deal, OnboardingStage, Automation } from '@/lib/types';
@@ -20,6 +21,9 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { clearStageDealsAction } from '@/app/actions/deal-actions';
 import { isAutomationLinkedToStage } from '@/lib/automation-stage-helpers';
+import { formatCurrency } from '@/lib/currency-utils';
+import { calculateWeightedValue, calculateDaysInStage } from '@/lib/deals/deal-health-engine';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 interface StageColumnProps {
     stage: OnboardingStage;
@@ -96,6 +100,28 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
             setIsClearing(false);
         }
     };
+    const { totalStageValue, weightedStageValue, avgStageDays } = React.useMemo(() => {
+        let total = 0;
+        let weighted = 0;
+        let totalDays = 0;
+
+        for (const d of deals) {
+            const val = Number.isFinite(d.value) ? d.value : 0;
+            total += val;
+            const prob = d.probability ?? stage.probability ?? 50;
+            weighted += calculateWeightedValue(val, prob);
+            totalDays += calculateDaysInStage(d.stageEnteredAt, d.createdAt);
+        }
+
+        const avg = deals.length > 0 ? Math.round((totalDays / deals.length) * 10) / 10 : 0;
+
+        return {
+            totalStageValue: total,
+            weightedStageValue: weighted,
+            avgStageDays: avg,
+        };
+    }, [deals, stage]);
+
     const {
         attributes,
         listeners,
@@ -103,27 +129,48 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
         transform,
         transition,
         isDragging,
-        isOver,
-    } = useSortable({ id: stage.id, data: { type: 'COLUMN', stage } });
+    } = useSortable({
+        id: stage.id,
+        data: {
+            type: 'STAGE',
+            stage,
+        },
+    });
+
+    const { setNodeRef: setDroppableNodeRef, isOver } = useDroppable({
+        id: stage.id,
+        data: {
+            type: 'STAGE',
+            stage,
+        },
+    });
 
     const style = {
         transform: CSS.Translate.toString(transform),
         transition,
-        opacity: isDragging && !isOverlay ? 0.5 : 1,
-        width: `${customWidth}px`,
+        opacity: isDragging ? 0.3 : 1,
     };
 
-    const stageColor = stage.color || '#3B5FFF';
+    const stageColor = stage.color || '#6366f1';
 
     return (
-        <div ref={setNodeRef} style={style} className="flex-shrink-0 flex flex-col group/column transition-[width] duration-300 whitespace-normal overflow-hidden border-none rounded-2xl min-w-0">
-                <Card
-                    className={cn(
-                        "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 w-full relative",
+        <div
+            ref={setNodeRef}
+            style={{ ...style, width: isOverlay ? `${customWidth}px` : undefined }}
+            className={cn(
+                "h-full flex-shrink-0 select-none pb-4",
+                !isOverlay && "w-[280px] md:w-[320px] lg:w-[340px]"
+            )}
+        >
+            <Card
+                className={cn(
+                    "flex flex-col bg-card border border-border rounded-2xl overflow-hidden transition-all duration-300 w-full relative",
                     isOverlay && "shadow-2xl scale-105 rotate-1",
                     isOver && isDraggingDeal && "bg-primary/[0.06] border-primary/50 ring-2 ring-primary/20 shadow-lg"
                 )}
             >
+                <div ref={setDroppableNodeRef} className="absolute inset-0 z-0 pointer-events-none" />
+
                 {/* Top Accent Line - Matches the image curvature and color */}
                 <div 
                     className="absolute top-0 left-0 right-0 h-1.5 rounded-t-full z-20" 
@@ -131,121 +178,153 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                 />
 
                 {/* Glass Header Section */}
-                <CardHeader className="p-5 pb-3 border-b border-border/10 bg-card/40 backdrop-blur-xl shrink-0 flex flex-row items-center justify-between z-10 pt-6">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <Button 
-                            variant="ghost" 
-                            size="icon"
-                            {...attributes} 
-                            {...listeners} 
-                            className="cursor-grab active:cursor-grabbing h-8 w-8 rounded-lg hover:bg-muted text-muted-foreground/30 hover:text-primary transition-colors shrink-0"
-                        >
-                            <GripVertical className="h-4 w-4" />
-                        </Button>
-                        <div className="min-w-0 flex-1">
-                            <CardTitle 
-                                className="text-sm font-semibold tracking-tight truncate block"
-                                style={{ color: stageColor }}
+                <CardHeader className="p-4 pb-2.5 border-b border-border/10 bg-card/40 backdrop-blur-xl shrink-0 flex flex-col z-10 pt-5 space-y-2">
+                    <div className="flex items-center justify-between gap-2 w-full">
+                        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                            <Button 
+                                variant="ghost" 
+                                size="icon"
+                                {...attributes} 
+                                {...listeners} 
+                                className="cursor-grab active:cursor-grabbing h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground/30 hover:text-primary transition-colors shrink-0"
                             >
-                                {toTitleCase(stage.name)}
-                            </CardTitle>
+                                <GripVertical className="h-4 w-4" />
+                            </Button>
+                            <div className="min-w-0 flex-1">
+                                <CardTitle 
+                                    className="text-sm font-bold tracking-tight truncate block"
+                                    style={{ color: stageColor }}
+                                >
+                                    {toTitleCase(stage.name)}
+                                </CardTitle>
+                            </div>
                         </div>
-                    </div>
-                    
-                    {/* Color-Coded Count Badge & Active Stage Automation Badge */}
-                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                        {attachedAutomations.length > 0 && (
-                            <Popover>
-                                <PopoverTrigger asChild>
-                                    <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 px-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition-all shadow-sm active:scale-[0.97]"
-                                        title={`${attachedAutomations.length} automation workflow(s) attached to this stage`}
-                                    >
-                                        <Zap className="h-3 w-3 fill-amber-500 text-amber-500 animate-pulse" />
-                                        <span>{attachedAutomations.length}</span>
-                                    </Button>
-                                </PopoverTrigger>
-                                <PopoverContent align="end" className="w-[280px] p-3 rounded-2xl border border-border/80 shadow-2xl bg-popover z-[200]">
-                                    <div className="flex items-center justify-between border-b pb-2 mb-2">
-                                        <div className="flex items-center gap-1.5 text-xs font-extrabold text-foreground">
-                                            <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                                            <span>Stage Automations ({attachedAutomations.length})</span>
-                                        </div>
+                        
+                        {/* Color-Coded Count Badge & Active Stage Automation Badge */}
+                        <div className="flex items-center gap-1.5 shrink-0">
+                            {attachedAutomations.length > 0 && (
+                                <Popover>
+                                    <PopoverTrigger asChild>
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={handleAddAutomationToStage}
-                                            className="h-6 px-2 rounded-lg text-[10px] font-bold text-primary hover:bg-primary/10"
+                                            className="h-6 px-2 rounded-full bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 border border-amber-500/30 text-[10px] font-extrabold flex items-center gap-1 shrink-0 transition-all shadow-sm active:scale-[0.97]"
+                                            title={`${attachedAutomations.length} automation workflow(s) attached to this stage`}
                                         >
-                                            + Add New
+                                            <Zap className="h-3 w-3 fill-amber-500 text-amber-500 animate-pulse" />
+                                            <span>{attachedAutomations.length}</span>
                                         </Button>
-                                    </div>
-                                    <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
-                                        {attachedAutomations.map(auto => (
-                                            <div key={auto.id} className="p-2 rounded-xl bg-muted/40 hover:bg-muted/80 border border-border/50 transition-all flex items-center justify-between gap-2">
-                                                <div className="min-w-0 flex-1 text-left">
-                                                    <p className="text-xs font-bold text-foreground truncate">{auto.name}</p>
-                                                    <p className="text-[9px] text-muted-foreground font-medium truncate">
-                                                        {auto.isActive ? 'Active Workflow' : 'Draft / Paused'}
-                                                    </p>
-                                                </div>
-                                                <Button
-                                                    variant="outline"
-                                                    size="icon"
-                                                    onClick={() => window.open(`/admin/automations/${auto.id}/edit`, '_blank')}
-                                                    className="h-7 w-7 rounded-lg shrink-0 border-border hover:bg-primary/10 hover:text-primary"
-                                                    title="Edit Automation"
-                                                >
-                                                    <ExternalLink className="h-3.5 w-3.5" />
-                                                </Button>
+                                    </PopoverTrigger>
+                                    <PopoverContent align="end" className="w-[280px] p-3 rounded-2xl border border-border/80 shadow-2xl bg-popover z-[200]">
+                                        <div className="flex items-center justify-between border-b pb-2 mb-2">
+                                            <div className="flex items-center gap-1.5 text-xs font-extrabold text-foreground">
+                                                <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                                <span>Stage Automations ({attachedAutomations.length})</span>
                                             </div>
-                                        ))}
-                                    </div>
-                                </PopoverContent>
-                            </Popover>
-                        )}
+                                            <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={handleAddAutomationToStage}
+                                                className="h-6 px-2 rounded-lg text-[10px] font-bold text-primary hover:bg-primary/10"
+                                            >
+                                                + Add New
+                                            </Button>
+                                        </div>
+                                        <div className="space-y-1.5 max-h-[220px] overflow-y-auto pr-1">
+                                            {attachedAutomations.map(auto => (
+                                                <div key={auto.id} className="p-2 rounded-xl bg-muted/40 hover:bg-muted/80 border border-border/50 transition-all flex items-center justify-between gap-2">
+                                                    <div className="min-w-0 flex-1 text-left">
+                                                        <p className="text-xs font-bold text-foreground truncate">{auto.name}</p>
+                                                        <p className="text-[9px] text-muted-foreground font-medium truncate">
+                                                            {auto.isActive ? 'Active Workflow' : 'Draft / Paused'}
+                                                        </p>
+                                                    </div>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="icon"
+                                                        onClick={() => window.open(`/admin/automations/${auto.id}/edit`, '_blank')}
+                                                        className="h-7 w-7 rounded-lg shrink-0 border-border hover:bg-primary/10 hover:text-primary"
+                                                        title="Edit Automation"
+                                                    >
+                                                        <ExternalLink className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </PopoverContent>
+                                </Popover>
+                            )}
 
-                        <Badge 
-                            variant="outline" 
-                            className="rounded-full h-6 px-3 font-semibold tabular-nums border-none transition-colors shadow-inner"
-                            style={{ 
-                                backgroundColor: `${stageColor}15`, 
-                                color: stageColor
-                            }}
-                        >
-                            {deals.length}
-                        </Badge>
+                            <Badge 
+                                variant="outline" 
+                                className="rounded-full h-6 px-2.5 font-bold tabular-nums border-none transition-colors shadow-inner text-xs"
+                                style={{ 
+                                    backgroundColor: `${stageColor}15`, 
+                                    color: stageColor
+                                }}
+                            >
+                                {deals.length}
+                            </Badge>
 
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button
-                                    variant="ghost"
-                                    size="icon"
-                                    className="h-6 w-6 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
-                                >
-                                    <MoreVertical className="h-3.5 w-3.5" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[170px]">
-                                <DropdownMenuItem
-                                    onClick={handleAddAutomationToStage}
-                                    className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10 rounded-lg"
-                                >
-                                    <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
-                                    Add Automation to Stage
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                    onClick={handleClearStage}
-                                    disabled={deals.length === 0 || isClearing}
-                                    className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2 cursor-pointer font-semibold text-xs flex items-center gap-2"
-                                >
-                                    <Trash2 className="h-3.5 w-3.5" />
-                                    Clear Stage
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-6 w-6 rounded-lg text-muted-foreground/50 hover:text-primary hover:bg-primary/5 transition-all shrink-0"
+                                    >
+                                        <MoreVertical className="h-3.5 w-3.5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[170px]">
+                                    <DropdownMenuItem
+                                        onClick={handleAddAutomationToStage}
+                                        className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10 rounded-lg"
+                                    >
+                                        <Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" />
+                                        Add Automation to Stage
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                        onClick={handleClearStage}
+                                        disabled={deals.length === 0 || isClearing}
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/5 rounded-lg py-2 cursor-pointer font-semibold text-xs flex items-center gap-2"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        Clear Stage
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                    </div>
+
+                    {/* Stage Subheader: Financial Total & Velocity SLA */}
+                    <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground pt-1 border-t border-border/30">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <span className="font-bold text-foreground cursor-help">
+                                        {formatCurrency(totalStageValue)}
+                                    </span>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="text-[10px]">
+                                    <p className="font-bold">Total: {formatCurrency(totalStageValue)}</p>
+                                    <p className="text-muted-foreground">Weighted Forecast: {formatCurrency(weightedStageValue)}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+
+                        <div className="flex items-center gap-2 text-[10px]">
+                            {stage.slaDays && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground font-semibold">
+                                    SLA: {stage.slaDays}d
+                                </span>
+                            )}
+                            {deals.length > 0 && (
+                                <span className="text-muted-foreground/80">
+                                    Avg {avgStageDays}d
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </CardHeader>
                 
@@ -257,7 +336,7 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
                         <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0">
                             {deals.map(deal => (
                                 <div key={deal.id} className="w-full min-w-0">
-                                    <DealCard deal={deal} taskStats={tasksByDealId?.[deal.id]} />
+                                    <DealCard deal={deal} stage={stage} taskStats={tasksByDealId?.[deal.id]} />
                                 </div>
                             ))}
 

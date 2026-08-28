@@ -7,12 +7,16 @@
  */
 
 export type DealStatusFilter = 'open' | 'won' | 'lost' | 'all';
+export type DealHealthFilter = 'healthy' | 'at_risk' | 'stalled' | 'all';
+export type PipelineViewMode = 'overview' | 'board' | 'list' | 'forecast' | 'config' | 'actions';
 
 export interface KanbanFilters {
   /** Free-text search across deal name and assignee. */
   searchTerm: string;
   /** Deal lifecycle status. */
   status: DealStatusFilter;
+  /** Deal health status filter. */
+  healthStatus?: DealHealthFilter;
   /**
    * Local assignee filter. When set, OVERRIDES the workspace-level
    * GlobalFilter (see KanbanBoard). `null` means "no local override".
@@ -38,6 +42,7 @@ export interface KanbanFilters {
 export const DEFAULT_FILTERS: KanbanFilters = {
   searchTerm: '',
   status: 'all',
+  healthStatus: 'all',
   assignedToId: 'all',
   valueMin: null,
   valueMax: null,
@@ -51,6 +56,7 @@ export const DEFAULT_FILTERS: KanbanFilters = {
 export function isFilterActive(f: KanbanFilters): boolean {
   return (
     f.status !== 'all' ||
+    (f.healthStatus && f.healthStatus !== 'all') ||
     (f.assignedToId !== null && f.assignedToId !== 'all') ||
     f.valueMin !== null ||
     f.valueMax !== null ||

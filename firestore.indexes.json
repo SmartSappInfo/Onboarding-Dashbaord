@@ -2249,6 +2249,60 @@
       "queryScope": "COLLECTION",
       "fields": [
         {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "forecastCategory",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "expectedCloseDate",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "deals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "healthStatus",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "updatedAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "deal_quotes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "dealId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "deals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
           "fieldPath": "assignedTo.userId",
           "order": "ASCENDING"
         },

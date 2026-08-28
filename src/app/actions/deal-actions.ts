@@ -307,9 +307,31 @@ export async function updateDealStageAction(
         const oldStageId = deal.stageId;
 
         const timestamp = new Date().toISOString();
+
+        // Calculate duration spent in the stage being exited
+        const lastEntered = deal.stageEnteredAt || deal.createdAt || timestamp;
+        const lastEnteredTime = new Date(lastEntered).getTime();
+        const durationSeconds = !isNaN(lastEnteredTime) ? Math.max(0, Math.floor((new Date(timestamp).getTime() - lastEnteredTime) / 1000)) : 0;
+
+        const previousHistory = Array.isArray(deal.stageHistory) ? deal.stageHistory : [];
+        const updatedHistory: import('@/lib/types').DealStageHistory[] = oldStageId !== stageId ? [
+            ...previousHistory,
+            {
+                stageId: oldStageId,
+                stageName: oldStageName,
+                enteredAt: lastEntered,
+                exitedAt: timestamp,
+                durationSeconds,
+                changedByUserId: opts.userId || 'system',
+                notes: opts.lostReason || undefined
+            }
+        ] : previousHistory;
+
         const updatePayload: Record<string, unknown> = {
             stageId,
             stageName,
+            stageEnteredAt: oldStageId !== stageId ? timestamp : (deal.stageEnteredAt || timestamp),
+            stageHistory: updatedHistory,
             updatedAt: timestamp
         };
 
@@ -1021,9 +1043,30 @@ export async function bulkUpdateDealsStageAction(
                     const data = snap.data() as Deal;
                     // Multi-tenant check
                     if (!data.workspaceId || data.workspaceId === workspaceId) {
+                        const oldStageId = data.stageId;
+                        const oldStageName = data.stageName || data.stageId;
+                        const lastEntered = data.stageEnteredAt || data.createdAt || now;
+                        const lastEnteredTime = new Date(lastEntered).getTime();
+                        const durationSeconds = !isNaN(lastEnteredTime) ? Math.max(0, Math.floor((new Date(now).getTime() - lastEnteredTime) / 1000)) : 0;
+
+                        const previousHistory = Array.isArray(data.stageHistory) ? data.stageHistory : [];
+                        const updatedHistory: import('@/lib/types').DealStageHistory[] = oldStageId !== targetStageId ? [
+                            ...previousHistory,
+                            {
+                                stageId: oldStageId,
+                                stageName: oldStageName,
+                                enteredAt: lastEntered,
+                                exitedAt: now,
+                                durationSeconds,
+                                changedByUserId: userId || 'system',
+                            }
+                        ] : previousHistory;
+
                         batch.update(snap.ref, {
                             stageId: targetStageId,
                             stageName,
+                            stageEnteredAt: oldStageId !== targetStageId ? now : (data.stageEnteredAt || now),
+                            stageHistory: updatedHistory,
                             status: targetStatus,
                             updatedAt: now,
                         });
