@@ -983,7 +983,7 @@ export default function DealDetailsPage() {
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
                                 <Label htmlFor="taskPriority" className="text-[10px] font-bold text-muted-foreground uppercase">Priority</Label>
-                                <Select value={taskPriority} onValueChange={(val: any) => setTaskPriority(val)}>
+                                <Select value={taskPriority} onValueChange={(val: 'low' | 'medium' | 'high' | 'urgent') => setTaskPriority(val)}>
                                     <SelectTrigger id="taskPriority" className="rounded-xl h-11">
                                         <SelectValue />
                                     </SelectTrigger>
@@ -997,7 +997,7 @@ export default function DealDetailsPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="taskCategory" className="text-[10px] font-bold text-muted-foreground uppercase">Category</Label>
-                                <Select value={taskCategory} onValueChange={(val: any) => setTaskCategory(val)}>
+                                <Select value={taskCategory} onValueChange={(val: 'call' | 'visit' | 'document' | 'training' | 'follow_up' | 'general') => setTaskCategory(val)}>
                                     <SelectTrigger id="taskCategory" className="rounded-xl h-11">
                                         <SelectValue />
                                     </SelectTrigger>
