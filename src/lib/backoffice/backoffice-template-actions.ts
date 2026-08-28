@@ -27,7 +27,7 @@ import {
  * Standard built-in role architecture blueprints available across all organizations.
  * Sourced directly from the canonical multi-industry catalog.
  */
-export const BUILTIN_ROLE_BLUEPRINTS: PlatformTemplate[] = CANONICAL_ROLE_BLUEPRINTS;
+const BUILTIN_ROLE_BLUEPRINTS: PlatformTemplate[] = CANONICAL_ROLE_BLUEPRINTS;
 
 /**
  * Server Action: Seeds or updates all canonical role architecture blueprints directly into Firestore.

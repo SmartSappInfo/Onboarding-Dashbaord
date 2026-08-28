@@ -13,14 +13,12 @@ import {
   CANONICAL_ROLE_BLUEPRINTS,
   groupBlueprintsByIndustry 
 } from '../role-blueprint-presets';
-import { BUILTIN_ROLE_BLUEPRINTS } from '../backoffice/backoffice-template-actions';
 import type { PermissionsSchema } from '../types';
 
 describe('Role Templates QA End-to-End Suite', () => {
   describe('Canonical Multi-Industry Role Blueprints Integrity', () => {
     it('should export all 22 canonical platform blueprint presets', () => {
       expect(CANONICAL_ROLE_BLUEPRINTS).toHaveLength(22);
-      expect(BUILTIN_ROLE_BLUEPRINTS).toHaveLength(22);
 
       const ids = CANONICAL_ROLE_BLUEPRINTS.map(b => b.id);
       // Universal

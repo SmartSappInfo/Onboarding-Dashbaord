@@ -214,14 +214,13 @@ export default function NewPageClient() {
         }
     }, [name]);
 
-    const filteredTemplates = useMemo(() => {
+    const industryFilteredTemplates = useMemo(() => {
         if (!templates) return [];
         return templates.filter(t => {
             // The blank page template is always visible to enable starting from scratch
             if (t.id === 'blank-page') return true;
 
             if (searchFilter && !t.name.toLowerCase().includes(searchFilter.toLowerCase()) && !t.description.toLowerCase().includes(searchFilter.toLowerCase())) return false;
-            if (goalFilter && t.goal !== goalFilter) return false;
             
             // If an industry filter is active, filter strictly. Otherwise, show everything.
             if (industryFilter && industryFilter !== 'all') {
@@ -229,14 +228,20 @@ export default function NewPageClient() {
             }
             return true;
         });
-    }, [templates, searchFilter, goalFilter, industryFilter]);
+    }, [templates, searchFilter, industryFilter]);
+
+    const filteredTemplates = useMemo(() => {
+        if (!industryFilteredTemplates) return [];
+        if (!goalFilter) return industryFilteredTemplates;
+        return industryFilteredTemplates.filter(t => t.id === 'blank-page' || t.goal === goalFilter);
+    }, [industryFilteredTemplates, goalFilter]);
 
     const goalCounts = useMemo(() => {
-        if (!templates) return {};
+        if (!industryFilteredTemplates) return {};
         const counts: Record<string, number> = {};
-        templates.forEach(t => { counts[t.goal] = (counts[t.goal] || 0) + 1; });
+        industryFilteredTemplates.forEach(t => { counts[t.goal] = (counts[t.goal] || 0) + 1; });
         return counts;
-    }, [templates]);
+    }, [industryFilteredTemplates]);
 
     const selectedTemplate = templates?.find(t => t.id === selectedTemplateId);
 
@@ -363,7 +368,7 @@ export default function NewPageClient() {
                                         : "bg-card text-muted-foreground hover:text-foreground border-border hover:bg-muted/50"
                                 )}
                             >
-                                All ({templates?.length || 0})
+                                All ({industryFilteredTemplates?.length || 0})
                             </button>
                             {Object.entries(goalCounts).map(([goal, count]) => {
                                 const GoalIcon = GOAL_ICONS[goal] || Info;
