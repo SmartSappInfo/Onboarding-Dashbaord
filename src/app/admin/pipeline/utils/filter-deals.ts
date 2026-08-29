@@ -6,6 +6,7 @@
 
 import type { Deal } from '@/lib/types';
 import type { KanbanFilters } from '../pipeline-types';
+import { evaluateDealFilterTree } from '@/lib/deals/deal-filter-engine';
 
 /**
  * Applies all filter dimensions to a list of deals.
@@ -107,6 +108,15 @@ export function applyDealFilters(
     temp = temp.filter(d => !d.isArchived);
   } else if (archiveFilter === 'archived') {
     temp = temp.filter(d => !!d.isArchived);
+  }
+
+  // J. Advanced Multi-Condition Filter Tree (Phase 6)
+  if (filters.filterTree && filters.filterTree.groups && filters.filterTree.groups.length > 0) {
+    const context = {
+      currentUserId: effectiveAssigneeId || undefined,
+      now: new Date(),
+    };
+    temp = temp.filter(d => evaluateDealFilterTree(d, filters.filterTree, context));
   }
 
   return temp;

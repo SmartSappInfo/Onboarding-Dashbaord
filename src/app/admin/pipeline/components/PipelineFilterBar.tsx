@@ -34,6 +34,7 @@ interface PipelineFilterBarProps {
   tags: Tag[] | null;
   stages: OnboardingStage[] | null;
   showStagesFilter: boolean;
+  onOpenAdvancedFilters?: () => void;
 }
 
 /**
@@ -51,10 +52,12 @@ export default function PipelineFilterBar({
   tags,
   stages,
   showStagesFilter,
+  onOpenAdvancedFilters,
 }: PipelineFilterBarProps) {
   const [expanded, setExpanded] = React.useState(false);
   const active = isFilterActive(filters) || searchTerm !== '';
   const count = activeFilterCount(filters);
+  const hasAdvancedRules = Boolean(filters.filterTree && filters.filterTree.groups && filters.filterTree.groups.length > 0);
 
   const toggleInArray = (key: 'tagIds' | 'stageIds', id: string) => {
     const arr = filters[key];
@@ -127,6 +130,27 @@ export default function PipelineFilterBar({
             </label>
           ))}
         </MultiSelectPopover>
+
+        {/* Advanced Filters Builder Trigger (Phase 6) */}
+        {onOpenAdvancedFilters && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onOpenAdvancedFilters}
+            className={cn(
+              "h-10 sm:h-9 rounded-xl font-bold text-[11px] sm:text-[10px] gap-1.5 px-3 border border-border bg-background shadow-sm hover:bg-muted/10 transition-all",
+              hasAdvancedRules ? "bg-indigo-50 text-indigo-700 border-indigo-300 dark:bg-indigo-950/40 dark:text-indigo-300 dark:border-indigo-800" : "text-muted-foreground hover:text-indigo-600"
+            )}
+          >
+            <SlidersHorizontal className="h-3.5 w-3.5 text-indigo-500" />
+            <span>Rules</span>
+            {hasAdvancedRules && (
+              <span className="h-4 w-4 rounded-full bg-indigo-600 text-white text-[9px] font-bold flex items-center justify-center">
+                {filters.filterTree?.groups?.reduce((acc, g) => acc + (g.rules?.length || 0), 0) || 0}
+              </span>
+            )}
+          </Button>
+        )}
 
         {/* More */}
         <Button

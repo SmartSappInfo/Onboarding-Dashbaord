@@ -1477,6 +1477,17 @@ export type {
   DealDomainEvent
 } from './deals/deal-event-bus';
 
+export type {
+  DealFilterField,
+  DealFilterOperator,
+  DealFilterRule,
+  DealFilterGroup,
+  DealFilterTree,
+  DealColumnKey,
+  TableDensity,
+  DealSavedView
+} from './deals/deal-saved-views';
+
 /**
  * Unified contact object returned by the adapter layer (Requirement 18)
  * 

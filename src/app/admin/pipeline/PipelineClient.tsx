@@ -51,6 +51,17 @@ import { useToast } from '@/hooks/use-toast';
 import { savePipelineAction, clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import SavedViewsBar from './components/SavedViewsBar';
+import AdvancedFilterBuilderModal from './components/AdvancedFilterBuilderModal';
+import { listDealSavedViewsAction } from '@/app/actions/deal-saved-view-actions';
+import {
+  type DealSavedView,
+  type DealColumnKey,
+  type TableDensity,
+  DEFAULT_DEAL_COLUMNS,
+  SYSTEM_SAVED_VIEW_PRESETS,
+} from '@/lib/deals/deal-saved-views';
+import type { DealFilterTree } from '@/lib/deals/deal-saved-views';
 
 export default function PipelineClient() {
   const firestore = useFirestore();
@@ -94,6 +105,21 @@ export default function PipelineClient() {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [filters, setFilters] = React.useState<KanbanFilters>(DEFAULT_FILTERS);
   const [columnWidth, setColumnWidth] = React.useState(320);
+
+  // Phase 6: Saved Views & Columns Customization State
+  const [savedViews, setSavedViews] = React.useState<DealSavedView[]>(() => {
+    return SYSTEM_SAVED_VIEW_PRESETS.map(preset => ({
+      ...preset,
+      workspaceId: activeWorkspaceId || 'default',
+      userId: 'system',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    }));
+  });
+  const [activeViewId, setActiveViewId] = React.useState<string>('preset_all_deals');
+  const [visibleColumns, setVisibleColumns] = React.useState<DealColumnKey[]>(DEFAULT_DEAL_COLUMNS);
+  const [density, setDensity] = React.useState<TableDensity>('standard');
+  const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = React.useState(false);
 
   // Pipeline Switcher & Clone state
   const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
@@ -282,7 +308,56 @@ export default function PipelineClient() {
   const clearAllFilters = React.useCallback(() => {
     setFilters(DEFAULT_FILTERS);
     setSearchTerm('');
+    setActiveViewId('preset_all_deals');
   }, []);
+
+  // Phase 6: Load Saved Views
+  const loadSavedViews = React.useCallback(async () => {
+    if (!activeWorkspaceId || !user?.uid) return;
+    try {
+      const res = await listDealSavedViewsAction(activeWorkspaceId, user.uid);
+      if (res.success && res.views) {
+        setSavedViews(res.views);
+      }
+    } catch {
+      // Non-blocking fallback to local presets
+    }
+  }, [activeWorkspaceId, user?.uid]);
+
+  React.useEffect(() => {
+    loadSavedViews();
+  }, [loadSavedViews]);
+
+  const handleSelectSavedView = React.useCallback((view: DealSavedView) => {
+    setActiveViewId(view.id);
+
+    // Apply view filters
+    const newFilters: KanbanFilters = {
+      searchTerm: view.filters.searchTerm || '',
+      status: view.filters.status || 'all',
+      healthStatus: (view.filters.healthStatus as KanbanFilters['healthStatus']) || 'all',
+      archiveStatus: view.filters.isArchived ? 'archived' : 'active',
+      assignedToId: view.filters.ownerId === 'current_user' ? (user?.uid || 'all') : (view.filters.ownerId || 'all'),
+      valueMin: view.filters.valueMin ?? null,
+      valueMax: view.filters.valueMax ?? null,
+      closeDateFrom: null,
+      closeDateTo: null,
+      stageIds: view.filters.stageIds || [],
+      tagIds: view.filters.tagIds || [],
+      filterTree: view.filters.filterTree || null,
+    };
+    setFilters(newFilters);
+
+    if (view.columns && view.columns.length > 0) {
+      setVisibleColumns(view.columns);
+    }
+    if (view.density) {
+      setDensity(view.density);
+    }
+    if (view.viewMode && ['overview', 'board', 'list', 'forecast'].includes(view.viewMode)) {
+      setActiveView(view.viewMode as 'overview' | 'board' | 'list' | 'forecast');
+    }
+  }, [user?.uid]);
 
   React.useEffect(() => {
     if (!activeWorkspaceId) return;

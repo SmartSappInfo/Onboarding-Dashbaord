@@ -15,6 +15,7 @@ export type DiscoverySourceType =
   | 'crm_internal';
 
 export interface WebsiteScanResults {
+  url?: string;
   scannedAt: string;
   technologies: string[];
   sslValid: boolean;
@@ -26,6 +27,7 @@ export interface WebsiteScanResults {
   hasInstagram: boolean;
   hasLinkedIn: boolean;
   hasTwitter: boolean;
+  hasWhatsApp?: boolean;
   brokenLinks?: string[];
 }
 
@@ -93,6 +95,7 @@ export interface Prospect {
   contacts: ProspectContact[];
   scoring: ProspectScoring;
   aiInsights?: ProspectAIInsights;
+  researchDossier?: AIResearchDossier;
   provenance?: ProvenanceRecord[];
   source?: DiscoverySourceType;
   listIds?: string[];
@@ -428,4 +431,57 @@ export interface EmailDeliverabilityResult {
   stages: VerificationStageResult[];
   verifiedAt: string;
   recommendation: string;
+}
+
+// =============================================================================
+// PHASE 6: AI RESEARCH DOSSIER, DEEP BRIEFS & EVIDENCE LAYER (Strict Typing)
+// =============================================================================
+
+export interface CommercialPackaging {
+  recommendedTier: string;
+  estimatedAnnualValue: number; // in USD
+  urgency: 'critical' | 'high' | 'medium' | 'low';
+  targetProductModules: string[];
+  pricingRationale: string;
+}
+
+export interface PainPointAnalysisItem {
+  problem: string;
+  businessImpact: string;
+  smartSappSolution: string;
+  evidenceCitation: string;
+}
+
+export interface OutreachPlaybookItem {
+  channel: 'email' | 'whatsapp' | 'phone_script';
+  headline: string;
+  scriptOrMessage: string;
+  targetContactName?: string;
+  keyTalkingPoints: string[];
+}
+
+export interface EvidenceGroundingItem {
+  claim: string;
+  observedSource: string;
+  observedAt: string;
+  confidencePercent: number; // 0 - 100
+  sourceUrl?: string;
+  sourceType: 'website_scan' | 'subdomain_probe' | 'builtwith' | 'email_verifier' | 'places_api';
+}
+
+export interface AIResearchDossier {
+  prospectId: string;
+  prospectName: string;
+  domain: string;
+  executiveSummary: string;
+  icpFitScore: number; // 0 - 100 (UI Spec Section 26)
+  intentScore: number; // 0 - 100
+  priorityScore: number; // 0 - 100
+  digitalMaturityScore: number; // 0 - 100
+  commercialPackaging: CommercialPackaging;
+  painPoints: PainPointAnalysisItem[];
+  outreachPlaybook: OutreachPlaybookItem[];
+  evidenceGrounding: EvidenceGroundingItem[];
+  researchedAt: string;
+  modelEngine: string;
 }

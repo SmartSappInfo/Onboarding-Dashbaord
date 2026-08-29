@@ -48,12 +48,14 @@ import { TechnographicStackMatrix } from './TechnographicStackMatrix';
 import { ProspectProvenanceDrawer } from './ProspectProvenanceDrawer';
 import { EmailDeliverabilityBadge } from './EmailDeliverabilityBadge';
 import { VerificationDiagnosticModal } from './VerificationDiagnosticModal';
+import { ResearchDossierModal } from './ResearchDossierModal';
 import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
 import { 
   verifyProspectEmailAction, 
-  bulkVerifyProspectEmailsAction 
+  bulkVerifyProspectEmailsAction,
+  generateAIResearchDossierAction 
 } from '@/app/actions/lead-intelligence-actions';
-import type { EmailDeliverabilityResult } from '@/lib/lead-intelligence/types';
+import type { EmailDeliverabilityResult, AIResearchDossier } from '@/lib/lead-intelligence/types';
 
 interface ProspectSlideOverSheetProps {
   prospect: Prospect | null;
@@ -85,7 +87,43 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
   const [isBulkVerifying, setIsBulkVerifying] = useState(false);
   const [verifyingEmail, setVerifyingEmail] = useState<string | null>(null);
 
+  // AI Research Dossier state (Phase 6)
+  const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
+  const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
+  const [localDossier, setLocalDossier] = useState<AIResearchDossier | null>(null);
+
   if (!prospect) return null;
+
+  const currentDossier = localDossier || prospect.researchDossier || null;
+
+  const handleOpenDossier = async () => {
+    if (currentDossier) {
+      setIsDossierModalOpen(true);
+      return;
+    }
+    setIsGeneratingDossier(true);
+    try {
+      const res = await generateAIResearchDossierAction(prospect.id, prospect.workspaceId);
+      if (res.success && res.dossier) {
+        setLocalDossier(res.dossier);
+        setIsDossierModalOpen(true);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Dossier Generation Failed',
+          description: res.error || 'Failed to synthesize AI research dossier.'
+        });
+      }
+    } catch {
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to generate AI research dossier.'
+      });
+    } finally {
+      setIsGeneratingDossier(false);
+    }
+  };
 
   const score = prospect.scoring?.overallScore ?? 50;
   const isHighOpportunity = score >= 75;
@@ -519,8 +557,39 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
               )}
             </TabsContent>
 
-            {/* TAB 4: AI SALES STRATEGY & PITCH */}
+            {/* TAB 4: AI SALES STRATEGY & PITCH (UI Spec Section 26) */}
             <TabsContent value="ai" className="space-y-4 mt-0">
+              {/* Deep Research Dossier Header Card */}
+              <div className="flex items-center justify-between gap-2 p-3 rounded-xl border border-primary/20 bg-primary/5">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <div>
+                    <h5 className="text-xs font-bold text-foreground">Deep AI Research Dossier</h5>
+                    <p className="text-[10px] text-muted-foreground">
+                      {currentDossier ? 'Multi-channel outreach playbooks & evidence citations ready' : 'Synthesize executive intelligence brief & cold outreach scripts'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleOpenDossier}
+                  disabled={isGeneratingDossier}
+                  className="h-8 px-3 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground flex items-center gap-1.5 active:scale-[0.97]"
+                >
+                  {isGeneratingDossier ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <span>Synthesizing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>{currentDossier ? 'View Dossier' : 'Generate Dossier'}</span>
+                    </>
+                  )}
+                </Button>
+              </div>
+
               {prospect.aiInsights ? (
                 <>
                   {/* Revenue Opportunity Estimate */}
@@ -653,6 +722,16 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
         onVerificationUpdated={(updated) => {
           setSelectedDeliverability(updated);
         }}
+      />
+
+      {/* Deep AI Research Dossier Modal (UI Spec Section 26 & 27) */}
+      <ResearchDossierModal
+        prospect={prospect}
+        dossier={currentDossier}
+        isOpen={isDossierModalOpen}
+        onClose={() => setIsDossierModalOpen(false)}
+        onSyncToCRM={onSyncToCRM}
+        onDossierUpdated={(updated) => setLocalDossier(updated)}
       />
     </Sheet>
   );

@@ -6,6 +6,8 @@
  * a new filter dimension is added).
  */
 
+import type { DealFilterTree } from '@/lib/deals/deal-saved-views';
+
 export type DealStatusFilter = 'open' | 'won' | 'lost' | 'all';
 export type DealHealthFilter = 'healthy' | 'at_risk' | 'stalled' | 'all';
 export type DealArchiveFilter = 'active' | 'archived' | 'all';
@@ -40,6 +42,8 @@ export interface KanbanFilters {
    * these tag IDs (deals have no native tags). Empty array = all tags.
    */
   tagIds: string[];
+  /** Dynamic advanced multi-condition filter rule tree (Phase 6). */
+  filterTree?: DealFilterTree | null;
 }
 
 export const DEFAULT_FILTERS: KanbanFilters = {
@@ -54,6 +58,7 @@ export const DEFAULT_FILTERS: KanbanFilters = {
   closeDateTo: null,
   stageIds: [],
   tagIds: [],
+  filterTree: null,
 };
 
 /** True when any filter dimension is active (search excluded — it has its own UI). */
@@ -68,7 +73,8 @@ export function isFilterActive(f: KanbanFilters): boolean {
     f.closeDateFrom !== null ||
     f.closeDateTo !== null ||
     f.stageIds.length > 0 ||
-    f.tagIds.length > 0
+    f.tagIds.length > 0 ||
+    Boolean(f.filterTree && f.filterTree.groups && f.filterTree.groups.length > 0)
   );
 }
 
@@ -83,6 +89,9 @@ export function activeFilterCount(f: KanbanFilters): number {
   if (f.closeDateFrom !== null || f.closeDateTo !== null) count++;
   if (f.stageIds.length > 0) count++;
   if (f.tagIds.length > 0) count++;
+  if (f.filterTree && f.filterTree.groups && f.filterTree.groups.length > 0) {
+    count += f.filterTree.groups.reduce((acc, g) => acc + (g.rules?.length || 0), 0);
+  }
   return count;
 }
 

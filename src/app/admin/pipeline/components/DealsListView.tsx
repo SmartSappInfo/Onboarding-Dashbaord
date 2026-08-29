@@ -75,10 +75,27 @@ import {
 import QuickEditDealModal from './QuickEditDealModal';
 import DuplicateDealModal from './DuplicateDealModal';
 import MergeDealsModal from './MergeDealsModal';
+import ColumnCustomizer from './ColumnCustomizer';
+import {
+  InlineValueCell,
+  InlineProbabilityCell,
+  InlineStageCell,
+  InlineOwnerCell,
+} from './InlineDealCell';
+import {
+  type DealColumnKey,
+  type TableDensity,
+  DEFAULT_DEAL_COLUMNS,
+} from '@/lib/deals/deal-saved-views';
+import { calculateDaysInStage } from '@/lib/deals/deal-health-engine';
 
 interface DealsListViewProps {
   pipelineId: string;
   filters: KanbanFilters;
+  visibleColumns?: DealColumnKey[];
+  onChangeColumns?: (cols: DealColumnKey[]) => void;
+  density?: TableDensity;
+  onChangeDensity?: (density: TableDensity) => void;
 }
 
 type SortKey = 'name' | 'entity' | 'value' | 'forecast' | 'stage' | 'assignee' | 'status';
@@ -90,7 +107,14 @@ const STATUS_COLOR: Record<Deal['status'], string> = {
   lost: '#ef4444',
 };
 
-export default function DealsListView({ pipelineId, filters }: DealsListViewProps) {
+export default function DealsListView({
+  pipelineId,
+  filters,
+  visibleColumns = DEFAULT_DEAL_COLUMNS,
+  onChangeColumns,
+  density = 'standard',
+  onChangeDensity,
+}: DealsListViewProps) {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -437,8 +461,66 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
     );
   }
 
+  const cellPaddingClass = density === 'compact' ? 'py-1.5' : density === 'comfortable' ? 'py-4' : 'py-2.5';
+  const activeCols = visibleColumns && visibleColumns.length > 0 ? visibleColumns : DEFAULT_DEAL_COLUMNS;
+
   return (
-    <div className="h-full overflow-auto px-6 pb-24 relative">
+    <div className="h-full overflow-auto px-6 pb-24 relative space-y-3">
+      {/* Table Options Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-xs font-semibold text-muted-foreground">
+          Showing <span className="text-foreground font-bold">{sortedDeals.length}</span> {sortedDeals.length === 1 ? 'opportunity' : 'opportunities'}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Density Controls */}
+          {onChangeDensity && (
+            <div className="inline-flex rounded-xl bg-muted/60 p-0.5 text-xs border border-border/50">
+              <button
+                type="button"
+                onClick={() => onChangeDensity('compact')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all',
+                  density === 'compact' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                )}
+                title="Compact Density"
+              >
+                Compact
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeDensity('standard')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all',
+                  density === 'standard' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                )}
+                title="Standard Density"
+              >
+                Standard
+              </button>
+              <button
+                type="button"
+                onClick={() => onChangeDensity('comfortable')}
+                className={cn(
+                  'px-2.5 py-1 rounded-lg font-bold text-[10px] transition-all',
+                  density === 'comfortable' ? 'bg-background text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                )}
+                title="Comfortable Density"
+              >
+                Comfortable
+              </button>
+            </div>
+          )}
+
+          {/* Column Customizer */}
+          {onChangeColumns && (
+            <ColumnCustomizer
+              visibleColumns={activeCols}
+              onChangeColumns={onChangeColumns}
+            />
+          )}
+        </div>
+      </div>
+
       <table className="w-full border-separate border-spacing-y-1.5 text-left">
         <thead className="sticky top-0 z-10 bg-background">
           <tr>
@@ -449,21 +531,27 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
                 aria-label="Select all deals"
               />
             </th>
-            <SortHeader label="Deal" sortKey="name" sort={sort} onSort={toggleSort} />
-            <SortHeader label={singular} sortKey="entity" sort={sort} onSort={toggleSort} />
-            <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Focal Contacts</th>
-            <SortHeader label="Value" sortKey="value" sort={sort} onSort={toggleSort} align="right" />
-            <SortHeader label="Forecast" sortKey="forecast" sort={sort} onSort={toggleSort} />
-            <SortHeader label="Stage" sortKey="stage" sort={sort} onSort={toggleSort} />
-            <SortHeader label="Assigned" sortKey="assignee" sort={sort} onSort={toggleSort} />
-            <SortHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} />
+            {activeCols.includes('name') && <SortHeader label="Deal" sortKey="name" sort={sort} onSort={toggleSort} />}
+            {activeCols.includes('entity') && <SortHeader label={singular} sortKey="entity" sort={sort} onSort={toggleSort} />}
+            {activeCols.includes('value') && <SortHeader label="Value" sortKey="value" sort={sort} onSort={toggleSort} align="right" />}
+            {activeCols.includes('mrr') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">MRR</th>}
+            {activeCols.includes('arr') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">ARR</th>}
+            {activeCols.includes('contractTerm') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Term</th>}
+            {activeCols.includes('probability') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Probability</th>}
+            {activeCols.includes('forecastCategory') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Category</th>}
+            {activeCols.includes('stage') && <SortHeader label="Stage" sortKey="stage" sort={sort} onSort={toggleSort} />}
+            {activeCols.includes('daysInStage') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Days in Stage</th>}
+            {activeCols.includes('dealAge') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Age</th>}
+            {activeCols.includes('expectedClose') && <SortHeader label="Forecast" sortKey="forecast" sort={sort} onSort={toggleSort} />}
+            {activeCols.includes('assignee') && <SortHeader label="Assigned" sortKey="assignee" sort={sort} onSort={toggleSort} />}
+            {activeCols.includes('status') && <SortHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} />}
+            {activeCols.includes('source') && <th className="px-3 py-2 text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Source</th>}
             <th className="px-3 py-2 text-right text-[9px] font-bold uppercase tracking-wider text-muted-foreground w-16">Actions</th>
           </tr>
         </thead>
         <tbody>
           {sortedDeals.map((deal) => {
             const urgency = getForecastUrgency(deal.expectedCloseDate);
-            const focal = deal.focalContacts ?? [];
             const statusColor = STATUS_COLOR[deal.status];
             const isSelected = selectedDealIds.includes(deal.id);
 
@@ -478,7 +566,7 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
                 )}
               >
                 <td
-                  className="px-3 py-2.5 rounded-l-xl border-y border-l border-border w-10"
+                  className={cn("px-3 rounded-l-xl border-y border-l border-border w-10", cellPaddingClass)}
                   onClick={(e) => handleToggleSelectDeal(deal.id, e)}
                 >
                   <Checkbox
@@ -487,65 +575,110 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
                     aria-label={`Select ${deal.name}`}
                   />
                 </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors block truncate max-w-[200px]">
-                    {toTitleCase(deal.name || 'Unnamed Deal')}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  <span className="text-[11px] font-semibold text-muted-foreground truncate block max-w-[160px]">
-                    {entityName(deal.entityId)}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  {focal.length > 0 ? (
-                    <div className="flex flex-wrap items-center gap-1">
-                      {focal.slice(0, 2).map((fc) => (
-                        <span
-                          key={fc.id}
-                          className="inline-flex items-center gap-1 bg-muted/60 rounded-full px-1.5 py-0.5 max-w-[110px]"
-                          title={fc.role ? `${fc.name} · ${fc.role}` : fc.name}
-                        >
-                          <UserCircle2 className="h-2.5 w-2.5 shrink-0 text-primary/40" />
-                          <span className="truncate text-[9px] font-semibold text-foreground/70">{fc.name}</span>
-                        </span>
-                      ))}
-                      {focal.length > 2 && (
-                        <span className="text-[9px] font-semibold text-muted-foreground">+{focal.length - 2}</span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-[10px] text-muted-foreground/50">—</span>
-                  )}
-                </td>
-                <td className="px-3 py-2.5 border-y border-border text-right">
-                  <span className="text-xs font-bold tabular-nums">
-                    {formatCurrency(deal.value)}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  <span className={cn("text-[11px] font-bold", urgency.colorClass)}>{urgency.label}</span>
-                </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide truncate">
-                    {deal.stageName || '—'}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  <span className="text-[11px] font-semibold text-muted-foreground truncate block max-w-[120px]">
-                    {toTitleCase(deal.assignedTo?.name || 'Unassigned')}
-                  </span>
-                </td>
-                <td className="px-3 py-2.5 border-y border-border">
-                  <Badge
-                    variant="outline"
-                    className="h-5 text-[8px] font-bold border-none px-2 rounded-md uppercase tracking-wider"
-                    style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
-                  >
-                    {deal.status}
-                  </Badge>
-                </td>
-                <td className="px-3 py-2.5 rounded-r-xl border-y border-r border-border text-right w-16">
+
+                {activeCols.includes('name') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)}>
+                    <span className="text-xs font-bold text-foreground group-hover:text-primary transition-colors block truncate max-w-[200px]">
+                      {toTitleCase(deal.name || 'Unnamed Deal')}
+                    </span>
+                  </td>
+                )}
+
+                {activeCols.includes('entity') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)}>
+                    <span className="text-[11px] font-semibold text-muted-foreground truncate block max-w-[160px]">
+                      {entityName(deal.entityId)}
+                    </span>
+                  </td>
+                )}
+
+                {activeCols.includes('value') && (
+                  <td className={cn("px-3 border-y border-border text-right", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
+                    <InlineValueCell deal={deal} userId={user?.uid || ''} field="value" />
+                  </td>
+                )}
+
+                {activeCols.includes('mrr') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
+                    <InlineValueCell deal={deal} userId={user?.uid || ''} field="mrr" />
+                  </td>
+                )}
+
+                {activeCols.includes('arr') && (
+                  <td className={cn("px-3 border-y border-border text-xs font-semibold tabular-nums text-muted-foreground", cellPaddingClass)}>
+                    {formatCurrency(deal.arr ?? ((deal.mrr ?? 0) * 12), deal.currency || 'USD')}
+                  </td>
+                )}
+
+                {activeCols.includes('contractTerm') && (
+                  <td className={cn("px-3 border-y border-border text-xs font-medium text-muted-foreground", cellPaddingClass)}>
+                    {deal.contractTermMonths ?? 12} mos
+                  </td>
+                )}
+
+                {activeCols.includes('probability') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
+                    <InlineProbabilityCell deal={deal} userId={user?.uid || ''} />
+                  </td>
+                )}
+
+                {activeCols.includes('forecastCategory') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)}>
+                    <Badge variant="outline" className="text-[9px] uppercase font-bold px-1.5 py-0.5 border-border/80">
+                      {deal.forecastCategory || 'pipeline'}
+                    </Badge>
+                  </td>
+                )}
+
+                {activeCols.includes('stage') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
+                    <InlineStageCell deal={deal} stages={stages || []} userId={user?.uid || ''} />
+                  </td>
+                )}
+
+                {activeCols.includes('daysInStage') && (
+                  <td className={cn("px-3 border-y border-border text-xs font-bold tabular-nums text-muted-foreground", cellPaddingClass)}>
+                    {calculateDaysInStage(deal.stageEnteredAt || deal.createdAt)}d
+                  </td>
+                )}
+
+                {activeCols.includes('dealAge') && (
+                  <td className={cn("px-3 border-y border-border text-xs font-bold tabular-nums text-muted-foreground", cellPaddingClass)}>
+                    {Math.max(0, Math.floor((Date.now() - new Date(deal.createdAt).getTime()) / (1000 * 60 * 60 * 24)))}d
+                  </td>
+                )}
+
+                {activeCols.includes('expectedClose') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)}>
+                    <span className={cn("text-[11px] font-bold", urgency.colorClass)}>{urgency.label}</span>
+                  </td>
+                )}
+
+                {activeCols.includes('assignee') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)} onClick={(e) => e.stopPropagation()}>
+                    <InlineOwnerCell deal={deal} users={workspaceUsers || []} userId={user?.uid || ''} />
+                  </td>
+                )}
+
+                {activeCols.includes('status') && (
+                  <td className={cn("px-3 border-y border-border", cellPaddingClass)}>
+                    <Badge
+                      variant="outline"
+                      className="h-5 text-[8px] font-bold border-none px-2 rounded-md uppercase tracking-wider"
+                      style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
+                    >
+                      {deal.status}
+                    </Badge>
+                  </td>
+                )}
+
+                {activeCols.includes('source') && (
+                  <td className={cn("px-3 border-y border-border text-xs font-medium text-muted-foreground truncate max-w-[120px]", cellPaddingClass)}>
+                    {deal.source || '—'}
+                  </td>
+                )}
+
+                <td className={cn("px-3 rounded-r-xl border-y border-r border-border text-right w-16", cellPaddingClass)}>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                       <Button

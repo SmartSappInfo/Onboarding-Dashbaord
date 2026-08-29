@@ -1257,5 +1257,91 @@ export async function bulkVerifyProspectEmailsAction(
   }
 }
 
+// =============================================================================
+// PHASE 6: AI RESEARCH DOSSIER & EVIDENCE LAYER SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Generates and persists an AI Research Dossier for a given prospect.
+ */
+export async function generateAIResearchDossierAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  dossier?: import('@/lib/lead-intelligence/types').AIResearchDossier;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  const { DeepResearchDossierEngine } = await import('@/lib/lead-intelligence/research/DeepResearchDossierEngine');
+
+  try {
+    const prospectRef = adminDb.collection('prospects').doc(prospectId);
+    const snap = await prospectRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Prospect not found' };
+    }
+
+    const prospect = snap.data() as Prospect;
+    const dossier = await DeepResearchDossierEngine.generateDossier(prospect);
+
+    const now = new Date().toISOString();
+    await prospectRef.update({
+      researchDossier: dossier,
+      updatedAt: now
+    });
+
+    return {
+      success: true,
+      dossier
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to generate AI research dossier:', err);
+    return { 
+      success: false, 
+      error: err instanceof Error ? err.message : 'AI research dossier generation failed' 
+    };
+  }
+}
+
+/**
+ * Retrieves the stored AI Research Dossier for a prospect.
+ */
+export async function getAIResearchDossierAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  dossier?: import('@/lib/lead-intelligence/types').AIResearchDossier;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const snap = await adminDb.collection('prospects').doc(prospectId).get();
+    if (!snap.exists) {
+      return { success: false, error: 'Prospect not found' };
+    }
+
+    const prospect = snap.data() as Prospect;
+    return {
+      success: true,
+      dossier: prospect.researchDossier
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch AI research dossier:', err);
+    return { 
+      success: false, 
+      error: err instanceof Error ? err.message : 'Failed to retrieve AI research dossier' 
+    };
+  }
+}
+
+
 
 
