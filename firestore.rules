@@ -372,6 +372,23 @@ service cloud.firestore {
       );
     }
 
+    // --- Phase 6 Saved Views & Intelligent Filters ---
+    match /deal_saved_views/{viewId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        (hasWorkspaceAccess(resource.data.workspaceId) && 
+         (resource.data.userId == request.auth.uid || resource.data.isShared == true))
+      );
+    }
+
     match /automation_idempotency_keys/{keyId} {
       allow read, write: if isAuthorized();
     }

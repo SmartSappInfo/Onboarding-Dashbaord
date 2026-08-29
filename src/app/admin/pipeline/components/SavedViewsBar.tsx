@@ -169,7 +169,7 @@ export default function SavedViewsBar({
             searchTerm: currentFilters.searchTerm,
             status: currentFilters.status,
             healthStatus: currentFilters.healthStatus,
-            archiveStatus: currentFilters.archiveStatus,
+            isArchived: currentFilters.archiveStatus === 'archived',
             ownerId: currentFilters.assignedToId || undefined,
             valueMin: currentFilters.valueMin,
             valueMax: currentFilters.valueMax,
@@ -217,9 +217,9 @@ export default function SavedViewsBar({
   const handleDeleteView = async (view: DealSavedView) => {
     const isConfirmed = await confirm({
       title: 'Delete Saved View',
-      message: `Are you sure you want to permanently delete the "${view.name}" saved view?`,
+      description: `Are you sure you want to permanently delete the "${view.name}" saved view?`,
       confirmText: 'Delete View',
-      variant: 'danger',
+      variant: 'destructive',
     });
 
     if (!isConfirmed) return;

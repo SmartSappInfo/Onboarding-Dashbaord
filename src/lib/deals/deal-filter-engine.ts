@@ -20,12 +20,14 @@ import type {
   DealFilterGroup,
   DealFilterRule,
 } from './deal-saved-views';
+export type { DealFilterTree, DealFilterGroup, DealFilterRule };
 import { calculateDaysInStage, calculateDealHealth } from './deal-health-engine';
 
 export interface FilterEvaluationContext {
   currentUserId?: string;
   now?: Date;
   stagesMap?: Map<string, OnboardingStage>;
+  stages?: OnboardingStage[];
 }
 
 /**

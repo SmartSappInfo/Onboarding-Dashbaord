@@ -44,6 +44,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import StageColumn from './StageColumn';
 import DealCard from './DealCard';
 import StageValidationModal from './StageValidationModal';
+import MobileStageSwitcher from './MobileStageSwitcher';
 import { validateStageTransition, resolveStageTerminalStatus } from '@/lib/deals/deal-stage-validation';
 import type { StageRequiredField } from '@/lib/types';
 import type { KanbanFilters } from '../pipeline-types';
@@ -452,33 +453,55 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     );
   }
 
+  const [activeMobileStageId, setActiveMobileStageId] = React.useState<string | null>(() => stages[0]?.id || null);
+
+  const handleSelectMobileStage = (stageId: string) => {
+    setActiveMobileStageId(stageId);
+    if (typeof document !== 'undefined') {
+      const el = document.getElementById(`stage-column-${stageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  };
+
   return (
-    <DndContext
-      sensors={sensors}
-      onDragStart={handleDragStart}
-      onDragOver={handleDragOver}
-      onDragEnd={handleDragEnd}
-      onDragCancel={() => { setActiveElement(null); setDealsByStage(initialDealsByStage.current); }}
-      collisionDetection={closestCorners}
-    >
-      <ScrollArea className="h-full whitespace-nowrap">
-        <div className="flex items-start gap-8 p-10">
-          {stages.map((stage) => (
-            <StageColumn
-              key={stage.id}
-              stage={stage}
-              pipelineId={pipelineId}
-              pipelineName={pipelineName}
-              customWidth={customWidth}
-              deals={dealsByStage[stage.id] || []}
-              tasksByDealId={tasksByDealId}
-              automations={automations}
-              isDraggingDeal={!!activeElement && !('order' in activeElement)}
-            />
-          ))}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* Mobile Stage Switcher */}
+      <MobileStageSwitcher
+        stages={stages}
+        deals={filteredDeals}
+        activeStageId={activeMobileStageId}
+        onSelectStage={handleSelectMobileStage}
+      />
+
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => { setActiveElement(null); setDealsByStage(initialDealsByStage.current); }}
+        collisionDetection={closestCorners}
+      >
+        <ScrollArea className="flex-1 whitespace-nowrap">
+          <div className="flex items-start gap-8 p-6 md:p-10">
+            {stages.map((stage) => (
+              <div key={stage.id} id={`stage-column-${stage.id}`}>
+                <StageColumn
+                  stage={stage}
+                  pipelineId={pipelineId}
+                  pipelineName={pipelineName}
+                  customWidth={customWidth}
+                  deals={dealsByStage[stage.id] || []}
+                  tasksByDealId={tasksByDealId}
+                  automations={automations}
+                  isDraggingDeal={!!activeElement && !('order' in activeElement)}
+                />
+              </div>
+            ))}
+          </div>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
       <DragOverlay dropAnimation={null}>
         {activeElement ? (
           'order' in activeElement ? (
@@ -589,5 +612,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         }}
       />
     </DndContext>
+    </div>
   );
 }

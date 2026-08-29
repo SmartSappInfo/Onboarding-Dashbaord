@@ -674,6 +674,24 @@ export default function PipelineClient() {
             </div>
         </header>
 
+        {/* Phase 6: Saved Views & Presets Bar */}
+        {activeView !== 'config' && activeView !== 'actions' && (
+            <SavedViewsBar
+                workspaceId={activeWorkspaceId || ''}
+                userId={user?.uid || ''}
+                userName={user?.displayName || user?.email || undefined}
+                savedViews={savedViews}
+                activeViewId={activeViewId}
+                onSelectView={handleSelectSavedView}
+                currentFilters={filters}
+                currentColumns={visibleColumns}
+                currentDensity={density}
+                deals={pipelineDeals || []}
+                stages={filterStages || []}
+                onRefreshViews={loadSavedViews}
+            />
+        )}
+
         {/* Inline workspace-scoped filter card */}
         {activeView !== 'config' && activeView !== 'actions' && activeView !== 'overview' && activeView !== 'forecast' && (
             <PipelineFilterBar
@@ -686,6 +704,7 @@ export default function PipelineClient() {
                 tags={tags}
                 stages={filterStages}
                 showStagesFilter={activeView === 'list'}
+                onOpenAdvancedFilters={() => setIsAdvancedFilterOpen(true)}
             />
         )}
 
@@ -733,7 +752,18 @@ export default function PipelineClient() {
                     </motion.div>
                 ) : activeView === 'list' ? (
                     <motion.div key={`list-${currentPipelineId}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
-                        {currentPipelineId ? <DealsListView pipelineId={currentPipelineId} filters={mergedFilters} /> : <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>}
+                        {currentPipelineId ? (
+                            <DealsListView
+                                pipelineId={currentPipelineId}
+                                filters={mergedFilters}
+                                visibleColumns={visibleColumns}
+                                onChangeColumns={setVisibleColumns}
+                                density={density}
+                                onChangeDensity={setDensity}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>
+                        )}
                     </motion.div>
                 ) : activeView === 'actions' ? (
                     <motion.div key={`actions-${currentPipelineId}`} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="h-full w-full overflow-hidden">
@@ -830,6 +860,22 @@ export default function PipelineClient() {
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Phase 6: Advanced Multi-Condition Filter Builder Modal */}
+        <AdvancedFilterBuilderModal
+            isOpen={isAdvancedFilterOpen}
+            onClose={() => setIsAdvancedFilterOpen(false)}
+            filterTree={filters.filterTree}
+            onApply={(tree) => setFilters(prev => ({ ...prev, filterTree: tree }))}
+            onSaveAsView={(tree) => {
+                setFilters(prev => ({ ...prev, filterTree: tree }));
+                loadSavedViews();
+            }}
+            deals={pipelineDeals || []}
+            stages={filterStages || []}
+            users={users || []}
+            currentUserId={user?.uid}
+        />
     </div>
     </PageContainerFluid>
   );

@@ -35,7 +35,7 @@ import {
   updateDealProbabilityAction,
   updateDealStageAction,
   updateDealOwnerAction,
-  updateDealDetailsAction,
+  updateDealAction,
 } from '@/app/actions/deal-actions';
 
 interface InlineValueCellProps {
@@ -81,9 +81,9 @@ export function InlineValueCell({ deal, userId, field, onUpdated }: InlineValueC
     try {
       let res;
       if (field === 'value') {
-        res = await updateDealValueAction(deal.id, num, userId);
+        res = await updateDealValueAction(deal.id, num);
       } else {
-        res = await updateDealDetailsAction(deal.id, { mrr: num }, userId);
+        res = await updateDealAction(deal.id, { mrr: num }, userId);
       }
 
       if (res.success) {

@@ -524,6 +524,48 @@ export async function updateDealValueAction(dealId: string, value: number): Prom
     }
 }
 
+/**
+ * Updates a deal's win probability percentage (0-100)
+ */
+export async function updateDealProbabilityAction(
+    dealId: string,
+    probability: number,
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        const dealRef = adminDb.collection('deals').doc(dealId);
+        const dealSnap = await dealRef.get();
+        if (!dealSnap.exists) throw new Error('Deal not found');
+        const deal = dealSnap.data() as Deal;
+
+        const clampedProbability = Math.max(0, Math.min(100, Math.round(probability)));
+        const oldProbability = deal.probability ?? 0;
+        if (oldProbability === clampedProbability) return { success: true };
+
+        const timestamp = new Date().toISOString();
+        await dealRef.update({
+            probability: clampedProbability,
+            updatedAt: timestamp
+        });
+
+        await logActivity({
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            userId: userId || null,
+            workspaceId: deal.workspaceId,
+            type: 'deal_updated',
+            source: 'user',
+            description: `updated deal "${deal.name}" probability from ${oldProbability}% to ${clampedProbability}%`,
+            metadata: { dealId, fromProbability: oldProbability, toProbability: clampedProbability }
+        });
+
+        return { success: true };
+    } catch (e: unknown) {
+        console.error('Failed to update deal probability:', e);
+        return { success: false, error: e instanceof Error ? e.message : String(e) };
+    }
+}
+
 export async function updateDealStatusAction(
     dealId: string, 
     status: 'open' | 'won' | 'lost',

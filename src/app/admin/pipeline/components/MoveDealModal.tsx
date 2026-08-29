@@ -39,7 +39,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import type { Deal, OnboardingStage } from '@/lib/types';
-import { validateStageGateEntry } from '@/lib/deals/deal-stage-validation';
+import { validateStageTransition } from '@/lib/deals/deal-stage-validation';
 import { updateDealStageAction } from '@/app/actions/deal-actions';
 
 interface MoveDealModalProps {
@@ -78,8 +78,8 @@ export default function MoveDealModal({
 
   // Validate entry gate requirements
   const validationResult = targetStage
-    ? validateStageGateEntry(deal, targetStage)
-    : { allowed: true, errors: [], warnings: [] };
+    ? validateStageTransition(deal, targetStage)
+    : { valid: true, missingFields: [], missingFieldLabels: [] };
 
   const isTerminalLost = targetStage?.terminalType === 'lost';
   const isTerminalWon = targetStage?.terminalType === 'won';
@@ -87,10 +87,10 @@ export default function MoveDealModal({
   const handleConfirmMove = async () => {
     if (!targetStage) return;
 
-    if (!validationResult.allowed) {
+    if (!validationResult.valid) {
       toast({
         title: 'Stage Entry Gate Blocked',
-        description: validationResult.errors[0] || 'Requirements not satisfied.',
+        description: validationResult.missingFieldLabels[0] || 'Requirements not satisfied.',
         variant: 'destructive',
       });
       return;
@@ -110,8 +110,10 @@ export default function MoveDealModal({
       const res = await updateDealStageAction(
         deal.id,
         targetStage.id,
-        userId,
-        isTerminalLost ? lossReason.trim() : undefined
+        {
+          userId,
+          lostReason: isTerminalLost ? lossReason.trim() : undefined,
+        }
       );
 
       if (res.success) {
@@ -202,10 +204,10 @@ export default function MoveDealModal({
                 variant="outline"
                 className={cn(
                   'text-[10px] font-bold px-2 py-0.5 border-none',
-                  validationResult.allowed ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
+                  validationResult.valid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'
                 )}
               >
-                {validationResult.allowed ? 'Requirements Met' : 'Action Required'}
+                {validationResult.valid ? 'Requirements Met' : 'Action Required'}
               </Badge>
             </div>
 
@@ -245,12 +247,12 @@ export default function MoveDealModal({
             </div>
 
             {/* Validation Errors */}
-            {!validationResult.allowed && validationResult.errors.length > 0 && (
+            {!validationResult.valid && validationResult.missingFieldLabels.length > 0 && (
               <div className="p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-600 text-xs font-semibold space-y-1">
-                {validationResult.errors.map((err, i) => (
+                {validationResult.missingFieldLabels.map((label: string, i: number) => (
                   <div key={i} className="flex items-start gap-1.5">
                     <XCircle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
-                    <span>{err}</span>
+                    <span>Missing {label}</span>
                   </div>
                 ))}
               </div>
@@ -298,7 +300,7 @@ export default function MoveDealModal({
             type="button"
             size="sm"
             onClick={handleConfirmMove}
-            disabled={isSubmitting || selectedStageId === deal.stageId || !validationResult.allowed}
+            disabled={isSubmitting || selectedStageId === deal.stageId || !validationResult.valid}
             className="h-9 px-4 rounded-xl text-xs font-bold bg-primary text-primary-foreground shadow-xs active:scale-[0.97]"
           >
             {isSubmitting ? (

@@ -111,6 +111,8 @@ export interface DealSavedView {
     tagIds?: string[];
     valueMin?: number | null;
     valueMax?: number | null;
+    closeDateFrom?: string | null;
+    closeDateTo?: string | null;
     healthStatus?: string | 'all';
     isArchived?: boolean;
     filterTree?: DealFilterTree;
