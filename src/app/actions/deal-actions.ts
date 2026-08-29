@@ -18,6 +18,7 @@ import { canUser } from '@/lib/workspace-permissions';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
 import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
+import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import { 
     validateStageTransition, 
     resolveStageTerminalStatus, 
@@ -278,19 +279,20 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
 
         const docRef = await adminDb.collection('deals').add(newDeal);
 
-        // Broadcast signal via Event Bus (respecting suppressAutomations)
-        await logActivity({
-            organizationId,
-            entityId: cleanEntityId,
-            userId: null,
-            workspaceId,
-            type: suppressAutomations ? 'deal_created_suppressed' : 'deal_created',
-            source: 'system',
-            description: suppressAutomations 
-                ? `initialized a new deal: "${cleanDealName}" (automations suppressed)`
-                : `initialized a new deal: "${cleanDealName}"`,
-            metadata: { dealId: docRef.id, value: value || 0, pipelineId, stageId }
-        });
+        if (!suppressAutomations) {
+            emitDealDomainEvent('deal.created', {
+                dealId: docRef.id,
+                dealName: cleanDealName,
+                workspaceId,
+                organizationId,
+                entityId: cleanEntityId,
+                pipelineId,
+                stageId: stageId || 'default_stage',
+                status: data.status || 'open',
+                value: value || 0,
+                assignedTo: newDeal.assignedTo,
+            });
+        }
 
         return { id: docRef.id };
     } catch (e: unknown) {
@@ -422,26 +424,49 @@ export async function updateDealStageAction(
             }
         });
 
-        // Trigger attached automations for the receiving stage
-        try {
-            await triggerAutomationProtocols('DEAL_STAGE_CHANGED', {
+        // Emit Domain Events via Event Bus
+        emitDealDomainEvent('deal.stage.changed', {
+            dealId,
+            dealName: deal.name,
+            workspaceId: deal.workspaceId,
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            pipelineId: deal.pipelineId,
+            stageId,
+            previousStageId: oldStageId,
+            status: (opts.status === 'won' || opts.status === 'lost' ? opts.status : (deal.status || 'open')),
+            value: deal.value || 0,
+            assignedTo: deal.assignedTo,
+            lostReason: opts.lostReason || null,
+        });
+
+        if (opts.status === 'won') {
+            emitDealDomainEvent('deal.won', {
                 dealId,
-                entityId: deal.entityId,
-                entityType: 'deal',
-                pipelineId: deal.pipelineId,
-                stageId,
-                stageName,
-                oldStageId,
-                oldStageName,
                 dealName: deal.name,
-                dealValue: deal.value || 0,
                 workspaceId: deal.workspaceId,
                 organizationId: deal.organizationId,
-                focalContacts: deal.focalContacts || [],
-                customFields: deal.customFields || {},
+                entityId: deal.entityId,
+                pipelineId: deal.pipelineId,
+                stageId,
+                status: 'won',
+                value: deal.value || 0,
+                assignedTo: deal.assignedTo,
             });
-        } catch (autoErr) {
-            console.error('[AutomationTriggerError] Failed to dispatch stage change automations:', autoErr);
+        } else if (opts.status === 'lost') {
+            emitDealDomainEvent('deal.lost', {
+                dealId,
+                dealName: deal.name,
+                workspaceId: deal.workspaceId,
+                organizationId: deal.organizationId,
+                entityId: deal.entityId,
+                pipelineId: deal.pipelineId,
+                stageId,
+                status: 'lost',
+                value: deal.value || 0,
+                assignedTo: deal.assignedTo,
+                lostReason: opts.lostReason || null,
+            });
         }
 
         return { success: true };
@@ -476,6 +501,20 @@ export async function updateDealValueAction(dealId: string, value: number): Prom
             source: 'system',
             description: `updated deal "${deal.name}" value from $${oldVal} to $${value}`,
             metadata: { dealId, fromValue: oldVal, toValue: value }
+        });
+
+        emitDealDomainEvent('deal.value.changed', {
+            dealId,
+            dealName: deal.name,
+            workspaceId: deal.workspaceId,
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            pipelineId: deal.pipelineId,
+            stageId: deal.stageId,
+            value,
+            previousValue: oldVal,
+            status: deal.status,
+            assignedTo: deal.assignedTo,
         });
 
         return { success: true };
@@ -529,6 +568,50 @@ export async function updateDealStatusAction(
             }
         });
 
+        emitDealDomainEvent('deal.status.changed', {
+            dealId,
+            dealName: deal.name,
+            workspaceId: deal.workspaceId,
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            pipelineId: deal.pipelineId,
+            stageId: deal.stageId,
+            status,
+            previousStatus: oldStatus,
+            value: deal.value || 0,
+            assignedTo: deal.assignedTo,
+            lostReason: finalLostReason,
+        });
+
+        if (status === 'won') {
+            emitDealDomainEvent('deal.won', {
+                dealId,
+                dealName: deal.name,
+                workspaceId: deal.workspaceId,
+                organizationId: deal.organizationId,
+                entityId: deal.entityId,
+                pipelineId: deal.pipelineId,
+                stageId: deal.stageId,
+                status: 'won',
+                value: deal.value || 0,
+                assignedTo: deal.assignedTo,
+            });
+        } else if (status === 'lost') {
+            emitDealDomainEvent('deal.lost', {
+                dealId,
+                dealName: deal.name,
+                workspaceId: deal.workspaceId,
+                organizationId: deal.organizationId,
+                entityId: deal.entityId,
+                pipelineId: deal.pipelineId,
+                stageId: deal.stageId,
+                status: 'lost',
+                value: deal.value || 0,
+                assignedTo: deal.assignedTo,
+                lostReason: finalLostReason,
+            });
+        }
+
         return { success: true };
     } catch (e: unknown) {
         console.error('Failed to update deal status:', e);
@@ -554,6 +637,19 @@ export async function updateDealOwnerAction(
         await dealRef.update({
             assignedTo,
             updatedAt: timestamp
+        });
+
+        emitDealDomainEvent('deal.owner.changed', {
+            dealId,
+            dealName: deal.name,
+            workspaceId: deal.workspaceId,
+            organizationId: deal.organizationId,
+            entityId: deal.entityId,
+            pipelineId: deal.pipelineId,
+            stageId: deal.stageId,
+            status: deal.status,
+            value: deal.value || 0,
+            assignedTo,
         });
 
         await logActivity({
@@ -2147,6 +2243,26 @@ export async function logDealInteractionAction(
         // 6. Touch Deal Timestamp
         await adminDb.collection('deals').doc(dealId).update({
             updatedAt: now,
+        });
+
+        // 7. Emit Domain Event
+        emitDealDomainEvent('deal.activity.created', {
+            dealId: deal.id,
+            dealName: deal.name,
+            workspaceId: deal.workspaceId || workspaceId,
+            organizationId,
+            entityId: deal.entityId,
+            pipelineId: deal.pipelineId,
+            stageId: deal.stageId,
+            status: deal.status,
+            value: deal.value || 0,
+            activityType: interactionData.type,
+            metadata: {
+                subject,
+                interactionType: interactionData.type,
+                outcome: interactionData.outcome || null,
+                durationMinutes: interactionData.durationMinutes || null,
+            },
         });
 
         revalidatePath(`/admin/deals/${dealId}`);

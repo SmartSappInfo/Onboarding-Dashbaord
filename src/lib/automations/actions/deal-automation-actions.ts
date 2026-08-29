@@ -210,3 +210,132 @@ export async function handleUpdateDealStatus(config: DealAutomationActionConfig,
     if (!result.success) throw new Error(result.error);
 }
 
+/**
+ * Automation Handler: ASSIGN_DEAL_OWNER
+ */
+export async function handleAssignDealOwner(config: DealAutomationActionConfig & { userId?: string; userName?: string; userEmail?: string }, context: ExecutionContext) {
+    const dealId = await resolveTargetDealId(config, context);
+    if (!dealId) {
+        console.warn(">>> [DEAL:AUTO] No target deal resolved for owner assignment.");
+        return;
+    }
+
+    const { updateDealOwnerAction } = await import('../../../app/actions/deal-actions');
+    
+    let targetUserId = config.userId || null;
+    let targetUserName = config.userName || null;
+    let targetUserEmail = config.userEmail || null;
+
+    // Handle round-robin if specified
+    if (config.assignmentStrategy === 'round-robin' && Array.isArray(config.eligibleUserIds) && config.eligibleUserIds.length > 0) {
+        const randomIndex = Math.floor(Math.random() * config.eligibleUserIds.length);
+        targetUserId = config.eligibleUserIds[randomIndex];
+    }
+
+    const result = await updateDealOwnerAction(dealId, targetUserId, targetUserName, targetUserEmail);
+    if (!result.success) throw new Error(result.error);
+}
+
+/**
+ * Automation Handler: UPDATE_DEAL_PROBABILITY
+ */
+export async function handleUpdateDealProbability(config: DealAutomationActionConfig & { probability?: number }, context: ExecutionContext) {
+    if (config.probability === undefined || config.probability === null) {
+        throw new Error("Probability is required for update deal probability action");
+    }
+
+    const dealId = await resolveTargetDealId(config, context);
+    if (!dealId) {
+        console.warn(">>> [DEAL:AUTO] No target deal resolved for probability update.");
+        return;
+    }
+
+    const probability = Math.max(0, Math.min(100, Number(config.probability)));
+    const dealRef = adminDb.collection('deals').doc(dealId);
+    
+    await dealRef.update({
+        probability,
+        isProbabilityManual: true,
+        updatedAt: new Date().toISOString(),
+    });
+}
+
+/**
+ * Automation Handler: CREATE_DEAL_TASK
+ */
+export async function handleCreateDealTask(config: { title?: string; description?: string; dueDate?: string; priority?: string; assigneeId?: string; workspaceId?: string }, context: ExecutionContext) {
+    if (!config.title) throw new Error("Task title is required");
+
+    const dealId = await resolveTargetDealId(config as DealAutomationActionConfig, context);
+    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+    const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
+
+    let taskTitle = config.title;
+    if (taskTitle.includes('{{')) {
+        taskTitle = await FieldsVariablesService.resolveTemplateVariables(taskTitle, {
+            workspaceId: targetWorkspaceId,
+            entityId: context.entityId,
+            extraVars: context.payload as Record<string, string | number | boolean | undefined | null>,
+        });
+    }
+
+    const taskRef = adminDb.collection('tasks').doc();
+    await taskRef.set({
+        id: taskRef.id,
+        workspaceId: targetWorkspaceId,
+        organizationId: context.organizationId || 'default',
+        entityId: context.entityId || null,
+        dealId: dealId || null,
+        title: taskTitle,
+        description: config.description || '',
+        status: 'pending',
+        priority: config.priority || 'medium',
+        dueDate: config.dueDate || null,
+        assignedToId: config.assigneeId || null,
+        createdBy: 'automation',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    });
+}
+
+/**
+ * Automation Handler: ADD_DEAL_NOTE
+ */
+export async function handleAddDealNote(config: { content?: string; workspaceId?: string }, context: ExecutionContext) {
+    if (!config.content) throw new Error("Note content is required");
+
+    const dealId = await resolveTargetDealId(config as DealAutomationActionConfig, context);
+    if (!dealId) {
+        console.warn(">>> [DEAL:AUTO] No target deal resolved for adding deal note.");
+        return;
+    }
+
+    const { resolveWorkspaceGuid } = await import('../workspace-resolver');
+    const { workspaceId: targetWorkspaceId } = await resolveWorkspaceGuid(config.workspaceId || context.workspaceId);
+
+    let content = config.content;
+    if (content.includes('{{')) {
+        content = await FieldsVariablesService.resolveTemplateVariables(content, {
+            workspaceId: targetWorkspaceId,
+            entityId: context.entityId,
+            extraVars: context.payload as Record<string, string | number | boolean | undefined | null>,
+        });
+    }
+
+    const noteRef = adminDb.collection('deal_notes').doc();
+    await noteRef.set({
+        id: noteRef.id,
+        dealId,
+        workspaceId: targetWorkspaceId,
+        organizationId: context.organizationId || 'default',
+        entityId: context.entityId || null,
+        content,
+        authorName: 'Automation Engine',
+        authorEmail: 'automation@smartsapp.com',
+        authorId: 'system-automation',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    });
+}
+
+

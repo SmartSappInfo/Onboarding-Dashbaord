@@ -210,7 +210,16 @@ export type AutomationTrigger =
   | 'DEAL_CREATED'
   | 'DEAL_STAGE_CHANGED'
   | 'DEAL_STATUS_CHANGED'
+  | 'DEAL_WON'
+  | 'DEAL_LOST'
   | 'DEAL_VALUE_CHANGED'
+  | 'DEAL_OWNER_CHANGED'
+  | 'DEAL_SLA_BREACHED'
+  | 'DEAL_STALLED'
+  | 'DEAL_QUOTE_ACCEPTED'
+  | 'DEAL_CONTRACT_SIGNED'
+  | 'DEAL_ACTIVITY_LOGGED'
+  | 'DEAL_HEALTH_CHANGED'
   | 'CAMPAIGN_DELIVERED'
   | 'CAMPAIGN_FAILED'
   | 'CAMPAIGN_OPENED'
@@ -223,7 +232,6 @@ export type AutomationTrigger =
   | 'EVENT_RECORDED'
   | 'EMAIL_BOUNCED'
   | 'SCORE_CHANGED'
-  | 'DEAL_OWNER_CHANGED'
   | 'ENTITY_INACTIVE'
   | 'AUTOMATION_ENTERED'
   | 'AUTOMATION_COMPLETED'
@@ -1385,8 +1393,63 @@ export interface Deal {
   archivedBy?: string | null;
   mergedIntoDealId?: string | null;
 
+  // Automation & SLA Flags (Phase 5 Expansion)
+  lastSlaAlertAt?: string | null;
+  slaBreachedAt?: string | null;
+  isSlaBreached?: boolean;
+  metadata?: Record<string, unknown>;
+
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Dead-Letter Queue record for failed automation executions (Phase 5)
+ */
+export interface AutomationDeadLetter {
+  id: string;
+  workspaceId: string;
+  organizationId?: string;
+  automationId: string;
+  automationName?: string;
+  runId: string;
+  nodeId?: string;
+  nodeLabel?: string;
+  actionType?: string;
+  trigger?: AutomationTrigger;
+  entityId?: string;
+  dealId?: string;
+  error: string;
+  errorStack?: string;
+  payload: Record<string, unknown>;
+  attempts: number;
+  maxAttempts: number;
+  status: 'pending' | 'retrying' | 'resolved' | 'dismissed';
+  createdAt: string;
+  lastAttemptAt?: string;
+  resolvedAt?: string | null;
+  resolvedBy?: string | null;
+}
+
+/**
+ * Background Bulk Job Execution Record (Phase 5)
+ */
+export interface DealBulkJob {
+  id: string;
+  workspaceId: string;
+  organizationId?: string;
+  userId: string;
+  userName?: string;
+  jobType: 'bulk_stage_update' | 'bulk_assign' | 'bulk_archive' | 'bulk_delete';
+  totalRecords: number;
+  processedRecords: number;
+  failedRecords: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  errors?: Array<{ dealId: string; error: string }>;
+  payload?: Record<string, unknown>;
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string | null;
 }
 
 export type {
@@ -1407,6 +1470,12 @@ export type {
   DealMergeOptions,
   DealMergeResult
 } from './deals/deal-types';
+
+export type {
+  DealEventType,
+  DealDomainEventPayload,
+  DealDomainEvent
+} from './deals/deal-event-bus';
 
 /**
  * Unified contact object returned by the adapter layer (Requirement 18)

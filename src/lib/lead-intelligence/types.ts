@@ -29,13 +29,18 @@ export interface WebsiteScanResults {
   brokenLinks?: string[];
 }
 
+export type EmailVerificationStatus = 'verified' | 'risky' | 'invalid' | 'unverified' | 'unknown';
+
 export interface ProspectContact {
   name: string;
   email: string;
   phone?: string;
   role?: string;
   confidence: number; // 0 - 100
-  verificationStatus: 'verified' | 'unverified' | 'unknown';
+  verificationStatus: EmailVerificationStatus;
+  deliverabilityScore?: number; // 0 - 100
+  mxProvider?: string;
+  lastVerifiedAt?: string;
 }
 
 export interface ProspectScoring {
@@ -388,4 +393,39 @@ export interface EnrichmentDimensionScore {
   contactsScore: number; // 0 - 100
   verificationScore: number; // 0 - 100
   overallEnrichmentPercent: number; // 0 - 100
+}
+
+// =============================================================================
+// PHASE 5: REAL-TIME EMAIL & DELIVERABILITY VERIFICATION (Strict Typing)
+// =============================================================================
+
+export type MXProviderType = 
+  | 'google_workspace' 
+  | 'microsoft_365' 
+  | 'zoho' 
+  | 'protonmail' 
+  | 'cpanel_custom' 
+  | 'unknown';
+
+export interface VerificationStageResult {
+  stage: 'syntax' | 'disposable' | 'dns_mx' | 'smtp_handshake' | 'catch_all';
+  passed: boolean;
+  details: string;
+  latencyMs?: number;
+}
+
+export interface EmailDeliverabilityResult {
+  email: string;
+  status: EmailVerificationStatus;
+  deliverabilityScore: number; // 0 - 100
+  isRoleBased: boolean;
+  isDisposable: boolean;
+  hasMxRecord: boolean;
+  primaryMxHost?: string;
+  mxProvider: MXProviderType;
+  smtpHandshakeCode?: number;
+  isCatchAll: boolean;
+  stages: VerificationStageResult[];
+  verifiedAt: string;
+  recommendation: string;
 }

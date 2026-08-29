@@ -77,6 +77,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { StepTimeline } from './components/StepTimeline';
+import { AutomationDeadLettersModal } from './components/AutomationDeadLettersModal';
 import {
     Table,
     TableBody,
@@ -528,6 +529,7 @@ export default function AutomationsClient() {
     const { data: pipelines } = useCollection<Pipeline>(pipelinesQuery);
     const { data: webhooks } = useCollection<{ id: string; name: string }>(webhooksQuery);
     const { data: stages } = useCollection<{ id: string; name: string }>(stagesQuery);
+    const [isDlqModalOpen, setIsDlqModalOpen] = React.useState(false);
 
     // Filter runs by workspace based on trigger data if available
     const filteredRuns = React.useMemo(() => {
@@ -737,9 +739,17 @@ export default function AutomationsClient() {
                     <div className="flex items-center gap-3">
                         <Button 
                             variant="outline" 
+                            onClick={() => setIsDlqModalOpen(true)}
+                            className="rounded-xl font-bold h-11 px-5 border-destructive/30 text-destructive bg-destructive/5 hover:bg-destructive/10 shadow-sm ring-1 ring-destructive/20 transition-all active:scale-95 min-h-[44px]"
+                        >
+                            <ShieldAlert className="h-4 w-4 mr-2 text-destructive" />
+                            Dead-Letter Queue
+                        </Button>
+                        <Button 
+                            variant="outline" 
                             onClick={handlePulseEngine} 
                             disabled={isPulsing}
-                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95"
+                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95 min-h-[44px]"
                         >
                             {isPulsing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                             Pulse Engine
@@ -752,11 +762,11 @@ export default function AutomationsClient() {
                                 setImportStep(1);
                                 setShowImportDialog(true);
                             }}
-                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95"
+                            className="rounded-xl font-bold h-11 px-6 border-border text-foreground bg-transparent shadow-sm ring-1 ring-border transition-all active:scale-95 min-h-[44px]"
                         >
                             <Upload className="mr-2 h-4 w-4" /> Import Workflow
                         </Button>
-                        <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl animate-pulse active:scale-97">
+                        <Button asChild className="rounded-xl font-semibold h-11 px-6 shadow-xl animate-pulse active:scale-97 min-h-[44px]">
                             <Link href="/admin/automations/new">
                                 <Plus className="mr-2 h-4 w-4" /> New Workflow
                             </Link>
@@ -1983,6 +1993,14 @@ export default function AutomationsClient() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {/* Phase 5 Dead-Letter Queue Inspection & Replay Console */}
+            <AutomationDeadLettersModal
+                isOpen={isDlqModalOpen}
+                onClose={() => setIsDlqModalOpen(false)}
+                workspaceId={activeWorkspaceId}
+                userId={user?.uid || 'admin'}
+            />
             </div>
         </div>
         </PageContainerFluid>

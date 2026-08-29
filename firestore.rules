@@ -357,6 +357,25 @@ service cloud.firestore {
       allow read, write: if isAuthorized();
     }
 
+    // --- Phase 5 Automation Engine & Dead-Letter Queue ---
+    match /automation_dead_letters/{dlqId} {
+      allow read, write: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /deal_bulk_jobs/{jobId} {
+      allow read, write: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /automation_idempotency_keys/{keyId} {
+      allow read, write: if isAuthorized();
+    }
+
     match /meetings/{meetingId} {
       allow read: if true; 
       allow create: if isAuthorized();

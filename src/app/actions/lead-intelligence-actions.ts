@@ -1105,4 +1105,157 @@ export async function getEnrichmentDimensionsAction(
   }
 }
 
+// =============================================================================
+// PHASE 5: REAL-TIME EMAIL & DELIVERABILITY VERIFICATION SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Verifies a single email address for a prospect and updates its deliverability status.
+ */
+export async function verifyProspectEmailAction(
+  prospectId: string,
+  email: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  deliverability?: import('@/lib/lead-intelligence/types').EmailDeliverabilityResult;
+  dimensions?: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore;
+  error?: string;
+}> {
+  if (!prospectId || !email || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  const { DeliverabilityScoreEngine } = await import('@/lib/lead-intelligence/verification/DeliverabilityScoreEngine');
+  const { TechnographicsCategorizer } = await import('@/lib/lead-intelligence/scraper/TechnographicsCategorizer');
+
+  try {
+    const prospectRef = adminDb.collection('prospects').doc(prospectId);
+    const snap = await prospectRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Prospect not found' };
+    }
+
+    const prospect = snap.data() as Prospect;
+    const deliverability = await DeliverabilityScoreEngine.verifyEmail(email);
+
+    // Update the contact in prospect.contacts
+    const updatedContacts = (prospect.contacts || []).map(c => {
+      if (c.email.toLowerCase().trim() === email.toLowerCase().trim()) {
+        return {
+          ...c,
+          verificationStatus: deliverability.status,
+          deliverabilityScore: deliverability.deliverabilityScore,
+          mxProvider: deliverability.mxProvider,
+          lastVerifiedAt: deliverability.verifiedAt
+        };
+      }
+      return c;
+    });
+
+    const now = new Date().toISOString();
+    const updatedProspect: Prospect = {
+      ...prospect,
+      contacts: updatedContacts,
+      updatedAt: now
+    };
+
+    const dimensions = TechnographicsCategorizer.calculateEnrichmentDimensions(updatedProspect);
+
+    await prospectRef.update({
+      contacts: updatedContacts,
+      updatedAt: now
+    });
+
+    return {
+      success: true,
+      deliverability,
+      dimensions
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to verify email:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Email verification failed' };
+  }
+}
+
+/**
+ * Bulk verifies all contacts for a given prospect.
+ */
+export async function bulkVerifyProspectEmailsAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  verifiedCount: number;
+  results: import('@/lib/lead-intelligence/types').EmailDeliverabilityResult[];
+  dimensions?: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, verifiedCount: 0, results: [], error: 'Invalid parameters' };
+  }
+
+  const { DeliverabilityScoreEngine } = await import('@/lib/lead-intelligence/verification/DeliverabilityScoreEngine');
+  const { TechnographicsCategorizer } = await import('@/lib/lead-intelligence/scraper/TechnographicsCategorizer');
+
+  try {
+    const prospectRef = adminDb.collection('prospects').doc(prospectId);
+    const snap = await prospectRef.get();
+    if (!snap.exists) {
+      return { success: false, verifiedCount: 0, results: [], error: 'Prospect not found' };
+    }
+
+    const prospect = snap.data() as Prospect;
+    const contacts = prospect.contacts || [];
+    if (contacts.length === 0) {
+      return { success: true, verifiedCount: 0, results: [] };
+    }
+
+    const verificationPromises = contacts.map(c => DeliverabilityScoreEngine.verifyEmail(c.email));
+    const settledResults = await Promise.allSettled(verificationPromises);
+
+    const deliverabilityResults: import('@/lib/lead-intelligence/types').EmailDeliverabilityResult[] = [];
+    const updatedContacts = contacts.map((c, idx) => {
+      const settled = settledResults[idx];
+      if (settled && settled.status === 'fulfilled') {
+        const res = settled.value;
+        deliverabilityResults.push(res);
+        return {
+          ...c,
+          verificationStatus: res.status,
+          deliverabilityScore: res.deliverabilityScore,
+          mxProvider: res.mxProvider,
+          lastVerifiedAt: res.verifiedAt
+        };
+      }
+      return c;
+    });
+
+    const now = new Date().toISOString();
+    const updatedProspect: Prospect = {
+      ...prospect,
+      contacts: updatedContacts,
+      updatedAt: now
+    };
+
+    const dimensions = TechnographicsCategorizer.calculateEnrichmentDimensions(updatedProspect);
+
+    await prospectRef.update({
+      contacts: updatedContacts,
+      updatedAt: now
+    });
+
+    return {
+      success: true,
+      verifiedCount: deliverabilityResults.length,
+      results: deliverabilityResults,
+      dimensions
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to bulk verify emails:', err);
+    return { success: false, verifiedCount: 0, results: [], error: err instanceof Error ? err.message : 'Bulk verification failed' };
+  }
+}
+
+
 

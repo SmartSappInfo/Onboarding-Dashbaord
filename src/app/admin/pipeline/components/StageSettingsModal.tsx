@@ -52,7 +52,8 @@ import {
   Users,
   UserCheck,
   ArrowRight,
-  Shield
+  Shield,
+  Zap
 } from 'lucide-react';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
@@ -389,6 +390,38 @@ export default function StageSettingsModal({ stage, isOpen, onClose }: StageSett
                   );
                 })}
               </div>
+            </div>
+
+            {/* Stage Automations Linkage (Phase 5) */}
+            <div className="p-4 rounded-2xl bg-muted/20 border border-border/50 space-y-2.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                  <span>Stage Automations &amp; Event Protocols</span>
+                </Label>
+                {stage?.pipelineId && stage?.id && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    asChild
+                    className="h-8 min-h-[44px] sm:min-h-[32px] px-3 rounded-lg text-xs font-semibold text-primary border-primary/20 bg-primary/5 hover:bg-primary/10 active:scale-[0.97]"
+                  >
+                    <a
+                      href={`/admin/automations/new?trigger=DEAL_STAGE_CHANGED&pipelineId=${stage.pipelineId}&stageId=${stage.id}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center gap-1"
+                    >
+                      <Zap className="h-3 w-3" />
+                      Add Automation
+                    </a>
+                  </Button>
+                )}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Trigger email alerts, task creation, webhook dispatches, and SLA escalation rules whenever deals enter this stage.
+              </p>
             </div>
           </div>
 

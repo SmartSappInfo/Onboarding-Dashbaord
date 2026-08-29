@@ -3,6 +3,10 @@ import {
   handleUpdateDealStage,
   handleUpdateDealValue,
   handleUpdateDealStatus,
+  handleAssignDealOwner,
+  handleUpdateDealProbability,
+  handleCreateDealTask,
+  handleAddDealNote,
 } from './deal-automation-actions';
 import { resolveConfigVariables } from '../variables';
 import type { ExecutionContext } from '../execution-types';
@@ -99,6 +103,14 @@ export async function processActionNode(
       return await handleUpdateDealValue(resolvedConfig, context);
     case 'UPDATE_DEAL_STATUS':
       return await handleUpdateDealStatus(resolvedConfig, context);
+    case 'ASSIGN_DEAL_OWNER':
+      return await handleAssignDealOwner(resolvedConfig, context);
+    case 'UPDATE_DEAL_PROBABILITY':
+      return await handleUpdateDealProbability(resolvedConfig, context);
+    case 'CREATE_DEAL_TASK':
+      return await handleCreateDealTask(resolvedConfig, context);
+    case 'ADD_DEAL_NOTE':
+      return await handleAddDealNote(resolvedConfig, context);
     case 'CREATE_ENTITY':
       return await handleCreateEntity(resolvedConfig, context);
     case 'ADD_CONTACT_TO_ENTITY':

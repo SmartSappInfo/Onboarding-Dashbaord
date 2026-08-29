@@ -381,7 +381,12 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
         </div>
       ) : null}
 
-      {trigger === 'ENTITY_STAGE_CHANGED' || trigger === 'DEAL_STAGE_CHANGED' ? (
+      {trigger === 'ENTITY_STAGE_CHANGED' || 
+       trigger === 'DEAL_STAGE_CHANGED' || 
+       trigger === 'DEAL_SLA_BREACHED' || 
+       trigger === 'DEAL_STALLED' || 
+       trigger === 'DEAL_WON' || 
+       trigger === 'DEAL_LOST' ? (
         <div className="space-y-6 animate-in slide-in-from-top-2 duration-500 bg-primary/5 p-6 rounded-[2rem] border border-primary/20 shadow-inner">
           <div className="space-y-4">
             <div className="space-y-2">
@@ -429,9 +434,47 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                 </SelectContent>
               </Select>
             </div>
+
+            {trigger === 'DEAL_LOST' && (
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <Label className="text-[10px] font-semibold text-destructive flex items-center gap-2">
+                  Specific Loss Reason Filter
+                </Label>
+                <Input
+                  value={config.lostReasonFilter || ''}
+                  onChange={(e) => updateConfig({ lostReasonFilter: e.target.value || null })}
+                  placeholder="e.g. Price too high, Competitor (leave empty for any)"
+                  className="h-10 rounded-xl bg-background border-none font-semibold text-xs shadow-inner"
+                />
+              </div>
+            )}
           </div>
         </div>
       ) : null}
+
+      {trigger === 'DEAL_ACTIVITY_LOGGED' && (
+        <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">
+          <Label className="text-[10px] font-semibold text-emerald-600 flex items-center gap-2">
+            <Activity className="h-3.5 w-3.5" /> Activity Channel
+          </Label>
+          <Select
+            value={config.activityChannel || 'all'}
+            onValueChange={(v) => updateConfig({ activityChannel: v === 'all' ? null : v })}
+          >
+            <SelectTrigger className="h-10 rounded-xl bg-background border-none font-bold shadow-inner px-4">
+              <SelectValue placeholder="All Channels" />
+            </SelectTrigger>
+            <SelectContent className="rounded-xl border-none shadow-2xl p-2">
+              <SelectItem value="all" className="rounded-lg p-2 font-semibold">All Channels (Calls, Meetings, Messages, Notes)</SelectItem>
+              <SelectItem value="call" className="rounded-lg p-2 font-semibold">Phone Calls Only</SelectItem>
+              <SelectItem value="meeting" className="rounded-lg p-2 font-semibold">Meetings Only</SelectItem>
+              <SelectItem value="email" className="rounded-lg p-2 font-semibold">Emails Only</SelectItem>
+              <SelectItem value="whatsapp" className="rounded-lg p-2 font-semibold">WhatsApp Messages Only</SelectItem>
+              <SelectItem value="note" className="rounded-lg p-2 font-semibold">Deal Notes Only</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       {trigger === 'ENTITY_FIELD_CHANGED' ? (
         <div className="space-y-4 animate-in slide-in-from-top-2 duration-500 bg-emerald-500/5 p-6 rounded-[2rem] border border-emerald-500/20 shadow-inner">

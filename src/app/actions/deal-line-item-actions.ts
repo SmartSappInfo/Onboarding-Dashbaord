@@ -21,6 +21,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canUser } from '@/lib/workspace-permissions';
 import { logActivity } from '@/lib/activity-logger';
 import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
+import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import type { Deal, DealLineItem, DealQuote } from '@/lib/types';
 import { nanoid } from 'nanoid';
 
@@ -240,6 +241,21 @@ export async function createDealQuoteAction(
       },
     });
 
+    emitDealDomainEvent('deal.quote.created', {
+      dealId,
+      dealName: deal.name,
+      workspaceId: deal.workspaceId,
+      organizationId: deal.organizationId,
+      entityId: deal.entityId,
+      pipelineId: deal.pipelineId,
+      stageId: deal.stageId,
+      status: deal.status,
+      value: totals.grandTotal,
+      quoteId,
+      quoteNumber,
+      metadata: { grandTotal: totals.grandTotal },
+    });
+
     return {
       success: true,
       quote,
@@ -434,6 +450,38 @@ export async function acceptPublicQuoteAction(
         signatoryEmail: signatoryEmail?.trim() || null,
       },
     });
+
+    // 8. Emit Domain Events
+    if (quote.dealId) {
+      emitDealDomainEvent('deal.quote.accepted', {
+        dealId: quote.dealId,
+        workspaceId: quote.workspaceId,
+        organizationId: quote.organizationId,
+        entityId: quote.entityId,
+        quoteId: quote.id,
+        quoteNumber: quote.quoteNumber,
+        value: quote.grandTotal,
+        metadata: {
+          signatoryName: signatoryName.trim(),
+          signatoryEmail: signatoryEmail?.trim() || null,
+        },
+      });
+
+      emitDealDomainEvent('deal.contract.signed', {
+        dealId: quote.dealId,
+        workspaceId: quote.workspaceId,
+        organizationId: quote.organizationId,
+        entityId: quote.entityId,
+        quoteId: quote.id,
+        quoteNumber: quote.quoteNumber,
+        value: quote.grandTotal,
+        contractStatus: 'signed',
+        metadata: {
+          signatoryName: signatoryName.trim(),
+          signatoryEmail: signatoryEmail?.trim() || null,
+        },
+      });
+    }
 
     return { success: true };
   } catch (error: unknown) {
