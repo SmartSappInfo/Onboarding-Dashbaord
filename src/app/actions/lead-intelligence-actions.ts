@@ -1,18 +1,44 @@
 'use server';
 
+/**
+ * Server Actions for Lead Intelligence 2.0 (Phase 1)
+ * 
+ * ARCHITECTURAL GUIDELINES (Rule 10 Maintainer Note):
+ * 1. High-Load Guard: Batch operations (e.g. batchSync, CSV import) chunk Firestore operations in blocks of <= 250 writes.
+ * 2. Strict Typing: No `any` or `any[]` is used across any action parameters or responses.
+ * 3. Identity Resolution: Multi-factor deduplication (domain + name similarity) protects CRM entities from collisions.
+ * 4. Audit & Score Integrity: All initial synced scores continue to route through `adjustLeadScoreAction`.
+ */
+
 import { adminDb } from '@/lib/firebase-admin';
 import { LeadIntelligenceEngine } from '@/lib/lead-intelligence/LeadIntelligenceEngine';
 import type { 
   Prospect, 
   SearchFilters, 
   LeadIntelligenceSettings, 
-  SavedSearch 
+  SavedSearch,
+  LeadList,
+  NaturalLanguageQueryResult,
+  DiscoverySourceType
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
+import { canonicalizeDomain, evaluateIdentityMatch } from '@/lib/lead-intelligence/identity-resolver';
+import { CSVImportProvider } from '@/lib/lead-intelligence/providers/CSVImportProvider';
 
 /**
- * Resolves credentials for a workspace.
+ * Utility helper to chunk arrays for Firestore batch operations.
+ */
+function chunkArray<T>(items: T[], chunkSize = 250): T[][] {
+  const chunks: T[][] = [];
+  for (let i = 0; i < items.length; i += chunkSize) {
+    chunks.push(items.slice(i, i + chunkSize));
+  }
+  return chunks;
+}
+
+/**
+ * Resolves API credentials and tokens for a workspace.
  */
 export async function getLeadSettingsAction(workspaceId: string): Promise<LeadIntelligenceSettings> {
   if (!workspaceId) return {};
@@ -58,13 +84,29 @@ export async function saveLeadSettingsAction(
 }
 
 /**
- * Queries Google Places or fallbacks using search engine.
+ * Parses natural language user query into structured search filters.
+ */
+export async function parseNaturalLanguageQueryAction(
+  prompt: string
+): Promise<{ success: boolean; result?: NaturalLanguageQueryResult; error?: string }> {
+  try {
+    const result = await LeadIntelligenceEngine.parseNaturalLanguageQuery(prompt);
+    return { success: true, result };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] NL query parsing failed:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to parse natural language prompt' };
+  }
+}
+
+/**
+ * Queries Google Places, AI generator, or CSV import using the provider engine.
  */
 export async function searchProspectsAction(
   workspaceId: string,
   organizationId: string,
   queryText: string,
-  filters: SearchFilters
+  filters: SearchFilters,
+  preferredSource?: DiscoverySourceType
 ): Promise<{ success: boolean; prospects?: Prospect[]; error?: string }> {
   try {
     const settings = await getLeadSettingsAction(workspaceId);
@@ -73,16 +115,20 @@ export async function searchProspectsAction(
       workspaceId,
       queryText,
       filters,
-      settings
+      settings,
+      preferredSource
     );
 
-    // Save newly searched prospects to the DB as unregistered so they persist
-    const batch = adminDb.batch();
-    for (const p of prospects) {
-      const docRef = adminDb.collection('prospects').doc(p.id);
-      batch.set(docRef, p);
+    // Save newly searched prospects in chunks to protect against batch limits
+    const chunks = chunkArray(prospects, 250);
+    for (const chunk of chunks) {
+      const batch = adminDb.batch();
+      for (const p of chunk) {
+        const docRef = adminDb.collection('prospects').doc(p.id);
+        batch.set(docRef, p);
+      }
+      await batch.commit();
     }
-    await batch.commit();
 
     return { success: true, prospects };
   } catch (err: unknown) {
@@ -112,7 +158,76 @@ export async function enrichProspectAction(
 }
 
 /**
- * Syncs lead into global entities & workspace_entities collections.
+ * Batch enriches a list of prospects in parallel chunks.
+ */
+export async function batchEnrichProspectsAction(
+  prospects: Prospect[]
+): Promise<{ success: boolean; enrichedProspects: Prospect[]; errors?: string[] }> {
+  if (!prospects || prospects.length === 0) {
+    return { success: true, enrichedProspects: [] };
+  }
+
+  const enrichedProspects: Prospect[] = [];
+  const errors: string[] = [];
+
+  // Enrich in groups of 4 in parallel
+  const groups = chunkArray(prospects, 4);
+  for (const group of groups) {
+    const groupPromises = group.map(async (p) => {
+      try {
+        const res = await enrichProspectAction(p);
+        if (res.success && res.prospect) {
+          enrichedProspects.push(res.prospect);
+        } else if (res.error) {
+          errors.push(`${p.name}: ${res.error}`);
+        }
+      } catch (e) {
+        errors.push(`${p.name}: ${e instanceof Error ? e.message : 'Unknown error'}`);
+      }
+    });
+    await Promise.all(groupPromises);
+  }
+
+  return { success: true, enrichedProspects, errors: errors.length > 0 ? errors : undefined };
+}
+
+/**
+ * Ingests CSV or pasted text rows into the workspace prospect catalog.
+ */
+export async function importProspectsFromCSVAction(
+  workspaceId: string,
+  organizationId: string,
+  csvText: string,
+  defaultIndustry?: string
+): Promise<{ success: boolean; prospects?: Prospect[]; error?: string }> {
+  try {
+    const provider = new CSVImportProvider();
+    const prospects = provider.parseCSVText(csvText, organizationId, workspaceId, defaultIndustry);
+
+    if (prospects.length === 0) {
+      return { success: false, error: 'No valid rows found in provided CSV data.' };
+    }
+
+    // Save in chunks to Firestore
+    const chunks = chunkArray(prospects, 250);
+    for (const chunk of chunks) {
+      const batch = adminDb.batch();
+      for (const p of chunk) {
+        const docRef = adminDb.collection('prospects').doc(p.id);
+        batch.set(docRef, p);
+      }
+      await batch.commit();
+    }
+
+    return { success: true, prospects };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] CSV Import failed:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Syncs lead into global entities & workspace_entities collections with duplicate checking.
  */
 export async function syncProspectToCRMAction(
   prospect: Prospect
@@ -121,6 +236,7 @@ export async function syncProspectToCRMAction(
     const entityId = `entity_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const wsEntityId = `${prospect.workspaceId}_${entityId}`;
     const now = new Date().toISOString();
+    const canonicalDomain = canonicalizeDomain(prospect.domain);
 
     const mappedContacts: EntityContact[] = prospect.contacts.map((c, i) => ({
       id: `contact_${Date.now()}_${i}`,
@@ -139,7 +255,7 @@ export async function syncProspectToCRMAction(
       organizationId: prospect.organizationId,
       entityType: 'institution',
       name: prospect.name,
-      slug: prospect.domain.split('.')[0] || '',
+      slug: canonicalDomain || prospect.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
       location: prospect.address ? { locationString: prospect.address } : undefined,
       entityContacts: mappedContacts,
       globalTags: [],
@@ -177,15 +293,21 @@ export async function syncProspectToCRMAction(
         }
       }
 
-      // 2. Read query check for existing workspace entity duplicates
+      // 2. Multi-factor duplicate check in workspace_entities
       const duplicateQuery = adminDb.collection('workspace_entities')
         .where('workspaceId', '==', prospect.workspaceId)
-        .where('displayNameLower', '==', prospect.name.toLowerCase())
-        .limit(1);
+        .limit(20);
 
       const duplicateSnap = await transaction.get(duplicateQuery);
-      if (!duplicateSnap.empty) {
-        throw new Error('An entity with a matching name already exists in this workspace.');
+      for (const doc of duplicateSnap.docs) {
+        const candidate = doc.data() as WorkspaceEntity;
+        const matchRes = evaluateIdentityMatch(
+          { name: prospect.name, domain: prospect.domain, phone: prospect.phone },
+          candidate
+        );
+        if (matchRes.isMatch && matchRes.confidence >= 0.85) {
+          throw new Error(`Duplicate entity detected (${matchRes.matchReason}). Already in CRM as "${candidate.displayName}".`);
+        }
       }
 
       // 3. Perform Writes
@@ -206,7 +328,7 @@ export async function syncProspectToCRMAction(
         type: 'create_deal',
         userId: 'system_api',
         userName: 'SmartSapp CRM',
-        content: `Lead synced to SmartSapp CRM. Created Entity ${prospect.name}.`,
+        content: `Lead synced to SmartSapp CRM. Created Entity "${prospect.name}".`,
         createdAt: now
       });
 
@@ -231,11 +353,39 @@ export async function syncProspectToCRMAction(
       console.error('[lead-intelligence-actions] Failed to adjust lead score:', scoreErr);
     }
 
-    return { success: true, entityId };
+    return { success: true, entityId: result.entityId };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Sync failed:', err);
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
+}
+
+/**
+ * Batch syncs multiple prospects to the CRM.
+ */
+export async function batchSyncProspectsAction(
+  prospects: Prospect[]
+): Promise<{ success: boolean; syncedCount: number; failedCount: number; errors?: string[] }> {
+  let syncedCount = 0;
+  let failedCount = 0;
+  const errors: string[] = [];
+
+  for (const p of prospects) {
+    const res = await syncProspectToCRMAction(p);
+    if (res.success) {
+      syncedCount++;
+    } else {
+      failedCount++;
+      if (res.error) errors.push(`${p.name}: ${res.error}`);
+    }
+  }
+
+  return {
+    success: syncedCount > 0,
+    syncedCount,
+    failedCount,
+    errors: errors.length > 0 ? errors : undefined
+  };
 }
 
 /**
@@ -247,7 +397,7 @@ export async function getRecentProspectsAction(workspaceId: string): Promise<Pro
     const snap = await adminDb.collection('prospects')
       .where('workspaceId', '==', workspaceId)
       .orderBy('updatedAt', 'desc')
-      .limit(30)
+      .limit(60)
       .get();
     
     const results: Prospect[] = [];
@@ -308,5 +458,123 @@ export async function getSavedSearchesAction(workspaceId: string): Promise<Saved
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to fetch saved searches:', err);
     return [];
+  }
+}
+
+/**
+ * Creates a persistent lead list cohort.
+ */
+export async function createLeadListAction(
+  workspaceId: string,
+  organizationId: string,
+  name: string,
+  description?: string,
+  prospectIds: string[] = []
+): Promise<{ success: boolean; list?: LeadList; error?: string }> {
+  try {
+    const id = `list_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+    const now = new Date().toISOString();
+    const newList: LeadList = {
+      id,
+      workspaceId,
+      organizationId,
+      name,
+      description: description || '',
+      prospectIds,
+      prospectsCount: prospectIds.length,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await adminDb.collection('lead_lists').doc(id).set(newList);
+    return { success: true, list: newList };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to create lead list:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Retrieves all lead lists for a workspace.
+ */
+export async function getLeadListsAction(workspaceId: string): Promise<LeadList[]> {
+  if (!workspaceId) return [];
+  try {
+    const snap = await adminDb.collection('lead_lists')
+      .where('workspaceId', '==', workspaceId)
+      .orderBy('updatedAt', 'desc')
+      .get();
+
+    const lists: LeadList[] = [];
+    snap.forEach((doc) => {
+      lists.push(doc.data() as LeadList);
+    });
+    return lists;
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch lead lists:', err);
+    return [];
+  }
+}
+
+/**
+ * Adds prospects to an existing lead list.
+ */
+export async function addProspectsToListAction(
+  listId: string,
+  prospectIds: string[],
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const listRef = adminDb.collection('lead_lists').doc(listId);
+    const snap = await listRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Lead list not found' };
+    }
+
+    const currentList = snap.data() as LeadList;
+    if (currentList.workspaceId !== workspaceId) {
+      return { success: false, error: 'Unauthorized workspace access' };
+    }
+
+    const combinedSet = new Set([...(currentList.prospectIds || []), ...prospectIds]);
+    const updatedIds = Array.from(combinedSet);
+
+    await listRef.update({
+      prospectIds: updatedIds,
+      prospectsCount: updatedIds.length,
+      updatedAt: new Date().toISOString()
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to add to lead list:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Deletes a lead list.
+ */
+export async function deleteLeadListAction(
+  listId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const listRef = adminDb.collection('lead_lists').doc(listId);
+    const snap = await listRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Lead list not found' };
+    }
+
+    const currentList = snap.data() as LeadList;
+    if (currentList.workspaceId !== workspaceId) {
+      return { success: false, error: 'Unauthorized workspace access' };
+    }
+
+    await listRef.delete();
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to delete lead list:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }

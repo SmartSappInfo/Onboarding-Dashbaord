@@ -1,3 +1,19 @@
+/**
+ * Core Data Models & Strictly Typed Interfaces for Lead Intelligence 2.0 (Phase 1)
+ * 
+ * ARCHITECTURAL GUIDELINES (Rule 10 Maintainer Note):
+ * 1. Strict Typing Protocol: No `any` or `any[]` is permitted in this module.
+ * 2. Backward Compatibility: All existing fields on Prospect, WebsiteScanResults, and ProspectScoring are preserved.
+ * 3. Identity & Provenance: New fields enable tracking data origins and multi-factor entity deduplication.
+ */
+
+export type DiscoverySourceType = 
+  | 'google_places' 
+  | 'ai_simulation' 
+  | 'csv_import' 
+  | 'web_crawl' 
+  | 'crm_internal';
+
 export interface WebsiteScanResults {
   scannedAt: string;
   technologies: string[];
@@ -47,6 +63,13 @@ export interface ProspectAIInsights {
   objectionsAnswered: ObjectionAnswer[];
 }
 
+export interface ProvenanceRecord {
+  field: string;
+  source: DiscoverySourceType | string;
+  confidence: number; // 0 - 100
+  observedAt: string;
+}
+
 export interface Prospect {
   id: string;
   organizationId: string;
@@ -64,6 +87,9 @@ export interface Prospect {
   contacts: ProspectContact[];
   scoring: ProspectScoring;
   aiInsights?: ProspectAIInsights;
+  provenance?: ProvenanceRecord[];
+  source?: DiscoverySourceType;
+  listIds?: string[];
   syncStatus: 'unregistered' | 'synced';
   syncedEntityId?: string;
   createdAt: string;
@@ -90,6 +116,17 @@ export interface SearchFilters {
   technologies?: string[];
   claimed?: boolean;
   ratingMin?: number;
+  scoreMin?: number;
+  syncedStatus?: 'all' | 'unregistered' | 'synced';
+}
+
+export interface DiscoveryQuery {
+  organizationId: string;
+  workspaceId: string;
+  queryText: string;
+  filters: SearchFilters;
+  sourceType?: DiscoverySourceType;
+  limit?: number;
 }
 
 export interface SavedSearch {
@@ -100,6 +137,33 @@ export interface SavedSearch {
   filters: SearchFilters;
   prospectsCount: number;
   createdAt: string;
+}
+
+export interface LeadList {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  prospectIds: string[];
+  prospectsCount: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface IdentityMatchResult {
+  isMatch: boolean;
+  confidence: number; // 0.0 to 1.0
+  matchReason: string;
+  matchedEntityId?: string;
+  matchedEntityName?: string;
+}
+
+export interface NaturalLanguageQueryResult {
+  parsedFilters: SearchFilters;
+  extractedKeywords: string;
+  confidence: number;
+  explanation: string;
 }
 
 export interface EnrichmentJob {

@@ -1,14 +1,23 @@
 'use client';
 
-import * as React from 'react';
-import { useState, useEffect, useTransition } from 'react';
+/**
+ * Lead Intelligence Hub Client (Lead Intelligence 2.0)
+ * 
+ * ARCHITECTURAL GUIDELINES (Rule 10 Maintainer Note):
+ * 1. Ergonomics & Motion: Unified tabs, keyboard ⌘K support, Emil Kowalski spring animations.
+ * 2. High-Density Layout: FloatingActionToolbar for multi-select, ProspectSlideOverSheet for deep inspection.
+ * 3. High-Load Guard: Batch sync and enrichment execute via chunked Server Actions with graceful error handling.
+ * 4. Strict Typing: 100% strict TypeScript types without any/any[].
+ */
+
+import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Zap, Loader2 } from 'lucide-react';
+import { Zap, Loader2, Folder, LayoutGrid, Search, Globe, BookmarkCheck, Settings } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { motion, AnimatePresence, Transition } from 'framer-motion';
+import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import { 
   getLeadSettingsAction, 
   saveLeadSettingsAction, 
@@ -17,35 +26,48 @@ import {
   syncProspectToCRMAction, 
   getRecentProspectsAction,
   getSavedSearchesAction,
-  saveSearchAction
+  saveSearchAction,
+  createLeadListAction,
+  getLeadListsAction,
+  addProspectsToListAction,
+  deleteLeadListAction,
+  batchSyncProspectsAction,
+  batchEnrichProspectsAction,
+  importProspectsFromCSVAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
   SearchFilters, 
   LeadIntelligenceSettings, 
-  SavedSearch 
+  SavedSearch,
+  LeadList,
+  DiscoverySourceType 
 } from '@/lib/lead-intelligence/types';
+import { FloatingActionToolbar } from './components/FloatingActionToolbar';
+import { ProspectSlideOverSheet } from './components/ProspectSlideOverSheet';
 
-// Lazy load components to keep bundle size small and responsive
+// Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const ProspectFinderTab = dynamic(() => import('./components/ProspectFinderTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+});
+const LeadListsTab = dynamic(() => import('./components/LeadListsTab').then(m => m.LeadListsTab), {
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const WebsiteScannerTab = dynamic(() => import('./components/WebsiteScannerTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const SavedSearchesTab = dynamic(() => import('./components/SavedSearchesTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const SettingsTab = dynamic(() => import('./components/SettingsTab'), {
-  loading: () => <div className="py-12 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-blue-500" /></div>
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 
-// Kowalski Animation Transition Constants
 const kowalskiTransition: Transition = {
-  duration: 0.25,
+  duration: 0.22,
   ease: [0.23, 1, 0.32, 1]
 };
 
@@ -56,22 +78,31 @@ export default function LeadIntelligenceClient() {
 
   const organizationId = activeWorkspace?.organizationId || 'smartsapp-hq';
 
-  // Active Tab
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
+  // Active Tab View
+  const [activeTab, setActiveTab] = useState<string>('finder');
 
-  // Search & Finder States
-  const [searchQuery, setSearchQuery] = useState<string>('Schools Accra');
-  const [cityFilter, setCityFilter] = useState<string>('Accra');
-  const [industryFilter, setIndustryFilter] = useState<string>('Education');
+  // Search & Filters State
+  const [searchQuery, setSearchQuery] = useState<string>('Private Schools');
+  const [filters, setFilters] = useState<SearchFilters>({
+    city: 'Kumasi',
+    country: 'Ghana',
+    industry: 'Education'
+  });
+  const [selectedSource, setSelectedSource] = useState<DiscoverySourceType>('google_places');
   const [prospects, setProspects] = useState<Prospect[]>([]);
   const [selectedProspect, setSelectedProspect] = useState<Prospect | null>(null);
 
-  // Direct Scanner States
+  // Multi-Selection State for Batch Actions
+  const [selectedRowIds, setSelectedRowIds] = useState<Set<string>>(new Set());
+  const [isBatchSyncing, setIsBatchSyncing] = useState(false);
+  const [isBatchEnriching, setIsBatchEnriching] = useState(false);
+
+  // Direct Scanner State
   const [scanUrl, setScanUrl] = useState<string>('');
   const [scannedProspect, setScannedProspect] = useState<Prospect | null>(null);
   const [isScanning, setIsScanning] = useState<boolean>(false);
 
-  // Settings States
+  // Settings State
   const [settings, setSettings] = useState<LeadIntelligenceSettings>({
     googlePlacesApiKey: '',
     builtwithApiKey: '',
@@ -79,9 +110,10 @@ export default function LeadIntelligenceClient() {
     chromeExtensionToken: ''
   });
 
-  // Saved Searches & Lists
+  // Collections & Recent History
   const [savedSearches, setSavedSearches] = useState<SavedSearch[]>([]);
   const [recentProspects, setRecentProspects] = useState<Prospect[]>([]);
+  const [leadLists, setLeadLists] = useState<LeadList[]>([]);
 
   // Token Generation
   const generateNewToken = () => {
@@ -89,68 +121,75 @@ export default function LeadIntelligenceClient() {
     setSettings(prev => ({ ...prev, chromeExtensionToken: newToken }));
   };
 
-  // Load Initial Data
-  const loadInitialData = async () => {
+  // Load Initial Workspace Data
+  const loadInitialData = useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
-      const keys = await getLeadSettingsAction(activeWorkspaceId);
+      const [keys, recent, searches, lists] = await Promise.all([
+        getLeadSettingsAction(activeWorkspaceId),
+        getRecentProspectsAction(activeWorkspaceId),
+        getSavedSearchesAction(activeWorkspaceId),
+        getLeadListsAction(activeWorkspaceId)
+      ]);
       setSettings(keys);
-
-      const recent = await getRecentProspectsAction(activeWorkspaceId);
       setRecentProspects(recent);
-
-      const searches = await getSavedSearchesAction(activeWorkspaceId);
+      if (prospects.length === 0 && recent.length > 0) {
+        setProspects(recent);
+      }
       setSavedSearches(searches);
+      setLeadLists(lists);
     } catch (err: unknown) {
-      console.error('Failed to load initial workspace data:', err);
+      console.error('[LeadIntelligenceClient] Failed to load initial workspace data:', err);
     }
-  };
+  }, [activeWorkspaceId, prospects.length]);
 
   useEffect(() => {
     loadInitialData();
-  }, [activeWorkspaceId]);
+  }, [loadInitialData]);
 
   // Execute Prospect Search
   const handleSearch = () => {
     if (!activeWorkspaceId) return;
     startTransition(async () => {
-      const filters: SearchFilters = {
-        city: cityFilter,
-        country: 'Ghana',
-        industry: industryFilter
-      };
+      setSelectedRowIds(new Set());
       const res = await searchProspectsAction(
         activeWorkspaceId,
         organizationId,
         searchQuery,
-        filters
+        filters,
+        selectedSource
       );
       if (res.success && res.prospects) {
         setProspects(res.prospects);
-        setSelectedProspect(null);
-        toast({ title: 'Discovery Complete', description: `Found ${res.prospects.length} prospects.` });
+        toast({ 
+          title: 'Discovery Complete', 
+          description: `Discovered ${res.prospects.length} prospects matching your criteria.` 
+        });
       } else {
-        toast({ variant: 'destructive', title: 'Discovery Failed', description: res.error || 'Unknown error' });
+        toast({ 
+          variant: 'destructive', 
+          title: 'Discovery Failed', 
+          description: res.error || 'Unable to fetch prospects.' 
+        });
       }
     });
   };
 
   // Save Search Query
-  const handleSaveSearch = async () => {
+  const handleSaveSearch = async (name: string) => {
     if (!activeWorkspaceId) return;
     try {
-      const filters: SearchFilters = { city: cityFilter, country: 'Ghana', industry: industryFilter };
-      const res = await saveSearchAction(activeWorkspaceId, organizationId, searchQuery, filters);
+      const res = await saveSearchAction(activeWorkspaceId, organizationId, name || searchQuery, filters);
       if (res.success) {
-        toast({ title: 'Search Saved', description: 'Search criteria stored in Saved Searches.' });
+        toast({ title: 'Search Saved', description: `Saved "${name || searchQuery}" in Saved Searches.` });
         loadInitialData();
       }
     } catch (err: unknown) {
-      console.error('Failed to save search query:', err);
+      console.error('[LeadIntelligenceClient] Failed to save search query:', err);
     }
   };
 
-  // Direct technology crawl scan
+  // Direct Domain Scan
   const handleUrlScan = async () => {
     if (!scanUrl || !activeWorkspaceId) return;
     setIsScanning(true);
@@ -173,6 +212,7 @@ export default function LeadIntelligenceClient() {
           decisionMakerFound: 5,
           engagement: 5
         },
+        source: 'web_crawl',
         syncStatus: 'unregistered',
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -181,37 +221,38 @@ export default function LeadIntelligenceClient() {
       const res = await enrichProspectAction(initialProspect);
       if (res.success && res.prospect) {
         setScannedProspect(res.prospect);
-        toast({ title: 'Scan Completed', description: `Scanned domain ${cleanDomain} successfully.` });
+        toast({ title: 'Scan Completed', description: `Successfully audited ${cleanDomain}.` });
         loadInitialData();
       } else {
         toast({ variant: 'destructive', title: 'Scan Failed', description: res.error || 'Verification failed.' });
       }
-    } catch (err: unknown) {
+    } catch {
       toast({ variant: 'destructive', title: 'Scan Failed', description: 'Failed to enrich domain metadata.' });
     } finally {
       setIsScanning(false);
     }
   };
 
-  // Trigger Prospect Enrichment
+  // Trigger Single Prospect Enrichment
   const handleEnrichProspect = async (prospect: Prospect) => {
     if (!activeWorkspaceId) return;
-    toast({ title: 'Enrichment Started', description: `Running builtwith, hunter and AI analysis for ${prospect.name}...` });
+    toast({ title: 'Enrichment Started', description: `Running builtwith, hunter, and AI strategy for ${prospect.name}...` });
     try {
       const res = await enrichProspectAction(prospect);
       if (res.success && res.prospect) {
-        setProspects(prev => prev.map(p => p.id === prospect.id ? res.prospect! : p));
+        const updated = res.prospect;
+        setProspects(prev => prev.map(p => p.id === prospect.id ? updated : p));
         if (selectedProspect?.id === prospect.id) {
-          setSelectedProspect(res.prospect);
+          setSelectedProspect(updated);
         }
-        toast({ title: 'Enriched ✓', description: `Lead details successfully generated.` });
+        toast({ title: 'Enriched ✓', description: `AI intelligence and decision makers generated.` });
       }
-    } catch (e: unknown) {
+    } catch {
       toast({ variant: 'destructive', title: 'Enrichment Failed', description: 'Verification service error.' });
     }
   };
 
-  // Trigger CRM Synced Write
+  // Trigger Single CRM Synced Write
   const handleSyncToCRM = async (prospect: Prospect) => {
     try {
       const res = await syncProspectToCRMAction(prospect);
@@ -220,23 +261,26 @@ export default function LeadIntelligenceClient() {
         if (selectedProspect?.id === prospect.id) {
           setSelectedProspect(prev => prev ? { ...prev, syncStatus: 'synced', syncedEntityId: res.entityId } : null);
         }
-        toast({ title: 'Synced ✓', description: `${prospect.name} added to SmartSapp Contacts.` });
+        toast({ 
+          title: 'Synced to CRM ✓', 
+          description: `Created Entity "${prospect.name}" in SmartSapp Contacts.`
+        });
         loadInitialData();
       } else {
-        toast({ variant: 'destructive', title: 'Sync Warning', description: res.error || 'Sync failed.' });
+        toast({ variant: 'destructive', title: 'Sync Notice', description: res.error || 'Sync could not be completed.' });
       }
-    } catch (e: unknown) {
-      toast({ variant: 'destructive', title: 'Sync Failed', description: 'Failed to write CRM records.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Sync Failed', description: 'Failed to create CRM record.' });
     }
   };
 
-  // Save Credentials settings
+  // Save Credentials Settings
   const handleSaveSettings = async () => {
     if (!activeWorkspaceId) return;
     try {
       const res = await saveLeadSettingsAction(activeWorkspaceId, organizationId, settings);
       if (res.success) {
-        toast({ title: 'Settings Saved', description: 'Lead API settings successfully updated.' });
+        toast({ title: 'Settings Saved', description: 'Lead API integration keys updated successfully.' });
       } else {
         toast({ variant: 'destructive', title: 'Failed to Save', description: res.error });
       }
@@ -245,88 +289,294 @@ export default function LeadIntelligenceClient() {
     }
   };
 
+  // Multi-Select Checkbox Handlers
+  const handleToggleRowSelect = (id: string) => {
+    setSelectedRowIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const handleSelectAllRows = (selectAll: boolean) => {
+    if (selectAll) {
+      setSelectedRowIds(new Set(prospects.map(p => p.id)));
+    } else {
+      setSelectedRowIds(new Set());
+    }
+  };
+
+  // Batch Sync to CRM
+  const handleBatchSync = async () => {
+    const selectedProspects = prospects.filter(p => selectedRowIds.has(p.id));
+    if (selectedProspects.length === 0) return;
+
+    try {
+      setIsBatchSyncing(true);
+      const res = await batchSyncProspectsAction(selectedProspects);
+      if (res.success) {
+        toast({
+          title: 'Batch Sync Complete ✓',
+          description: `Successfully ingested ${res.syncedCount} prospects into CRM.`
+        });
+        setSelectedRowIds(new Set());
+        loadInitialData();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Batch Sync Encountered Issues',
+          description: res.errors?.join(', ') || 'No new records could be synced.'
+        });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Batch Sync Failed', description: 'Transaction processing failed.' });
+    } finally {
+      setIsBatchSyncing(false);
+    }
+  };
+
+  // Batch Enrich
+  const handleBatchEnrich = async () => {
+    const selectedProspects = prospects.filter(p => selectedRowIds.has(p.id));
+    if (selectedProspects.length === 0) return;
+
+    try {
+      setIsBatchEnriching(true);
+      const res = await batchEnrichProspectsAction(selectedProspects);
+      if (res.success && res.enrichedProspects.length > 0) {
+        const enrichedMap = new Map(res.enrichedProspects.map(p => [p.id, p]));
+        setProspects(prev => prev.map(p => enrichedMap.get(p.id) || p));
+        toast({
+          title: 'Batch Enrichment Complete ✓',
+          description: `Successfully enriched ${res.enrichedProspects.length} prospects.`
+        });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Batch Enrich Failed', description: 'Enrichment service error.' });
+    } finally {
+      setIsBatchEnriching(false);
+    }
+  };
+
+  // Batch Export CSV
+  const handleBatchExportCSV = () => {
+    const selectedProspects = prospects.filter(p => selectedRowIds.has(p.id));
+    if (selectedProspects.length === 0) return;
+
+    const headers = ['Name', 'Domain', 'Phone', 'Address', 'Industry', 'Rating', 'Score', 'Sync Status'];
+    const rows = [headers.join(',')];
+
+    for (const p of selectedProspects) {
+      const row = [
+        `"${(p.name || '').replace(/"/g, '""')}"`,
+        `"${p.domain || ''}"`,
+        `"${p.phone || ''}"`,
+        `"${(p.address || '').replace(/"/g, '""')}"`,
+        `"${p.industry || ''}"`,
+        p.rating || '',
+        p.scoring?.overallScore || '',
+        p.syncStatus || 'unregistered'
+      ];
+      rows.push(row.join(','));
+    }
+
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `prospects_export_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: 'Exported CSV', description: `Downloaded ${selectedProspects.length} prospects.` });
+  };
+
+  // Add Selected to Lead List
+  const handleAddSelectedToList = async () => {
+    const selectedIds = Array.from(selectedRowIds);
+    if (selectedIds.length === 0) return;
+
+    if (leadLists.length === 0) {
+      // Create a default list
+      const res = await createLeadListAction(
+        activeWorkspaceId || '',
+        organizationId,
+        `Discovery Cohort (${new Date().toLocaleDateString()})`,
+        'Auto-created list from selected prospects',
+        selectedIds
+      );
+      if (res.success) {
+        toast({ title: 'List Created & Added ✓', description: `Added ${selectedIds.length} prospects to new list.` });
+        setSelectedRowIds(new Set());
+        loadInitialData();
+      }
+    } else {
+      // Add to latest list
+      const targetList = leadLists[0];
+      const res = await addProspectsToListAction(targetList.id, selectedIds, activeWorkspaceId || '');
+      if (res.success) {
+        toast({ title: 'Added to List ✓', description: `Added ${selectedIds.length} prospects to "${targetList.name}".` });
+        setSelectedRowIds(new Set());
+        loadInitialData();
+      }
+    }
+  };
+
+  // Ingest CSV Data
+  const handleImportCSV = async (csvText: string) => {
+    if (!activeWorkspaceId) return;
+    const res = await importProspectsFromCSVAction(activeWorkspaceId, organizationId, csvText, filters.industry);
+    if (res.success && res.prospects) {
+      setProspects(res.prospects);
+      toast({
+        title: 'CSV Ingestion Complete ✓',
+        description: `Successfully indexed ${res.prospects.length} prospects from spreadsheet.`
+      });
+    } else {
+      toast({
+        variant: 'destructive',
+        title: 'CSV Ingestion Failed',
+        description: res.error || 'Could not parse tabular data.'
+      });
+    }
+  };
+
+  // Create Lead List Handler
+  const handleCreateLeadList = async (name: string, description?: string) => {
+    if (!activeWorkspaceId) return;
+    const res = await createLeadListAction(activeWorkspaceId, organizationId, name, description);
+    if (res.success) {
+      loadInitialData();
+    }
+  };
+
+  // Delete Lead List Handler
+  const handleDeleteLeadList = async (listId: string) => {
+    if (!activeWorkspaceId) return;
+    const res = await deleteLeadListAction(listId, activeWorkspaceId);
+    if (res.success) {
+      toast({ title: 'List Deleted', description: 'Lead list removed.' });
+      loadInitialData();
+    }
+  };
+
   return (
-    <div className="flex-1 flex flex-col p-6 space-y-6 max-w-7xl mx-auto w-full">
-      {/* Dynamic Radial Gradient Glow Mesh */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.05),transparent_50%)] pointer-events-none" />
+    <div className="flex-1 flex flex-col p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full relative">
+      {/* Glow Mesh Background */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_50%)] pointer-events-none" />
 
       {/* Page Title & Status Banner */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-sky-500">
+          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500">
             Lead Intelligence Platform
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Discover prospects, audit technologies, uncover AI opportunities, and feed the CRM pipeline.
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+            Discover local businesses, audit tech footprints, generate AI sales strategies, and sync directly to CRM.
           </p>
         </div>
 
         {(!settings.googlePlacesApiKey || !settings.builtwithApiKey) && (
           <Badge variant="outline" className="px-3 py-1 bg-amber-500/10 border-amber-500/20 text-amber-500 font-medium text-xs flex items-center gap-1.5 rounded-full self-start md:self-center">
             <Zap className="h-3.5 w-3.5 fill-amber-500" />
-            AI-Simulation Fallback Mode Active
+            AI-Simulation Fallback Active
           </Badge>
         )}
       </div>
 
-      {/* Main Tabs Segment */}
+      {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-5 w-full max-w-3xl bg-muted/40 backdrop-blur-md border border-border/50 p-1 rounded-xl">
-          <TabsTrigger value="dashboard" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Dashboard</TabsTrigger>
-          <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Prospect Finder</TabsTrigger>
-          <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Website Scanner</TabsTrigger>
-          <TabsTrigger value="searches" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Saved Searches</TabsTrigger>
-          <TabsTrigger value="settings" className="rounded-lg text-xs font-semibold data-[state=active]:bg-blue-500/10 data-[state=active]:text-blue-400 data-[state=active]:border-blue-500/20">Settings & Chrome</TabsTrigger>
+        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full max-w-4xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto">
+          <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+            <Search className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Prospect Finder
+          </TabsTrigger>
+          <TabsTrigger value="lists" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+            <Folder className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Lead Lists
+          </TabsTrigger>
+          <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+            <Globe className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Domain Scanner
+          </TabsTrigger>
+          <TabsTrigger value="searches" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+            <BookmarkCheck className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Saved Searches
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+            <LayoutGrid className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Overview
+          </TabsTrigger>
+          <TabsTrigger value="settings" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
+            <Settings className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            Extension & Keys
+          </TabsTrigger>
         </TabsList>
 
         <AnimatePresence mode="wait">
-          {activeTab === 'dashboard' && (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
-              transition={kowalskiTransition}
-            >
-              <TabsContent value="dashboard" className="mt-6">
-                <DashboardTab recentProspects={recentProspects} />
-              </TabsContent>
-            </motion.div>
-          )}
-
+          {/* TAB 1: PROSPECT FINDER */}
           {activeTab === 'finder' && (
             <motion.div
               key="finder"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={kowalskiTransition}
             >
               <TabsContent value="finder" className="mt-6">
                 <ProspectFinderTab
-                  industryFilter={industryFilter}
-                  setIndustryFilter={setIndustryFilter}
-                  cityFilter={cityFilter}
-                  setCityFilter={setCityFilter}
-                  isSearching={isPending}
-                  onSearch={handleSearch}
-                  onSaveSearch={handleSaveSearch}
                   prospects={prospects}
                   selectedProspect={selectedProspect}
-                  setSelectedProspect={setSelectedProspect}
+                  onSelectProspect={setSelectedProspect}
+                  selectedRowIds={selectedRowIds}
+                  onToggleRowSelect={handleToggleRowSelect}
+                  onSelectAllRows={handleSelectAllRows}
+                  queryText={searchQuery}
+                  onQueryTextChange={setSearchQuery}
+                  filters={filters}
+                  onFiltersChange={setFilters}
+                  selectedSource={selectedSource}
+                  onSourceChange={setSelectedSource}
+                  onSearch={handleSearch}
+                  onSaveSearch={handleSaveSearch}
+                  isSearching={isPending}
                   onEnrich={handleEnrichProspect}
                   onSync={handleSyncToCRM}
+                  onImportCSV={handleImportCSV}
                 />
               </TabsContent>
             </motion.div>
           )}
 
+          {/* TAB 2: LEAD LISTS */}
+          {activeTab === 'lists' && (
+            <motion.div
+              key="lists"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={kowalskiTransition}
+            >
+              <TabsContent value="lists" className="mt-6">
+                <LeadListsTab
+                  leadLists={leadLists}
+                  allProspects={prospects.concat(recentProspects)}
+                  onCreateList={handleCreateLeadList}
+                  onDeleteList={handleDeleteLeadList}
+                  onSelectProspectForInspection={setSelectedProspect}
+                />
+              </TabsContent>
+            </motion.div>
+          )}
+
+          {/* TAB 3: DOMAIN SCANNER */}
           {activeTab === 'scanner' && (
             <motion.div
               key="scanner"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={kowalskiTransition}
             >
               <TabsContent value="scanner" className="mt-6">
@@ -337,25 +587,26 @@ export default function LeadIntelligenceClient() {
                   onUrlScan={handleUrlScan}
                   scannedProspect={scannedProspect}
                   onSync={handleSyncToCRM}
+                  onInspectProspect={setSelectedProspect}
                 />
               </TabsContent>
             </motion.div>
           )}
 
+          {/* TAB 4: SAVED SEARCHES */}
           {activeTab === 'searches' && (
             <motion.div
               key="searches"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={kowalskiTransition}
             >
               <TabsContent value="searches" className="mt-6">
                 <SavedSearchesTab
                   savedSearches={savedSearches}
                   onRunSearch={(s) => {
-                    setCityFilter(s.filters.city || '');
-                    setIndustryFilter(s.filters.industry || '');
+                    setFilters(s.filters);
                     setSearchQuery(s.name);
                     setActiveTab('finder');
                     handleSearch();
@@ -365,12 +616,28 @@ export default function LeadIntelligenceClient() {
             </motion.div>
           )}
 
+          {/* TAB 5: DASHBOARD OVERVIEW */}
+          {activeTab === 'dashboard' && (
+            <motion.div
+              key="dashboard"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={kowalskiTransition}
+            >
+              <TabsContent value="dashboard" className="mt-6">
+                <DashboardTab recentProspects={recentProspects} />
+              </TabsContent>
+            </motion.div>
+          )}
+
+          {/* TAB 6: SETTINGS & EXTENSION */}
           {activeTab === 'settings' && (
             <motion.div
               key="settings"
-              initial={{ opacity: 0, y: 15 }}
+              initial={{ opacity: 0, y: 12 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -15 }}
+              exit={{ opacity: 0, y: -12 }}
               transition={kowalskiTransition}
             >
               <TabsContent value="settings" className="mt-6">
@@ -386,6 +653,27 @@ export default function LeadIntelligenceClient() {
           )}
         </AnimatePresence>
       </Tabs>
+
+      {/* Floating Batch Action Toolbar */}
+      <FloatingActionToolbar
+        selectedCount={selectedRowIds.size}
+        onClearSelection={() => setSelectedRowIds(new Set())}
+        onBatchSync={handleBatchSync}
+        onBatchEnrich={handleBatchEnrich}
+        onAddToList={handleAddSelectedToList}
+        onExportCSV={handleBatchExportCSV}
+        isSyncing={isBatchSyncing}
+        isEnriching={isBatchEnriching}
+      />
+
+      {/* Slide-Over Prospect Inspection Sheet */}
+      <ProspectSlideOverSheet
+        prospect={selectedProspect}
+        isOpen={selectedProspect !== null}
+        onClose={() => setSelectedProspect(null)}
+        onSyncToCRM={handleSyncToCRM}
+        onEnrichProspect={handleEnrichProspect}
+      />
     </div>
   );
 }

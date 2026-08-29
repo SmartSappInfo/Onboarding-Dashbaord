@@ -1,67 +1,86 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8">
+  <title>SmartSapp Lead Intelligence</title>
   <style>
     :root {
       --background: #09090b;
-      --card: #18181b;
+      --card: #121215;
+      --card-muted: #18181b;
       --border: #27272a;
-      --primary: #10b981;
+      --primary: #3b82f6;
+      --primary-hover: #2563eb;
+      --sky: #38bdf8;
+      --emerald: #10b981;
+      --amber: #f59e0b;
       --text: #fafafa;
       --text-muted: #a1a1aa;
     }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
     body {
-      width: 320px;
+      width: 380px;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: var(--background);
       color: var(--text);
-      margin: 0;
-      padding: 12px;
-      box-sizing: border-box;
+      padding: 14px;
+      font-size: 12px;
+      line-height: 1.5;
     }
-    h2 {
-      font-size: 14px;
-      font-weight: 700;
-      margin: 0 0 12px 0;
+    header {
       display: flex;
       justify-content: space-between;
       align-items: center;
+      padding-bottom: 10px;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
+      margin-bottom: 12px;
     }
-    h2 span {
-      color: var(--primary);
+    .brand-title {
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: linear-gradient(135deg, #60a5fa 0%, #38bdf8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
     }
     .badge {
-      background-color: rgba(16, 185, 129, 0.1);
-      color: var(--primary);
-      padding: 2px 6px;
-      border-radius: 4px;
+      padding: 2px 7px;
+      border-radius: 9999px;
       font-size: 10px;
       font-weight: 700;
       text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .badge-priority {
+      background-color: rgba(245, 158, 11, 0.15);
+      color: var(--amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-primary {
+      background-color: rgba(59, 130, 246, 0.15);
+      color: var(--primary);
+      border: 1px solid rgba(59, 130, 246, 0.3);
     }
     .card {
       background-color: var(--card);
       border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 10px;
-      margin-bottom: 10px;
-    }
-    .field {
+      border-radius: 10px;
+      padding: 10px 12px;
       margin-bottom: 8px;
-    }
-    .field:last-child {
-      margin-bottom: 0;
     }
     .label {
       font-size: 9px;
       font-weight: 700;
       color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 2px;
+      letter-spacing: 0.06em;
+      margin-bottom: 3px;
     }
     .value {
       font-size: 11px;
@@ -74,24 +93,24 @@
       margin-top: 4px;
     }
     .tech-tag {
-      background-color: #27272a;
+      background-color: var(--card-muted);
       border: 1px solid var(--border);
-      border-radius: 4px;
+      border-radius: 5px;
       padding: 2px 6px;
       font-size: 9px;
-      color: var(--text);
+      color: #e4e4e7;
     }
     .btn-container {
       display: flex;
-      gap: 6px;
+      gap: 8px;
       margin-top: 12px;
     }
     button {
       flex: 1;
       background-color: var(--primary);
-      color: #09090b;
+      color: #ffffff;
       border: none;
-      border-radius: 6px;
+      border-radius: 8px;
       padding: 8px 12px;
       font-size: 11px;
       font-weight: 600;
@@ -99,13 +118,17 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background-color 0.2s;
+      gap: 5px;
+      transition: background-color 0.15s, transform 0.1s;
+    }
+    button:active {
+      transform: scale(0.97);
     }
     button:hover {
-      background-color: #059669;
+      background-color: var(--primary-hover);
     }
     button.secondary {
-      background-color: var(--card);
+      background-color: var(--card-muted);
       color: var(--text);
       border: 1px solid var(--border);
     }
@@ -118,7 +141,7 @@
     }
     #error, #loading, #auth-setup {
       text-align: center;
-      padding: 20px 10px;
+      padding: 24px 10px;
       font-size: 11px;
       color: var(--text-muted);
     }
@@ -126,33 +149,74 @@
       width: 100%;
       background-color: var(--background);
       border: 1px solid var(--border);
-      border-radius: 6px;
+      border-radius: 8px;
       color: var(--text);
-      padding: 8px;
+      padding: 9px 12px;
       margin-bottom: 10px;
-      box-sizing: border-box;
       font-size: 11px;
+      outline: none;
+    }
+    input:focus {
+      border-color: var(--primary);
     }
     .alert {
       color: #ef4444;
       font-size: 10px;
       margin-top: 4px;
     }
+    /* In-Popup Pitch Drawer */
+    #pitch-drawer {
+      display: none;
+      background: var(--card-muted);
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      border-radius: 8px;
+      padding: 10px;
+      margin-top: 10px;
+    }
+    #pitch-drawer.open {
+      display: block;
+      animation: fadeIn 0.2s ease-out;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .pitch-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .pitch-text {
+      font-size: 11px;
+      font-style: italic;
+      color: #e0f2fe;
+      line-height: 1.4;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 8px;
+      border-radius: 6px;
+      border: 1px solid rgba(56, 189, 248, 0.15);
+    }
   </style>
 </head>
 <body>
-  <h2><span>💚 SmartSapp</span> Lead Intel</h2>
+  <header>
+    <div class="brand-title">
+      <span>⚡ SmartSapp</span> Lead Intel
+    </div>
+    <div id="header-status-badge" class="badge badge-primary">v2.0</div>
+  </header>
 
   <!-- Loading State -->
   <div id="loading">
-    Scanning tab URL and fetching intelligence...
+    Scanning active website tab and retrieving intelligence...
   </div>
 
   <!-- Auth Setup State -->
   <div id="auth-setup" style="display: none;">
-    <div style="margin-bottom: 10px;">Please enter your Workspace API Credentials to link this extension to SmartSapp:</div>
-    <input type="text" id="workspace-url" placeholder="SmartSapp Workspace URL (e.g. http://localhost:3000)">
-    <input type="password" id="api-token" placeholder="Chrome Extension Auth Token">
+    <div style="margin-bottom: 12px; font-weight: 500;">Connect your SmartSapp Workspace:</div>
+    <input type="text" id="workspace-url" placeholder="SmartSapp Workspace URL (e.g. https://app.smartsapp.com)">
+    <input type="password" id="api-token" placeholder="Extension Auth Token (from Settings tab)">
     <button id="save-auth">Connect Workspace</button>
     <div id="auth-error" class="alert" style="display: none;"></div>
   </div>
@@ -160,16 +224,16 @@
   <!-- Content State -->
   <div id="main-content" style="display: none;">
     <div class="card" style="display: flex; justify-content: space-between; align-items: center;">
-      <div>
-        <div id="lead-name" style="font-weight: 700; font-size: 13px;">Acme Corp</div>
-        <div id="lead-domain" style="font-size: 10px; color: var(--text-muted); margin-top: 2px;">acme.com</div>
+      <div style="min-width: 0; padding-right: 8px;">
+        <div id="lead-name" style="font-weight: 800; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Acme International</div>
+        <div id="lead-domain" style="font-size: 10px; color: var(--sky); margin-top: 2px;">acme.edu.gh</div>
       </div>
-      <div id="lead-score-badge" class="badge">92% Need</div>
+      <div id="lead-score-badge" class="badge badge-priority">85% Fit</div>
     </div>
 
     <div class="card">
       <div class="field">
-        <div class="label">AI Summary</div>
+        <div class="label">AI Executive Analysis</div>
         <div id="lead-summary" class="value">Analyzing company digital presence...</div>
       </div>
     </div>
@@ -183,20 +247,33 @@
 
     <div class="card">
       <div class="field">
-        <div class="label">Contacts Discovery</div>
+        <div class="label">Decision Makers & Contacts</div>
         <div id="lead-contacts" class="value" style="line-height: 1.4;">No contacts found</div>
       </div>
       <div class="field" style="margin-top: 6px;">
-        <div class="label">Technologies Detected</div>
+        <div class="label">Technology Footprint</div>
         <div id="lead-tech" class="tech-list"></div>
+      </div>
+    </div>
+
+    <!-- Interactive Sales Pitch Drawer (Zero alerts!) -->
+    <div id="pitch-drawer">
+      <div class="pitch-header">
+        <span class="label" style="color: var(--sky);">Tailored Sales Pitch</span>
+        <button id="copy-pitch-btn" style="flex: 0 0 auto; padding: 3px 8px; font-size: 10px; background: #0284c7;">
+          Copy Pitch
+        </button>
+      </div>
+      <div id="pitch-content" class="pitch-text">
+        "Hello..."
       </div>
     </div>
 
     <div class="btn-container">
       <button id="sync-crm-btn">Sync to CRM</button>
-      <button id="pitch-btn" class="secondary">Show AI Pitch</button>
+      <button id="pitch-btn" class="secondary">AI Pitch</button>
     </div>
-    <div id="action-status" style="font-size: 9px; text-align: center; margin-top: 6px; color: var(--primary);"></div>
+    <div id="action-status" style="font-size: 10px; text-align: center; margin-top: 6px; color: var(--sky);"></div>
   </div>
 
   <script src="popup.js"></script>

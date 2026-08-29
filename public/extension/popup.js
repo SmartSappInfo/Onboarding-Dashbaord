@@ -1,3 +1,7 @@
+/**
+ * SmartSapp Lead Intelligence Chrome Extension (Manifest V3 Popup Controller)
+ */
+
 document.addEventListener('DOMContentLoaded', async () => {
   const loadingDiv = document.getElementById('loading');
   const authSetupDiv = document.getElementById('auth-setup');
@@ -8,6 +12,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   const authErrorDiv = document.getElementById('auth-error');
   const syncBtn = document.getElementById('sync-crm-btn');
   const pitchBtn = document.getElementById('pitch-btn');
+  const pitchDrawer = document.getElementById('pitch-drawer');
+  const pitchContent = document.getElementById('pitch-content');
+  const copyPitchBtn = document.getElementById('copy-pitch-btn');
   const actionStatusDiv = document.getElementById('action-status');
 
   let activeProspect = null;
@@ -20,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     workspaceUrl = localAuth.workspaceUrl || '';
     apiToken = localAuth.apiToken || '';
 
-    // If local storage is empty, check config.json fallback (embedded during ZIP package download)
+    // Check config.json fallback (embedded during dynamic ZIP download)
     if (!workspaceUrl || !apiToken) {
       const configRes = await fetch(chrome.runtime.getURL('config.json')).catch(() => null);
       if (configRes && configRes.ok) {
@@ -51,7 +58,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     const currentUrl = tabs[0].url;
     if (!currentUrl.startsWith('http://') && !currentUrl.startsWith('https://')) {
-      showError('Cannot scan non-web page URLs.');
+      showError('Cannot scan internal or browser settings pages.');
       return;
     }
 
@@ -82,14 +89,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     showError('Network error connecting to SmartSapp workspace.');
   }
 
-  // Action listeners
+  // Auth Save Event Listener
   saveAuthBtn.addEventListener('click', async () => {
-    const url = workspaceUrlInput.value.trim();
+    let url = workspaceUrlInput.value.trim();
     const token = apiTokenInput.value.trim();
     if (!url || !token) {
       authErrorDiv.textContent = 'All fields are required.';
       authErrorDiv.style.display = 'block';
       return;
+    }
+    // Clean trailing slash
+    if (url.endsWith('/')) {
+      url = url.slice(0, -1);
     }
     try {
       await setStorageData({ workspaceUrl: url, apiToken: token });
@@ -101,6 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Sync to CRM Event Listener
   syncBtn.addEventListener('click', async () => {
     if (!activeProspect) return;
     syncBtn.disabled = true;
@@ -118,11 +130,11 @@ document.addEventListener('DOMContentLoaded', async () => {
       });
 
       if (response.ok) {
-        const resData = await response.json();
-        actionStatusDiv.textContent = 'Lead synced successfully!';
+        actionStatusDiv.textContent = 'Lead synced to CRM successfully! ✓';
         syncBtn.textContent = 'Synced ✓';
       } else {
-        actionStatusDiv.textContent = `Sync failed: ${response.statusText}`;
+        const errorData = await response.json().catch(() => ({}));
+        actionStatusDiv.textContent = errorData.error || `Sync failed (${response.status})`;
         syncBtn.disabled = false;
       }
     } catch (err) {
@@ -131,10 +143,30 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   });
 
+  // Inline Pitch Drawer Toggle (Replaces alert)
   pitchBtn.addEventListener('click', () => {
     if (!activeProspect || !activeProspect.aiInsights) return;
-    const pitch = activeProspect.aiInsights.recommendedPitch;
-    alert(`Recommended Sales Pitch:\n\n${pitch}`);
+    const isCurrentlyOpen = pitchDrawer.classList.contains('open');
+    if (isCurrentlyOpen) {
+      pitchDrawer.classList.remove('open');
+      pitchBtn.textContent = 'AI Pitch';
+    } else {
+      pitchContent.textContent = `"${activeProspect.aiInsights.recommendedPitch || 'No pitch available.'}"`;
+      pitchDrawer.classList.add('open');
+      pitchBtn.textContent = 'Hide Pitch';
+    }
+  });
+
+  // Copy Pitch to Clipboard with Feedback
+  copyPitchBtn.addEventListener('click', () => {
+    if (!activeProspect || !activeProspect.aiInsights) return;
+    navigator.clipboard.writeText(activeProspect.aiInsights.recommendedPitch || '');
+    copyPitchBtn.textContent = 'Copied ✓';
+    copyPitchBtn.style.background = '#10b981';
+    setTimeout(() => {
+      copyPitchBtn.textContent = 'Copy Pitch';
+      copyPitchBtn.style.background = '#0284c7';
+    }, 2000);
   });
 
   // Helper functions
@@ -157,18 +189,22 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('lead-name').textContent = prospect.name;
     document.getElementById('lead-domain').textContent = prospect.domain;
-    document.getElementById('lead-score-badge').textContent = `${prospect.scoring.overallScore}% Need`;
+    document.getElementById('lead-score-badge').textContent = `${prospect.scoring?.overallScore ?? 50}% Need`;
 
     if (prospect.aiInsights) {
       document.getElementById('lead-summary').textContent = prospect.aiInsights.summary;
       
       const oppsDiv = document.getElementById('lead-opportunities');
-      oppsDiv.innerHTML = prospect.aiInsights.opportunities.map(o => `✓ ${o}`).join('<br>');
+      if (prospect.aiInsights.opportunities && prospect.aiInsights.opportunities.length > 0) {
+        oppsDiv.innerHTML = prospect.aiInsights.opportunities.map(o => `✓ ${o}`).join('<br>');
+      } else {
+        oppsDiv.textContent = 'Digital enhancement opportunities detected.';
+      }
     }
 
     if (prospect.contacts && prospect.contacts.length > 0) {
       const contactsDiv = document.getElementById('lead-contacts');
-      contactsDiv.innerHTML = prospect.contacts.map(c => `✉ ${c.email} (${c.role})`).join('<br>');
+      contactsDiv.innerHTML = prospect.contacts.map(c => `✉ ${c.email} (${c.role || 'Contact'})`).join('<br>');
     }
 
     const techDiv = document.getElementById('lead-tech');
@@ -188,7 +224,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   }
 
-  // Storage and chrome wrapper promises
   function getStorageData(keys) {
     return new Promise((resolve) => {
       chrome.storage.local.get(keys, (items) => {
