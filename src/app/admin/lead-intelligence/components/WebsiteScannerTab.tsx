@@ -18,6 +18,8 @@ import { Globe, Loader2, Zap, Sparkles, Database, Copy, Check, ExternalLink } fr
 import type { Prospect } from '@/lib/lead-intelligence/types';
 import { isSafeExternalDomain, canonicalizeDomain } from '@/lib/lead-intelligence/identity-resolver';
 import { useToast } from '@/hooks/use-toast';
+import { TechnographicStackMatrix } from './TechnographicStackMatrix';
+import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
 
 interface WebsiteScannerTabProps {
   scanUrl: string;
@@ -150,71 +152,59 @@ export const WebsiteScannerTab: React.FC<WebsiteScannerTabProps> = ({
                   </Button>
                 </div>
               </div>
+              
+              {/* 5-Category Deep Technographic Matrix (UI Spec Section 30 & 31) */}
+              <TechnographicStackMatrix 
+                techStack={TechnographicsCategorizer.categorize(
+                  scannedProspect.websiteScan?.technologies || []
+                )} 
+              />
 
-              {/* 3 Diagnostic Cards */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Tech Stack */}
-                <Card className="bg-card border-border/70 rounded-xl">
-                  <CardHeader className="p-4 border-b border-border/40">
-                    <CardTitle className="text-xs font-bold text-foreground">Technology Footprint</CardTitle>
-                  </CardHeader>
-                  <CardContent className="p-4 space-y-2">
-                    <div className="flex flex-wrap gap-1.5">
-                      {scannedProspect.websiteScan?.technologies && scannedProspect.websiteScan.technologies.length > 0 ? (
-                        scannedProspect.websiteScan.technologies.map((tech, i) => (
-                          <Badge key={i} variant="secondary" className="text-[10px] py-0.5 px-2 bg-muted/80">
-                            {tech}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span className="text-muted-foreground text-xs">No specific technologies detected.</span>
-                      )}
-                    </div>
-                  </CardContent>
-                </Card>
-
+              {/* SSL, Network & Opportunity Diagnostics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* SSL & Network */}
-                <Card className="bg-card border-border/70 rounded-xl">
+                <Card className="bg-card border-border/70 rounded-2xl shadow-xs">
                   <CardHeader className="p-4 border-b border-border/40">
-                    <CardTitle className="text-xs font-bold text-foreground">Network & Security</CardTitle>
+                    <CardTitle className="text-xs font-bold text-foreground">Network & Security Infrastructure</CardTitle>
                   </CardHeader>
-                  <CardContent className="p-4 space-y-2 text-xs">
+                  <CardContent className="p-4 space-y-2.5 text-xs">
                     <div className="flex justify-between items-center border-b border-border/30 pb-2">
                       <span className="text-muted-foreground">SSL Certificate</span>
-                      <Badge className={scannedProspect.websiteScan?.sslValid ? 'bg-emerald-500/10 text-emerald-500 text-[10px]' : 'bg-rose-500/10 text-rose-500 text-[10px]'}>
+                      <Badge className={scannedProspect.websiteScan?.sslValid ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px]' : 'bg-rose-500/10 text-rose-600 border-rose-500/20 text-[10px]'}>
                         {scannedProspect.websiteScan?.sslValid ? 'Secure HTTPS' : 'Missing SSL'}
                       </Badge>
                     </div>
                     <div className="flex justify-between items-center border-b border-border/30 pb-2">
-                      <span className="text-muted-foreground">Load Time</span>
-                      <span className="font-semibold text-foreground">
+                      <span className="text-muted-foreground">DOM Load Time</span>
+                      <span className="font-semibold text-foreground font-mono">
                         {scannedProspect.websiteScan?.loadTimeMs ? `${scannedProspect.websiteScan.loadTimeMs}ms` : '450ms'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground">Social Links</span>
+                      <span className="text-muted-foreground">Connected Socials</span>
                       <span className="font-semibold text-foreground">
                         {[
-                          scannedProspect.websiteScan?.hasFacebook && 'FB',
-                          scannedProspect.websiteScan?.hasLinkedIn && 'IN',
-                          scannedProspect.websiteScan?.hasInstagram && 'IG'
-                        ].filter(Boolean).join(', ') || 'None'}
+                          scannedProspect.websiteScan?.hasFacebook && 'Facebook',
+                          scannedProspect.websiteScan?.hasLinkedIn && 'LinkedIn',
+                          scannedProspect.websiteScan?.hasInstagram && 'Instagram',
+                          scannedProspect.websiteScan?.hasTwitter && 'X (Twitter)'
+                        ].filter(Boolean).join(', ') || 'None detected'}
                       </span>
                     </div>
                   </CardContent>
                 </Card>
 
                 {/* Opportunity Score */}
-                <Card className="bg-card border-border/70 rounded-xl">
+                <Card className="bg-card border-border/70 rounded-2xl shadow-xs">
                   <CardHeader className="p-4 border-b border-border/40">
-                    <CardTitle className="text-xs font-bold text-foreground">Smart Opportunity Score</CardTitle>
+                    <CardTitle className="text-xs font-bold text-foreground">Acquisition & Need Fit</CardTitle>
                   </CardHeader>
                   <CardContent className="p-4 flex flex-col items-center justify-center py-4 space-y-1">
                     <div className="text-3xl font-extrabold text-primary">
                       {scannedProspect.scoring.overallScore}%
                     </div>
-                    <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wider">
-                      High Acquisition Fit
+                    <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">
+                      High Acquisition Probability
                     </span>
                   </CardContent>
                 </Card>
@@ -222,31 +212,31 @@ export const WebsiteScannerTab: React.FC<WebsiteScannerTabProps> = ({
 
               {/* AI Sales Pitch */}
               {scannedProspect.aiInsights?.recommendedPitch && (
-                <div className="p-4 rounded-xl border border-sky-500/30 bg-sky-500/5 space-y-2">
+                <div className="p-4 rounded-2xl border border-sky-500/30 bg-sky-500/5 space-y-2">
                   <div className="flex items-center justify-between">
                     <h5 className="text-xs font-bold text-sky-500 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5" /> Generated Elevator Pitch
+                      <Sparkles className="w-3.5 h-3.5" /> Tailored Sales Strategy Pitch
                     </h5>
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={handleCopyPitch}
-                      className="h-7 px-2.5 text-xs text-sky-500 hover:bg-sky-500/10 font-medium flex items-center gap-1 active:scale-[0.97]"
+                      className="h-7 px-2.5 text-xs text-sky-500 hover:bg-sky-500/10 font-semibold flex items-center gap-1 active:scale-[0.97]"
                     >
                       {copiedPitch ? (
                         <>
-                          <Check className="w-3 h-3 text-emerald-500" />
+                          <Check className="w-3.5 h-3.5 text-emerald-500" />
                           <span className="text-emerald-500">Copied ✓</span>
                         </>
                       ) : (
                         <>
-                          <Copy className="w-3 h-3" />
+                          <Copy className="w-3.5 h-3.5" />
                           <span>Copy Pitch</span>
                         </>
                       )}
                     </Button>
                   </div>
-                  <p className="text-xs text-foreground/90 font-medium italic bg-background/80 p-3 rounded-lg border border-sky-500/20">
+                  <p className="text-xs text-foreground/90 font-medium italic bg-background/80 p-3.5 rounded-xl border border-sky-500/20">
                     &ldquo;{scannedProspect.aiInsights.recommendedPitch}&rdquo;
                   </p>
                 </div>

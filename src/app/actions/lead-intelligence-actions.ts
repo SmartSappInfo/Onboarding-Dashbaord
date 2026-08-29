@@ -969,3 +969,140 @@ export async function dismissCollisionAction(
   }
 }
 
+// =============================================================================
+// PHASE 4: DEEP TECHNOGRAPHICS & SUBDOMAIN PROBER SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Probes high-value business subdomains (e.g. portal, admissions, moodle, fees)
+ * concurrently for a target domain.
+ */
+export async function probeDomainSubdomainsAction(
+  domain: string,
+  workspaceId: string
+): Promise<import('@/lib/lead-intelligence/types').SubdomainProbeResult[]> {
+  if (!domain || !workspaceId) return [];
+  const { SubdomainProberService } = await import('@/lib/lead-intelligence/scraper/SubdomainProberService');
+  return SubdomainProberService.probeDomain(domain);
+}
+
+/**
+ * Executes a deep technographic scan combining DOM Scraping, BuiltWith, and Subdomain probing.
+ */
+export async function enrichTechnographicsDeepAction(
+  prospectId: string,
+  domain: string,
+  workspaceId: string
+): Promise<{ 
+  success: boolean; 
+  categorizedTech?: import('@/lib/lead-intelligence/types').CategorizedTechStack; 
+  dimensions?: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore;
+  error?: string 
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  const { DOMScraperService } = await import('@/lib/lead-intelligence/scraper/DOMScraperService');
+  const { SubdomainProberService } = await import('@/lib/lead-intelligence/scraper/SubdomainProberService');
+  const { TechnographicsCategorizer } = await import('@/lib/lead-intelligence/scraper/TechnographicsCategorizer');
+
+  try {
+    const prospectRef = adminDb.collection('prospects').doc(prospectId);
+    const snap = await prospectRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Prospect not found' };
+    }
+
+    const prospect = snap.data() as Prospect;
+    const cleanDomain = domain || prospect.domain;
+
+    // 1. Scrape On-Page Metadata & Signatures
+    const scraped = cleanDomain ? await DOMScraperService.scrapeDomain(cleanDomain) : null;
+
+    // 2. Probe Subdomains
+    const portals = cleanDomain ? await SubdomainProberService.probeDomain(cleanDomain) : [];
+
+    // 3. Union Technologies
+    const techSet = new Set<string>(prospect.websiteScan?.technologies || []);
+    if (scraped) {
+      for (const sig of scraped.paymentSignatures) {
+        techSet.add(`Payment Gateway: ${sig.provider.toUpperCase()}`);
+      }
+    }
+    for (const portal of portals) {
+      techSet.add(`Subdomain: ${portal.subdomain.toUpperCase()}`);
+    }
+
+    const allTech = Array.from(techSet);
+    const categorizedTech = TechnographicsCategorizer.categorize(allTech, portals);
+
+    // 4. Update Prospect Record
+    const now = new Date().toISOString();
+    const updatedWebsiteScan: import('@/lib/lead-intelligence/types').WebsiteScanResults = {
+      scannedAt: now,
+      technologies: allTech,
+      sslValid: scraped ? true : (prospect.websiteScan?.sslValid ?? true),
+      metaTitle: scraped?.title || prospect.websiteScan?.metaTitle,
+      metaDescription: scraped?.metaDescription || prospect.websiteScan?.metaDescription,
+      hasFacebook: Boolean(scraped?.socialLinks.facebook || prospect.websiteScan?.hasFacebook),
+      hasInstagram: Boolean(scraped?.socialLinks.instagram || prospect.websiteScan?.hasInstagram),
+      hasLinkedIn: Boolean(scraped?.socialLinks.linkedin || prospect.websiteScan?.hasLinkedIn),
+      hasTwitter: Boolean(scraped?.socialLinks.twitter || prospect.websiteScan?.hasTwitter)
+    };
+
+    const updatedProspect: Prospect = {
+      ...prospect,
+      websiteScan: updatedWebsiteScan,
+      updatedAt: now
+    };
+
+    const dimensions = TechnographicsCategorizer.calculateEnrichmentDimensions(updatedProspect);
+
+    await prospectRef.update({
+      websiteScan: updatedWebsiteScan,
+      updatedAt: now
+    });
+
+    return {
+      success: true,
+      categorizedTech,
+      dimensions
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to enrich deep technographics:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown scan error' };
+  }
+}
+
+/**
+ * Calculates 4-dimension enrichment scores for a given prospect.
+ */
+export async function getEnrichmentDimensionsAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<import('@/lib/lead-intelligence/types').EnrichmentDimensionScore> {
+  const defaultScore: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore = {
+    companyScore: 50,
+    techScore: 50,
+    contactsScore: 50,
+    verificationScore: 50,
+    overallEnrichmentPercent: 50
+  };
+
+  if (!prospectId || !workspaceId) return defaultScore;
+
+  try {
+    const snap = await adminDb.collection('prospects').doc(prospectId).get();
+    if (!snap.exists) return defaultScore;
+
+    const prospect = snap.data() as Prospect;
+    const { TechnographicsCategorizer } = await import('@/lib/lead-intelligence/scraper/TechnographicsCategorizer');
+    return TechnographicsCategorizer.calculateEnrichmentDimensions(prospect);
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to compute enrichment dimensions:', err);
+    return defaultScore;
+  }
+}
+
+

@@ -338,3 +338,54 @@ export interface MergeExecutionResult {
   message?: string;
   error?: string;
 }
+
+// =============================================================================
+// PHASE 4: DEEP TECHNOGRAPHICS & ENRICHMENT PANELS (Strict Typing)
+// =============================================================================
+
+export type TechnographicCategory = 
+  | 'cms' 
+  | 'payment' 
+  | 'portal' 
+  | 'communication' 
+  | 'analytics' 
+  | 'hosting' 
+  | 'framework' 
+  | 'other';
+
+export interface TechnographicSignature {
+  name: string;
+  category: TechnographicCategory;
+  confidence: number;
+  iconKey?: string;
+  description?: string;
+}
+
+export interface SubdomainProbeResult {
+  subdomain: string;
+  fullUrl: string;
+  status: 'online' | 'unreachable' | 'redirect' | 'auth_required';
+  httpStatus?: number;
+  title?: string;
+  portalType?: 'student_portal' | 'admissions' | 'lms_moodle' | 'fee_payment' | 'generic_login';
+  latencyMs: number;
+  detectedAt: string;
+}
+
+export interface CategorizedTechStack {
+  cms: string[];
+  payments: string[];
+  portals: SubdomainProbeResult[];
+  communication: string[];
+  analytics: string[];
+  paymentGapDetected: boolean;
+  missingPortalDetected: boolean;
+}
+
+export interface EnrichmentDimensionScore {
+  companyScore: number; // 0 - 100
+  techScore: number; // 0 - 100
+  contactsScore: number; // 0 - 100
+  verificationScore: number; // 0 - 100
+  overallEnrichmentPercent: number; // 0 - 100
+}
