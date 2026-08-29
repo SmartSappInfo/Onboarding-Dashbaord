@@ -68,6 +68,7 @@ export interface ProvenanceRecord {
   source: DiscoverySourceType | string;
   confidence: number; // 0 - 100
   observedAt: string;
+  retrievedAt?: string;
 }
 
 export interface Prospect {
@@ -200,9 +201,79 @@ export interface IntelligenceJob {
 
 export type TableDensityMode = 'compact' | 'standard' | 'comfortable';
 
+export type DiscoveryViewMode = 'table' | 'cards' | 'map';
+
+export interface ColumnVisibilityConfig {
+  company: boolean;
+  location: boolean;
+  rating: boolean;
+  techFootprint: boolean;
+  smartScore: boolean;
+  crmStatus: boolean;
+  contacts: boolean;
+  domain: boolean;
+  phone: boolean;
+}
+
+export interface SavedViewConfig {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string;
+  densityMode: TableDensityMode;
+  viewMode: DiscoveryViewMode;
+  columns: ColumnVisibilityConfig;
+  filters: SearchFilters;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PaymentGatewaySignature {
+  provider: 'paystack' | 'flutterwave' | 'stripe' | 'hubtel' | 'woocommerce' | 'shopify' | 'magento' | 'mtn_momo' | 'other';
+  confidence: number;
+  snippet?: string;
+}
+
+export interface ScrapedMetadata {
+  title?: string;
+  metaDescription?: string;
+  ogTitle?: string;
+  ogImage?: string;
+  socialLinks: {
+    facebook?: string;
+    instagram?: string;
+    linkedin?: string;
+    twitter?: string;
+  };
+  detectedEmails: string[];
+  detectedPhones: string[];
+  paymentSignatures: PaymentGatewaySignature[];
+  hasOnlinePayment: boolean;
+  scannedAt: string;
+}
+
+export interface WaterfallStepLog {
+  stage: 'email' | 'technographics' | 'firmographics' | 'ai_synthesis';
+  provider: 'hunter' | 'apollo' | 'builtwith' | 'dom_scraper' | 'gemini_genkit' | 'claude_fallback';
+  status: 'hit' | 'miss' | 'timeout' | 'error';
+  latencyMs: number;
+  matchCount: number;
+  error?: string;
+}
+
+export interface WaterfallEnrichmentResult {
+  prospect: Prospect;
+  steps: WaterfallStepLog[];
+  totalCreditsUsed: number;
+  totalDurationMs: number;
+}
+
 export interface LeadIntelligenceSettings {
   googlePlacesApiKey?: string;
   builtwithApiKey?: string;
   hunterApiKey?: string;
+  apolloApiKey?: string;
+  clearbitApiKey?: string;
   chromeExtensionToken?: string;
+  waterfallEnabled?: boolean;
 }

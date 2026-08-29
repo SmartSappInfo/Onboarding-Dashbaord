@@ -36,6 +36,7 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
   const [showPlacesKey, setShowPlacesKey] = useState(false);
   const [showBuiltwithKey, setShowBuiltwithKey] = useState(false);
   const [showHunterKey, setShowHunterKey] = useState(false);
+  const [showApolloKey, setShowApolloKey] = useState(false);
   const [copiedToken, setCopiedToken] = useState(false);
 
   const handleCopyToken = () => {
@@ -126,6 +127,29 @@ export const SettingsTab: React.FC<SettingsTabProps> = ({
                   aria-label={showHunterKey ? 'Hide Hunter Key' : 'Show Hunter Key'}
                 >
                   {showHunterKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            {/* Apollo.io API Key (Phase 2 Waterfall) */}
+            <div className="space-y-1.5">
+              <Label htmlFor="apollo-key" className="font-semibold text-xs text-foreground">Apollo.io API Key (Waterfall Email/Firmographics)</Label>
+              <div className="relative flex items-center">
+                <Input 
+                  id="apollo-key" 
+                  type={showApolloKey ? 'text' : 'password'}
+                  placeholder="e.g. apollo_live_..." 
+                  value={settings.apolloApiKey || ''} 
+                  onChange={(e) => setSettings(prev => ({ ...prev, apolloApiKey: e.target.value }))}
+                  className="h-10 pr-10 text-xs bg-background border-border/80 rounded-xl font-mono"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApolloKey(!showApolloKey)}
+                  className="absolute right-3 text-muted-foreground hover:text-foreground"
+                  aria-label={showApolloKey ? 'Hide Apollo Key' : 'Show Apollo Key'}
+                >
+                  {showApolloKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>

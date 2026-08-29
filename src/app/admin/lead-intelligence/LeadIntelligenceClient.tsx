@@ -47,13 +47,14 @@ import {
   deleteLeadListAction,
   batchSyncProspectsAction,
   batchEnrichProspectsAction,
-  importProspectsFromCSVAction
+  importProspectsFromCSVAction,
+  saveViewAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
   SearchFilters, 
   LeadIntelligenceSettings, 
-  SavedSearch,
+  SavedSearch, 
   LeadList,
   DiscoverySourceType,
   IntelligenceJob
@@ -61,6 +62,7 @@ import type {
 import { FloatingActionToolbar } from './components/FloatingActionToolbar';
 import { ProspectSlideOverSheet } from './components/ProspectSlideOverSheet';
 import { JobsCenterDrawer } from './components/JobsCenterDrawer';
+import { EnrichmentCostPreviewModal } from './components/EnrichmentCostPreviewModal';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -134,6 +136,37 @@ export default function LeadIntelligenceClient() {
   // Async Jobs Center State (intelligence_ui Section 10 & 11)
   const [isJobsDrawerOpen, setIsJobsDrawerOpen] = useState(false);
   const [jobs, setJobs] = useState<IntelligenceJob[]>([]);
+
+  // Phase 2 Cost Preview Modal & Saved Views
+  const [isCostModalOpen, setIsCostModalOpen] = useState(false);
+
+  const handleSaveCustomView = async (viewName: string) => {
+    if (!activeWorkspaceId) return;
+    try {
+      const res = await saveViewAction(activeWorkspaceId, organizationId, {
+        name: viewName,
+        densityMode: 'standard',
+        viewMode: 'table',
+        columns: {
+          company: true,
+          domain: true,
+          location: true,
+          rating: true,
+          techFootprint: true,
+          smartScore: true,
+          crmStatus: true,
+          contacts: true,
+          phone: true,
+        },
+        filters
+      });
+      if (res.success) {
+        toast({ title: 'View Saved ✓', description: `Saved view "${viewName}" to workspace.` });
+      }
+    } catch {
+      toast({ variant: 'destructive', title: 'Save Failed', description: 'Failed to save view preset.' });
+    }
+  };
 
   // Token Generation
   const generateNewToken = () => {
@@ -782,6 +815,7 @@ export default function LeadIntelligenceClient() {
                   onEnrich={handleEnrichProspect}
                   onSync={handleSyncToCRM}
                   onImportCSV={handleImportCSV}
+                  onSaveCustomView={handleSaveCustomView}
                 />
               </TabsContent>
             </motion.div>
@@ -897,7 +931,7 @@ export default function LeadIntelligenceClient() {
         selectedCount={selectedRowIds.size}
         onClearSelection={() => setSelectedRowIds(new Set())}
         onBatchSync={handleBatchSync}
-        onBatchEnrich={handleBatchEnrich}
+        onBatchEnrich={() => setIsCostModalOpen(true)}
         onAddToList={handleAddSelectedToList}
         onExportCSV={handleBatchExportCSV}
         isSyncing={isBatchSyncing}
@@ -924,6 +958,18 @@ export default function LeadIntelligenceClient() {
         onViewJobResults={() => {
           setActiveTab('finder');
         }}
+      />
+
+      {/* Credit Cost Transparency Preview Modal (intelligence_ui Section 23 & 60) */}
+      <EnrichmentCostPreviewModal
+        isOpen={isCostModalOpen}
+        onClose={() => setIsCostModalOpen(false)}
+        prospectCount={selectedRowIds.size}
+        onConfirmEnrich={() => {
+          setIsCostModalOpen(false);
+          handleBatchEnrich();
+        }}
+        isProcessing={isBatchEnriching}
       />
     </div>
   );

@@ -1,11 +1,36 @@
 'use server';
 
+import { revalidatePath } from 'next/cache';
 import { adminDb } from '@/lib/firebase-admin';
-import type { Deal, WorkspaceEntity, DealContact, DealFocalContact, EntityType } from '@/lib/types';
+import type { 
+    Deal, 
+    WorkspaceEntity, 
+    DealContact, 
+    DealFocalContact, 
+    EntityType, 
+    DealDuplicateOptions, 
+    DealMergeOptions, 
+    DealMergeResult, 
+    DealLineItem 
+} from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { canUser } from '@/lib/workspace-permissions';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
+import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
+import { 
+    validateStageTransition, 
+    resolveStageTerminalStatus, 
+    isStageTerminal 
+} from '@/lib/deals/deal-stage-validation';
+import type { 
+    LeadConversionOptions, 
+    LeadConversionResult, 
+    DealInteractionData, 
+    DealInteractionResult 
+} from '@/lib/deals/deal-types';
+import type { OnboardingStage } from '@/lib/types';
+import { nanoid } from 'nanoid';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
 
@@ -275,9 +300,10 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
 }
 
 export interface UpdateDealStageOptions {
-    status?: 'open' | 'won' | 'lost';
+    status?: 'open' | 'won' | 'lost' | 'cancelled';
     lostReason?: string;
     userId?: string;
+    bypassValidation?: boolean;
 }
 
 export async function updateDealStageAction(
@@ -301,7 +327,20 @@ export async function updateDealStageAction(
 
         const stageSnap = await adminDb.collection('onboardingStages').doc(stageId).get();
         if (!stageSnap.exists) throw new Error('Stage not found');
-        const stageName = stageSnap.data()?.name as string;
+        const targetStage = stageSnap.data() as OnboardingStage;
+        const stageName = targetStage?.name || stageId;
+
+        // ARCHITECTURAL POINTER (Phase 2 — Entry Gate Validation):
+        // Validate required fields before advancing stage unless explicitly bypassed
+        if (!opts.bypassValidation) {
+            const validation = validateStageTransition(deal, targetStage);
+            if (!validation.valid) {
+                return {
+                    success: false,
+                    error: validation.message || `Deal does not meet the entry requirements for "${stageName}".`,
+                };
+            }
+        }
 
         const oldStageName = deal.stageName || deal.stageId;
         const oldStageId = deal.stageId;
@@ -327,19 +366,33 @@ export async function updateDealStageAction(
             }
         ] : previousHistory;
 
+        // Automated Terminal State Resolution (PRD Section 14)
+        let resolvedStatus: 'open' | 'won' | 'lost' | 'cancelled' = opts.status || deal.status || 'open';
+        if (!opts.status) {
+            const autoStatus = resolveStageTerminalStatus(targetStage);
+            if (autoStatus === 'won' || autoStatus === 'lost') {
+                resolvedStatus = autoStatus;
+            } else if (deal.status === 'won' || deal.status === 'lost') {
+                resolvedStatus = 'open';
+            }
+        }
+
         const updatePayload: Record<string, unknown> = {
             stageId,
             stageName,
             stageEnteredAt: oldStageId !== stageId ? timestamp : (deal.stageEnteredAt || timestamp),
             stageHistory: updatedHistory,
+            status: resolvedStatus,
             updatedAt: timestamp
         };
 
-        if (opts.status) {
-            updatePayload.status = opts.status;
-            if (opts.status === 'lost' && opts.lostReason) {
-                updatePayload.lostReason = opts.lostReason;
-            }
+        // Sync stage win probability if configured and moving to a new stage
+        if (typeof targetStage.probability === 'number' && (deal.probability == null || deal.probability === 0 || oldStageId !== stageId)) {
+            updatePayload.probability = targetStage.probability;
+        }
+
+        if (resolvedStatus === 'lost' && opts.lostReason) {
+            updatePayload.lostReason = opts.lostReason;
         }
 
         await dealRef.update(updatePayload);
@@ -1023,11 +1076,9 @@ export async function bulkUpdateDealsStageAction(
         }
 
         const stageSnap = await adminDb.collection('onboardingStages').doc(targetStageId).get();
-        const stageData = stageSnap.exists ? stageSnap.data() : null;
+        const stageData = stageSnap.exists ? (stageSnap.data() as OnboardingStage) : null;
         const stageName = stageData?.name || targetStageId;
-        const isWonStage = stageName.toLowerCase().includes('live') || stageName.toLowerCase().includes('won');
-        const isLostStage = stageName.toLowerCase().includes('lost');
-        const targetStatus: 'open' | 'won' | 'lost' = isLostStage ? 'lost' : isWonStage ? 'won' : 'open';
+        const targetStatus: 'open' | 'won' | 'lost' = resolveStageTerminalStatus(stageData);
 
         const now = new Date().toISOString();
         const chunkSize = 200;
@@ -1064,14 +1115,20 @@ export async function bulkUpdateDealsStageAction(
                             }
                         ] : previousHistory;
 
-                        batch.update(snap.ref, {
+                        const updateObj: Record<string, unknown> = {
                             stageId: targetStageId,
                             stageName,
                             stageEnteredAt: oldStageId !== targetStageId ? now : (data.stageEnteredAt || now),
                             stageHistory: updatedHistory,
                             status: targetStatus,
                             updatedAt: now,
-                        });
+                        };
+
+                        if (typeof stageData?.probability === 'number') {
+                            updateObj.probability = stageData.probability;
+                        }
+
+                        batch.update(snap.ref, updateObj);
                         batchOps++;
                     }
                 }
@@ -1271,4 +1328,819 @@ export async function bulkDeleteDealsAction(
         return { success: false, deletedCount: 0, error };
     }
 }
+
+/**
+ * ARCHITECTURAL POINTER (Phase 1 - Deal Duplication / Cloning):
+ * Creates a duplicate copy of an existing opportunity:
+ * - Copies: Line items, focal contacts, secondary contacts, custom fields, tags, and monetary parameters.
+ * - Resets: Identity (new doc ID), initial stage tracking (enteredAt = now), clean stageHistory array,
+ *   fresh timestamps, status = 'open', healthStatus = 'healthy'.
+ * - Calculates expected close date if new pipeline/stage is selected.
+ */
+export async function duplicateDealAction(
+    dealId: string,
+    options?: DealDuplicateOptions,
+    userId?: string
+): Promise<{ success: boolean; newDealId?: string; error?: string }> {
+    try {
+        if (!dealId) {
+            return { success: false, error: 'Deal ID is required' };
+        }
+
+        const sourceDoc = await adminDb.collection('deals').doc(dealId).get();
+        if (!sourceDoc.exists) {
+            return { success: false, error: 'Source deal not found' };
+        }
+
+        const sourceDeal = sourceDoc.data() as Deal;
+
+        if (userId && sourceDeal.workspaceId) {
+            const perm = await canUser(userId, 'operations', 'pipeline', 'create', sourceDeal.workspaceId);
+            if (!perm.granted) {
+                return { success: false, error: perm.reason };
+            }
+        }
+
+        const now = new Date().toISOString();
+        const targetPipelineId = options?.targetPipelineId || sourceDeal.pipelineId;
+        const targetStageId = options?.targetStageId || sourceDeal.stageId;
+
+        // Fetch stage name if stage changed
+        let targetStageName = sourceDeal.stageName;
+        if (targetStageId && targetStageId !== sourceDeal.stageId) {
+            try {
+                const stageDoc = await adminDb.collection('onboardingStages').doc(targetStageId).get();
+                if (stageDoc.exists) {
+                    targetStageName = stageDoc.data()?.name || targetStageName;
+                }
+            } catch {
+                // Keep default stage name
+            }
+        }
+
+        // Calculate expected close date for the target pipeline/stage
+        let expectedCloseDate = sourceDeal.expectedCloseDate;
+        try {
+            const pipelineDoc = await adminDb.collection('pipelines').doc(targetPipelineId).get();
+            const calculated = calculateExpectedCloseDate(
+                pipelineDoc.exists ? pipelineDoc.data() : null,
+                sourceDeal.expectedCloseDate
+            );
+            if (calculated) {
+                expectedCloseDate = calculated;
+            }
+        } catch {
+            // Keep existing close date or null
+        }
+
+        const clonedLineItems: DealLineItem[] = (options?.copyLineItems !== false && Array.isArray(sourceDeal.lineItems))
+            ? sourceDeal.lineItems.map(item => ({ ...item, id: nanoid() }))
+            : [];
+
+        const clonedDealData: Omit<Deal, 'id'> = {
+            organizationId: sourceDeal.organizationId || '',
+            workspaceId: sourceDeal.workspaceId,
+            entityId: sourceDeal.entityId,
+            pipelineId: targetPipelineId,
+            stageId: targetStageId,
+            stageName: targetStageName,
+            name: options?.newName?.trim() || `${sourceDeal.name} (Copy)`,
+            value: sourceDeal.value || 0,
+            currency: sourceDeal.currency || 'USD',
+            status: 'open',
+            probability: sourceDeal.probability ?? 20,
+            forecastCategory: sourceDeal.forecastCategory || 'pipeline',
+            weightedValue: ((sourceDeal.value || 0) * (sourceDeal.probability ?? 20)) / 100,
+            healthStatus: 'healthy',
+            stageEnteredAt: now,
+            stageHistory: [{
+                stageId: targetStageId,
+                stageName: targetStageName || 'Initial Stage',
+                enteredAt: now,
+                exitedAt: null,
+                durationSeconds: null,
+                changedByUserId: userId || 'system',
+                notes: `Deal cloned from "${sourceDeal.name}"`
+            }],
+            lineItems: clonedLineItems,
+            contacts: options?.copyContacts !== false ? (sourceDeal.contacts || []) : [],
+            focalContacts: options?.copyContacts !== false ? (sourceDeal.focalContacts || []) : [],
+            assignedTo: sourceDeal.assignedTo || null,
+            expectedCloseDate: expectedCloseDate || null,
+            description: sourceDeal.description || null,
+            source: 'manual',
+            customFields: options?.copyCustomFields !== false ? (sourceDeal.customFields || {}) : {},
+            tags: sourceDeal.tags || [],
+            isArchived: false,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        const newDocRef = await adminDb.collection('deals').add(clonedDealData);
+
+        await logActivity({
+            organizationId: sourceDeal.organizationId || '',
+            entityId: sourceDeal.entityId || null,
+            userId: userId || null,
+            workspaceId: sourceDeal.workspaceId,
+            type: 'deal_created',
+            source: 'user',
+            description: `duplicated deal "${sourceDeal.name}" to create "${clonedDealData.name}"`,
+            metadata: { originalDealId: dealId, newDealId: newDocRef.id }
+        });
+
+        return { success: true, newDealId: newDocRef.id };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to duplicate deal';
+        console.error('❌ Failed to duplicate deal:', error);
+        return { success: false, error };
+    }
+}
+
+/**
+ * ARCHITECTURAL POINTER (Phase 1 - Soft-Archiving):
+ * Soft-archives a deal without physical deletion, preserving all data and timeline history.
+ */
+export async function archiveDealAction(
+    dealId: string,
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!dealId) return { success: false, error: 'Deal ID is required' };
+
+        const dealDoc = await adminDb.collection('deals').doc(dealId).get();
+        if (!dealDoc.exists) return { success: false, error: 'Deal not found' };
+
+        const deal = dealDoc.data() as Deal;
+        if (userId && deal.workspaceId) {
+            const perm = await canUser(userId, 'operations', 'pipeline', 'edit', deal.workspaceId);
+            if (!perm.granted) return { success: false, error: perm.reason };
+        }
+
+        const now = new Date().toISOString();
+        await adminDb.collection('deals').doc(dealId).update({
+            isArchived: true,
+            archivedAt: now,
+            archivedBy: userId || null,
+            updatedAt: now
+        });
+
+        await logActivity({
+            organizationId: deal.organizationId || '',
+            entityId: deal.entityId || null,
+            userId: userId || null,
+            workspaceId: deal.workspaceId,
+            type: 'deal_archived',
+            source: 'user',
+            description: `archived deal "${deal.name}"`,
+            metadata: { dealId }
+        });
+
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to archive deal';
+        return { success: false, error };
+    }
+}
+
+/**
+ * Restores a soft-archived deal back into active pipeline tracking.
+ */
+export async function unarchiveDealAction(
+    dealId: string,
+    userId?: string
+): Promise<{ success: boolean; error?: string }> {
+    try {
+        if (!dealId) return { success: false, error: 'Deal ID is required' };
+
+        const dealDoc = await adminDb.collection('deals').doc(dealId).get();
+        if (!dealDoc.exists) return { success: false, error: 'Deal not found' };
+
+        const deal = dealDoc.data() as Deal;
+        if (userId && deal.workspaceId) {
+            const perm = await canUser(userId, 'operations', 'pipeline', 'edit', deal.workspaceId);
+            if (!perm.granted) return { success: false, error: perm.reason };
+        }
+
+        const now = new Date().toISOString();
+        await adminDb.collection('deals').doc(dealId).update({
+            isArchived: false,
+            archivedAt: null,
+            archivedBy: null,
+            updatedAt: now
+        });
+
+        await logActivity({
+            organizationId: deal.organizationId || '',
+            entityId: deal.entityId || null,
+            userId: userId || null,
+            workspaceId: deal.workspaceId,
+            type: 'deal_restored',
+            source: 'user',
+            description: `restored deal "${deal.name}" from archive`,
+            metadata: { dealId }
+        });
+
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to restore deal';
+        return { success: false, error };
+    }
+}
+
+/**
+ * Bulk soft-archives an array of deals.
+ */
+export async function bulkArchiveDealsAction(
+    dealIds: string[],
+    workspaceId: string,
+    userId?: string
+): Promise<{ success: boolean; archivedCount: number; error?: string }> {
+    try {
+        if (!dealIds || dealIds.length === 0 || !workspaceId) {
+            return { success: false, archivedCount: 0, error: 'Missing required parameters' };
+        }
+
+        if (userId) {
+            const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!permission.granted) {
+                return { success: false, archivedCount: 0, error: permission.reason };
+            }
+        }
+
+        const chunkSize = 200;
+        let totalArchived = 0;
+        const now = new Date().toISOString();
+
+        for (let i = 0; i < dealIds.length; i += chunkSize) {
+            const chunkIds = dealIds.slice(i, i + chunkSize);
+            const docRefs = chunkIds.map(id => adminDb.collection('deals').doc(id));
+            const snaps = await adminDb.getAll(...docRefs);
+            const batch = adminDb.batch();
+            let batchOps = 0;
+
+            for (const snap of snaps) {
+                if (snap.exists) {
+                    const data = snap.data() as Deal;
+                    if (!data.workspaceId || data.workspaceId === workspaceId) {
+                        batch.update(snap.ref, {
+                            isArchived: true,
+                            archivedAt: now,
+                            archivedBy: userId || null,
+                            updatedAt: now
+                        });
+                        batchOps++;
+                    }
+                }
+            }
+
+            if (batchOps > 0) {
+                await batch.commit();
+                totalArchived += batchOps;
+            }
+        }
+
+        await logActivity({
+            organizationId: '',
+            entityId: null,
+            userId: userId || null,
+            workspaceId,
+            type: 'bulk_deals_archived',
+            source: 'user',
+            description: `bulk archived ${totalArchived} deals`,
+            metadata: { count: totalArchived }
+        });
+
+        return { success: true, archivedCount: totalArchived };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to bulk archive deals';
+        return { success: false, archivedCount: 0, error };
+    }
+}
+
+/**
+ * ARCHITECTURAL POINTER (Phase 1 - Deal Merge Engine):
+ * Merges two deals into a single designated Master Record:
+ * - Unites associated secondary contacts & focal contacts (deduplicated).
+ * - Combines products/line items and recalculates grand totals.
+ * - Re-associates operational tasks/notes from secondary deal to master deal.
+ * - Soft-archives secondary deal with status = 'cancelled', outcome = 'duplicate', mergedIntoDealId = masterId.
+ * - Never permanently deletes the secondary record, preserving auditability.
+ */
+export async function mergeDealsAction(
+    options: DealMergeOptions,
+    workspaceId: string,
+    userId?: string
+): Promise<DealMergeResult> {
+    try {
+        const { masterDealId, secondaryDealId } = options;
+        if (!masterDealId || !secondaryDealId || masterDealId === secondaryDealId) {
+            return {
+                success: false,
+                masterDealId,
+                secondaryDealId,
+                mergedContactsCount: 0,
+                mergedLineItemsCount: 0,
+                error: 'Valid master and distinct secondary deal IDs are required.'
+            };
+        }
+
+        if (userId) {
+            const perm = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+            if (!perm.granted) {
+                return {
+                    success: false,
+                    masterDealId,
+                    secondaryDealId,
+                    mergedContactsCount: 0,
+                    mergedLineItemsCount: 0,
+                    error: perm.reason
+                };
+            }
+        }
+
+        const [masterSnap, secondarySnap] = await adminDb.getAll(
+            adminDb.collection('deals').doc(masterDealId),
+            adminDb.collection('deals').doc(secondaryDealId)
+        );
+
+        if (!masterSnap.exists || !secondarySnap.exists) {
+            return {
+                success: false,
+                masterDealId,
+                secondaryDealId,
+                mergedContactsCount: 0,
+                mergedLineItemsCount: 0,
+                error: 'One or both deals could not be found.'
+            };
+        }
+
+        const masterDeal = masterSnap.data() as Deal;
+        const secondaryDeal = secondarySnap.data() as Deal;
+
+        if (masterDeal.workspaceId !== workspaceId || secondaryDeal.workspaceId !== workspaceId) {
+            return {
+                success: false,
+                masterDealId,
+                secondaryDealId,
+                mergedContactsCount: 0,
+                mergedLineItemsCount: 0,
+                error: 'Cannot merge deals across different workspaces.'
+            };
+        }
+
+        const now = new Date().toISOString();
+
+        // 1. Merge Contacts & Focal Contacts
+        let mergedContacts: DealContact[] = masterDeal.contacts || [];
+        let mergedFocalContacts: DealFocalContact[] = masterDeal.focalContacts || [];
+        let mergedContactsCount = 0;
+
+        if (options.mergeContacts) {
+            const contactIdSet = new Set((masterDeal.contacts || []).map(c => c.entityId || c.email));
+            const extraContacts = (secondaryDeal.contacts || []).filter(c => !contactIdSet.has(c.entityId || c.email));
+            mergedContacts = [...(masterDeal.contacts || []), ...extraContacts];
+
+            const focalIdSet = new Set((masterDeal.focalContacts || []).map(f => f.id || f.email));
+            const extraFocals = (secondaryDeal.focalContacts || []).filter(f => !focalIdSet.has(f.id || f.email));
+            mergedFocalContacts = [...(masterDeal.focalContacts || []), ...extraFocals];
+
+            mergedContactsCount = extraContacts.length + extraFocals.length;
+        }
+
+        // 2. Merge Line Items
+        let mergedLineItems: DealLineItem[] = masterDeal.lineItems || [];
+        let mergedLineItemsCount = 0;
+        let finalValue = options.resolvedValue;
+
+        if (options.mergeLineItems && Array.isArray(secondaryDeal.lineItems) && secondaryDeal.lineItems.length > 0) {
+            const secondaryItemsWithNewIds = secondaryDeal.lineItems.map(item => ({
+                ...item,
+                id: nanoid()
+            }));
+            mergedLineItems = [...(masterDeal.lineItems || []), ...secondaryItemsWithNewIds];
+            mergedLineItemsCount = secondaryItemsWithNewIds.length;
+
+            const totals = calculateLineItemsTotals(mergedLineItems);
+            if (totals.grandTotal > 0) {
+                finalValue = totals.grandTotal;
+            }
+        }
+
+        // 3. Merge Custom Fields
+        const mergedCustomFields = options.mergeCustomFields
+            ? { ...(secondaryDeal.customFields || {}), ...(masterDeal.customFields || {}) }
+            : (masterDeal.customFields || {});
+
+        // 4. Merge Tags
+        const mergedTags = Array.from(new Set([...(masterDeal.tags || []), ...(secondaryDeal.tags || [])]));
+
+        // 5. Reassign Tasks
+        if (options.mergeTasksAndNotes) {
+            try {
+                const tasksSnap = await adminDb.collection('tasks')
+                    .where('relatedEntityId', '==', secondaryDealId)
+                    .get();
+
+                if (!tasksSnap.empty) {
+                    const taskBatch = adminDb.batch();
+                    tasksSnap.docs.forEach(d => {
+                        taskBatch.update(d.ref, {
+                            relatedEntityId: masterDealId,
+                            updatedAt: now
+                        });
+                    });
+                    await taskBatch.commit();
+                }
+            } catch (taskErr) {
+                console.error('Warning: Failed to reassign tasks during merge:', taskErr);
+            }
+        }
+
+        // 6. Update Master Deal
+        await adminDb.collection('deals').doc(masterDealId).update({
+            name: options.resolvedName.trim(),
+            value: finalValue,
+            pipelineId: options.resolvedPipelineId,
+            stageId: options.resolvedStageId,
+            expectedCloseDate: options.resolvedCloseDate || masterDeal.expectedCloseDate || null,
+            assignedTo: options.resolvedAssignedTo !== undefined ? options.resolvedAssignedTo : masterDeal.assignedTo,
+            contacts: mergedContacts,
+            focalContacts: mergedFocalContacts,
+            lineItems: mergedLineItems,
+            customFields: mergedCustomFields,
+            tags: mergedTags,
+            updatedAt: now
+        });
+
+        // 7. Soft-Archive Secondary Deal
+        await adminDb.collection('deals').doc(secondaryDealId).update({
+            isArchived: true,
+            status: 'cancelled',
+            lostReason: `Merged into master deal "${options.resolvedName.trim()}" (${masterDealId})`,
+            mergedIntoDealId: masterDealId,
+            archivedAt: now,
+            archivedBy: userId || null,
+            updatedAt: now
+        });
+
+        // 8. Log Activity
+        await logActivity({
+            organizationId: masterDeal.organizationId || '',
+            entityId: masterDeal.entityId || null,
+            userId: userId || null,
+            workspaceId,
+            type: 'deal_merged',
+            source: 'user',
+            description: `merged deal "${secondaryDeal.name}" into "${options.resolvedName.trim()}"`,
+            metadata: { masterDealId, secondaryDealId, mergedContactsCount, mergedLineItemsCount }
+        });
+
+        return {
+            success: true,
+            masterDealId,
+            secondaryDealId,
+            mergedContactsCount,
+            mergedLineItemsCount
+        };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to merge deals';
+        console.error('❌ Failed to merge deals:', error);
+        return {
+            success: false,
+            masterDealId: options.masterDealId,
+            secondaryDealId: options.secondaryDealId,
+            mergedContactsCount: 0,
+            mergedLineItemsCount: 0,
+            error
+        };
+    }
+}
+
+/**
+ * ============================================================================
+ * PHASE 3: CRM ACTIVITY GRAPH & LEAD-TO-DEAL CONVERSION ACTIONS (PRD §24, §25, §120)
+ * ============================================================================
+ * 
+ * Architectural Pointers:
+ * - Converts a prospect / lead into a first-class Deal opportunity record in the target pipeline.
+ * - Preserves complete marketing attribution (source, campaignId, leadScore) and stakeholder contacts.
+ * - Stamps the original lead record with conversion metadata (isConverted, convertedAt, convertedDealId).
+ * - Enforces canUser RBAC multi-tenant isolation and logs dealId-scoped activities to the platform Event Bus.
+ * 
+ * Caution Areas for Future Maintainers:
+ * - Lead entity lookup resolves across composite workspace_entities keys and canonical entities collection.
+ * - Original lead is NEVER deleted upon conversion; it is marked as converted for 360° auditability.
+ * 
+ * Testability Pointers:
+ * - Unit tests in deal-actions.phase3.test.ts verify permission checks, attribution mapping, and deal creation.
+ */
+export async function convertLeadToDealAction(
+    options: LeadConversionOptions
+): Promise<LeadConversionResult> {
+    try {
+        const {
+            leadEntityId,
+            pipelineId,
+            stageId: requestedStageId,
+            dealName,
+            value = 0,
+            expectedCloseDate,
+            assignedTo,
+            focalContactIds = [],
+            notes,
+            userId,
+            workspaceId
+        } = options;
+
+        if (!leadEntityId || !pipelineId || !userId || !workspaceId) {
+            return { success: false, error: 'Missing required parameters for lead conversion.' };
+        }
+
+        // 1. Permission Check
+        const permission = await canUser(userId, 'operations', 'pipeline', 'create', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason || 'Unauthorized to create opportunities.' };
+        }
+
+        // 2. Resolve Lead Entity Record
+        const entityRecord = await resolveWorkspaceEntityRecord(workspaceId, leadEntityId);
+        if (!entityRecord) {
+            return { success: false, error: 'Lead entity not found in target workspace.' };
+        }
+
+        const now = new Date().toISOString();
+        const organizationId = entityRecord.organizationId || 'default';
+
+        // 3. Resolve Target Pipeline Stages
+        const stagesSnap = await adminDb.collection('onboardingStages')
+            .where('pipelineId', '==', pipelineId)
+            .get();
+
+        if (stagesSnap.empty) {
+            return { success: false, error: 'Target pipeline has no configured stages.' };
+        }
+
+        const sortedStages = stagesSnap.docs
+            .map(d => ({ id: d.id, ...d.data() } as OnboardingStage))
+            .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+
+        const targetStage = requestedStageId
+            ? (sortedStages.find(s => s.id === requestedStageId) || sortedStages[0])
+            : sortedStages[0];
+
+        const resolvedStageId = targetStage.id;
+        const stageProbability = typeof targetStage.probability === 'number' ? targetStage.probability : 20;
+
+        // 4. Resolve Expected Close Date
+        let resolvedCloseDate = expectedCloseDate;
+        if (!resolvedCloseDate) {
+            const pipelineDoc = await adminDb.collection('pipelines').doc(pipelineId).get();
+            const pipelineConfig = pipelineDoc.exists ? pipelineDoc.data() as import('../admin/pipeline/utils/deal-expected-close').PipelineOffsetConfig : null;
+            const calculated = calculateExpectedCloseDate(pipelineConfig, null, new Date(now), targetStage.slaDays || 30);
+            resolvedCloseDate = calculated || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+        }
+
+        // 5. Map Contacts & Stakeholders
+        const entityRawContacts = (entityRecord.entityContacts || entityRecord.contacts || []) as Array<{
+            id?: string;
+            entityId?: string;
+            name?: string;
+            email?: string;
+            phone?: string;
+            typeLabel?: string;
+            role?: string;
+        }>;
+
+        const focalContacts: DealFocalContact[] = [];
+        const dealContacts: DealContact[] = [];
+
+        entityRawContacts.forEach((c, index) => {
+            const cId = c.id || c.entityId || `contact_${index}`;
+            const isFocal = focalContactIds.length > 0
+                ? focalContactIds.includes(cId) || focalContactIds.includes(c.entityId || '')
+                : index === 0; // Default first contact as focal
+
+            if (isFocal) {
+                focalContacts.push({
+                    id: cId,
+                    name: c.name || 'Unnamed Contact',
+                    email: c.email,
+                    phone: c.phone,
+                    role: c.role || c.typeLabel || 'Primary Contact',
+                });
+            } else {
+                dealContacts.push({
+                    entityId: cId,
+                    name: c.name || 'Unnamed Contact',
+                    email: c.email,
+                    role: c.role || c.typeLabel || 'Stakeholder',
+                });
+            }
+        });
+
+        // 6. Create Deal Record
+        const dealRef = adminDb.collection('deals').doc();
+        const dealId = dealRef.id;
+        const resolvedDealName = dealName?.trim() || entityRecord.displayName || 'Converted Lead Deal';
+        const numValue = typeof value === 'number' && value >= 0 ? value : 0;
+        const weightedValue = Math.round(numValue * (stageProbability / 100) * 100) / 100;
+
+        const newDeal: Partial<Deal> = {
+            id: dealId,
+            entityId: leadEntityId,
+            workspaceId,
+            organizationId,
+            pipelineId,
+            stageId: resolvedStageId,
+            stageName: targetStage.name || 'Initial',
+            name: resolvedDealName,
+            value: numValue,
+            status: 'open',
+            source: (entityRecord.utmSource || (entityRecord as Record<string, unknown>).source || 'lead_conversion') as Deal['source'],
+            campaignId: entityRecord.utmCampaign || undefined,
+            leadId: leadEntityId,
+            assignedTo: assignedTo || null,
+            focalContacts,
+            contacts: dealContacts,
+            expectedCloseDate: resolvedCloseDate,
+            probability: stageProbability,
+            weightedValue,
+            stageEnteredAt: now,
+            stageHistory: [{
+                stageId: resolvedStageId,
+                stageName: targetStage.name || 'Initial',
+                enteredAt: now,
+                durationSeconds: 0,
+                changedByUserId: userId,
+            }],
+            customFields: (entityRecord.customData || {}) as Record<string, string | number | boolean | null>,
+            tags: entityRecord.workspaceTags || [],
+            isArchived: false,
+            createdAt: now,
+            updatedAt: now,
+        };
+
+        const batch = adminDb.batch();
+        batch.set(dealRef, newDeal);
+
+        // 7. Stamp Conversion on Lead Record (both in workspace_entities & canonical entities if present)
+        const leadUpdateData = {
+            isConverted: true,
+            convertedAt: now,
+            convertedBy: userId,
+            convertedDealId: dealId,
+            updatedAt: now,
+        };
+
+        const cleanLeadId = leadEntityId.startsWith(`${workspaceId}_`) ? leadEntityId.slice(workspaceId.length + 1) : leadEntityId;
+        const weRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanLeadId}`);
+        batch.set(weRef, leadUpdateData, { merge: true });
+
+        // Optional Handover Note
+        if (notes && notes.trim().length > 0) {
+            const noteRef = adminDb.collection('notes').doc();
+            batch.set(noteRef, {
+                id: noteRef.id,
+                entityId: leadEntityId,
+                dealId,
+                workspaceId,
+                organizationId,
+                authorId: userId,
+                content: notes.trim(),
+                createdAt: now,
+                updatedAt: now,
+            });
+        }
+
+        await batch.commit();
+
+        // 8. Log Conversion Activity on Unified Event Bus
+        await logActivity({
+            organizationId,
+            workspaceId,
+            entityId: leadEntityId,
+            dealId,
+            userId,
+            type: 'lead_converted',
+            source: 'user',
+            description: `converted lead "${entityRecord.displayName}" into deal "${resolvedDealName}"`,
+            metadata: {
+                dealId,
+                dealName: resolvedDealName,
+                pipelineId,
+                stageId: resolvedStageId,
+                stageName: targetStage.name,
+                value: numValue,
+                leadEntityId,
+            }
+        });
+
+        revalidatePath('/admin/pipeline');
+        revalidatePath('/admin/deals');
+        revalidatePath('/admin/entities');
+        revalidatePath(`/admin/entities/${leadEntityId}`);
+        revalidatePath(`/admin/deals/${dealId}`);
+
+        return {
+            success: true,
+            dealId,
+            leadEntityId,
+        };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to convert lead to deal';
+        console.error('❌ [CONVERT:LEAD_TO_DEAL] Failed:', error);
+        return { success: false, error };
+    }
+}
+
+/**
+ * Logs a multi-channel CRM interaction (Call, Meeting, Email, WhatsApp, SMS, Note) on a Deal
+ */
+export async function logDealInteractionAction(
+    dealId: string,
+    interactionData: DealInteractionData,
+    userId: string,
+    workspaceId: string
+): Promise<DealInteractionResult> {
+    try {
+        if (!dealId || !interactionData || !userId || !workspaceId) {
+            return { success: false, error: 'Missing required parameters for logging deal interaction.' };
+        }
+
+        // 1. Permission Check
+        const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+        if (!permission.granted) {
+            return { success: false, error: permission.reason || 'Unauthorized to edit deals.' };
+        }
+
+        // 2. Fetch Deal Record
+        const dealSnap = await adminDb.collection('deals').doc(dealId).get();
+        if (!dealSnap.exists) {
+            return { success: false, error: 'Deal record not found.' };
+        }
+
+        const deal = { id: dealSnap.id, ...dealSnap.data() } as Deal;
+        const now = new Date().toISOString();
+        const organizationId = deal.organizationId || 'default';
+
+        // 3. Map Interaction Type to Activity Event Type
+        const activityTypeMap: Record<string, string> = {
+            call: 'call_logged',
+            meeting: 'meeting_completed',
+            email: 'email_sent',
+            whatsapp: 'whatsapp_sent',
+            sms: 'sms_sent',
+            note: 'note_added',
+        };
+
+        const eventType = activityTypeMap[interactionData.type] || 'deal_interaction';
+
+        // 4. Construct Descriptive Audit Text
+        const subject = interactionData.subject.trim();
+        const description = interactionData.description?.trim()
+            ? `${subject} — ${interactionData.description.trim()}`
+            : subject;
+
+        // 5. Log Activity with Top-Level dealId
+        await logActivity({
+            organizationId,
+            workspaceId: deal.workspaceId || workspaceId,
+            entityId: deal.entityId || null,
+            dealId: deal.id,
+            userId,
+            type: eventType,
+            source: 'user',
+            description,
+            metadata: {
+                dealId: deal.id,
+                dealName: deal.name,
+                interactionType: interactionData.type,
+                outcome: interactionData.outcome || null,
+                durationMinutes: interactionData.durationMinutes || null,
+                recipientContactId: interactionData.recipientContactId || null,
+                recipientName: interactionData.recipientName || null,
+                recipientPhone: interactionData.recipientPhone || null,
+                recipientEmail: interactionData.recipientEmail || null,
+                locationOrPlatform: interactionData.locationOrPlatform || null,
+                occurredAt: interactionData.occurredAt || now,
+            }
+        });
+
+        // 6. Touch Deal Timestamp
+        await adminDb.collection('deals').doc(dealId).update({
+            updatedAt: now,
+        });
+
+        revalidatePath(`/admin/deals/${dealId}`);
+        revalidatePath('/admin/pipeline');
+
+        return { success: true };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to log deal interaction';
+        console.error('❌ [DEAL:LOG_INTERACTION] Failed:', error);
+        return { success: false, error };
+    }
+}
+
 

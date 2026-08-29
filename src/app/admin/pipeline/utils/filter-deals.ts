@@ -101,5 +101,13 @@ export function applyDealFilters(
     });
   }
 
+  // I. Archive Status filter ('active' default, 'archived', 'all')
+  const archiveFilter = filters.archiveStatus || 'active';
+  if (archiveFilter === 'active') {
+    temp = temp.filter(d => !d.isArchived);
+  } else if (archiveFilter === 'archived') {
+    temp = temp.filter(d => !!d.isArchived);
+  }
+
   return temp;
 }

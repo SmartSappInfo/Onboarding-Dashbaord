@@ -29,7 +29,8 @@ import {
     Link as LinkIcon,
     User,
     MessageSquare,
-    ExternalLink
+    ExternalLink,
+    Loader2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -49,8 +50,28 @@ import {
     updateDealStageAction, 
     updateDealStatusAction,
     addDealContactAction,
-    removeDealContactAction
+    removeDealContactAction,
+    archiveDealAction,
+    unarchiveDealAction,
+    deleteDealAction
 } from '@/app/actions/deal-actions';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import DuplicateDealModal from '../../pipeline/components/DuplicateDealModal';
+import MergeDealsModal from '../../pipeline/components/MergeDealsModal';
+import {
+    Copy,
+    GitMerge,
+    Archive,
+    RotateCcw,
+    MoreVertical,
+    AlertTriangle
+} from 'lucide-react';
 import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -58,6 +79,7 @@ import dynamic from 'next/dynamic';
 import EntityNotesTab from '../../entities/components/EntityNotesTab';
 import DealLineItemsTab from './components/DealLineItemsTab';
 import DealAiIntelligencePanel from './components/DealAiIntelligencePanel';
+import DealQuickActions from './components/DealQuickActions';
 import { PageContainer } from '@/components/ui/page-container';
 import { formatCurrency, getCurrencySymbol } from '@/lib/currency-utils';
 
@@ -257,6 +279,82 @@ export default function DealDetailsPage() {
         );
     }, [firestore, dealId, deal?.workspaceId]);
     const { data: dealTasks, isLoading: isTasksLoading } = useCollection<Task>(dealTasksQuery);
+
+    // Fetch all deals in workspace for Merge modal candidate selection
+    const allDealsQuery = useMemoFirebase(() => {
+        if (!firestore || !deal?.workspaceId) return null;
+        return query(
+            collection(firestore, 'deals'),
+            where('workspaceId', '==', deal.workspaceId)
+        );
+    }, [firestore, deal?.workspaceId]);
+    const { data: allWorkspaceDeals } = useCollection<Deal>(allDealsQuery);
+
+    // Duplication & Merge Modal States
+    const [isDuplicateModalOpen, setIsDuplicateModalOpen] = React.useState(false);
+    const [isMergeModalOpen, setIsMergeModalOpen] = React.useState(false);
+    const [isArchiving, setIsArchiving] = React.useState(false);
+
+    // Archive / Restore Handler
+    const handleToggleArchive = async () => {
+        if (!deal) return;
+        setIsArchiving(true);
+        try {
+            if (deal.isArchived) {
+                const res = await unarchiveDealAction(deal.id, currentUser?.uid);
+                if (res.success) {
+                    toast({ title: 'Deal Restored', description: 'Opportunity returned to active pipeline.' });
+                } else {
+                    throw new Error(res.error || 'Failed to restore deal');
+                }
+            } else {
+                const confirmed = await confirm({
+                    title: 'Archive Deal?',
+                    description: `Archive "${deal.name}"? It will be hidden from active pipeline views while preserving all history.`,
+                    confirmText: 'Archive Deal',
+                    variant: 'default',
+                });
+                if (!confirmed) return;
+
+                const res = await archiveDealAction(deal.id, currentUser?.uid);
+                if (res.success) {
+                    toast({ title: 'Deal Archived', description: 'Opportunity moved to archive.' });
+                } else {
+                    throw new Error(res.error || 'Failed to archive deal');
+                }
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Action failed';
+            toast({ variant: 'destructive', title: 'Archive Action Failed', description: msg });
+        } finally {
+            setIsArchiving(false);
+        }
+    };
+
+    // Permanent Delete Handler
+    const handleDeleteDeal = async () => {
+        if (!deal) return;
+        const confirmed = await confirm({
+            title: 'Delete Deal?',
+            description: `Permanently delete "${deal.name}"? This action cannot be undone.`,
+            confirmText: 'Delete Deal',
+            variant: 'destructive',
+        });
+        if (!confirmed) return;
+
+        try {
+            const res = await deleteDealAction(deal.id, deal.workspaceId, currentUser?.uid);
+            if (res.success) {
+                toast({ title: 'Deal Deleted', description: 'Opportunity permanently removed.' });
+                router.push('/admin/pipeline');
+            } else {
+                throw new Error(res.error || 'Failed to delete deal');
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Delete failed';
+            toast({ variant: 'destructive', title: 'Delete Failed', description: msg });
+        }
+    };
 
     // Task logic handlers
     const handleCreateTask = async (e: React.FormEvent) => {
@@ -521,16 +619,8 @@ export default function DealDetailsPage() {
                 : (effectiveCloseDate || null);
 
             // ARCHITECTURAL POINTER (Rule 10 - Sequential Stage Transition Integrity):
-            // 1. If stage changed, update stage FIRST to record stageHistory duration from previous stage.
-            if (stageId && stageId !== deal.stageId) {
-                const stageRes = await updateDealStageAction(deal.id, stageId, { status });
-                if (stageRes.error) throw new Error(stageRes.error);
-            } else if (status !== deal.status) {
-                const statusRes = await updateDealStatusAction(deal.id, status);
-                if (statusRes.error) throw new Error(statusRes.error);
-            }
-
-            // 2. Update Core Details via updateDealDetailsAction (omit stageId to prevent overwriting stage history)
+            // 1. Update Core Details FIRST so updated commercial attributes (e.g. value, close date, contacts)
+            // are persisted before the stage entry validation gate executes.
             const detailsRes = await updateDealDetailsAction(deal.id, {
                 name,
                 value: parseFloat(value) || 0,
@@ -543,7 +633,26 @@ export default function DealDetailsPage() {
 
             if (detailsRes.error) throw new Error(detailsRes.error);
 
-            toast({ title: 'Deal Updated', description: 'Deal parameters successfully synchronized.' });
+            // 2. If stage changed, execute stage transition with process gate validation
+            if (stageId && stageId !== deal.stageId) {
+                const stageRes = await updateDealStageAction(deal.id, stageId, { 
+                    status, 
+                    userId: currentUser?.uid 
+                });
+                if (stageRes.error) throw new Error(stageRes.error);
+            } else if (status !== deal.status) {
+                const statusRes = await updateDealStatusAction(deal.id, status);
+                if (statusRes.error) throw new Error(statusRes.error);
+            }
+
+            toast({ 
+                title: 'Deal Updated', 
+                description: 'Deal parameters successfully synchronized.',
+                actionConfig: {
+                    path: `/admin/deals/${deal.id}`,
+                    label: 'Refresh View'
+                }
+            });
         } catch (err: unknown) {
             const msg = err instanceof Error ? err.message : 'Unknown error';
             toast({ variant: 'destructive', title: 'Update Failed', description: msg });
@@ -599,14 +708,39 @@ export default function DealDetailsPage() {
                     <ArrowLeft className="h-4 w-4 mr-2" /> Back
                 </Button>
 
+                {/* Soft-Archived Warning & Restore Banner */}
+                {deal.isArchived && (
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-900 dark:text-amber-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-xs font-bold shadow-sm">
+                        <div className="flex items-center gap-2.5">
+                            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                            <span>This deal is archived and hidden from active pipeline boards and forecast totals.</span>
+                        </div>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleToggleArchive}
+                            disabled={isArchiving}
+                            className="h-8 px-4 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white gap-1.5 shrink-0 shadow-sm"
+                        >
+                            {isArchiving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                            Restore Deal
+                        </Button>
+                    </div>
+                )}
+
                 <div className="relative overflow-hidden rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
                     <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                        <div className="space-y-2">
-                            <div className="flex items-center gap-3">
-                                <h2 className="text-3xl font-bold tracking-tight">{deal.name}</h2>
+                        <div className="space-y-2 flex-1 min-w-0">
+                            <div className="flex items-center gap-3 flex-wrap">
+                                <h2 className="text-3xl font-bold tracking-tight text-foreground truncate">{deal.name}</h2>
                                 <Badge className="h-6 px-3 text-[10px] font-semibold uppercase text-white shadow-sm" style={{ backgroundColor: statusColor }}>
                                     {deal.status}
                                 </Badge>
+                                {deal.isArchived && (
+                                    <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 gap-1">
+                                        <Archive className="h-3 w-3" /> Archived
+                                    </Badge>
+                                )}
                             </div>
                             <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground flex-wrap">
                                 <span className="flex items-center gap-1.5"><Banknote className="h-4 w-4 text-primary" /> {formatCurrency(deal.value)}</span>
@@ -628,7 +762,7 @@ export default function DealDetailsPage() {
                                 <span className="flex items-center gap-1.5"><UserCircle2 className="h-4 w-4" /> {deal.assignedTo?.name || 'Unassigned'}</span>
                             </div>
 
-                            {/* Key Info — merged from the right-panel card */}
+                            {/* Key Info */}
                             <div className="flex items-center gap-4 text-xs font-semibold text-muted-foreground/80 flex-wrap pt-1">
                                 <span className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5 text-primary/50" />
@@ -647,8 +781,68 @@ export default function DealDetailsPage() {
                                 </span>
                             </div>
                         </div>
+
+                        {/* Opportunity Lifecycle Actions Toolbar */}
+                        <div className="flex items-center gap-2 shrink-0 w-full sm:w-auto justify-end">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsDuplicateModalOpen(true)}
+                                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-border/80 hover:bg-primary/5"
+                            >
+                                <Copy className="h-3.5 w-3.5 text-primary" /> Duplicate
+                            </Button>
+
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setIsMergeModalOpen(true)}
+                                className="h-9 px-3.5 rounded-xl font-bold text-xs gap-1.5 border-border/80 hover:bg-primary/5"
+                            >
+                                <GitMerge className="h-3.5 w-3.5 text-primary" /> Merge...
+                            </Button>
+
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-2xl w-48 p-1.5">
+                                    <DropdownMenuItem
+                                        onClick={handleToggleArchive}
+                                        className="rounded-xl p-2 gap-2 text-xs font-semibold cursor-pointer"
+                                    >
+                                        {deal.isArchived ? (
+                                            <>
+                                                <RotateCcw className="h-3.5 w-3.5 text-primary" />
+                                                <span>Restore Deal</span>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                                                <span>Archive Deal</span>
+                                            </>
+                                        )}
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem
+                                        onClick={handleDeleteDeal}
+                                        className="rounded-xl p-2 gap-2 text-xs font-semibold text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                                    >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                        <span>Delete Deal</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
                     </div>
                 </div>
+
+                {/* Deal Multi-Channel Quick Actions Bar (Phase 3 CRM Activity Graph) */}
+                <DealQuickActions deal={deal} contacts={entityContacts} />
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     <div className="lg:col-span-2">
@@ -952,7 +1146,7 @@ export default function DealDetailsPage() {
                                 <CardTitle className="text-[11px] font-semibold text-primary flex items-center gap-2"><Activity className="h-4 w-4" /> Activity Feed</CardTitle>
                             </CardHeader>
                             <CardContent className="p-6">
-                                <ActivityTimeline entityId={deal.entityId} limit={20} />
+                                <ActivityTimeline dealId={deal.id} entityId={deal.entityId} limit={30} />
                             </CardContent>
                         </Card>
                     </div>
@@ -1107,6 +1301,30 @@ export default function DealDetailsPage() {
                     </form>
                 </DialogContent>
             </Dialog>
+
+            {/* Opportunity Duplication Modal */}
+            <DuplicateDealModal
+                deal={deal}
+                isOpen={isDuplicateModalOpen}
+                onClose={() => setIsDuplicateModalOpen(false)}
+                pipelines={pipelines}
+                stages={stages}
+                onDuplicated={(newId) => {
+                    router.push(`/admin/deals/${newId}`);
+                }}
+            />
+
+            {/* Opportunity Merge Modal */}
+            <MergeDealsModal
+                dealA={deal}
+                dealB={null}
+                allDeals={allWorkspaceDeals || []}
+                isOpen={isMergeModalOpen}
+                onClose={() => setIsMergeModalOpen(false)}
+                onMerged={(res) => {
+                    router.push(`/admin/deals/${res.masterDealId}`);
+                }}
+            />
         </PageContainer>
     );
 }

@@ -82,6 +82,8 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
             }
         }
         
+        const dealId = activityData.dealId || (typeof activityData.metadata?.dealId === 'string' ? activityData.metadata.dealId : undefined);
+
         // Update finalData with resolved fields
         finalData = {
             ...finalData,
@@ -90,6 +92,7 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
             entitySlug: entitySlug || undefined,
             entityType: entityType || undefined,
             displayName: displayName || undefined,
+            dealId: dealId || undefined,
         };
 
         // Check if logging is disabled for this organization
@@ -134,8 +137,9 @@ export async function logActivity(activityData: LogActivityInput): Promise<void>
                 runAfter(async () => {
                     try {
                         await triggerAutomationProtocols(triggerType, payload);
-                    } catch (err: any) {
-                        console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, err.message);
+                    } catch (err: unknown) {
+                        const errMsg = err instanceof Error ? err.message : String(err);
+                        console.error(`>>> [EVENT:BUS] Protocol trigger failed:`, errMsg);
                     }
                 });
             }

@@ -1,7 +1,20 @@
 'use client';
 
 import * as React from 'react';
-import { Search, X, Users, Tag as TagIcon, Layers, Banknote, CalendarRange, SlidersHorizontal, RotateCcw, ChevronDown } from 'lucide-react';
+import { 
+  Search, 
+  X, 
+  Users, 
+  Tag as TagIcon, 
+  Layers, 
+  Banknote, 
+  CalendarRange, 
+  SlidersHorizontal, 
+  RotateCcw, 
+  ChevronDown,
+  Archive,
+  Activity
+} from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -155,6 +168,47 @@ export default function PipelineFilterBar({
               <span className="text-muted-foreground text-xs sm:text-[10px]">–</span>
               <Input type="date" value={filters.closeDateTo ?? ''} onChange={e => updateFilter('closeDateTo', e.target.value || null)} className="h-10 sm:h-9 rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm" />
             </div>
+          </div>
+
+          {/* Health Status */}
+          <div className="space-y-1">
+            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Activity className="h-3 w-3" /> Health Status
+            </label>
+            <Select 
+              value={filters.healthStatus ?? 'all'} 
+              onValueChange={(v: 'all' | 'healthy' | 'at_risk' | 'stalled') => updateFilter('healthStatus', v)}
+            >
+              <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm">
+                <SelectValue placeholder="Health" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="all" className="text-[10px] font-bold">All Health</SelectItem>
+                <SelectItem value="healthy" className="text-[10px] font-bold text-emerald-600">Healthy</SelectItem>
+                <SelectItem value="at_risk" className="text-[10px] font-bold text-amber-600">At Risk</SelectItem>
+                <SelectItem value="stalled" className="text-[10px] font-bold text-rose-600">Stalled</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Archive Status */}
+          <div className="space-y-1">
+            <label className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              <Archive className="h-3 w-3" /> Archive Filter
+            </label>
+            <Select 
+              value={filters.archiveStatus ?? 'active'} 
+              onValueChange={(v: 'active' | 'archived' | 'all') => updateFilter('archiveStatus', v)}
+            >
+              <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-lg border border-border bg-background font-bold text-xs sm:text-[10px] shadow-sm">
+                <SelectValue placeholder="Archive Status" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl">
+                <SelectItem value="active" className="text-[10px] font-bold text-emerald-600">Active Only</SelectItem>
+                <SelectItem value="archived" className="text-[10px] font-bold text-amber-600">Archived Only</SelectItem>
+                <SelectItem value="all" className="text-[10px] font-bold text-muted-foreground">All Records</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {showStagesFilter && stages && stages.length > 0 && (

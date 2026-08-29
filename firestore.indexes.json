@@ -1,6 +1,14 @@
 {
   "indexes": [
     {
+      "collectionGroup": "saved_views",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "workspaceId", "order": "ASCENDING" },
+        { "fieldPath": "createdAt", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "deal_quotes",
       "queryScope": "COLLECTION",
       "fields": [

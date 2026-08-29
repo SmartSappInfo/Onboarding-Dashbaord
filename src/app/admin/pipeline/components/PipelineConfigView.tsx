@@ -56,6 +56,8 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const [isArchiving, setIsArchiving] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isCloning, setIsCloning] = React.useState(false);
+    const [pipelineType, setPipelineType] = React.useState<import('@/lib/types').PipelineType>('sales');
+    const [defaultProbability, setDefaultProbability] = React.useState<number>(50);
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
@@ -217,6 +219,8 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
         if (pipeline) {
             setName(pipeline.name);
             setDescription(pipeline.description || '');
+            setPipelineType(pipeline.type || 'sales');
+            setDefaultProbability(typeof pipeline.defaultProbability === 'number' ? pipeline.defaultProbability : 50);
             setAccessRoles(pipeline.accessRoles || []);
             setWorkspaceIds(pipeline.workspaceIds || []);
             setAssignmentStrategy(pipeline.assignmentStrategy || 'direct');
@@ -242,6 +246,8 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
             await updateDoc(doc(firestore, 'pipelines', pipelineId), {
                 name: name.trim(),
                 description: description.trim(),
+                type: pipelineType,
+                defaultProbability: Math.min(100, Math.max(0, defaultProbability)),
                 accessRoles,
                 workspaceIds,
                 columnWidth,
@@ -284,9 +290,40 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                             </div>
                         </CardHeader>
                         <CardContent className="p-8 space-y-8">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Pipeline Label</Label>
-                                <Input value={name} onChange={e => setName(e.target.value)} className="h-10 rounded-xl border border-border bg-background shadow-sm text-sm px-4 focus:ring-1 focus:ring-primary/20 transition-all font-medium" />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Pipeline Label</Label>
+                                    <Input value={name} onChange={e => setName(e.target.value)} className="min-h-[44px] sm:min-h-[40px] rounded-xl border border-border bg-background shadow-sm text-sm px-4 focus:ring-1 focus:ring-primary/20 transition-all font-medium" />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Pipeline Type</Label>
+                                    <Select value={pipelineType} onValueChange={(val: import('@/lib/types').PipelineType) => setPipelineType(val)}>
+                                        <SelectTrigger className="min-h-[44px] sm:min-h-[40px] rounded-xl text-xs">
+                                            <SelectValue placeholder="Select type" />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-2xl">
+                                            <SelectItem value="sales">Sales Pipeline</SelectItem>
+                                            <SelectItem value="new_business">New Business</SelectItem>
+                                            <SelectItem value="renewal">Renewals &amp; Retention</SelectItem>
+                                            <SelectItem value="upsell">Upsell &amp; Expansion</SelectItem>
+                                            <SelectItem value="cross_sell">Cross-sell</SelectItem>
+                                            <SelectItem value="partnership">Strategic Partnerships</SelectItem>
+                                            <SelectItem value="enrollment">Student Enrollment</SelectItem>
+                                            <SelectItem value="implementation">Implementation &amp; Onboarding</SelectItem>
+                                            <SelectItem value="customer_success">Customer Success</SelectItem>
+                                            <SelectItem value="custom">Custom Workflow</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                <div className="flex justify-between items-center px-1">
+                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase">Default Baseline Probability</Label>
+                                    <Badge variant="outline" className="font-mono text-[10px] bg-background border-primary/20 text-primary rounded-lg">{defaultProbability}%</Badge>
+                                </div>
+                                <Slider value={[defaultProbability]} onValueChange={([v]) => setDefaultProbability(v)} min={0} max={100} step={5} />
                             </div>
 
                             <div className="space-y-4">

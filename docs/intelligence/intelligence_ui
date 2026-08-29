@@ -1,0 +1,2479 @@
+Absolutely. From a professional product-design standpoint, **Lead Intelligence 2.0 should be designed as an intelligence workspace, not as another CRM table with a “Find Leads” button**.
+
+The UX needs to make a complex system—discovery, enrichment, verification, AI research, signals, scoring, CRM matching, credits and reporting—feel simple enough for a salesperson while still exposing the depth required by RevOps and administrators.
+
+Below is the **full UI/UX architecture aligned directly to the implementation phases in the PRD**.
+
+# SmartSapp Lead Intelligence 2.0
+
+## Complete UI/UX Strategy, Architecture & Phase-by-Phase Design Specification
+
+---
+
+# 1. UX North Star
+
+The fundamental UX question should be:
+
+> **“What should I do with this prospect next?”**
+
+Not:
+
+> “How much data do we have about this prospect?”
+
+That distinction is important.
+
+The interface should progressively answer:
+
+```text
+WHO IS THIS?
+     ↓
+WHY DOES IT MATTER?
+     ↓
+WHAT EVIDENCE DO WE HAVE?
+     ↓
+WHAT SHOULD I DO?
+     ↓
+WHAT HAPPENED?
+```
+
+The user should never need to understand the underlying provider architecture, queues, enrichment workers or AI orchestration.
+
+Those are platform concerns.
+
+---
+
+# 2. Primary UX Personas
+
+The interface should adapt to five major personas.
+
+## 2.1 Sales Executive
+
+Primary question:
+
+> “Who should I contact today?”
+
+Needs:
+
+* prioritized leads
+* AI brief
+* decision maker
+* contact details
+* reason for priority
+* recommended action
+* CRM activity
+* tasks
+* meetings
+
+---
+
+## 2.2 Sales Manager
+
+Primary question:
+
+> “Is my team working the right opportunities?”
+
+Needs:
+
+* pipeline
+* lead quality
+* assignments
+* sales effort
+* conversion
+* territory
+* rep performance
+* stalled leads
+
+---
+
+## 2.3 Marketing / Growth
+
+Primary question:
+
+> “Where can we find more customers?”
+
+Needs:
+
+* ICP
+* discovery
+* segments
+* prospecting campaigns
+* source performance
+* campaign activation
+* conversion
+
+---
+
+## 2.4 RevOps / Administrator
+
+Primary question:
+
+> “Is the system producing reliable intelligence efficiently?”
+
+Needs:
+
+* provider performance
+* data quality
+* enrichment
+* verification
+* credits
+* jobs
+* mappings
+* automation
+* governance
+
+---
+
+## 2.5 Executive
+
+Primary question:
+
+> “Is Lead Intelligence producing business value?”
+
+Needs:
+
+* TAM
+* qualified leads
+* opportunities
+* revenue
+* source ROI
+* cost per opportunity
+* conversion
+* trends
+
+---
+
+# 3. Core UX Architecture
+
+I recommend the following navigation:
+
+```text
+LEAD INTELLIGENCE
+│
+├── Overview
+│
+├── Discover
+│   ├── Search
+│   ├── AI Search
+│   ├── Map
+│   └── Saved Searches
+│
+├── Prospects
+│
+├── Lists
+│
+├── Segments
+│
+├── Intelligence Inbox
+│
+├── Research
+│
+├── Signals
+│
+├── Monitoring
+│
+├── Prospecting
+│
+├── Jobs
+│
+├── Imports
+│
+├── Reports
+│
+└── Settings
+    ├── ICP
+    ├── Scoring
+    ├── Sources
+    ├── Providers
+    ├── Enrichment
+    ├── Verification
+    ├── AI
+    ├── Credits
+    ├── Permissions
+    └── Data Governance
+```
+
+However, **do not expose all of these at the same level for ordinary users**.
+
+Use role-based navigation.
+
+For a salesperson:
+
+```text
+Overview
+Prospects
+Lists
+Inbox
+Research
+Tasks
+```
+
+For RevOps:
+
+```text
+Overview
+Discover
+Prospects
+Lists
+Segments
+Prospecting
+Jobs
+Reports
+Settings
+```
+
+---
+
+# 4. Global Lead Intelligence Header
+
+Every Lead Intelligence screen should share a common contextual header.
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ Lead Intelligence                              [+ Discover]  │
+│ Find, understand and activate your best prospects            │
+│                                                              │
+│ 24,821 Prospects   4,218 Qualified   684 High Intent        │
+└──────────────────────────────────────────────────────────────┘
+```
+
+Right side:
+
+```text
+[Search everything] [AI ✦] [Credits: 2,840] [Notifications]
+```
+
+---
+
+# 5. Global Search
+
+The global search should search across:
+
+* companies
+* people
+* domains
+* CRM contacts
+* lists
+* signals
+* research
+* saved searches
+
+Example:
+
+> “ABC School”
+
+Results:
+
+```text
+Companies
+ABC International School
+
+People
+John Mensah — Proprietor
+
+CRM
+ABC International School — Existing Lead
+
+Signals
+Website changed 3 days ago
+```
+
+---
+
+# 6. AI Command Bar
+
+This should become one of the most distinctive UX elements.
+
+Instead of requiring users to navigate complex filters:
+
+```text
+┌──────────────────────────────────────────────────────────────┐
+│ ✦ Ask Lead Intelligence                                      │
+│                                                              │
+│ Find private schools in Kumasi with high enrollment          │
+│ potential and no visible online fee payment.                 │
+│                                                              │
+│                                           [Find Prospects →] │
+└──────────────────────────────────────────────────────────────┘
+```
+
+AI converts the request into structured filters.
+
+The user sees:
+
+```text
+AI understood:
+
+Industry
+Private School
+
+Location
+Kumasi
+
+Need
+Online payment gap
+
+Priority
+High enrollment potential
+```
+
+Then:
+
+**Review criteria → Run search**
+
+This avoids silent AI interpretation.
+
+---
+
+# 7. Phase 0 UX — Foundation
+
+## Objective
+
+Prepare the design system and interaction architecture before building advanced functionality.
+
+---
+
+## 7.1 Design System
+
+SmartSapp should establish a dedicated Lead Intelligence design system using the existing SmartSapp visual language.
+
+Primary brand color:
+
+**#3A86FF**
+
+Typography should remain aligned with SmartSapp's established typography system.
+
+Use:
+
+* generous whitespace
+* restrained borders
+* 10–14px radius
+* subtle elevation
+* compact information density
+* clear hierarchy
+
+Avoid:
+
+* excessive gradients
+* overly decorative cards
+* dashboard clutter
+* dense spreadsheets everywhere
+
+---
+
+# 8. Intelligence Status Colors
+
+Do not rely on color alone.
+
+Use icon + label + color.
+
+Example:
+
+```text
+● Verified
+● Unverified
+● Risky
+● Invalid
+```
+
+Likewise:
+
+```text
+🔥 High Intent
+↑ Rising
+→ Stable
+↓ Declining
+```
+
+---
+
+# 9. Score Visualization
+
+Do not use giant circular gauges everywhere.
+
+Use compact score pills:
+
+```text
+ICP
+94  Excellent
+
+Intent
+82  High
+
+Need
+76  Strong
+```
+
+On hover/click:
+
+**Why?**
+
+---
+
+# 10. Phase 1 UX — Async Processing
+
+The transition from synchronous operations to asynchronous jobs should be highly visible.
+
+## Jobs Center
+
+```text
+Jobs
+────────────────────────────────────────────────────────
+
+Running
+
+School Discovery — Ashanti
+██████████████░░░░ 72%
+2,840 / 4,000 prospects
+
+Enrichment — Campaign Q4
+████████░░░░░░░░░░ 41%
+
+Completed
+
+Ghana Schools — 8,214 prospects
+Completed 12 min ago
+```
+
+Actions:
+
+* Pause
+* Resume
+* Cancel
+* View results
+
+---
+
+# 11. Job Detail
+
+```text
+School Discovery — Ashanti
+
+Status
+Running
+
+Progress
+72%
+
+Found
+4,283
+
+Unique
+3,918
+
+Duplicates
+365
+
+Errors
+24
+
+Credits used
+1,284
+```
+
+Tabs:
+
+```text
+Overview
+Results
+Sources
+Errors
+Activity
+Costs
+```
+
+This is important because asynchronous systems otherwise feel opaque.
+
+---
+
+# 12. Phase 2 UX — Discovery
+
+This should be the **hero experience**.
+
+## Discover Landing Page
+
+Three options:
+
+```text
+┌───────────────────┐
+│ ✦ AI Discovery    │
+│ Describe who you  │
+│ want to find.     │
+└───────────────────┘
+
+┌───────────────────┐
+│ Advanced Search   │
+│ Build precise     │
+│ criteria.         │
+└───────────────────┘
+
+┌───────────────────┐
+│ Import Prospects  │
+│ Bring your own    │
+│ data.             │
+└───────────────────┘
+```
+
+---
+
+# 13. Advanced Search UX
+
+Use a two-pane layout.
+
+```text
+┌───────────────┬──────────────────────────────────────────────┐
+│ FILTERS       │ RESULTS                                      │
+│               │                                              │
+│ Industry      │ 1,248 prospects                              │
+│ Location      │                                              │
+│ Company size  │ [Map] [Table] [Cards]                        │
+│ Technology    │                                              │
+│ Intent        │ ABC School        94                         │
+│ Score         │ XYZ Academy       88                         │
+│ CRM status    │ DEF College       82                         │
+│               │                                              │
+│ [+ Filter]    │                                              │
+└───────────────┴──────────────────────────────────────────────┘
+```
+
+Filters should support:
+
+* search
+* checkboxes
+* range sliders
+* multi-select
+* boolean operators
+* nested groups
+
+---
+
+# 14. Filter Builder
+
+Advanced filters:
+
+```text
+Industry = School
+
+AND
+
+Location
+    Region = Ashanti
+
+AND
+
+(
+  Website maturity < 50
+  OR
+  Payment technology = None
+)
+
+AND
+
+Decision maker exists
+```
+
+Display as readable chips.
+
+---
+
+# 15. Search Results
+
+The result table should be highly information-dense but not overwhelming.
+
+Recommended columns:
+
+```text
+☐ Company
+   Location
+
+ICP
+94
+
+Need
+87
+
+Intent
+82
+
+Decision Maker
+✓
+
+Website
+✓
+
+CRM
+New
+
+Action
+⋮
+```
+
+Users can customize columns.
+
+---
+
+# 16. Column Customization
+
+Allow:
+
+```text
+Columns
+
+☑ Company
+☑ ICP
+☑ Intent
+☑ Decision Maker
+☐ Revenue
+☐ Technologies
+☐ Website
+☐ Phone
+☐ Email
+☐ CRM Status
+```
+
+Save views.
+
+---
+
+# 17. Prospect Cards
+
+For card view:
+
+```text
+┌─────────────────────────────────────────────────────┐
+│ ABC International School                       ⋮   │
+│ Kumasi, Ashanti                                    │
+│                                                     │
+│ ICP 94    Need 88    Intent 81                     │
+│                                                     │
+│ 👤 John Mensah                                      │
+│    Proprietor                                       │
+│                                                     │
+│ ⚡ No online payment detected                       │
+│                                                     │
+│ [Research] [Add to CRM]                             │
+└─────────────────────────────────────────────────────┘
+```
+
+---
+
+# 18. Map View
+
+Map should not simply plot pins.
+
+Clusters should represent prospect density.
+
+Selecting a region:
+
+```text
+Ashanti
+
+2,184 prospects
+682 qualified
+114 high intent
+
+Estimated opportunity
+GHS XXX
+```
+
+Map and table should remain synchronized.
+
+---
+
+# 19. Discovery Results UX
+
+After search:
+
+```text
+4,820 Found
+
+3,942 Unique
+712 Existing CRM
+166 Duplicates
+```
+
+Primary CTA:
+
+**Review 3,942 Prospects**
+
+Secondary:
+
+* Add to list
+* Enrich
+* Verify
+* Research
+* Sync
+
+---
+
+# 20. Phase 3 UX — Identity & Deduplication
+
+This deserves a dedicated experience.
+
+## Duplicate Review
+
+```text
+Possible duplicate
+
+ABC International School
+
+Record A
+Google Places
+Kumasi
+abcschool.edu.gh
+
+Record B
+CRM
+Kumasi
+abcschool.edu.gh
+
+Match confidence
+98%
+```
+
+Buttons:
+
+**Merge**
+
+**Keep Separate**
+
+**Review Later**
+
+---
+
+# 21. Merge Interface
+
+Use side-by-side comparison.
+
+```text
+                 RECORD A       RECORD B
+Name             ABC School     ABC Intl School
+Website          abc.com        abc.com
+Phone            024...         024...
+Address          Kumasi         Kumasi
+
+                     ↓
+
+                 CANONICAL
+               ABC International
+```
+
+Allow field-level choice:
+
+```text
+Name
+○ A
+● B
+○ Custom
+```
+
+---
+
+# 22. Phase 4 UX — Enrichment
+
+The UX should make enrichment understandable.
+
+## Enrichment Panel
+
+```text
+Enrichment
+
+Company
+✓ Complete
+
+Technology
+████████░░ 80%
+
+Contacts
+██████░░░░ 60%
+
+Firmographics
+██████████ 100%
+
+Verification
+████░░░░░░ 40%
+
+[Enrich Missing Data]
+```
+
+---
+
+# 23. Enrichment Cost Preview
+
+Before bulk enrichment:
+
+```text
+Enrich 2,184 prospects
+
+Fields:
+✓ Decision makers
+✓ Business email
+✓ Technology
+✓ Firmographics
+
+Estimated credits
+1,940
+
+[Cancel] [Start Enrichment]
+```
+
+This is critical for trust.
+
+---
+
+# 24. Provider Transparency
+
+Do not overwhelm normal users with provider names.
+
+Normal user sees:
+
+> Contact information
+
+RevOps can expand:
+
+```text
+Provider
+Hunter
+
+Result
+Found
+
+Confidence
+91%
+
+Cost
+1 credit
+```
+
+---
+
+# 25. Phase 5 UX — Verification
+
+Use obvious statuses:
+
+```text
+John Mensah
+john@abcschool.com
+
+✓ Verified
+Last checked: Aug 28
+```
+
+Risk:
+
+```text
+⚠ Risky
+Mailbox may not accept mail
+```
+
+Invalid:
+
+```text
+× Invalid
+```
+
+---
+
+# 26. Phase 6 UX — AI Research
+
+This should become a premium experience.
+
+## Research View
+
+Header:
+
+```text
+ABC International School
+
+ICP 94
+Intent 82
+Priority 91
+
+[Ask AI] [Add to CRM] [Assign]
+```
+
+Then:
+
+```text
+AI RESEARCH BRIEF
+
+Why this prospect matters
+
+ABC International School appears to have...
+```
+
+---
+
+# 27. Research Layout
+
+```text
+┌──────────────────────────────────────────────┐
+│ AI Executive Summary                         │
+├───────────────────────┬──────────────────────┤
+│ Company               │ Opportunity          │
+│                       │                      │
+│ Technology            │ Signals              │
+│                       │                      │
+│ People                │ Recommended Action   │
+└───────────────────────┴──────────────────────┘
+```
+
+---
+
+# 28. Evidence Drawer
+
+Every important statement should have:
+
+**View evidence**
+
+Click:
+
+```text
+Claim
+"No visible online payment capability"
+
+Evidence
+
+Source
+abcschool.com
+
+Observed
+Aug 28, 2026
+
+Confidence
+91%
+
+[Open source]
+```
+
+This is one of the strongest trust-building UX features.
+
+---
+
+# 29. AI Confidence UX
+
+Do not simply say:
+
+> AI says this is a great lead.
+
+Instead:
+
+```text
+AI assessment
+
+High confidence
+87%
+
+Based on:
+✓ Website evidence
+✓ Technology detection
+✓ CRM similarity
+✓ Contact availability
+```
+
+---
+
+# 30. AI Recommendations
+
+Show:
+
+```text
+Recommended next action
+
+Contact the proprietor about fee collection
+digitization.
+
+Why:
+• No online payment capability detected
+• Decision maker identified
+• Similar customers converted successfully
+
+[Create Task]
+[Send to Sales]
+```
+
+---
+
+# 31. Phase 7 UX — Signals
+
+Signals need to be visually prominent but not noisy.
+
+## Signals Feed
+
+```text
+NEW
+
+🔥 High intent
+Website payment page removed
+2 hours ago
+
+↑ Technology change
+New ERP detected
+Yesterday
+
+👤 Leadership
+New proprietor identified
+3 days ago
+```
+
+---
+
+# 32. Signal Detail
+
+```text
+Website Change
+
+Strength
+High
+
+Confidence
+92%
+
+Detected
+2 hours ago
+
+Previous
+No payment page
+
+Current
+Payment page detected
+
+Potential implication
+School may be actively evaluating
+digital payment options.
+```
+
+Then:
+
+**Create follow-up task**
+
+---
+
+# 33. Phase 7 — Monitoring UX
+
+Account monitoring:
+
+```text
+Monitoring
+
+ABC School
+● Healthy
+
+Last scan
+Today
+
+Changes
+2
+
+Alerts
+1
+```
+
+Configure:
+
+```text
+Monitor
+
+☑ Website
+☑ Technology
+☑ Decision makers
+☑ Business changes
+☐ Social activity
+
+Notify:
+☑ In-app
+☑ Email
+☐ WhatsApp
+```
+
+---
+
+# 34. Phase 8 UX — Advanced Scoring
+
+The score must never be a black box.
+
+## Score Breakdown
+
+```text
+Priority Score
+91 / 100
+
+ICP Fit             +24
+Need                +21
+Intent              +18
+Engagement          +12
+Customer similarity +10
+Recency              +6
+```
+
+---
+
+# 35. Score Timeline
+
+Show score movement:
+
+```text
+100 ┤
+ 90 ┤                 ●
+ 80 ┤          ●──────
+ 70 ┤    ●─────
+ 60 ┤ ●──
+    └────────────────────
+     Jun  Jul  Aug
+```
+
+Click an event to see why score changed.
+
+---
+
+# 36. Score Configuration UX
+
+Admin interface:
+
+```text
+Scoring Model
+
+ICP Fit
+Weight: 30%
+
+Intent
+Weight: 25%
+
+Need
+Weight: 20%
+
+Engagement
+Weight: 15%
+
+Similarity
+Weight: 10%
+```
+
+Provide:
+
+**Test model**
+
+Users should be able to simulate changes against historical prospects before publishing.
+
+---
+
+# 37. Phase 9 UX — CRM Intelligence
+
+This is where SmartSapp should differentiate itself.
+
+Prospect detail should show CRM status prominently:
+
+```text
+CRM
+
+● Not in CRM
+
+[Create Lead]
+```
+
+or:
+
+```text
+CRM
+
+✓ Existing Lead
+
+Owner
+Kwame Mensah
+
+Stage
+Qualified
+
+Last activity
+2 days ago
+```
+
+---
+
+# 38. CRM Match UX
+
+If a prospect matches a CRM contact:
+
+```text
+We found a possible existing record.
+
+ABC International School
+CRM match: 97%
+
+[View CRM Record]
+
+Choose:
+
+● Enrich existing
+○ Create new
+○ Ignore
+```
+
+---
+
+# 39. Intelligence + CRM Unified Timeline
+
+This is essential.
+
+Instead of separate histories:
+
+```text
+ACTIVITY TIMELINE
+
+Aug 29
+🔥 High intent signal detected
+
+Aug 28
+AI research completed
+
+Aug 28
+Website technology updated
+
+Aug 27
+Sales email sent
+
+Aug 26
+Lead added to CRM
+
+Aug 25
+Prospect discovered
+```
+
+This creates one coherent customer history.
+
+---
+
+# 40. Phase 10 UX — Lists
+
+Lists should feel familiar.
+
+```text
+My Lists
+
+⭐ High Priority Schools
+1,284 prospects
+
+Q4 Prospecting
+4,820 prospects
+
+Ashanti Schools
+2,184 prospects
+
+Needs Research
+438 prospects
+```
+
+---
+
+# 41. Dynamic Segments
+
+Visual segment builder:
+
+```text
+People who match:
+
+ICP Score > 80
+
+AND
+
+Intent > 60
+
+AND
+
+CRM Stage != Customer
+
+AND
+
+Region = Ashanti
+```
+
+Show:
+
+**1,248 matching prospects**
+
+Then:
+
+**Save Segment**
+
+---
+
+# 42. Phase 10 — Prospecting Campaign UX
+
+This should be a guided wizard.
+
+### Step 1
+
+**Define Target**
+
+### Step 2
+
+**Find Prospects**
+
+### Step 3
+
+**Enrich**
+
+### Step 4
+
+**Verify**
+
+### Step 5
+
+**Qualify**
+
+### Step 6
+
+**Assign**
+
+### Step 7
+
+**Activate**
+
+### Step 8
+
+**Measure**
+
+---
+
+# 43. Prospecting Campaign Dashboard
+
+```text
+Q4 Ghana School Acquisition
+
+Prospects
+8,420
+
+Qualified
+3,184
+
+High Intent
+642
+
+Assigned
+2,980
+
+Contacted
+1,820
+
+Meetings
+318
+
+Opportunities
+94
+
+Won
+27
+```
+
+This gives the campaign a business outcome orientation.
+
+---
+
+# 44. Phase 11 UX — Reporting
+
+Reports should be role-aware.
+
+## Executive Dashboard
+
+```text
+Lead Intelligence
+
+Pipeline Generated
+GHS X.XM
+
+Qualified Leads
+4,218
+
+Opportunities
+684
+
+Won
+142
+
+Revenue
+GHS XXX
+```
+
+---
+
+# 45. Acquisition Report
+
+```text
+SOURCE PERFORMANCE
+
+Source             Leads   Qualified   Opps   Revenue
+
+Google Places      8,420     2,810      142    GHS X
+Web Discovery      4,210     1,920      121    GHS X
+Imports            2,110     1,120       82    GHS X
+Chrome Extension   1,820       840       49    GHS X
+```
+
+---
+
+# 46. Provider Performance
+
+For RevOps:
+
+```text
+PROVIDER PERFORMANCE
+
+Hunter
+Success 89%
+Cost/contact 1.2 credits
+
+BuiltWith
+Coverage 94%
+Cost/domain 1 credit
+```
+
+This allows intelligent provider management.
+
+---
+
+# 47. Data Quality Dashboard
+
+```text
+DATA QUALITY
+
+Completeness        91%
+Accuracy             88%
+Freshness            83%
+Uniqueness           97%
+Verification         76%
+
+Overall
+87 / 100
+```
+
+Clicking a metric opens remediation actions.
+
+---
+
+# 48. Revenue Attribution
+
+This should be one of the strongest reports.
+
+```text
+Discovery Source
+        ↓
+Qualified Lead
+        ↓
+Opportunity
+        ↓
+Won
+        ↓
+Revenue
+```
+
+Allow drill-down:
+
+```text
+Google Places
+↓
+2,810 qualified
+↓
+142 opportunities
+↓
+38 won
+↓
+GHS XXX revenue
+```
+
+---
+
+# 49. Territory Intelligence UX
+
+Map:
+
+```text
+Ghana
+
+Ashanti
+2,184 prospects
+682 qualified
+114 high intent
+
+Greater Accra
+4,218 prospects
+1,820 qualified
+318 high intent
+```
+
+This can become a major strategic planning interface.
+
+---
+
+# 50. Phase 12 UX — Activation
+
+From a prospect:
+
+```text
+Activate
+
+Recommended:
+
+✓ Create sales task
+✓ Assign to Kwame
+✓ Send personalized email
+○ Add to WhatsApp sequence
+○ Book follow-up
+```
+
+AI can explain the recommendation.
+
+---
+
+# 51. AI Personalization
+
+Before activation:
+
+```text
+AI-generated message
+
+Based on:
+• School profile
+• Digital maturity
+• Detected opportunity
+• Decision maker role
+
+[Review]
+```
+
+Never silently send AI-generated communication.
+
+---
+
+# 52. Phase 13 UX — Predictive Intelligence
+
+Once enough data exists:
+
+```text
+Conversion likelihood
+
+Meeting
+78%
+
+Opportunity
+64%
+
+Close
+42%
+```
+
+But distinguish predictive probability from deterministic scores.
+
+---
+
+# 53. "Who Should I Contact Today?"
+
+This should become a signature SmartSapp experience.
+
+Salesperson opens Lead Intelligence:
+
+```text
+GOOD MORNING, KWAME
+
+12 prospects need your attention.
+
+🔥 4 high-intent prospects
+📈 3 scores increased today
+⏰ 2 follow-ups overdue
+🎯 3 prospects match recent winners
+```
+
+Then:
+
+**Start My Priority Queue**
+
+---
+
+# 54. Priority Queue UX
+
+One prospect at a time:
+
+```text
+ABC International School
+
+Priority 94
+
+🔥 High intent
+
+Why now?
+
+Website payment capability changed
+yesterday.
+
+Recommended:
+Contact proprietor.
+
+[Call]
+[WhatsApp]
+[Email]
+[Task]
+[Skip]
+```
+
+This reduces cognitive load dramatically.
+
+---
+
+# 55. Intelligence Inbox
+
+This should become the operational command center.
+
+Categories:
+
+```text
+All
+High Intent
+Score Changes
+New Decision Makers
+Duplicates
+Verification Issues
+CRM Matches
+AI Recommendations
+```
+
+Each item supports quick actions.
+
+---
+
+# 56. Phase 14 UX — Enterprise Governance
+
+Admin UI:
+
+```text
+Lead Intelligence Settings
+
+Discovery
+Enrichment
+Verification
+AI
+Scoring
+Providers
+Credits
+Permissions
+Data
+Compliance
+```
+
+---
+
+# 57. Provider Management UX
+
+```text
+Providers
+
+Google Places
+● Connected
+Healthy
+
+Hunter
+● Connected
+Healthy
+
+BuiltWith
+● Connected
+Warning
+```
+
+Click provider:
+
+```text
+Usage
+Success
+Cost
+Latency
+Errors
+Quota
+```
+
+---
+
+# 58. Provider Routing UX
+
+For advanced administrators:
+
+```text
+Contact Email
+
+Priority
+
+1. Provider A
+2. Provider B
+3. Provider C
+
+Fallback:
+Web research
+
+Maximum cost:
+3 credits
+```
+
+---
+
+# 59. Credit UX
+
+Credits should always be visible but never intrusive.
+
+Header:
+
+```text
+2,840 credits
+```
+
+Hover:
+
+```text
+This month
+
+Used        7,160
+Remaining   2,840
+
+Discovery   2,100
+Enrichment  3,420
+AI          1,640
+```
+
+---
+
+# 60. Credit Warning
+
+Before expensive operations:
+
+```text
+This action will use approximately
+1,840 credits.
+
+You have 2,840 remaining.
+
+After this operation:
+~1,000 remaining
+
+[Continue]
+```
+
+---
+
+# 61. AI Credit UX
+
+AI operations should also be transparent.
+
+```text
+AI Research
+
+Estimated usage:
+~3 AI credits
+
+[Run Research]
+```
+
+---
+
+# 62. Import UX
+
+The import experience should be a professional data-import wizard.
+
+```text
+1 Upload
+2 Map
+3 Validate
+4 Deduplicate
+5 Enrich
+6 Preview
+7 Import
+```
+
+---
+
+# 63. Import Validation
+
+```text
+10,000 rows
+
+✓ 9,418 valid
+⚠ 382 incomplete
+⚠ 120 duplicates
+✕ 80 invalid
+
+[Review Issues]
+```
+
+---
+
+# 64. Browser Extension UX
+
+The extension should be intentionally lightweight.
+
+When visiting a company:
+
+```text
+SMARTSAPP
+
+ABC International School
+
+ICP 94
+Intent 81
+
+✓ Company identified
+✓ Decision maker found
+✓ CRM checked
+
+[Open Intelligence]
+```
+
+---
+
+# 65. Extension — Existing CRM Awareness
+
+If already in CRM:
+
+```text
+✓ Already in SmartSapp
+
+Owner
+Kwame
+
+Stage
+Qualified
+
+Last contacted
+Yesterday
+
+[Open CRM]
+```
+
+If not:
+
+```text
+New prospect
+
+[Research]
+[Add to CRM]
+```
+
+---
+
+# 66. Mobile UX
+
+Sales users will need mobile support.
+
+Do not attempt to reproduce the desktop table.
+
+Mobile should prioritize:
+
+```text
+Priority
+Company
+Contact
+Why now
+Recommended action
+```
+
+Example:
+
+```text
+ABC School
+🔥 91 Priority
+
+John Mensah
+Proprietor
+
+No online payment detected
+
+[Call] [WhatsApp] [Task]
+```
+
+---
+
+# 67. Responsive Breakpoints
+
+Recommended:
+
+### Desktop
+
+Full workspace.
+
+### Tablet
+
+Collapsed filter panel.
+
+### Mobile
+
+Card/queue interface.
+
+---
+
+# 68. Prospect Detail — The Most Important Screen
+
+I would make this the central design artifact for the entire module.
+
+Recommended structure:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ ABC INTERNATIONAL SCHOOL                    [CRM] [•••]    │
+│ Kumasi, Ashanti                                             │
+│                                                             │
+│ Priority 91   ICP 94   Intent 82   Need 88                 │
+├─────────────────────────────────────────────────────────────┤
+│ AI BRIEF                                                    │
+│                                                             │
+│ High-potential prospect because...                          │
+│                                                             │
+│ [Contact] [Assign] [Create Task] [Research]                 │
+├──────────────────────┬──────────────────────────────────────┤
+│ COMPANY              │ OPPORTUNITY                           │
+│                      │                                       │
+│ Industry             │ Problem                               │
+│ Employees            │ Evidence                              │
+│ Website              │ Recommended solution                  │
+├──────────────────────┼──────────────────────────────────────┤
+│ PEOPLE               │ SIGNALS                               │
+│                      │                                       │
+│ John Mensah          │ 🔥 High intent                        │
+│ Proprietor           │ ⚡ Technology change                  │
+├──────────────────────┴──────────────────────────────────────┤
+│ TIMELINE                                                     │
+│                                                             │
+│ AI Research → Signal → Email → Call → Meeting               │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+# 69. Avoid the "Data Wall"
+
+A common failure in lead intelligence products is putting everything on one screen.
+
+Do **not** show:
+
+* 40 fields
+* 20 technologies
+* 15 contacts
+* 10 scores
+* 30 signals
+
+simultaneously.
+
+Instead:
+
+```text
+Summary
+ ↓
+Important intelligence
+ ↓
+Evidence
+ ↓
+Details
+```
+
+Progressive disclosure is essential.
+
+---
+
+# 70. Recommended Interaction Pattern
+
+Every major object should follow:
+
+```text
+SUMMARY
+   ↓
+EXPLANATION
+   ↓
+EVIDENCE
+   ↓
+DETAIL
+   ↓
+ACTION
+```
+
+This pattern should become the Lead Intelligence UX language.
+
+---
+
+# 71. AI UX Pattern
+
+Every AI component should use:
+
+```text
+AI INSIGHT
+
+Conclusion
+↓
+Confidence
+↓
+Evidence
+↓
+Recommended action
+```
+
+Avoid giant blocks of AI-generated prose.
+
+---
+
+# 72. Empty States
+
+Empty states should teach users what to do.
+
+Instead of:
+
+> No prospects.
+
+Use:
+
+```text
+Your prospect database is empty.
+
+Start by describing who you want to find.
+
+"Find private schools in Kumasi with
+high enrollment potential."
+
+[Start Discovery]
+```
+
+---
+
+# 73. Loading States
+
+Do not show generic spinners for intelligence operations.
+
+Use meaningful progress:
+
+```text
+Finding businesses
+✓ 1,284 found
+
+Resolving identities
+✓ 912 matched
+
+Enriching contacts
+● 620 / 912
+
+Analyzing opportunities
+○ Pending
+```
+
+---
+
+# 74. Error UX
+
+Errors should explain the consequence.
+
+Bad:
+
+> Provider error.
+
+Better:
+
+```text
+Contact enrichment temporarily unavailable.
+
+184 prospects were affected.
+
+No data was lost.
+
+[Retry]
+[Use another provider]
+```
+
+---
+
+# 75. Bulk Action UX
+
+Bulk operations should always communicate:
+
+```text
+Selected
+2,184 prospects
+
+Action
+Enrich contacts
+
+Estimated credits
+1,940
+
+Potential duplicates
+124
+
+[Review] [Start]
+```
+
+---
+
+# 76. Undo & Recovery
+
+Where possible:
+
+```text
+2,184 prospects added to list.
+
+[Undo]
+```
+
+For destructive operations:
+
+Require confirmation.
+
+---
+
+# 77. Notifications
+
+Create an intelligence notification center.
+
+Examples:
+
+```text
+🔥 12 high-intent prospects detected
+⚡ 8 monitored accounts changed
+✓ 2,184 prospects enriched
+⚠ 42 contacts failed verification
+🧠 AI identified 18 strong opportunities
+```
+
+---
+
+# 78. Accessibility
+
+Target WCAG 2.2 AA.
+
+Requirements:
+
+* keyboard navigation
+* visible focus
+* screen reader labels
+* adequate contrast
+* no color-only status
+* accessible charts
+* keyboard-accessible tables
+* reduced-motion support
+
+---
+
+# 79. Design Tokens
+
+Establish tokens for:
+
+```text
+Spacing
+Typography
+Radius
+Elevation
+Border
+Status
+Score
+Density
+Motion
+```
+
+This prevents the module from becoming visually inconsistent as it expands.
+
+---
+
+# 80. Information Density Modes
+
+This would be a particularly useful professional feature.
+
+Users can choose:
+
+```text
+Density
+
+○ Comfortable
+● Standard
+○ Compact
+```
+
+Salespeople may prefer comfortable.
+
+Researchers and RevOps may prefer compact.
+
+---
+
+# 81. Saved Views
+
+Users should be able to save:
+
+> My High Priority Leads
+
+with:
+
+```text
+Columns
+Filters
+Sort
+Density
+Grouping
+```
+
+This becomes personal workspace configuration.
+
+---
+
+# 82. Keyboard UX
+
+Power users should have shortcuts:
+
+```text
+/     Search
+N     New discovery
+R     Research
+E     Enrich
+S     Sync
+A     Assign
+M     Add to list
+```
+
+---
+
+# 83. Command Palette
+
+SmartSapp should eventually provide:
+
+```text
+⌘K
+
+Find prospect
+Run discovery
+Create list
+Open intelligence inbox
+Research company
+Create prospecting campaign
+```
+
+This makes the product feel substantially more mature.
+
+---
+
+# 84. Phase Alignment Summary
+
+| Phase | Major UX Deliverable          |
+| ----- | ----------------------------- |
+| 0     | Design system + domain UX     |
+| 1     | Jobs Center                   |
+| 2     | Discovery Studio              |
+| 3     | Identity/Merge Center         |
+| 4     | Enrichment Workspace          |
+| 5     | Verification Center           |
+| 6     | AI Research Workspace         |
+| 7     | Signals + Monitoring          |
+| 8     | Explainable Scoring           |
+| 9     | CRM Intelligence              |
+| 10    | Lists + Prospecting Campaigns |
+| 11    | Intelligence Analytics        |
+| 12    | Activation Workspace          |
+| 13    | Predictive Intelligence       |
+| 14    | Enterprise Administration     |
+
+---
+
+# 85. Recommended Product Navigation by Maturity
+
+Don't launch with the entire navigation.
+
+## Phase 1–2
+
+```text
+Overview
+Discover
+Prospects
+Jobs
+```
+
+## Phase 3–6
+
+```text
+Overview
+Discover
+Prospects
+Lists
+Research
+Jobs
+```
+
+## Phase 7–10
+
+```text
+Overview
+Discover
+Prospects
+Lists
+Segments
+Inbox
+Signals
+Monitoring
+Prospecting
+Jobs
+```
+
+## Phase 11–14
+
+```text
+Overview
+Discover
+Prospects
+Lists
+Segments
+Inbox
+Research
+Signals
+Monitoring
+Prospecting
+Reports
+Jobs
+Imports
+Settings
+```
+
+This prevents overwhelming users before they need advanced functionality.
+
+---
+
+# 86. The Five Core UX Experiences
+
+If I were prioritizing the product design team, I would invest disproportionately in five experiences.
+
+### 1. Discovery Studio
+
+**Find the right companies.**
+
+### 2. Prospect Intelligence Profile
+
+**Understand the company.**
+
+### 3. Intelligence Inbox
+
+**Know what changed and what needs attention.**
+
+### 4. Priority Queue
+
+**Know who to contact next.**
+
+### 5. Intelligence Analytics
+
+**Understand whether prospecting produces revenue.**
+
+Everything else should support these five.
+
+---
+
+# 87. The Ideal End-to-End UX
+
+The mature user journey should feel like this:
+
+```text
+                 USER
+                   │
+                   ▼
+          "Who should I find?"
+                   │
+                   ▼
+             DISCOVERY
+                   │
+                   ▼
+          "Who are they?"
+                   │
+                   ▼
+          IDENTITY RESOLUTION
+                   │
+                   ▼
+          "What do we know?"
+                   │
+                   ▼
+             ENRICHMENT
+                   │
+                   ▼
+          "Can we trust it?"
+                   │
+                   ▼
+             VERIFICATION
+                   │
+                   ▼
+          "Why do they matter?"
+                   │
+                   ▼
+             AI RESEARCH
+                   │
+                   ▼
+             SIGNALS
+                   │
+                   ▼
+          "How valuable are they?"
+                   │
+                   ▼
+              SCORING
+                   │
+                   ▼
+          "What should I do?"
+                   │
+                   ▼
+           RECOMMENDATION
+                   │
+                   ▼
+               CRM
+                   │
+                   ▼
+              ACTIVATION
+                   │
+                   ▼
+                SALES
+                   │
+                   ▼
+              REVENUE
+                   │
+                   ▼
+             ANALYTICS
+                   │
+                   ▼
+           MODEL LEARNING
+```
+
+---
+
+# 88. My Strongest UX Recommendation
+
+The biggest conceptual enhancement I would make to the current Lead Intelligence direction is to **stop thinking of the primary object as a “lead.”**
+
+The UI should make three objects obvious:
+
+### Prospect
+
+> Someone/something we discovered.
+
+### Intelligence
+
+> What SmartSapp knows about it.
+
+### Opportunity
+
+> Why SmartSapp believes we should act.
+
+That distinction gives the product a much stronger mental model:
+
+```text
+PROSPECT
+ABC School
+       ↓
+INTELLIGENCE
+Digital maturity 42
+No payment system
+Decision maker found
+High similarity to customers
+Recent signal
+       ↓
+OPPORTUNITY
+Strong SmartSapp Pay opportunity
+       ↓
+ACTION
+Contact proprietor
+       ↓
+CRM
+Lead → Opportunity → Deal
+       ↓
+REVENUE
+```
+
+That is the UX architecture I would use to turn the current Lead Intelligence implementation into a **serious SmartSapp acquisition product rather than simply a more sophisticated lead finder**.
+
+Most importantly, **the UI should be implemented in the same phase order as the backend architecture**. Do not build the final navigation and all screens first and leave the underlying state/job/evidence model until later. Each phase should introduce the UX surface that exposes the corresponding domain capability, while preserving the same prospect profile, event timeline, scoring and CRM interaction patterns throughout.

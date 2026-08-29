@@ -578,3 +578,117 @@ export async function deleteLeadListAction(
     return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
   }
 }
+
+/**
+ * Calculates estimated credit requirements for batch enrichment operations.
+ * UI Spec Section 23 & 60.
+ */
+export async function previewEnrichmentCostAction(
+  prospectCount: number,
+  options?: { includeEmails?: boolean; includeTech?: boolean; includeAI?: boolean }
+): Promise<{
+  success: boolean;
+  estimatedCredits: number;
+  breakdown: { emailCredits: number; techCredits: number; aiCredits: number };
+}> {
+  const includeEmails = options?.includeEmails ?? true;
+  const includeTech = options?.includeTech ?? true;
+  const includeAI = options?.includeAI ?? true;
+
+  const emailCredits = includeEmails ? prospectCount * 1 : 0;
+  const techCredits = includeTech ? prospectCount * 1 : 0;
+  const aiCredits = includeAI ? prospectCount * 2 : 0;
+
+  const estimatedCredits = emailCredits + techCredits + aiCredits;
+
+  return {
+    success: true,
+    estimatedCredits,
+    breakdown: {
+      emailCredits,
+      techCredits,
+      aiCredits
+    }
+  };
+}
+
+/**
+ * Saves a custom table view configuration (columns, density, filters).
+ */
+export async function saveViewAction(
+  workspaceId: string,
+  organizationId: string,
+  viewData: Omit<import('@/lib/lead-intelligence/types').SavedViewConfig, 'id' | 'workspaceId' | 'organizationId' | 'createdAt' | 'updatedAt'>
+): Promise<{ success: boolean; view?: import('@/lib/lead-intelligence/types').SavedViewConfig; error?: string }> {
+  try {
+    const viewId = `view_${workspaceId}_${Date.now()}`;
+    const now = new Date().toISOString();
+
+    const newView: import('@/lib/lead-intelligence/types').SavedViewConfig = {
+      ...viewData,
+      id: viewId,
+      workspaceId,
+      organizationId,
+      createdAt: now,
+      updatedAt: now
+    };
+
+    await adminDb.collection('saved_views').doc(viewId).set(newView);
+    return { success: true, view: newView };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to save view:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+
+/**
+ * Retrieves all saved custom views for a workspace.
+ */
+export async function getSavedViewsAction(
+  workspaceId: string
+): Promise<import('@/lib/lead-intelligence/types').SavedViewConfig[]> {
+  if (!workspaceId) return [];
+  try {
+    const snap = await adminDb.collection('saved_views')
+      .where('workspaceId', '==', workspaceId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const views: import('@/lib/lead-intelligence/types').SavedViewConfig[] = [];
+    snap.forEach((doc) => {
+      views.push(doc.data() as import('@/lib/lead-intelligence/types').SavedViewConfig);
+    });
+    return views;
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to get saved views:', err);
+    return [];
+  }
+}
+
+/**
+ * Deletes a saved custom view.
+ */
+export async function deleteSavedViewAction(
+  viewId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const docRef = adminDb.collection('saved_views').doc(viewId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'View not found' };
+    }
+
+    const data = snap.data() as import('@/lib/lead-intelligence/types').SavedViewConfig;
+    if (data.workspaceId !== workspaceId) {
+      return { success: false, error: 'Unauthorized workspace access' };
+    }
+
+    await docRef.delete();
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to delete view:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+

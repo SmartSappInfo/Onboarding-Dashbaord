@@ -41,8 +41,9 @@ export async function savePipelineAction(id: string | null, data: Partial<Pipeli
             revalidatePath('/admin/pipeline');
             return { success: true, id: docRef.id };
         }
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to save pipeline';
+        return { success: false, error };
     }
 }
 
@@ -77,9 +78,10 @@ export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId
         await batch.commit();
         revalidatePath('/admin/pipeline');
         return { success: true };
-    } catch (e: any) {
-        console.error(">>> [PIPELINE:DEFAULT] FAILED:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to set default pipeline';
+        console.error(">>> [PIPELINE:DEFAULT] FAILED:", error);
+        return { success: false, error };
     }
 }
 
@@ -341,9 +343,10 @@ export async function createDefaultPipelineForIndustry(
         });
 
         return { success: true, id: pipelineId };
-    } catch (e: any) {
-        console.error(`>>> [PIPELINE:CREATE_DEFAULT] Failed for industry ${industry}:`, e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        const error = e instanceof Error ? e.message : 'Failed to create default pipeline';
+        console.error(`>>> [PIPELINE:CREATE_DEFAULT] Failed for industry ${industry}:`, error);
+        return { success: false, error };
     }
 }
 

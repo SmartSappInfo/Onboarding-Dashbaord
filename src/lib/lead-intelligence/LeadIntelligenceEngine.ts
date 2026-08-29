@@ -25,34 +25,6 @@ import { GooglePlacesProvider, SimulatedAIProvider, CSVImportProvider } from './
 import type { DiscoveryProvider } from './providers';
 import { canonicalizeDomain, isSafeExternalDomain } from './identity-resolver';
 
-interface BuiltWithTechnology {
-  Name: string;
-}
-
-interface BuiltWithResultPath {
-  Url?: string;
-  Technologies: BuiltWithTechnology[];
-}
-
-interface BuiltWithApiResponse {
-  Paths?: BuiltWithResultPath[];
-}
-
-interface HunterApiEmail {
-  value: string;
-  first_name?: string;
-  last_name?: string;
-  position?: string;
-  confidence: number;
-  verification_status?: string;
-}
-
-interface HunterApiResponse {
-  data?: {
-    emails?: HunterApiEmail[];
-  };
-}
-
 export class LeadIntelligenceEngine {
   private static getProvider(type?: DiscoverySourceType): DiscoveryProvider {
     if (type === 'google_places') return new GooglePlacesProvider();
@@ -193,140 +165,93 @@ export class LeadIntelligenceEngine {
   }
 
   /**
-   * Enriches a prospect by executing real BuiltWith/Hunter API requests (if key set),
-   * and feeds the aggregate context into the Genkit AI enrichment flow.
+   * Enriches a prospect using the multi-vendor waterfall pipeline:
+   * BuiltWith -> DOM Scraper -> Hunter -> Apollo -> Genkit AI
    */
   static async enrichProspect(
     prospect: Prospect,
     settings: LeadIntelligenceSettings
   ): Promise<Prospect> {
-    const { builtwithApiKey, hunterApiKey } = settings;
-    const domain = canonicalizeDomain(prospect.domain);
+    const { WaterfallEnrichmentEngine } = await import('./waterfall/WaterfallEnrichmentEngine');
 
-    // SSRF Guard: Validate domain before fetching external APIs
-    if (domain && !isSafeExternalDomain(domain)) {
-      console.warn(`[LeadIntelligenceEngine] Blocked enrichment lookup for unsafe domain: ${domain}`);
-    }
+    const result = await WaterfallEnrichmentEngine.executeWaterfall(
+      prospect,
+      settings,
+      async (p) => {
+        const flowResult = await leadEnrichmentFlow({
+          name: p.name,
+          domain: p.domain,
+          industry: p.industry,
+          rating: p.rating,
+          reviewsCount: p.reviewsCount,
+          technologies: p.websiteScan?.technologies,
+          organizationId: p.organizationId,
+        });
 
-    let detectedTechnologies: string[] = [];
-    let detectedContacts: ProspectContact[] = [];
+        const now = new Date().toISOString();
+        const websiteScan: WebsiteScanResults = {
+          scannedAt: now,
+          technologies: p.websiteScan?.technologies && p.websiteScan.technologies.length > 0 
+            ? p.websiteScan.technologies 
+            : ['WordPress', 'Google Analytics'],
+          sslValid: flowResult.websiteScan.sslValid,
+          sslExpiresAt: undefined,
+          loadTimeMs: flowResult.websiteScan.loadTimeMs,
+          metaTitle: p.websiteScan?.metaTitle || flowResult.websiteScan.metaTitle,
+          metaDescription: p.websiteScan?.metaDescription || flowResult.websiteScan.metaDescription,
+          hasFacebook: p.websiteScan?.hasFacebook ?? flowResult.websiteScan.hasFacebook,
+          hasInstagram: p.websiteScan?.hasInstagram ?? flowResult.websiteScan.hasInstagram,
+          hasLinkedIn: p.websiteScan?.hasLinkedIn ?? flowResult.websiteScan.hasLinkedIn,
+          hasTwitter: p.websiteScan?.hasTwitter ?? flowResult.websiteScan.hasTwitter,
+          brokenLinks: flowResult.websiteScan.brokenLinks
+        };
 
-    // 1. Fetch from BuiltWith API (if valid key & safe domain)
-    if (domain && isSafeExternalDomain(domain) && builtwithApiKey && builtwithApiKey.trim() !== '') {
-      try {
-        const bwUrl = `https://api.builtwith.com/v20/api.json?key=${builtwithApiKey}&lookup=${encodeURIComponent(domain)}`;
-        const res = await fetch(bwUrl);
-        if (res.ok) {
-          const data = (await res.json()) as BuiltWithApiResponse;
-          const techs: string[] = [];
-          data.Paths?.forEach((path) => {
-            path.Technologies.forEach((tech) => {
-              if (tech.Name && !techs.includes(tech.Name.toLowerCase())) {
-                techs.push(tech.Name.toLowerCase());
-              }
-            });
-          });
-          detectedTechnologies = techs;
-        }
-      } catch (err) {
-        console.error(`[LeadIntelligenceEngine] BuiltWith API scan failed for ${domain}:`, err);
+        const contacts: ProspectContact[] = p.contacts.length > 0
+          ? p.contacts
+          : flowResult.contacts.map((c) => ({
+              name: c.name,
+              email: c.email,
+              phone: c.phone,
+              role: c.role,
+              confidence: c.confidence,
+              verificationStatus: c.verificationStatus
+            }));
+
+        const scoring: ProspectScoring = {
+          overallScore: flowResult.scoring.overallScore,
+          needScore: flowResult.scoring.needScore,
+          digitalMaturity: flowResult.scoring.digitalMaturity,
+          buyingIntent: flowResult.scoring.buyingIntent,
+          budgetProbability: flowResult.scoring.budgetProbability,
+          decisionMakerFound: flowResult.scoring.decisionMakerFound,
+          engagement: flowResult.scoring.engagement
+        };
+
+        const aiInsights: ProspectAIInsights = {
+          summary: flowResult.aiInsights.summary,
+          problemsFound: flowResult.aiInsights.problemsFound,
+          opportunities: flowResult.aiInsights.opportunities,
+          suggestedProducts: flowResult.aiInsights.suggestedProducts,
+          estimatedRevenueOpportunity: flowResult.aiInsights.estimatedRevenueOpportunity,
+          recommendedPitch: flowResult.aiInsights.recommendedPitch,
+          objectionsAnswered: flowResult.aiInsights.objectionsAnswered.map((o) => ({
+            objection: o.objection,
+            counter: o.counter
+          }))
+        };
+
+        return {
+          ...p,
+          websiteScan,
+          contacts,
+          scoring,
+          aiInsights,
+          updatedAt: now
+        };
       }
-    }
+    );
 
-    // 2. Fetch from Hunter.io API (if valid key & safe domain)
-    if (domain && isSafeExternalDomain(domain) && hunterApiKey && hunterApiKey.trim() !== '') {
-      try {
-        const hunterUrl = `https://api.hunter.io/v2/domain-search?domain=${encodeURIComponent(domain)}&api_key=${hunterApiKey}`;
-        const res = await fetch(hunterUrl);
-        if (res.ok) {
-          const data = (await res.json()) as HunterApiResponse;
-          const contacts: ProspectContact[] = [];
-          data.data?.emails?.forEach((email) => {
-            contacts.push({
-              name: [email.first_name, email.last_name].filter(Boolean).join(' ') || 'Decision Maker',
-              email: email.value,
-              role: email.position || 'Contact',
-              confidence: email.confidence,
-              verificationStatus: email.verification_status === 'deliverable' ? 'verified' : 'unverified'
-            });
-          });
-          detectedContacts = contacts;
-        }
-      } catch (err) {
-        console.error(`[LeadIntelligenceEngine] Hunter API lookup failed for ${domain}:`, err);
-      }
-    }
-
-    // 3. Fallback/aggregate scanner simulation inside Genkit flow
-    const flowResult = await leadEnrichmentFlow({
-      name: prospect.name,
-      domain: prospect.domain,
-      industry: prospect.industry,
-      rating: prospect.rating,
-      reviewsCount: prospect.reviewsCount,
-      technologies: detectedTechnologies.length > 0 ? detectedTechnologies : undefined,
-      organizationId: prospect.organizationId,
-    });
-
-    const now = new Date().toISOString();
-
-    const websiteScan: WebsiteScanResults = {
-      scannedAt: now,
-      technologies: detectedTechnologies.length > 0 ? detectedTechnologies : ['WordPress', 'Google Analytics'],
-      sslValid: flowResult.websiteScan.sslValid,
-      sslExpiresAt: undefined,
-      loadTimeMs: flowResult.websiteScan.loadTimeMs,
-      metaTitle: flowResult.websiteScan.metaTitle,
-      metaDescription: flowResult.websiteScan.metaDescription,
-      hasFacebook: flowResult.websiteScan.hasFacebook,
-      hasInstagram: flowResult.websiteScan.hasInstagram,
-      hasLinkedIn: flowResult.websiteScan.hasLinkedIn,
-      hasTwitter: flowResult.websiteScan.hasTwitter,
-      brokenLinks: flowResult.websiteScan.brokenLinks
-    };
-
-    const contacts: ProspectContact[] = detectedContacts.length > 0 
-      ? detectedContacts 
-      : flowResult.contacts.map((c) => ({
-          name: c.name,
-          email: c.email,
-          phone: c.phone,
-          role: c.role,
-          confidence: c.confidence,
-          verificationStatus: c.verificationStatus
-        }));
-
-    const scoring: ProspectScoring = {
-      overallScore: flowResult.scoring.overallScore,
-      needScore: flowResult.scoring.needScore,
-      digitalMaturity: flowResult.scoring.digitalMaturity,
-      buyingIntent: flowResult.scoring.buyingIntent,
-      budgetProbability: flowResult.scoring.budgetProbability,
-      decisionMakerFound: flowResult.scoring.decisionMakerFound,
-      engagement: flowResult.scoring.engagement
-    };
-
-    const aiInsights: ProspectAIInsights = {
-      summary: flowResult.aiInsights.summary,
-      problemsFound: flowResult.aiInsights.problemsFound,
-      opportunities: flowResult.aiInsights.opportunities,
-      suggestedProducts: flowResult.aiInsights.suggestedProducts,
-      estimatedRevenueOpportunity: flowResult.aiInsights.estimatedRevenueOpportunity,
-      recommendedPitch: flowResult.aiInsights.recommendedPitch,
-      objectionsAnswered: flowResult.aiInsights.objectionsAnswered.map((o) => ({
-        objection: o.objection,
-        counter: o.counter
-      }))
-    };
-
-    return {
-      ...prospect,
-      websiteScan,
-      contacts,
-      scoring,
-      aiInsights,
-      updatedAt: now
-    };
+    return result.prospect;
   }
 
   /**

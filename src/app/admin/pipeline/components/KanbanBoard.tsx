@@ -43,6 +43,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import StageColumn from './StageColumn';
 import DealCard from './DealCard';
+import StageValidationModal from './StageValidationModal';
+import { validateStageTransition, resolveStageTerminalStatus } from '@/lib/deals/deal-stage-validation';
+import type { StageRequiredField } from '@/lib/types';
 import type { KanbanFilters } from '../pipeline-types';
 import { applyDealFilters } from '../utils/filter-deals';
 
@@ -151,6 +154,13 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   const [selectedReason, setSelectedReason] = React.useState<string>('Competitor');
   const [extraNotes, setExtraNotes] = React.useState<string>('');
   const [isSavingLoss, setIsSavingLoss] = React.useState<boolean>(false);
+
+  // Process gate validation blocker state
+  const [pendingBlockedDeal, setPendingBlockedDeal] = React.useState<{
+    deal: Deal;
+    targetStage: OnboardingStage;
+    missingFields: StageRequiredField[];
+  } | null>(null);
 
   const allDeals = React.useMemo(() => {
     return deals || [];
@@ -355,14 +365,28 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
         return;
       }
 
-      // If moving to a Lost stage, prompt user for reason
-      if (newStage.name.toLowerCase().includes('lost')) {
+      // 1. Process Gate Entry Validation (PRD Section 16)
+      const validation = validateStageTransition(deal, newStage);
+      if (!validation.valid) {
+        setDealsByStage(initialDealsByStage.current);
+        setPendingBlockedDeal({
+          deal,
+          targetStage: newStage,
+          missingFields: validation.missingFields,
+        });
+        return;
+      }
+
+      // 2. Terminal Lost Stage Handler (PRD Section 14)
+      const isLostStage = newStage.terminalType === 'lost' || newStage.terminalType === 'abandoned' || newStage.isLost || newStage.name.toLowerCase().includes('lost');
+      if (isLostStage) {
         setPendingLostDeal({ deal, targetStage: newStage });
         return;
       }
 
+      // 3. Normal or Terminal Won Progression
       try {
-        const isWonStage = newStage.name.toLowerCase().includes('live') || newStage.name.toLowerCase().includes('won');
+        const isWonStage = newStage.terminalType === 'won' || newStage.isWon || newStage.name.toLowerCase().includes('won') || newStage.name.toLowerCase().includes('live');
         const targetStatus = isWonStage ? 'won' : 'open';
 
         const resStage = await updateDealStageAction(deal.id, newStage.id, {
@@ -373,7 +397,14 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
           throw new Error(resStage.error || 'Failed to update deal stage');
         }
 
-        toast({ title: 'Deal Moved', description: `Deal advanced to "${newStage.name}".` });
+        toast({
+          title: isWonStage ? '🎉 Deal Won!' : 'Deal Moved',
+          description: `Deal advanced to "${newStage.name}".`,
+          actionConfig: {
+            path: `/admin/deals/${deal.id}`,
+            label: 'View Deal',
+          },
+        });
         initialDealsByStage.current = dealsByStage;
 
         if (isWonStage) {
@@ -381,7 +412,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
             entityId: deal.entityId,
             notifyManager: true,
             channel: 'both',
-            variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Progression' }
+            variables: { school_name: deal.name, new_stage: newStage.name, event_type: 'Deal Won' }
           }).catch(console.error);
         }
       } catch (error: unknown) {
@@ -545,6 +576,18 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Process Gate Validation Blocker Modal */}
+      <StageValidationModal
+        deal={pendingBlockedDeal?.deal || null}
+        targetStage={pendingBlockedDeal?.targetStage || null}
+        missingFields={pendingBlockedDeal?.missingFields || []}
+        isOpen={!!pendingBlockedDeal}
+        onClose={() => setPendingBlockedDeal(null)}
+        onSuccess={() => {
+          setPendingBlockedDeal(null);
+        }}
+      />
     </DndContext>
   );
 }

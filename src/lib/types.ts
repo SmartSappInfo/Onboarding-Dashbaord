@@ -832,10 +832,33 @@ export interface District {
   organizationId: string;
 }
 
+export type PipelineType = 
+  | 'sales' 
+  | 'new_business' 
+  | 'renewal' 
+  | 'upsell' 
+  | 'cross_sell' 
+  | 'partnership' 
+  | 'enrollment' 
+  | 'implementation' 
+  | 'customer_success' 
+  | 'custom';
+
+export type StageTerminalType = 'won' | 'lost' | 'abandoned' | 'none';
+
+export type StageRequiredField = 
+  | 'value' 
+  | 'expectedCloseDate' 
+  | 'primaryContact' 
+  | 'decisionMaker' 
+  | 'nextStep';
+
 export interface Pipeline {
   id: string;
   name: string;
   description?: string;
+  type?: PipelineType;
+  defaultProbability?: number;
   workspaceIds: string[]; // Shared across workspaces
   stageIds: string[];
   accessRoles: string[];
@@ -946,9 +969,14 @@ export interface OnboardingStage {
   color?: string;
   probability?: number;
   slaDays?: number;
+  slaWarningDays?: number;
+  slaEscalationDays?: number;
   requirements?: string[];
+  requiredFields?: StageRequiredField[];
+  requiredActivities?: string[];
   isWon?: boolean;
   isLost?: boolean;
+  terminalType?: StageTerminalType;
   customFields?: Array<{ key: string; label: string; type: string }>;
   createdAt?: string;
   updatedAt?: string;
@@ -1245,8 +1273,20 @@ export interface WorkspaceEntity {
   utmCampaign?: string;
   utmMedium?: string;
 
+  // Marketing attribution & Lead tracking
+  source?: string;
+  campaignId?: string;
+  isConverted?: boolean;
+  convertedAt?: string;
+  convertedBy?: string;
+  convertedDealId?: string;
+  track?: string;
+  customFields?: Record<string, string>;
+  tags?: string[];
+  contacts?: EntityContact[];
+
   // Dynamic custom data bucket (Requirement: Phase 6)
-  customData?: Record<string, any>;
+  customData?: Record<string, unknown>;
   leadScore?: number;
   lastEngagedAt?: string; // Rolled-up engagement timestamp for fast filtering
 
@@ -1254,7 +1294,7 @@ export interface WorkspaceEntity {
   phoneVerificationStatus?: string;
   phoneVerificationScore?: number;
   lastPhoneVerifiedAt?: string;
-  phoneVerificationDetails?: Record<string, any>;
+  phoneVerificationDetails?: Record<string, unknown>;
 }
 
 export interface DealContact {
@@ -1319,10 +1359,17 @@ export interface Deal {
   weightedValue?: number;
   healthStatus?: import('./deals/deal-types').DealHealthStatus;
   stalledReason?: string | null;
-  nextStep?: import('./deals/deal-types').DealNextStep | null;
+  nextStep?: import('./deals/deal-types').DealNextStep | string | null;
 
   customFields?: Record<string, string | number | boolean | null>; // Persists across workspaces
   tags?: string[];
+
+  // Lifecycle & Soft-Archival (Phase 1 Expansion)
+  isArchived?: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  mergedIntoDealId?: string | null;
+
   createdAt: string;
   updatedAt: string;
 }
@@ -1335,7 +1382,10 @@ export type {
   DealNextStep,
   DealQuote,
   DealsOverviewMetrics,
-  Deal2
+  Deal2,
+  DealDuplicateOptions,
+  DealMergeOptions,
+  DealMergeResult
 } from './deals/deal-types';
 
 /**
@@ -3108,6 +3158,7 @@ export interface Activity {
   organizationId: string; // Organization tenant identifier
   workspaceId: string; // Strictly confined
   entityId?: string | null; // Unified entity reference
+  dealId?: string | null; // Direct Deal Opportunity reference (Phase 3 CRM Activity Graph)
   entityType?: EntityType | null; // Type of entity
   displayName?: string; // Denormalized entity name at time of logging
   entityName?: string | null; // Historical entity name snapshot

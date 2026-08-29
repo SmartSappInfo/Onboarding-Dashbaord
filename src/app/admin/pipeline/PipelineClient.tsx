@@ -243,6 +243,12 @@ export default function PipelineClient() {
   [firestore, activeWorkspaceId, currentPipelineId]);
   const { data: pipelineDeals } = useCollection<import('@/lib/types').Deal>(pipelineDealsQuery);
 
+  // Active (non-archived) deals for Overview KPIs and Forecasting calculations
+  const activePipelineDeals = React.useMemo(() => {
+    if (!pipelineDeals) return [];
+    return pipelineDeals.filter(d => !d.isArchived);
+  }, [pipelineDeals]);
+
   const handleNavigateToBoardWithFilter = React.useCallback((preset?: string) => {
     if (preset === 'sla_breached') {
       setFilters(prev => ({ ...prev, healthStatus: 'stalled' }));
@@ -616,7 +622,7 @@ export default function PipelineClient() {
                             <DealsOverviewView
                                 pipeline={currentPipeline}
                                 stages={filterStages || []}
-                                deals={pipelineDeals || []}
+                                deals={activePipelineDeals}
                                 onCreateDeal={() => setIsCreateDealOpen(true)}
                                 onNavigateToBoard={handleNavigateToBoardWithFilter}
                                 onNavigateToList={handleNavigateToListWithFilter}
@@ -637,7 +643,7 @@ export default function PipelineClient() {
                             <DealsForecastView
                                 pipelineId={currentPipeline.id}
                                 stages={filterStages || []}
-                                deals={pipelineDeals || []}
+                                deals={activePipelineDeals}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">

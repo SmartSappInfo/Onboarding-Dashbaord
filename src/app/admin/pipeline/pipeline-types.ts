@@ -8,6 +8,7 @@
 
 export type DealStatusFilter = 'open' | 'won' | 'lost' | 'all';
 export type DealHealthFilter = 'healthy' | 'at_risk' | 'stalled' | 'all';
+export type DealArchiveFilter = 'active' | 'archived' | 'all';
 export type PipelineViewMode = 'overview' | 'board' | 'list' | 'forecast' | 'config' | 'actions';
 
 export interface KanbanFilters {
@@ -17,6 +18,8 @@ export interface KanbanFilters {
   status: DealStatusFilter;
   /** Deal health status filter. */
   healthStatus?: DealHealthFilter;
+  /** Deal archive status filter ('active' default, 'archived', 'all'). */
+  archiveStatus?: DealArchiveFilter;
   /**
    * Local assignee filter. When set, OVERRIDES the workspace-level
    * GlobalFilter (see KanbanBoard). `null` means "no local override".
@@ -43,6 +46,7 @@ export const DEFAULT_FILTERS: KanbanFilters = {
   searchTerm: '',
   status: 'all',
   healthStatus: 'all',
+  archiveStatus: 'active',
   assignedToId: 'all',
   valueMin: null,
   valueMax: null,
@@ -57,6 +61,7 @@ export function isFilterActive(f: KanbanFilters): boolean {
   return (
     f.status !== 'all' ||
     (f.healthStatus && f.healthStatus !== 'all') ||
+    (f.archiveStatus && f.archiveStatus !== 'active') ||
     (f.assignedToId !== null && f.assignedToId !== 'all') ||
     f.valueMin !== null ||
     f.valueMax !== null ||
@@ -72,6 +77,7 @@ export function activeFilterCount(f: KanbanFilters): number {
   let count = 0;
   if (f.status !== 'all') count++;
   if (f.healthStatus && f.healthStatus !== 'all') count++;
+  if (f.archiveStatus && f.archiveStatus !== 'active') count++;
   if (f.assignedToId !== null && f.assignedToId !== 'all') count++;
   if (f.valueMin !== null || f.valueMax !== null) count++;
   if (f.closeDateFrom !== null || f.closeDateTo !== null) count++;

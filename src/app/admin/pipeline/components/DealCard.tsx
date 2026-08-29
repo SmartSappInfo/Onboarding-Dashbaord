@@ -33,7 +33,10 @@ import {
     CalendarOff,
     CheckCircle2,
     AlertTriangle,
-    Target
+    Target,
+    Copy,
+    Archive,
+    RotateCcw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -54,10 +57,11 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { deleteDealAction } from '@/app/actions/deal-actions';
+import { deleteDealAction, archiveDealAction, unarchiveDealAction } from '@/app/actions/deal-actions';
 import { formatCurrency } from '@/lib/currency-utils';
 import { calculateDealHealth, calculateDaysInStage, calculateWeightedValue } from '@/lib/deals/deal-health-engine';
 import QuickEditDealModal from './QuickEditDealModal';
+import DuplicateDealModal from './DuplicateDealModal';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
     overdue: AlertCircle,
@@ -91,6 +95,43 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }
   const { activeWorkspaceId } = useWorkspace();
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
+  const [isDuplicateOpen, setIsDuplicateOpen] = React.useState(false);
+  const [isArchiving, setIsArchiving] = React.useState(false);
+
+  const handleArchiveDeal = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!deal.id) return;
+    setIsArchiving(true);
+    try {
+      if (deal.isArchived) {
+        const res = await unarchiveDealAction(deal.id, user?.uid);
+        if (res.success) {
+          toast({ title: 'Deal Restored', description: `Restored "${displayName}".` });
+        } else {
+          throw new Error(res.error || 'Failed to restore deal.');
+        }
+      } else {
+        const confirmed = await confirm({
+          title: `Archive "${displayName}"?`,
+          description: 'This deal will be hidden from the active board while preserving its data and history.',
+          confirmText: 'Archive Deal',
+        });
+        if (!confirmed) return;
+
+        const res = await archiveDealAction(deal.id, user?.uid);
+        if (res.success) {
+          toast({ title: 'Deal Archived', description: `Archived "${displayName}".` });
+        } else {
+          throw new Error(res.error || 'Failed to archive deal.');
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Action failed';
+      toast({ variant: 'destructive', title: 'Archive Failed', description: msg });
+    } finally {
+      setIsArchiving(false);
+    }
+  };
 
   const {
     attributes,
@@ -250,8 +291,8 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }
             
             <DropdownMenu modal={false}>
                 <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg opacity-40 group-hover/card:opacity-100 transition-opacity -mt-1 -mr-1 shrink-0">
-                        <MoreVertical className="h-3.5 w-3.5" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-7 sm:w-7 min-h-[32px] min-w-[32px] rounded-lg opacity-40 group-hover/card:opacity-100 transition-opacity -mt-1 -mr-1 shrink-0">
+                        <MoreVertical className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                     </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56 rounded-xl border-none shadow-2xl p-1.5 animate-in zoom-in-95 duration-200">
@@ -274,6 +315,35 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }
                     >
                         <Edit className="h-3.5 w-3.5 text-primary" />
                         <span className="font-bold text-xs">Quick Edit Deal</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setIsDuplicateOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        <Copy className="h-3.5 w-3.5 text-primary" />
+                        <span className="font-bold text-xs">Duplicate Deal</span>
+                    </DropdownMenuItem>
+
+                    <DropdownMenuItem 
+                        onClick={handleArchiveDeal}
+                        disabled={isArchiving}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        {deal.isArchived ? (
+                            <>
+                                <RotateCcw className="h-3.5 w-3.5 text-primary" />
+                                <span className="font-bold text-xs">Restore Deal</span>
+                            </>
+                        ) : (
+                            <>
+                                <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className="font-bold text-xs">Archive Deal</span>
+                            </>
+                        )}
                     </DropdownMenuItem>
 
                     <DropdownMenuSeparator className="my-1" />
@@ -369,6 +439,11 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }
             deal={deal}
             open={isQuickEditOpen}
             onOpenChange={setIsQuickEditOpen}
+        />
+        <DuplicateDealModal
+            deal={deal}
+            isOpen={isDuplicateOpen}
+            onClose={() => setIsDuplicateOpen(false)}
         />
         </div>
     </TooltipProvider>

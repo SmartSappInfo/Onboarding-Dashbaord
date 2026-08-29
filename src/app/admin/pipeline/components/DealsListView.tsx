@@ -44,7 +44,20 @@ import {
   Users,
   X,
   Loader2,
+  Copy,
+  GitMerge,
+  Archive,
+  RotateCcw,
+  MoreVertical,
+  Eye,
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { KanbanFilters } from '../pipeline-types';
 import { applyDealFilters } from '../utils/filter-deals';
@@ -54,8 +67,14 @@ import {
   bulkUpdateDealsStageAction,
   bulkAssignDealsAction,
   bulkDeleteDealsAction,
+  bulkArchiveDealsAction,
+  archiveDealAction,
+  unarchiveDealAction,
+  deleteDealAction,
 } from '@/app/actions/deal-actions';
 import QuickEditDealModal from './QuickEditDealModal';
+import DuplicateDealModal from './DuplicateDealModal';
+import MergeDealsModal from './MergeDealsModal';
 
 interface DealsListViewProps {
   pipelineId: string;
@@ -92,6 +111,13 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
   // Quick edit modal state for single deal
   const [quickEditDeal, setQuickEditDeal] = React.useState<Deal | null>(null);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
+
+  // Duplication and Merge Modal States
+  const [duplicateDeal, setDuplicateDeal] = React.useState<Deal | null>(null);
+  const [isDuplicateOpen, setIsDuplicateOpen] = React.useState(false);
+  const [mergeDealA, setMergeDealA] = React.useState<Deal | null>(null);
+  const [mergeDealB, setMergeDealB] = React.useState<Deal | null>(null);
+  const [isMergeOpen, setIsMergeOpen] = React.useState(false);
 
   // 1. Fetch Deals
   const dealsQuery = useMemoFirebase(
@@ -287,6 +313,111 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
     }
   };
 
+  // Bulk Archive
+  const handleBulkArchive = async () => {
+    if (!activeWorkspaceId || selectedDealIds.length === 0) return;
+
+    const count = selectedDealIds.length;
+    const approved = await confirm({
+      title: `Archive ${count} Deals?`,
+      description: `Archive ${count} selected deals? They will be hidden from active pipeline views while preserving all history.`,
+      confirmText: `Archive ${count} Deals`,
+    });
+
+    if (!approved) return;
+
+    setIsBulkOperating(true);
+    try {
+      const res = await bulkArchiveDealsAction(
+        selectedDealIds,
+        activeWorkspaceId,
+        user?.uid
+      );
+      if (res.success) {
+        toast({
+          title: 'Deals Archived',
+          description: `Successfully archived ${res.archivedCount} deals.`,
+        });
+        setSelectedDealIds([]);
+      } else {
+        throw new Error(res.error || 'Failed to archive deals');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to archive deals.';
+      toast({ variant: 'destructive', title: 'Bulk Archive Failed', description: msg });
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  // Trigger Merge for 2 selected deals
+  const handleTriggerMergeSelected = () => {
+    if (selectedDealIds.length !== 2 || !deals) return;
+    const d1 = deals.find((d) => d.id === selectedDealIds[0]) || null;
+    const d2 = deals.find((d) => d.id === selectedDealIds[1]) || null;
+    if (d1 && d2) {
+      setMergeDealA(d1);
+      setMergeDealB(d2);
+      setIsMergeOpen(true);
+    }
+  };
+
+  // Single Deal Archive / Restore
+  const handleToggleArchiveDeal = async (deal: Deal, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      if (deal.isArchived) {
+        const res = await unarchiveDealAction(deal.id, user?.uid);
+        if (res.success) {
+          toast({ title: 'Deal Restored', description: `Restored "${deal.name}".` });
+        } else {
+          throw new Error(res.error || 'Failed to restore deal');
+        }
+      } else {
+        const confirmed = await confirm({
+          title: `Archive "${deal.name}"?`,
+          description: 'This deal will be hidden from active views while preserving its data and history.',
+          confirmText: 'Archive Deal',
+        });
+        if (!confirmed) return;
+
+        const res = await archiveDealAction(deal.id, user?.uid);
+        if (res.success) {
+          toast({ title: 'Deal Archived', description: `Archived "${deal.name}".` });
+        } else {
+          throw new Error(res.error || 'Failed to archive deal');
+        }
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Action failed';
+      toast({ variant: 'destructive', title: 'Archive Failed', description: msg });
+    }
+  };
+
+  // Single Deal Delete
+  const handleDeleteSingleDeal = async (deal: Deal, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const approved = await confirm({
+      title: `Delete "${deal.name}"?`,
+      description: 'Permanently delete this deal? This action cannot be undone.',
+      confirmText: 'Delete Deal',
+      variant: 'destructive',
+    });
+    if (!approved) return;
+
+    try {
+      const res = await deleteDealAction(deal.id, deal.workspaceId, user?.uid);
+      if (res.success) {
+        toast({ title: 'Deal Deleted', description: `Deleted "${deal.name}".` });
+      } else {
+        throw new Error(res.error || 'Failed to delete deal');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Failed to delete deal';
+      toast({ variant: 'destructive', title: 'Delete Failed', description: msg });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-2 p-6">
@@ -415,19 +546,80 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
                   </Badge>
                 </td>
                 <td className="px-3 py-2.5 rounded-r-xl border-y border-r border-border text-right w-16">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setQuickEditDeal(deal);
-                      setIsQuickEditOpen(true);
-                    }}
-                    className="h-7 w-7 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary"
-                    title="Quick Edit Deal"
-                  >
-                    <Edit className="h-3.5 w-3.5" />
-                  </Button>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7 rounded-lg opacity-40 group-hover:opacity-100 transition-opacity hover:bg-primary/10 hover:text-primary"
+                        title="Deal Actions"
+                      >
+                        <MoreVertical className="h-3.5 w-3.5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-48 rounded-xl border-none shadow-2xl p-1.5 z-50">
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/admin/deals/${deal.id}`);
+                        }}
+                        className="rounded-lg p-2 gap-2 text-xs font-bold cursor-pointer"
+                      >
+                        <Eye className="h-3.5 w-3.5 text-primary" />
+                        <span>View Deal</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setQuickEditDeal(deal);
+                          setIsQuickEditOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold cursor-pointer"
+                      >
+                        <Edit className="h-3.5 w-3.5 text-primary" />
+                        <span>Quick Edit</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDuplicateDeal(deal);
+                          setIsDuplicateOpen(true);
+                        }}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold cursor-pointer"
+                      >
+                        <Copy className="h-3.5 w-3.5 text-primary" />
+                        <span>Duplicate Deal</span>
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem
+                        onClick={(e) => handleToggleArchiveDeal(deal, e)}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold cursor-pointer"
+                      >
+                        {deal.isArchived ? (
+                          <>
+                            <RotateCcw className="h-3.5 w-3.5 text-primary" />
+                            <span>Restore Deal</span>
+                          </>
+                        ) : (
+                          <>
+                            <Archive className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>Archive Deal</span>
+                          </>
+                        )}
+                      </DropdownMenuItem>
+
+                      <DropdownMenuSeparator className="my-1" />
+                      <DropdownMenuItem
+                        onClick={(e) => handleDeleteSingleDeal(deal, e)}
+                        className="rounded-lg p-2 gap-2 text-xs font-semibold text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        <span>Delete Deal</span>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </td>
               </tr>
             );
@@ -443,7 +635,7 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 30, scale: 0.95 }}
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-            className="fixed bottom-6 inset-x-4 max-w-xl mx-auto bg-card/95 dark:bg-zinc-900/95 backdrop-blur-2xl border border-border/80 rounded-2xl p-2.5 shadow-2xl z-50 flex items-center justify-between gap-2 text-xs"
+            className="fixed bottom-6 inset-x-4 max-w-2xl mx-auto bg-card/95 dark:bg-zinc-900/95 backdrop-blur-2xl border border-border/80 rounded-2xl p-2.5 shadow-2xl z-50 flex items-center justify-between gap-2 text-xs"
           >
             <div className="flex items-center gap-2 pl-2">
               <Badge variant="default" className="rounded-lg h-6 px-2.5 font-bold text-xs bg-primary text-primary-foreground">
@@ -453,6 +645,20 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
             </div>
 
             <div className="flex items-center gap-1.5">
+              {/* Merge 2 Selected Deals */}
+              {selectedDealIds.length === 2 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleTriggerMergeSelected}
+                  disabled={isBulkOperating}
+                  className="h-8 rounded-xl font-bold text-xs gap-1.5 border-primary/40 bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  <GitMerge className="h-3.5 w-3.5" />
+                  <span>Merge 2 Deals</span>
+                </Button>
+              )}
+
               {/* Move to Stage */}
               <Popover open={isStagePopoverOpen} onOpenChange={setIsStagePopoverOpen}>
                 <PopoverTrigger asChild>
@@ -530,6 +736,18 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
                 </PopoverContent>
               </Popover>
 
+              {/* Bulk Archive */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleBulkArchive}
+                disabled={isBulkOperating}
+                className="h-8 rounded-xl font-bold text-xs gap-1.5 border-border text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+              >
+                {isBulkOperating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                <span className="hidden sm:inline">Archive</span>
+              </Button>
+
               {/* Bulk Delete */}
               <Button
                 variant="outline"
@@ -563,6 +781,33 @@ export default function DealsListView({ pipelineId, filters }: DealsListViewProp
         open={isQuickEditOpen}
         onOpenChange={setIsQuickEditOpen}
         stages={stages || []}
+      />
+
+      {/* Duplicate Deal Modal */}
+      <DuplicateDealModal
+        deal={duplicateDeal}
+        isOpen={isDuplicateOpen}
+        onClose={() => {
+          setIsDuplicateOpen(false);
+          setDuplicateDeal(null);
+        }}
+        stages={stages || []}
+      />
+
+      {/* Merge Deals Modal */}
+      <MergeDealsModal
+        dealA={mergeDealA}
+        dealB={mergeDealB}
+        allDeals={deals || []}
+        isOpen={isMergeOpen}
+        onClose={() => {
+          setIsMergeOpen(false);
+          setMergeDealA(null);
+          setMergeDealB(null);
+        }}
+        onMerged={() => {
+          setSelectedDealIds([]);
+        }}
       />
     </div>
   );
