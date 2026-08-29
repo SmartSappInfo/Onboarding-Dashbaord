@@ -68,14 +68,14 @@ vi.mock('@/lib/firebase-admin', () => {
                 where: vi.fn((field2: string, op2: string, val2: unknown) => ({
                   get: vi.fn().mockImplementation(async () => {
                     const docs = Array.from(mockProductsStore.values())
-                      .filter(p => (p as Record<string, unknown>)[field] === val && (p as Record<string, unknown>)[field2] === val2)
+                      .filter(p => (p as unknown as Record<string, unknown>)[field] === val && (p as unknown as Record<string, unknown>)[field2] === val2)
                       .map(p => ({ data: () => p, id: p.id }));
                     return { docs, empty: docs.length === 0, size: docs.length };
                   }),
                 })),
                 get: vi.fn().mockImplementation(async () => {
                   const docs = Array.from(mockProductsStore.values())
-                    .filter(p => (p as Record<string, unknown>)[field] === val)
+                    .filter(p => (p as unknown as Record<string, unknown>)[field] === val)
                     .map(p => ({ data: () => p, id: p.id }));
                   return { docs, empty: docs.length === 0, size: docs.length };
                 }),
@@ -95,7 +95,7 @@ vi.mock('@/lib/firebase-admin', () => {
             where: vi.fn((field: string, op: string, val: unknown) => ({
               get: vi.fn().mockImplementation(async () => {
                 const docs = Array.from(mockCategoriesStore.values())
-                  .filter(c => (c as Record<string, unknown>)[field] === val)
+                  .filter(c => (c as unknown as Record<string, unknown>)[field] === val)
                   .map(c => ({ data: () => c, id: c.id }));
                 return { docs, empty: docs.length === 0, size: docs.length };
               }),
@@ -115,7 +115,7 @@ vi.mock('@/lib/firebase-admin', () => {
               where: vi.fn((field2: string, op2: string, val2: unknown) => ({
                 get: vi.fn().mockImplementation(async () => {
                   const docs = Array.from(mockPriceBooksStore.values())
-                    .filter(pb => (pb as Record<string, unknown>)[field] === val && (pb as Record<string, unknown>)[field2] === val2)
+                    .filter(pb => (pb as unknown as Record<string, unknown>)[field] === val && (pb as unknown as Record<string, unknown>)[field2] === val2)
                     .map(pb => ({ data: () => pb, id: pb.id }));
                   return { docs, empty: docs.length === 0, size: docs.length };
                 }),
@@ -156,7 +156,7 @@ vi.mock('@/lib/firebase-admin', () => {
               limit: vi.fn(() => ({
                 get: vi.fn().mockImplementation(async () => {
                   const docs = Array.from(mockQuotesStore.values())
-                    .filter(q => (q as Record<string, unknown>)[field] === val)
+                    .filter(q => (q as unknown as Record<string, unknown>)[field] === val)
                     .map(q => ({
                       data: () => q,
                       id: q.id,

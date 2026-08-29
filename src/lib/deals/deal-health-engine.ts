@@ -196,7 +196,8 @@ export function calculateLineItemsTotals(
   const grandTotal = Math.max(0, Math.round((subtotal - totalDiscount + totalTax) * 100) / 100);
   const normalizedMrr = Math.round(mrr * 100) / 100;
   const normalizedArr = Math.round(normalizedMrr * 12 * 100) / 100;
-  const normalizedTermMonths = Math.max(1, Math.floor(contractTermMonths || 12));
+  const rawMonths = typeof contractTermMonths === 'number' && !Number.isNaN(contractTermMonths) ? contractTermMonths : 12;
+  const normalizedTermMonths = Math.max(1, Math.floor(rawMonths));
   const normalizedTermYears = Math.max(1, Math.ceil(normalizedTermMonths / 12));
   const normalizedOneTime = Math.round(oneTimeValue * 100) / 100;
   const normalizedRecurring = Math.round(recurringValue * 100) / 100;
