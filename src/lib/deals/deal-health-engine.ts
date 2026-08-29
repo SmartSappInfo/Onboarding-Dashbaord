@@ -219,7 +219,11 @@ export function calculateDealsOverviewMetrics(
 
       if (health.isSlaBreached) slaBreachedCount++;
 
-      if (!deal.nextStep || deal.nextStep.isCompleted) {
+      const hasNextStep = typeof deal.nextStep === 'string'
+        ? deal.nextStep.trim().length > 0
+        : Boolean(deal.nextStep && typeof deal.nextStep === 'object' && !deal.nextStep.isCompleted && deal.nextStep.title?.trim());
+
+      if (!hasNextStep) {
         noNextStepCount++;
       }
 

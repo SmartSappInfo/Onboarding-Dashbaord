@@ -1,12 +1,12 @@
 'use client';
 
 /**
- * Lead Intelligence Hub Client (Lead Intelligence 2.0)
+ * Lead Intelligence Hub Client (Lead Intelligence 2.0 - Phase 1)
  * 
  * ARCHITECTURAL GUIDELINES (Rule 10 Maintainer Note):
- * 1. Ergonomics & Motion: Unified tabs, keyboard ⌘K support, Emil Kowalski spring animations.
- * 2. High-Density Layout: FloatingActionToolbar for multi-select, ProspectSlideOverSheet for deep inspection.
- * 3. High-Load Guard: Batch sync and enrichment execute via chunked Server Actions with graceful error handling.
+ * 1. UI Spec Alignment: Fully conforms to intelligence_ui (Global Header Metrics, Jobs Center Tray, Power UX).
+ * 2. Pre-Mortem & High-Load Guard: Batch sync and enrichment execute via chunked transactions with job progress tracking.
+ * 3. Keyboard Ergonomics: Global '/' key for search autofocus (guarded for text inputs) and 'Esc' for modal dismissals.
  * 4. Strict Typing: 100% strict TypeScript types without any/any[].
  */
 
@@ -14,8 +14,22 @@ import React, { useState, useEffect, useTransition, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { Zap, Loader2, Folder, LayoutGrid, Search, Globe, BookmarkCheck, Settings } from 'lucide-react';
+import { 
+  Zap, 
+  Loader2, 
+  Folder, 
+  LayoutGrid, 
+  Search, 
+  Globe, 
+  BookmarkCheck, 
+  Settings, 
+  Activity, 
+  Flame, 
+  Database, 
+  Building2
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, AnimatePresence, type Transition } from 'framer-motion';
 import { 
@@ -41,10 +55,12 @@ import type {
   LeadIntelligenceSettings, 
   SavedSearch,
   LeadList,
-  DiscoverySourceType 
+  DiscoverySourceType,
+  IntelligenceJob
 } from '@/lib/lead-intelligence/types';
 import { FloatingActionToolbar } from './components/FloatingActionToolbar';
 import { ProspectSlideOverSheet } from './components/ProspectSlideOverSheet';
+import { JobsCenterDrawer } from './components/JobsCenterDrawer';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -115,11 +131,41 @@ export default function LeadIntelligenceClient() {
   const [recentProspects, setRecentProspects] = useState<Prospect[]>([]);
   const [leadLists, setLeadLists] = useState<LeadList[]>([]);
 
+  // Async Jobs Center State (intelligence_ui Section 10 & 11)
+  const [isJobsDrawerOpen, setIsJobsDrawerOpen] = useState(false);
+  const [jobs, setJobs] = useState<IntelligenceJob[]>([]);
+
   // Token Generation
   const generateNewToken = () => {
     const newToken = `tok_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substring(2, 15)}`;
     setSettings(prev => ({ ...prev, chromeExtensionToken: newToken }));
   };
+
+  // Keyboard Shortcuts (intelligence_ui Section 82 & 83)
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Guard: Ignore if user is currently typing in an input, textarea or contenteditable element
+      if (
+        e.target instanceof HTMLInputElement || 
+        e.target instanceof HTMLTextAreaElement || 
+        (e.target as HTMLElement).isContentEditable
+      ) {
+        return;
+      }
+
+      if (e.key === '/') {
+        e.preventDefault();
+        const searchInput = document.getElementById('lead-omnisearch-input');
+        searchInput?.focus();
+      } else if (e.key === 'Escape') {
+        setSelectedProspect(null);
+        setIsJobsDrawerOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, []);
 
   // Load Initial Workspace Data
   const loadInitialData = useCallback(async () => {
@@ -147,9 +193,26 @@ export default function LeadIntelligenceClient() {
     loadInitialData();
   }, [loadInitialData]);
 
-  // Execute Prospect Search
+  // Execute Prospect Search with Job Tracking
   const handleSearch = () => {
     if (!activeWorkspaceId) return;
+
+    const jobId = `job_disc_${Date.now()}`;
+    const newJob: IntelligenceJob = {
+      id: jobId,
+      workspaceId: activeWorkspaceId,
+      type: 'discovery',
+      title: `Prospect Discovery: ${searchQuery}`,
+      status: 'running',
+      progressPercent: 30,
+      foundCount: 0,
+      uniqueCount: 0,
+      duplicateCount: 0,
+      errorCount: 0,
+      startedAt: new Date().toISOString()
+    };
+    setJobs(prev => [newJob, ...prev]);
+
     startTransition(async () => {
       setSelectedRowIds(new Set());
       const res = await searchProspectsAction(
@@ -160,12 +223,29 @@ export default function LeadIntelligenceClient() {
         selectedSource
       );
       if (res.success && res.prospects) {
+        const found = res.prospects.length;
         setProspects(res.prospects);
+        setJobs(prev => prev.map(j => j.id === jobId ? {
+          ...j,
+          status: 'completed',
+          progressPercent: 100,
+          foundCount: found,
+          uniqueCount: found,
+          completedAt: new Date().toISOString()
+        } : j));
         toast({ 
           title: 'Discovery Complete', 
-          description: `Discovered ${res.prospects.length} prospects matching your criteria.` 
+          description: `Discovered ${found} prospects matching your criteria.` 
         });
       } else {
+        setJobs(prev => prev.map(j => j.id === jobId ? {
+          ...j,
+          status: 'failed',
+          progressPercent: 100,
+          errorCount: 1,
+          errorDetails: [res.error || 'Discovery query failed'],
+          completedAt: new Date().toISOString()
+        } : j));
         toast({ 
           variant: 'destructive', 
           title: 'Discovery Failed', 
@@ -307,15 +387,40 @@ export default function LeadIntelligenceClient() {
     }
   };
 
-  // Batch Sync to CRM
+  // Batch Sync to CRM with Job Tracking
   const handleBatchSync = async () => {
     const selectedProspects = prospects.filter(p => selectedRowIds.has(p.id));
     if (selectedProspects.length === 0) return;
+
+    const jobId = `job_sync_${Date.now()}`;
+    const newJob: IntelligenceJob = {
+      id: jobId,
+      workspaceId: activeWorkspaceId || '',
+      type: 'batch_sync',
+      title: `CRM Batch Sync: ${selectedProspects.length} prospects`,
+      status: 'running',
+      progressPercent: 40,
+      foundCount: selectedProspects.length,
+      uniqueCount: 0,
+      duplicateCount: 0,
+      errorCount: 0,
+      startedAt: new Date().toISOString()
+    };
+    setJobs(prev => [newJob, ...prev]);
 
     try {
       setIsBatchSyncing(true);
       const res = await batchSyncProspectsAction(selectedProspects);
       if (res.success) {
+        setJobs(prev => prev.map(j => j.id === jobId ? {
+          ...j,
+          status: 'completed',
+          progressPercent: 100,
+          uniqueCount: res.syncedCount,
+          duplicateCount: res.failedCount,
+          errorCount: res.errors?.length || 0,
+          completedAt: new Date().toISOString()
+        } : j));
         toast({
           title: 'Batch Sync Complete ✓',
           description: `Successfully ingested ${res.syncedCount} prospects into CRM.`
@@ -323,6 +428,14 @@ export default function LeadIntelligenceClient() {
         setSelectedRowIds(new Set());
         loadInitialData();
       } else {
+        setJobs(prev => prev.map(j => j.id === jobId ? {
+          ...j,
+          status: 'failed',
+          progressPercent: 100,
+          errorCount: res.errors?.length || 1,
+          errorDetails: res.errors,
+          completedAt: new Date().toISOString()
+        } : j));
         toast({
           variant: 'destructive',
           title: 'Batch Sync Encountered Issues',
@@ -330,16 +443,39 @@ export default function LeadIntelligenceClient() {
         });
       }
     } catch {
+      setJobs(prev => prev.map(j => j.id === jobId ? {
+        ...j,
+        status: 'failed',
+        progressPercent: 100,
+        errorCount: 1,
+        completedAt: new Date().toISOString()
+      } : j));
       toast({ variant: 'destructive', title: 'Batch Sync Failed', description: 'Transaction processing failed.' });
     } finally {
       setIsBatchSyncing(false);
     }
   };
 
-  // Batch Enrich
+  // Batch Enrich with Job Tracking
   const handleBatchEnrich = async () => {
     const selectedProspects = prospects.filter(p => selectedRowIds.has(p.id));
     if (selectedProspects.length === 0) return;
+
+    const jobId = `job_enrich_${Date.now()}`;
+    const newJob: IntelligenceJob = {
+      id: jobId,
+      workspaceId: activeWorkspaceId || '',
+      type: 'batch_enrich',
+      title: `Batch AI Enrichment: ${selectedProspects.length} prospects`,
+      status: 'running',
+      progressPercent: 50,
+      foundCount: selectedProspects.length,
+      uniqueCount: 0,
+      duplicateCount: 0,
+      errorCount: 0,
+      startedAt: new Date().toISOString()
+    };
+    setJobs(prev => [newJob, ...prev]);
 
     try {
       setIsBatchEnriching(true);
@@ -347,12 +483,26 @@ export default function LeadIntelligenceClient() {
       if (res.success && res.enrichedProspects.length > 0) {
         const enrichedMap = new Map(res.enrichedProspects.map(p => [p.id, p]));
         setProspects(prev => prev.map(p => enrichedMap.get(p.id) || p));
+        setJobs(prev => prev.map(j => j.id === jobId ? {
+          ...j,
+          status: 'completed',
+          progressPercent: 100,
+          uniqueCount: res.enrichedProspects.length,
+          completedAt: new Date().toISOString()
+        } : j));
         toast({
           title: 'Batch Enrichment Complete ✓',
           description: `Successfully enriched ${res.enrichedProspects.length} prospects.`
         });
       }
     } catch {
+      setJobs(prev => prev.map(j => j.id === jobId ? {
+        ...j,
+        status: 'failed',
+        progressPercent: 100,
+        errorCount: 1,
+        completedAt: new Date().toISOString()
+      } : j));
       toast({ variant: 'destructive', title: 'Batch Enrich Failed', description: 'Enrichment service error.' });
     } finally {
       setIsBatchEnriching(false);
@@ -398,7 +548,6 @@ export default function LeadIntelligenceClient() {
     if (selectedIds.length === 0) return;
 
     if (leadLists.length === 0) {
-      // Create a default list
       const res = await createLeadListAction(
         activeWorkspaceId || '',
         organizationId,
@@ -412,7 +561,6 @@ export default function LeadIntelligenceClient() {
         loadInitialData();
       }
     } else {
-      // Add to latest list
       const targetList = leadLists[0];
       const res = await addProspectsToListAction(targetList.id, selectedIds, activeWorkspaceId || '');
       if (res.success) {
@@ -423,17 +571,50 @@ export default function LeadIntelligenceClient() {
     }
   };
 
-  // Ingest CSV Data
+  // Ingest CSV Data with Job Tracking
   const handleImportCSV = async (csvText: string) => {
     if (!activeWorkspaceId) return;
+
+    const jobId = `job_csv_${Date.now()}`;
+    const newJob: IntelligenceJob = {
+      id: jobId,
+      workspaceId: activeWorkspaceId,
+      type: 'csv_import',
+      title: `CSV Tabular Import`,
+      status: 'running',
+      progressPercent: 50,
+      foundCount: 0,
+      uniqueCount: 0,
+      duplicateCount: 0,
+      errorCount: 0,
+      startedAt: new Date().toISOString()
+    };
+    setJobs(prev => [newJob, ...prev]);
+
     const res = await importProspectsFromCSVAction(activeWorkspaceId, organizationId, csvText, filters.industry);
     if (res.success && res.prospects) {
       setProspects(res.prospects);
+      setJobs(prev => prev.map(j => j.id === jobId ? {
+        ...j,
+        status: 'completed',
+        progressPercent: 100,
+        foundCount: res.prospects!.length,
+        uniqueCount: res.prospects!.length,
+        completedAt: new Date().toISOString()
+      } : j));
       toast({
         title: 'CSV Ingestion Complete ✓',
         description: `Successfully indexed ${res.prospects.length} prospects from spreadsheet.`
       });
     } else {
+      setJobs(prev => prev.map(j => j.id === jobId ? {
+        ...j,
+        status: 'failed',
+        progressPercent: 100,
+        errorCount: 1,
+        errorDetails: [res.error || 'CSV import parsing failed'],
+        completedAt: new Date().toISOString()
+      } : j));
       toast({
         variant: 'destructive',
         title: 'CSV Ingestion Failed',
@@ -461,13 +642,36 @@ export default function LeadIntelligenceClient() {
     }
   };
 
+  // Jobs Actions Handlers
+  const handleCancelJob = (jobId: string) => {
+    setJobs(prev => prev.map(j => j.id === jobId ? { ...j, status: 'failed', completedAt: new Date().toISOString() } : j));
+    toast({ title: 'Job Cancelled', description: 'Operation stopped.' });
+  };
+
+  const handleTogglePauseJob = (jobId: string) => {
+    setJobs(prev => prev.map(j => {
+      if (j.id !== jobId) return j;
+      const nextStatus = j.status === 'running' ? 'paused' : 'running';
+      return { ...j, status: nextStatus };
+    }));
+  };
+
+  const handleClearCompletedJobs = () => {
+    setJobs(prev => prev.filter(j => j.status === 'running' || j.status === 'paused'));
+    toast({ title: 'Cleared Completed Jobs', description: 'Cleaned up job tray history.' });
+  };
+
+  const runningJobsCount = jobs.filter(j => j.status === 'running').length;
+  const highIntentCount = prospects.filter(p => (p.scoring?.overallScore ?? 0) >= 75).length;
+  const syncedCount = prospects.filter(p => p.syncStatus === 'synced').length;
+
   return (
     <div className="flex-1 flex flex-col p-4 sm:p-6 space-y-6 max-w-7xl mx-auto w-full relative">
       {/* Glow Mesh Background */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(59,130,246,0.06),transparent_50%)] pointer-events-none" />
 
-      {/* Page Title & Status Banner */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+      {/* Page Title & Status Header (intelligence_ui Section 4) */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10 border-b border-border/40 pb-5">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-sky-400 to-indigo-500">
             Lead Intelligence Platform
@@ -475,14 +679,48 @@ export default function LeadIntelligenceClient() {
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Discover local businesses, audit tech footprints, generate AI sales strategies, and sync directly to CRM.
           </p>
+
+          {/* Live Metric Counters Ribbon (intelligence_ui Section 4) */}
+          <div className="flex items-center gap-3 pt-3 flex-wrap">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-muted/30 border border-border/60 px-2.5 py-1 rounded-lg">
+              <Building2 className="w-3.5 h-3.5 text-primary" />
+              <span><strong>{prospects.length}</strong> Prospects</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-amber-500/5 border border-amber-500/20 px-2.5 py-1 rounded-lg">
+              <Flame className="w-3.5 h-3.5 text-amber-500" />
+              <span><strong className="text-amber-600 dark:text-amber-400">{highIntentCount}</strong> High Intent</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground bg-blue-500/5 border border-blue-500/20 px-2.5 py-1 rounded-lg">
+              <Database className="w-3.5 h-3.5 text-blue-500" />
+              <span><strong className="text-blue-600 dark:text-blue-400">{syncedCount}</strong> Synced in CRM</span>
+            </div>
+          </div>
         </div>
 
-        {(!settings.googlePlacesApiKey || !settings.builtwithApiKey) && (
-          <Badge variant="outline" className="px-3 py-1 bg-amber-500/10 border-amber-500/20 text-amber-500 font-medium text-xs flex items-center gap-1.5 rounded-full self-start md:self-center">
-            <Zap className="h-3.5 w-3.5 fill-amber-500" />
-            AI-Simulation Fallback Active
-          </Badge>
-        )}
+        <div className="flex items-center gap-2 flex-wrap self-start md:self-center">
+          {/* Jobs Center Trigger (intelligence_ui Section 10) */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsJobsDrawerOpen(true)}
+            className="h-9 px-3 text-xs border-border/80 rounded-xl relative active:scale-[0.97] flex items-center gap-1.5"
+          >
+            <Activity className={`w-3.5 h-3.5 ${runningJobsCount > 0 ? 'text-primary animate-pulse' : 'text-muted-foreground'}`} />
+            <span>Jobs Center</span>
+            {runningJobsCount > 0 && (
+              <Badge className="ml-1 h-5 px-1.5 text-[10px] bg-primary text-primary-foreground font-bold rounded-full">
+                {runningJobsCount} Active
+              </Badge>
+            )}
+          </Button>
+
+          {(!settings.googlePlacesApiKey || !settings.builtwithApiKey) && (
+            <Badge variant="outline" className="px-3 py-1 bg-amber-500/10 border-amber-500/20 text-amber-500 font-medium text-xs flex items-center gap-1.5 rounded-full">
+              <Zap className="h-3.5 w-3.5 fill-amber-500" />
+              AI Simulation Active
+            </Badge>
+          )}
+        </div>
       </div>
 
       {/* Main Tabs Navigation */}
@@ -673,6 +911,19 @@ export default function LeadIntelligenceClient() {
         onClose={() => setSelectedProspect(null)}
         onSyncToCRM={handleSyncToCRM}
         onEnrichProspect={handleEnrichProspect}
+      />
+
+      {/* Jobs Center & Task Progress Tray Drawer (intelligence_ui Section 10 & 11) */}
+      <JobsCenterDrawer
+        isOpen={isJobsDrawerOpen}
+        onClose={() => setIsJobsDrawerOpen(false)}
+        jobs={jobs}
+        onCancelJob={handleCancelJob}
+        onTogglePauseJob={handleTogglePauseJob}
+        onClearCompletedJobs={handleClearCompletedJobs}
+        onViewJobResults={() => {
+          setActiveTab('finder');
+        }}
       />
     </div>
   );

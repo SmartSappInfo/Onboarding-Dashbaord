@@ -179,6 +179,27 @@ export interface EnrichmentJob {
   completedAt?: string;
 }
 
+export type JobStatus = 'running' | 'completed' | 'failed' | 'paused';
+export type JobType = 'discovery' | 'batch_enrich' | 'batch_sync' | 'csv_import';
+
+export interface IntelligenceJob {
+  id: string;
+  workspaceId: string;
+  type: JobType;
+  title: string;
+  status: JobStatus;
+  progressPercent: number;
+  foundCount: number;
+  uniqueCount: number;
+  duplicateCount: number;
+  errorCount: number;
+  startedAt: string;
+  completedAt?: string;
+  errorDetails?: string[];
+}
+
+export type TableDensityMode = 'compact' | 'standard' | 'comfortable';
+
 export interface LeadIntelligenceSettings {
   googlePlacesApiKey?: string;
   builtwithApiKey?: string;

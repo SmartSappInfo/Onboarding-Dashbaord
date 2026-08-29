@@ -5,8 +5,9 @@
  * 
  * ARCHITECTURAL GUIDELINES (Rule 10 Maintainer Note):
  * 1. Ergonomics: Seamless split-pane workspace with Omnisearch ribbon, multi-select rows, and Mapbox/Map pins.
- * 2. High-Density Layout: Compact typography, heat status indicators, and one-click slide-over inspection.
- * 3. CSV Ingestion: Integrated modal allowing drag-and-drop or pasting tabular prospect files.
+ * 2. Information Density Modes: Supports Section 80 density modes (Compact, Standard, Comfortable).
+ * 3. Transparent Progress: Implements Section 73 Staged Progress Indicator during discovery searches.
+ * 4. Mobile & A11y: Preserves >= 44px touch targets on mobile viewports.
  */
 
 import React, { useState } from 'react';
@@ -22,7 +23,10 @@ import {
   ListFilter, 
   Flame, 
   Zap, 
-  Globe 
+  Globe,
+  AlignJustify,
+  Rows3,
+  Grid3X3
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +43,8 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { OmnisearchRibbon } from './OmnisearchRibbon';
-import type { Prospect, SearchFilters, DiscoverySourceType } from '@/lib/lead-intelligence/types';
+import { StagedProgressIndicator } from './StagedProgressIndicator';
+import type { Prospect, SearchFilters, DiscoverySourceType, TableDensityMode } from '@/lib/lead-intelligence/types';
 import { useToast } from '@/hooks/use-toast';
 
 interface ProspectFinderTabProps {
@@ -85,6 +90,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
 }) => {
   const { toast } = useToast();
   const [showMap, setShowMap] = useState(true);
+  const [densityMode, setDensityMode] = useState<TableDensityMode>('standard');
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [pastedCSV, setPastedCSV] = useState('');
   const [isImporting, setIsImporting] = useState(false);
@@ -110,6 +116,14 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
     }
   };
 
+  // Density-specific cell padding classes
+  const cellPaddingClass = 
+    densityMode === 'compact' 
+      ? 'py-1.5 px-2.5 text-[11px]' 
+      : densityMode === 'comfortable' 
+      ? 'py-4 px-4 text-xs sm:text-sm' 
+      : 'py-3 px-3 text-xs';
+
   return (
     <div className="space-y-4">
       {/* 1. Omnisearch Ribbon Bar */}
@@ -126,37 +140,82 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
         onOpenCSVImport={() => setIsCSVModalOpen(true)}
       />
 
-      {/* 2. Map & View Mode Toggle Header */}
+      {/* Staged Progress Indicator during active discovery */}
+      {isSearching && (
+        <StagedProgressIndicator 
+          isActive={isSearching} 
+          title="Discovering & Auditing Target Prospects" 
+        />
+      )}
+
+      {/* 2. Map & View Mode & Density Mode Toggle Header */}
       {prospects.length > 0 && (
-        <div className="flex items-center justify-between px-1">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 px-1">
           <div className="flex items-center gap-2">
             <span className="text-xs font-bold text-foreground">
-              {prospects.length} Prospects Found
+              {prospects.length} Prospects Discovered
             </span>
             <Badge variant="outline" className="text-[10px] bg-muted/30">
               {prospects.filter((p) => p.scoring?.overallScore >= 75).length} High Priority
             </Badge>
           </div>
 
-          <div className="flex items-center gap-1 bg-muted/40 p-0.5 rounded-lg border border-border/50">
-            <Button
-              size="sm"
-              variant={showMap ? "secondary" : "ghost"}
-              onClick={() => setShowMap(true)}
-              className="h-7 px-2.5 text-[11px] font-medium rounded-md active:scale-[0.97]"
-            >
-              <MapIcon className="w-3 h-3 mr-1 text-blue-500" />
-              Split Map
-            </Button>
-            <Button
-              size="sm"
-              variant={!showMap ? "secondary" : "ghost"}
-              onClick={() => setShowMap(false)}
-              className="h-7 px-2.5 text-[11px] font-medium rounded-md active:scale-[0.97]"
-            >
-              <ListFilter className="w-3 h-3 mr-1 text-muted-foreground" />
-              Table Only
-            </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Table Density Mode Switcher (intelligence_ui Section 80) */}
+            <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg border border-border/50">
+              <Button
+                size="sm"
+                variant={densityMode === 'compact' ? "secondary" : "ghost"}
+                onClick={() => setDensityMode('compact')}
+                className="h-7 px-2 text-[11px] font-medium rounded-md active:scale-[0.97]"
+                title="Compact Density Mode"
+              >
+                <Rows3 className="w-3 h-3 mr-1" />
+                Compact
+              </Button>
+              <Button
+                size="sm"
+                variant={densityMode === 'standard' ? "secondary" : "ghost"}
+                onClick={() => setDensityMode('standard')}
+                className="h-7 px-2 text-[11px] font-medium rounded-md active:scale-[0.97]"
+                title="Standard Density Mode"
+              >
+                <AlignJustify className="w-3 h-3 mr-1" />
+                Standard
+              </Button>
+              <Button
+                size="sm"
+                variant={densityMode === 'comfortable' ? "secondary" : "ghost"}
+                onClick={() => setDensityMode('comfortable')}
+                className="h-7 px-2 text-[11px] font-medium rounded-md active:scale-[0.97]"
+                title="Comfortable Density Mode"
+              >
+                <Grid3X3 className="w-3 h-3 mr-1" />
+                Comfortable
+              </Button>
+            </div>
+
+            {/* Split Map View Toggle */}
+            <div className="flex items-center gap-0.5 bg-muted/40 p-0.5 rounded-lg border border-border/50">
+              <Button
+                size="sm"
+                variant={showMap ? "secondary" : "ghost"}
+                onClick={() => setShowMap(true)}
+                className="h-7 px-2.5 text-[11px] font-medium rounded-md active:scale-[0.97]"
+              >
+                <MapIcon className="w-3 h-3 mr-1 text-primary" />
+                Split Map
+              </Button>
+              <Button
+                size="sm"
+                variant={!showMap ? "secondary" : "ghost"}
+                onClick={() => setShowMap(false)}
+                className="h-7 px-2.5 text-[11px] font-medium rounded-md active:scale-[0.97]"
+              >
+                <ListFilter className="w-3 h-3 mr-1 text-muted-foreground" />
+                Table Only
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -211,7 +270,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
               <Building2 className="h-8 w-8 text-muted-foreground opacity-60" />
             </div>
             <div className="space-y-1">
-              <h4 className="text-sm font-bold text-foreground">No prospects loaded yet</h4>
+              <h4 className="text-sm font-bold text-foreground">No prospects discovered yet</h4>
               <p className="text-xs text-muted-foreground max-w-sm">
                 Enter an industry or location above and click <strong>Find Prospects</strong>, or paste spreadsheet data.
               </p>
@@ -270,8 +329,8 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                           aria-label={`Select ${p.name}`}
                         />
                       </TableCell>
-                      <TableCell className="py-3 px-3">
-                        <div className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                      <TableCell className={cellPaddingClass}>
+                        <div className="font-bold text-foreground flex items-center gap-1.5">
                           <span>{p.name}</span>
                           {p.claimed && (
                             <span title="Verified Listing">
@@ -284,10 +343,10 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                           <span className="hover:underline">{p.domain}</span>
                         </div>
                       </TableCell>
-                      <TableCell className="py-3 px-3 text-xs text-muted-foreground">
+                      <TableCell className={`${cellPaddingClass} text-muted-foreground`}>
                         {p.address || p.industry || '—'}
                       </TableCell>
-                      <TableCell className="py-3 px-3 text-xs">
+                      <TableCell className={cellPaddingClass}>
                         {p.rating ? (
                           <div className="flex items-center gap-1 font-semibold text-foreground">
                             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -298,7 +357,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-3 px-3">
+                      <TableCell className={cellPaddingClass}>
                         {p.websiteScan?.technologies && p.websiteScan.technologies.length > 0 ? (
                           <div className="flex flex-wrap gap-1 max-w-[160px]">
                             {p.websiteScan.technologies.slice(0, 2).map((tech, idx) => (
@@ -316,7 +375,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                           <span className="text-[11px] text-muted-foreground">—</span>
                         )}
                       </TableCell>
-                      <TableCell className="py-3 px-3">
+                      <TableCell className={cellPaddingClass}>
                         <Badge 
                           className={`text-[10px] font-bold flex items-center gap-1 w-fit ${
                             isHot 
@@ -330,7 +389,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                           <span>{score}/100</span>
                         </Badge>
                       </TableCell>
-                      <TableCell className="py-3 px-3">
+                      <TableCell className={cellPaddingClass}>
                         {p.syncStatus === 'synced' ? (
                           <Badge className="bg-blue-500/10 text-blue-500 text-[10px] border border-blue-500/20 flex items-center gap-1 w-fit">
                             <Database className="w-3 h-3" /> Synced
@@ -341,7 +400,7 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
                           </Badge>
                         )}
                       </TableCell>
-                      <TableCell className="py-3 px-3 text-right pr-4" onClick={(e) => e.stopPropagation()}>
+                      <TableCell className={`${cellPaddingClass} text-right pr-4`} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1.5">
                           <Button
                             size="sm"

@@ -18,15 +18,41 @@
  * Covered by unit tests in `src/lib/deals/__tests__/deal-types.test.ts`.
  */
 
-import type { OnboardingStage, DealFocalContact, DealContact, Deal } from '../types';
+import type { 
+  OnboardingStage, 
+  DealFocalContact, 
+  DealContact, 
+  Deal, 
+  Pipeline, 
+  PipelineType, 
+  StageTerminalType, 
+  StageRequiredField 
+} from '../types';
 
-export type { OnboardingStage, Deal };
+export type { 
+  OnboardingStage, 
+  Deal, 
+  Pipeline, 
+  PipelineType, 
+  StageTerminalType, 
+  StageRequiredField 
+};
 
 /**
  * Semantic type alias for deal stages to align CRM terminology
  * while maintaining 100% compatibility with the underlying Firestore collection.
  */
 export type DealStage = OnboardingStage;
+
+/**
+ * Result payload returned when validating stage movement against entry/exit criteria
+ */
+export interface StageValidationResult {
+  valid: boolean;
+  missingFields: StageRequiredField[];
+  missingFieldLabels: string[];
+  message?: string;
+}
 
 /**
  * Deterministic Health Status of a Deal opportunity
@@ -162,8 +188,61 @@ export interface Deal2 {
   description?: string | null;
   customFields?: Record<string, string | number | boolean | null>;
   tags?: string[];
+  
+  // Lifecycle & Soft-Archival (Phase 1 Expansion)
+  isArchived?: boolean;
+  archivedAt?: string | null;
+  archivedBy?: string | null;
+  mergedIntoDealId?: string | null;
+
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Configuration options for cloning/duplicating an existing Deal
+ */
+export interface DealDuplicateOptions {
+  newName?: string;
+  targetPipelineId?: string;
+  targetStageId?: string;
+  copyLineItems?: boolean;
+  copyContacts?: boolean;
+  copyCustomFields?: boolean;
+}
+
+/**
+ * Configuration options for merging two Deals
+ */
+export interface DealMergeOptions {
+  masterDealId: string;
+  secondaryDealId: string;
+  resolvedName: string;
+  resolvedValue: number;
+  resolvedPipelineId: string;
+  resolvedStageId: string;
+  resolvedCloseDate?: string | null;
+  resolvedAssignedTo?: {
+    userId: string | null;
+    name: string | null;
+    email: string | null;
+  } | null;
+  mergeContacts: boolean;
+  mergeLineItems: boolean;
+  mergeCustomFields: boolean;
+  mergeTasksAndNotes: boolean;
+}
+
+/**
+ * Result payload returned upon successful Deal merge
+ */
+export interface DealMergeResult {
+  success: boolean;
+  masterDealId: string;
+  secondaryDealId: string;
+  mergedContactsCount: number;
+  mergedLineItemsCount: number;
+  error?: string;
 }
 
 /**

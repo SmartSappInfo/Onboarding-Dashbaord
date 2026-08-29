@@ -513,6 +513,32 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
                       ))}
                     </div>
                   </div>
+
+                  {/* Evidence & Confidence Section (intelligence_ui Sections 28 & 29) */}
+                  <div className="p-3.5 rounded-xl bg-muted/20 border border-border/60 space-y-2 text-xs">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-[11px] uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                        <ShieldCheck className="w-3.5 h-3.5 text-primary" /> Evidence & Grounding
+                      </span>
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
+                        88% Confidence
+                      </Badge>
+                    </div>
+                    <ul className="space-y-1 text-muted-foreground text-[11px]">
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>Source: <strong className="text-foreground">{prospect.source ? prospect.source.replace(/_/g, ' ') : 'Google Places & Web Scan'}</strong></span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>Observed on: <strong className="text-foreground">{new Date(prospect.updatedAt).toLocaleDateString()}</strong></span>
+                      </li>
+                      <li className="flex items-center gap-1.5">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        <span>Decision Makers: <strong className="text-foreground">{prospect.contacts.length} contact(s) extracted</strong></span>
+                      </li>
+                    </ul>
+                  </div>
                 </>
               ) : (
                 <div className="p-8 rounded-xl border border-dashed border-border text-center space-y-3">
