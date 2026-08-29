@@ -692,3 +692,280 @@ export async function deleteSavedViewAction(
   }
 }
 
+// =============================================================================
+// PHASE 3: IDENTITY RESOLUTION & DEDUPLICATION SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Retrieves all identity collision review records for a workspace.
+ */
+export async function getIdentityCollisionsAction(
+  workspaceId: string,
+  status: import('@/lib/lead-intelligence/types').CollisionStatus = 'pending_review'
+): Promise<import('@/lib/lead-intelligence/types').IdentityCollisionRecord[]> {
+  if (!workspaceId) return [];
+  try {
+    const snap = await adminDb.collection('identity_collisions')
+      .where('workspaceId', '==', workspaceId)
+      .where('status', '==', status)
+      .orderBy('matchConfidence', 'desc')
+      .limit(100)
+      .get();
+
+    const collisions: import('@/lib/lead-intelligence/types').IdentityCollisionRecord[] = [];
+    snap.forEach((doc) => {
+      collisions.push(doc.data() as import('@/lib/lead-intelligence/types').IdentityCollisionRecord);
+    });
+    return collisions;
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch collisions:', err);
+    return [];
+  }
+}
+
+/**
+ * Scans newly discovered unregistered prospects against existing CRM workspace entities
+ * to detect potential identity collisions.
+ */
+export async function scanWorkspaceForCollisionsAction(
+  workspaceId: string
+): Promise<{ createdCount: number; collisions: import('@/lib/lead-intelligence/types').IdentityCollisionRecord[] }> {
+  if (!workspaceId) return { createdCount: 0, collisions: [] };
+  try {
+    // 1. Fetch unregistered prospects
+    const prospectsSnap = await adminDb.collection('prospects')
+      .where('workspaceId', '==', workspaceId)
+      .where('syncStatus', '==', 'unregistered')
+      .limit(150)
+      .get();
+
+    if (prospectsSnap.empty) {
+      return { createdCount: 0, collisions: [] };
+    }
+
+    const prospects: Prospect[] = [];
+    prospectsSnap.forEach((doc) => {
+      prospects.push(doc.data() as Prospect);
+    });
+
+    // 2. Fetch existing CRM workspace entities
+    const entitiesSnap = await adminDb.collection('workspace_entities')
+      .where('workspaceId', '==', workspaceId)
+      .where('status', '==', 'active')
+      .limit(300)
+      .get();
+
+    if (entitiesSnap.empty) {
+      return { createdCount: 0, collisions: [] };
+    }
+
+    const existingEntities: WorkspaceEntity[] = [];
+    entitiesSnap.forEach((doc) => {
+      existingEntities.push(doc.data() as WorkspaceEntity);
+    });
+
+    const now = new Date().toISOString();
+    const discoveredCollisions: import('@/lib/lead-intelligence/types').IdentityCollisionRecord[] = [];
+    const batch = adminDb.batch();
+    let writeCount = 0;
+
+    // 3. Perform multi-factor comparison
+    for (const prospect of prospects) {
+      for (const entity of existingEntities) {
+        const match = evaluateIdentityMatch(prospect, entity);
+
+        if (match.confidence >= 0.75) {
+          const collisionId = `col_${workspaceId}_${prospect.id}_${entity.entityId}`;
+          const collisionDocRef = adminDb.collection('identity_collisions').doc(collisionId);
+
+          let matchType: 'exact_domain' | 'exact_phone' | 'fuzzy_name' | 'composite' = 'composite';
+          if (match.matchReason.includes('Domain exact match')) {
+            matchType = 'exact_domain';
+          } else if (match.matchReason.includes('Phone exact match')) {
+            matchType = 'exact_phone';
+          } else if (match.matchReason.includes('Name similarity')) {
+            matchType = 'fuzzy_name';
+          }
+
+          const record: import('@/lib/lead-intelligence/types').IdentityCollisionRecord = {
+            id: collisionId,
+            workspaceId,
+            prospectId: prospect.id,
+            prospect,
+            entityId: entity.entityId,
+            existingEntityName: entity.displayName,
+            existingEntityDomain: entity.slug || (entity as unknown as Record<string, string>).website,
+            existingEntityPhone: entity.primaryPhone,
+            existingEntityLocation: entity.locationString || entity.location?.locationString,
+            existingEntityContactsCount: (entity.entityContacts || []).length,
+            matchConfidence: match.confidence,
+            matchReasons: [match.matchReason],
+            matchType,
+            status: 'pending_review',
+            detectedAt: now
+          };
+
+          batch.set(collisionDocRef, record, { merge: true });
+          discoveredCollisions.push(record);
+          writeCount++;
+
+          if (writeCount >= 250) break;
+        }
+      }
+      if (writeCount >= 250) break;
+    }
+
+    if (writeCount > 0) {
+      await batch.commit();
+    }
+
+    return {
+      createdCount: discoveredCollisions.length,
+      collisions: discoveredCollisions
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to scan collisions:', err);
+    return { createdCount: 0, collisions: [] };
+  }
+}
+
+/**
+ * Atomically synthesizes and merges a Discovered Prospect into a target CRM Entity
+ * using user-specified field selections.
+ */
+export async function executeIdentityMergeAction(
+  workspaceId: string,
+  payload: import('@/lib/lead-intelligence/types').CanonicalMergePayload
+): Promise<import('@/lib/lead-intelligence/types').MergeExecutionResult> {
+  if (!workspaceId || !payload.prospectId || !payload.entityId) {
+    return { success: false, entityId: '', mergedContactsCount: 0, mergedTechnologiesCount: 0, error: 'Invalid payload' };
+  }
+
+  const { IdentityMergeService } = await import('@/lib/lead-intelligence/identity/IdentityMergeService');
+
+  try {
+    const result = await adminDb.runTransaction(async (transaction) => {
+      const prospectRef = adminDb.collection('prospects').doc(payload.prospectId);
+      const weRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${payload.entityId}`);
+      const entityRef = adminDb.collection('entities').doc(payload.entityId);
+      const collisionRef = payload.collisionId 
+        ? adminDb.collection('identity_collisions').doc(payload.collisionId)
+        : null;
+
+      const [prospectSnap, weSnap, entitySnap] = await Promise.all([
+        transaction.get(prospectRef),
+        transaction.get(weRef),
+        transaction.get(entityRef)
+      ]);
+
+      if (!prospectSnap.exists) {
+        throw new Error('Prospect not found');
+      }
+      if (!weSnap.exists) {
+        throw new Error('Target CRM workspace entity not found');
+      }
+
+      const prospectData = prospectSnap.data() as Prospect;
+      const weData = weSnap.data() as WorkspaceEntity;
+
+      // Deterministic synthesis using chosen field strategies
+      const canonical = IdentityMergeService.synthesizeCanonicalRecord(
+        prospectData,
+        weData,
+        payload.fieldSelection
+      );
+
+      const now = new Date().toISOString();
+
+      // 1. Update workspace_entities
+      const weUpdate = {
+        displayName: canonical.displayName,
+        primaryPhone: canonical.phone || weData.primaryPhone,
+        locationString: canonical.locationString || weData.locationString,
+        entityContacts: canonical.mergedContacts,
+        workspaceTags: canonical.workspaceTags,
+        customData: canonical.customData,
+        updatedAt: now
+      };
+      transaction.update(weRef, weUpdate);
+
+      // 2. Update canonical entities record if present
+      if (entitySnap.exists) {
+        transaction.update(entityRef, {
+          name: canonical.displayName,
+          contacts: canonical.mergedContacts,
+          tags: canonical.workspaceTags,
+          updatedAt: now
+        });
+      }
+
+      // 3. Mark prospect as synced
+      transaction.update(prospectRef, {
+        syncStatus: 'synced',
+        syncedEntityId: payload.entityId,
+        updatedAt: now
+      });
+
+      // 4. Update collision status if applicable
+      if (collisionRef) {
+        transaction.update(collisionRef, {
+          status: 'merged',
+          resolvedAt: now,
+          resolutionNotes: payload.notes || 'Merged via Side-by-Side Merge Studio'
+        });
+      }
+
+      return {
+        success: true,
+        entityId: payload.entityId,
+        mergedContactsCount: canonical.mergedContacts.length,
+        mergedTechnologiesCount: canonical.technologies.length
+      };
+    });
+
+    return result;
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to execute identity merge:', err);
+    return {
+      success: false,
+      entityId: payload.entityId,
+      mergedContactsCount: 0,
+      mergedTechnologiesCount: 0,
+      error: err instanceof Error ? err.message : 'Unknown merge error'
+    };
+  }
+}
+
+/**
+ * Dismisses or marks an identity collision as separate records.
+ */
+export async function dismissCollisionAction(
+  collisionId: string,
+  workspaceId: string,
+  resolution: 'keep_separate' | 'dismissed'
+): Promise<{ success: boolean; error?: string }> {
+  if (!collisionId || !workspaceId) return { success: false, error: 'Invalid parameters' };
+  try {
+    const docRef = adminDb.collection('identity_collisions').doc(collisionId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Collision record not found' };
+    }
+
+    const data = snap.data() as import('@/lib/lead-intelligence/types').IdentityCollisionRecord;
+    if (data.workspaceId !== workspaceId) {
+      return { success: false, error: 'Unauthorized workspace access' };
+    }
+
+    await docRef.update({
+      status: resolution,
+      resolvedAt: new Date().toISOString()
+    });
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to dismiss collision:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+  }
+}
+

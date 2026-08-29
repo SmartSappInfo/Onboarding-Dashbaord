@@ -10,7 +10,7 @@
  * 4. Strict Typing: 100% strict TypeScript types without any/any[].
  */
 
-import React, { useState, useEffect, useTransition, useCallback } from 'react';
+import React, { useState, useEffect, useTransition } from 'react';
 import dynamic from 'next/dynamic';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -26,7 +26,8 @@ import {
   Activity, 
   Flame, 
   Database, 
-  Building2
+  Building2,
+  GitMerge
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -48,7 +49,8 @@ import {
   batchSyncProspectsAction,
   batchEnrichProspectsAction,
   importProspectsFromCSVAction,
-  saveViewAction
+  saveViewAction,
+  getIdentityCollisionsAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
@@ -72,6 +74,9 @@ const ProspectFinderTab = dynamic(() => import('./components/ProspectFinderTab')
   loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const LeadListsTab = dynamic(() => import('./components/LeadListsTab').then(m => m.LeadListsTab), {
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+});
+const DeduplicationQueueTab = dynamic(() => import('./components/DeduplicationQueueTab').then(m => m.DeduplicationQueueTab), {
   loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const WebsiteScannerTab = dynamic(() => import('./components/WebsiteScannerTab'), {
@@ -200,15 +205,19 @@ export default function LeadIntelligenceClient() {
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, []);
 
-  // Load Initial Workspace Data
-  const loadInitialData = useCallback(async () => {
+  // Deduplication Queue State (Phase 3)
+  const [pendingCollisionsCount, setPendingCollisionsCount] = useState<number>(0);
+
+  // Initial Data Fetch
+  const loadInitialData = React.useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
-      const [keys, recent, searches, lists] = await Promise.all([
+      const [keys, recent, searches, lists, pendingCollisions] = await Promise.all([
         getLeadSettingsAction(activeWorkspaceId),
         getRecentProspectsAction(activeWorkspaceId),
         getSavedSearchesAction(activeWorkspaceId),
-        getLeadListsAction(activeWorkspaceId)
+        getLeadListsAction(activeWorkspaceId),
+        getIdentityCollisionsAction(activeWorkspaceId, 'pending_review')
       ]);
       setSettings(keys);
       setRecentProspects(recent);
@@ -217,6 +226,7 @@ export default function LeadIntelligenceClient() {
       }
       setSavedSearches(searches);
       setLeadLists(lists);
+      setPendingCollisionsCount(pendingCollisions.length);
     } catch (err: unknown) {
       console.error('[LeadIntelligenceClient] Failed to load initial workspace data:', err);
     }
@@ -758,7 +768,7 @@ export default function LeadIntelligenceClient() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-6 w-full max-w-4xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto">
+        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full max-w-5xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto">
           <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
             <Search className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Prospect Finder
@@ -766,6 +776,15 @@ export default function LeadIntelligenceClient() {
           <TabsTrigger value="lists" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
             <Folder className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Lead Lists
+          </TabsTrigger>
+          <TabsTrigger value="dedup" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2 relative">
+            <GitMerge className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            <span>Deduplication</span>
+            {pendingCollisionsCount > 0 && (
+              <Badge className="ml-1 h-4 px-1 text-[9px] bg-amber-500 text-white font-bold rounded-full">
+                {pendingCollisionsCount}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="scanner" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
             <Globe className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
@@ -837,6 +856,26 @@ export default function LeadIntelligenceClient() {
                   onCreateList={handleCreateLeadList}
                   onDeleteList={handleDeleteLeadList}
                   onSelectProspectForInspection={setSelectedProspect}
+                />
+              </TabsContent>
+            </motion.div>
+          )}
+
+          {/* TAB: DEDUPLICATION QUEUE (Phase 3) */}
+          {activeTab === 'dedup' && (
+            <motion.div
+              key="dedup"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={kowalskiTransition}
+            >
+              <TabsContent value="dedup" className="mt-6">
+                <DeduplicationQueueTab
+                  workspaceId={activeWorkspaceId || ''}
+                  onCollisionResolved={() => {
+                    loadInitialData();
+                  }}
                 />
               </TabsContent>
             </motion.div>

@@ -276,4 +276,65 @@ export interface LeadIntelligenceSettings {
   clearbitApiKey?: string;
   chromeExtensionToken?: string;
   waterfallEnabled?: boolean;
+  autoMergeConfidenceThreshold?: number; // Defaults to 0.95
+}
+
+// =============================================================================
+// PHASE 3: IDENTITY RESOLUTION & MERGE STUDIO INTERFACES (Strict Typing)
+// =============================================================================
+
+export type CollisionStatus = 'pending_review' | 'merged' | 'kept_separate' | 'dismissed';
+export type MergeFieldChoice = 'record_a' | 'record_b' | 'custom';
+export type MergeArrayStrategy = 'combine' | 'record_a_only' | 'record_b_only';
+
+export interface MergeFieldSelection {
+  nameChoice: MergeFieldChoice;
+  customName?: string;
+  domainChoice: MergeFieldChoice;
+  customDomain?: string;
+  phoneChoice: MergeFieldChoice;
+  customPhone?: string;
+  addressChoice: MergeFieldChoice;
+  customAddress?: string;
+  technologiesStrategy: MergeArrayStrategy;
+  contactsStrategy: MergeArrayStrategy;
+  selectedContactEmails?: string[];
+}
+
+export interface IdentityCollisionRecord {
+  id: string;
+  workspaceId: string;
+  prospectId: string;
+  prospect: Prospect;
+  entityId: string;
+  existingEntityName: string;
+  existingEntityDomain?: string;
+  existingEntityPhone?: string;
+  existingEntityLocation?: string;
+  existingEntityContactsCount: number;
+  matchConfidence: number;
+  matchReasons: string[];
+  matchType: 'exact_domain' | 'exact_phone' | 'fuzzy_name' | 'composite';
+  status: CollisionStatus;
+  detectedAt: string;
+  resolvedAt?: string;
+  resolvedBy?: string;
+  resolutionNotes?: string;
+}
+
+export interface CanonicalMergePayload {
+  collisionId: string;
+  prospectId: string;
+  entityId: string;
+  fieldSelection: MergeFieldSelection;
+  notes?: string;
+}
+
+export interface MergeExecutionResult {
+  success: boolean;
+  entityId: string;
+  mergedContactsCount: number;
+  mergedTechnologiesCount: number;
+  message?: string;
+  error?: string;
 }

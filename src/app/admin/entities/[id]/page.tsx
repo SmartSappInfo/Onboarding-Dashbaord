@@ -429,6 +429,15 @@ export default function EntityDetailPage() {
 
                     {/* Top Actions */}
                     <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
+                        {(!weData.isConverted) && (
+                            <Button 
+                                variant="outline" 
+                                className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-primary/10 hover:bg-primary/20 text-primary border-primary/30 shadow-sm gap-2" 
+                                onClick={() => setConvertModalOpen(true)}
+                            >
+                                <Zap className="h-4 w-4 text-primary" /> Convert to Deal
+                            </Button>
+                        )}
                         <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm" onClick={() => setIsLogModalOpen(true)}>
                             <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> Log
                         </Button>
@@ -739,6 +748,7 @@ export default function EntityDetailPage() {
             </Dialog>
 
             <LogActivityModal entity={weData} open={isLogModalOpen} onOpenChange={setIsLogModalOpen} />
+            <ConvertLeadModal entity={weData} open={convertModalOpen} onOpenChange={setConvertModalOpen} />
 
             {entityData && (
                 <ManageWorkspacesModal
