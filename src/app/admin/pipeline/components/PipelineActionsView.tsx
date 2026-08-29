@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Zap, Plus, ExternalLink, ArrowRight, Play, CheckCircle2, ShieldAlert, Sparkles } from 'lucide-react';
+import { Zap, Plus, ExternalLink, ArrowRight, Play, CheckCircle2, ShieldAlert, Sparkles, Package } from 'lucide-react';
 import { isAutomationLinkedToStage } from '@/lib/automation-stage-helpers';
 import { toggleAutomationStatusAction } from '@/lib/automation-actions';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { cn, toTitleCase } from '@/lib/utils';
+import ProductCatalogModal from './ProductCatalogModal';
 
 interface PipelineActionsViewProps {
     pipeline: Pipeline;
@@ -35,6 +36,7 @@ export default function PipelineActionsView({ pipeline, stages, automations = []
     const { user } = useUser();
     const { toast } = useToast();
     const [togglingIds, setTogglingIds] = React.useState<Record<string, boolean>>({});
+    const [isCatalogOpen, setIsCatalogOpen] = React.useState(false);
 
     const handleAddAutomationToStage = (stage: OnboardingStage) => {
         const url = `/admin/automations/new?pipelineId=${encodeURIComponent(pipeline.id)}&stageId=${encodeURIComponent(stage.id)}&pipelineName=${encodeURIComponent(pipeline.name)}&stageName=${encodeURIComponent(stage.name)}`;
@@ -97,7 +99,17 @@ export default function PipelineActionsView({ pipeline, stages, automations = []
                     </p>
                 </div>
 
-                <div className="flex items-center gap-3 shrink-0">
+                <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                    <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCatalogOpen(true)}
+                        className="h-10 rounded-xl font-bold text-xs border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary flex items-center gap-2 active:scale-[0.97] transition-all cursor-pointer"
+                    >
+                        <Package className="h-4 w-4" />
+                        <span>Product Catalog & Pricing</span>
+                    </Button>
+
                     <div className="text-right hidden md:block mr-2">
                         <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Active Workflows</p>
                         <p className="text-2xl font-black text-amber-600 dark:text-amber-400">{totalAttachedCount}</p>
@@ -105,7 +117,7 @@ export default function PipelineActionsView({ pipeline, stages, automations = []
                     {stages.length > 0 && (
                         <Button
                             onClick={() => handleAddAutomationToStage(stages[0])}
-                            className="h-10 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-[0.97] transition-all"
+                            className="h-10 rounded-xl font-bold text-xs bg-amber-500 hover:bg-amber-600 text-white flex items-center gap-2 shadow-lg shadow-amber-500/20 active:scale-[0.97] transition-all cursor-pointer"
                         >
                             <Plus className="h-4 w-4" />
                             <span>Add Stage Automation</span>
@@ -113,6 +125,9 @@ export default function PipelineActionsView({ pipeline, stages, automations = []
                     )}
                 </div>
             </div>
+
+            {/* Product Catalog & Price Books Modal */}
+            <ProductCatalogModal open={isCatalogOpen} onOpenChange={setIsCatalogOpen} />
 
             {/* Stage-by-Stage Automation List */}
             <div className="space-y-6">

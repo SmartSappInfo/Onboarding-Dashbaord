@@ -84,6 +84,94 @@ export interface DealLineItem {
 }
 
 /**
+ * Reusable Product or Service in the Catalog (Phase 4)
+ */
+export interface Product {
+  id: string;
+  name: string;
+  sku?: string;
+  description?: string;
+  categoryId?: string;
+  categoryName?: string;
+  unitPrice: number;
+  currency: string;
+  isRecurring: boolean;
+  billingInterval: 'monthly' | 'quarterly' | 'annual' | 'one_time';
+  taxRate?: number;
+  isActive: boolean;
+  workspaceId: string;
+  organizationId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Organizational Product / Service Category (Phase 4)
+ */
+export interface ProductCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  order: number;
+  workspaceId: string;
+  organizationId: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Price Book for Tiered & Currency-Specific Pricing (Phase 4)
+ */
+export interface PriceBook {
+  id: string;
+  name: string;
+  description?: string;
+  currency: string;
+  isStandard: boolean;
+  isActive: boolean;
+  workspaceId: string;
+  organizationId: string;
+  effectiveStartDate?: string;
+  effectiveEndDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Specific Product Price Override inside a Price Book (Phase 4)
+ */
+export interface PriceBookItem {
+  id: string;
+  priceBookId: string;
+  productId: string;
+  productName: string;
+  customUnitPrice: number;
+  currency: string;
+  minQuantity?: number;
+  maxDiscountPercent?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+/**
+ * Comprehensive Revenue Breakdown & Projections (Phase 4)
+ */
+export interface DealRecurringRevenue {
+  subtotal: number;
+  totalDiscount: number;
+  totalTax: number;
+  grandTotal: number;
+  mrr: number;
+  arr: number;
+  oneTimeValue: number;
+  recurringValue: number;
+  acv: number;
+  tcv: number;
+  contractTermMonths: number;
+}
+
+/**
  * Historical record of a deal's progression through a specific stage
  */
 export interface DealStageHistory {

@@ -36,7 +36,8 @@ import {
     Target,
     Copy,
     Archive,
-    RotateCcw
+    RotateCcw,
+    Repeat
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
@@ -400,25 +401,34 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }
                 </div>
             </div>
 
-            {/* Velocity & Probability Badges */}
-            <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 text-[9px]">
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <div className={cn(
-                            "flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md border",
-                            health.isSlaBreached 
-                                ? "bg-destructive/10 border-destructive/30 text-destructive"
-                                : "bg-muted/40 border-border/40 text-muted-foreground"
-                        )}>
-                            <Clock className="h-2.5 w-2.5 shrink-0" />
-                            <span>{daysInStage}d</span>
-                            {stage?.slaDays ? <span className="opacity-60 text-[8px]">/{stage.slaDays}d</span> : null}
+            {/* Velocity, Probability & MRR Badges */}
+            <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 text-[9px] flex-wrap">
+                <div className="flex items-center gap-1.5">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <div className={cn(
+                                "flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md border",
+                                health.isSlaBreached 
+                                    ? "bg-destructive/10 border-destructive/30 text-destructive"
+                                    : "bg-muted/40 border-border/40 text-muted-foreground"
+                            )}>
+                                <Clock className="h-2.5 w-2.5 shrink-0" />
+                                <span>{daysInStage}d</span>
+                                {stage?.slaDays ? <span className="opacity-60 text-[8px]">/{stage.slaDays}d</span> : null}
+                            </div>
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom" className="text-[10px]">
+                            <span>Time in current stage: {daysInStage} days {stage?.slaDays ? `(SLA: ${stage.slaDays}d)` : ''}</span>
+                        </TooltipContent>
+                    </Tooltip>
+
+                    {typeof deal.mrr === 'number' && deal.mrr > 0 && (
+                        <div className="flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
+                            <Repeat className="h-2.5 w-2.5 shrink-0" />
+                            <span>{formatCurrency(deal.mrr, deal.currency)}/m</span>
                         </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-[10px]">
-                        <span>Time in current stage: {daysInStage} days {stage?.slaDays ? `(SLA: ${stage.slaDays}d)` : ''}</span>
-                    </TooltipContent>
-                </Tooltip>
+                    )}
+                </div>
 
                 <Tooltip>
                     <TooltipTrigger asChild>

@@ -41,7 +41,10 @@ import {
   XCircle,
   Clock,
   ArrowUpRight,
-  CreditCard
+  CreditCard,
+  Package,
+  TrendingUp,
+  Repeat
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import {
@@ -51,6 +54,13 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
@@ -64,7 +74,8 @@ import {
   convertQuoteToInvoiceAction,
   deleteDealQuoteAction
 } from '@/app/actions/deal-line-item-actions';
-import type { Deal, DealLineItem, DealQuote } from '@/lib/types';
+import { listProductsAction } from '@/app/actions/product-actions';
+import type { Deal, DealLineItem, DealQuote, Product } from '@/lib/types';
 import { nanoid } from 'nanoid';
 
 interface DealLineItemsTabProps {
@@ -81,7 +92,27 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
   const [items, setItems] = React.useState<DealLineItem[]>(() => {
     return Array.isArray(deal.lineItems) ? deal.lineItems : [];
   });
+  const [contractTermMonths, setContractTermMonths] = React.useState<number>(() => {
+    return deal.contractTermMonths || 12;
+  });
   const [isSaving, setIsSaving] = React.useState(false);
+
+  // Catalog Products state
+  const [catalogProducts, setCatalogProducts] = React.useState<Product[]>([]);
+  const [isLoadingCatalog, setIsLoadingCatalog] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!deal.workspaceId) return;
+    setIsLoadingCatalog(true);
+    listProductsAction(deal.workspaceId, false)
+      .then(res => {
+        if (res.success && res.products) {
+          setCatalogProducts(res.products);
+        }
+      })
+      .catch(err => console.error('Failed to load catalog products:', err))
+      .finally(() => setIsLoadingCatalog(false));
+  }, [deal.workspaceId]);
 
   // Quotes Real-Time Subscription
   const quotesQuery = useMemoFirebase(() => {
@@ -115,8 +146,8 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
   }, [deal.lineItems]);
 
   const totals = React.useMemo(() => {
-    return calculateLineItemsTotals(items);
-  }, [items]);
+    return calculateLineItemsTotals(items, contractTermMonths);
+  }, [items, contractTermMonths]);
 
   const handleAddItem = () => {
     const newItem: DealLineItem = {
@@ -129,8 +160,30 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
       taxRate: 0,
       total: 0,
       isRecurring: false,
+      billingInterval: 'one_time',
     };
     setItems(prev => [...prev, newItem]);
+  };
+
+  const handleAddProductFromCatalog = (product: Product) => {
+    const newItem: DealLineItem = {
+      id: `item_${nanoid(8)}`,
+      productId: product.id,
+      name: product.name,
+      description: product.description || '',
+      quantity: 1,
+      unitPrice: product.unitPrice || 0,
+      discountPercent: 0,
+      taxRate: product.taxRate || 0,
+      isRecurring: product.isRecurring,
+      billingInterval: product.billingInterval || (product.isRecurring ? 'monthly' : 'one_time'),
+      total: product.unitPrice || 0,
+    };
+    setItems(prev => [...prev, newItem]);
+    toast({
+      title: 'Product Added',
+      description: `Added "${product.name}" from catalog.`,
+    });
   };
 
   const handleUpdateItem = (id: string, updates: Partial<DealLineItem>) => {
@@ -161,11 +214,11 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
     setIsSaving(true);
 
     try {
-      const res = await saveDealLineItemsAction(deal.id, items, user?.uid);
+      const res = await saveDealLineItemsAction(deal.id, items, user?.uid, contractTermMonths, deal.priceBookId);
       if (res.success) {
         toast({
           title: 'Line Items Saved',
-          description: `Deal value synchronized to ${formatCurrency(res.grandTotal || totals.grandTotal)}.`,
+          description: `Deal value synchronized to ${formatCurrency(res.grandTotal || totals.grandTotal)} (MRR: ${formatCurrency(res.mrr || totals.mrr)}).`,
         });
         if (onDealUpdated) onDealUpdated();
       } else {
@@ -187,7 +240,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
       // ARCHITECTURAL POINTER (Rule 10 - Auto-Save Pre-Flight):
       // Automatically persist current in-memory line items before quote creation
       // to guarantee the generated commercial quote reflects the latest UI inputs.
-      const saveRes = await saveDealLineItemsAction(deal.id, items, user?.uid);
+      const saveRes = await saveDealLineItemsAction(deal.id, items, user?.uid, contractTermMonths, deal.priceBookId);
       if (!saveRes.success) {
         throw new Error(saveRes.error || 'Failed to synchronize line items before quote generation.');
       }
@@ -305,7 +358,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
     <div className="space-y-6">
       {/* 1. Products & Line Items Editor Card */}
       <Card className="border-border/50 rounded-2xl bg-card shadow-sm overflow-hidden">
-        <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-row items-center justify-between">
+        <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="space-y-0.5">
             <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
               <ShoppingBag className="h-4 w-4 text-primary" />
@@ -316,7 +369,47 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
             </p>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            {catalogProducts.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 rounded-xl font-bold text-xs border-primary/30 text-primary hover:bg-primary/5 gap-1.5 cursor-pointer min-h-[38px]"
+                  >
+                    <Package className="h-3.5 w-3.5" />
+                    <span>From Catalog</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64 max-h-72 overflow-y-auto rounded-xl p-1 shadow-xl">
+                  {catalogProducts.map(prod => (
+                    <DropdownMenuItem
+                      key={prod.id}
+                      onClick={() => handleAddProductFromCatalog(prod)}
+                      className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="font-bold text-xs text-foreground truncate">{prod.name}</span>
+                        <span className="text-[11px] font-black text-primary">{formatCurrency(prod.unitPrice, prod.currency)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                        {prod.isRecurring ? (
+                          <Badge className="text-[9px] px-1 py-0 bg-emerald-500/10 text-emerald-600 border-none">
+                            Recurring ({prod.billingInterval})
+                          </Badge>
+                        ) : (
+                          <span>One-time</span>
+                        )}
+                        {prod.sku && <span>• {prod.sku}</span>}
+                      </div>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
             <Button
               type="button"
               variant="outline"
@@ -326,7 +419,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                 setIsQuoteModalOpen(true);
               }}
               disabled={items.length === 0}
-              className="h-9 rounded-xl font-bold text-xs border-border/80 hover:bg-primary/5 gap-1.5"
+              className="h-9 rounded-xl font-bold text-xs border-border/80 hover:bg-primary/5 gap-1.5 min-h-[38px] cursor-pointer"
             >
               <Receipt className="h-3.5 w-3.5 text-primary" />
               Generate Quote
@@ -336,10 +429,10 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
               type="button"
               size="sm"
               onClick={handleAddItem}
-              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5"
+              className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 min-h-[38px] cursor-pointer"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add Item
+              Add Custom Item
             </Button>
           </div>
         </CardHeader>
@@ -347,16 +440,44 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
         <CardContent className="p-6 space-y-6">
           {items.length > 0 ? (
             <div className="space-y-4">
+              {/* Recurring Revenue Breakdown Matrix Bar */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-4 rounded-2xl bg-gradient-to-r from-primary/5 via-muted/20 to-primary/5 border border-border/60">
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-muted-foreground uppercase">One-Time Value</p>
+                  <p className="text-sm font-black text-foreground">{formatCurrency(totals.oneTimeValue, deal.currency)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase flex items-center gap-1">
+                    <Repeat className="h-3 w-3" /> Monthly (MRR)
+                  </p>
+                  <p className="text-sm font-black text-emerald-600 dark:text-emerald-400">{formatCurrency(totals.mrr, deal.currency)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-primary uppercase flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3" /> Annual (ARR)
+                  </p>
+                  <p className="text-sm font-black text-primary">{formatCurrency(totals.arr, deal.currency)}</p>
+                </div>
+                <div className="space-y-0.5">
+                  <p className="text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase">
+                    Total Contract Value ({contractTermMonths}mo)
+                  </p>
+                  <p className="text-sm font-black text-purple-600 dark:text-purple-400">{formatCurrency(totals.tcv, deal.currency)}</p>
+                </div>
+              </div>
+
+              {/* Table of Items */}
               <div className="overflow-x-auto">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border/60 text-muted-foreground font-extrabold uppercase text-[10px] tracking-wider">
                       <th className="pb-3 text-left pl-1">Item / Description</th>
-                      <th className="pb-3 text-center w-20">Qty</th>
-                      <th className="pb-3 text-right w-28">Unit Price ({getCurrencySymbol()})</th>
-                      <th className="pb-3 text-center w-20">Disc %</th>
-                      <th className="pb-3 text-center w-20">Tax %</th>
-                      <th className="pb-3 text-right w-28">Total ({getCurrencySymbol()})</th>
+                      <th className="pb-3 text-center w-28">Billing</th>
+                      <th className="pb-3 text-center w-16">Qty</th>
+                      <th className="pb-3 text-right w-24">Unit Price</th>
+                      <th className="pb-3 text-center w-16">Disc %</th>
+                      <th className="pb-3 text-center w-16">Tax %</th>
+                      <th className="pb-3 text-right w-24">Total</th>
                       <th className="pb-3 text-center w-10"></th>
                     </tr>
                   </thead>
@@ -377,7 +498,26 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                             className="h-6 text-[10px] text-muted-foreground rounded-md border-transparent hover:border-border/60 focus:border-border/80"
                           />
                         </td>
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-2.5 px-1 text-center">
+                          <Select 
+                            value={item.billingInterval || (item.isRecurring ? 'monthly' : 'one_time')}
+                            onValueChange={(val: 'one_time' | 'monthly' | 'quarterly' | 'annual') => {
+                              const isRec = val !== 'one_time';
+                              handleUpdateItem(item.id, { billingInterval: val, isRecurring: isRec });
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-[11px] font-semibold rounded-lg">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="one_time">One-Time</SelectItem>
+                              <SelectItem value="monthly">Monthly</SelectItem>
+                              <SelectItem value="quarterly">Quarterly</SelectItem>
+                              <SelectItem value="annual">Annual</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </td>
+                        <td className="py-2.5 px-1 text-center">
                           <Input
                             type="number"
                             min="1"
@@ -386,7 +526,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                             className="h-8 text-xs text-center rounded-lg"
                           />
                         </td>
-                        <td className="py-2.5 px-2 text-right">
+                        <td className="py-2.5 px-1 text-right">
                           <Input
                             type="number"
                             step="0.01"
@@ -396,7 +536,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                             className="h-8 text-xs text-right rounded-lg"
                           />
                         </td>
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-2.5 px-1 text-center">
                           <Input
                             type="number"
                             min="0"
@@ -407,7 +547,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                             className="h-8 text-xs text-center rounded-lg"
                           />
                         </td>
-                        <td className="py-2.5 px-2 text-center">
+                        <td className="py-2.5 px-1 text-center">
                           <Input
                             type="number"
                             min="0"
@@ -419,7 +559,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                           />
                         </td>
                         <td className="py-2.5 px-2 text-right font-black text-foreground">
-                          {formatCurrency(item.total)}
+                          {formatCurrency(item.total, deal.currency)}
                         </td>
                         <td className="py-2.5 pl-2 text-center">
                           <Button
@@ -438,38 +578,56 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                 </table>
               </div>
 
-              {/* Financial Calculation Summary Card */}
+              {/* Financial Calculation Summary Card & Contract Term Selector */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 pt-4 border-t border-border/50">
-                <Button
-                  type="button"
-                  onClick={handleSaveItems}
-                  disabled={isSaving}
-                  className="h-9 px-5 rounded-xl font-bold text-xs bg-foreground text-background hover:bg-foreground/90 gap-1.5 shadow-sm"
-                >
-                  {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
-                  Save Line Items
-                </Button>
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Button
+                    type="button"
+                    onClick={handleSaveItems}
+                    disabled={isSaving}
+                    className="h-10 px-5 rounded-xl font-bold text-xs bg-foreground text-background hover:bg-foreground/90 gap-1.5 shadow-sm min-h-[40px] cursor-pointer"
+                  >
+                    {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                    Save Line Items & Sync Deal
+                  </Button>
+
+                  <div className="flex items-center gap-2">
+                    <Label className="text-[11px] font-bold text-muted-foreground uppercase">Contract Term:</Label>
+                    <Select value={contractTermMonths.toString()} onValueChange={v => setContractTermMonths(parseInt(v) || 12)}>
+                      <SelectTrigger className="w-36 h-9 text-xs font-bold rounded-xl min-h-[38px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        <SelectItem value="3">3 Months</SelectItem>
+                        <SelectItem value="6">6 Months</SelectItem>
+                        <SelectItem value="12">12 Months (1 yr)</SelectItem>
+                        <SelectItem value="24">24 Months (2 yrs)</SelectItem>
+                        <SelectItem value="36">36 Months (3 yrs)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
 
                 <div className="w-full sm:w-72 p-4 rounded-2xl bg-muted/20 border border-border/40 space-y-2 text-xs">
                   <div className="flex items-center justify-between text-muted-foreground">
                     <span>Subtotal:</span>
-                    <span className="font-semibold">{formatCurrency(totals.subtotal)}</span>
+                    <span className="font-semibold">{formatCurrency(totals.subtotal, deal.currency)}</span>
                   </div>
                   {totals.totalDiscount > 0 && (
                     <div className="flex items-center justify-between text-emerald-600 dark:text-emerald-400">
                       <span>Total Discounts:</span>
-                      <span className="font-semibold">-{formatCurrency(totals.totalDiscount)}</span>
+                      <span className="font-semibold">-{formatCurrency(totals.totalDiscount, deal.currency)}</span>
                     </div>
                   )}
                   {totals.totalTax > 0 && (
                     <div className="flex items-center justify-between text-muted-foreground">
                       <span>Total Taxes:</span>
-                      <span className="font-semibold">+{formatCurrency(totals.totalTax)}</span>
+                      <span className="font-semibold">+{formatCurrency(totals.totalTax, deal.currency)}</span>
                     </div>
                   )}
                   <div className="flex items-center justify-between pt-2 border-t border-border/40 font-black text-sm text-foreground">
-                    <span>Grand Total:</span>
-                    <span className="text-primary font-black">{formatCurrency(totals.grandTotal)}</span>
+                    <span>Period Total:</span>
+                    <span className="text-primary font-black">{formatCurrency(totals.grandTotal, deal.currency)}</span>
                   </div>
                 </div>
               </div>
@@ -483,14 +641,27 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                   Add products, service fees, or license subscriptions to itemize this deal and automatically synchronize its total revenue.
                 </p>
               </div>
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleAddItem}
-                className="mt-1 h-9 px-4 rounded-xl font-bold text-xs"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1" /> Add First Item
-              </Button>
+              <div className="flex items-center gap-2 mt-1">
+                {catalogProducts.length > 0 && (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handleAddProductFromCatalog(catalogProducts[0])}
+                    className="h-9 px-4 rounded-xl font-bold text-xs border-primary/30 text-primary"
+                  >
+                    <Package className="h-3.5 w-3.5 mr-1" /> Add from Catalog
+                  </Button>
+                )}
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleAddItem}
+                  className="h-9 px-4 rounded-xl font-bold text-xs"
+                >
+                  <Plus className="h-3.5 w-3.5 mr-1" /> Add Custom Item
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>

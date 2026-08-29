@@ -131,40 +131,91 @@ export function calculateWeightedValue(value: number, probability?: number): num
 }
 
 /**
- * Computes subtotal, discounts, taxes, and grand total across deal line items.
+ * Computes subtotal, discounts, taxes, grand total, and normalized recurring revenue
+ * projections (MRR, ARR, ACV, TCV, One-Time vs Recurring) across deal line items (Phase 4).
  */
-export function calculateLineItemsTotals(items: DealLineItem[]): {
+export function calculateLineItemsTotals(
+  items: DealLineItem[] = [],
+  contractTermMonths: number = 12
+): {
   subtotal: number;
   totalDiscount: number;
   totalTax: number;
   grandTotal: number;
+  mrr: number;
+  arr: number;
+  oneTimeValue: number;
+  recurringValue: number;
+  acv: number;
+  tcv: number;
+  contractTermMonths: number;
 } {
   let subtotal = 0;
   let totalDiscount = 0;
   let totalTax = 0;
+  let mrr = 0;
+  let oneTimeValue = 0;
+  let recurringValue = 0;
 
   for (const item of items) {
-    const itemSubtotal = item.quantity * item.unitPrice;
+    const qty = Math.max(0, item.quantity || 1);
+    const price = Math.max(0, item.unitPrice || 0);
+    const itemSubtotal = qty * price;
     subtotal += itemSubtotal;
 
-    let discountAmount = item.discount || 0;
+    let discountAmount = Math.max(0, item.discount || 0);
     if (item.discountPercent && item.discountPercent > 0) {
-      discountAmount += (itemSubtotal * item.discountPercent) / 100;
+      discountAmount += (itemSubtotal * Math.min(100, item.discountPercent)) / 100;
     }
     totalDiscount += discountAmount;
 
     const taxableAmount = Math.max(0, itemSubtotal - discountAmount);
-    const taxAmount = item.taxRate ? (taxableAmount * item.taxRate) / 100 : 0;
+    const taxRate = Math.max(0, item.taxRate || 0);
+    const taxAmount = (taxableAmount * taxRate) / 100;
     totalTax += taxAmount;
+
+    const itemTotal = Math.max(0, taxableAmount + taxAmount);
+
+    const isRecurring = item.isRecurring === true || (item.billingInterval && item.billingInterval !== 'one_time');
+
+    if (isRecurring) {
+      recurringValue += itemTotal;
+      if (item.billingInterval === 'quarterly') {
+        mrr += itemTotal / 3;
+      } else if (item.billingInterval === 'annual') {
+        mrr += itemTotal / 12;
+      } else {
+        // Default monthly
+        mrr += itemTotal;
+      }
+    } else {
+      oneTimeValue += itemTotal;
+    }
   }
 
   const grandTotal = Math.max(0, Math.round((subtotal - totalDiscount + totalTax) * 100) / 100);
+  const normalizedMrr = Math.round(mrr * 100) / 100;
+  const normalizedArr = Math.round(normalizedMrr * 12 * 100) / 100;
+  const normalizedTermMonths = Math.max(1, Math.floor(contractTermMonths || 12));
+  const normalizedTermYears = Math.max(1, Math.ceil(normalizedTermMonths / 12));
+  const normalizedOneTime = Math.round(oneTimeValue * 100) / 100;
+  const normalizedRecurring = Math.round(recurringValue * 100) / 100;
+
+  const tcv = Math.round((normalizedOneTime + (normalizedMrr * normalizedTermMonths)) * 100) / 100;
+  const acv = Math.round((normalizedArr + (normalizedOneTime / normalizedTermYears)) * 100) / 100;
 
   return {
     subtotal: Math.round(subtotal * 100) / 100,
     totalDiscount: Math.round(totalDiscount * 100) / 100,
     totalTax: Math.round(totalTax * 100) / 100,
     grandTotal,
+    mrr: normalizedMrr,
+    arr: normalizedArr,
+    oneTimeValue: normalizedOneTime,
+    recurringValue: normalizedRecurring,
+    acv,
+    tcv,
+    contractTermMonths: normalizedTermMonths,
   };
 }
 

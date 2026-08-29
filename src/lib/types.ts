@@ -1361,6 +1361,21 @@ export interface Deal {
   stalledReason?: string | null;
   nextStep?: import('./deals/deal-types').DealNextStep | string | null;
 
+  // Phase 4 Revenue & Commercial Layer Metrics
+  mrr?: number;                        // Monthly Recurring Revenue
+  arr?: number;                        // Annual Recurring Revenue
+  acv?: number;                        // Annual Contract Value
+  tcv?: number;                        // Total Contract Value
+  oneTimeValue?: number;               // Sum of non-recurring line items
+  recurringValue?: number;             // Sum of recurring line items
+  contractTermMonths?: number;         // Term duration in months (default: 12)
+  priceBookId?: string | null;         // Assigned Price Book reference
+  contractId?: string | null;          // Commercial Contract reference
+  contractStatus?: 'none' | 'draft' | 'out_for_signature' | 'signed' | 'active' | 'terminated';
+  contractSignedAt?: string | null;
+  contractStartDate?: string | null;
+  contractEndDate?: string | null;
+
   customFields?: Record<string, string | number | boolean | null>; // Persists across workspaces
   tags?: string[];
 
@@ -1376,6 +1391,11 @@ export interface Deal {
 
 export type {
   DealLineItem,
+  Product,
+  ProductCategory,
+  PriceBook,
+  PriceBookItem,
+  DealRecurringRevenue,
   DealStageHistory,
   DealHealthStatus,
   ForecastCategory,

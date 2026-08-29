@@ -307,6 +307,56 @@ service cloud.firestore {
       );
     }
 
+    // --- Product Catalog, Categories & Price Books (Phase 4) ---
+    match /products/{productId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /product_categories/{categoryId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /price_books/{priceBookId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() || 
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /price_book_items/{itemId} {
+      allow read, write: if isAuthorized();
+    }
+
     match /meetings/{meetingId} {
       allow read: if true; 
       allow create: if isAuthorized();

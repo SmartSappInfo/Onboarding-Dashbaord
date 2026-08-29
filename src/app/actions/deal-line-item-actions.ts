@@ -27,16 +27,22 @@ import { nanoid } from 'nanoid';
 export interface SaveLineItemsResponse {
   success: boolean;
   grandTotal?: number;
+  mrr?: number;
+  arr?: number;
+  acv?: number;
+  tcv?: number;
   error?: string;
 }
 
 /**
- * Saves line items for a deal and updates deal.value with the calculated grand total.
+ * Saves line items for a deal and updates deal.value, MRR, ARR, ACV, and TCV (Phase 4).
  */
 export async function saveDealLineItemsAction(
   dealId: string,
   lineItems: DealLineItem[],
-  userId?: string
+  userId?: string,
+  contractTermMonths?: number,
+  priceBookId?: string | null
 ): Promise<SaveLineItemsResponse> {
   try {
     const dealRef = adminDb.collection('deals').doc(dealId);
@@ -84,15 +90,29 @@ export async function saveDealLineItemsAction(
       };
     });
 
-    // Server-side calculation of line item totals
-    const totals = calculateLineItemsTotals(sanitizedItems);
+    // Server-side calculation of line item totals & recurring metrics (Phase 4)
+    const effectiveTerm = contractTermMonths || deal.contractTermMonths || 12;
+    const totals = calculateLineItemsTotals(sanitizedItems, effectiveTerm);
     const timestamp = new Date().toISOString();
 
-    await dealRef.update({
+    const dealUpdates: Partial<Deal> = {
       lineItems: sanitizedItems,
       value: totals.grandTotal,
+      mrr: totals.mrr,
+      arr: totals.arr,
+      acv: totals.acv,
+      tcv: totals.tcv,
+      oneTimeValue: totals.oneTimeValue,
+      recurringValue: totals.recurringValue,
+      contractTermMonths: totals.contractTermMonths,
       updatedAt: timestamp,
-    });
+    };
+
+    if (priceBookId !== undefined) {
+      dealUpdates.priceBookId = priceBookId;
+    }
+
+    await dealRef.update(dealUpdates);
 
     await logActivity({
       organizationId: deal.organizationId,
@@ -101,7 +121,7 @@ export async function saveDealLineItemsAction(
       workspaceId: deal.workspaceId,
       type: 'deal_updated',
       source: userId ? 'user' : 'system',
-      description: `updated line items for deal "${deal.name}" (Grand Total: ${totals.grandTotal})`,
+      description: `updated line items for deal "${deal.name}" (Grand Total: ${totals.grandTotal}, MRR: ${totals.mrr}, ARR: ${totals.arr})`,
       metadata: {
         dealId,
         lineItemsCount: lineItems.length,
@@ -109,12 +129,20 @@ export async function saveDealLineItemsAction(
         subtotal: totals.subtotal,
         totalDiscount: totals.totalDiscount,
         totalTax: totals.totalTax,
+        mrr: totals.mrr,
+        arr: totals.arr,
+        acv: totals.acv,
+        tcv: totals.tcv,
       },
     });
 
     return {
       success: true,
       grandTotal: totals.grandTotal,
+      mrr: totals.mrr,
+      arr: totals.arr,
+      acv: totals.acv,
+      tcv: totals.tcv,
     };
   } catch (error: unknown) {
     const msg = error instanceof Error ? error.message : 'Failed to save line items';
@@ -373,13 +401,16 @@ export async function acceptPublicQuoteAction(
       acceptedAt: timestamp,
     });
 
-    // Also update parent deal probability to 100% and notify
+    // Also update parent deal probability to 100%, set contractStatus: 'signed', and notify
     if (quote.dealId) {
       try {
         const dealRef = adminDb.collection('deals').doc(quote.dealId);
         await dealRef.update({
           probability: 100,
           forecastCategory: 'closed',
+          contractStatus: 'signed',
+          contractSignedAt: timestamp,
+          contractStartDate: timestamp,
           updatedAt: timestamp,
         });
       } catch (dealErr) {

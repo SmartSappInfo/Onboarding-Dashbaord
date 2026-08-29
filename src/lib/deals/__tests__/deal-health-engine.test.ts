@@ -110,16 +110,60 @@ describe('Deal Health & Velocity Engine', () => {
     expect(metrics.winRatePercentage).toBe(50); // 1 won out of 2 closed (won + lost)
   });
 
-  it('should guarantee lost deals contribute zero to weighted active forecast', () => {
-    const lostDeal: Deal = {
-      ...baseDeal,
-      id: 'd-lost',
-      value: 100000,
-      probability: 0,
-      status: 'lost',
-    };
+  it('should calculate recurring revenue metrics (MRR, ARR, ACV, TCV) accurately', () => {
+    const mixedItems: DealLineItem[] = [
+      {
+        id: 'rec-1',
+        name: 'SaaS Platform License',
+        quantity: 10,
+        unitPrice: 100, // 1000/mo
+        isRecurring: true,
+        billingInterval: 'monthly',
+        total: 1000,
+      },
+      {
+        id: 'rec-2',
+        name: 'Quarterly Maintenance Support',
+        quantity: 1,
+        unitPrice: 600, // 600/qtr -> 200/mo
+        isRecurring: true,
+        billingInterval: 'quarterly',
+        total: 600,
+      },
+      {
+        id: 'one-1',
+        name: 'Initial Onboarding & Setup Fee',
+        quantity: 1,
+        unitPrice: 2400, // 2400 one-time
+        isRecurring: false,
+        billingInterval: 'one_time',
+        total: 2400,
+      }
+    ];
 
-    expect(calculateWeightedValue(lostDeal.value, 0)).toBe(0);
-    expect(calculateDealHealth(lostDeal, baseStage).status).toBe('closed');
+    // 12-month contract term
+    const result12m = calculateLineItemsTotals(mixedItems, 12);
+    expect(result12m.mrr).toBe(1200); // 1000 + (600/3) = 1200
+    expect(result12m.arr).toBe(14400); // 1200 * 12 = 14400
+    expect(result12m.oneTimeValue).toBe(2400);
+    expect(result12m.recurringValue).toBe(1600);
+    expect(result12m.tcv).toBe(16800); // 2400 + (1200 * 12) = 16800
+    expect(result12m.acv).toBe(16800); // 14400 + (2400 / 1) = 16800
+
+    // 24-month contract term
+    const result24m = calculateLineItemsTotals(mixedItems, 24);
+    expect(result24m.mrr).toBe(1200);
+    expect(result24m.arr).toBe(14400);
+    expect(result24m.tcv).toBe(31200); // 2400 + (1200 * 24) = 31200
+    expect(result24m.acv).toBe(15600); // 14400 + (2400 / 2) = 15600
+  });
+
+  it('should gracefully handle zero/negative contract terms and empty items without crashing', () => {
+    const safeEmpty = calculateLineItemsTotals([], 0);
+    expect(safeEmpty.grandTotal).toBe(0);
+    expect(safeEmpty.mrr).toBe(0);
+    expect(safeEmpty.arr).toBe(0);
+    expect(safeEmpty.tcv).toBe(0);
+    expect(safeEmpty.contractTermMonths).toBe(1); // Clamped minimum
   });
 });

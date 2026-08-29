@@ -1423,6 +1423,15 @@ export async function duplicateDealAction(
                 notes: `Deal cloned from "${sourceDeal.name}"`
             }],
             lineItems: clonedLineItems,
+            mrr: options?.copyLineItems !== false ? (sourceDeal.mrr || 0) : 0,
+            arr: options?.copyLineItems !== false ? (sourceDeal.arr || 0) : 0,
+            acv: options?.copyLineItems !== false ? (sourceDeal.acv || 0) : 0,
+            tcv: options?.copyLineItems !== false ? (sourceDeal.tcv || 0) : 0,
+            oneTimeValue: options?.copyLineItems !== false ? (sourceDeal.oneTimeValue || 0) : 0,
+            recurringValue: options?.copyLineItems !== false ? (sourceDeal.recurringValue || 0) : 0,
+            contractTermMonths: sourceDeal.contractTermMonths || 12,
+            priceBookId: sourceDeal.priceBookId || null,
+            contractStatus: 'none',
             contacts: options?.copyContacts !== false ? (sourceDeal.contacts || []) : [],
             focalContacts: options?.copyContacts !== false ? (sourceDeal.focalContacts || []) : [],
             assignedTo: sourceDeal.assignedTo || null,
@@ -1721,11 +1730,13 @@ export async function mergeDealsAction(
             mergedLineItems = [...(masterDeal.lineItems || []), ...secondaryItemsWithNewIds];
             mergedLineItemsCount = secondaryItemsWithNewIds.length;
 
-            const totals = calculateLineItemsTotals(mergedLineItems);
+            const totals = calculateLineItemsTotals(mergedLineItems, masterDeal.contractTermMonths || 12);
             if (totals.grandTotal > 0) {
                 finalValue = totals.grandTotal;
             }
         }
+
+        const effectiveTotals = calculateLineItemsTotals(mergedLineItems, masterDeal.contractTermMonths || 12);
 
         // 3. Merge Custom Fields
         const mergedCustomFields = options.mergeCustomFields
@@ -1768,6 +1779,12 @@ export async function mergeDealsAction(
             contacts: mergedContacts,
             focalContacts: mergedFocalContacts,
             lineItems: mergedLineItems,
+            mrr: effectiveTotals.mrr,
+            arr: effectiveTotals.arr,
+            acv: effectiveTotals.acv,
+            tcv: effectiveTotals.tcv,
+            oneTimeValue: effectiveTotals.oneTimeValue,
+            recurringValue: effectiveTotals.recurringValue,
             customFields: mergedCustomFields,
             tags: mergedTags,
             updatedAt: now

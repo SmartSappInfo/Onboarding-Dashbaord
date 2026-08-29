@@ -30,7 +30,9 @@ import {
     User,
     MessageSquare,
     ExternalLink,
-    Loader2
+    Loader2,
+    Repeat,
+    FileCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -739,6 +741,16 @@ export default function DealDetailsPage() {
                                 {deal.isArchived && (
                                     <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-amber-500/30 text-amber-600 dark:text-amber-400 bg-amber-500/10 gap-1">
                                         <Archive className="h-3 w-3" /> Archived
+                                    </Badge>
+                                )}
+                                {typeof deal.mrr === 'number' && deal.mrr > 0 && (
+                                    <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-emerald-500/30 text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 gap-1">
+                                        <Repeat className="h-3 w-3" /> {formatCurrency(deal.mrr, deal.currency)}/mo
+                                    </Badge>
+                                )}
+                                {deal.contractStatus && deal.contractStatus !== 'none' && (
+                                    <Badge variant="outline" className="h-6 px-2.5 text-[10px] font-bold border-purple-500/30 text-purple-600 dark:text-purple-400 bg-purple-500/10 gap-1">
+                                        <FileCheck className="h-3 w-3" /> Contract: {deal.contractStatus === 'signed' ? 'Signed' : deal.contractStatus.replace('_', ' ')}
                                     </Badge>
                                 )}
                             </div>
