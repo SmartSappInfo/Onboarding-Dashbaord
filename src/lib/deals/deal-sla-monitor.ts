@@ -68,7 +68,6 @@ export async function evaluateWorkspaceDealSlasAction(
     // 2. Fetch stages for lookup
     const stagesSnap = await adminDb
       .collection('onboardingStages')
-      .where('workspaceId', '==', workspaceId)
       .get();
 
     const stagesMap = new Map<string, OnboardingStage>();

@@ -96,6 +96,13 @@ vi.mock('@/lib/firebase-admin', () => {
 
         if (name === 'onboardingStages') {
           return {
+            get: vi.fn().mockImplementation(async () => {
+              const docs = Array.from(mockStagesStore.values()).map(s => ({
+                id: s.id,
+                data: () => s,
+              }));
+              return { empty: docs.length === 0, docs, size: docs.length };
+            }),
             where: vi.fn((field: string, op: string, val: unknown) => ({
               get: vi.fn().mockImplementation(async () => {
                 const docs = Array.from(mockStagesStore.values())
