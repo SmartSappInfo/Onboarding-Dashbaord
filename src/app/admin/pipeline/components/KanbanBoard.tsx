@@ -164,7 +164,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
   } | null>(null);
 
   // Mobile active stage state
-  const [activeMobileStageId, setActiveMobileStageId] = React.useState<string | null>(() => stages[0]?.id || null);
+  const [activeMobileStageId, setActiveMobileStageId] = React.useState<string | null>(() => (stages && stages.length > 0 ? stages[0]?.id : null));
 
   const allDeals = React.useMemo(() => {
     return deals || [];

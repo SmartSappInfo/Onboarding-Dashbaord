@@ -16,15 +16,21 @@ import type {
   Prospect, 
   SearchFilters, 
   LeadIntelligenceSettings, 
-  SavedSearch,
+  SavedSearch, 
   LeadList,
   NaturalLanguageQueryResult,
-  DiscoverySourceType
+  DiscoverySourceType,
+  ScoringDimensionWeightConfig,
+  ScoringModelConfig,
+  ScoringSimulationResult,
+  ScoreMovementEvent,
+  ExplainableScoreBreakdown
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
 import { canonicalizeDomain, evaluateIdentityMatch } from '@/lib/lead-intelligence/identity-resolver';
 import { CSVImportProvider } from '@/lib/lead-intelligence/providers/CSVImportProvider';
+import { ExplainableScoringEngine } from '@/lib/lead-intelligence/scoring';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -1691,6 +1697,316 @@ export async function triggerProspectDeltaScanAction(
       newSignalsCount: 0,
       error: err instanceof Error ? err.message : 'Failed to execute delta scan'
     };
+  }
+}
+
+// ==========================================
+// PHASE 8: EXPLAINABLE SCORING & SIMULATOR
+// ==========================================
+
+/**
+ * Retrieves the active scoring model configuration for a workspace (UI Spec Section 36).
+ */
+export async function getWorkspaceScoringModelAction(workspaceId: string): Promise<{
+  success: boolean;
+  model: ScoringModelConfig;
+}> {
+  if (!workspaceId) {
+    return {
+      success: true,
+      model: {
+        id: 'model_default',
+        workspaceId: '',
+        organizationId: '',
+        name: 'Default Scoring Model',
+        isDefault: true,
+        weights: ExplainableScoringEngine.getDefaultWeights(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    };
+  }
+
+  try {
+    const docRef = adminDb.collection('scoring_models').doc(`model_${workspaceId}`);
+    const snap = await docRef.get();
+
+    if (snap.exists) {
+      return { success: true, model: snap.data() as ScoringModelConfig };
+    }
+
+    const defaultModel: ScoringModelConfig = {
+      id: `model_${workspaceId}`,
+      workspaceId,
+      organizationId: '',
+      name: 'Default Scoring Model',
+      isDefault: true,
+      weights: ExplainableScoringEngine.getDefaultWeights(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await docRef.set(defaultModel);
+    return { success: true, model: defaultModel };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to get scoring model:', err);
+    return {
+      success: false,
+      model: {
+        id: 'model_default',
+        workspaceId,
+        organizationId: '',
+        name: 'Default Scoring Model',
+        isDefault: true,
+        weights: ExplainableScoringEngine.getDefaultWeights(),
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      }
+    };
+  }
+}
+
+/**
+ * Saves updated scoring model weights for a workspace (UI Spec Section 36).
+ */
+export async function saveWorkspaceScoringModelAction(
+  workspaceId: string,
+  organizationId: string,
+  weights: ScoringDimensionWeightConfig,
+  name = 'Custom Scoring Model'
+): Promise<{ success: boolean; model?: ScoringModelConfig; error?: string }> {
+  if (!workspaceId) return { success: false, error: 'Workspace ID required' };
+
+  // Validate that weights sum to exactly 100%
+  const total = weights.icpFitWeight + weights.intentWeight + weights.needWeight + weights.engagementWeight + weights.similarityWeight;
+  if (total !== 100) {
+    return { success: false, error: `Weights must sum to exactly 100% (currently ${total}%)` };
+  }
+
+  try {
+    const now = new Date().toISOString();
+    const docRef = adminDb.collection('scoring_models').doc(`model_${workspaceId}`);
+    const snap = await docRef.get();
+
+    const model: ScoringModelConfig = {
+      id: `model_${workspaceId}`,
+      workspaceId,
+      organizationId: organizationId || (snap.exists ? snap.data()?.organizationId : ''),
+      name,
+      isDefault: true,
+      weights,
+      createdAt: snap.exists ? snap.data()?.createdAt || now : now,
+      updatedAt: now
+    };
+
+    await docRef.set(model, { merge: true });
+    return { success: true, model };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to save scoring model:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to save model' };
+  }
+}
+
+/**
+ * Executes an in-memory What-If simulation across workspace prospects (UI Spec Section 36).
+ */
+export async function simulateScoringModelAction(
+  workspaceId: string,
+  candidateWeights: ScoringDimensionWeightConfig
+): Promise<{
+  success: boolean;
+  results: ScoringSimulationResult[];
+  gainersCount: number;
+  droppersCount: number;
+  unchangedCount: number;
+  newCriticalCount: number;
+  error?: string;
+}> {
+  if (!workspaceId) {
+    return { success: false, results: [], gainersCount: 0, droppersCount: 0, unchangedCount: 0, newCriticalCount: 0, error: 'Workspace ID required' };
+  }
+
+  try {
+    const currentModelRes = await getWorkspaceScoringModelAction(workspaceId);
+    const currentWeights = currentModelRes.model.weights;
+
+    // Fetch sample prospects for simulation
+    const snap = await adminDb
+      .collection('prospects')
+      .where('workspaceId', '==', workspaceId)
+      .limit(100)
+      .get();
+
+    const prospects: Prospect[] = snap.docs.map(doc => doc.data() as Prospect);
+    if (prospects.length === 0) {
+      return { success: true, results: [], gainersCount: 0, droppersCount: 0, unchangedCount: 0, newCriticalCount: 0 };
+    }
+
+    const results = ExplainableScoringEngine.simulateWeightChanges(prospects, currentWeights, candidateWeights);
+
+    let gainersCount = 0;
+    let droppersCount = 0;
+    let unchangedCount = 0;
+    let newCriticalCount = 0;
+
+    for (const r of results) {
+      if (r.deltaScore > 0) gainersCount++;
+      else if (r.deltaScore < 0) droppersCount++;
+      else unchangedCount++;
+
+      if (r.baselineTier !== 'critical' && r.simulatedTier === 'critical') {
+        newCriticalCount++;
+      }
+    }
+
+    return {
+      success: true,
+      results,
+      gainersCount,
+      droppersCount,
+      unchangedCount,
+      newCriticalCount
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Simulation failed:', err);
+    return {
+      success: false,
+      results: [],
+      gainersCount: 0,
+      droppersCount: 0,
+      unchangedCount: 0,
+      newCriticalCount: 0,
+      error: err instanceof Error ? err.message : 'Simulation failed'
+    };
+  }
+}
+
+/**
+ * Bulk re-calculates scores across all prospects in a workspace using safe chunked transactions (Rule 9).
+ */
+export async function recalculateWorkspaceScoresAction(
+  workspaceId: string,
+  weights: ScoringDimensionWeightConfig
+): Promise<{
+  success: boolean;
+  recalculatedCount: number;
+  error?: string;
+}> {
+  if (!workspaceId) return { success: false, recalculatedCount: 0, error: 'Workspace ID required' };
+
+  try {
+    const snap = await adminDb
+      .collection('prospects')
+      .where('workspaceId', '==', workspaceId)
+      .get();
+
+    const prospects: Prospect[] = snap.docs.map(d => d.data() as Prospect);
+    if (prospects.length === 0) {
+      return { success: true, recalculatedCount: 0 };
+    }
+
+    const now = new Date().toISOString();
+    const updateOperations: Array<{
+      prospectRef: FirebaseFirestore.DocumentReference;
+      updatedScoring: Prospect['scoring'];
+      scoreHistoryDoc?: ScoreMovementEvent;
+    }> = [];
+
+    for (const p of prospects) {
+      const breakdown = ExplainableScoringEngine.calculateExplainableScore(p, [], weights);
+      const oldScore = p.scoring?.overallScore ?? 0;
+      const newScore = breakdown.overallScore;
+
+      const updatedScoring: Prospect['scoring'] = {
+        overallScore: newScore,
+        needScore: breakdown.needPoints * 5,
+        digitalMaturity: breakdown.similarityPoints * 10,
+        buyingIntent: breakdown.intentPoints * 4,
+        budgetProbability: breakdown.icpFitPoints * 3,
+        decisionMakerFound: breakdown.engagementPoints * 6,
+        engagement: breakdown.engagementPoints * 6,
+        priorityTier: breakdown.priorityTier,
+        explainableBreakdown: breakdown
+      };
+
+      const prospectRef = adminDb.collection('prospects').doc(p.id);
+
+      let scoreHistoryDoc: ScoreMovementEvent | undefined = undefined;
+      if (Math.abs(newScore - oldScore) >= 1) {
+        scoreHistoryDoc = {
+          id: `hist_${p.id}_${Date.now()}`,
+          prospectId: p.id,
+          workspaceId: p.workspaceId,
+          timestamp: now,
+          oldScore,
+          newScore,
+          change: newScore - oldScore,
+          category: 'manual',
+          reason: `Model weights adjusted: ${newScore > oldScore ? '+' : ''}${newScore - oldScore} points`
+        };
+      }
+
+      updateOperations.push({ prospectRef, updatedScoring, scoreHistoryDoc });
+    }
+
+    // Chunk batch operations in blocks of <= 250 writes (Rule 9)
+    const chunks = chunkArray(updateOperations, 120); // 120 * 2 writes <= 240 per batch
+    for (const chunk of chunks) {
+      const batch = adminDb.batch();
+      for (const op of chunk) {
+        batch.update(op.prospectRef, {
+          scoring: op.updatedScoring,
+          updatedAt: now
+        });
+
+        if (op.scoreHistoryDoc) {
+          const histRef = adminDb.collection('prospect_score_history').doc(op.scoreHistoryDoc.id);
+          batch.set(histRef, op.scoreHistoryDoc);
+        }
+      }
+      await batch.commit();
+    }
+
+    return {
+      success: true,
+      recalculatedCount: prospects.length
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to recalculate scores:', err);
+    return {
+      success: false,
+      recalculatedCount: 0,
+      error: err instanceof Error ? err.message : 'Bulk re-scoring failed'
+    };
+  }
+}
+
+/**
+ * Retrieves the historical score movement timeline for a prospect (UI Spec Section 35).
+ */
+export async function getProspectScoreHistoryAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  history: ScoreMovementEvent[];
+}> {
+  if (!prospectId || !workspaceId) return { success: false, history: [] };
+
+  try {
+    const snap = await adminDb
+      .collection('prospect_score_history')
+      .where('workspaceId', '==', workspaceId)
+      .where('prospectId', '==', prospectId)
+      .orderBy('timestamp', 'asc')
+      .limit(50)
+      .get();
+
+    const history: ScoreMovementEvent[] = snap.docs.map(doc => doc.data() as ScoreMovementEvent);
+    return { success: true, history };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch score history:', err);
+    return { success: false, history: [] };
   }
 }
 

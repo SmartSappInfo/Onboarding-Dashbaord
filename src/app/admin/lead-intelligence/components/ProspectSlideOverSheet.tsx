@@ -52,6 +52,9 @@ import { VerificationDiagnosticModal } from './VerificationDiagnosticModal';
 import { ResearchDossierModal } from './ResearchDossierModal';
 import { AccountMonitoringConfigModal } from './AccountMonitoringConfigModal';
 import { SignalBadge } from './SignalBadge';
+import { ExplainableScoreCard } from './ExplainableScoreCard';
+import { ScoreMovementTimeline } from './ScoreMovementTimeline';
+import { ScoringModelConfigModal } from './ScoringModelConfigModal';
 import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
 import { 
   verifyProspectEmailAction, 
@@ -99,6 +102,9 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
   // Live Continuous Signals state (Phase 7)
   const [isMonitoringModalOpen, setIsMonitoringModalOpen] = useState(false);
   const [prospectSignals, setProspectSignals] = useState<LeadSignal[]>([]);
+
+  // Scoring Model Config state (Phase 8)
+  const [isModelConfigOpen, setIsModelConfigOpen] = useState(false);
 
   useEffect(() => {
     if (prospect?.id && prospect?.workspaceId && isOpen) {
@@ -353,43 +359,18 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
                 isEnriching={isEnriching}
               />
 
-              {/* Score Breakdown Cards */}
-              <div className="space-y-3 bg-muted/30 p-4 rounded-xl border border-border/60">
-                <h4 className="text-xs font-semibold text-foreground flex items-center justify-between">
-                  <span>Score Diagnostics</span>
-                  <span className="text-[11px] text-muted-foreground">Smart Priority Algorithm</span>
-                </h4>
-                <div className="grid grid-cols-2 gap-3 pt-1">
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Need Score</span>
-                      <span className="font-semibold text-foreground">{prospect.scoring?.needScore ?? 0}/20</span>
-                    </div>
-                    <Progress value={((prospect.scoring?.needScore ?? 0) / 20) * 100} className="h-1.5" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Digital Maturity</span>
-                      <span className="font-semibold text-foreground">{prospect.scoring?.digitalMaturity ?? 0}/15</span>
-                    </div>
-                    <Progress value={((prospect.scoring?.digitalMaturity ?? 0) / 15) * 100} className="h-1.5" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Buying Intent</span>
-                      <span className="font-semibold text-foreground">{prospect.scoring?.buyingIntent ?? 0}/25</span>
-                    </div>
-                    <Progress value={((prospect.scoring?.buyingIntent ?? 0) / 25) * 100} className="h-1.5" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="flex justify-between text-[11px]">
-                      <span className="text-muted-foreground">Decision Maker</span>
-                      <span className="font-semibold text-foreground">{prospect.scoring?.decisionMakerFound ?? 0}/15</span>
-                    </div>
-                    <Progress value={((prospect.scoring?.decisionMakerFound ?? 0) / 15) * 100} className="h-1.5" />
-                  </div>
-                </div>
-              </div>
+              {/* Explainable Score Breakdown (UI Spec Section 34) */}
+              <ExplainableScoreCard
+                prospect={prospect}
+                signals={prospectSignals}
+                onOpenModelConfig={() => setIsModelConfigOpen(true)}
+              />
+
+              {/* Score Movement Velocity Timeline (UI Spec Section 35) */}
+              <ScoreMovementTimeline
+                prospect={prospect}
+                signals={prospectSignals}
+              />
 
               {/* Location & Reviews */}
               <div className="grid grid-cols-2 gap-3">
@@ -804,6 +785,14 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
             });
           }
         }}
+      />
+
+      {/* Custom Scoring Model & Weight Fine-Tuner Modal (UI Spec Section 36) */}
+      <ScoringModelConfigModal
+        workspaceId={prospect.workspaceId}
+        organizationId={prospect.organizationId}
+        isOpen={isModelConfigOpen}
+        onClose={() => setIsModelConfigOpen(false)}
       />
     </Sheet>
   );

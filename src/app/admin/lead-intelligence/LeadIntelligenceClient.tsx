@@ -28,7 +28,8 @@ import {
   Database, 
   Building2,
   GitMerge,
-  Radio
+  Radio,
+  Sliders
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -67,6 +68,7 @@ import { FloatingActionToolbar } from './components/FloatingActionToolbar';
 import { ProspectSlideOverSheet } from './components/ProspectSlideOverSheet';
 import { JobsCenterDrawer } from './components/JobsCenterDrawer';
 import { EnrichmentCostPreviewModal } from './components/EnrichmentCostPreviewModal';
+import { ScoringModelConfigModal } from './components/ScoringModelConfigModal';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -149,6 +151,9 @@ export default function LeadIntelligenceClient() {
 
   // Phase 2 Cost Preview Modal & Saved Views
   const [isCostModalOpen, setIsCostModalOpen] = useState(false);
+
+  // Phase 8 Scoring Model Configuration Modal
+  const [isScoringConfigOpen, setIsScoringConfigOpen] = useState(false);
 
   const handleSaveCustomView = async (viewName: string) => {
     if (!activeWorkspaceId) return;
@@ -753,6 +758,17 @@ export default function LeadIntelligenceClient() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap self-start md:self-center">
+          {/* Scoring Model Config Trigger (UI Spec Section 36) */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsScoringConfigOpen(true)}
+            className="h-9 px-3 text-xs border-border/80 rounded-xl relative active:scale-[0.97] flex items-center gap-1.5"
+          >
+            <Sliders className="w-3.5 h-3.5 text-primary" />
+            <span>Scoring Model</span>
+          </Button>
+
           {/* Jobs Center Trigger (intelligence_ui Section 10) */}
           <Button
             size="sm"
@@ -1057,6 +1073,17 @@ export default function LeadIntelligenceClient() {
           handleBatchEnrich();
         }}
         isProcessing={isBatchEnriching}
+      />
+
+      {/* Scoring Model Configuration & Simulator Modal (UI Spec Section 36) */}
+      <ScoringModelConfigModal
+        workspaceId={activeWorkspaceId || ''}
+        organizationId={organizationId}
+        isOpen={isScoringConfigOpen}
+        onClose={() => setIsScoringConfigOpen(false)}
+        onModelSaved={() => {
+          loadInitialData();
+        }}
       />
     </div>
   );

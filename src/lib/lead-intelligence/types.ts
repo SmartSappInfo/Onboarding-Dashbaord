@@ -53,6 +53,8 @@ export interface ProspectScoring {
   budgetProbability: number;
   decisionMakerFound: number;
   engagement: number;
+  priorityTier?: 'critical' | 'high' | 'medium' | 'low';
+  explainableBreakdown?: ExplainableScoreBreakdown;
 }
 
 export interface ObjectionAnswer {
@@ -558,5 +560,66 @@ export interface AccountMonitoringConfig {
   changesDetectedCount: number;
   activeAlertsCount: number;
   updatedAt: string;
+}
+
+// --- Phase 8: Explainable Scoring & Simulation Models ---
+
+export interface ScoringDimensionWeightConfig {
+  icpFitWeight: number; // e.g. 30 (%)
+  intentWeight: number; // e.g. 25 (%)
+  needWeight: number; // e.g. 20 (%)
+  engagementWeight: number; // e.g. 15 (%)
+  similarityWeight: number; // e.g. 10 (%)
+}
+
+export interface ExplainableScoreBreakdown {
+  overallScore: number; // 0 - 100
+  priorityTier: 'critical' | 'high' | 'medium' | 'low';
+  icpFitPoints: number; // e.g. +24
+  needPoints: number; // e.g. +21
+  intentPoints: number; // e.g. +18
+  engagementPoints: number; // e.g. +12
+  similarityPoints: number; // e.g. +10
+  recencyPoints: number; // e.g. +6
+  topPositiveDrivers: string[];
+  topNegativeDrivers: string[];
+  harmonicPriority: number; // 0 - 100
+  calculatedAt: string;
+}
+
+export interface ScoreMovementEvent {
+  id: string;
+  prospectId: string;
+  workspaceId: string;
+  timestamp: string;
+  oldScore: number;
+  newScore: number;
+  change: number; // e.g. +15, -10
+  category: LeadSignalCategory | 'firmographic' | 'verification' | 'manual';
+  reason: string;
+  sourceSignalId?: string;
+}
+
+export interface ScoringModelConfig {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string;
+  isDefault: boolean;
+  weights: ScoringDimensionWeightConfig;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ScoringSimulationResult {
+  prospectId: string;
+  prospectName: string;
+  domain: string;
+  baselineScore: number;
+  simulatedScore: number;
+  deltaScore: number;
+  baselineTier: 'critical' | 'high' | 'medium' | 'low';
+  simulatedTier: 'critical' | 'high' | 'medium' | 'low';
+  breakdown: ExplainableScoreBreakdown;
 }
 
