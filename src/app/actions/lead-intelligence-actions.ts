@@ -20,17 +20,22 @@ import type {
   LeadList,
   NaturalLanguageQueryResult,
   DiscoverySourceType,
+  LeadSignal,
   ScoringDimensionWeightConfig,
   ScoringModelConfig,
   ScoringSimulationResult,
   ScoreMovementEvent,
-  ExplainableScoreBreakdown
+  ExplainableScoreBreakdown,
+  CRMMatchCandidate,
+  CRMEnrichmentMergePayload,
+  UnifiedActivityItem
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
 import { canonicalizeDomain, evaluateIdentityMatch } from '@/lib/lead-intelligence/identity-resolver';
 import { CSVImportProvider } from '@/lib/lead-intelligence/providers/CSVImportProvider';
 import { ExplainableScoringEngine } from '@/lib/lead-intelligence/scoring';
+import { CRMIntelligenceService } from '@/lib/lead-intelligence/crm';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -2007,6 +2012,210 @@ export async function getProspectScoreHistoryAction(
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to fetch score history:', err);
     return { success: false, history: [] };
+  }
+}
+
+// ==========================================
+// PHASE 9: CRM INTELLIGENCE & UNIFIED TIMELINE
+// ==========================================
+
+/**
+ * Checks if a prospect matches an existing CRM Entity record (UI Spec Section 38).
+ */
+export async function checkProspectCRMMatchAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  match?: CRMMatchCandidate;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) return { success: false, error: 'Prospect ID and Workspace ID required' };
+
+  try {
+    const [prospectSnap, weSnap] = await Promise.all([
+      adminDb.collection('prospects').doc(prospectId).get(),
+      adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId).limit(100).get()
+    ]);
+
+    if (!prospectSnap.exists) {
+      return { success: false, error: 'Prospect not found' };
+    }
+
+    const prospect = prospectSnap.data() as Prospect;
+    const workspaceEntities = weSnap.docs.map(doc => doc.data() as WorkspaceEntity);
+
+    const matches = CRMIntelligenceService.detectCRMMatches(prospect, workspaceEntities);
+
+    return {
+      success: true,
+      match: matches.length > 0 ? matches[0] : undefined
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to check CRM match:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to check match' };
+  }
+}
+
+/**
+ * Enriches an existing CRM Entity record with Lead Intelligence data non-destructively (UI Spec Section 38).
+ */
+export async function enrichExistingCRMRecordAction(
+  payload: CRMEnrichmentMergePayload,
+  workspaceId: string,
+  organizationId: string
+): Promise<{
+  success: boolean;
+  newContactsAddedCount?: number;
+  error?: string;
+}> {
+  if (!payload.prospectId || !payload.targetEntityId || !workspaceId) {
+    return { success: false, error: 'Invalid enrichment parameters' };
+  }
+
+  try {
+    const now = new Date().toISOString();
+    const prospectRef = adminDb.collection('prospects').doc(payload.prospectId);
+    const entityRef = adminDb.collection('entities').doc(payload.targetEntityId);
+    const wsEntityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${payload.targetEntityId}`);
+
+    let addedContactsCount = 0;
+
+    await adminDb.runTransaction(async (tx) => {
+      const [pSnap, entSnap, weSnap] = await Promise.all([
+        tx.get(prospectRef),
+        tx.get(entityRef),
+        tx.get(wsEntityRef)
+      ]);
+
+      if (!pSnap.exists || !entSnap.exists) {
+        throw new Error('Prospect or Target Entity does not exist');
+      }
+
+      const prospect = pSnap.data() as Prospect;
+      const entity = entSnap.data() as Entity;
+      const wsEntity = weSnap.exists ? (weSnap.data() as WorkspaceEntity) : {
+        id: `${workspaceId}_${entity.id}`,
+        organizationId,
+        workspaceId,
+        entityId: entity.id,
+        entityType: entity.entityType,
+        status: 'active',
+        displayName: entity.name,
+        displayNameLower: entity.name.toLowerCase(),
+        entityContacts: entity.entityContacts || [],
+        workspaceTags: ['enriched-lead'],
+        addedAt: now,
+        updatedAt: now
+      } as WorkspaceEntity;
+
+      const { updatedEntity, updatedWorkspaceEntity, newContactsAddedCount } = 
+        CRMIntelligenceService.synthesizeEnrichedEntityPayload(prospect, entity, wsEntity, payload);
+
+      addedContactsCount = newContactsAddedCount;
+
+      tx.set(entityRef, updatedEntity, { merge: true });
+      tx.set(wsEntityRef, updatedWorkspaceEntity, { merge: true });
+
+      tx.update(prospectRef, {
+        syncStatus: 'synced',
+        syncedEntityId: payload.targetEntityId,
+        crmStatus: 'synced',
+        updatedAt: now
+      });
+
+      // Activity log
+      const activityId = `act_${Date.now()}`;
+      tx.set(prospectRef.collection('activities').doc(activityId), {
+        id: activityId,
+        prospectId: prospect.id,
+        workspaceId,
+        type: 'crm_enriched',
+        userId: 'system_api',
+        userName: 'SmartSapp CRM Match',
+        content: `Intelligence data merged into CRM Entity "${entity.name}". Appended ${newContactsAddedCount} verified contact(s).`,
+        createdAt: now
+      });
+    });
+
+    // Update CRM score ledger if requested
+    if (payload.updateScore) {
+      try {
+        const pSnap = await prospectRef.get();
+        const p = pSnap.data() as Prospect;
+        if (p?.scoring?.overallScore) {
+          await adjustLeadScoreAction({
+            organizationId,
+            workspaceId,
+            entityId: payload.targetEntityId,
+            contactEmailOrId: 'crm_enrichment',
+            value: p.scoring.overallScore,
+            operation: 'set',
+            reason: 'Lead Intelligence 2.0 Enrichment Sync',
+            source: 'system',
+            actorId: 'system_api',
+            actorType: 'API'
+          });
+        }
+      } catch (scoreErr) {
+        console.error('[lead-intelligence-actions] Non-fatal scoring update error:', scoreErr);
+      }
+    }
+
+    return { success: true, newContactsAddedCount: addedContactsCount };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to enrich CRM record:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Enrichment merge failed' };
+  }
+}
+
+/**
+ * Retrieves the multi-source unified activity timeline for a prospect & linked CRM record (UI Spec Section 39).
+ */
+export async function getUnifiedActivityTimelineAction(
+  prospectId: string,
+  entityId: string | undefined,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  activities: UnifiedActivityItem[];
+}> {
+  if (!prospectId || !workspaceId) return { success: false, activities: [] };
+
+  try {
+    const prospectRef = adminDb.collection('prospects').doc(prospectId);
+
+    const [pSnap, signalsSnap, scoreHistSnap, activitiesSnap] = await Promise.all([
+      prospectRef.get(),
+      adminDb.collection('lead_signals').where('workspaceId', '==', workspaceId).where('prospectId', '==', prospectId).limit(30).get(),
+      adminDb.collection('prospect_score_history').where('workspaceId', '==', workspaceId).where('prospectId', '==', prospectId).limit(30).get(),
+      prospectRef.collection('activities').orderBy('createdAt', 'desc').limit(30).get()
+    ]);
+
+    if (!pSnap.exists) return { success: false, activities: [] };
+
+    const prospect = pSnap.data() as Prospect;
+    const signals = signalsSnap.docs.map(d => d.data() as LeadSignal);
+    const scoreHistory = scoreHistSnap.docs.map(d => d.data() as ScoreMovementEvent);
+    const crmActivities = activitiesSnap.docs.map(d => d.data() as {
+      id: string;
+      type: string;
+      content: string;
+      createdAt: string;
+      userName?: string;
+    });
+
+    const timeline = CRMIntelligenceService.buildUnifiedActivityTimeline(
+      prospect,
+      signals,
+      scoreHistory,
+      crmActivities
+    );
+
+    return { success: true, activities: timeline };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch unified timeline:', err);
+    return { success: false, activities: [] };
   }
 }
 

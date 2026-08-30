@@ -105,6 +105,11 @@ export interface Prospect {
   listIds?: string[];
   syncStatus: 'unregistered' | 'synced';
   syncedEntityId?: string;
+  crmStatus?: CRMMatchStatus;
+  crmMatch?: CRMMatchCandidate;
+  ownerName?: string;
+  stageName?: string;
+  lastActivityAt?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -621,5 +626,46 @@ export interface ScoringSimulationResult {
   baselineTier: 'critical' | 'high' | 'medium' | 'low';
   simulatedTier: 'critical' | 'high' | 'medium' | 'low';
   breakdown: ExplainableScoreBreakdown;
+}
+
+// --- Phase 9: CRM Intelligence, Match Studio & Unified Activity Timeline ---
+
+export type CRMMatchStatus = 'not_in_crm' | 'synced' | 'match_candidate';
+
+export interface CRMMatchCandidate {
+  entityId: string;
+  entityName: string;
+  entityType: string;
+  matchScore: number; // 0 - 100
+  matchedBy: 'domain' | 'name' | 'phone' | 'email';
+  matchReason: string;
+  ownerName?: string;
+  ownerEmail?: string;
+  stageName?: string;
+  stageColor?: string;
+  lastActivityAt?: string;
+  contactsCount: number;
+  entityUrl: string;
+}
+
+export interface CRMEnrichmentMergePayload {
+  prospectId: string;
+  targetEntityId: string;
+  mergeContacts: boolean;
+  mergeTechnographics: boolean;
+  updateScore: boolean;
+  tagsToAdd?: string[];
+}
+
+export interface UnifiedActivityItem {
+  id: string;
+  timestamp: string;
+  source: 'intelligence' | 'crm' | 'signals' | 'ai' | 'deals' | 'messaging';
+  type: string;
+  title: string;
+  description: string;
+  actorName?: string;
+  iconType: 'flame' | 'sparkles' | 'globe' | 'mail' | 'briefcase' | 'user_plus' | 'activity' | 'phone' | 'check';
+  metadata?: Record<string, string | number | boolean>;
 }
 

@@ -55,14 +55,18 @@ import { SignalBadge } from './SignalBadge';
 import { ExplainableScoreCard } from './ExplainableScoreCard';
 import { ScoreMovementTimeline } from './ScoreMovementTimeline';
 import { ScoringModelConfigModal } from './ScoringModelConfigModal';
+import { CRMStatusBadgeCard } from './CRMStatusBadgeCard';
+import { CRMMatchStudioModal } from './CRMMatchStudioModal';
+import { UnifiedActivityTimeline } from './UnifiedActivityTimeline';
 import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
 import { 
   verifyProspectEmailAction, 
   bulkVerifyProspectEmailsAction,
   generateAIResearchDossierAction,
-  getProspectSignalsAction 
+  getProspectSignalsAction,
+  checkProspectCRMMatchAction 
 } from '@/app/actions/lead-intelligence-actions';
-import type { EmailDeliverabilityResult, AIResearchDossier, LeadSignal } from '@/lib/lead-intelligence/types';
+import type { EmailDeliverabilityResult, AIResearchDossier, LeadSignal, CRMMatchCandidate } from '@/lib/lead-intelligence/types';
 
 interface ProspectSlideOverSheetProps {
   prospect: Prospect | null;
@@ -106,6 +110,10 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
   // Scoring Model Config state (Phase 8)
   const [isModelConfigOpen, setIsModelConfigOpen] = useState(false);
 
+  // CRM Match & Intelligence state (Phase 9)
+  const [matchCandidate, setMatchCandidate] = useState<CRMMatchCandidate | undefined>(undefined);
+  const [isMatchStudioOpen, setIsMatchStudioOpen] = useState(false);
+
   useEffect(() => {
     if (prospect?.id && prospect?.workspaceId && isOpen) {
       getProspectSignalsAction(prospect.id, prospect.workspaceId)
@@ -115,8 +123,18 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
           }
         })
         .catch(() => {});
+
+      if (prospect.syncStatus !== 'synced') {
+        checkProspectCRMMatchAction(prospect.id, prospect.workspaceId)
+          .then((res) => {
+            if (res.success && res.match) {
+              setMatchCandidate(res.match);
+            }
+          })
+          .catch(() => {});
+      }
     }
-  }, [prospect?.id, prospect?.workspaceId, isOpen]);
+  }, [prospect?.id, prospect?.workspaceId, prospect?.syncStatus, isOpen]);
 
   if (!prospect) return null;
 
@@ -341,17 +359,27 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
         {/* Tabbed Content Body */}
         <div className="flex-1 overflow-y-auto p-6">
           <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-5">
-            <TabsList className="w-full grid grid-cols-4 h-10 p-1 bg-muted/50 rounded-xl">
+            <TabsList className="w-full grid grid-cols-5 h-10 p-1 bg-muted/50 rounded-xl">
               <TabsTrigger value="overview" className="text-xs font-medium rounded-lg">Overview</TabsTrigger>
               <TabsTrigger value="tech" className="text-xs font-medium rounded-lg">Tech</TabsTrigger>
               <TabsTrigger value="people" className="text-xs font-medium rounded-lg">Contacts</TabsTrigger>
               <TabsTrigger value="ai" className="text-xs font-medium rounded-lg flex items-center gap-1">
                 <Sparkles className="w-3 h-3 text-sky-400" /> Pitch
               </TabsTrigger>
+              <TabsTrigger value="activity" className="text-xs font-medium rounded-lg">Activity</TabsTrigger>
             </TabsList>
 
             {/* TAB 1: OVERVIEW & SCORING */}
             <TabsContent value="overview" className="space-y-4 mt-0">
+              {/* CRM Connection Status & Match Alert (UI Spec Section 37 & 38) */}
+              <CRMStatusBadgeCard
+                prospect={prospect}
+                matchCandidate={matchCandidate}
+                onSyncToCRM={() => onSyncToCRM(prospect)}
+                onOpenMatchStudio={() => setIsMatchStudioOpen(true)}
+                isSyncing={isSyncing}
+              />
+
               {/* 4-Dimension Enrichment Progress Panel (UI Spec Section 22) */}
               <EnrichmentProgressPanel 
                 dimensions={TechnographicsCategorizer.calculateEnrichmentDimensions(prospect)} 
@@ -747,6 +775,11 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
                 </div>
               )}
             </TabsContent>
+
+            {/* TAB 5: UNIFIED ACTIVITY TIMELINE (UI Spec Section 39) */}
+            <TabsContent value="activity" className="space-y-4 mt-0">
+              <UnifiedActivityTimeline prospect={prospect} />
+            </TabsContent>
           </Tabs>
         </div>
       </SheetContent>
@@ -794,6 +827,20 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
         isOpen={isModelConfigOpen}
         onClose={() => setIsModelConfigOpen(false)}
       />
+
+      {/* CRM Match Resolution Studio Modal (UI Spec Section 38) */}
+      {matchCandidate && (
+        <CRMMatchStudioModal
+          prospect={prospect}
+          matchCandidate={matchCandidate}
+          isOpen={isMatchStudioOpen}
+          onClose={() => setIsMatchStudioOpen(false)}
+          onResolved={() => {
+            setMatchCandidate(undefined);
+            setIsMatchStudioOpen(false);
+          }}
+        />
+      )}
     </Sheet>
   );
 };
