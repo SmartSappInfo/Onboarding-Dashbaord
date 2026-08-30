@@ -116,34 +116,45 @@ export default function SavedViewsBar({
 
   const stagesMap = React.useMemo(() => {
     const map = new Map<string, OnboardingStage>();
-    stages.forEach(s => map.set(s.id, s));
+    if (Array.isArray(stages)) {
+      stages.forEach(s => {
+        if (s && s.id) map.set(s.id, s);
+      });
+    }
     return map;
   }, [stages]);
 
   // Calculate live counts for each view
   const viewCounts = React.useMemo(() => {
     const counts: Record<string, number> = {};
-    savedViews.forEach(v => {
-      if (v.id === 'preset_all_deals') {
-        counts[v.id] = deals.filter(d => !d.isArchived).length;
-      } else if (v.filters.healthStatus && v.filters.healthStatus !== 'all') {
-        counts[v.id] = deals.filter(d => !d.isArchived && d.healthStatus === v.filters.healthStatus).length;
-      } else if (v.filters.filterTree) {
-        counts[v.id] = countMatchingDeals(deals, v.filters.filterTree, {
-          currentUserId: userId,
-          stagesMap,
-          now: new Date(),
-        });
-      } else if (v.filters.ownerId === 'current_user') {
-        counts[v.id] = deals.filter(d => !d.isArchived && d.assignedTo?.userId === userId).length;
-      } else if (v.filters.valueMin) {
-        counts[v.id] = deals.filter(d => !d.isArchived && (d.value ?? 0) >= v.filters.valueMin!).length;
-      } else if (v.filters.status && v.filters.status !== 'all') {
-        counts[v.id] = deals.filter(d => !d.isArchived && d.status === v.filters.status).length;
-      } else {
-        counts[v.id] = deals.filter(d => !d.isArchived).length;
-      }
-    });
+    const safeDeals = Array.isArray(deals) ? deals : [];
+
+    if (Array.isArray(savedViews)) {
+      savedViews.forEach(v => {
+        if (!v || !v.id) return;
+        const filters = v.filters || {};
+
+        if (v.id === 'preset_all_deals') {
+          counts[v.id] = safeDeals.filter(d => !d?.isArchived).length;
+        } else if (filters.healthStatus && filters.healthStatus !== 'all') {
+          counts[v.id] = safeDeals.filter(d => !d?.isArchived && d?.healthStatus === filters.healthStatus).length;
+        } else if (filters.filterTree) {
+          counts[v.id] = countMatchingDeals(safeDeals, filters.filterTree, {
+            currentUserId: userId,
+            stagesMap,
+            now: new Date(),
+          });
+        } else if (filters.ownerId === 'current_user') {
+          counts[v.id] = safeDeals.filter(d => !d?.isArchived && d?.assignedTo?.userId === userId).length;
+        } else if (typeof filters.valueMin === 'number') {
+          counts[v.id] = safeDeals.filter(d => !d?.isArchived && (d?.value ?? 0) >= filters.valueMin!).length;
+        } else if (filters.status && filters.status !== 'all') {
+          counts[v.id] = safeDeals.filter(d => !d?.isArchived && d?.status === filters.status).length;
+        } else {
+          counts[v.id] = safeDeals.filter(d => !d?.isArchived).length;
+        }
+      });
+    }
     return counts;
   }, [savedViews, deals, userId, stagesMap]);
 

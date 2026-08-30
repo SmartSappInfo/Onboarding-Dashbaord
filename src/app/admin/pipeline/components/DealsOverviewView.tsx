@@ -41,9 +41,9 @@ import { calculateDealsOverviewMetrics, calculateDaysInStage } from '@/lib/deals
 import DealsAttentionPanel from './DealsAttentionPanel';
 
 interface DealsOverviewViewProps {
-  pipeline: Pipeline;
-  stages: DealStage[];
-  deals: Deal[];
+  pipeline?: Pipeline | null;
+  stages?: DealStage[] | null;
+  deals?: Deal[] | null;
   onCreateDeal: () => void;
   onNavigateToBoard: (filterPreset?: string) => void;
   onNavigateToList: (filterPreset?: string) => void;
@@ -52,21 +52,31 @@ interface DealsOverviewViewProps {
 
 export default function DealsOverviewView({
   pipeline,
-  stages,
-  deals,
+  stages = [],
+  deals = [],
   onCreateDeal,
   onNavigateToBoard,
   onNavigateToList,
   onOpenDeal,
 }: DealsOverviewViewProps) {
+  const safeStages = React.useMemo(() => {
+    return Array.isArray(stages) ? stages.filter((s): s is DealStage => Boolean(s && s.id)) : [];
+  }, [stages]);
+
+  const safeDeals = React.useMemo(() => {
+    return Array.isArray(deals) ? deals.filter((d): d is Deal => Boolean(d && d.id)) : [];
+  }, [deals]);
+
   const metrics = React.useMemo(() => {
-    return calculateDealsOverviewMetrics(deals, stages);
-  }, [deals, stages]);
+    return calculateDealsOverviewMetrics(safeDeals, safeStages);
+  }, [safeDeals, safeStages]);
+
+  const currency = pipeline?.currency || 'USD';
 
   const stageBreakdown = React.useMemo(() => {
-    return stages.map(stage => {
-      const stageDeals = deals.filter(d => d.stageId === stage.id && d.status === 'open');
-      const totalValue = stageDeals.reduce((sum, d) => sum + (Number.isFinite(d.value) ? d.value : 0), 0);
+    return safeStages.map(stage => {
+      const stageDeals = safeDeals.filter(d => d.stageId === stage.id && d.status === 'open');
+      const totalValue = stageDeals.reduce((sum, d) => sum + (typeof d.value === 'number' && Number.isFinite(d.value) ? d.value : 0), 0);
       const avgDays = stageDeals.length > 0
         ? Math.round(stageDeals.reduce((sum, d) => sum + calculateDaysInStage(d.stageEnteredAt, d.createdAt), 0) / stageDeals.length)
         : 0;
@@ -74,16 +84,22 @@ export default function DealsOverviewView({
       return {
         stage,
         dealsCount: stageDeals.length,
-        totalValue,
-        avgDays,
+        totalValue: Math.round(totalValue * 100) / 100,
+        avgDays: Number.isFinite(avgDays) ? avgDays : 0,
       };
     });
-  }, [stages, deals]);
+  }, [safeStages, safeDeals]);
 
-  const healthTotal = metrics.healthyDealsCount + metrics.atRiskDealsCount + metrics.stalledDealsCount;
-  const healthyPercent = healthTotal > 0 ? Math.round((metrics.healthyDealsCount / healthTotal) * 100) : 0;
-  const atRiskPercent = healthTotal > 0 ? Math.round((metrics.atRiskDealsCount / healthTotal) * 100) : 0;
-  const stalledPercent = healthTotal > 0 ? Math.round((metrics.stalledDealsCount / healthTotal) * 100) : 0;
+  const healthTotal = (metrics.healthyDealsCount || 0) + (metrics.atRiskDealsCount || 0) + (metrics.stalledDealsCount || 0);
+  const healthyPercent = healthTotal > 0 ? Math.min(100, Math.max(0, Math.round(((metrics.healthyDealsCount || 0) / healthTotal) * 100))) : 0;
+  const atRiskPercent = healthTotal > 0 ? Math.min(100, Math.max(0, Math.round(((metrics.atRiskDealsCount || 0) / healthTotal) * 100))) : 0;
+  const stalledPercent = healthTotal > 0 ? Math.min(100, Math.max(0, Math.round(((metrics.stalledDealsCount || 0) / healthTotal) * 100))) : 0;
+
+  const maxStageValue = React.useMemo(() => {
+    if (stageBreakdown.length === 0) return 1;
+    const values = stageBreakdown.map(s => (Number.isFinite(s.totalValue) ? s.totalValue : 0));
+    return Math.max(1, ...values);
+  }, [stageBreakdown]);
 
   return (
     <div className="h-full overflow-y-auto p-4 md:p-6 space-y-6 max-w-7xl mx-auto scrollbar-thin">
@@ -92,7 +108,7 @@ export default function DealsOverviewView({
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-extrabold text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-lg">
-              {pipeline.name} • Command Center
+              {pipeline?.name || 'Pipeline'} • Command Center
             </Badge>
             <span className="text-xs font-bold text-muted-foreground">• {metrics.totalActiveDeals} Active Opportunities</span>
           </div>
@@ -132,7 +148,7 @@ export default function DealsOverviewView({
             <DollarSign className="h-4 w-4 text-primary" />
           </div>
           <div className="text-2xl font-black text-foreground tracking-tight">
-            {formatCurrency(metrics.totalPipelineValue)}
+            {formatCurrency(metrics.totalPipelineValue, currency)}
           </div>
           <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 font-semibold">
             <span>{metrics.totalActiveDeals} open deals</span>
@@ -146,7 +162,7 @@ export default function DealsOverviewView({
             <TrendingUp className="h-4 w-4 text-emerald-500" />
           </div>
           <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400 tracking-tight">
-            {formatCurrency(metrics.totalWeightedValue)}
+            {formatCurrency(metrics.totalWeightedValue, currency)}
           </div>
           <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 font-semibold">
             <span>Probability-adjusted</span>
@@ -160,7 +176,7 @@ export default function DealsOverviewView({
             <Trophy className="h-4 w-4 text-amber-500" />
           </div>
           <div className="text-2xl font-black text-amber-600 dark:text-amber-400 tracking-tight">
-            {formatCurrency(metrics.totalWonValue)}
+            {formatCurrency(metrics.totalWonValue, currency)}
           </div>
           <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 font-semibold">
             <span>Closed Won deals</span>
@@ -177,15 +193,15 @@ export default function DealsOverviewView({
             {metrics.winRatePercentage}%
           </div>
           <div className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1 font-semibold">
-            <span>Avg size: {formatCurrency(metrics.avgDealSize)}</span>
+            <span>Avg size: {formatCurrency(metrics.avgDealSize, currency)}</span>
           </div>
         </Card>
       </div>
 
       {/* Attention Required Panel */}
       <DealsAttentionPanel
-        deals={deals}
-        stages={stages}
+        deals={safeDeals}
+        stages={safeStages}
         onOpenDeal={onOpenDeal}
         onFilterSlaBreached={() => onNavigateToBoard('sla_breached')}
         onFilterNoNextStep={() => onNavigateToList('no_next_step')}
@@ -259,34 +275,39 @@ export default function DealsOverviewView({
           </CardHeader>
 
           <div className="space-y-3">
-            {stageBreakdown.map(({ stage, dealsCount, totalValue, avgDays }) => {
-              const maxVal = Math.max(1, ...stageBreakdown.map(s => s.totalValue));
-              const progressPercent = Math.round((totalValue / maxVal) * 100);
+            {stageBreakdown.length === 0 ? (
+              <div className="p-6 text-center text-xs text-muted-foreground">
+                No active stages found in this pipeline.
+              </div>
+            ) : (
+              stageBreakdown.map(({ stage, dealsCount, totalValue, avgDays }) => {
+                const progressPercent = Math.min(100, Math.max(0, Math.round((totalValue / maxStageValue) * 100)));
 
-              return (
-                <div key={stage.id} className="space-y-1.5 p-3 rounded-2xl bg-muted/20 border border-border/40 hover:border-primary/20 transition-all">
-                  <div className="flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-2">
-                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stage.color || '#3b82f6' }} />
-                      <span className="font-bold text-foreground">{stage.name}</span>
-                      <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 h-4">
-                        {dealsCount} {dealsCount === 1 ? 'deal' : 'deals'}
-                      </Badge>
+                return (
+                  <div key={stage.id} className="space-y-1.5 p-3 rounded-2xl bg-muted/20 border border-border/40 hover:border-primary/20 transition-all">
+                    <div className="flex items-center justify-between text-xs">
+                      <div className="flex items-center gap-2">
+                        <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: stage.color || '#3b82f6' }} />
+                        <span className="font-bold text-foreground">{stage.name || 'Stage'}</span>
+                        <Badge variant="outline" className="text-[10px] font-bold px-1.5 py-0 h-4">
+                          {dealsCount} {dealsCount === 1 ? 'deal' : 'deals'}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-4 text-xs">
+                        <span className="text-muted-foreground text-[11px] flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Avg {avgDays}d in stage
+                        </span>
+                        <span className="font-black text-foreground">
+                          {formatCurrency(totalValue, currency)}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-4 text-xs">
-                      <span className="text-muted-foreground text-[11px] flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        Avg {avgDays}d in stage
-                      </span>
-                      <span className="font-black text-foreground">
-                        {formatCurrency(totalValue)}
-                      </span>
-                    </div>
+                    <Progress value={progressPercent} className="h-1.5 bg-muted/50" />
                   </div>
-                  <Progress value={progressPercent} className="h-1.5 bg-muted/50" />
-                </div>
-              );
-            })}
+                );
+              })
+            )}
           </div>
         </Card>
       </div>

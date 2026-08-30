@@ -21,20 +21,52 @@
 import type { Deal, DealStage, DealLineItem, DealHealthStatus, DealsOverviewMetrics } from './deal-types';
 
 /**
+ * Helper to safely extract milliseconds timestamp from strings, Dates, or Firestore Timestamps.
+ */
+export function extractTimestampMs(value?: unknown): number {
+  if (!value) return NaN;
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value === 'string') {
+    const parsed = new Date(value).getTime();
+    return isNaN(parsed) ? NaN : parsed;
+  }
+  if (value instanceof Date) {
+    const time = value.getTime();
+    return isNaN(time) ? NaN : time;
+  }
+  if (typeof value === 'object' && value !== null) {
+    const obj = value as { toDate?: () => Date; seconds?: number; _seconds?: number };
+    if (typeof obj.toDate === 'function') {
+      try {
+        const d = obj.toDate();
+        return d instanceof Date ? d.getTime() : NaN;
+      } catch {
+        return NaN;
+      }
+    }
+    if (typeof obj.seconds === 'number' && Number.isFinite(obj.seconds)) {
+      return obj.seconds * 1000;
+    }
+    if (typeof obj._seconds === 'number' && Number.isFinite(obj._seconds)) {
+      return obj._seconds * 1000;
+    }
+  }
+  return NaN;
+}
+
+/**
  * Calculates number of calendar days a deal has spent in its current stage.
  */
 export function calculateDaysInStage(
-  stageEnteredAt?: string,
-  createdAt?: string,
+  stageEnteredAt?: unknown,
+  createdAt?: unknown,
   now: Date = new Date()
 ): number {
-  const referenceDateStr = stageEnteredAt || createdAt;
-  if (!referenceDateStr) return 0;
-  
-  const referenceTime = new Date(referenceDateStr).getTime();
-  if (isNaN(referenceTime)) return 0;
+  const referenceTime = extractTimestampMs(stageEnteredAt) || extractTimestampMs(createdAt);
+  if (!referenceTime || isNaN(referenceTime)) return 0;
 
-  const diffMs = Math.max(0, now.getTime() - referenceTime);
+  const nowMs = now instanceof Date && !isNaN(now.getTime()) ? now.getTime() : Date.now();
+  const diffMs = Math.max(0, nowMs - referenceTime);
   return Math.floor(diffMs / (1000 * 60 * 60 * 24));
 }
 
@@ -42,9 +74,9 @@ export function calculateDaysInStage(
  * Deterministically evaluates deal health based on stage SLA, activity recency, and close date.
  */
 export function calculateDealHealth(
-  deal: Deal,
+  deal?: Deal | null,
   stage?: DealStage | null,
-  lastActivityDate?: string | null,
+  lastActivityDate?: unknown,
   now: Date = new Date()
 ): {
   status: DealHealthStatus;
@@ -52,6 +84,15 @@ export function calculateDealHealth(
   isSlaBreached: boolean;
   daysInStage: number;
 } {
+  if (!deal) {
+    return {
+      status: 'healthy',
+      reason: 'No deal specified',
+      isSlaBreached: false,
+      daysInStage: 0,
+    };
+  }
+
   if (deal.status === 'won' || deal.status === 'lost') {
     return {
       status: 'closed',
@@ -61,8 +102,9 @@ export function calculateDealHealth(
     };
   }
 
+  const nowMs = now instanceof Date && !isNaN(now.getTime()) ? now.getTime() : Date.now();
   const daysInStage = calculateDaysInStage(deal.stageEnteredAt, deal.createdAt, now);
-  const slaDays = stage?.slaDays;
+  const slaDays = typeof stage?.slaDays === 'number' && Number.isFinite(stage.slaDays) ? stage.slaDays : undefined;
 
   // 1. Check for Severe SLA Stagnation (> 2x SLA or > 21 days with no SLA)
   if (slaDays && daysInStage > slaDays * 2) {
@@ -85,32 +127,28 @@ export function calculateDealHealth(
   }
 
   // 3. Check for Inactivity Stagnation (> 14 days without activity)
-  if (lastActivityDate) {
-    const activityTime = new Date(lastActivityDate).getTime();
-    if (!isNaN(activityTime)) {
-      const daysSinceActivity = Math.floor((now.getTime() - activityTime) / (1000 * 60 * 60 * 24));
-      if (daysSinceActivity >= 14) {
-        return {
-          status: 'stalled',
-          reason: `No activity recorded for ${daysSinceActivity} days`,
-          isSlaBreached: false,
-          daysInStage,
-        };
-      }
-    }
-  }
-
-  // 4. Check for Past Expected Close Date
-  if (deal.expectedCloseDate) {
-    const closeTime = new Date(deal.expectedCloseDate).getTime();
-    if (!isNaN(closeTime) && closeTime < now.getTime()) {
+  const activityTime = extractTimestampMs(lastActivityDate);
+  if (!isNaN(activityTime)) {
+    const daysSinceActivity = Math.floor((nowMs - activityTime) / (1000 * 60 * 60 * 24));
+    if (daysSinceActivity >= 14) {
       return {
-        status: 'at_risk',
-        reason: 'Target close date is in the past',
+        status: 'stalled',
+        reason: `No activity recorded for ${daysSinceActivity} days`,
         isSlaBreached: false,
         daysInStage,
       };
     }
+  }
+
+  // 4. Check for Past Expected Close Date
+  const closeTime = extractTimestampMs(deal.expectedCloseDate);
+  if (!isNaN(closeTime) && closeTime < nowMs) {
+    return {
+      status: 'at_risk',
+      reason: 'Target close date is in the past',
+      isSlaBreached: false,
+      daysInStage,
+    };
   }
 
   return {
@@ -224,7 +262,7 @@ export function calculateLineItemsTotals(
  * Calculates high-level aggregate KPI metrics for the Deals Command Center.
  */
 export function calculateDealsOverviewMetrics(
-  deals: Deal[],
+  deals: Deal[] = [],
   stages: DealStage[] = [],
   now: Date = new Date()
 ): DealsOverviewMetrics {
@@ -242,46 +280,60 @@ export function calculateDealsOverviewMetrics(
   let noNextStepCount = 0;
 
   const stageMap = new Map<string, DealStage>();
-  stages.forEach(s => stageMap.set(s.id, s));
+  if (Array.isArray(stages)) {
+    stages.forEach(s => {
+      if (s && s.id) stageMap.set(s.id, s);
+    });
+  }
 
-  const oneWeekFromNow = now.getTime() + 7 * 24 * 60 * 60 * 1000;
+  const nowMs = now instanceof Date && !isNaN(now.getTime()) ? now.getTime() : Date.now();
+  const oneWeekFromNow = nowMs + 7 * 24 * 60 * 60 * 1000;
 
-  for (const deal of deals) {
-    const stage = stageMap.get(deal.stageId);
-    const val = Number.isFinite(deal.value) ? deal.value : 0;
+  if (Array.isArray(deals)) {
+    for (const deal of deals) {
+      if (!deal) continue;
+      const stage = deal.stageId ? stageMap.get(deal.stageId) : undefined;
+      const val = typeof deal.value === 'number' && Number.isFinite(deal.value) ? Math.max(0, deal.value) : 0;
 
-    if (deal.status === 'won') {
-      totalWonValue += val;
-      wonCount++;
-      closedCount++;
-    } else if (deal.status === 'lost') {
-      closedCount++;
-    } else {
-      // Active Deal
-      totalActiveDeals++;
-      totalPipelineValue += val;
-      
-      const prob = deal.probability ?? stage?.probability ?? 50;
-      totalWeightedValue += calculateWeightedValue(val, prob);
+      if (deal.status === 'won') {
+        totalWonValue += val;
+        wonCount++;
+        closedCount++;
+      } else if (deal.status === 'lost') {
+        closedCount++;
+      } else {
+        // Active Deal
+        totalActiveDeals++;
+        totalPipelineValue += val;
+        
+        const prob = typeof deal.probability === 'number' && Number.isFinite(deal.probability) 
+          ? deal.probability 
+          : (typeof stage?.probability === 'number' && Number.isFinite(stage.probability) ? stage.probability : 50);
+        totalWeightedValue += calculateWeightedValue(val, prob);
 
-      const health = calculateDealHealth(deal, stage, deal.updatedAt, now);
-      if (health.status === 'healthy') healthyDealsCount++;
-      else if (health.status === 'at_risk') atRiskDealsCount++;
-      else if (health.status === 'stalled') stalledDealsCount++;
+        const health = calculateDealHealth(deal, stage, deal.updatedAt, now);
+        if (health.status === 'healthy') healthyDealsCount++;
+        else if (health.status === 'at_risk') atRiskDealsCount++;
+        else if (health.status === 'stalled') stalledDealsCount++;
 
-      if (health.isSlaBreached) slaBreachedCount++;
+        if (health.isSlaBreached) slaBreachedCount++;
 
-      const hasNextStep = typeof deal.nextStep === 'string'
-        ? deal.nextStep.trim().length > 0
-        : Boolean(deal.nextStep && typeof deal.nextStep === 'object' && !deal.nextStep.isCompleted && deal.nextStep.title?.trim());
+        const hasNextStep = typeof deal.nextStep === 'string'
+          ? deal.nextStep.trim().length > 0
+          : Boolean(
+              deal.nextStep && 
+              typeof deal.nextStep === 'object' && 
+              !deal.nextStep.isCompleted && 
+              typeof deal.nextStep.title === 'string' && 
+              deal.nextStep.title.trim().length > 0
+            );
 
-      if (!hasNextStep) {
-        noNextStepCount++;
-      }
+        if (!hasNextStep) {
+          noNextStepCount++;
+        }
 
-      if (deal.expectedCloseDate) {
-        const closeTime = new Date(deal.expectedCloseDate).getTime();
-        if (!isNaN(closeTime) && closeTime >= now.getTime() && closeTime <= oneWeekFromNow) {
+        const closeTime = extractTimestampMs(deal.expectedCloseDate);
+        if (!isNaN(closeTime) && closeTime >= nowMs && closeTime <= oneWeekFromNow) {
           closingThisWeekCount++;
         }
       }
@@ -292,9 +344,9 @@ export function calculateDealsOverviewMetrics(
   const avgDealSize = totalActiveDeals > 0 ? Math.round(totalPipelineValue / totalActiveDeals) : 0;
 
   return {
-    totalPipelineValue,
-    totalWeightedValue,
-    totalWonValue,
+    totalPipelineValue: Math.round(totalPipelineValue * 100) / 100,
+    totalWeightedValue: Math.round(totalWeightedValue * 100) / 100,
+    totalWonValue: Math.round(totalWonValue * 100) / 100,
     totalActiveDeals,
     winRatePercentage,
     avgDealSize,

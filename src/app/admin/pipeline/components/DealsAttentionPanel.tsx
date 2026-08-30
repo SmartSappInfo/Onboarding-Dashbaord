@@ -24,11 +24,11 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { AlertCircle, Clock, Calendar, ArrowRight, CheckCircle2 } from 'lucide-react';
 import type { Deal, DealStage } from '@/lib/types';
-import { calculateDealHealth } from '@/lib/deals/deal-health-engine';
+import { calculateDealHealth, extractTimestampMs } from '@/lib/deals/deal-health-engine';
 
 interface DealsAttentionPanelProps {
-  deals: Deal[];
-  stages: DealStage[];
+  deals?: Deal[] | null;
+  stages?: DealStage[] | null;
   onOpenDeal?: (deal: Deal) => void;
   onFilterSlaBreached?: () => void;
   onFilterNoNextStep?: () => void;
@@ -36,8 +36,8 @@ interface DealsAttentionPanelProps {
 }
 
 export default function DealsAttentionPanel({
-  deals,
-  stages,
+  deals = [],
+  stages = [],
   onOpenDeal: _onOpenDeal,
   onFilterSlaBreached,
   onFilterNoNextStep,
@@ -45,23 +45,29 @@ export default function DealsAttentionPanel({
 }: DealsAttentionPanelProps) {
   const stageMap = React.useMemo(() => {
     const map = new Map<string, DealStage>();
-    stages.forEach(s => map.set(s.id, s));
+    if (Array.isArray(stages)) {
+      stages.forEach(s => {
+        if (s && s.id) map.set(s.id, s);
+      });
+    }
     return map;
   }, [stages]);
 
   const { slaBreachedDeals, noNextStepDeals, closingSoonDeals, stalledDeals } = React.useMemo(() => {
     const now = new Date();
-    const oneWeekFromNow = now.getTime() + 7 * 24 * 60 * 60 * 1000;
+    const nowMs = now.getTime();
+    const oneWeekFromNow = nowMs + 7 * 24 * 60 * 60 * 1000;
 
     const slaBreached: Deal[] = [];
     const noNextStep: Deal[] = [];
     const closingSoon: Deal[] = [];
     const stalled: Deal[] = [];
 
-    const activeDeals = deals.filter(d => d.status === 'open');
+    const activeDeals = Array.isArray(deals) ? deals.filter(d => Boolean(d && d.status === 'open')) : [];
 
     for (const deal of activeDeals) {
-      const stage = stageMap.get(deal.stageId);
+      if (!deal) continue;
+      const stage = deal.stageId ? stageMap.get(deal.stageId) : undefined;
       const health = calculateDealHealth(deal, stage, deal.updatedAt, now);
 
       if (health.isSlaBreached) {
@@ -74,17 +80,21 @@ export default function DealsAttentionPanel({
 
       const hasNextStep = typeof deal.nextStep === 'string'
         ? deal.nextStep.trim().length > 0
-        : Boolean(deal.nextStep && typeof deal.nextStep === 'object' && !deal.nextStep.isCompleted && deal.nextStep.title?.trim());
+        : Boolean(
+            deal.nextStep && 
+            typeof deal.nextStep === 'object' && 
+            !deal.nextStep.isCompleted && 
+            typeof deal.nextStep.title === 'string' && 
+            deal.nextStep.title.trim().length > 0
+          );
 
       if (!hasNextStep) {
         noNextStep.push(deal);
       }
 
-      if (deal.expectedCloseDate) {
-        const closeTime = new Date(deal.expectedCloseDate).getTime();
-        if (!isNaN(closeTime) && closeTime >= now.getTime() && closeTime <= oneWeekFromNow) {
-          closingSoonDeals.push(deal);
-        }
+      const closeTime = extractTimestampMs(deal.expectedCloseDate);
+      if (!isNaN(closeTime) && closeTime >= nowMs && closeTime <= oneWeekFromNow) {
+        closingSoon.push(deal);
       }
     }
 

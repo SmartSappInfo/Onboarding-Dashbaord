@@ -879,6 +879,7 @@ export interface Pipeline {
   assignmentUserIds?: string[];
   defaultCloseDateOffsetValue?: number;
   defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months';
+  currency?: string;
 }
 
 export const APP_PERMISSIONS = [

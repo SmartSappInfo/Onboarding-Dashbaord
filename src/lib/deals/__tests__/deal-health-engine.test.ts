@@ -166,4 +166,38 @@ describe('Deal Health & Velocity Engine', () => {
     expect(safeEmpty.tcv).toBe(0);
     expect(safeEmpty.contractTermMonths).toBe(1); // Clamped minimum
   });
+
+  it('should handle Firestore Timestamps and date objects without crashing', () => {
+    const fixedNow = new Date('2026-08-10T00:00:00.000Z');
+    const firestoreTimestamp = {
+      toDate: () => new Date('2026-08-01T00:00:00.000Z'),
+      seconds: 1785542400,
+    };
+    const days = calculateDaysInStage(firestoreTimestamp, undefined, fixedNow);
+    expect(days).toBe(9);
+
+    const dealWithTimestamp: Deal = {
+      ...baseDeal,
+      stageEnteredAt: firestoreTimestamp as any,
+      expectedCloseDate: firestoreTimestamp as any,
+    };
+    const health = calculateDealHealth(dealWithTimestamp, baseStage, firestoreTimestamp, fixedNow);
+    expect(health.daysInStage).toBe(9);
+  });
+
+  it('should handle empty, null, or corrupted deal arrays in calculateDealsOverviewMetrics', () => {
+    const metricsEmpty = calculateDealsOverviewMetrics([], []);
+    expect(metricsEmpty.totalPipelineValue).toBe(0);
+    expect(metricsEmpty.totalActiveDeals).toBe(0);
+    expect(metricsEmpty.winRatePercentage).toBe(0);
+
+    const corruptedDeals = [
+      null as any,
+      undefined as any,
+      { id: 'd-null', value: NaN, status: 'open' } as any,
+    ];
+    const metricsCorrupted = calculateDealsOverviewMetrics(corruptedDeals, [baseStage]);
+    expect(metricsCorrupted.totalPipelineValue).toBe(0);
+    expect(metricsCorrupted.totalActiveDeals).toBe(1);
+  });
 });
