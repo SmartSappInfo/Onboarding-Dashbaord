@@ -847,5 +847,60 @@ export interface RevenueAttributionReport {
   generatedAt: string;
 }
 
+// =============================================================================
+// PHASE 12: AUTONOMOUS AI SDR & MULTI-CHANNEL ACTIVATION (Strict Typing)
+// =============================================================================
+
+export type ActivationActionType = 
+  | 'create_task' 
+  | 'create_deal' 
+  | 'send_email' 
+  | 'enroll_whatsapp' 
+  | 'book_followup';
+
+export interface ActivationRecommendationItem {
+  id: string;
+  type: ActivationActionType;
+  title: string;
+  description: string;
+  rationale: string;
+  isRecommended: boolean;
+  enabled: boolean;
+}
+
+export interface DailyRepBriefing {
+  repId: string;
+  repName: string;
+  date: string;
+  totalNeedingAttention: number;
+  highIntentCount: number;
+  scoreIncreasedCount: number;
+  followupsDueCount: number;
+  winnerLookalikeCount: number;
+  priorityProspectIds: string[];
+}
+
+export interface PriorityQueueItem {
+  prospect: Prospect;
+  whyNowReason: string;
+  recommendedPlaybook: OutreachPlaybookItem | null;
+  suggestedChannel: 'email' | 'whatsapp' | 'phone';
+  urgencyScore: number;
+}
+
+export interface AIOutreachDraft {
+  channel: 'email' | 'whatsapp' | 'phone_script';
+  recipientName: string;
+  recipientEmail?: string;
+  recipientPhone?: string;
+  subject?: string;
+  body: string;
+  whatsappUrl?: string;
+  mailtoUrl?: string;
+  groundingPoints: string[];
+  status: 'draft' | 'approved' | 'sent';
+}
+
+
 
 

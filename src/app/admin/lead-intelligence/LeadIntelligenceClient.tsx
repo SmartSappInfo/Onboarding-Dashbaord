@@ -53,7 +53,8 @@ import {
   importProspectsFromCSVAction,
   saveViewAction,
   getIdentityCollisionsAction,
-  getWorkspaceSignalsAction
+  getWorkspaceSignalsAction,
+  getDailyRepBriefingAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
@@ -62,13 +63,15 @@ import type {
   SavedSearch, 
   LeadList,
   DiscoverySourceType,
-  IntelligenceJob
+  IntelligenceJob,
+  DailyRepBriefing
 } from '@/lib/lead-intelligence/types';
 import { FloatingActionToolbar } from './components/FloatingActionToolbar';
 import { ProspectSlideOverSheet } from './components/ProspectSlideOverSheet';
 import { JobsCenterDrawer } from './components/JobsCenterDrawer';
 import { EnrichmentCostPreviewModal } from './components/EnrichmentCostPreviewModal';
 import { ScoringModelConfigModal } from './components/ScoringModelConfigModal';
+import { PriorityQueueModal } from './components/PriorityQueueModal';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -221,17 +224,23 @@ export default function LeadIntelligenceClient() {
   // Live Continuous Signals State (Phase 7)
   const [unreadSignalsCount, setUnreadSignalsCount] = useState<number>(0);
 
+  // Autonomous SDR Daily Briefing State (Phase 12)
+  const [dailyBriefing, setDailyBriefing] = useState<DailyRepBriefing | null>(null);
+  const [priorityQueueProspects, setPriorityQueueProspects] = useState<Prospect[]>([]);
+  const [isPriorityQueueOpen, setIsPriorityQueueOpen] = useState(false);
+
   // Initial Data Fetch
   const loadInitialData = React.useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
-      const [keys, recent, searches, lists, pendingCollisions, signalsRes] = await Promise.all([
+      const [keys, recent, searches, lists, pendingCollisions, signalsRes, briefingRes] = await Promise.all([
         getLeadSettingsAction(activeWorkspaceId),
         getRecentProspectsAction(activeWorkspaceId),
         getSavedSearchesAction(activeWorkspaceId),
         getLeadListsAction(activeWorkspaceId),
         getIdentityCollisionsAction(activeWorkspaceId, 'pending_review'),
-        getWorkspaceSignalsAction(activeWorkspaceId, { unreadOnly: true })
+        getWorkspaceSignalsAction(activeWorkspaceId, { unreadOnly: true }),
+        getDailyRepBriefingAction(activeWorkspaceId, 'rep_kwame', 'Kwame')
       ]);
       setSettings(keys);
       setRecentProspects(recent);
@@ -243,6 +252,10 @@ export default function LeadIntelligenceClient() {
       setPendingCollisionsCount(pendingCollisions.length);
       if (signalsRes.success && typeof signalsRes.unreadCount === 'number') {
         setUnreadSignalsCount(signalsRes.unreadCount);
+      }
+      if (briefingRes.success && briefingRes.briefing) {
+        setDailyBriefing(briefingRes.briefing);
+        setPriorityQueueProspects(briefingRes.priorityProspects || []);
       }
     } catch (err: unknown) {
       console.error('[LeadIntelligenceClient] Failed to load initial workspace data:', err);
@@ -899,6 +912,8 @@ export default function LeadIntelligenceClient() {
                   onSync={handleSyncToCRM}
                   onImportCSV={handleImportCSV}
                   onSaveCustomView={handleSaveCustomView}
+                  dailyBriefing={dailyBriefing}
+                  onStartPriorityQueue={() => setIsPriorityQueueOpen(true)}
                 />
               </TabsContent>
             </motion.div>
@@ -1087,6 +1102,17 @@ export default function LeadIntelligenceClient() {
         isOpen={isScoringConfigOpen}
         onClose={() => setIsScoringConfigOpen(false)}
         onModelSaved={() => {
+          loadInitialData();
+        }}
+      />
+
+      {/* Focus Mode Priority Queue Studio Modal (UI Spec Section 54) */}
+      <PriorityQueueModal
+        prospects={priorityQueueProspects.length > 0 ? priorityQueueProspects : prospects.slice(0, 10)}
+        workspaceId={activeWorkspaceId || ''}
+        isOpen={isPriorityQueueOpen}
+        onClose={() => setIsPriorityQueueOpen(false)}
+        onProspectActivated={() => {
           loadInitialData();
         }}
       />

@@ -58,6 +58,7 @@ import { ScoringModelConfigModal } from './ScoringModelConfigModal';
 import { CRMStatusBadgeCard } from './CRMStatusBadgeCard';
 import { CRMMatchStudioModal } from './CRMMatchStudioModal';
 import { UnifiedActivityTimeline } from './UnifiedActivityTimeline';
+import { ProspectActivationModal } from './ProspectActivationModal';
 import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
 import { 
   verifyProspectEmailAction, 
@@ -113,6 +114,9 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
   // CRM Match & Intelligence state (Phase 9)
   const [matchCandidate, setMatchCandidate] = useState<CRMMatchCandidate | undefined>(undefined);
   const [isMatchStudioOpen, setIsMatchStudioOpen] = useState(false);
+
+  // Autonomous SDR Activation state (Phase 12)
+  const [isActivationModalOpen, setIsActivationModalOpen] = useState(false);
 
   useEffect(() => {
     if (prospect?.id && prospect?.workspaceId && isOpen) {
@@ -342,6 +346,14 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
             >
               <Database className="w-3.5 h-3.5" />
               <span>{prospect.syncStatus === 'synced' ? 'Synced to CRM' : isSyncing ? 'Syncing...' : 'Sync to CRM'}</span>
+            </Button>
+            <Button
+              size="sm"
+              onClick={() => setIsActivationModalOpen(true)}
+              className="h-9 px-3.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 active:scale-[0.97]"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>Activate</span>
             </Button>
             <Button
               size="sm"
@@ -841,6 +853,17 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
           }}
         />
       )}
+
+      {/* Autonomous AI SDR 5-Action Activation Modal (UI Spec Section 50) */}
+      <ProspectActivationModal
+        prospect={prospect}
+        workspaceId={prospect.workspaceId}
+        isOpen={isActivationModalOpen}
+        onClose={() => setIsActivationModalOpen(false)}
+        onActivated={() => {
+          setIsActivationModalOpen(false);
+        }}
+      />
     </Sheet>
   );
 };

@@ -32,7 +32,11 @@ import type {
   DynamicSegment,
   SegmentRuleGroup,
   ProspectingCampaign,
-  RevenueAttributionReport
+  RevenueAttributionReport,
+  ActivationActionType,
+  DailyRepBriefing,
+  PriorityQueueItem,
+  AIOutreachDraft
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
@@ -43,6 +47,7 @@ import { CRMIntelligenceService } from '@/lib/lead-intelligence/crm';
 import { SegmentPredicateEvaluator } from '@/lib/lead-intelligence/segmentation';
 import { ProspectingCampaignEngine } from '@/lib/lead-intelligence/campaigns';
 import { RevenueAttributionEngine, type BasicDealRecord } from '@/lib/lead-intelligence/attribution';
+import { AutonomousSDREngine } from '@/lib/lead-intelligence/sdr';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -2641,6 +2646,206 @@ export async function executeDataRemediationAction(
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to execute remediation:', err);
     return { success: false, error: err instanceof Error ? err.message : 'Remediation failed' };
+  }
+}
+
+// =============================================================================
+// PHASE 12: AUTONOMOUS AI SDR & MULTI-CHANNEL ACTIVATION SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Fetches daily personalized morning briefing and priority queue (UI Spec Section 53).
+ */
+export async function getDailyRepBriefingAction(
+  workspaceId: string,
+  repId: string = 'rep_kwame',
+  repName: string = 'Kwame'
+): Promise<{
+  success: boolean;
+  briefing?: DailyRepBriefing;
+  priorityProspects?: Prospect[];
+  error?: string;
+}> {
+  if (!workspaceId) return { success: false, error: 'Workspace ID required' };
+
+  try {
+    const snap = await adminDb
+      .collection('prospects')
+      .where('workspaceId', '==', workspaceId)
+      .limit(200)
+      .get();
+
+    const prospects: Prospect[] = snap.docs.map(doc => doc.data() as Prospect);
+    const briefing = AutonomousSDREngine.generateDailyRepBriefing(prospects, repId, repName);
+
+    const priorityProspects = briefing.priorityProspectIds
+      .map(id => prospects.find(p => p.id === id))
+      .filter((p): p is Prospect => p !== undefined);
+
+    return {
+      success: true,
+      briefing,
+      priorityProspects
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to get rep briefing:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch briefing' };
+  }
+}
+
+/**
+ * Fetches detailed single-item focus payload for the Priority Queue cockpit (UI Spec Section 54).
+ */
+export async function getPriorityQueueItemAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  item?: PriorityQueueItem;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) return { success: false, error: 'Prospect and Workspace ID required' };
+
+  try {
+    const docSnap = await adminDb.collection('prospects').doc(prospectId).get();
+    if (!docSnap.exists) return { success: false, error: 'Prospect not found' };
+
+    const prospect = docSnap.data() as Prospect;
+    const item = AutonomousSDREngine.buildPriorityQueueItem(prospect);
+
+    return { success: true, item };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to get priority queue item:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to load item' };
+  }
+}
+
+/**
+ * Executes multi-action prospect activation (UI Spec Section 50).
+ */
+export async function executeProspectActivationAction(
+  prospectId: string,
+  workspaceId: string,
+  selectedActions: ActivationActionType[],
+  repId: string = 'rep_kwame'
+): Promise<{
+  success: boolean;
+  executedCount?: number;
+  dealId?: string;
+  taskId?: string;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) return { success: false, error: 'Prospect and Workspace ID required' };
+
+  try {
+    const prospectSnap = await adminDb.collection('prospects').doc(prospectId).get();
+    if (!prospectSnap.exists) return { success: false, error: 'Prospect not found' };
+
+    const prospect = prospectSnap.data() as Prospect;
+    const now = new Date().toISOString();
+    const batch = adminDb.batch();
+
+    let createdDealId: string | undefined;
+    let createdTaskId: string | undefined;
+    let count = 0;
+
+    // 1. Create Task in CRM
+    if (selectedActions.includes('create_task')) {
+      const taskRef = adminDb.collection('tasks').doc();
+      createdTaskId = taskRef.id;
+      const dueDate = new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(); // 2 days
+
+      batch.set(taskRef, {
+        id: createdTaskId,
+        workspaceId,
+        title: `Outbound Follow-up: ${prospect.name}`,
+        description: `Autonomous SDR outreach for ${prospect.name}. Priority Score: ${prospect.scoring?.overallScore ?? 50}/100.`,
+        priority: 'high',
+        status: 'todo',
+        assignedTo: repId,
+        prospectId: prospect.id,
+        entityId: prospect.syncedEntityId || null,
+        dueDate,
+        createdAt: now,
+        updatedAt: now
+      });
+      count++;
+    }
+
+    // 2. Create Deal in CRM
+    if (selectedActions.includes('create_deal')) {
+      const dealRef = adminDb.collection('deals').doc();
+      createdDealId = dealRef.id;
+
+      batch.set(dealRef, {
+        id: createdDealId,
+        workspaceId,
+        title: `${prospect.name} — Education Portal Modernization`,
+        amount: 12000,
+        currency: 'GHS',
+        status: 'active',
+        stageName: 'Lead Qualified',
+        prospectId: prospect.id,
+        entityId: prospect.syncedEntityId || null,
+        ownerId: repId,
+        source: prospect.source || 'lead_intelligence',
+        createdAt: now,
+        updatedAt: now
+      });
+      count++;
+    }
+
+    // 3. Update Prospect record with activation status
+    const pRef = adminDb.collection('prospects').doc(prospectId);
+    batch.update(pRef, {
+      lastActivatedAt: now,
+      activatedActions: selectedActions,
+      assignedRepId: repId,
+      updatedAt: now
+    });
+    count++;
+
+    await batch.commit();
+
+    return {
+      success: true,
+      executedCount: count,
+      dealId: createdDealId,
+      taskId: createdTaskId
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to execute activation:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Activation failed' };
+  }
+}
+
+/**
+ * Generates personalized AI outreach draft with zero-silent-send human review (UI Spec Section 51).
+ */
+export async function generateAIOutreachDraftAction(
+  prospectId: string,
+  channel: 'email' | 'whatsapp' | 'phone_script',
+  contactEmail?: string
+): Promise<{
+  success: boolean;
+  draft?: AIOutreachDraft;
+  error?: string;
+}> {
+  if (!prospectId) return { success: false, error: 'Prospect ID required' };
+
+  try {
+    const snap = await adminDb.collection('prospects').doc(prospectId).get();
+    if (!snap.exists) return { success: false, error: 'Prospect not found' };
+
+    const prospect = snap.data() as Prospect;
+    const targetContact = (prospect.contacts || []).find(c => c.email === contactEmail) || prospect.contacts?.[0];
+
+    const draft = AutonomousSDREngine.generatePersonalizedDraft(prospect, channel, targetContact);
+
+    return { success: true, draft };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to generate outreach draft:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate draft' };
   }
 }
 

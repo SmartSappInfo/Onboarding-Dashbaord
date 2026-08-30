@@ -50,13 +50,15 @@ import { DiscoveryStudioLanding } from './DiscoveryStudioLanding';
 import { FilterBuilderPane } from './FilterBuilderPane';
 import { ProspectCardGrid } from './ProspectCardGrid';
 import { ColumnCustomizerModal } from './ColumnCustomizerModal';
+import { MorningRepBriefingCard } from './MorningRepBriefingCard';
 import type { 
   Prospect, 
   SearchFilters, 
   DiscoverySourceType, 
   TableDensityMode, 
   DiscoveryViewMode,
-  ColumnVisibilityConfig 
+  ColumnVisibilityConfig,
+  DailyRepBriefing 
 } from '@/lib/lead-intelligence/types';
 import { useToast } from '@/hooks/use-toast';
 
@@ -80,6 +82,8 @@ interface ProspectFinderTabProps {
   onSync: (prospect: Prospect) => void;
   onImportCSV: (csvData: string) => Promise<void>;
   onSaveCustomView?: (viewName: string) => void;
+  dailyBriefing?: DailyRepBriefing | null;
+  onStartPriorityQueue?: () => void;
 }
 
 const DEFAULT_COLUMNS: ColumnVisibilityConfig = {
@@ -114,6 +118,8 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
   onSync,
   onImportCSV,
   onSaveCustomView,
+  dailyBriefing,
+  onStartPriorityQueue,
 }) => {
   const { toast } = useToast();
 
@@ -159,6 +165,14 @@ export const ProspectFinderTab: React.FC<ProspectFinderTabProps> = ({
 
   return (
     <div className="space-y-4">
+      {/* 0. Daily Rep Morning Briefing Cockpit (UI Spec Section 53) */}
+      {dailyBriefing && onStartPriorityQueue && (
+        <MorningRepBriefingCard
+          briefing={dailyBriefing}
+          onStartQueue={onStartPriorityQueue}
+        />
+      )}
+
       {/* 1. Omnisearch Ribbon Bar */}
       <OmnisearchRibbon
         queryText={queryText}
