@@ -24,7 +24,6 @@ import {
   Clock, 
   TrendingDown, 
   Layers, 
-  CheckCircle2, 
   AlertTriangle 
 } from 'lucide-react';
 

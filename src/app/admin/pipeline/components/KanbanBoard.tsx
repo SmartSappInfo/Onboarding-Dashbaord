@@ -163,6 +163,9 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     missingFields: StageRequiredField[];
   } | null>(null);
 
+  // Mobile active stage state
+  const [activeMobileStageId, setActiveMobileStageId] = React.useState<string | null>(() => stages[0]?.id || null);
+
   const allDeals = React.useMemo(() => {
     return deals || [];
   }, [deals]);
@@ -452,8 +455,6 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
       </div>
     );
   }
-
-  const [activeMobileStageId, setActiveMobileStageId] = React.useState<string | null>(() => stages[0]?.id || null);
 
   const handleSelectMobileStage = (stageId: string) => {
     setActiveMobileStageId(stageId);

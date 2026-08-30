@@ -31,11 +31,9 @@ import {
   Calendar, 
   Layers, 
   Target, 
-  AlertTriangle, 
   Clock, 
   TrendingUp, 
   FileQuestion,
-  ChevronRight,
   ShieldAlert,
   ArrowUpRight
 } from 'lucide-react';

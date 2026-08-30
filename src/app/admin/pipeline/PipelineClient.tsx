@@ -64,7 +64,6 @@ import {
   DEFAULT_DEAL_COLUMNS,
   SYSTEM_SAVED_VIEW_PRESETS,
 } from '@/lib/deals/deal-saved-views';
-import type { DealFilterTree } from '@/lib/deals/deal-saved-views';
 
 export default function PipelineClient() {
   const firestore = useFirestore();

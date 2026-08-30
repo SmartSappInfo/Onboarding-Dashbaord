@@ -26,18 +26,11 @@ import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Button } from '@/components/ui/button';
 import { formatCurrency } from '@/lib/currency-utils';
 import type { RepPerformanceMetrics } from '@/lib/types';
 import { 
   Trophy, 
   ArrowUpDown, 
-  Percent, 
-  DollarSign, 
-  CheckCircle2, 
-  XCircle, 
-  Clock, 
-  Activity as ActivityIcon,
   Users
 } from 'lucide-react';
 

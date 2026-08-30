@@ -33,7 +33,6 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
-  BarChart3, 
   TrendingUp, 
   DollarSign, 
   Trophy, 
@@ -42,10 +41,8 @@ import {
   Target, 
   AlertTriangle, 
   Clock, 
-  Layers, 
   PieChart,
-  ShieldAlert,
-  ArrowUpRight
+  ShieldAlert
 } from 'lucide-react';
 import { formatCurrency } from '@/lib/currency-utils';
 import type { Deal, DealStage, UserProfile, Activity, Pipeline, PipelineTarget } from '@/lib/types';
@@ -74,8 +71,8 @@ export default function DealsAnalyticsView({
   users,
   activities = [],
   pipelineTarget = null,
-  onNavigateToBoard,
-  onNavigateToList,
+  onNavigateToBoard: _onNavigateToBoard,
+  onNavigateToList: _onNavigateToList,
   onTargetSaved,
 }: DealsAnalyticsViewProps) {
   const [timeframe, setTimeframe] = React.useState<'all' | 'this_month' | 'this_quarter' | 'this_year'>('all');
