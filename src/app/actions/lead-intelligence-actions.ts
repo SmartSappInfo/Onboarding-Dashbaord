@@ -36,7 +36,12 @@ import type {
   ActivationActionType,
   DailyRepBriefing,
   PriorityQueueItem,
-  AIOutreachDraft
+  AIOutreachDraft,
+  PredictiveConversionLikelihood,
+  IntelligenceInboxItem,
+  InboxSummaryStats,
+  IntelligenceInboxCategory,
+  IdentityCollisionRecord
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
@@ -48,6 +53,7 @@ import { SegmentPredicateEvaluator } from '@/lib/lead-intelligence/segmentation'
 import { ProspectingCampaignEngine } from '@/lib/lead-intelligence/campaigns';
 import { RevenueAttributionEngine, type BasicDealRecord } from '@/lib/lead-intelligence/attribution';
 import { AutonomousSDREngine } from '@/lib/lead-intelligence/sdr';
+import { PredictiveIntelligenceEngine } from '@/lib/lead-intelligence/predictive';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -2846,6 +2852,121 @@ export async function generateAIOutreachDraftAction(
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to generate outreach draft:', err);
     return { success: false, error: err instanceof Error ? err.message : 'Failed to generate draft' };
+  }
+}
+
+// =============================================================================
+// PHASE 13: PREDICTIVE CONVERSION & OPERATIONAL INBOX SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Fetches and aggregates unified multi-source Intelligence Inbox stream (UI Spec Section 55).
+ */
+export async function getIntelligenceInboxAction(
+  workspaceId: string,
+  category: IntelligenceInboxCategory = 'all',
+  unreadOnly: boolean = false
+): Promise<{
+  success: boolean;
+  items?: IntelligenceInboxItem[];
+  stats?: InboxSummaryStats;
+  error?: string;
+}> {
+  if (!workspaceId) return { success: false, error: 'Workspace ID required' };
+
+  try {
+    const [prospectsSnap, collisionsSnap, signalsSnap] = await Promise.all([
+      adminDb.collection('prospects').where('workspaceId', '==', workspaceId).limit(200).get(),
+      adminDb.collection('identity_collisions').where('workspaceId', '==', workspaceId).limit(50).get(),
+      adminDb.collection('lead_signals').where('workspaceId', '==', workspaceId).limit(100).get()
+    ]);
+
+    const prospects = prospectsSnap.docs.map(d => d.data() as Prospect);
+    const collisions = collisionsSnap.docs.map(d => d.data() as IdentityCollisionRecord);
+    const signals = signalsSnap.docs.map(d => d.data() as LeadSignal);
+
+    const allItems = PredictiveIntelligenceEngine.generateIntelligenceInboxItems(
+      prospects,
+      collisions,
+      signals
+    );
+
+    const stats = PredictiveIntelligenceEngine.computeInboxStats(allItems);
+
+    let filteredItems = allItems;
+    if (category !== 'all') {
+      filteredItems = filteredItems.filter(item => item.category === category);
+    }
+    if (unreadOnly) {
+      filteredItems = filteredItems.filter(item => !item.isRead && !item.isDismissed);
+    }
+
+    return {
+      success: true,
+      items: filteredItems,
+      stats
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to get intelligence inbox:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch inbox' };
+  }
+}
+
+/**
+ * Marks an individual inbox item as read/resolved.
+ */
+export async function markInboxItemReadAction(
+  itemId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!itemId || !workspaceId) return { success: false, error: 'Item and Workspace ID required' };
+
+  try {
+    if (itemId.startsWith('inbox_sig_')) {
+      const sigId = itemId.replace('inbox_sig_', '');
+      await adminDb.collection('lead_signals').doc(sigId).update({
+        isRead: true,
+        updatedAt: new Date().toISOString()
+      });
+    }
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to mark inbox item read:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update item' };
+  }
+}
+
+/**
+ * Evaluates predictive conversion likelihood for a prospect (UI Spec Section 52).
+ */
+export async function getPredictiveConversionAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  likelihood?: PredictiveConversionLikelihood;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) return { success: false, error: 'Prospect and Workspace ID required' };
+
+  try {
+    const pSnap = await adminDb.collection('prospects').doc(prospectId).get();
+    if (!pSnap.exists) return { success: false, error: 'Prospect not found' };
+
+    const prospect = pSnap.data() as Prospect;
+    const likelihood = PredictiveIntelligenceEngine.calculatePredictiveLikelihood(prospect);
+
+    // Persist calculated forecast back to prospect
+    await adminDb.collection('prospects').doc(prospectId).update({
+      predictiveConversion: likelihood,
+      updatedAt: new Date().toISOString()
+    });
+
+    return { success: true, likelihood };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to calculate predictive conversion:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Calculation failed' };
   }
 }
 

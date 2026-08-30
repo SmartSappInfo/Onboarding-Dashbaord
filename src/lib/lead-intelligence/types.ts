@@ -110,6 +110,7 @@ export interface Prospect {
   ownerName?: string;
   stageName?: string;
   lastActivityAt?: string;
+  predictiveConversion?: PredictiveConversionLikelihood;
   createdAt: string;
   updatedAt: string;
 }
@@ -900,6 +901,60 @@ export interface AIOutreachDraft {
   groundingPoints: string[];
   status: 'draft' | 'approved' | 'sent';
 }
+
+// =============================================================================
+// PHASE 13: PREDICTIVE CONVERSION PROBABILITY & OPERATIONAL INBOX (Strict Typing)
+// =============================================================================
+
+export interface PredictiveConversionLikelihood {
+  meetingProbability: number; // 0 - 100
+  opportunityProbability: number; // 0 - 100
+  closeProbability: number; // 0 - 100
+  expectedACV: number;
+  currency: string;
+  confidenceLevel: 'high' | 'medium' | 'low';
+  topDrivers: string[];
+  calculatedAt: string;
+}
+
+export type IntelligenceInboxCategory = 
+  | 'all' 
+  | 'high_intent' 
+  | 'score_changes' 
+  | 'new_decision_makers' 
+  | 'duplicates' 
+  | 'verification_issues' 
+  | 'crm_matches' 
+  | 'ai_recommendations';
+
+export interface IntelligenceInboxItem {
+  id: string;
+  workspaceId: string;
+  prospectId: string;
+  prospectName: string;
+  domain: string;
+  category: IntelligenceInboxCategory;
+  title: string;
+  description: string;
+  timestamp: string;
+  priority: 'urgent' | 'high' | 'medium' | 'low';
+  isRead: boolean;
+  isDismissed: boolean;
+  actionType?: 'activate' | 'review_collision' | 'resolve_crm' | 'verify_email' | 'view_signals';
+  metadata?: Record<string, unknown>;
+}
+
+export interface InboxSummaryStats {
+  totalUnread: number;
+  highIntentCount: number;
+  scoreChangeCount: number;
+  decisionMakerCount: number;
+  collisionCount: number;
+  verificationIssueCount: number;
+  crmMatchCount: number;
+  aiRecommendationCount: number;
+}
+
 
 
 

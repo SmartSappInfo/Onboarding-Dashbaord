@@ -59,7 +59,9 @@ import { CRMStatusBadgeCard } from './CRMStatusBadgeCard';
 import { CRMMatchStudioModal } from './CRMMatchStudioModal';
 import { UnifiedActivityTimeline } from './UnifiedActivityTimeline';
 import { ProspectActivationModal } from './ProspectActivationModal';
+import { PredictiveProbabilityCard } from './PredictiveProbabilityCard';
 import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
+import { PredictiveIntelligenceEngine } from '@/lib/lead-intelligence/predictive';
 import { 
   verifyProspectEmailAction, 
   bulkVerifyProspectEmailsAction,
@@ -390,6 +392,11 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
                 onSyncToCRM={() => onSyncToCRM(prospect)}
                 onOpenMatchStudio={() => setIsMatchStudioOpen(true)}
                 isSyncing={isSyncing}
+              />
+
+              {/* Predictive Conversion Probability & Dynamic ACV Card (UI Spec Section 52) */}
+              <PredictiveProbabilityCard
+                likelihood={prospect.predictiveConversion || PredictiveIntelligenceEngine.calculatePredictiveLikelihood(prospect)}
               />
 
               {/* 4-Dimension Enrichment Progress Panel (UI Spec Section 22) */}

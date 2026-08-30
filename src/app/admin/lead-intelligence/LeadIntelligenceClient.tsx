@@ -29,7 +29,8 @@ import {
   Building2,
   GitMerge,
   Radio,
-  Sliders
+  Sliders,
+  Inbox
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -96,6 +97,9 @@ const SavedSearchesTab = dynamic(() => import('./components/SavedSearchesTab'), 
   loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const SettingsTab = dynamic(() => import('./components/SettingsTab'), {
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+});
+const IntelligenceInboxTab = dynamic(() => import('./components/IntelligenceInboxTab').then(m => m.IntelligenceInboxTab), {
   loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 
@@ -809,7 +813,11 @@ export default function LeadIntelligenceClient() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full max-w-6xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto gap-1">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-9 w-full max-w-6xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto gap-1">
+          <TabsTrigger value="inbox" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2 relative">
+            <Inbox className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
+            <span>Inbox</span>
+          </TabsTrigger>
           <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
             <Search className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Prospect Finder
@@ -855,6 +863,35 @@ export default function LeadIntelligenceClient() {
         </TabsList>
 
         <AnimatePresence mode="wait">
+          {/* TAB: INTELLIGENCE INBOX (UI Spec Section 55) */}
+          {activeTab === 'inbox' && (
+            <motion.div
+              key="inbox"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={kowalskiTransition}
+            >
+              <TabsContent value="inbox" className="mt-6">
+                <IntelligenceInboxTab
+                  workspaceId={activeWorkspaceId || ''}
+                  onSelectProspect={(p) => {
+                    const target = prospects.find(item => item.id === p.id) || recentProspects.find(item => item.id === p.id);
+                    if (target) {
+                      setSelectedProspect(target);
+                    } else {
+                      setSelectedProspect(p);
+                    }
+                  }}
+                  onOpenActivation={(p) => {
+                    const target = prospects.find(item => item.id === p.id) || recentProspects.find(item => item.id === p.id);
+                    setSelectedProspect(target || p);
+                  }}
+                />
+              </TabsContent>
+            </motion.div>
+          )}
+
           {/* TAB: SIGNALS FEED (UI Spec Section 31) */}
           {activeTab === 'signals' && (
             <motion.div
