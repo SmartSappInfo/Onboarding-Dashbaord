@@ -1468,7 +1468,15 @@ export type {
   Deal2,
   DealDuplicateOptions,
   DealMergeOptions,
-  DealMergeResult
+  DealMergeResult,
+  PipelineTarget,
+  StageFunnelStep,
+  SalesVelocityMetrics,
+  RepPerformanceMetrics,
+  StageBottleneck,
+  RevenueAttribution,
+  ForecastRiskSummary,
+  DealsAnalyticsDataset
 } from './deals/deal-types';
 
 export type {

@@ -1342,6 +1342,359 @@ export async function getAIResearchDossierAction(
   }
 }
 
+// =============================================================================
+// PHASE 7: LIVE CONTINUOUS SIGNALS & DELTA MONITORING SERVER ACTIONS
+// =============================================================================
+
+/**
+ * Retrieves all signals for a given workspace with optional category/unread filtering.
+ */
+export async function getWorkspaceSignalsAction(
+  workspaceId: string,
+  options?: {
+    category?: string;
+    strength?: string;
+    unreadOnly?: boolean;
+    limit?: number;
+  }
+): Promise<{
+  success: boolean;
+  signals?: import('@/lib/lead-intelligence/types').LeadSignal[];
+  unreadCount?: number;
+  error?: string;
+}> {
+  if (!workspaceId) {
+    return { success: false, error: 'Workspace ID is required' };
+  }
+
+  try {
+    let query: FirebaseFirestore.Query = adminDb
+      .collection('lead_signals')
+      .where('workspaceId', '==', workspaceId)
+      .where('isDismissed', '==', false);
+
+    if (options?.category && options.category !== 'all') {
+      query = query.where('category', '==', options.category);
+    }
+    if (options?.strength && options.strength !== 'all') {
+      query = query.where('strength', '==', options.strength);
+    }
+    if (options?.unreadOnly) {
+      query = query.where('isRead', '==', false);
+    }
+
+    const maxResults = options?.limit || 50;
+    const snap = await query.orderBy('detectedAt', 'desc').limit(maxResults).get();
+
+    const signals: import('@/lib/lead-intelligence/types').LeadSignal[] = [];
+    let unreadCount = 0;
+
+    snap.forEach((doc) => {
+      const data = doc.data() as import('@/lib/lead-intelligence/types').LeadSignal;
+      signals.push({ ...data, id: doc.id });
+      if (!data.isRead) {
+        unreadCount++;
+      }
+    });
+
+    return {
+      success: true,
+      signals,
+      unreadCount
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch workspace signals:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to retrieve signals'
+    };
+  }
+}
+
+/**
+ * Retrieves signals for a specific prospect.
+ */
+export async function getProspectSignalsAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  signals?: import('@/lib/lead-intelligence/types').LeadSignal[];
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const snap = await adminDb
+      .collection('lead_signals')
+      .where('workspaceId', '==', workspaceId)
+      .where('prospectId', '==', prospectId)
+      .where('isDismissed', '==', false)
+      .orderBy('detectedAt', 'desc')
+      .limit(20)
+      .get();
+
+    const signals: import('@/lib/lead-intelligence/types').LeadSignal[] = [];
+    snap.forEach((doc) => {
+      signals.push({ ...(doc.data() as import('@/lib/lead-intelligence/types').LeadSignal), id: doc.id });
+    });
+
+    return {
+      success: true,
+      signals
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch prospect signals:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to retrieve prospect signals'
+    };
+  }
+}
+
+/**
+ * Retrieves or initializes the account monitoring configuration for a prospect.
+ */
+export async function getAccountMonitoringConfigAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  config?: import('@/lib/lead-intelligence/types').AccountMonitoringConfig;
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  const { ContinuousSignalMonitorService } = await import('@/lib/lead-intelligence/signals/ContinuousSignalMonitorService');
+
+  try {
+    const docRef = adminDb.collection('account_monitoring').doc(prospectId);
+    const snap = await docRef.get();
+
+    if (snap.exists) {
+      return {
+        success: true,
+        config: snap.data() as import('@/lib/lead-intelligence/types').AccountMonitoringConfig
+      };
+    }
+
+    // Default configuration
+    const defaultConfig = ContinuousSignalMonitorService.getDefaultMonitoringConfig(prospectId, workspaceId);
+    await docRef.set(defaultConfig);
+
+    return {
+      success: true,
+      config: defaultConfig
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch monitoring config:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to retrieve monitoring configuration'
+    };
+  }
+}
+
+/**
+ * Saves updated account monitoring preferences for a prospect.
+ */
+export async function saveAccountMonitoringConfigAction(
+  config: import('@/lib/lead-intelligence/types').AccountMonitoringConfig
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  if (!config.prospectId || !config.workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    const now = new Date().toISOString();
+    const updatedConfig = {
+      ...config,
+      updatedAt: now
+    };
+
+    await adminDb.collection('account_monitoring').doc(config.prospectId).set(updatedConfig, { merge: true });
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to save monitoring config:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to save monitoring configuration'
+    };
+  }
+}
+
+/**
+ * Marks a lead signal as read.
+ */
+export async function markSignalReadAction(
+  signalId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!signalId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    await adminDb.collection('lead_signals').doc(signalId).update({
+      isRead: true
+    });
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to mark signal read:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to update signal' };
+  }
+}
+
+/**
+ * Dismisses a lead signal from feeds.
+ */
+export async function dismissSignalAction(
+  signalId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!signalId || !workspaceId) {
+    return { success: false, error: 'Invalid parameters' };
+  }
+
+  try {
+    await adminDb.collection('lead_signals').doc(signalId).update({
+      isDismissed: true
+    });
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to dismiss signal:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Failed to dismiss signal' };
+  }
+}
+
+/**
+ * Triggers an immediate delta re-scan for a prospect and registers any detected intent signals.
+ */
+export async function triggerProspectDeltaScanAction(
+  prospectId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  newSignalsCount: number;
+  signals?: import('@/lib/lead-intelligence/types').LeadSignal[];
+  error?: string;
+}> {
+  if (!prospectId || !workspaceId) {
+    return { success: false, newSignalsCount: 0, error: 'Invalid parameters' };
+  }
+
+  const { ContinuousSignalMonitorService } = await import('@/lib/lead-intelligence/signals/ContinuousSignalMonitorService');
+  const { DOMScraperService } = await import('@/lib/lead-intelligence/scraper/DOMScraperService');
+  const { SubdomainProberService } = await import('@/lib/lead-intelligence/scraper/SubdomainProberService');
+
+  try {
+    const prospectRef = adminDb.collection('prospects').doc(prospectId);
+    const snap = await prospectRef.get();
+    if (!snap.exists) {
+      return { success: false, newSignalsCount: 0, error: 'Prospect not found' };
+    }
+
+    const previousProspect = snap.data() as Prospect;
+    const domain = previousProspect.domain;
+
+    // Scrape fresh snapshot
+    let freshTech = previousProspect.websiteScan?.technologies || [];
+    const sslValid = previousProspect.websiteScan?.sslValid ?? true;
+    try {
+      const scrapeResult = await DOMScraperService.scrapeDomain(domain);
+      const detectedPayments = scrapeResult.paymentSignatures.map(p => p.provider);
+      if (detectedPayments.length > 0) {
+        freshTech = Array.from(new Set([...freshTech, ...detectedPayments]));
+      }
+    } catch {
+      // Graceful fallback to existing
+    }
+
+    // Probes subdomains
+    try {
+      const probes = await SubdomainProberService.probeDomain(domain);
+      const activeSubdomains = probes
+        .filter(p => p.status !== 'unreachable')
+        .map(p => `${p.subdomain}.${domain}`);
+      if (activeSubdomains.length > 0) {
+        freshTech = Array.from(new Set([...freshTech, ...activeSubdomains]));
+      }
+    } catch {
+      // Graceful fallback
+    }
+
+    const now = new Date().toISOString();
+    const currentProspect: Prospect = {
+      ...previousProspect,
+      websiteScan: {
+        ...(previousProspect.websiteScan || {
+          scannedAt: now,
+          hasFacebook: false,
+          hasInstagram: false,
+          hasLinkedIn: false,
+          hasTwitter: false
+        }),
+        scannedAt: now,
+        technologies: freshTech,
+        sslValid
+      },
+      updatedAt: now
+    };
+
+    // Detect deltas
+    const detectedSignals = ContinuousSignalMonitorService.detectDeltas(previousProspect, currentProspect);
+
+    // Persist new signals to Firestore in chunked batch
+    if (detectedSignals.length > 0) {
+      const batch = adminDb.batch();
+      for (const sig of detectedSignals) {
+        const sigRef = adminDb.collection('lead_signals').doc(sig.id);
+        batch.set(sigRef, sig, { merge: true });
+      }
+      await batch.commit();
+    }
+
+    // Update prospect active signals count and latest scan timestamp
+    await prospectRef.update({
+      'websiteScan.technologies': freshTech,
+      'websiteScan.sslValid': sslValid,
+      'websiteScan.scannedAt': now,
+      updatedAt: now,
+      activeSignalsCount: (previousProspect.activeSignalsCount || 0) + detectedSignals.length
+    });
+
+    // Update monitoring record
+    const monRef = adminDb.collection('account_monitoring').doc(prospectId);
+    await monRef.set({
+      lastScannedAt: now,
+      changesDetectedCount: (previousProspect.activeSignalsCount || 0) + detectedSignals.length,
+      updatedAt: now
+    }, { merge: true });
+
+    return {
+      success: true,
+      newSignalsCount: detectedSignals.length,
+      signals: detectedSignals
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to trigger delta scan:', err);
+    return {
+      success: false,
+      newSignalsCount: 0,
+      error: err instanceof Error ? err.message : 'Failed to execute delta scan'
+    };
+  }
+}
+
+
 
 
 

@@ -121,7 +121,7 @@ export interface DealSavedView {
   density?: TableDensity;
   sortBy?: string;
   sortDir?: 'asc' | 'desc';
-  viewMode?: 'kanban' | 'list' | 'forecast' | 'overview';
+  viewMode?: 'kanban' | 'list' | 'forecast' | 'overview' | 'analytics';
   createdAt: string;
   updatedAt: string;
 }

@@ -26,7 +26,8 @@ import {
     ChevronDown,
     Zap,
     TrendingUp,
-    Target
+    Target,
+    BarChart3
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -34,7 +35,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, orderBy, where } from 'firebase/firestore';
-import type { Pipeline, UserProfile, OnboardingStage, Tag, Automation } from '@/lib/types';
+import type { Pipeline, UserProfile, OnboardingStage, Tag, Automation, PipelineTarget } from '@/lib/types';
 import { KanbanFilters, DEFAULT_FILTERS } from './pipeline-types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +54,9 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import SavedViewsBar from './components/SavedViewsBar';
 import AdvancedFilterBuilderModal from './components/AdvancedFilterBuilderModal';
+import DealsAnalyticsView from './components/DealsAnalyticsView';
 import { listDealSavedViewsAction } from '@/app/actions/deal-saved-view-actions';
+import { getPipelineTargetsAction } from '@/app/actions/deal-analytics-actions';
 import {
   type DealSavedView,
   type DealColumnKey,
@@ -70,7 +73,7 @@ export default function PipelineClient() {
   const { toast } = useToast();
   const { plural } = useTerminology();
   
-  const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'list' | 'forecast' | 'config' | 'actions'>('board');
+  const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'list' | 'forecast' | 'analytics' | 'config' | 'actions'>('board');
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
 
@@ -120,6 +123,30 @@ export default function PipelineClient() {
   const [visibleColumns, setVisibleColumns] = React.useState<DealColumnKey[]>(DEFAULT_DEAL_COLUMNS);
   const [density, setDensity] = React.useState<TableDensity>('standard');
   const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = React.useState(false);
+
+  // Phase 7: Pipeline Revenue Targets State
+  const [pipelineTargets, setPipelineTargets] = React.useState<PipelineTarget[]>([]);
+
+  const loadPipelineTargets = React.useCallback(async () => {
+    if (!activeWorkspaceId) return;
+    try {
+      const res = await getPipelineTargetsAction(activeWorkspaceId, currentPipelineId);
+      if (res.success && res.targets) {
+        setPipelineTargets(res.targets);
+      }
+    } catch {
+      // Non-blocking fallback
+    }
+  }, [activeWorkspaceId, currentPipelineId]);
+
+  React.useEffect(() => {
+    loadPipelineTargets();
+  }, [loadPipelineTargets]);
+
+  const currentPipelineTarget = React.useMemo(() => {
+    if (!pipelineTargets || pipelineTargets.length === 0) return null;
+    return pipelineTargets.find(t => t.pipelineId === currentPipelineId) || pipelineTargets.find(t => !t.pipelineId) || null;
+  }, [pipelineTargets, currentPipelineId]);
 
   // Pipeline Switcher & Clone state
   const [isSwitcherOpen, setIsSwitcherOpen] = React.useState(false);
@@ -354,8 +381,8 @@ export default function PipelineClient() {
     if (view.density) {
       setDensity(view.density);
     }
-    if (view.viewMode && ['overview', 'board', 'list', 'forecast'].includes(view.viewMode)) {
-      setActiveView(view.viewMode as 'overview' | 'board' | 'list' | 'forecast');
+    if (view.viewMode && ['overview', 'board', 'list', 'forecast', 'analytics'].includes(view.viewMode)) {
+      setActiveView(view.viewMode as 'overview' | 'board' | 'list' | 'forecast' | 'analytics');
     }
   }, [user?.uid]);
 
@@ -667,6 +694,7 @@ export default function PipelineClient() {
                         <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'board' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="h-3.5 w-3.5" /> Board</Button>
                         <Button variant="ghost" onClick={() => setActiveView('list')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'list' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><List className="h-3.5 w-3.5" /> List</Button>
                         <Button variant="ghost" onClick={() => setActiveView('forecast')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'forecast' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Target className="h-3.5 w-3.5" /> Forecast</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('analytics')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'analytics' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><BarChart3 className="h-3.5 w-3.5" /> Analytics</Button>
                         <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'config' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="h-3.5 w-3.5" /> Config</Button>
                         <Button variant="ghost" onClick={() => setActiveView('actions')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'actions' ? "bg-card shadow-md text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Actions</Button>
                     </div>
@@ -675,7 +703,7 @@ export default function PipelineClient() {
         </header>
 
         {/* Phase 6: Saved Views & Presets Bar */}
-        {activeView !== 'config' && activeView !== 'actions' && (
+        {activeView !== 'config' && activeView !== 'actions' && activeView !== 'analytics' && (
             <SavedViewsBar
                 workspaceId={activeWorkspaceId || ''}
                 userId={user?.uid || ''}
@@ -693,7 +721,7 @@ export default function PipelineClient() {
         )}
 
         {/* Inline workspace-scoped filter card */}
-        {activeView !== 'config' && activeView !== 'actions' && activeView !== 'overview' && activeView !== 'forecast' && (
+        {activeView !== 'config' && activeView !== 'actions' && activeView !== 'overview' && activeView !== 'forecast' && activeView !== 'analytics' && (
             <PipelineFilterBar
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
@@ -738,6 +766,35 @@ export default function PipelineClient() {
                                 pipelineId={currentPipeline.id}
                                 stages={filterStages || []}
                                 deals={activePipelineDeals}
+                                pipelineTarget={currentPipelineTarget}
+                                onOpenDeal={(deal) => {
+                                    window.open(`/admin/deals/${deal.id}`, '_blank');
+                                }}
+                                onTargetSaved={() => {
+                                    loadPipelineTargets();
+                                }}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">
+                                <Workflow size={120} />
+                                <p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p>
+                            </div>
+                        )}
+                    </motion.div>
+                ) : activeView === 'analytics' ? (
+                    <motion.div key={`analytics-${currentPipelineId}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="h-full w-full overflow-hidden">
+                        {currentPipeline ? (
+                            <DealsAnalyticsView
+                                pipeline={currentPipeline}
+                                stages={filterStages || []}
+                                deals={activePipelineDeals}
+                                users={users || []}
+                                pipelineTarget={currentPipelineTarget}
+                                onNavigateToBoard={() => setActiveView('board')}
+                                onNavigateToList={() => setActiveView('list')}
+                                onTargetSaved={() => {
+                                    loadPipelineTargets();
+                                }}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">

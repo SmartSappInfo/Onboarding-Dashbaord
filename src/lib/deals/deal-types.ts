@@ -412,3 +412,145 @@ export interface DealInteractionResult {
   activityId?: string;
   error?: string;
 }
+
+/**
+ * ============================================================================
+ * PHASE 7: FORECASTING & REVENUE ANALYTICS MATRIX DOMAIN TYPES (PRD Section 124)
+ * ============================================================================
+ */
+
+/**
+ * Workspace or Pipeline revenue target / quota for a given period
+ */
+export interface PipelineTarget {
+  id: string;
+  workspaceId: string;
+  pipelineId?: string | null; // null represents workspace-level target
+  period: string; // e.g., '2026-08', '2026-Q3', '2026'
+  targetAmount: number;
+  currency: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Stage-by-stage progression and conversion metrics for funnel analytics
+ */
+export interface StageFunnelStep {
+  stageId: string;
+  stageName: string;
+  stageColor: string;
+  order: number;
+  dealsEntered: number;
+  dealsConverted: number;
+  conversionRate: number; // 0 - 100 percentage
+  dropOffRate: number; // 0 - 100 percentage
+  avgDaysInStage: number;
+  totalValue: number;
+  slaDays?: number;
+}
+
+/**
+ * Velocity & cycle duration analytics (PRD Section 51)
+ */
+export interface SalesVelocityMetrics {
+  salesVelocityPerDay: number; // ($ active * winRate% * avgDealSize) / avgCycleDays
+  avgSalesCycleDays: number; // Avg days from creation to won
+  winRatePercentage: number;
+  avgDealSize: number;
+  activePipelineValue: number;
+  totalWonDeals: number;
+  totalWonRevenue: number;
+  timeToProposalDays: number;
+  timeToCloseDays: number;
+}
+
+/**
+ * Individual Sales Rep performance scorecard & metrics (PRD Section 52)
+ */
+export interface RepPerformanceMetrics {
+  userId: string;
+  userName: string;
+  userEmail: string;
+  avatarUrl?: string;
+  dealsCount: number;
+  dealsWonCount: number;
+  dealsLostCount: number;
+  winRatePercentage: number;
+  revenueWon: number;
+  activePipelineValue: number;
+  avgDealSize: number;
+  avgSalesCycleDays: number;
+  activitiesCount: number;
+}
+
+/**
+ * Pipeline bottleneck detection alert item (PRD Section 53)
+ */
+export interface StageBottleneck {
+  stageId: string;
+  stageName: string;
+  stageColor: string;
+  slaDays?: number;
+  avgDaysInStage: number;
+  delayFactor: number; // e.g. 1.5x, 2.3x SLA
+  dropOffRate: number;
+  severity: 'warning' | 'critical';
+  reason: string;
+}
+
+/**
+ * Revenue attribution breakdown by lead source or campaign channel (PRD Section 51)
+ */
+export interface RevenueAttribution {
+  source: string;
+  revenueWon: number;
+  dealsCount: number;
+  percentage: number;
+}
+
+/**
+ * Forecast risk summary metrics (UI Section 34)
+ */
+export interface ForecastRiskSummary {
+  highRiskCommitValue: number;
+  highRiskCommitCount: number;
+  closingIn14DaysValue: number;
+  closingIn14DaysCount: number;
+  withoutNextStepsValue: number;
+  withoutNextStepsCount: number;
+  highRiskCommitDeals: Deal[];
+  closingSoonDeals: Deal[];
+  noNextStepDeals: Deal[];
+}
+
+/**
+ * Consolidated 3-Tier Analytics Dataset (UI Section 35)
+ */
+export interface DealsAnalyticsDataset {
+  executive: {
+    totalRevenueWon: number;
+    totalPipelineValue: number;
+    weightedForecastValue: number;
+    winRatePercentage: number;
+    targetAmount: number;
+    pipelineCoverageRatio: number; // totalPipelineValue / targetAmount
+    forecastAccuracy: number; // 0 - 100 percentage
+  };
+  management: {
+    funnel: StageFunnelStep[];
+    velocity: SalesVelocityMetrics;
+    reps: RepPerformanceMetrics[];
+    bottlenecks: StageBottleneck[];
+  };
+  operations: {
+    stalledDealsCount: number;
+    stalledDealsValue: number;
+    slaBreachedCount: number;
+    slaBreachedValue: number;
+    riskSummary: ForecastRiskSummary;
+    attributions: RevenueAttribution[];
+  };
+}
+
