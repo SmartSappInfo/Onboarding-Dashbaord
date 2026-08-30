@@ -27,7 +27,8 @@ import {
   Flame, 
   Database, 
   Building2,
-  GitMerge
+  GitMerge,
+  Radio
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -50,7 +51,8 @@ import {
   batchEnrichProspectsAction,
   importProspectsFromCSVAction,
   saveViewAction,
-  getIdentityCollisionsAction
+  getIdentityCollisionsAction,
+  getWorkspaceSignalsAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
@@ -77,6 +79,9 @@ const LeadListsTab = dynamic(() => import('./components/LeadListsTab').then(m =>
   loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const DeduplicationQueueTab = dynamic(() => import('./components/DeduplicationQueueTab').then(m => m.DeduplicationQueueTab), {
+  loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+});
+const SignalsFeedTab = dynamic(() => import('./components/SignalsFeedTab').then(m => m.SignalsFeedTab), {
   loading: () => <div className="py-16 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
 });
 const WebsiteScannerTab = dynamic(() => import('./components/WebsiteScannerTab'), {
@@ -208,16 +213,20 @@ export default function LeadIntelligenceClient() {
   // Deduplication Queue State (Phase 3)
   const [pendingCollisionsCount, setPendingCollisionsCount] = useState<number>(0);
 
+  // Live Continuous Signals State (Phase 7)
+  const [unreadSignalsCount, setUnreadSignalsCount] = useState<number>(0);
+
   // Initial Data Fetch
   const loadInitialData = React.useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
-      const [keys, recent, searches, lists, pendingCollisions] = await Promise.all([
+      const [keys, recent, searches, lists, pendingCollisions, signalsRes] = await Promise.all([
         getLeadSettingsAction(activeWorkspaceId),
         getRecentProspectsAction(activeWorkspaceId),
         getSavedSearchesAction(activeWorkspaceId),
         getLeadListsAction(activeWorkspaceId),
-        getIdentityCollisionsAction(activeWorkspaceId, 'pending_review')
+        getIdentityCollisionsAction(activeWorkspaceId, 'pending_review'),
+        getWorkspaceSignalsAction(activeWorkspaceId, { unreadOnly: true })
       ]);
       setSettings(keys);
       setRecentProspects(recent);
@@ -227,6 +236,9 @@ export default function LeadIntelligenceClient() {
       setSavedSearches(searches);
       setLeadLists(lists);
       setPendingCollisionsCount(pendingCollisions.length);
+      if (signalsRes.success && typeof signalsRes.unreadCount === 'number') {
+        setUnreadSignalsCount(signalsRes.unreadCount);
+      }
     } catch (err: unknown) {
       console.error('[LeadIntelligenceClient] Failed to load initial workspace data:', err);
     }
@@ -768,10 +780,19 @@ export default function LeadIntelligenceClient() {
 
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-3 sm:grid-cols-7 w-full max-w-5xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 w-full max-w-6xl bg-muted/40 backdrop-blur-md border border-border/60 p-1 rounded-xl h-auto gap-1">
           <TabsTrigger value="finder" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
             <Search className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
             Prospect Finder
+          </TabsTrigger>
+          <TabsTrigger value="signals" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2 relative">
+            <Radio className="w-3.5 h-3.5 mr-1 hidden sm:inline text-rose-500" />
+            <span>Signals</span>
+            {unreadSignalsCount > 0 && (
+              <Badge className="ml-1 h-4 px-1 text-[9px] bg-rose-500 text-white font-bold rounded-full">
+                {unreadSignalsCount}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="lists" className="rounded-lg text-xs font-semibold data-[state=active]:bg-primary/10 data-[state=active]:text-primary py-2">
             <Folder className="w-3.5 h-3.5 mr-1 hidden sm:inline" />
@@ -805,6 +826,33 @@ export default function LeadIntelligenceClient() {
         </TabsList>
 
         <AnimatePresence mode="wait">
+          {/* TAB: SIGNALS FEED (UI Spec Section 31) */}
+          {activeTab === 'signals' && (
+            <motion.div
+              key="signals"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -12 }}
+              transition={kowalskiTransition}
+            >
+              <TabsContent value="signals" className="mt-6">
+                <SignalsFeedTab
+                  workspaceId={activeWorkspaceId || ''}
+                  onSelectProspect={(pid) => {
+                    const target = prospects.find(p => p.id === pid) || recentProspects.find(p => p.id === pid);
+                    if (target) setSelectedProspect(target);
+                  }}
+                  onCreateTask={(sig) => {
+                    toast({
+                      title: 'Follow-up Task Scheduled ✓',
+                      description: `Created CRM task for ${sig.prospectName}: "${sig.recommendedAction}"`
+                    });
+                  }}
+                />
+              </TabsContent>
+            </motion.div>
+          )}
+
           {/* TAB 1: PROSPECT FINDER */}
           {activeTab === 'finder' && (
             <motion.div

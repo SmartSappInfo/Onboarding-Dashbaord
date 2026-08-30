@@ -96,6 +96,8 @@ export interface Prospect {
   scoring: ProspectScoring;
   aiInsights?: ProspectAIInsights;
   researchDossier?: AIResearchDossier;
+  activeSignalsCount?: number;
+  monitoringConfig?: AccountMonitoringConfig;
   provenance?: ProvenanceRecord[];
   source?: DiscoverySourceType;
   listIds?: string[];
@@ -485,3 +487,76 @@ export interface AIResearchDossier {
   researchedAt: string;
   modelEngine: string;
 }
+
+// =============================================================================
+// PHASE 7: LIVE CONTINUOUS SIGNALS & DELTA MONITORING (Strict Typing)
+// =============================================================================
+
+export type LeadSignalType =
+  | 'payment_gap_detected'
+  | 'payment_gateway_added'
+  | 'payment_gateway_removed'
+  | 'subdomain_portal_detected'
+  | 'subdomain_portal_removed'
+  | 'cms_changed'
+  | 'ssl_expiring'
+  | 'ssl_renewed'
+  | 'new_decision_maker'
+  | 'contact_email_verified'
+  | 'contact_email_invalid'
+  | 'review_spike_negative'
+  | 'high_intent_surge'
+  | 'crm_interaction';
+
+export type LeadSignalCategory =
+  | 'intent'
+  | 'technographic'
+  | 'firmographic'
+  | 'leadership'
+  | 'compliance'
+  | 'engagement';
+
+export type LeadSignalStrength = 'critical' | 'high' | 'medium' | 'low';
+
+export interface LeadSignal {
+  id: string;
+  workspaceId: string;
+  prospectId: string;
+  prospectName: string;
+  prospectDomain: string;
+  type: LeadSignalType;
+  category: LeadSignalCategory;
+  title: string;
+  headline: string;
+  description: string;
+  strength: LeadSignalStrength;
+  confidence: number; // 0 - 100
+  scoreImpact: number; // -25 to +35
+  previousValue?: string;
+  currentValue?: string;
+  potentialImplication: string;
+  recommendedAction: string;
+  detectedAt: string;
+  source: string;
+  isRead?: boolean;
+  isDismissed?: boolean;
+}
+
+export interface AccountMonitoringConfig {
+  prospectId: string;
+  workspaceId: string;
+  status: 'healthy' | 'warning' | 'paused';
+  frequency: 'daily' | 'weekly' | 'monthly';
+  monitorWebsite: boolean;
+  monitorTechnology: boolean;
+  monitorDecisionMakers: boolean;
+  monitorBusinessChanges: boolean;
+  notifyInApp: boolean;
+  notifyEmail: boolean;
+  notifyWhatsApp: boolean;
+  lastScannedAt?: string;
+  changesDetectedCount: number;
+  activeAlertsCount: number;
+  updatedAt: string;
+}
+

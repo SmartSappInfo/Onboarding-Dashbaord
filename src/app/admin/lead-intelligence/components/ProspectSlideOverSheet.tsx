@@ -9,7 +9,7 @@
  * 3. 1-Click Productivity: Provides instant copy-to-clipboard for emails and AI pitches with animated feedback.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Building2, 
   Globe, 
@@ -28,7 +28,8 @@ import {
   Database, 
   DollarSign, 
   Flame,
-  Loader2 
+  Loader2,
+  Radio 
 } from 'lucide-react';
 import { 
   Sheet, 
@@ -49,13 +50,16 @@ import { ProspectProvenanceDrawer } from './ProspectProvenanceDrawer';
 import { EmailDeliverabilityBadge } from './EmailDeliverabilityBadge';
 import { VerificationDiagnosticModal } from './VerificationDiagnosticModal';
 import { ResearchDossierModal } from './ResearchDossierModal';
+import { AccountMonitoringConfigModal } from './AccountMonitoringConfigModal';
+import { SignalBadge } from './SignalBadge';
 import { TechnographicsCategorizer } from '@/lib/lead-intelligence/scraper/TechnographicsCategorizer';
 import { 
   verifyProspectEmailAction, 
   bulkVerifyProspectEmailsAction,
-  generateAIResearchDossierAction 
+  generateAIResearchDossierAction,
+  getProspectSignalsAction 
 } from '@/app/actions/lead-intelligence-actions';
-import type { EmailDeliverabilityResult, AIResearchDossier } from '@/lib/lead-intelligence/types';
+import type { EmailDeliverabilityResult, AIResearchDossier, LeadSignal } from '@/lib/lead-intelligence/types';
 
 interface ProspectSlideOverSheetProps {
   prospect: Prospect | null;
@@ -91,6 +95,22 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
   const [isDossierModalOpen, setIsDossierModalOpen] = useState(false);
   const [isGeneratingDossier, setIsGeneratingDossier] = useState(false);
   const [localDossier, setLocalDossier] = useState<AIResearchDossier | null>(null);
+
+  // Live Continuous Signals state (Phase 7)
+  const [isMonitoringModalOpen, setIsMonitoringModalOpen] = useState(false);
+  const [prospectSignals, setProspectSignals] = useState<LeadSignal[]>([]);
+
+  useEffect(() => {
+    if (prospect?.id && prospect?.workspaceId && isOpen) {
+      getProspectSignalsAction(prospect.id, prospect.workspaceId)
+        .then((res) => {
+          if (res.success && res.signals) {
+            setProspectSignals(res.signals);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [prospect?.id, prospect?.workspaceId, isOpen]);
 
   if (!prospect) return null;
 
@@ -410,6 +430,44 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
                   <p className="text-xs text-foreground font-medium">{prospect.address}</p>
                 </div>
               )}
+
+              {/* Live Signals & Account Monitoring (UI Spec Section 31 & 33) */}
+              <div className="p-3.5 rounded-xl border border-primary/20 bg-primary/5 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5">
+                    <Radio className="h-4 w-4 text-rose-500 animate-pulse" />
+                    <h5 className="text-xs font-bold text-foreground">
+                      Live Continuous Signals ({prospectSignals.length})
+                    </h5>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsMonitoringModalOpen(true)}
+                    className="h-6 px-2 text-[10px] text-primary hover:text-primary/80 font-bold active:scale-[0.97]"
+                  >
+                    Configure Monitoring
+                  </Button>
+                </div>
+
+                {prospectSignals.length > 0 ? (
+                  <div className="space-y-1.5 pt-1">
+                    {prospectSignals.slice(0, 3).map((sig) => (
+                      <div key={sig.id} className="flex items-start justify-between gap-2 p-2 rounded-lg bg-background/80 border border-border/50 text-xs">
+                        <div className="space-y-0.5">
+                          <strong className="text-[11px] text-foreground block">{sig.headline}</strong>
+                          <span className="text-[10px] text-muted-foreground">{sig.description}</span>
+                        </div>
+                        <SignalBadge signal={sig} />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    No recent structural changes detected. Account monitored with automated background delta scans.
+                  </p>
+                )}
+              </div>
 
               {/* RevOps Provenance & Evidence Drawer (UI Spec Section 24 & 28) */}
               <ProspectProvenanceDrawer prospect={prospect} />
@@ -732,6 +790,20 @@ export const ProspectSlideOverSheet: React.FC<ProspectSlideOverSheetProps> = ({
         onClose={() => setIsDossierModalOpen(false)}
         onSyncToCRM={onSyncToCRM}
         onDossierUpdated={(updated) => setLocalDossier(updated)}
+      />
+
+      {/* Account Monitoring Preferences Modal (UI Spec Section 33) */}
+      <AccountMonitoringConfigModal
+        prospect={prospect}
+        isOpen={isMonitoringModalOpen}
+        onClose={() => setIsMonitoringModalOpen(false)}
+        onScanCompleted={(count) => {
+          if (count > 0 && prospect?.id && prospect?.workspaceId) {
+            getProspectSignalsAction(prospect.id, prospect.workspaceId).then((res) => {
+              if (res.success && res.signals) setProspectSignals(res.signals);
+            });
+          }
+        }}
       />
     </Sheet>
   );
