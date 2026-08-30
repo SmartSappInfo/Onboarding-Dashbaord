@@ -27,12 +27,12 @@ import type { AutomationDeadLetter } from '../types';
 /**
  * Generates a deterministic idempotency key for an automation step execution
  */
-export function generateStepIdempotencyKey(
+export async function generateStepIdempotencyKey(
   automationId: string,
   runId: string,
   nodeId: string,
   eventId?: string
-): string {
+): Promise<string> {
   const cleanEvent = eventId ? `_${eventId}` : '';
   return `idem_${automationId}_${runId}_${nodeId}${cleanEvent}`;
 }
