@@ -915,6 +915,8 @@ export default function LeadIntelligenceClient() {
             >
               <TabsContent value="lists" className="mt-6">
                 <LeadListsTab
+                  workspaceId={activeWorkspaceId || ''}
+                  organizationId={organizationId || ''}
                   leadLists={leadLists}
                   allProspects={prospects.concat(recentProspects)}
                   onCreateList={handleCreateLeadList}

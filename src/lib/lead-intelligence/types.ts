@@ -669,3 +669,110 @@ export interface UnifiedActivityItem {
   metadata?: Record<string, string | number | boolean>;
 }
 
+// =============================================================================
+// PHASE 10: DYNAMIC LISTS, VISUAL SEGMENTS & PROSPECTING CAMPAIGNS (Strict Typing)
+// =============================================================================
+
+export type SegmentPredicateField =
+  | 'overallScore'
+  | 'needScore'
+  | 'buyingIntent'
+  | 'icpFitScore'
+  | 'crmStatus'
+  | 'industry'
+  | 'city'
+  | 'country'
+  | 'hasVerifiedContact'
+  | 'technologies'
+  | 'signals';
+
+export type SegmentOperator =
+  | 'equals'
+  | 'not_equals'
+  | 'greater_than'
+  | 'less_than'
+  | 'contains'
+  | 'not_contains'
+  | 'in'
+  | 'is_true'
+  | 'is_false';
+
+export interface SegmentRule {
+  id: string;
+  field: SegmentPredicateField;
+  operator: SegmentOperator;
+  value: string | number | boolean | string[];
+}
+
+export interface SegmentRuleGroup {
+  id: string;
+  combinator: 'AND' | 'OR';
+  rules: Array<SegmentRule | SegmentRuleGroup>;
+}
+
+export interface DynamicSegment {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  icon?: string;
+  ruleGroup: SegmentRuleGroup;
+  cachedCount?: number;
+  isTemplate?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProspectingCampaignTargetCriteria {
+  region?: string;
+  industry?: string;
+  minRating?: number;
+  sourceType: 'places' | 'list' | 'all_discovered';
+  sourceListId?: string;
+}
+
+export interface ProspectingCampaignEnrichmentOptions {
+  runWebScan: boolean;
+  extractDecisionMakers: boolean;
+  verifyEmails: boolean;
+  generateAIDossier: boolean;
+}
+
+export interface ProspectingCampaignActivationOptions {
+  createDeals: boolean;
+  pipelineId?: string;
+  stageId?: string;
+  enrollInCadence: boolean;
+  channel: 'email' | 'whatsapp' | 'call_script';
+}
+
+export interface ProspectingCampaignStats {
+  totalProspects: number;
+  enrichedCount: number;
+  verifiedCount: number;
+  qualifiedCount: number;
+  dealsCreated: number;
+  outreachSent: number;
+}
+
+export interface ProspectingCampaign {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  name: string;
+  status: 'draft' | 'running' | 'completed' | 'paused';
+  targetCriteria: ProspectingCampaignTargetCriteria;
+  enrichmentOptions: ProspectingCampaignEnrichmentOptions;
+  qualificationThreshold: number; // minimum priority score (e.g. 75)
+  assignment: {
+    type: 'round_robin' | 'specific_rep' | 'unassigned';
+    repIds: string[];
+  };
+  activation: ProspectingCampaignActivationOptions;
+  stats: ProspectingCampaignStats;
+  createdAt: string;
+  updatedAt: string;
+}
+
+

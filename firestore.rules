@@ -2786,6 +2786,37 @@ service cloud.firestore {
       );
     }
 
+    // --- Lead Intelligence Phase 10: Dynamic Segments & Prospecting Campaigns ---
+    match /dynamic_segments/{segmentId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create, update: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /prospecting_campaigns/{campaignId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create, update: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
     // --- Social Intelligence Suite (Phases 1-5) ---
     match /socialAccounts/{accountId} {
       allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));

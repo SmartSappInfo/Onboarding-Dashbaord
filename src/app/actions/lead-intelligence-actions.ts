@@ -28,7 +28,10 @@ import type {
   ExplainableScoreBreakdown,
   CRMMatchCandidate,
   CRMEnrichmentMergePayload,
-  UnifiedActivityItem
+  UnifiedActivityItem,
+  DynamicSegment,
+  SegmentRuleGroup,
+  ProspectingCampaign
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
@@ -36,6 +39,8 @@ import { canonicalizeDomain, evaluateIdentityMatch } from '@/lib/lead-intelligen
 import { CSVImportProvider } from '@/lib/lead-intelligence/providers/CSVImportProvider';
 import { ExplainableScoringEngine } from '@/lib/lead-intelligence/scoring';
 import { CRMIntelligenceService } from '@/lib/lead-intelligence/crm';
+import { SegmentPredicateEvaluator } from '@/lib/lead-intelligence/segmentation';
+import { ProspectingCampaignEngine } from '@/lib/lead-intelligence/campaigns';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -2216,6 +2221,316 @@ export async function getUnifiedActivityTimelineAction(
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to fetch unified timeline:', err);
     return { success: false, activities: [] };
+  }
+}
+
+// =============================================================================
+// PHASE 10: DYNAMIC LISTS, VISUAL SEGMENTS & PROSPECTING CAMPAIGNS
+// =============================================================================
+
+/**
+ * Retrieves all dynamic segments for a workspace, auto-seeding default templates if empty.
+ */
+export async function getWorkspaceSegmentsAction(
+  workspaceId: string,
+  organizationId: string
+): Promise<{
+  success: boolean;
+  segments: DynamicSegment[];
+}> {
+  if (!workspaceId) return { success: false, segments: [] };
+
+  try {
+    const snap = await adminDb
+      .collection('dynamic_segments')
+      .where('workspaceId', '==', workspaceId)
+      .get();
+
+    if (snap.empty) {
+      // Seed default RevOps templates
+      const templates = SegmentPredicateEvaluator.getDefaultSegmentTemplates(workspaceId, organizationId);
+      const batch = adminDb.batch();
+      for (const tmpl of templates) {
+        batch.set(adminDb.collection('dynamic_segments').doc(tmpl.id), tmpl);
+      }
+      await batch.commit();
+      return { success: true, segments: templates };
+    }
+
+    const segments: DynamicSegment[] = snap.docs.map(doc => doc.data() as DynamicSegment);
+    return { success: true, segments };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch dynamic segments:', err);
+    return { success: false, segments: [] };
+  }
+}
+
+/**
+ * Saves or updates a dynamic segment.
+ */
+export async function saveDynamicSegmentAction(
+  segment: DynamicSegment
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  if (!segment.id || !segment.workspaceId) return { success: false, error: 'Invalid segment parameters' };
+
+  try {
+    const now = new Date().toISOString();
+    const docData: DynamicSegment = {
+      ...segment,
+      updatedAt: now,
+      createdAt: segment.createdAt || now
+    };
+
+    await adminDb.collection('dynamic_segments').doc(segment.id).set(docData, { merge: true });
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to save segment:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Save segment failed' };
+  }
+}
+
+/**
+ * Deletes a dynamic segment.
+ */
+export async function deleteDynamicSegmentAction(
+  segmentId: string,
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  if (!segmentId || !workspaceId) return { success: false, error: 'Invalid segmentId' };
+
+  try {
+    await adminDb.collection('dynamic_segments').doc(segmentId).delete();
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to delete segment:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Delete segment failed' };
+  }
+}
+
+/**
+ * Evaluates in-memory matching count for a dynamic segment rule group across workspace prospects.
+ */
+export async function evaluateSegmentCountAction(
+  workspaceId: string,
+  ruleGroup: SegmentRuleGroup
+): Promise<{
+  success: boolean;
+  count: number;
+  total: number;
+}> {
+  if (!workspaceId) return { success: false, count: 0, total: 0 };
+
+  try {
+    const snap = await adminDb
+      .collection('prospects')
+      .where('workspaceId', '==', workspaceId)
+      .limit(1000)
+      .get();
+
+    const prospects: Prospect[] = snap.docs.map(doc => doc.data() as Prospect);
+    const matching = SegmentPredicateEvaluator.filterProspectsBySegment(prospects, ruleGroup);
+
+    return {
+      success: true,
+      count: matching.length,
+      total: prospects.length
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to evaluate segment count:', err);
+    return { success: false, count: 0, total: 0 };
+  }
+}
+
+/**
+ * Retrieves all prospecting campaigns for a workspace.
+ */
+export async function getProspectingCampaignsAction(
+  workspaceId: string
+): Promise<{
+  success: boolean;
+  campaigns: ProspectingCampaign[];
+}> {
+  if (!workspaceId) return { success: false, campaigns: [] };
+
+  try {
+    const snap = await adminDb
+      .collection('prospecting_campaigns')
+      .where('workspaceId', '==', workspaceId)
+      .get();
+
+    const campaigns: ProspectingCampaign[] = snap.docs.map(doc => doc.data() as ProspectingCampaign);
+    return { success: true, campaigns };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to fetch prospecting campaigns:', err);
+    return { success: false, campaigns: [] };
+  }
+}
+
+/**
+ * Saves or updates a prospecting campaign draft or active campaign.
+ */
+export async function saveProspectingCampaignAction(
+  campaign: ProspectingCampaign
+): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  if (!campaign.id || !campaign.workspaceId) return { success: false, error: 'Invalid campaign' };
+
+  try {
+    const now = new Date().toISOString();
+    const docData: ProspectingCampaign = {
+      ...campaign,
+      updatedAt: now,
+      createdAt: campaign.createdAt || now
+    };
+
+    await adminDb.collection('prospecting_campaigns').doc(campaign.id).set(docData, { merge: true });
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to save campaign:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Save campaign failed' };
+  }
+}
+
+/**
+ * Executes an 8-step prospecting campaign launcher in safe chunks of <= 120 prospects.
+ */
+export async function launchProspectingCampaignAction(
+  campaignId: string,
+  workspaceId: string,
+  organizationId: string
+): Promise<{
+  success: boolean;
+  qualifiedCount?: number;
+  dealsCreated?: number;
+  error?: string;
+}> {
+  if (!campaignId || !workspaceId) return { success: false, error: 'Campaign ID and Workspace ID required' };
+
+  try {
+    const campDoc = await adminDb.collection('prospecting_campaigns').doc(campaignId).get();
+    if (!campDoc.exists) return { success: false, error: 'Campaign not found' };
+
+    const campaign = campDoc.data() as ProspectingCampaign;
+
+    // Fetch candidate prospects
+    const snap = await adminDb
+      .collection('prospects')
+      .where('workspaceId', '==', workspaceId)
+      .limit(1000)
+      .get();
+
+    const prospects: Prospect[] = snap.docs.map(d => d.data() as Prospect);
+    const executionList = ProspectingCampaignEngine.prepareExecutionPayloads(prospects, campaign);
+
+    const now = new Date().toISOString();
+    let dealsCreated = 0;
+
+    // Chunk writes in safe blocks of 120 prospects (240 operations max <= 250 batch limit)
+    const chunks = chunkArray(executionList, 120);
+
+    for (const chunk of chunks) {
+      const batch = adminDb.batch();
+
+      for (const item of chunk) {
+        const p = item.prospect;
+        const pRef = adminDb.collection('prospects').doc(p.id);
+
+        if (campaign.activation.createDeals && p.syncStatus !== 'synced') {
+          const entityId = `entity_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+          const wsEntityId = `${workspaceId}_${entityId}`;
+
+          const newEntity: Entity = {
+            id: entityId,
+            organizationId,
+            entityType: 'institution',
+            name: p.name,
+            slug: canonicalizeDomain(p.domain) || p.name.toLowerCase().replace(/[^a-z0-9]/g, ''),
+            location: p.address ? { locationString: p.address } : undefined,
+            entityContacts: p.contacts.map((c, i) => ({
+              id: `c_${Date.now()}_${i}`,
+              name: c.name,
+              email: c.email || '',
+              phone: c.phone || '',
+              typeKey: 'lead',
+              typeLabel: c.role || 'Contact',
+              isPrimary: i === 0,
+              isSignatory: false,
+              order: i
+            })),
+            globalTags: ['campaign-lead'],
+            status: 'active',
+            createdAt: now,
+            updatedAt: now
+          };
+
+          const newWorkspaceEntity: WorkspaceEntity = {
+            id: wsEntityId,
+            organizationId,
+            workspaceId,
+            entityId,
+            entityType: 'institution',
+            status: 'active',
+            workspaceTags: ['campaign-lead', campaign.name.toLowerCase().replace(/\s+/g, '-')],
+            displayName: p.name,
+            displayNameLower: p.name.toLowerCase(),
+            primaryContactName: p.contacts[0]?.name,
+            primaryEmail: p.contacts[0]?.email,
+            primaryPhone: p.contacts[0]?.phone,
+            entityContacts: newEntity.entityContacts,
+            addedAt: now,
+            updatedAt: now
+          };
+
+          batch.set(adminDb.collection('entities').doc(entityId), newEntity);
+          batch.set(adminDb.collection('workspace_entities').doc(wsEntityId), newWorkspaceEntity);
+
+          batch.update(pRef, {
+            syncStatus: 'synced',
+            syncedEntityId: entityId,
+            crmStatus: 'synced',
+            ownerName: item.assignedRepId || 'Campaign Sales Team',
+            stageName: 'Campaign Prospecting',
+            updatedAt: now
+          });
+
+          dealsCreated++;
+        } else {
+          batch.update(pRef, {
+            ownerName: item.assignedRepId || p.ownerName,
+            updatedAt: now
+          });
+        }
+      }
+
+      await batch.commit();
+    }
+
+    // Update campaign status
+    const updatedStats = ProspectingCampaignEngine.calculateCampaignFunnelStats(prospects, campaign);
+    updatedStats.dealsCreated = dealsCreated;
+
+    await adminDb.collection('prospecting_campaigns').doc(campaignId).update({
+      status: 'running',
+      stats: updatedStats,
+      updatedAt: now
+    });
+
+    return {
+      success: true,
+      qualifiedCount: executionList.length,
+      dealsCreated
+    };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to launch campaign:', err);
+    return { success: false, error: err instanceof Error ? err.message : 'Launch campaign failed' };
   }
 }
 
