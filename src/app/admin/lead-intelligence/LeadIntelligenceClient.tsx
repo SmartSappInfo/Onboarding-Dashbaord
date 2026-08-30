@@ -30,7 +30,8 @@ import {
   GitMerge,
   Radio,
   Sliders,
-  Inbox
+  Inbox,
+  FileSpreadsheet
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -55,7 +56,8 @@ import {
   saveViewAction,
   getIdentityCollisionsAction,
   getWorkspaceSignalsAction,
-  getDailyRepBriefingAction
+  getDailyRepBriefingAction,
+  getCreditLedgerSummaryAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
@@ -65,7 +67,8 @@ import type {
   LeadList,
   DiscoverySourceType,
   IntelligenceJob,
-  DailyRepBriefing
+  DailyRepBriefing,
+  CreditLedgerSummary
 } from '@/lib/lead-intelligence/types';
 import { FloatingActionToolbar } from './components/FloatingActionToolbar';
 import { ProspectSlideOverSheet } from './components/ProspectSlideOverSheet';
@@ -73,6 +76,8 @@ import { JobsCenterDrawer } from './components/JobsCenterDrawer';
 import { EnrichmentCostPreviewModal } from './components/EnrichmentCostPreviewModal';
 import { ScoringModelConfigModal } from './components/ScoringModelConfigModal';
 import { PriorityQueueModal } from './components/PriorityQueueModal';
+import { CreditUsageCockpitPopover } from './components/CreditUsageCockpitPopover';
+import { DataImportWizardModal } from './components/DataImportWizardModal';
 
 // Lazy load tab components for optimal bundle performance
 const DashboardTab = dynamic(() => import('./components/DashboardTab'), {
@@ -162,6 +167,10 @@ export default function LeadIntelligenceClient() {
   // Phase 8 Scoring Model Configuration Modal
   const [isScoringConfigOpen, setIsScoringConfigOpen] = useState(false);
 
+  // Phase 14 Enterprise Credit Ledger & Data Import Wizard
+  const [creditLedger, setCreditLedger] = useState<CreditLedgerSummary | null>(null);
+  const [isImportWizardOpen, setIsImportWizardOpen] = useState(false);
+
   const handleSaveCustomView = async (viewName: string) => {
     if (!activeWorkspaceId) return;
     try {
@@ -237,14 +246,15 @@ export default function LeadIntelligenceClient() {
   const loadInitialData = React.useCallback(async () => {
     if (!activeWorkspaceId) return;
     try {
-      const [keys, recent, searches, lists, pendingCollisions, signalsRes, briefingRes] = await Promise.all([
+      const [keys, recent, searches, lists, pendingCollisions, signalsRes, briefingRes, ledgerRes] = await Promise.all([
         getLeadSettingsAction(activeWorkspaceId),
         getRecentProspectsAction(activeWorkspaceId),
         getSavedSearchesAction(activeWorkspaceId),
         getLeadListsAction(activeWorkspaceId),
         getIdentityCollisionsAction(activeWorkspaceId, 'pending_review'),
         getWorkspaceSignalsAction(activeWorkspaceId, { unreadOnly: true }),
-        getDailyRepBriefingAction(activeWorkspaceId, 'rep_kwame', 'Kwame')
+        getDailyRepBriefingAction(activeWorkspaceId, 'rep_kwame', 'Kwame'),
+        getCreditLedgerSummaryAction(activeWorkspaceId)
       ]);
       setSettings(keys);
       setRecentProspects(recent);
@@ -260,6 +270,9 @@ export default function LeadIntelligenceClient() {
       if (briefingRes.success && briefingRes.briefing) {
         setDailyBriefing(briefingRes.briefing);
         setPriorityQueueProspects(briefingRes.priorityProspects || []);
+      }
+      if (ledgerRes.success && ledgerRes.ledger) {
+        setCreditLedger(ledgerRes.ledger);
       }
     } catch (err: unknown) {
       console.error('[LeadIntelligenceClient] Failed to load initial workspace data:', err);
@@ -775,6 +788,22 @@ export default function LeadIntelligenceClient() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap self-start md:self-center">
+          {/* Credit Usage Cockpit Popover (UI Spec Section 59 & 60) */}
+          {creditLedger && (
+            <CreditUsageCockpitPopover ledger={creditLedger} />
+          )}
+
+          {/* 7-Step Enterprise Data Import Trigger (UI Spec Section 62) */}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setIsImportWizardOpen(true)}
+            className="h-9 px-3 text-xs border-border/80 rounded-xl relative active:scale-[0.97] flex items-center gap-1.5"
+          >
+            <FileSpreadsheet className="w-3.5 h-3.5 text-emerald-500" />
+            <span>Import CSV</span>
+          </Button>
+
           {/* Scoring Model Config Trigger (UI Spec Section 36) */}
           <Button
             size="sm"
@@ -1150,6 +1179,17 @@ export default function LeadIntelligenceClient() {
         isOpen={isPriorityQueueOpen}
         onClose={() => setIsPriorityQueueOpen(false)}
         onProspectActivated={() => {
+          loadInitialData();
+        }}
+      />
+
+      {/* 7-Step Enterprise Data Import Studio Modal (UI Spec Section 62) */}
+      <DataImportWizardModal
+        workspaceId={activeWorkspaceId || ''}
+        organizationId={organizationId}
+        isOpen={isImportWizardOpen}
+        onClose={() => setIsImportWizardOpen(false)}
+        onImportComplete={() => {
           loadInitialData();
         }}
       />

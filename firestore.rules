@@ -2817,6 +2817,40 @@ service cloud.firestore {
       );
     }
 
+    // --- Lead Intelligence Phase 14: Enterprise Governance & Territory Rules ---
+    match /enterprise_governance/{workspaceId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(workspaceId)
+      );
+      allow create, update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(workspaceId)
+      );
+    }
+
+    match /territory_rules/{ruleId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create, update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+    }
+
+    match /credit_ledgers/{ledgerId} {
+      allow get, list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create, update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+    }
+
     // --- Social Intelligence Suite (Phases 1-5) ---
     match /socialAccounts/{accountId} {
       allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));

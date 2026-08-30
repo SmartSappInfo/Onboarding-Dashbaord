@@ -110,6 +110,8 @@ export interface Prospect {
   ownerName?: string;
   stageName?: string;
   lastActivityAt?: string;
+  assignedRepId?: string;
+  assignedRepName?: string;
   predictiveConversion?: PredictiveConversionLikelihood;
   createdAt: string;
   updatedAt: string;
@@ -954,6 +956,113 @@ export interface InboxSummaryStats {
   crmMatchCount: number;
   aiRecommendationCount: number;
 }
+
+// =============================================================================
+// PHASE 14: ENTERPRISE GOVERNANCE, TERRITORY & HEALTH MONITORS (Strict Typing)
+// =============================================================================
+
+export type ProviderId = 'google_places' | 'hunter' | 'builtwith' | 'email_verifier' | 'gemini_dossier';
+
+export interface ProviderHealthRecord {
+  providerId: ProviderId;
+  name: string;
+  status: 'healthy' | 'warning' | 'error' | 'disconnected';
+  connected: boolean;
+  latencyMs: number;
+  successRate: number; // 0 - 100
+  monthlyQuota: number;
+  monthlyUsed: number;
+  costPerCall: number; // Credits
+  lastError?: string;
+  lastCheckedAt: string;
+}
+
+export interface ProviderRoutingRule {
+  channel: 'email' | 'technographics' | 'firmographics';
+  priorityProviders: ProviderId[];
+  fallbackEnabled: boolean;
+  maxCreditsPerRecord: number;
+}
+
+export interface TerritoryRule {
+  id: string;
+  name: string;
+  region: string;
+  assignedRepIds: string[];
+  autoAssign: boolean;
+  minScore: number;
+  targetIndustry?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EnterpriseGovernanceConfig {
+  workspaceId: string;
+  organizationId: string;
+  discovery: {
+    defaultRadiusKm: number;
+    defaultCity: string;
+    rateLimitRps: number;
+  };
+  enrichment: {
+    cacheTtlDays: number;
+    routingRules: ProviderRoutingRule[];
+  };
+  verification: {
+    enforceDisposableBlock: boolean;
+    smtpTimeoutMs: number;
+    catchAllRiskThreshold: number;
+  };
+  scoring: {
+    autoRescoreOnSignal: boolean;
+    defaultModelId: string;
+  };
+  credits: {
+    monthlyBudget: number;
+    warningThresholdPercent: number;
+    enforceHardCap: boolean;
+  };
+  territoryRules: TerritoryRule[];
+  compliance: {
+    retentionDays: number;
+    dpaConsentRequired: boolean;
+    autoAnonymizeUnclaimed: boolean;
+  };
+  updatedAt: string;
+  updatedBy?: string;
+}
+
+export interface CreditLedgerSummary {
+  totalAllocated: number;
+  used: number;
+  remaining: number;
+  discoveryUsed: number;
+  enrichmentUsed: number;
+  aiUsed: number;
+  verificationUsed: number;
+  warningTriggered: boolean;
+  resetDate: string;
+}
+
+export interface DataImportColumnMapping {
+  name: string;
+  domain?: string;
+  phone?: string;
+  address?: string;
+  industry?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactRole?: string;
+}
+
+export interface DataImportValidationResult {
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  duplicateRows: number;
+  errors: { row: number; field: string; message: string }[];
+}
+
 
 
 
