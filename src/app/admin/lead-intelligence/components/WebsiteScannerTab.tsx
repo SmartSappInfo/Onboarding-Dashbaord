@@ -109,6 +109,35 @@ export const WebsiteScannerTab: React.FC<WebsiteScannerTabProps> = ({
             </Button>
           </div>
 
+          {!scannedProspect && !isScanning && (
+            <div className="p-8 text-center bg-muted/10 border border-border/60 rounded-2xl space-y-4">
+              <Globe className="w-10 h-10 text-primary/40 mx-auto" />
+              <div className="space-y-1">
+                <h4 className="text-sm font-bold text-foreground">Scan Any Domain or Institution URL</h4>
+                <p className="text-xs text-muted-foreground max-w-md mx-auto">
+                  Audit live payment gateways, CMS technologies, portal subdomains, page performance, and generate instant AI sales strategies.
+                </p>
+              </div>
+
+              <div className="flex items-center justify-center gap-2 flex-wrap pt-2">
+                <span className="text-[11px] text-muted-foreground font-semibold">Try sample domains:</span>
+                {['knust.edu.gh', 'ug.edu.gh', 'stpeter.edu.gh', 'ashesi.edu.gh'].map((sample) => (
+                  <Button
+                    key={sample}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setScanUrl(sample);
+                    }}
+                    className="h-7 px-2.5 text-xs font-mono rounded-lg border-border/70 hover:border-primary/40 active:scale-[0.97]"
+                  >
+                    {sample}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+
           {scannedProspect && (
             <div className="space-y-6 border-t border-border/50 pt-6 animate-in fade-in-50 duration-200">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-muted/20 p-4 rounded-xl border border-border/60">

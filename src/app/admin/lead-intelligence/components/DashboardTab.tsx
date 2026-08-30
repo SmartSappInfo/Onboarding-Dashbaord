@@ -150,6 +150,25 @@ export const DashboardTab: React.FC<DashboardTabProps> = ({
           </div>
         )}
 
+        {/* EMPTY STATE */}
+        {!isLoading && !report && (
+          <div className="p-12 text-center bg-card border border-border/70 rounded-2xl shadow-sm space-y-3">
+            <TrendingUp className="w-10 h-10 text-muted-foreground/40 mx-auto" />
+            <h3 className="text-sm font-bold text-foreground">No Revenue Attribution Data Available</h3>
+            <p className="text-xs text-muted-foreground max-w-md mx-auto">
+              Run discovery searches, enrich prospects, and advance CRM deals to populate live revenue attribution, channel velocity, and vendor efficiency reports.
+            </p>
+            <Button
+              size="sm"
+              onClick={loadReport}
+              className="h-9 px-4 text-xs font-semibold bg-primary text-primary-foreground rounded-xl active:scale-[0.97]"
+            >
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Generate Attribution Report
+            </Button>
+          </div>
+        )}
+
         {/* SUB-TAB 1: EXECUTIVE OVERVIEW (UI Spec Section 44 & 48) */}
         {report && (
           <>
