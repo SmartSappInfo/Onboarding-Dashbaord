@@ -1003,7 +1003,10 @@ export default function LeadIntelligenceClient() {
               transition={kowalskiTransition}
             >
               <TabsContent value="dashboard" className="mt-6">
-                <DashboardTab recentProspects={recentProspects} />
+                <DashboardTab 
+                  workspaceId={activeWorkspaceId || ''}
+                  recentProspects={recentProspects} 
+                />
               </TabsContent>
             </motion.div>
           )}

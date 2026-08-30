@@ -775,4 +775,77 @@ export interface ProspectingCampaign {
   updatedAt: string;
 }
 
+// =============================================================================
+// PHASE 11: REVENUE ATTRIBUTION, CONVERSION VELOCITY & REPORTING (Strict Typing)
+// =============================================================================
+
+export interface ExecutiveAttributionSummary {
+  pipelineGenerated: number;
+  qualifiedLeads: number;
+  opportunitiesCount: number;
+  wonDealsCount: number;
+  totalRevenue: number;
+  avgSalesCycleDays: number;
+  currency: string;
+  winRatePercent: number;
+}
+
+export interface SourcePerformanceMetric {
+  source: DiscoverySourceType;
+  sourceLabel: string;
+  leadsCount: number;
+  qualifiedCount: number;
+  oppsCount: number;
+  wonCount: number;
+  revenue: number;
+  conversionRate: number; // in percent (0 - 100)
+}
+
+export interface ProviderPerformanceMetric {
+  providerName: string;
+  totalRequests: number;
+  successfulRequests: number;
+  successRate: number; // in percent (0 - 100)
+  creditsUsed: number;
+  costPerValidContact: number;
+  avgLatencyMs: number;
+}
+
+export interface DataQualityRemediationSuggestion {
+  id: string;
+  type: 'verify_emails' | 'enrich_stale' | 'resolve_collisions';
+  title: string;
+  description: string;
+  actionLabel: string;
+  affectedCount: number;
+}
+
+export interface DataQualityAudit {
+  completenessScore: number; // 0 - 100
+  accuracyScore: number;
+  freshnessScore: number;
+  uniquenessScore: number;
+  verificationScore: number;
+  overallScore: number;
+  remediationSuggestions: DataQualityRemediationSuggestion[];
+}
+
+export interface TerritoryIntelligenceMetric {
+  region: string;
+  prospectsCount: number;
+  qualifiedCount: number;
+  highIntentCount: number;
+  penetrationRate: number; // in percent (0 - 100)
+}
+
+export interface RevenueAttributionReport {
+  summary: ExecutiveAttributionSummary;
+  sources: SourcePerformanceMetric[];
+  providers: ProviderPerformanceMetric[];
+  dataQuality: DataQualityAudit;
+  territories: TerritoryIntelligenceMetric[];
+  generatedAt: string;
+}
+
+
 
