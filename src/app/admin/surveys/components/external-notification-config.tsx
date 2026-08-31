@@ -5,16 +5,28 @@ import { useFormContext, Controller } from 'react-hook-form';
 import type { TemplateCategory } from '@/lib/types';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter } from 'lucide-react';
+import { Users, Mail, Smartphone, MessageCircle, Info, PlusCircle, Pencil, Filter, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { TagInput } from '@/components/ui/tag-input';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
+import { useTenant } from '@/context/TenantContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
+import { useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import AiSurveyMessagingModal from './ai-survey-messaging-modal';
+import { generateSurveyMessagingTemplatesAction } from '@/lib/survey-ai-messaging-actions';
+import type { GenerateSurveyMessagingOutput } from '@/ai/schemas/survey-messaging-schemas';
+import type { SurveyQuestion, SurveyElement } from '@/lib/types';
 
 export default function ExternalNotificationConfig({ prefix = "externalAlert", category = "surveys" }: { prefix?: string, category?: TemplateCategory }) {
     const { control, watch, setValue } = useFormContext();
+    const { activeWorkspaceId } = useWorkspace();
+    const { activeOrganizationId } = useTenant();
+    const { user } = useUser();
+    const { toast } = useToast();
 
     const enabled = watch(`${prefix}sEnabled`);
     const rawChannel = watch(`${prefix}Channel`);
@@ -55,6 +67,74 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
     };
 
     const [quickCreateState, setQuickCreateState] = React.useState<{ channel: 'email' | 'sms', open: boolean, templateId?: string } | null>(null);
+    const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
+    const [isGeneratingAi, setIsGeneratingAi] = React.useState(false);
+    const [aiOutput, setAiOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
+    const [savedTemplateIds, setSavedTemplateIds] = React.useState<{ emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string } | undefined>(undefined);
+
+    const handleGenerateAi = async () => {
+        if (!activeWorkspaceId || !activeOrganizationId) return;
+        setIsGeneratingAi(true);
+        setIsAiModalOpen(true);
+
+        try {
+            const title = watch('title') || watch('internalName') || 'Survey';
+            const description = watch('description') || '';
+            const scoringEnabled = !!watch('scoringEnabled');
+            const maxScore = watch('maxScore') || 100;
+            const elements: SurveyElement[] = watch('elements') || [];
+            const questions: Array<{ id: string; title: string; type: string }> = elements
+                .filter((el): el is SurveyQuestion => 'isRequired' in el)
+                .map((q) => ({ id: q.id, title: String(q.title || ''), type: q.type }));
+
+            const res = await generateSurveyMessagingTemplatesAction({
+                workspaceId: activeWorkspaceId,
+                organizationId: activeOrganizationId,
+                userId: user?.uid,
+                surveyTitle: title,
+                surveyDescription: description,
+                target: 'external_stakeholder_alert',
+                channels: activeChannels,
+                keyQuestions: questions,
+                scoringEnabled,
+                maxScore,
+                autoSave: true,
+            });
+
+            if (res.success && res.output) {
+                setAiOutput(res.output);
+                setSavedTemplateIds(res.savedTemplateIds);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'AI Generation Failed',
+                    description: res.error || 'Could not generate stakeholder alert templates.',
+                });
+                setIsAiModalOpen(false);
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'AI Generation Error',
+                description: err instanceof Error ? err.message : 'Unknown error during AI generation.',
+            });
+            setIsAiModalOpen(false);
+        } finally {
+            setIsGeneratingAi(false);
+        }
+    };
+
+    const handleApplyAiTemplates = (ids: { emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string }) => {
+        if (ids.emailTemplateId) {
+            setValue(`${prefix}EmailTemplateId`, ids.emailTemplateId, { shouldDirty: true });
+        }
+        if (ids.smsTemplateId) {
+            setValue(`${prefix}SmsTemplateId`, ids.smsTemplateId, { shouldDirty: true });
+        }
+        if (ids.whatsappTemplateId) {
+            setValue(`${prefix}WhatsappTemplateId`, ids.whatsappTemplateId, { shouldDirty: true });
+        }
+    };
 
     return (
         <div className="space-y-4">
@@ -161,7 +241,26 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                         </div>
 
                         {/* Template Selection */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pt-4 border-t border-primary/10 text-left">
+                        <div className="pt-4 border-t border-primary/10 space-y-4 text-left">
+                            <div className="flex items-center justify-between px-1">
+                                <div>
+                                    <Label className="text-[10px] font-bold text-primary tracking-wider uppercase">2. Stakeholder Template Configuration</Label>
+                                    <p className="text-[10px] text-muted-foreground font-semibold">Assign or generate templates for campus-level alerts</p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleGenerateAi}
+                                    disabled={isGeneratingAi}
+                                    className="h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
+                                >
+                                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
+                                    AI Generate Stakeholder Alerts
+                                </Button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {activeChannels.includes('email') && (
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center px-1">
@@ -295,8 +394,9 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                             )}
                         </div>
                     </div>
-                )}
-            </div>
+                </div>
+            )}
+        </div>
 
             {quickCreateState && (
                 <TemplateWorkshopSheet 
@@ -317,6 +417,18 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                     }}
                 />
             )}
+
+            <AiSurveyMessagingModal
+                open={isAiModalOpen}
+                onOpenChange={setIsAiModalOpen}
+                title="AI Generated Stakeholder Alerts"
+                targetDescription="Auto-generated alert templates for campus-level leadership and designated external emails."
+                generatedOutput={aiOutput}
+                savedTemplateIds={savedTemplateIds}
+                isLoading={isGeneratingAi}
+                onApply={handleApplyAiTemplates}
+                onRegenerate={handleGenerateAi}
+            />
         </div>
     );
 }

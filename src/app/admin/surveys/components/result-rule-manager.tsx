@@ -7,20 +7,25 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap, GitMerge } from 'lucide-react';
-import type { SurveyResultPage, SenderProfile } from '@/lib/types';
+import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap, GitMerge, Sparkles, MessageCircle } from 'lucide-react';
+import type { SurveyResultPage, SenderProfile, SurveyElement, SurveyQuestion } from '@/lib/types';
 import { PipelineStageSelector } from './PipelineStageSelector';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { Badge } from '@/components/ui/badge';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useParams } from 'next/navigation';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useTenant } from '@/context/TenantContext';
+import { useToast } from '@/hooks/use-toast';
 import { TagSelector } from '@/components/tags';
+import AiSurveyMessagingModal from './ai-survey-messaging-modal';
+import { generateSurveyMessagingTemplatesAction } from '@/lib/survey-ai-messaging-actions';
+import type { GenerateSurveyMessagingOutput } from '@/ai/schemas/survey-messaging-schemas';
 
 function SortableRuleItem({ 
     id, 
@@ -42,7 +47,96 @@ function SortableRuleItem({
     const { register, watch, setValue, control } = useFormContext();
     const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
 
+    const { activeWorkspaceId } = useWorkspace();
+    const { activeOrganizationId } = useTenant();
+    const { user } = useUser();
+    const { toast } = useToast();
+
     const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms' | 'whatsapp'; templateId?: string } | null>(null);
+    const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
+    const [isGeneratingAi, setIsGeneratingAi] = React.useState(false);
+    const [aiOutput, setAiOutput] = React.useState<GenerateSurveyMessagingOutput | null>(null);
+    const [savedTemplateIds, setSavedTemplateIds] = React.useState<{ emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string } | undefined>(undefined);
+
+    const handleGenerateAiForRule = async () => {
+        if (!activeWorkspaceId || !activeOrganizationId) return;
+        setIsGeneratingAi(true);
+        setIsAiModalOpen(true);
+
+        try {
+            const ruleLabel = watch(`resultRules.${index}.label`) || 'Outcome';
+            const minScore = watch(`resultRules.${index}.minScore`) ?? 0;
+            const maxScore = watch(`resultRules.${index}.maxScore`) ?? 100;
+            const pageId = watch(`resultRules.${index}.pageId`);
+            const matchedPage = pages?.find(p => p.id === pageId);
+            const pageContentSummary = matchedPage?.blocks?.map(b => b.title || b.content).filter(Boolean).join(' ') || '';
+
+            const title = watch('title') || watch('internalName') || 'Survey';
+            const description = watch('description') || '';
+            const scoringEnabled = !!watch('scoringEnabled');
+            const surveyMaxScore = watch('maxScore') || 100;
+            const elements: SurveyElement[] = watch('elements') || [];
+            const questions: Array<{ id: string; title: string; type: string }> = elements
+                .filter((el): el is SurveyQuestion => 'isRequired' in el)
+                .map((q) => ({ id: q.id, title: String(q.title || ''), type: q.type }));
+
+            const res = await generateSurveyMessagingTemplatesAction({
+                workspaceId: activeWorkspaceId,
+                organizationId: activeOrganizationId,
+                userId: user?.uid,
+                surveyTitle: title,
+                surveyDescription: description,
+                target: 'respondent_outcome',
+                channels: ['email', 'sms', 'whatsapp'],
+                outcomeRule: {
+                    ruleId: id,
+                    label: ruleLabel,
+                    minScore,
+                    maxScore,
+                    pageTitle: matchedPage?.name,
+                    pageContentSummary,
+                },
+                keyQuestions: questions,
+                scoringEnabled,
+                maxScore: surveyMaxScore,
+                autoSave: true,
+            });
+
+            if (res.success && res.output) {
+                setAiOutput(res.output);
+                setSavedTemplateIds(res.savedTemplateIds);
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'AI Generation Failed',
+                    description: res.error || 'Could not generate outcome messages.',
+                });
+                setIsAiModalOpen(false);
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'AI Generation Error',
+                description: err instanceof Error ? err.message : 'Unknown error during AI generation.',
+            });
+            setIsAiModalOpen(false);
+        } finally {
+            setIsGeneratingAi(false);
+        }
+    };
+
+    const handleApplyAiTemplates = (ids: { emailTemplateId?: string; smsTemplateId?: string; whatsappTemplateId?: string }) => {
+        setValue(`resultRules.${index}.messagingEnabled`, true, { shouldDirty: true });
+        if (ids.emailTemplateId) {
+            setValue(`resultRules.${index}.emailTemplateId`, ids.emailTemplateId, { shouldDirty: true });
+        }
+        if (ids.smsTemplateId) {
+            setValue(`resultRules.${index}.smsTemplateId`, ids.smsTemplateId, { shouldDirty: true });
+        }
+        if (ids.whatsappTemplateId) {
+            setValue(`resultRules.${index}.whatsappTemplateId`, ids.whatsappTemplateId, { shouldDirty: true });
+        }
+    };
 
     const style = {
         transform: CSS.Transform.toString(transform),
@@ -287,6 +381,27 @@ function SortableRuleItem({
                     {/* Messaging Configuration */}
                     {messagingEnabled && (
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-4 rounded-xl border bg-card shadow-sm animate-in fade-in slide-in-from-top-2 duration-200">
+                            <div className="col-span-full flex items-center justify-between pb-3 border-b border-border/40">
+                                <div className="space-y-0.5">
+                                    <Label className="text-xs font-bold text-primary flex items-center gap-1.5">
+                                        <MessageCircle className="h-3.5 w-3.5 text-primary" />
+                                        Respondent Outcome Messages
+                                    </Label>
+                                    <p className="text-[10px] text-muted-foreground font-semibold">Tailored messages sent to respondents qualifying for this specific outcome tier</p>
+                                </div>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={handleGenerateAiForRule}
+                                    disabled={isGeneratingAi}
+                                    className="h-8 px-3 text-[11px] font-bold gap-1.5 text-primary border-primary/30 hover:bg-primary/5 rounded-xl active:scale-[0.97] transition-all shadow-sm"
+                                >
+                                    <Sparkles className="h-3.5 w-3.5 animate-pulse text-primary" />
+                                    AI Generate Outcome Copy
+                                </Button>
+                            </div>
+
                             {/* Email Automation */}
                             <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100/70 dark:bg-blue-950/20 dark:border-blue-900/40 space-y-4">
                                 <div className="flex justify-between items-center">
@@ -519,6 +634,18 @@ function SortableRuleItem({
                     }}
                 />
             )}
+
+            <AiSurveyMessagingModal
+                open={isAiModalOpen}
+                onOpenChange={setIsAiModalOpen}
+                title={`AI Generated Outcome Copy: ${watch(`resultRules.${index}.label`) || 'Outcome'}`}
+                targetDescription="Auto-generated respondent messages tailored to this outcome score tier and result page."
+                generatedOutput={aiOutput}
+                savedTemplateIds={savedTemplateIds}
+                isLoading={isGeneratingAi}
+                onApply={handleApplyAiTemplates}
+                onRegenerate={handleGenerateAiForRule}
+            />
         </div>
     );
 }

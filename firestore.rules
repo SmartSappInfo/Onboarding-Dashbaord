@@ -1004,24 +1004,23 @@ service cloud.firestore {
       // Write access for global templates: super admins only
       allow create: if isAuthorized() && (
         (request.resource.data.scope == 'global' && isSystemAdmin()) ||
-        (request.resource.data.scope == 'organization' && 
+        (request.resource.data.get('scope', 'organization') in ['organization', 'workspace'] && 
          hasPermission('studios_edit') && 
          isOrgMatch(request.resource.data.organizationId))
       );
       
       allow update: if isAuthorized() && (
         (resource.data.scope == 'global' && isSystemAdmin()) ||
-        (resource.data.scope == 'organization' && 
+        (resource.data.get('scope', 'organization') in ['organization', 'workspace'] && 
          hasPermission('studios_edit') && 
          isOrgMatch(resource.data.organizationId) &&
-         // Prevent scope or organizationId changes
-         request.resource.data.scope == resource.data.scope &&
+         // Prevent organizationId changes
          request.resource.data.organizationId == resource.data.organizationId)
       );
       
       allow delete: if isAuthorized() && (
         (resource.data.scope == 'global' && isSystemAdmin()) ||
-        (resource.data.scope == 'organization' && 
+        (resource.data.get('scope', 'organization') in ['organization', 'workspace'] && 
          hasPermission('studios_edit') && 
          isOrgMatch(resource.data.organizationId))
       );
