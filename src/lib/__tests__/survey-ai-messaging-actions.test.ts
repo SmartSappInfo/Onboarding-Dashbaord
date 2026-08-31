@@ -6,7 +6,7 @@ import {
 
 const { mockAdd, mockUpdate, mockDoc, mockCollection } = vi.hoisted(() => {
   let docIdCounter = 1;
-  const add = vi.fn(async (data: any) => ({
+  const add = vi.fn(async (_data: Record<string, unknown>) => ({
     id: `template_doc_${docIdCounter++}`,
     path: `message_templates/template_doc_${docIdCounter}`,
   }));
@@ -123,7 +123,8 @@ describe('Survey AI Messaging Server Actions', () => {
         expect.objectContaining({
           category: 'surveys',
           channel: 'email',
-          scope: 'workspace',
+          recipientType: 'respondent',
+          scope: 'organization',
           workspaceIds: ['ws_alpha'],
           organizationId: 'org_main',
         })

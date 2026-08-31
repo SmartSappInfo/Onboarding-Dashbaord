@@ -146,8 +146,12 @@ export async function generateSurveyMessagingTemplatesAction(
     if (autoSave && adminDb) {
       const now = new Date().toISOString();
       const purposeTag = target === 'respondent_outcome'
-        ? `survey_outcome_${outcomeRule?.ruleId || 'default'}`
+        ? (outcomeRule?.ruleId ? `survey_outcome_${outcomeRule.ruleId}` : 'survey_outcome')
         : (target === 'internal_team_alert' ? 'survey_team_alert' : 'survey_stakeholder_alert');
+
+      const recipientType = target === 'internal_team_alert'
+        ? 'internal_alert'
+        : (target === 'external_stakeholder_alert' ? 'external_alert' : 'respondent');
 
       // Email Template Persistence
       if (generatedOutput.email && channels.includes('email')) {
@@ -163,11 +167,13 @@ export async function generateSurveyMessagingTemplatesAction(
           channel: 'email',
           category: 'surveys',
           target: target === 'internal_team_alert' ? 'internal_team' : 'external_client',
-          scope: 'workspace',
+          recipientType,
+          scope: 'organization',
           workspaceIds: [workspaceId],
           organizationId,
           declaredVariables: emailVars,
           variables: emailVars,
+          variableContext: 'contact',
           status: 'active',
           isActive: true,
           templateType: purposeTag,
@@ -191,11 +197,13 @@ export async function generateSurveyMessagingTemplatesAction(
           channel: 'sms',
           category: 'surveys',
           target: target === 'internal_team_alert' ? 'internal_team' : 'external_client',
-          scope: 'workspace',
+          recipientType,
+          scope: 'organization',
           workspaceIds: [workspaceId],
           organizationId,
           declaredVariables: smsVars,
           variables: smsVars,
+          variableContext: 'contact',
           status: 'active',
           isActive: true,
           templateType: purposeTag,
@@ -214,18 +222,22 @@ export async function generateSurveyMessagingTemplatesAction(
           name: generatedOutput.whatsapp.name || `${surveyTitle.toLowerCase().replace(/[^a-z0-9_]/g, '_')}_wa`,
           body: generatedOutput.whatsapp.body,
           bodyParams: generatedOutput.whatsapp.bodyParams || [],
+          whatsappSamples: generatedOutput.whatsapp.bodyParams || [],
           header: generatedOutput.whatsapp.header || null,
           footer: generatedOutput.whatsapp.footer || null,
           whatsappCategory: generatedOutput.whatsapp.whatsappCategory || 'UTILITY',
+          whatsappMetaCategory: generatedOutput.whatsapp.whatsappCategory || 'UTILITY',
           contentMode: 'plain_text',
           channel: 'whatsapp',
           category: 'surveys',
           target: target === 'internal_team_alert' ? 'internal_team' : 'external_client',
-          scope: 'workspace',
+          recipientType,
+          scope: 'organization',
           workspaceIds: [workspaceId],
           organizationId,
           declaredVariables: [],
           variables: [],
+          variableContext: 'contact',
           status: 'active',
           isActive: false, // Meta review required
           templateType: purposeTag,
@@ -283,7 +295,7 @@ export async function quickSaveSurveyTemplateAction(
       organizationId,
       category: 'surveys',
       status: templateData.status || 'active',
-      scope: 'workspace',
+      scope: templateData.scope || 'organization',
       declaredVariables,
       variables: declaredVariables,
       updatedAt: now,

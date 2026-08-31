@@ -12,7 +12,7 @@ import { generateSurveyMessagingFlow } from '../flows/generate-survey-messaging-
 
 vi.mock('@/ai/genkit', () => ({
   ai: {
-    defineFlow: (meta: any, fn: any) => fn,
+    defineFlow: (_meta: unknown, fn: unknown) => fn,
   },
   getModel: vi.fn().mockResolvedValue({
     modelString: 'anthropic/claude-3-5-sonnet',

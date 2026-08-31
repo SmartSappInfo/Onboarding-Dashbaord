@@ -96,11 +96,22 @@ export default function AiSurveyMessagingModal({
     }
   }, [generatedOutput]);
 
+  const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  React.useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) {
+        clearTimeout(copyTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleCopyText = (text: string, channelName: string) => {
     navigator.clipboard.writeText(text);
     setCopiedChannel(channelName);
     toast({ title: 'Copied to Clipboard', description: `${channelName} content copied.` });
-    setTimeout(() => setCopiedChannel(null), 2000);
+    if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    copyTimeoutRef.current = setTimeout(() => setCopiedChannel(null), 2000);
   };
 
   const handleOpenWorkshop = (templateId?: string) => {
