@@ -1453,6 +1453,26 @@ service cloud.firestore {
           hasPermission('studios_edit')
         );
       }
+
+      // Forms 2.0 custom generated reports subcollection (Phase 11)
+      match /reports/{reportId} {
+        allow read: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+        );
+        allow write: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasPermission('studios_edit')
+        );
+      }
+    }
+
+    // Forms 2.0 Scheduled Email Reports Collection (Phase 11)
+    match /scheduled_reports/{configId} {
+      allow read, write: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasPermission('studios_edit')
+      );
     }
 
     // Forms 2.0 Daily Analytics Rollup collection

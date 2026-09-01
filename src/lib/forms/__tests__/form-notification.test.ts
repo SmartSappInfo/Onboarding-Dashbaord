@@ -141,7 +141,7 @@ describe('SmartSapp Forms 2.0: 3-Tier Notification & Auto-Responder Engine', () 
       fields: [],
       submissionCount: 0,
       theme: { preset: 'minimal' },
-      successBehavior: { type: 'message', message: 'Thank you for your submission.' },
+      successBehavior: { type: 'message', thankYouMessage: 'Thank you for your submission.' },
       createdBy: { userId: 'u1', name: 'Admin', email: 'admin@example.com' },
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),

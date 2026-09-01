@@ -87,6 +87,24 @@
       ]
     },
     {
+      "collectionGroup": "scheduled_reports",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "formId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "enabled",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "form_saved_views",
       "queryScope": "COLLECTION",
       "fields": [

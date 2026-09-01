@@ -39,6 +39,9 @@ import QuestionFrictionHeatmap from './QuestionFrictionHeatmap';
 import SubmissionsTrendChart from './SubmissionsTrendChart';
 import UtmAttributionCard from './UtmAttributionCard';
 import DeviceEnvironmentCard from './DeviceEnvironmentCard';
+import ReportStudioModal from './ReportStudioModal';
+import ScheduledReportDrawer from './ScheduledReportDrawer';
+import { FileText, Clock } from 'lucide-react';
 
 import type { FormAnalyticsSummary, AnalyticsDateRangePreset } from '@/lib/forms/form-analytics-types';
 import { getFormAnalyticsAction, exportAnalyticsDataAsCsvAction } from '@/lib/forms/form-analytics-actions';
@@ -55,6 +58,8 @@ export default function FormAnalyticsClient({ id }: FormAnalyticsClientProps) {
   const [summary, setSummary] = useState<FormAnalyticsSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
+  const [isScheduleDrawerOpen, setIsScheduleDrawerOpen] = useState(false);
 
   useSetBreadcrumb('Form Analytics', `/admin/forms/${id}/analytics`);
 
@@ -164,6 +169,26 @@ export default function FormAnalyticsClient({ id }: FormAnalyticsClientProps) {
               <span>Submissions</span>
             </Button>
 
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsReportModalOpen(true)}
+              className="h-10 rounded-2xl text-xs font-bold gap-1.5 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 min-h-[44px] sm:min-h-0"
+            >
+              <FileText className="h-3.5 w-3.5" />
+              <span>Report Studio</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsScheduleDrawerOpen(true)}
+              className="h-10 rounded-2xl text-xs font-bold gap-1.5 min-h-[44px] sm:min-h-0"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>Schedule</span>
+            </Button>
+
             {/* Date Range Selector */}
             <Select
               value={dateRange}
@@ -245,6 +270,19 @@ export default function FormAnalyticsClient({ id }: FormAnalyticsClientProps) {
             </div>
           </div>
         )}
+
+        {/* ── Report Studio Modal & Scheduled Delivery Drawer (Phase 11) ── */}
+        <ReportStudioModal
+          formId={id}
+          isOpen={isReportModalOpen}
+          onClose={() => setIsReportModalOpen(false)}
+        />
+        <ScheduledReportDrawer
+          formId={id}
+          workspaceId={summary?.workspaceId}
+          isOpen={isScheduleDrawerOpen}
+          onClose={() => setIsScheduleDrawerOpen(false)}
+        />
       </div>
     </PageContainer>
   );

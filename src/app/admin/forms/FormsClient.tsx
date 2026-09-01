@@ -358,7 +358,17 @@ export default function FormsClient() {
                             </h1>
                             <p className="text-muted-foreground font-medium text-sm mt-1">Design and deploy data capture forms</p>
                         </div>
-            <div className="flex justify-end items-center gap-3 shrink-0">
+            <div className="flex justify-end items-center gap-3 shrink-0 flex-wrap">
+              <Button
+                asChild
+                variant="outline"
+                className="h-11 rounded-xl font-bold border-border/80 hover:bg-muted active:scale-[0.97] transition-all gap-2 min-h-[44px]"
+              >
+                <Link href="/admin/forms/reports">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Executive Reports
+                </Link>
+              </Button>
               {canCreate && (
                 <>
                   <Button
