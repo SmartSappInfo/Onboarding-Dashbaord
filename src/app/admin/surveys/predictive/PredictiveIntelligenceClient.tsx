@@ -265,7 +265,7 @@ export function PredictiveIntelligenceClient() {
                           size="sm"
                           onClick={() => handleExecuteAction(entity)}
                           disabled={executingEntityId === entity.entityId}
-                          className="w-full h-8 text-xs font-semibold gap-1.5 active:scale-[0.97] bg-indigo-600 hover:bg-indigo-700 text-white"
+                          className="w-full h-10 min-h-[44px] text-xs font-semibold gap-1.5 active:scale-[0.97] bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                           {executingEntityId === entity.entityId ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -326,7 +326,7 @@ export function PredictiveIntelligenceClient() {
                           size="sm"
                           onClick={() => handleExecuteAction(entity)}
                           disabled={executingEntityId === entity.entityId}
-                          className="w-full h-8 text-xs font-semibold gap-1.5 active:scale-[0.97] bg-indigo-600 hover:bg-indigo-700 text-white"
+                          className="w-full h-10 min-h-[44px] text-xs font-semibold gap-1.5 active:scale-[0.97] bg-indigo-600 hover:bg-indigo-700 text-white"
                         >
                           {executingEntityId === entity.entityId ? (
                             <Loader2 className="h-3 w-3 animate-spin" />
