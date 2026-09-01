@@ -87,9 +87,9 @@ export default function FormRenderer({
   }, [searchParams, setTheme]);
 
   // 1. Build Dynamic Zod Schema
-  const schemaObject: Record<string, any> = {};
+  const schemaObject: Record<string, z.ZodTypeAny> = {};
   resolvedFields.forEach((field) => {
-    let fieldSchema: any = z.string();
+    let fieldSchema: z.ZodTypeAny = z.string();
     const type = field.fieldDefinition.type;
     
     if (type === 'email') {
@@ -104,7 +104,7 @@ export default function FormRenderer({
     }
     
     if (field.required) {
-      if (type !== 'number' && type !== 'currency') {
+      if (type !== 'number' && type !== 'currency' && fieldSchema instanceof z.ZodString) {
         fieldSchema = fieldSchema.min(1, `${field.labelOverride || field.fieldDefinition.label} is required`);
       }
     } else {
@@ -419,7 +419,7 @@ export default function FormRenderer({
                   
                   {errors[field.fieldDefinition.variableName] && (
                     <p className="text-xs font-bold text-rose-500 mt-1 ml-1 uppercase tracking-tighter">
-                      {(errors[field.fieldDefinition.variableName] as any)?.message}
+                      {String(errors[field.fieldDefinition.variableName]?.message || 'Invalid field value')}
                     </p>
                   )}
                 </div>

@@ -269,10 +269,20 @@ export async function resolveAndEnrichCrmEntity({
       try {
         const dealRule = form.actions.dealCreation;
         const titleTemplate = dealRule.titleTemplate || '{{name}} - Form Inquiry';
-        const dealName = titleTemplate
-          .replace(/\{\{name\}\}/gi, displayName)
-          .replace(/\{\{email\}\}/gi, email || '')
-          .replace(/\{\{phone\}\}/gi, phone || '');
+        const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+        const dealName = await FieldsVariablesService.resolveTemplateVariables(
+          titleTemplate,
+          {
+            workspaceId,
+            entityId: resolvedEntityId,
+            formId: form.id,
+            extraVars: {
+              name: displayName,
+              email: email || '',
+              phone: phone || '',
+            },
+          }
+        );
 
         const { createDeal } = await import('@/app/actions/deal-actions');
         const dealRes = await createDeal({
@@ -297,10 +307,20 @@ export async function resolveAndEnrichCrmEntity({
       try {
         const taskRule = form.actions.taskAssignment;
         const titleTemplate = taskRule.titleTemplate || 'Follow up with {{name}}';
-        const taskTitle = titleTemplate
-          .replace(/\{\{name\}\}/gi, displayName)
-          .replace(/\{\{email\}\}/gi, email || '')
-          .replace(/\{\{phone\}\}/gi, phone || '');
+        const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
+        const taskTitle = await FieldsVariablesService.resolveTemplateVariables(
+          titleTemplate,
+          {
+            workspaceId,
+            entityId: resolvedEntityId,
+            formId: form.id,
+            extraVars: {
+              name: displayName,
+              email: email || '',
+              phone: phone || '',
+            },
+          }
+        );
 
         const dueInHours = taskRule.dueInHours || 24;
         const dueDate = new Date(Date.now() + dueInHours * 3600 * 1000).toISOString();
@@ -321,10 +341,10 @@ export async function resolveAndEnrichCrmEntity({
           dueDate,
         };
 
-        const taskRes = await createTaskAction(taskPayload, `system-form-${form.id}`);
+        const taskRes: { success?: boolean; id?: string; error?: string } = await createTaskAction(taskPayload, `system-form-${form.id}`);
 
-        if (taskRes?.success && (taskRes as any).id) {
-          createdTaskId = (taskRes as any).id;
+        if (taskRes?.success && taskRes.id) {
+          createdTaskId = taskRes.id;
         }
       } catch (taskErr) {
         console.error('[FORMS:CRM] Task creation error:', taskErr);

@@ -39,7 +39,7 @@ export async function getWorkspacePipelinesAction(workspaceId: string): Promise<
       const data = doc.data();
       const rawStages = Array.isArray(data.stages) ? data.stages : [];
       
-      const stages: WorkspacePipelineStage[] = rawStages.map((st: any, idx: number) => ({
+      const stages: WorkspacePipelineStage[] = rawStages.map((st: Record<string, unknown>, idx: number) => ({
         id: String(st.id || `stage_${idx}`),
         name: String(st.name || st.title || `Stage ${idx + 1}`),
         order: typeof st.order === 'number' ? st.order : idx,
@@ -124,8 +124,9 @@ export async function saveFormCrmSettingsAction(
     });
 
     return { success: true };
-  } catch (error: any) {
-    console.error('[FORMS:CRM] Error saving CRM settings:', error);
-    return { success: false, error: error.message || 'Failed to save CRM settings' };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[FORMS:CRM] Error saving CRM settings:', message);
+    return { success: false, error: message || 'Failed to save CRM settings' };
   }
 }

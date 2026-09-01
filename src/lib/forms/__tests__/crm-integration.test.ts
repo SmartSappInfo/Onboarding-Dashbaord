@@ -86,11 +86,10 @@ vi.mock('@/lib/firebase-admin', () => {
       };
     }
     if (name === 'app_fields') {
-      return {
-        where: vi.fn().mockReturnValue({
-          get: vi.fn().mockResolvedValue({ docs: [] }),
-        }),
-      };
+      const mockQuery: Record<string, unknown> = {};
+      mockQuery.get = vi.fn().mockResolvedValue({ docs: [] });
+      mockQuery.where = vi.fn().mockReturnValue(mockQuery);
+      return mockQuery;
     }
     return {
       doc: vi.fn().mockReturnValue({ get: vi.fn().mockResolvedValue({ exists: false }) }),
