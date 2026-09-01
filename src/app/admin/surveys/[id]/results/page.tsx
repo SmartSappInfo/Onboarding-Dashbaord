@@ -16,7 +16,7 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyQuestion, SurveySummary } from "@/lib/types";
+import type { Survey, SurveyResponse, SurveyQuestion, SurveySummary, SurveySession } from "@/lib/types";
 import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import {
@@ -118,6 +118,13 @@ function SurveyResultsPageContent() {
   }, [firestore, surveyId]);
 
   const { data: summaries, isLoading: areSummariesLoading } = useCollection<SurveySummary>(summariesColRef);
+
+  const sessionsColRef = useMemoFirebase(() => {
+    if (!firestore || !surveyId) return null;
+    return query(collection(firestore, 'surveys', surveyId, 'sessions'));
+  }, [firestore, surveyId]);
+
+  const { data: sessions } = useCollection<SurveySession>(sessionsColRef);
 
   const filteredResponses = React.useMemo(() => {
     if (!responses) return [];
@@ -345,6 +352,7 @@ function SurveyResultsPageContent() {
             <FunnelDropoffTab
               survey={survey}
               responses={filteredResponses}
+              sessions={sessions || []}
             />
           </div>
         </TabsContent>

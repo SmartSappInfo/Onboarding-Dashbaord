@@ -201,6 +201,8 @@ describe('Survey Mathematical Analytics Engine', () => {
             { questionId: 'q2', value: 'B' },
             { questionId: 'q3', value: 'C' },
             { questionId: 'q4', value: 'D' },
+            { questionId: 'q5', value: 'E' },
+            { questionId: 'q6', value: 'F' },
           ],
         },
         {
@@ -213,7 +215,9 @@ describe('Survey Mathematical Analytics Engine', () => {
             { questionId: 'q2', value: 'A' },
             { questionId: 'q3', value: 'A' },
             { questionId: 'q4', value: 'A' },
-          ], // straight-liner
+            { questionId: 'q5', value: 'A' },
+            { questionId: 'q6', value: 'A' },
+          ], // straight-liner (6 identical answers)
         },
       ];
 

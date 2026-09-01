@@ -144,8 +144,8 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(sanitizeForCsv('-2+3+cmd|')).toBe("'-2+3+cmd|");
       expect(sanitizeForCsv('@calc')).toBe("'@calc");
       expect(sanitizeForCsv('\tmalicious_tab')).toBe("'\tmalicious_tab");
-      expect(sanitizeForCsv('\rmalicious_cr')).toBe("'\rmalicious_cr");
-      expect(sanitizeForCsv('\nmalicious_nl')).toBe("'\nmalicious_nl");
+      expect(sanitizeForCsv('\rmalicious_cr')).toBe("\"'\rmalicious_cr\"");
+      expect(sanitizeForCsv('\nmalicious_nl')).toBe("\"'\nmalicious_nl\"");
     });
 
     it('handles null, undefined, numbers, and booleans safely', () => {
@@ -155,6 +155,11 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(sanitizeForCsv(42)).toBe('42');
       expect(sanitizeForCsv(-5)).toBe("'-5");
       expect(sanitizeForCsv(true)).toBe('true');
+    });
+
+    it('escapes quotes and wraps cells containing commas or quotes in RFC 4180 format', () => {
+      expect(sanitizeForCsv('Acme, Inc.')).toBe('"Acme, Inc."');
+      expect(sanitizeForCsv('He said "Hello"')).toBe('"He said ""Hello"""');
     });
   });
 

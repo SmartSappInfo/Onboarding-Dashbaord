@@ -5,7 +5,7 @@
  * 1. Single Source of Truth for Survey Analytics & Aggregations.
  * 2. Mathematical Integrity:
  *    - Full statistical support for all 22 question types (Matrix, Ranking Borda weights, NPS calculus, CES, Slider quartiles).
- *    - 2D Cross-Tabulation contingency tables with Chi-Square (χ²) independence tests.
+ *    - 2D Cross-Tabulation contingency tables with Chi-Square (χ²) independence tests and critical value lookup table.
  *    - Response Quality heuristics (Speeders detection < 15s, Straight-liners variance scoring).
  * 3. Safe Math & Zero-Division Guards:
  *    - Guarantees zero NaN / Infinity errors when surveys have 0 responses or skipped questions.
@@ -117,6 +117,26 @@ export type AnalyzedQuestionResult = {
   | { type: 'text'; data: string[] }
   | { type: 'signature_consent'; signedCount: number; signedPercentage: number }
 );
+
+// ─── CRITICAL VALUE LOOKUP TABLE (p < 0.05) ─────────────────────────────────
+
+const CHI_SQUARE_CRITICAL_05: Record<number, number> = {
+  1: 3.841,
+  2: 5.991,
+  3: 7.815,
+  4: 9.488,
+  5: 11.070,
+  6: 12.592,
+  7: 14.067,
+  8: 15.507,
+  9: 16.919,
+  10: 18.307,
+  12: 21.026,
+  15: 24.996,
+  20: 31.410,
+  24: 36.415,
+  30: 43.773,
+};
 
 // ─── HELPER FUNCTIONS ───────────────────────────────────────────────────────
 
@@ -615,8 +635,8 @@ export function computeCrossTabulation(
   }
 
   const degreesOfFreedom = Math.max(1, (numRows - 1) * (numCols - 1));
-  // Approximate critical value threshold for p < 0.05
-  const criticalValue = degreesOfFreedom * 1.5 + 3.84;
+  // Exact critical value lookup for p < 0.05
+  const criticalValue = CHI_SQUARE_CRITICAL_05[degreesOfFreedom] ?? (degreesOfFreedom * 1.35 + 3.84);
   const isSignificant = chiSquare > criticalValue;
 
   return {
@@ -673,7 +693,7 @@ export function computeResponseQualityMetrics(responses: SurveyResponse[]): Resp
       if (diffSecs < 15) speedersCount++;
     }
 
-    // 2. Straight-lining check
+    // 2. Straight-lining check (requires >= 6 answers to prevent false positives on short forms)
     if (res.answers) {
       let ansValues: (string | number)[] = [];
       if (Array.isArray(res.answers)) {
@@ -686,7 +706,7 @@ export function computeResponseQualityMetrics(responses: SurveyResponse[]): Resp
         );
       }
 
-      if (ansValues.length >= 4) {
+      if (ansValues.length >= 6) {
         const uniqueSet = new Set(ansValues);
         if (uniqueSet.size === 1) {
           straightLinersCount++;

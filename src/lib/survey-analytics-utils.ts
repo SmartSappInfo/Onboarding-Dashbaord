@@ -192,7 +192,7 @@ export function analyzeQuestions(survey: Survey, responses: SurveyResponse[]): A
     const questions = survey.elements.filter(isQuestion);
 
     // js-index-maps: Build a Map<questionId, value[]> for O(1) lookups
-    const answersByQuestion = new Map<string, any[]>();
+    const answersByQuestion = new Map<string, unknown[]>();
     questions.forEach(q => answersByQuestion.set(q.id, []));
 
     responses.forEach(res => {
@@ -228,16 +228,19 @@ export function analyzeQuestions(survey: Survey, responses: SurveyResponse[]): A
             if (question.allowOther) counts.set('Other', 0);
             const otherText: string[] = [];
 
-            questionResponses.forEach((value: any) => {
-                const selectedOptions = value?.options || (Array.isArray(value) ? value : []);
-                if (Array.isArray(selectedOptions)) {
-                    selectedOptions.forEach((v: string) => {
-                        if (counts.has(v)) counts.set(v, (counts.get(v) || 0) + 1);
-                    });
-                }
-                if (value?.other && value.other.trim()) {
+            questionResponses.forEach((value: unknown) => {
+                const valObj = typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : null;
+                const selectedOptions = Array.isArray(valObj?.options)
+                    ? (valObj?.options as string[])
+                    : Array.isArray(value)
+                    ? (value as string[])
+                    : [];
+                selectedOptions.forEach((v: string) => {
+                    if (counts.has(v)) counts.set(v, (counts.get(v) || 0) + 1);
+                });
+                if (typeof valObj?.other === 'string' && valObj.other.trim()) {
                     counts.set('Other', (counts.get('Other') || 0) + 1);
-                    otherText.push(value.other.trim());
+                    otherText.push(valObj.other.trim());
                 }
             });
 

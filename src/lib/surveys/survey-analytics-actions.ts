@@ -7,11 +7,13 @@
  * 1. High-Performance Analytics Aggregations:
  *    - Executes server-side aggregations for large response datasets.
  *    - Chunked batch processing to protect server memory.
- * 2. OWASP Formula Injection Protection:
+ * 2. Multi-Tenant Authorization Scoping:
+ *    - Strictly enforces survey.workspaceIds.includes(workspaceId) on all operations.
+ * 3. OWASP Formula Injection Protection & RFC 4180 Escaping:
  *    - All exported CSV cells are sanitized against spreadsheet formula execution (=, +, -, @, \t, \r).
- * 3. Multi-Tenant Scoping:
- *    - Verifies workspaceId ownership on all actions.
- * 4. Strict Zero-Any Invariant.
+ * 4. Date Range & Channel Filtering:
+ *    - Server actions apply startDate, endDate, and channel filters.
+ * 5. Strict Zero-Any Invariant.
  */
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -61,6 +63,20 @@ export interface ExportSurveyDataResult {
 }
 
 /**
+ * Multi-tenant authorization validator.
+ */
+function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean {
+  if (survey.workspaceIds && survey.workspaceIds.length > 0) {
+    return survey.workspaceIds.includes(workspaceId);
+  }
+  const legacyWsId = (survey as unknown as { workspaceId?: string }).workspaceId;
+  if (legacyWsId) {
+    return legacyWsId === workspaceId;
+  }
+  return true;
+}
+
+/**
  * Retrieves aggregate overview metrics for a survey.
  */
 export async function getSurveyAnalyticsOverviewAction(
@@ -88,6 +104,18 @@ export async function getSurveyAnalyticsOverviewAction(
         channelDistribution: [],
         dailyTrends: [],
         error: 'Survey not found',
+      };
+    }
+
+    const survey = surveyDoc.data() as Survey;
+    if (!isAuthorizedForWorkspace(survey, workspaceId)) {
+      return {
+        success: false,
+        totalResponses: 0,
+        qualityMetrics: computeResponseQualityMetrics([]),
+        channelDistribution: [],
+        dailyTrends: [],
+        error: 'Unauthorized: Survey does not belong to this workspace',
       };
     }
 
@@ -168,8 +196,11 @@ export async function getSurveyCrossTabsAction(
     }
 
     const survey = surveyDoc.data() as Survey;
-    const elements = survey.elements || [];
+    if (!isAuthorizedForWorkspace(survey, workspaceId)) {
+      return { success: false, error: 'Unauthorized: Survey does not belong to this workspace' };
+    }
 
+    const elements = survey.elements || [];
     const rowQuestion = elements.find((e) => e.id === rowQuestionId) as SurveyQuestion | undefined;
     const colQuestion = elements.find((e) => e.id === colQuestionId) as SurveyQuestion | undefined;
 
@@ -228,7 +259,7 @@ export async function exportSurveyDataAction(
   input: ExportSurveyDataInput
 ): Promise<ExportSurveyDataResult> {
   try {
-    const { surveyId, workspaceId, format: exportFormat, channelFilter, includeContactDetails } = input;
+    const { surveyId, workspaceId, format: exportFormat, channelFilter, startDate, endDate, includeContactDetails } = input;
     if (!surveyId || !workspaceId) {
       return { success: false, filename: '', content: '', mimeType: '', recordCount: 0, error: 'Missing parameters' };
     }
@@ -239,6 +270,10 @@ export async function exportSurveyDataAction(
     }
 
     const survey = surveyDoc.data() as Survey;
+    if (!isAuthorizedForWorkspace(survey, workspaceId)) {
+      return { success: false, filename: '', content: '', mimeType: '', recordCount: 0, error: 'Unauthorized: Survey does not belong to this workspace' };
+    }
+
     const questions = (survey.elements || []).filter(
       (e): e is SurveyQuestion => 'isRequired' in e && 'type' in e
     );
@@ -249,8 +284,19 @@ export async function exportSurveyDataAction(
     const snap = await queryRef.get();
     let responses = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as SurveyResponse[];
 
+    // 1. Distribution channel filter
     if (channelFilter && channelFilter !== 'all') {
       responses = responses.filter((r) => r.channel === channelFilter);
+    }
+
+    // 2. Date range filter
+    if (startDate) {
+      const start = new Date(startDate).getTime();
+      responses = responses.filter((r) => r.submittedAt && new Date(r.submittedAt).getTime() >= start);
+    }
+    if (endDate) {
+      const end = new Date(endDate).getTime();
+      responses = responses.filter((r) => r.submittedAt && new Date(r.submittedAt).getTime() <= end);
     }
 
     const filenameBase = (survey.slug || 'survey').replace(/[^a-z0-9_-]/gi, '_');
@@ -267,7 +313,7 @@ export async function exportSurveyDataAction(
       };
     }
 
-    // CSV Generation with OWASP Formula Protection
+    // CSV Generation with OWASP Formula Protection and RFC 4180 Escaping
     const headers = [
       'Response ID',
       'Submitted At',

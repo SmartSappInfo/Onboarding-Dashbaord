@@ -32,7 +32,7 @@ describe('Survey Analytics Server Actions', () => {
     // 1st get: surveyDoc
     mockGet.mockResolvedValueOnce({
       exists: true,
-      data: () => ({ id: 's1', title: 'Parent Survey', elements: [] }),
+      data: () => ({ id: 's1', workspaceId: 'ws1', title: 'Parent Survey', elements: [] }),
     });
 
     // 2nd get: responses subcollection
@@ -45,7 +45,7 @@ describe('Survey Analytics Server Actions', () => {
             channel: 'whatsapp',
             startedAt: new Date(now - 120000).toISOString(),
             submittedAt: new Date(now).toISOString(),
-            answers: { q1: 'val1', q2: 'val2' },
+            answers: [{ questionId: 'q1', value: 'val1' }],
           }),
         },
         {
@@ -54,7 +54,7 @@ describe('Survey Analytics Server Actions', () => {
             channel: 'email',
             startedAt: new Date(now - 80000).toISOString(),
             submittedAt: new Date(now).toISOString(),
-            answers: { q1: 'val1', q2: 'val3' },
+            answers: [{ questionId: 'q1', value: 'val2' }],
           }),
         },
       ],
@@ -67,11 +67,23 @@ describe('Survey Analytics Server Actions', () => {
     expect(res.qualityMetrics.totalResponses).toBe(2);
   });
 
+  it('blocks unauthorized access when survey does not belong to the workspace', async () => {
+    mockGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({ id: 's1', workspaceId: 'other_workspace', title: 'Private Survey', elements: [] }),
+    });
+
+    const res = await getSurveyAnalyticsOverviewAction('s1', 'ws1');
+    expect(res.success).toBe(false);
+    expect(res.error).toContain('Unauthorized');
+  });
+
   it('exports survey responses to CSV with OWASP formula protection', async () => {
     mockGet.mockResolvedValueOnce({
       exists: true,
       data: () => ({
         id: 's1',
+        workspaceId: 'ws1',
         slug: 'school-eval',
         elements: [
           { id: 'q1', type: 'text', title: 'Feedback', isRequired: true },
@@ -86,7 +98,7 @@ describe('Survey Analytics Server Actions', () => {
           data: () => ({
             channel: 'web',
             submittedAt: '2026-09-01T09:00:00Z',
-            answers: { q1: '=cmd|\' /C calc\'!A0' }, // Malicious formula injection
+            answers: [{ questionId: 'q1', value: "=cmd|' /C calc'!A0" }], // Malicious formula injection
           }),
         },
       ],
@@ -105,11 +117,12 @@ describe('Survey Analytics Server Actions', () => {
     expect(res.content).toContain("'=cmd");
   });
 
-  it('exports responses to structured JSON format', async () => {
+  it('exports responses to structured JSON format with date filtering', async () => {
     mockGet.mockResolvedValueOnce({
       exists: true,
       data: () => ({
         id: 's1',
+        workspaceId: 'ws1',
         slug: 'school-eval',
         elements: [],
       }),
@@ -122,7 +135,7 @@ describe('Survey Analytics Server Actions', () => {
           data: () => ({
             channel: 'kiosk',
             submittedAt: '2026-09-01T09:00:00Z',
-            answers: { q1: 'Awesome' },
+            answers: [{ questionId: 'q1', value: 'Awesome' }],
           }),
         },
       ],
@@ -132,6 +145,8 @@ describe('Survey Analytics Server Actions', () => {
       surveyId: 's1',
       workspaceId: 'ws1',
       format: 'json',
+      startDate: '2026-09-01T00:00:00Z',
+      endDate: '2026-09-01T23:59:59Z',
     });
 
     expect(res.success).toBe(true);

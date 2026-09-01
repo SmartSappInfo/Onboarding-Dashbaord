@@ -344,13 +344,21 @@ export function extractResponseContactDetails(
  */
 export function sanitizeForCsv(val: string | number | boolean | null | undefined): string {
   if (val === null || val === undefined) return '';
-  const rawStr = String(val);
+  let rawStr = String(val);
   if (!rawStr) return '';
+
+  // 1. OWASP CSV Formula Injection Neutralization
   const trimmed = rawStr.trim();
   if (/^[=+\-@\t\r\n]/.test(rawStr) || /^[=+\-@]/.test(trimmed)) {
-    return `'${rawStr}`;
+    rawStr = `'${rawStr}`;
   }
-  return trimmed;
+
+  // 2. RFC 4180 CSV Escaping (escape internal quotes and wrap in quotes when containing delimiters)
+  if (rawStr.includes(',') || rawStr.includes('"') || rawStr.includes('\n') || rawStr.includes('\r')) {
+    return `"${rawStr.replace(/"/g, '""')}"`;
+  }
+
+  return rawStr;
 }
 
 export interface ParsedSurveyMappings {
