@@ -16,7 +16,7 @@ import {
     AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
     Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
     AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon,
-    AlignJustify, Database, Mail, Phone, Hash, Link as LinkIcon, Settings
+    AlignJustify, Database, Mail, Phone, Hash, Link as LinkIcon, Settings, PenTool
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset, TemplateVariable } from '@/lib/types';
 import * as React from 'react';
@@ -1781,6 +1781,177 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                         })()}
                                                         {(element as SurveyQuestion).allowMultipleFiles && ` • Up to ${(element as SurveyQuestion).maxFiles || 5} files`}
                                                     </p>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'matrix' && (
+                                            <div className="border border-border/70 rounded-2xl overflow-hidden bg-card/60">
+                                                <div className="overflow-x-auto">
+                                                    <table className="w-full text-xs">
+                                                        <thead className="bg-muted/50 border-b border-border/50">
+                                                            <tr>
+                                                                <th className="p-3 text-left font-bold text-muted-foreground w-1/3">Item / Statement</th>
+                                                                {((element as SurveyQuestion).matrixColumns || ['Poor', 'Fair', 'Good', 'Excellent']).map((col, cIdx) => (
+                                                                    <th key={cIdx} className="p-3 text-center font-bold text-muted-foreground">
+                                                                        {col}
+                                                                    </th>
+                                                                ))}
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-border/40">
+                                                            {((element as SurveyQuestion).matrixRows || ['Statement 1', 'Statement 2', 'Statement 3']).map((row, rIdx) => (
+                                                                <tr key={rIdx} className="hover:bg-muted/20">
+                                                                    <td className="p-3 font-medium text-foreground">{row}</td>
+                                                                    {((element as SurveyQuestion).matrixColumns || ['Poor', 'Fair', 'Good', 'Excellent']).map((_, cIdx) => (
+                                                                        <td key={cIdx} className="p-3 text-center">
+                                                                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 mx-auto" />
+                                                                        </td>
+                                                                    ))}
+                                                                </tr>
+                                                            ))}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                                <div className="p-2.5 bg-muted/20 border-t border-border/40 text-[11px] text-muted-foreground flex items-center justify-between">
+                                                    <span>Matrix rows and columns can be customized in the Right Inspector.</span>
+                                                    <Badge variant="outline" className="text-[9px]">
+                                                        {((element as SurveyQuestion).matrixRows || []).length || 3} Rows × {((element as SurveyQuestion).matrixColumns || []).length || 4} Cols
+                                                    </Badge>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'ranking' && (
+                                            <div className="space-y-2 p-4 rounded-2xl border border-border/60 bg-muted/20">
+                                                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mb-2">
+                                                    Drag to Rank / Order Items
+                                                </div>
+                                                {((element as SurveyQuestion).rankingItems || ['Item 1', 'Item 2', 'Item 3', 'Item 4']).map((item, rIdx) => (
+                                                    <div
+                                                        key={rIdx}
+                                                        className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/70 shadow-2xs"
+                                                    >
+                                                        <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
+                                                            {rIdx + 1}
+                                                        </div>
+                                                        <span className="text-xs font-medium flex-1">{item}</span>
+                                                        <GripVertical className="h-4 w-4 text-muted-foreground/40" />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {element.type === 'slider' && (
+                                            <div className="p-6 rounded-2xl border border-border/60 bg-muted/10 space-y-4">
+                                                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                                                    <span>{(element as SurveyQuestion).sliderMinLabel || `${(element as SurveyQuestion).sliderMin || 0}`}</span>
+                                                    <Badge variant="secondary" className="font-mono text-xs">
+                                                        {Math.round((((element as SurveyQuestion).sliderMin || 0) + ((element as SurveyQuestion).sliderMax || 100)) / 2)}
+                                                    </Badge>
+                                                    <span>{(element as SurveyQuestion).sliderMaxLabel || `${(element as SurveyQuestion).sliderMax || 100}`}</span>
+                                                </div>
+                                                <div className="w-full h-2.5 bg-muted rounded-full relative overflow-hidden">
+                                                    <div className="h-full bg-primary rounded-full w-1/2" />
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'nps' && (
+                                            <div className="space-y-3 p-5 rounded-2xl border border-border/60 bg-muted/10">
+                                                <div className="flex flex-wrap gap-1.5 justify-center">
+                                                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                                                        const isDetractor = score <= 6;
+                                                        const isPassive = score === 7 || score === 8;
+                                                        const isPromoter = score >= 9;
+                                                        return (
+                                                            <div
+                                                                key={score}
+                                                                className={cn(
+                                                                    "w-9 h-11 sm:w-11 sm:h-12 rounded-xl flex flex-col items-center justify-center font-bold text-xs border transition-all cursor-default",
+                                                                    isDetractor && "border-red-500/30 bg-red-500/5 text-red-700 dark:text-red-300",
+                                                                    isPassive && "border-amber-500/30 bg-amber-500/5 text-amber-700 dark:text-amber-300",
+                                                                    isPromoter && "border-emerald-500/30 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300"
+                                                                )}
+                                                            >
+                                                                <span>{score}</span>
+                                                            </div>
+                                                        );
+                                                    })}
+                                                </div>
+                                                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-2 font-medium">
+                                                    <span>{(element as SurveyQuestion).npsMinLabel || '0 - Not at all likely'}</span>
+                                                    <span>{(element as SurveyQuestion).npsMaxLabel || '10 - Extremely likely'}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'ces' && (
+                                            <div className="space-y-3 p-5 rounded-2xl border border-border/60 bg-muted/10">
+                                                <div className="flex flex-wrap gap-2 justify-center">
+                                                    {[1, 2, 3, 4, 5, 6, 7].map((score) => (
+                                                        <div
+                                                            key={score}
+                                                            className="w-11 h-12 rounded-xl flex items-center justify-center font-bold text-xs border border-border bg-card shadow-2xs"
+                                                        >
+                                                            {score}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-2 font-medium">
+                                                    <span>{(element as SurveyQuestion).cesMinLabel || '1 - Strongly Disagree'}</span>
+                                                    <span>{(element as SurveyQuestion).cesMaxLabel || '7 - Strongly Agree'}</span>
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'signature' && (
+                                            <div className="p-8 rounded-2xl border-2 border-dashed border-border/70 bg-card text-center space-y-3">
+                                                <div className="w-12 h-12 rounded-2xl bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+                                                    <PenTool className="h-6 w-6" />
+                                                </div>
+                                                <div className="text-xs font-semibold text-muted-foreground">
+                                                    Digital Signature Capture Canvas (Touch & Mouse Supported)
+                                                </div>
+                                                <div className="h-px w-48 bg-muted-foreground/30 mx-auto" />
+                                                <span className="text-[10px] text-muted-foreground/60">Sign on the line above</span>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'consent' && (
+                                            <div className="p-4 rounded-2xl border border-border/70 bg-muted/20 flex items-start gap-3">
+                                                <div className="h-5 w-5 rounded border-2 border-primary/50 mt-0.5 shrink-0" />
+                                                <div className="space-y-1 text-xs">
+                                                    <p className="font-medium text-foreground">
+                                                        {(element as SurveyQuestion).consentText || 'I agree to the terms and privacy policy.'}
+                                                    </p>
+                                                    {(element as SurveyQuestion).consentLinkUrl && (
+                                                        <a
+                                                            href={(element as SurveyQuestion).consentLinkUrl}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="text-primary underline text-[11px] inline-flex items-center gap-1"
+                                                        >
+                                                            View Policy Document
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {element.type === 'calculated' && (
+                                            <div className="p-4 rounded-2xl border border-primary/30 bg-primary/5 space-y-2">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+                                                        <Hash className="h-3.5 w-3.5" />
+                                                        Dynamic Computed Field
+                                                    </span>
+                                                    <Badge variant="outline" className="text-[10px] font-mono border-primary/30 text-primary">
+                                                        Auto-Calculated
+                                                    </Badge>
+                                                </div>
+                                                <div className="p-2.5 rounded-xl bg-background/80 font-mono text-xs text-muted-foreground border border-border/50">
+                                                    Formula: {(element as SurveyQuestion).calculationFormula || 'q1 * 0.5 + q2 * 0.5'}
                                                 </div>
                                             </div>
                                         )}

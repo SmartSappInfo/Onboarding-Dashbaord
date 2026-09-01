@@ -1002,6 +1002,326 @@ const ElementRenderer = ({
                             />
                         </div>
                     )}
+                    {question.type === 'matrix' && (
+                        <div className="w-full overflow-hidden border border-border/70 rounded-2xl bg-card shadow-xs">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                defaultValue={{}}
+                                render={({ field }) => {
+                                    const currentMatrix = (field.value as Record<string, string>) || {};
+                                    const rows = question.matrixRows || ['Statement 1', 'Statement 2', 'Statement 3'];
+                                    const cols = question.matrixColumns || ['Poor', 'Fair', 'Good', 'Excellent'];
+
+                                    const handleCellSelect = (row: string, col: string) => {
+                                        const next = { ...currentMatrix, [row]: col };
+                                        handleValueChange(next, field.onChange);
+                                    };
+
+                                    return (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-xs sm:text-sm">
+                                                <thead className="bg-muted/50 border-b border-border/50">
+                                                    <tr>
+                                                        <th className="p-3.5 text-left font-bold text-muted-foreground w-1/3">Criteria</th>
+                                                        {cols.map((col, cIdx) => (
+                                                            <th key={cIdx} className="p-3.5 text-center font-bold text-muted-foreground">
+                                                                {col}
+                                                            </th>
+                                                        ))}
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-border/40">
+                                                    {rows.map((row, rIdx) => (
+                                                        <tr key={rIdx} className="hover:bg-muted/20 transition-colors">
+                                                            <td className="p-3.5 font-medium text-foreground">{row}</td>
+                                                            {cols.map((col, cIdx) => {
+                                                                const isSelected = currentMatrix[row] === col;
+                                                                return (
+                                                                    <td key={cIdx} className="p-3.5 text-center">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => handleCellSelect(row, col)}
+                                                                            className={cn(
+                                                                                "w-6 h-6 rounded-full border-2 mx-auto flex items-center justify-center transition-all active:scale-[0.95]",
+                                                                                isSelected
+                                                                                    ? "border-primary bg-primary text-white"
+                                                                                    : "border-muted-foreground/30 hover:border-primary/50"
+                                                                            )}
+                                                                        >
+                                                                            {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
+                                                                        </button>
+                                                                    </td>
+                                                                );
+                                                            })}
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    );
+                                }}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'ranking' && (
+                        <div className="w-full space-y-2">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                defaultValue={question.rankingItems || []}
+                                render={({ field }) => {
+                                    const items = Array.isArray(field.value) && field.value.length > 0
+                                        ? (field.value as string[])
+                                        : (question.rankingItems || ['Item 1', 'Item 2', 'Item 3']);
+
+                                    const moveItem = (fromIdx: number, toIdx: number) => {
+                                        if (toIdx < 0 || toIdx >= items.length) return;
+                                        const copy = [...items];
+                                        const [moved] = copy.splice(fromIdx, 1);
+                                        copy.splice(toIdx, 0, moved);
+                                        handleValueChange(copy, field.onChange);
+                                    };
+
+                                    return (
+                                        <div className="space-y-2">
+                                            {items.map((item, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="flex items-center gap-3 p-3.5 rounded-xl border border-border/70 bg-card hover:border-primary/40 transition-all shadow-2xs"
+                                                >
+                                                    <div className="w-7 h-7 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
+                                                        {idx + 1}
+                                                    </div>
+                                                    <span className="text-xs sm:text-sm font-medium flex-1 text-foreground">{item}</span>
+                                                    <div className="flex items-center gap-1">
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={idx === 0}
+                                                            onClick={() => moveItem(idx, idx - 1)}
+                                                            className="h-8 w-8 p-0 rounded-lg active:scale-[0.97]"
+                                                        >
+                                                            ↑
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            disabled={idx === items.length - 1}
+                                                            onClick={() => moveItem(idx, idx + 1)}
+                                                            className="h-8 w-8 p-0 rounded-lg active:scale-[0.97]"
+                                                        >
+                                                            ↓
+                                                        </Button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    );
+                                }}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'slider' && (
+                        <div className="w-full p-6 rounded-2xl border border-border/60 bg-muted/10 space-y-4">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                defaultValue={question.sliderMin ?? 0}
+                                render={({ field }) => {
+                                    const min = question.sliderMin ?? 0;
+                                    const max = question.sliderMax ?? 100;
+                                    const step = question.sliderStep ?? 1;
+                                    const currentVal = field.value !== undefined ? Number(field.value) : min;
+
+                                    return (
+                                        <div className="space-y-3">
+                                            <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                                                <span>{question.sliderMinLabel || `${min}`}</span>
+                                                <Badge variant="secondary" className="font-mono text-sm px-3 py-1 font-bold bg-primary text-white">
+                                                    {currentVal}
+                                                </Badge>
+                                                <span>{question.sliderMaxLabel || `${max}`}</span>
+                                            </div>
+                                            <input
+                                                type="range"
+                                                min={min}
+                                                max={max}
+                                                step={step}
+                                                value={currentVal}
+                                                onChange={(e) => handleValueChange(Number(e.target.value), field.onChange)}
+                                                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                                            />
+                                        </div>
+                                    );
+                                }}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'nps' && (
+                        <div className="w-full space-y-3">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                render={({ field }) => (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-6 sm:grid-cols-11 gap-1.5 justify-center">
+                                            {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => {
+                                                const isSelected = field.value === score;
+                                                const isDetractor = score <= 6;
+                                                const isPassive = score === 7 || score === 8;
+                                                const isPromoter = score >= 9;
+
+                                                return (
+                                                    <button
+                                                        key={score}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleValueChange(score, field.onChange);
+                                                            if (question.autoAdvance && onAutoAdvance) {
+                                                                onAutoAdvance();
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "h-12 sm:h-14 rounded-xl flex flex-col items-center justify-center font-bold text-sm border transition-all active:scale-[0.95]",
+                                                            isSelected
+                                                                ? "bg-primary text-white border-primary shadow-md ring-2 ring-primary/30"
+                                                                : cn(
+                                                                    "hover:bg-muted/80 bg-card",
+                                                                    isDetractor && "border-red-500/20 text-red-700 dark:text-red-300",
+                                                                    isPassive && "border-amber-500/20 text-amber-700 dark:text-amber-300",
+                                                                    isPromoter && "border-emerald-500/20 text-emerald-700 dark:text-emerald-300"
+                                                                )
+                                                        )}
+                                                    >
+                                                        <span>{score}</span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground px-1 font-medium">
+                                            <span>{question.npsMinLabel || '0 - Not at all likely'}</span>
+                                            <span>{question.npsMaxLabel || '10 - Extremely likely'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'ces' && (
+                        <div className="w-full space-y-3">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                render={({ field }) => (
+                                    <div className="space-y-3">
+                                        <div className="grid grid-cols-7 gap-2">
+                                            {[1, 2, 3, 4, 5, 6, 7].map((score) => {
+                                                const isSelected = field.value === score;
+                                                return (
+                                                    <button
+                                                        key={score}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            handleValueChange(score, field.onChange);
+                                                            if (question.autoAdvance && onAutoAdvance) {
+                                                                onAutoAdvance();
+                                                            }
+                                                        }}
+                                                        className={cn(
+                                                            "h-12 sm:h-14 rounded-xl flex items-center justify-center font-bold text-sm border transition-all active:scale-[0.95]",
+                                                            isSelected
+                                                                ? "bg-primary text-white border-primary shadow-md ring-2 ring-primary/30"
+                                                                : "bg-card border-border hover:bg-muted/80"
+                                                        )}
+                                                    >
+                                                        {score}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="flex items-center justify-between text-xs text-muted-foreground px-1 font-medium">
+                                            <span>{question.cesMinLabel || '1 - Strongly Disagree'}</span>
+                                            <span>{question.cesMaxLabel || '7 - Strongly Agree'}</span>
+                                        </div>
+                                    </div>
+                                )}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'signature' && (
+                        <div className="w-full">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                render={({ field }) => (
+                                    <div className="p-6 rounded-2xl border-2 border-dashed border-border/80 bg-card text-center space-y-3">
+                                        <Input
+                                            value={field.value || ''}
+                                            onChange={(e) => handleValueChange(e.target.value, field.onChange)}
+                                            placeholder="Type your full legal name to sign digitally..."
+                                            className="h-12 text-sm text-center font-serif italic rounded-xl border-border/60"
+                                        />
+                                        <div className="text-[11px] text-muted-foreground">
+                                            By typing your name above, you acknowledge this as your binding legal signature.
+                                        </div>
+                                    </div>
+                                )}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'consent' && (
+                        <div className="w-full">
+                            <Controller
+                                control={control}
+                                name={question.id}
+                                defaultValue={false}
+                                render={({ field }) => (
+                                    <div
+                                        onClick={() => handleValueChange(!field.value, field.onChange)}
+                                        className={cn(
+                                            "p-4 rounded-2xl border transition-all cursor-pointer flex items-start gap-3.5",
+                                            field.value
+                                                ? "border-primary/50 bg-primary/5 shadow-xs"
+                                                : "border-border/70 bg-card hover:bg-muted/30"
+                                        )}
+                                    >
+                                        <Checkbox
+                                            checked={field.value || false}
+                                            onCheckedChange={(checked) => handleValueChange(checked, field.onChange)}
+                                            className="mt-0.5"
+                                        />
+                                        <div className="space-y-1 text-xs sm:text-sm">
+                                            <p className="font-medium text-foreground leading-relaxed">
+                                                {question.consentText || 'I agree to the data collection and privacy policy.'}
+                                            </p>
+                                            {question.consentLinkUrl && (
+                                                <a
+                                                    href={question.consentLinkUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    onClick={(e) => e.stopPropagation()}
+                                                    className="text-primary underline text-xs font-semibold inline-flex items-center gap-1 hover:opacity-80"
+                                                >
+                                                    Read full policy agreement ↗
+                                                </a>
+                                            )}
+                                        </div>
+                                    </div>
+                                )}
+                            />
+                        </div>
+                    )}
+                    {question.type === 'calculated' && (
+                        <div className="w-full p-4 rounded-2xl border border-primary/20 bg-primary/5 space-y-1 text-xs">
+                            <div className="font-bold text-primary">Automated Computed Field</div>
+                            <div className="font-mono text-muted-foreground">
+                                Evaluated on survey submission: {question.calculationFormula || 'q1 + q2'}
+                            </div>
+                        </div>
+                    )}
                     <AnimatePresence>
                         {errors[question.id] && (
                             <motion.p 

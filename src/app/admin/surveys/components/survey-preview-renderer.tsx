@@ -155,6 +155,120 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                                 </div>
                             </div>
                         )}
+                        {question.type === 'matrix' && (
+                            <div className="w-full border border-border/70 rounded-2xl overflow-hidden bg-card/60">
+                                <div className="overflow-x-auto">
+                                    <table className="w-full text-xs">
+                                        <thead className="bg-muted/50 border-b border-border/50">
+                                            <tr>
+                                                <th className="p-3 text-left font-bold text-muted-foreground w-1/3">Item / Statement</th>
+                                                {(question.matrixColumns || ['Poor', 'Fair', 'Good', 'Excellent']).map((col, cIdx) => (
+                                                    <th key={cIdx} className="p-3 text-center font-bold text-muted-foreground">
+                                                        {col}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-border/40">
+                                            {(question.matrixRows || ['Statement 1', 'Statement 2', 'Statement 3']).map((row, rIdx) => (
+                                                <tr key={rIdx}>
+                                                    <td className="p-3 font-medium text-foreground">{row}</td>
+                                                    {(question.matrixColumns || ['Poor', 'Fair', 'Good', 'Excellent']).map((_, cIdx) => (
+                                                        <td key={cIdx} className="p-3 text-center">
+                                                            <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30 mx-auto" />
+                                                        </td>
+                                                    ))}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+                        {question.type === 'ranking' && (
+                            <div className="space-y-2 max-w-lg">
+                                {(question.rankingItems || ['Item 1', 'Item 2', 'Item 3']).map((item, idx) => (
+                                    <div key={idx} className="flex items-center gap-3 p-3 rounded-xl border border-border/70 bg-card">
+                                        <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary font-bold text-xs flex items-center justify-center">
+                                            {idx + 1}
+                                        </div>
+                                        <span className="text-xs font-medium flex-1">{item}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        {question.type === 'slider' && (
+                            <div className="p-6 rounded-2xl border border-border/60 bg-muted/10 space-y-4 max-w-lg">
+                                <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                                    <span>{question.sliderMinLabel || `${question.sliderMin || 0}`}</span>
+                                    <Badge variant="secondary" className="font-mono text-xs">
+                                        {Math.round(((question.sliderMin || 0) + (question.sliderMax || 100)) / 2)}
+                                    </Badge>
+                                    <span>{question.sliderMaxLabel || `${question.sliderMax || 100}`}</span>
+                                </div>
+                                <div className="w-full h-2.5 bg-muted rounded-full relative overflow-hidden">
+                                    <div className="h-full bg-primary rounded-full w-1/2" />
+                                </div>
+                            </div>
+                        )}
+                        {question.type === 'nps' && (
+                            <div className="space-y-3 p-4 rounded-2xl border border-border/60 bg-muted/10 max-w-2xl">
+                                <div className="flex flex-wrap gap-1.5 justify-center">
+                                    {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((score) => (
+                                        <div
+                                            key={score}
+                                            className="w-9 h-11 rounded-xl flex items-center justify-center font-bold text-xs border border-border bg-card shadow-2xs"
+                                        >
+                                            {score}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1 font-medium">
+                                    <span>{question.npsMinLabel || '0 - Not at all likely'}</span>
+                                    <span>{question.npsMaxLabel || '10 - Extremely likely'}</span>
+                                </div>
+                            </div>
+                        )}
+                        {question.type === 'ces' && (
+                            <div className="space-y-3 p-4 rounded-2xl border border-border/60 bg-muted/10 max-w-xl">
+                                <div className="flex flex-wrap gap-2 justify-center">
+                                    {[1, 2, 3, 4, 5, 6, 7].map((score) => (
+                                        <div
+                                            key={score}
+                                            className="w-10 h-11 rounded-xl flex items-center justify-center font-bold text-xs border border-border bg-card shadow-2xs"
+                                        >
+                                            {score}
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1 font-medium">
+                                    <span>{question.cesMinLabel || '1 - Strongly Disagree'}</span>
+                                    <span>{question.cesMaxLabel || '7 - Strongly Agree'}</span>
+                                </div>
+                            </div>
+                        )}
+                        {question.type === 'signature' && (
+                            <div className="p-6 rounded-2xl border-2 border-dashed border-border/80 bg-card text-center space-y-2 max-w-md">
+                                <div className="text-xs font-serif italic text-muted-foreground">Digital Signature Area</div>
+                                <div className="h-px w-48 bg-muted-foreground/30 mx-auto" />
+                            </div>
+                        )}
+                        {question.type === 'consent' && (
+                            <div className="p-4 rounded-2xl border border-border/70 bg-muted/20 flex items-start gap-3 max-w-xl">
+                                <Checkbox disabled checked className="mt-0.5" />
+                                <div className="text-xs font-medium text-foreground">
+                                    {question.consentText || 'I agree to the terms and privacy policy.'}
+                                </div>
+                            </div>
+                        )}
+                        {question.type === 'calculated' && (
+                            <div className="p-4 rounded-2xl border border-primary/30 bg-primary/5 space-y-1 text-xs max-w-md">
+                                <div className="font-bold text-primary">Dynamic Computed Field</div>
+                                <div className="font-mono text-muted-foreground">
+                                    {question.calculationFormula || 'q1 * 0.5 + q2 * 0.5'}
+                                </div>
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

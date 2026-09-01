@@ -32,7 +32,11 @@ import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { VersionHistoryDrawer } from './VersionHistoryDrawer';
 import { QuestionBankDrawer } from './QuestionBankDrawer';
 import { DeploymentManagerDialog } from './DeploymentManagerDialog';
+import { StructureNavigator } from './StructureNavigator';
+import { LogicStudioModal } from './LogicStudioModal';
+import { AiQuestionRefinementModal } from './AiQuestionRefinementModal';
 import { Badge } from '@/components/ui/badge';
+import { Split, FolderTree } from 'lucide-react';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -62,14 +66,17 @@ export default function SurveyFormBuilder() {
     const [lastSelectedId, setLastSelectedId] = React.useState<string | null>(null);
     const [isPreviewMode, setIsPreviewMode] = React.useState(false);
     const [isPropertiesBarVisible, setIsPropertiesBarVisible] = React.useState(true);
+    const [isStructureNavigatorOpen, setIsStructureNavigatorOpen] = React.useState(true);
+    const [isLogicStudioOpen, setIsLogicStudioOpen] = React.useState(false);
+    const [aiRefineQuestion, setAiRefineQuestion] = React.useState<SurveyQuestion | null>(null);
     const canvasRef = React.useRef<HTMLDivElement>(null);
 
-    // Survey 2.0 Core Platform State (Phase 1)
+    // Survey 2.0 Core Platform State (Phase 1 & Phase 2)
     const [isVersionDrawerOpen, setIsVersionDrawerOpen] = React.useState(false);
     const [isQuestionBankOpen, setIsQuestionBankOpen] = React.useState(false);
     const [isDeploymentDialogOpen, setIsDeploymentDialogOpen] = React.useState(false);
 
-    const { activeWorkspaceId } = useWorkspace();
+    const { activeWorkspaceId, activeOrganization } = useWorkspace();
     const currentVersionNumber = watch('currentVersionNumber') || 1;
     const surveyTitle = watch('title') || watch('internalName') || 'Survey';
     const defaultSlug = watch('slug') || 'survey';
@@ -189,7 +196,6 @@ export default function SurveyFormBuilder() {
 
     const watchedForm = watch();
     const firestore = useFirestore();
-    const { activeOrganization } = useWorkspace();
 
     // Logo resolution chain for Preview consistency
     const entityDocRef = React.useMemo(() => {
@@ -362,6 +368,30 @@ export default function SurveyFormBuilder() {
         <div className="relative h-full">
             <div className="flex h-[calc(100vh-8rem)] gap-4 p-4 overflow-hidden xl:overflow-visible bg-transparent">
 
+                {/* 0. Left Panel - Structure Navigator (Phase 2) */}
+                {!isPreviewMode && isStructureNavigatorOpen && (
+                    <div className="hidden lg:flex w-72 h-full shrink-0 border border-border/70 rounded-2xl overflow-hidden shadow-xs bg-background/95 backdrop-blur-md">
+                        <StructureNavigator
+                            elements={elements}
+                            selectedId={selectedBlockIds.length === 1 ? selectedBlockIds[0] : null}
+                            onSelect={(id) => {
+                                setSelectedBlockIds([id]);
+                                setLastSelectedId(id);
+                            }}
+                            onMoveUp={(index) => move(index, index - 1)}
+                            onMoveDown={(index) => move(index, index + 1)}
+                            onDuplicate={(index) => {
+                                const el = elements[index];
+                                const newElem = { ...el, id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}` };
+                                insert(index + 1, newElem);
+                                setSelectedBlockIds([newElem.id]);
+                                setLastSelectedId(newElem.id);
+                            }}
+                            onDelete={(index) => remove(index)}
+                            onAddQuestion={(type) => handleElementSelect(type || 'multiple-choice')}
+                        />
+                    </div>
+                )}
 
                 {/* 1. Middle Canvas - The Question Editor or Preview */}
                 <div className="flex-1 relative overflow-hidden bg-transparent flex flex-col">
@@ -587,6 +617,35 @@ export default function SurveyFormBuilder() {
                             </Tooltip>
                             <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
                             
+                            {/* Structure Tree & Logic Triggers */}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", isStructureNavigatorOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
+                                        onClick={() => setIsStructureNavigatorOpen(!isStructureNavigatorOpen)}
+                                    >
+                                        <FolderTree className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Structure Tree</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 shrink-0"
+                                        onClick={() => setIsLogicStudioOpen(true)}
+                                    >
+                                        <Split className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Visual Logic Studio</TooltipContent>
+                            </Tooltip>
+
                             {/* Survey 2.0 Core Triggers */}
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -709,6 +768,46 @@ export default function SurveyFormBuilder() {
                 workspaceId={activeWorkspaceId || ''}
                 surveyTitle={surveyTitle}
                 defaultSlug={defaultSlug}
+            />
+
+            {/* Survey 2.0 Studio Modals (Phase 2) */}
+            <LogicStudioModal
+                open={isLogicStudioOpen}
+                onOpenChange={setIsLogicStudioOpen}
+                elements={elements}
+                onUpdateElements={(updated) => {
+                    setValue('elements', updated, { shouldDirty: true });
+                    toast({
+                        title: 'Logic Updated',
+                        description: 'Conditional branching rules saved successfully.',
+                    });
+                }}
+            />
+
+            <AiQuestionRefinementModal
+                open={!!aiRefineQuestion}
+                onOpenChange={(open) => !open && setAiRefineQuestion(null)}
+                question={aiRefineQuestion}
+                workspaceId={activeWorkspaceId || ''}
+                organizationId={activeOrganization?.id}
+                onApplyRefinement={(patch) => {
+                    if (!aiRefineQuestion) return;
+                    const idx = elements.findIndex((el: any) => el.id === aiRefineQuestion.id);
+                    if (idx !== -1) {
+                        Object.entries(patch).forEach(([key, val]) => {
+                            setValue(`elements.${idx}.${key}`, val, { shouldDirty: true });
+                        });
+                    }
+                }}
+                onAddFollowupQuestion={(newQ) => {
+                    if (!aiRefineQuestion) return;
+                    const idx = elements.findIndex((el: any) => el.id === aiRefineQuestion.id);
+                    const newElem = {
+                        ...newQ,
+                        id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                    };
+                    insert(idx !== -1 ? idx + 1 : elements.length, newElem);
+                }}
             />
         </div>
     );

@@ -2981,7 +2981,7 @@ export interface SurveyElement {
 }
 
 export interface SurveyQuestion extends SurveyElement {
-  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone' | 'number' | 'link';
+  type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone' | 'number' | 'link' | 'matrix' | 'ranking' | 'slider' | 'nps' | 'ces' | 'signature' | 'calculated' | 'consent';
   title: string;
   description?: string;
   isRequired: boolean;
@@ -3007,6 +3007,25 @@ export interface SurveyQuestion extends SurveyElement {
   allowMultipleFiles?: boolean;
   maxFiles?: number;
   maxFileSizeMB?: number;
+
+  // Phase 2 Advanced Question Extensions (Survey Intelligence 2.0)
+  matrixRows?: string[];
+  matrixColumns?: string[];
+  matrixType?: 'single' | 'multiple';
+  rankingItems?: string[];
+  sliderMin?: number;
+  sliderMax?: number;
+  sliderStep?: number;
+  sliderMinLabel?: string;
+  sliderMaxLabel?: string;
+  npsMinLabel?: string;
+  npsMaxLabel?: string;
+  cesMinLabel?: string;
+  cesMaxLabel?: string;
+  calculationFormula?: string;
+  consentText?: string;
+  consentLinkUrl?: string;
+  columnsLayout?: 1 | 2 | 3 | 4;
 }
 
 export interface SurveyLayoutBlock extends SurveyElement {
@@ -3032,7 +3051,7 @@ export interface SurveyLogicBlock extends SurveyElement {
   rules: {
     sourceQuestionId: string;
     operator: 'isEqualTo' | 'isNotEqualTo' | 'contains' | 'doesNotContain' | 'startsWith' | 'doesNotStartWith' | 'endsWith' | 'doesNotEndWith' | 'isEmpty' | 'isNotEmpty' | 'isGreaterThan' | 'isLessThan';
-    targetValue?: any;
+    targetValue?: string | number | boolean | string[] | null;
     action: {
       type: 'jump' | 'require' | 'show' | 'hide' | 'disableSubmit';
       targetElementId?: string;

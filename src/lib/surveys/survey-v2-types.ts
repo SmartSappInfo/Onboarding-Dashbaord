@@ -190,3 +190,44 @@ export interface ConsentConfig {
   policyUrl?: string;
   requireExplicitCheckbox?: boolean;
 }
+
+// Phase 2 Advanced Question Configs
+export interface MatrixQuestionConfig {
+  rows: string[];
+  columns: string[];
+  type: 'single' | 'multiple';
+}
+
+export interface RankingQuestionConfig {
+  items: string[];
+}
+
+export interface SliderQuestionConfig {
+  min: number;
+  max: number;
+  step: number;
+  minLabel?: string;
+  maxLabel?: string;
+}
+
+export interface NpsQuestionConfig {
+  minLabel?: string;
+  maxLabel?: string;
+}
+
+export interface CesQuestionConfig {
+  minLabel?: string;
+  maxLabel?: string;
+}
+
+export interface CalculatedQuestionConfig {
+  formula: string; // e.g. "q_total_score * 0.2 + q_exam_score * 0.8"
+  referencedQuestionKeys: string[];
+}
+
+export interface ConsentQuestionConfig {
+  consentText: string;
+  policyUrl?: string;
+  mustAgree: boolean;
+}
+

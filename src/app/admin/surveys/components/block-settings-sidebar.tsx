@@ -657,6 +657,265 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
                                 </div>
                             </div>
                         )}
+
+                        {element.type === 'matrix' && (
+                            <div className="space-y-4 pt-2">
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Matrix Rows (1 per line)</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.matrixRows`}
+                                        defaultValue={['Statement 1', 'Statement 2', 'Statement 3']}
+                                        render={({ field }) => (
+                                            <Textarea
+                                                value={(field.value || []).join('\n')}
+                                                onChange={(e) =>
+                                                    field.onChange(
+                                                        e.target.value
+                                                            .split('\n')
+                                                            .map((s) => s.trim())
+                                                            .filter(Boolean)
+                                                    )
+                                                }
+                                                rows={4}
+                                                placeholder="Row item 1&#10;Row item 2&#10;Row item 3"
+                                                className="text-xs rounded-xl"
+                                            />
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Matrix Columns (1 per line)</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.matrixColumns`}
+                                        defaultValue={['Poor', 'Fair', 'Good', 'Excellent']}
+                                        render={({ field }) => (
+                                            <Textarea
+                                                value={(field.value || []).join('\n')}
+                                                onChange={(e) =>
+                                                    field.onChange(
+                                                        e.target.value
+                                                            .split('\n')
+                                                            .map((s) => s.trim())
+                                                            .filter(Boolean)
+                                                    )
+                                                }
+                                                rows={4}
+                                                placeholder="Poor&#10;Fair&#10;Good&#10;Excellent"
+                                                className="text-xs rounded-xl"
+                                            />
+                                        )}
+                                    />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Selection Mode</Label>
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.matrixType`}
+                                        defaultValue="single"
+                                        render={({ field }) => (
+                                            <Select value={field.value || 'single'} onValueChange={field.onChange}>
+                                                <SelectTrigger className="h-10 text-xs rounded-xl">
+                                                    <SelectValue placeholder="Select mode" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="single">Single choice per row (Radio)</SelectItem>
+                                                    <SelectItem value="multiple">Multiple selections per row (Checkboxes)</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {element.type === 'ranking' && (
+                            <div className="space-y-2 pt-2">
+                                <Label className="text-sm font-semibold">Rankable Items (1 per line)</Label>
+                                <Controller
+                                    control={control}
+                                    name={`elements.${activeIndex}.rankingItems`}
+                                    defaultValue={['Item 1', 'Item 2', 'Item 3', 'Item 4']}
+                                    render={({ field }) => (
+                                        <Textarea
+                                            value={(field.value || []).join('\n')}
+                                            onChange={(e) =>
+                                                field.onChange(
+                                                    e.target.value
+                                                        .split('\n')
+                                                        .map((s) => s.trim())
+                                                        .filter(Boolean)
+                                                )
+                                            }
+                                            rows={5}
+                                            placeholder="Option A&#10;Option B&#10;Option C"
+                                            className="text-xs rounded-xl"
+                                        />
+                                    )}
+                                />
+                            </div>
+                        )}
+
+                        {element.type === 'slider' && (
+                            <div className="space-y-4 pt-2">
+                                <div className="grid grid-cols-3 gap-2">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Min</Label>
+                                        <Controller
+                                            control={control}
+                                            name={`elements.${activeIndex}.sliderMin`}
+                                            defaultValue={0}
+                                            render={({ field }) => (
+                                                <Input
+                                                    type="number"
+                                                    value={field.value ?? 0}
+                                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                                    className="h-9 text-xs rounded-xl"
+                                                />
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Max</Label>
+                                        <Controller
+                                            control={control}
+                                            name={`elements.${activeIndex}.sliderMax`}
+                                            defaultValue={100}
+                                            render={({ field }) => (
+                                                <Input
+                                                    type="number"
+                                                    value={field.value ?? 100}
+                                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                                    className="h-9 text-xs rounded-xl"
+                                                />
+                                            )}
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Step</Label>
+                                        <Controller
+                                            control={control}
+                                            name={`elements.${activeIndex}.sliderStep`}
+                                            defaultValue={1}
+                                            render={({ field }) => (
+                                                <Input
+                                                    type="number"
+                                                    value={field.value ?? 1}
+                                                    onChange={(e) => field.onChange(Number(e.target.value))}
+                                                    className="h-9 text-xs rounded-xl"
+                                                />
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Min Label</Label>
+                                        <Input
+                                            {...register(`elements.${activeIndex}.sliderMinLabel`)}
+                                            placeholder="e.g. 0% / Low"
+                                            className="h-9 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">Max Label</Label>
+                                        <Input
+                                            {...register(`elements.${activeIndex}.sliderMaxLabel`)}
+                                            placeholder="e.g. 100% / High"
+                                            className="h-9 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {element.type === 'nps' && (
+                            <div className="space-y-3 pt-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">0 Score Label</Label>
+                                        <Input
+                                            {...register(`elements.${activeIndex}.npsMinLabel`)}
+                                            placeholder="0 - Not at all likely"
+                                            className="h-9 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">10 Score Label</Label>
+                                        <Input
+                                            {...register(`elements.${activeIndex}.npsMaxLabel`)}
+                                            placeholder="10 - Extremely likely"
+                                            className="h-9 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {element.type === 'ces' && (
+                            <div className="space-y-3 pt-2">
+                                <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">1 Score Label</Label>
+                                        <Input
+                                            {...register(`elements.${activeIndex}.cesMinLabel`)}
+                                            placeholder="1 - Strongly Disagree"
+                                            className="h-9 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                    <div className="space-y-1.5">
+                                        <Label className="text-xs font-semibold">7 Score Label</Label>
+                                        <Input
+                                            {...register(`elements.${activeIndex}.cesMaxLabel`)}
+                                            placeholder="7 - Strongly Agree"
+                                            className="h-9 text-xs rounded-xl"
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {element.type === 'consent' && (
+                            <div className="space-y-3 pt-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Consent Notice Text</Label>
+                                    <Textarea
+                                        {...register(`elements.${activeIndex}.consentText`)}
+                                        rows={3}
+                                        placeholder="I agree to the data collection and processing policy."
+                                        className="text-xs rounded-xl"
+                                    />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Policy Document Link URL (Optional)</Label>
+                                    <Input
+                                        {...register(`elements.${activeIndex}.consentLinkUrl`)}
+                                        placeholder="https://myschool.org/privacy.pdf"
+                                        className="h-9 text-xs rounded-xl"
+                                    />
+                                </div>
+                            </div>
+                        )}
+
+                        {element.type === 'calculated' && (
+                            <div className="space-y-3 pt-2">
+                                <div className="space-y-1.5">
+                                    <Label className="text-xs font-semibold">Calculation Formula</Label>
+                                    <Input
+                                        {...register(`elements.${activeIndex}.calculationFormula`)}
+                                        placeholder="e.g. q1 * 0.4 + q2 * 0.6"
+                                        className="h-9 text-xs rounded-xl font-mono"
+                                    />
+                                    <p className="text-[10px] text-muted-foreground">
+                                        Refer to question fieldKeys or order IDs in mathematical formulas.
+                                    </p>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 )}
 
