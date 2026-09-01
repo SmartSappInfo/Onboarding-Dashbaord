@@ -2956,9 +2956,11 @@ export interface Survey {
   };
   deploymentIds?: string[];
   crmConfig?: import('./surveys/survey-crm-types').SurveyCrmConfig;
+  decisionConfig?: import('./surveys/survey-decision-types').SurveyDecisionConfig;
 }
 
 export * from './surveys/survey-crm-types';
+export * from './surveys/survey-decision-types';
 
 export interface LeadCaptureFieldSetting {
   show: boolean;

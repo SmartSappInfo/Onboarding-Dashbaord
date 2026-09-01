@@ -30,6 +30,7 @@ import ExternalNotificationConfig from './external-notification-config';
 import SurveyLeadCaptureCard from './survey-lead-capture-card';
 import { PipelineStageSelector } from './PipelineStageSelector';
 import { SurveyCrmMappingTab } from './SurveyCrmMappingTab';
+import { SurveyDecisionHub } from './SurveyDecisionHub';
 
 export default function SubmissionBehaviorStep() {
     const { control, watch, setValue } = useFormContext();
@@ -483,6 +484,8 @@ export default function SubmissionBehaviorStep() {
                 </CardContent>
             </Card>
             )}
+
+            <SurveyDecisionHub workspaceId={activeWorkspaceId || ''} />
 
             <SurveyCrmMappingTab workspaceId={activeWorkspaceId || ''} />
 

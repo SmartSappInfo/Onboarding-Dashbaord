@@ -1709,6 +1709,8 @@ export async function executeSurveyPipelineAndAutomations(params: {
     answers: Array<{ questionId: string; value: string | string[] }>;
     score?: number;
     respondentName?: string | null;
+    respondentEmail?: string | null;
+    respondentPhone?: string | null;
     sourcePageId?: string | null;
     assignedUserId?: string | null;
   };
@@ -1931,6 +1933,28 @@ export async function executeSurveyPipelineAndAutomations(params: {
     } catch (crmSyncErr) {
       console.error('[survey-actions] Phase 6 CRM sync error:', crmSyncErr);
     }
+
+    // 9. Phase 7: Autonomous Decisioning & Automation Rules Pipeline
+    try {
+      if (surveyData.decisionConfig?.enabled) {
+        const { executeSurveyDecisioningPipelineAction } = await import('./surveys/survey-decision-engine');
+        await executeSurveyDecisioningPipelineAction({
+          survey: surveyData,
+          responseId,
+          score: responseData.score,
+          answers: responseData.answers || [],
+          workspaceId,
+          organizationId,
+          contactEmail: responseData.respondentEmail || null,
+          contactPhone: responseData.respondentPhone || null,
+          contactName: responseData.respondentName || null,
+          entityId: cleanEntityId || null,
+          entityName: entityName || null,
+        });
+      }
+    } catch (decisionErr) {
+      console.error('[survey-actions] Phase 7 Decisioning engine error:', decisionErr);
+    }
   } catch (err) {
     console.error('[survey-actions] executeSurveyPipelineAndAutomations error:', err);
   }
@@ -2112,7 +2136,11 @@ async function triggerPostSubmissionAutomations(
     await executeSurveyPipelineAndAutomations({
       surveyData,
       responseId,
-      responseData,
+      responseData: {
+        ...responseData,
+        respondentEmail,
+        respondentPhone,
+      },
       workspaceId,
       organizationId,
       entityId,
