@@ -1259,6 +1259,124 @@ export interface AccessSnapshot {
   snapshotAt: string;
 }
 
+// ==========================================
+// WORKFORCE, TEAMS, DEPARTMENTS & INVITATIONS (PHASE 3)
+// ==========================================
+
+export interface Department {
+  id: string;
+  organizationId: string;
+  name: string;
+  code: string;
+  description?: string;
+  headPersonId?: string;
+  headPersonName?: string;
+  memberCount: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Team {
+  id: string;
+  organizationId: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  departmentId?: string;
+  departmentName?: string;
+  name: string;
+  description?: string;
+  leadPersonId?: string;
+  leadPersonName?: string;
+  memberPersonIds: string[];
+  color?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type InvitationDeliveryChannel = 'email' | 'sms' | 'whatsapp';
+
+export type InvitationStatus =
+  | 'draft'
+  | 'sent'
+  | 'delivered'
+  | 'accepted'
+  | 'expired'
+  | 'revoked'
+  | 'failed';
+
+export interface InvitationChannelState {
+  status: 'pending' | 'sent' | 'delivered' | 'failed';
+  dispatchedAt?: string;
+  deliveredAt?: string;
+  error?: string;
+}
+
+export interface Invitation {
+  id: string;
+  organizationId: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  email: string;
+  phone?: string;
+  invitedPersonName?: string;
+  roleIds: string[];
+  roleNames?: string[];
+  teamIds?: string[];
+  departmentId?: string;
+  tokenHash: string;
+  expiresAt: string;
+  status: InvitationStatus;
+  channels: {
+    email: InvitationChannelState;
+    sms?: InvitationChannelState;
+    whatsapp?: InvitationChannelState;
+  };
+  invitedBy: string;
+  acceptedBy?: string;
+  acceptedAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type AccessRequestStatus = 'pending' | 'approved' | 'rejected' | 'cancelled';
+
+export interface AccessRequest {
+  id: string;
+  organizationId: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  personId: string;
+  personName: string;
+  personEmail: string;
+  requestedRoleIds: string[];
+  requestedRoleNames?: string[];
+  requestedWorkspaceIds?: string[];
+  justification: string;
+  status: AccessRequestStatus;
+  reviewedBy?: string;
+  reviewerName?: string;
+  reviewedAt?: string;
+  reviewNote?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type BulkWorkforceActionType =
+  | 'assign_roles'
+  | 'assign_workspaces'
+  | 'assign_department'
+  | 'assign_team'
+  | 'suspend'
+  | 'reactivate'
+  | 'resend_invite';
+
+export interface BulkOperationResult {
+  totalProcessed: number;
+  succeeded: number;
+  failed: number;
+  errors: Array<{ id: string; error: string }>;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

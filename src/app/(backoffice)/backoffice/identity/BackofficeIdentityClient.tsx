@@ -1,14 +1,15 @@
 'use client';
 
 /**
- * @fileOverview Backoffice Identity & Authorization Control Plane (Phase 2 Upgrade)
+ * @fileOverview Backoffice Identity & Authorization Control Plane (Phase 3 Upgrade)
  *
  * Provides super-administrative inspection of cross-tenant Identity 2.0 graphs,
- * canonical roles, version counters, risk profiles, and one-click reconciliation tools.
+ * canonical roles, version counters, risk profiles, cross-tenant invitation queue,
+ * and one-click reconciliation tools.
  *
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
  * - Gated on the server and client by Backoffice RBAC.
- * - Allows platform operators to audit roles and heal projections across tenants without touching code.
+ * - Allows platform operators to audit roles, rescue stuck invitations, and heal projections across tenants without touching code.
  * - Zero `any` or `any[]` typing.
  */
 
@@ -30,6 +31,8 @@ import {
   Clock,
   Grid3X3,
   ShieldAlert,
+  Mail,
+  Send,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -42,12 +45,17 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
 import { useBackoffice } from '../context/BackofficeProvider';
-import type { PersonDetailView, Organization, Role } from '@/lib/types';
+import type { PersonDetailView, Organization, Role, Invitation } from '@/lib/types';
 import type { ReconciliationReport } from '@/lib/services/identity/identity-migration-service';
 import {
   getPeopleDirectoryAction,
   reconcileOrganizationIdentitiesAction,
 } from '@/app/actions/identity-actions';
+import {
+  listInvitationsAction,
+  resendInvitationAction,
+  revokeInvitationAction,
+} from '@/app/actions/workforce-actions';
 import { RoleManagementService } from '@/lib/services/authorization/role-management-service';
 import { PermissionRegistryService } from '@/lib/services/authorization/permission-registry-service';
 import { normalizePermissionsSchema } from '@/lib/permissions-engine';
@@ -59,14 +67,16 @@ export function BackofficeIdentityClient() {
   const { user: authUser } = useUser();
   const { isSuperAdmin } = useBackoffice();
 
-  const [activeTab, setActiveTab] = React.useState<'people' | 'roles'>('people');
+  const [activeTab, setActiveTab] = React.useState<'people' | 'roles' | 'invitations'>('people');
   const [organizations, setOrganizations] = React.useState<Organization[]>([]);
   const [selectedOrgId, setSelectedOrgId] = React.useState<string>('');
   const [people, setPeople] = React.useState<PersonDetailView[]>([]);
   const [tenantRoles, setTenantRoles] = React.useState<Role[]>([]);
+  const [tenantInvitations, setTenantInvitations] = React.useState<Invitation[]>([]);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [isLoading, setIsLoading] = React.useState(false);
   const [isLoadingRoles, setIsLoadingRoles] = React.useState(false);
+  const [isLoadingInvites, setIsLoadingInvites] = React.useState(false);
   const [isReconciling, setIsReconciling] = React.useState(false);
   const [reconciliationReport, setReconciliationReport] = React.useState<ReconciliationReport | null>(null);
 
@@ -139,12 +149,34 @@ export function BackofficeIdentityClient() {
     }
   }, [selectedOrgId]);
 
+  // 4. Fetch Tenant Invitations
+  const loadInvitations = React.useCallback(async () => {
+    if (!authUser || !selectedOrgId) return;
+    setIsLoadingInvites(true);
+    try {
+      const idToken = await authUser.getIdToken();
+      const res = await listInvitationsAction({
+        idToken,
+        organizationId: selectedOrgId,
+      });
+
+      if (res.success) {
+        setTenantInvitations(res.invitations);
+      }
+    } catch (err: unknown) {
+      console.warn('[BackofficeIdentityClient] Failed to load invitations:', err);
+    } finally {
+      setIsLoadingInvites(false);
+    }
+  }, [authUser, selectedOrgId]);
+
   React.useEffect(() => {
     loadPeople();
     loadRoles();
-  }, [loadPeople, loadRoles]);
+    loadInvitations();
+  }, [loadPeople, loadRoles, loadInvitations]);
 
-  // 4. Trigger reconciliation
+  // 5. Trigger reconciliation
   const handleReconcile = async () => {
     if (!authUser || !selectedOrgId) return;
 
@@ -186,6 +218,53 @@ export function BackofficeIdentityClient() {
     }
   };
 
+  // Resend invitation
+  const handleResendInvite = async (invId: string, email: string) => {
+    if (!authUser || !selectedOrgId) return;
+    try {
+      const idToken = await authUser.getIdToken();
+      const res = await resendInvitationAction({
+        idToken,
+        organizationId: selectedOrgId,
+        invitationId: invId,
+      });
+
+      if (res.success && res.rawToken) {
+        const acceptUrl = `${window.location.origin}/accept-invitation?token=${res.rawToken}`;
+        await navigator.clipboard.writeText(acceptUrl);
+        toast({
+          title: 'Invitation Refreshed',
+          description: `New activation link copied to clipboard for ${email}.`,
+        });
+        loadInvitations();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Resend failed';
+      toast({ title: 'Resend Failed', description: msg, variant: 'destructive' });
+    }
+  };
+
+  // Revoke invitation
+  const handleRevokeInvite = async (invId: string, email: string) => {
+    if (!authUser || !selectedOrgId) return;
+    try {
+      const idToken = await authUser.getIdToken();
+      const res = await revokeInvitationAction({
+        idToken,
+        organizationId: selectedOrgId,
+        invitationId: invId,
+      });
+
+      if (res.success) {
+        toast({ title: 'Invitation Revoked' });
+        loadInvitations();
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Revoke failed';
+      toast({ title: 'Revoke Failed', description: msg, variant: 'destructive' });
+    }
+  };
+
   const filteredPeople = React.useMemo(() => {
     if (!searchQuery.trim()) return people;
     const q = searchQuery.toLowerCase();
@@ -205,7 +284,7 @@ export function BackofficeIdentityClient() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Shield className="w-6 h-6 text-primary" /> Identity & Authorization Control Plane
+            <Shield className="w-6 h-6 text-primary" /> Identity & Workforce Control Plane
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
             Cross-tenant Identity 2.0 graphs, canonical roles observatory, and zero-code dual-write reconciliation
@@ -271,13 +350,16 @@ export function BackofficeIdentityClient() {
       )}
 
       {/* Navigation Tabs */}
-      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'people' | 'roles')}>
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'people' | 'roles' | 'invitations')}>
         <TabsList className="h-10 bg-card border p-1 rounded-xl">
           <TabsTrigger value="people" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
-            <Users className="w-3.5 h-3.5 mr-1.5" /> Identity & Member Graphs ({people.length})
+            <Users className="w-3.5 h-3.5 mr-1.5" /> Member Graphs ({people.length})
           </TabsTrigger>
           <TabsTrigger value="roles" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
-            <Grid3X3 className="w-3.5 h-3.5 mr-1.5" /> Roles & Policy Observatory ({tenantRoles.length})
+            <Grid3X3 className="w-3.5 h-3.5 mr-1.5" /> Roles Observatory ({tenantRoles.length})
+          </TabsTrigger>
+          <TabsTrigger value="invitations" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+            <Mail className="w-3.5 h-3.5 mr-1.5" /> Invitation Queue ({tenantInvitations.length})
           </TabsTrigger>
         </TabsList>
 
@@ -502,6 +584,118 @@ export function BackofficeIdentityClient() {
                       <TableRow>
                         <TableCell colSpan={5} className="h-32 text-center text-xs text-muted-foreground">
                           No custom roles found for this tenant.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 3: Invitations Queue */}
+        <TabsContent value="invitations" className="space-y-4 pt-2 m-0">
+          <Card className="border bg-card shadow-xs overflow-hidden">
+            <CardHeader className="p-4 border-b bg-muted/20">
+              <CardTitle className="text-sm font-semibold">Tenant Invitation Queue: {selectedOrg?.name || selectedOrgId}</CardTitle>
+              <CardDescription className="text-xs">
+                Inspect cryptographic tokens, delivery states, and rescue expired invitations
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/10">
+                    <TableRow>
+                      <TableHead className="text-[10px] uppercase font-bold py-3 pl-4">Invitee Email</TableHead>
+                      <TableHead className="text-[10px] uppercase font-bold py-3">Roles & Workspace</TableHead>
+                      <TableHead className="text-[10px] uppercase font-bold py-3">Status</TableHead>
+                      <TableHead className="text-[10px] uppercase font-bold py-3">Expires</TableHead>
+                      <TableHead className="text-[10px] uppercase font-bold py-3 text-right pr-4">Superadmin Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoadingInvites ? (
+                      Array.from({ length: 4 }).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell colSpan={5} className="p-4">
+                            <div className="h-8 bg-muted/40 animate-pulse rounded-md" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : tenantInvitations.length > 0 ? (
+                      tenantInvitations.map((inv) => (
+                        <TableRow key={inv.id} className="hover:bg-muted/10">
+                          <TableCell className="pl-4 py-3">
+                            <div className="space-y-0.5">
+                              <span className="text-xs font-semibold text-foreground block">{inv.email}</span>
+                              <span className="text-[9px] font-mono text-muted-foreground/80 block">Hash: {inv.tokenHash.substring(0, 12)}...</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="flex flex-wrap gap-1">
+                                {inv.roleNames?.map((rn, i) => (
+                                  <Badge key={i} variant="outline" className="text-[9px] py-0 bg-muted/30">
+                                    {rn}
+                                  </Badge>
+                                ))}
+                              </div>
+                              {inv.workspaceName && (
+                                <span className="text-[10px] text-muted-foreground block">{inv.workspaceName}</span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                'text-[9px] font-bold uppercase tracking-wider',
+                                inv.status === 'accepted' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
+                                inv.status === 'sent' && 'bg-blue-500/10 text-blue-600 border-blue-500/30',
+                                inv.status === 'expired' && 'bg-amber-500/10 text-amber-600 border-amber-500/30',
+                                inv.status === 'revoked' && 'bg-rose-500/10 text-rose-600 border-rose-500/30'
+                              )}
+                            >
+                              {inv.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <span className="text-[10px] text-muted-foreground">
+                              {inv.expiresAt ? new Date(inv.expiresAt).toLocaleDateString() : 'N/A'}
+                            </span>
+                          </TableCell>
+                          <TableCell className="text-right pr-4">
+                            {inv.status === 'sent' && (
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleResendInvite(inv.id, inv.email)}
+                                  className="text-xs h-7 px-2"
+                                >
+                                  <Send className="w-3 h-3 mr-1" /> Copy Link
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRevokeInvite(inv.id, inv.email)}
+                                  className="text-xs h-7 px-2 text-rose-500 hover:text-rose-600 hover:bg-rose-500/10"
+                                >
+                                  <Ban className="w-3 h-3 mr-1" /> Revoke
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={5} className="h-32 text-center text-xs text-muted-foreground">
+                          No invitations in queue for this tenant.
                         </TableCell>
                       </TableRow>
                     )}
