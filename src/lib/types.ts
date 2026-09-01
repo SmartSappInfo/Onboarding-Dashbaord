@@ -1132,6 +1132,133 @@ export interface PersonDetailView {
   userProfileProjection: UserProfile;
 }
 
+// ==========================================
+// AUTHORIZATION 2.0 & POLICY DOMAIN MODELS
+// ==========================================
+
+export type PermissionRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface PermissionDefinition {
+  id: string;
+  name: string;
+  section: keyof PermissionsSchema;
+  feature: string;
+  action: AppPermissionAction;
+  description: string;
+  riskLevel: PermissionRiskLevel;
+  dependencies: string[];
+  legacyPermissionId?: AppPermissionId;
+}
+
+export type RoleAssignmentScope = 'organization' | 'workspace' | 'department';
+
+export interface RoleAssignment {
+  id: string;
+  organizationId: string;
+  personId: string;
+  roleId: string;
+  roleName?: string;
+  scopeType: RoleAssignmentScope;
+  scopeId: string;
+  scopeName?: string;
+  grantedBy: string;
+  grantedAt: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type PolicyConditionOperator = 'equals' | 'not_equals' | 'in' | 'contains' | 'less_than' | 'greater_than';
+
+export interface PolicyCondition {
+  field: string;
+  operator: PolicyConditionOperator;
+  value: string | number | boolean | string[];
+}
+
+export type PolicyEffect = 'allow' | 'deny';
+
+export interface PolicyRule {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  effect: PolicyEffect;
+  actions: string[];
+  resources: string[];
+  conditions: PolicyCondition[];
+  priority: number;
+  status: 'active' | 'inactive';
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface AccessEvaluationResult {
+  isAllowed: boolean;
+  grantedByRoles: string[];
+  matchedPolicies: string[];
+  reasons: string[];
+  evaluationDurationMs: number;
+}
+
+export interface AccessGrantHierarchyNode {
+  roleId: string;
+  roleName: string;
+  section: string;
+  feature: string;
+  action: string;
+  scope: string;
+}
+
+export interface AccessExplanation {
+  personId: string;
+  personName: string;
+  permissionId: string;
+  workspaceId: string;
+  hasAccess: boolean;
+  grantHierarchy: AccessGrantHierarchyNode[];
+  policyConstraints: string[];
+  explanationText: string;
+}
+
+export interface AccessSimulationRequest {
+  roleIds: string[];
+  workspaceId?: string;
+  policies?: PolicyRule[];
+  targetActions?: string[];
+}
+
+export interface AccessSimulationResult {
+  mergedSchema: PermissionsSchema;
+  flattenedPermissions: AppPermissionId[];
+  grantedActions: string[];
+  deniedActions: string[];
+  capabilitySummary: {
+    operations: number;
+    finance: number;
+    studios: number;
+    management: number;
+  };
+  riskBreakdown: {
+    low: number;
+    medium: number;
+    high: number;
+    critical: number;
+  };
+}
+
+export interface AccessSnapshot {
+  id: string;
+  organizationId: string;
+  personId: string;
+  workspaceId?: string;
+  effectiveSchema: PermissionsSchema;
+  flatPermissions: AppPermissionId[];
+  activeRoleIds: string[];
+  version: number;
+  snapshotAt: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

@@ -217,6 +217,22 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Authorization 2.0 & ABAC Policy Collections ---
+    match /policies/{policyId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /role_assignments/{assignmentId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /access_snapshots/{snapshotId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));

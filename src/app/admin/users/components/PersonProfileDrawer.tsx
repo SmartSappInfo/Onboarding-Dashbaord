@@ -52,6 +52,7 @@ import {
   Save,
   RotateCcw,
   Copy,
+  HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus } from '@/lib/types';
@@ -60,6 +61,7 @@ import {
   updateMembershipStatusAction,
 } from '@/app/actions/identity-actions';
 import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
+import { AccessExplainerModal } from '@/app/admin/users/roles/components/AccessExplainerModal';
 
 interface PersonProfileDrawerProps {
   isOpen: boolean;
@@ -97,6 +99,8 @@ export function PersonProfileDrawer({
   const [activeTab, setActiveTab] = React.useState('overview');
   const [isSavingProfile, setIsSavingProfile] = React.useState(false);
   const [isResettingPassword, setIsResettingPassword] = React.useState(false);
+  const [isExplainerOpen, setIsExplainerOpen] = React.useState(false);
+  const [explainingPermission, setExplainingPermission] = React.useState('operations.pipeline.view');
 
   // Editable Profile Form State
   const [displayName, setDisplayName] = React.useState(user.name || '');
@@ -407,18 +411,32 @@ export function PersonProfileDrawer({
                   <h3 className="text-sm font-semibold">Assigned Workspaces</h3>
                   <p className="text-xs text-muted-foreground">Workspaces and roles authorized for this member</p>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    onClose();
-                    onManageWorkspaces(user);
-                  }}
-                  className="text-xs h-8 px-3 font-medium active:scale-[0.97]"
-                >
-                  <Building className="w-3.5 h-3.5 mr-1.5 text-primary" /> Modify Workspaces
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      setExplainingPermission('operations.pipeline.view');
+                      setIsExplainerOpen(true);
+                    }}
+                    className="text-xs h-8 px-2.5 font-medium active:scale-[0.97]"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 mr-1 text-primary" /> Explain Access
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      onClose();
+                      onManageWorkspaces(user);
+                    }}
+                    className="text-xs h-8 px-3 font-medium active:scale-[0.97]"
+                  >
+                    <Building className="w-3.5 h-3.5 mr-1.5 text-primary" /> Modify Workspaces
+                  </Button>
+                </div>
               </div>
 
               <div className="space-y-2.5">
@@ -551,6 +569,17 @@ export function PersonProfileDrawer({
           </Tabs>
         </div>
       </SheetContent>
+
+      {isExplainerOpen && (
+        <AccessExplainerModal
+          isOpen={isExplainerOpen}
+          onClose={() => setIsExplainerOpen(false)}
+          personId={user.id}
+          personName={user.name || 'User'}
+          permissionId={explainingPermission}
+          workspaceId={user.lastActiveWorkspaceId || user.defaultWorkspaceId || user.workspaceIds?.[0]}
+        />
+      )}
     </Sheet>
   );
 }
