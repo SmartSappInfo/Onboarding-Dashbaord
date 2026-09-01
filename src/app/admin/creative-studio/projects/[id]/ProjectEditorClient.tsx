@@ -2,19 +2,20 @@
 
 /**
  * ARCHITECTURE:
- * Creative Project Full Canvas Editor Client (Phase 5 - Templates & Brand Intelligence)
+ * Creative Project Full Canvas Editor Client (Phase 6 - CRM Integration & Personalization)
  * 
- * Professional WYSIWYG editor integrating Brand Studio intelligence, AI rule enforcement,
- * "Save as Template" workflow, Creative Health diagnostics, attention heatmap overlays,
- * AI Creative Director (Cmd+K, collaborator drawer), and precision multi-selection transforms.
+ * Professional WYSIWYG editor integrating CRM campaign context, Rule 1 FieldsVariablesService
+ * merge variable resolution, live contact preview simulation, batch programmatic personalization,
+ * Brand Studio intelligence, AI design rules, Creative Health diagnostics, and precision canvas tools.
  * 
  * CAUTION:
  * Mid-drag updates must specify `commitToHistory = false`.
+ * Dynamic merge replacements must never alter source template tokens during live contact previews.
  * Touch targets must be >= 36px (>= 44px on mobile).
  * Strict typing (0% any).
  * 
  * TESTABILITY:
- * Verified via unit tests in src/lib/creative/__tests__/creative-templates.test.ts
+ * Verified via unit tests in src/lib/creative/__tests__/creative-crm.test.ts
  */
 
 import * as React from 'react';
@@ -30,16 +31,20 @@ import type {
   CreativeHealthIssue,
   CreativeTemplate,
   BrandKit,
+  CrmCampaignContext,
+  CrmContactPreview,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId, THUMBNAIL_FONT_OPTIONS } from '@/lib/creative/creative-types';
 import type { MediaAsset } from '@/lib/types';
 import { evaluateCreativeHealth } from '@/lib/creative/creative-health-engine';
 import { applyHealthFix, applyImproveAllFixes } from '@/lib/creative/creative-health-fixes';
 import { evaluateBrandCompliance, applyBrandRulesToElements } from '@/lib/creative/brand-intelligence';
+import { resolveElementsForContact } from '@/lib/creative/creative-crm-engine';
 import ThumbnailCanvas from '@/components/shared/thumbnail-designer/ThumbnailCanvas';
 import { ContextualActionBar } from '@/components/shared/thumbnail-designer/ContextualActionBar';
 import { LayersTreePanel } from '@/components/shared/thumbnail-designer/LayersTreePanel';
 import { CreativeHealthPanel } from '@/components/shared/thumbnail-designer/CreativeHealthPanel';
+import { BatchPersonalizationModal } from '@/components/shared/thumbnail-designer/BatchPersonalizationModal';
 import {
   KeyboardShortcutsDialog,
   useKeyboardShortcuts,
@@ -55,6 +60,13 @@ import {
 } from '@/app/actions/creative-project-actions';
 import { getWorkspaceBrandKitAction } from '@/app/actions/brand-kit-actions';
 import { saveCanvasAsTemplateAction } from '@/app/actions/creative-template-actions';
+import {
+  listCrmCampaignsAction,
+  getCrmContactPreviewDataAction,
+  linkCreativeToCrmCampaignAction,
+  SAMPLE_CAMPAIGNS,
+  SAMPLE_CONTACTS,
+} from '@/app/actions/creative-crm-actions';
 import {
   listProjectCommentsAction,
   addProjectCommentAction,
@@ -93,6 +105,9 @@ import {
   Eye,
   ShieldCheck,
   BookmarkPlus,
+  Users,
+  Target,
+  UserCheck,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -102,6 +117,13 @@ const EMOJI_OPTIONS = ['🔥', '😱', '🚨', '👉', '💡', '💰', '❌', '�
 const PRESET_ICONS = [
   'Play', 'TrendingUp', 'AlertCircle', 'CheckCircle2', 'XCircle',
   'ThumbsUp', 'Bell', 'Video', 'DollarSign', 'Flame', 'Sparkles',
+];
+
+const CRM_VARIABLE_SHORTCUTS = [
+  { label: 'First Name', tag: '{{contact.first_name}}' },
+  { label: 'Last Name', tag: '{{contact.last_name}}' },
+  { label: 'Company / School', tag: '{{contact.company}}' },
+  { label: 'Campaign Title', tag: '{{campaign.name}}' },
 ];
 
 interface ProjectEditorClientProps {
@@ -182,6 +204,13 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [templateDescription, setTemplateDescription] = useState('');
   const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
+  // CRM Integration State (Phase 6)
+  const [campaigns, setCampaigns] = useState<CrmCampaignContext[]>(SAMPLE_CAMPAIGNS);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('camp-q3-enrollment');
+  const [contacts, setContacts] = useState<CrmContactPreview[]>(SAMPLE_CONTACTS);
+  const [previewContactId, setPreviewContactId] = useState<string>('none');
+  const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+
   // Cloud Comments State
   const [comments, setComments] = useState<CreativeComment[]>([]);
   const [isCommentsOpen, setIsCommentsOpen] = useState(false);
@@ -200,7 +229,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [publishVideoId, setPublishVideoId] = useState('');
   const [isPublishing, setIsPublishing] = useState(false);
 
-  // 1. Initial Load of Project, Document, BrandKit, and Comments
+  // 1. Initial Load
   useEffect(() => {
     let active = true;
     async function loadData() {
@@ -215,6 +244,18 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         const brandRes = await getWorkspaceBrandKitAction(res.data.project.workspaceId);
         if (brandRes.success && brandRes.data) {
           setBrandKit(brandRes.data);
+        }
+
+        // Load CRM Campaigns
+        const campRes = await listCrmCampaignsAction(res.data.project.workspaceId);
+        if (campRes.success && campRes.data) {
+          setCampaigns(campRes.data);
+        }
+
+        // Load CRM Contacts
+        const contactsRes = await getCrmContactPreviewDataAction(res.data.project.workspaceId);
+        if (contactsRes.success && contactsRes.data) {
+          setContacts(contactsRes.data);
         }
 
         // Load Comments
@@ -239,11 +280,28 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     };
   }, [projectId, initialize, toast]);
 
-  // 2. Debounced Creative Health & Attention Evaluator (Phase 4)
+  // Active CRM Campaign Object
+  const activeCampaign = useMemo(() => {
+    return campaigns.find((c) => c.campaignId === selectedCampaignId) || campaigns[0];
+  }, [campaigns, selectedCampaignId]);
+
+  // Active Live Contact Object for Preview Simulator
+  const activeContact = useMemo(() => {
+    if (previewContactId === 'none') return null;
+    return contacts.find((c) => c.id === previewContactId) || null;
+  }, [contacts, previewContactId]);
+
+  // Computed Dynamic Elements (Personalized during preview simulation)
+  const displayedCanvasElements = useMemo(() => {
+    if (!activeContact) return document.elements;
+    return resolveElementsForContact(document.elements, activeContact, activeCampaign);
+  }, [document.elements, activeContact, activeCampaign]);
+
+  // 2. Debounced Creative Health Evaluator (Phase 4)
   useEffect(() => {
     const timer = setTimeout(() => {
       const report = evaluateCreativeHealth(
-        document.elements,
+        displayedCanvasElements,
         document.backgroundColor,
         document.backgroundGradient,
         brandKit
@@ -251,12 +309,12 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
       setHealthReport(report);
     }, 250);
     return () => clearTimeout(timer);
-  }, [document, brandKit]);
+  }, [displayedCanvasElements, document.backgroundColor, document.backgroundGradient, brandKit]);
 
   // Brand Compliance Report (Phase 5)
   const brandCompliance = useMemo(() => {
-    return evaluateBrandCompliance(document.elements, brandKit);
-  }, [document.elements, brandKit]);
+    return evaluateBrandCompliance(displayedCanvasElements, brandKit);
+  }, [displayedCanvasElements, brandKit]);
 
   // 3. Debounced Autosave (1500ms)
   const saveDocumentNow = useCallback(async () => {
@@ -460,6 +518,33 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         title: 'Save Failed',
         description: res.error || 'Could not save template.',
         variant: 'destructive',
+      });
+    }
+  };
+
+  const handleLinkCampaign = async (campaignId: string) => {
+    setSelectedCampaignId(campaignId);
+    const camp = campaigns.find((c) => c.campaignId === campaignId);
+    if (camp && project) {
+      await linkCreativeToCrmCampaignAction(project.id, camp);
+      toast({
+        title: 'CRM Campaign Linked',
+        description: `Associated with "${camp.campaignName}".`,
+      });
+    }
+  };
+
+  const handleInsertMergeVariable = (tag: string) => {
+    if (selectedPrimaryElement?.type === 'text') {
+      const currentText = selectedPrimaryElement.text || '';
+      updateElement(selectedPrimaryElement.id, {
+        text: `${currentText} ${tag}`.trim(),
+      });
+      toast({ title: 'Variable Inserted', description: `Injected ${tag}` });
+    } else {
+      toast({
+        title: 'Select a Text Element',
+        description: 'Click on any text box on the canvas to insert this dynamic variable.',
       });
     }
   };
@@ -893,12 +978,15 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         {/* Left Tool Tabs Sidebar */}
         <aside className="w-72 sm:w-80 border-r border-slate-850 bg-slate-950 flex flex-col shrink-0 z-10">
           <Tabs defaultValue="add" className="flex-1 flex flex-col">
-            <TabsList className="h-11 bg-slate-900/60 p-1 border-b border-slate-850 rounded-none w-full grid grid-cols-4">
+            <TabsList className="h-11 bg-slate-900/60 p-1 border-b border-slate-850 rounded-none w-full grid grid-cols-5">
               <TabsTrigger value="add" className="text-xs font-bold data-[state=active]:bg-emerald-500 data-[state=active]:text-slate-950 rounded-lg">
                 Add
               </TabsTrigger>
               <TabsTrigger value="brand" className="text-xs font-bold data-[state=active]:bg-emerald-500 data-[state=active]:text-slate-950 rounded-lg">
                 Brand
+              </TabsTrigger>
+              <TabsTrigger value="crm" className="text-xs font-bold data-[state=active]:bg-emerald-500 data-[state=active]:text-slate-950 rounded-lg">
+                CRM
               </TabsTrigger>
               <TabsTrigger value="layers" className="text-xs font-bold data-[state=active]:bg-emerald-500 data-[state=active]:text-slate-950 rounded-lg">
                 Layers
@@ -1126,7 +1214,109 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
               )}
             </TabsContent>
 
-            {/* Tab 3: Hierarchical Layers Tree Panel (Phase 2) */}
+            {/* Tab 3: CRM Campaign & Dynamic Personalization (Phase 6) */}
+            <TabsContent value="crm" className="flex-1 overflow-y-auto p-4 space-y-4 m-0 scrollbar-none">
+              {/* Campaign Linking Card */}
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                  <Target className="w-4 h-4 text-emerald-400" />
+                  <span>Campaign Context</span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-slate-400 uppercase">Target Campaign</Label>
+                  <Select value={selectedCampaignId} onValueChange={handleLinkCampaign}>
+                    <SelectTrigger className="h-9 bg-slate-950 border-slate-800 text-xs font-bold text-white rounded-xl">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                      {campaigns.map((camp) => (
+                        <SelectItem key={camp.campaignId} value={camp.campaignId!} className="text-xs font-bold">
+                          {camp.campaignName}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {activeCampaign && (
+                  <div className="text-[11px] space-y-1 pt-1 border-t border-slate-850 text-slate-400">
+                    <div><span className="text-slate-500 font-semibold">Audience:</span> {activeCampaign.targetAudience}</div>
+                    <div><span className="text-slate-500 font-semibold">Objective:</span> {activeCampaign.objective?.replace('_', ' ')}</div>
+                  </div>
+                )}
+              </div>
+
+              {/* Live Contact Switcher (Simulation) */}
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-white">
+                    <UserCheck className="w-4 h-4 text-cyan-400" />
+                    <span>Live Contact Simulator</span>
+                  </div>
+                  {activeContact && (
+                    <button
+                      onClick={() => setPreviewContactId('none')}
+                      className="text-[10px] font-bold text-slate-400 hover:text-white"
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                <Select value={previewContactId} onValueChange={setPreviewContactId}>
+                  <SelectTrigger className="h-9 bg-slate-950 border-slate-800 text-xs font-bold text-white rounded-xl">
+                    <SelectValue placeholder="Select Contact to Simulate..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                    <SelectItem value="none" className="text-xs font-bold">
+                      None (Raw Tokens View)
+                    </SelectItem>
+                    {contacts.map((c) => (
+                      <SelectItem key={c.id} value={c.id} className="text-xs font-bold">
+                        {c.firstName} {c.lastName} ({c.company || 'Private'})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                {activeContact && (
+                  <div className="p-2.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-[11px] text-cyan-300">
+                    ✓ Simulating live canvas preview for <strong>{activeContact.firstName}</strong> at <strong>{activeContact.company}</strong>.
+                  </div>
+                )}
+              </div>
+
+              {/* Dynamic Merge Variables Quick Inserter */}
+              <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
+                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+                  Insert CRM Variables
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {CRM_VARIABLE_SHORTCUTS.map((item) => (
+                    <Button
+                      key={item.tag}
+                      onClick={() => handleInsertMergeVariable(item.tag)}
+                      variant="outline"
+                      size="sm"
+                      className="h-8 justify-start text-[11px] font-bold bg-slate-950 border-slate-800 text-slate-200 hover:text-emerald-400 hover:border-emerald-500/40 rounded-lg active:scale-[0.97]"
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Programmatic Batch Personalization Launcher */}
+              <Button
+                onClick={() => setIsBatchModalOpen(true)}
+                className="w-full bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700 text-white font-black text-xs h-10 rounded-xl shadow-lg shadow-cyan-500/10 active:scale-[0.98]"
+              >
+                <Users className="w-4 h-4 mr-2" /> Batch Personalize ({contacts.length})
+              </Button>
+            </TabsContent>
+
+            {/* Tab 4: Hierarchical Layers Tree Panel (Phase 2) */}
             <TabsContent value="layers" className="flex-1 overflow-y-auto p-4 m-0 scrollbar-none">
               <LayersTreePanel
                 elements={document.elements}
@@ -1142,7 +1332,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
               />
             </TabsContent>
 
-            {/* Tab 4: Creative Intelligence & Health Panel (Phase 4) */}
+            {/* Tab 5: Creative Intelligence & Health Panel (Phase 4) */}
             <TabsContent value="health" className="flex-1 overflow-y-auto p-4 m-0 scrollbar-none">
               <CreativeHealthPanel
                 report={healthReport}
@@ -1175,7 +1365,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
             backgroundColor={document.backgroundColor}
             backgroundGradient={document.backgroundGradient}
             backgroundImage={document.backgroundImage}
-            elements={document.elements}
+            elements={displayedCanvasElements}
             selectedIds={selectedIds}
             onSelectElement={selectElement}
             onSelectMultiple={selectMultiple}
@@ -1615,6 +1805,17 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Programmatic Batch Personalization Modal (Phase 6) */}
+      {isBatchModalOpen && project && (
+        <BatchPersonalizationModal
+          open={isBatchModalOpen}
+          onOpenChange={setIsBatchModalOpen}
+          projectId={project.id}
+          workspaceId={project.workspaceId}
+          contacts={contacts}
+        />
+      )}
 
       {/* Floating AI Command Bar (Cmd+K) (Phase 3) */}
       <AiCommandBar

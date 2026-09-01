@@ -206,6 +206,38 @@ export interface BrandComplianceReport {
   evaluatedAt: string;
 }
 
+export interface CrmCampaignContext {
+  campaignId?: string;
+  campaignName?: string;
+  targetAudience?: string;
+  objective?: 'lead_generation' | 'sales_conversion' | 'event_attendance' | 'awareness';
+  segmentId?: string;
+  segmentName?: string;
+  dealId?: string;
+}
+
+export interface CrmContactPreview {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  company?: string;
+  phone?: string;
+  avatarUrl?: string;
+  customFields?: Record<string, string>;
+}
+
+export interface BatchPersonalizationJob {
+  id: string;
+  projectId: string;
+  segmentId: string;
+  totalCount: number;
+  completedCount: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  generatedDocumentIds: string[];
+  createdAt: string;
+}
+
 export interface CreativeComment {
   id: string;
   projectId: string;

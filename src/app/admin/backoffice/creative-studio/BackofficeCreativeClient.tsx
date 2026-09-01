@@ -351,6 +351,40 @@ export function BackofficeCreativeClient() {
             </Button>
           </div>
         </div>
+
+        {/* CRM Attribution & Programmatic Batch Limits Hub (Phase 6) */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">CRM Creative Attribution & Batch Limits</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Pipeline revenue tracking & rate limits</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Configure multi-touch conversion attribution models and maximum contact batch processing limits.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-cyan-500/40 text-slate-200">
+              <div className="flex justify-between items-center">
+                <span>Attribution Model</span>
+                <span className="text-cyan-400 font-mono">First-Touch</span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-normal mt-0.5">Pipeline Lead Attribution</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div className="flex justify-between items-center">
+                <span>Batch Limit</span>
+                <span className="text-emerald-400 font-mono">100 / run</span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-normal mt-0.5">Chunked Concurrency (10x)</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Migration Report */}
