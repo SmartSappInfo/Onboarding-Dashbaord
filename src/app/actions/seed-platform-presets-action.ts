@@ -19,6 +19,7 @@ import { authorizeBackoffice } from '@/lib/backoffice/backoffice-auth';
 import { logBackofficeAction } from '@/lib/backoffice/audit-logger';
 import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import { chunkArray } from '@/lib/backoffice/template-propagation-engine';
+import type { PlatformTemplate, PlatformTemplateType } from '@/lib/backoffice/backoffice-types';
 import { CANONICAL_ROLE_BLUEPRINTS } from '@/lib/role-blueprint-presets';
 import { SYSTEM_POSTER_TEMPLATES } from '@/lib/poster-templates';
 
@@ -340,6 +341,26 @@ export async function seedAllPlatformTemplatesAction(idToken: string): Promise<{
       })
     );
 
+    // 16. QR Code Studio & Poster Canvas Templates (System Presets)
+    for (const posterTpl of SYSTEM_POSTER_TEMPLATES) {
+      allPresets.push(
+        createTemplate(
+          `qr-tpl-${posterTpl.id}`,
+          'qr_template',
+          posterTpl.name,
+          posterTpl.description,
+          posterTpl.category,
+          {
+            canvasWidth: posterTpl.canvasWidth,
+            canvasHeight: posterTpl.canvasHeight,
+            backgroundColor: posterTpl.backgroundColor,
+            elements: posterTpl.elements,
+          },
+          true
+        )
+      );
+    }
+
     // Ingest all presets into Firestore in bounded chunks of <= 30 items
     const chunks = chunkArray(allPresets, 30);
     for (const chunk of chunks) {
@@ -366,6 +387,7 @@ export async function seedAllPlatformTemplatesAction(idToken: string): Promise<{
       pdfs: allPresets.filter((p) => p.type === 'pdf').length,
       dunning: allPresets.filter((p) => p.type === 'dunning').length,
       credentials: allPresets.filter((p) => p.type === 'qr_credential').length,
+      qr_templates: allPresets.filter((p) => p.type === 'qr_template').length,
       governance: allPresets.filter((p) => ['role_architecture', 'brand_voice', 'prompt', 'task'].includes(p.type)).length,
       total: allPresets.length,
     };

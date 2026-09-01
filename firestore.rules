@@ -2862,6 +2862,14 @@ service cloud.firestore {
       );
     }
 
+    match /organizations/{orgId}/workspaces/{wsId}/qr_templates/{templateId} {
+      allow read, write: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
+        hasWorkspaceAccess(wsId)
+      );
+    }
+
     match /organizations/{orgId}/workspaces/{wsId}/qr_scan_events/{eventId} {
       allow read: if isSignedIn() && (
         request.auth.token.email == 'admin@smartsapp.com' ||

@@ -648,7 +648,7 @@ export default function CanvasPosterDesigner({
       <MediaSelectorDialog
         open={showMediaDialog}
         onOpenChange={setShowMediaDialog}
-        onSelect={handleAssetSelect}
+        onSelectAsset={handleAssetSelect}
       />
     </div>
   );

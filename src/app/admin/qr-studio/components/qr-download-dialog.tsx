@@ -81,7 +81,6 @@ export default function QRDownloadDialog({ data, design, name, onClose }: QRDown
           };
         }
 
-        // @ts-expect-error - dynamic opts
         const qr = new QRCodeStyling(qrOpts);
         const blob = await qr.getRawData('png');
         if (!blob) throw new Error('Failed to generate QR bitmap');

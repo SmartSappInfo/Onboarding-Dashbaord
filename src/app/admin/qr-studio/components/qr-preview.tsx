@@ -129,7 +129,6 @@ export default function QRPreview({
       if (cancelled) return;
 
       if (!qrInstanceRef.current) {
-        // @ts-expect-error - qr-code-styling accepts dynamic opts
         qrInstanceRef.current = new QRCodeStyling(qrOptions);
         if (containerRef.current) {
           containerRef.current.innerHTML = '';
@@ -375,7 +374,6 @@ export async function downloadQR(
     };
   }
 
-  // @ts-expect-error - qr-code-styling accepts dynamic opts
   const qr = new QRCodeStyling(opts);
   const extension = format === 'jpg' ? 'jpeg' : format;
   const name = filename || `qr-code-${Date.now()}`;
