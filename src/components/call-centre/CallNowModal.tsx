@@ -38,6 +38,7 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
   const [selectedCampaign, setSelectedCampaign] = useState<CallCampaign | null>(null);
   const [queueItem, setQueueItem] = useState<CallQueueItem | null>(null);
   const [isInitializing, setIsInitializing] = useState(false);
+  const [callStartTime, setCallStartTime] = useState<number | null>(null);
   
   // Script state
   const [scriptGraph, setScriptGraph] = useState<BranchingScriptGraph | null>(null);
@@ -82,7 +83,8 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
       // Fetch dynamic variables context for this entity/deal
       const varRes = await getVariableValuesMapAction({
         workspaceId,
-        entityId: params.entityId
+        entityId: params.entityId,
+        recipientContact: res.queueItem.contactId
       });
       if (varRes) {
         setVariablesMap(new Map(Object.entries(varRes)));
@@ -91,6 +93,7 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
       setQueueItem(res.queueItem);
       setSelectedCampaign(campaign);
       setStep('calling');
+      setCallStartTime(Date.now());
       triggeredNodeIds.current.clear();
       
     } catch (err: any) {
@@ -126,6 +129,7 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
     const outcome = node.data?.outcomeValue || 'Interested';
     const runAutomations = true;
     const payload = {} as any;
+    const duration = callStartTime ? Math.round((Date.now() - callStartTime) / 1000) : 0;
     if (!queueItem || !user || !selectedCampaign) return { ok: false, error: 'Not initialized' };
     
     try {
@@ -138,7 +142,7 @@ export function CallNowModal({ isOpen, onClose, params }: CallNowModalProps) {
         queueItemId: queueItem.id,
         outcome,
         notes: payload?.notes || '',
-        duration: 0, // Simplified for single call
+        duration,
         agentName: user.displayName || 'Agent',
         workspaceId,
         userId: user.uid,
