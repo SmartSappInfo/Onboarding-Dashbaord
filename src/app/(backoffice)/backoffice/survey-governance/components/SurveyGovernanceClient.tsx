@@ -31,6 +31,7 @@ import type {
 } from '@/lib/backoffice/backoffice-types';
 import DropoffIntelligenceRadar from './DropoffIntelligenceRadar';
 import SpamAbuseQueue from './SpamAbuseQueue';
+import SystemQuestionBankMatrix from './SystemQuestionBankMatrix';
 
 export default function SurveyGovernanceClient() {
   const getToken = useBackofficeToken();
@@ -153,6 +154,9 @@ export default function SurveyGovernanceClient() {
           </Card>
         </div>
       )}
+
+      {/* Global System Question Bank Matrix */}
+      <SystemQuestionBankMatrix />
 
       {/* Drop-off Intelligence Radar Section */}
       <div className="space-y-3">

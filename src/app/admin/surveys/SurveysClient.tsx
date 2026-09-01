@@ -18,7 +18,10 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList, Code } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList, Code, FolderGit2, Layers } from 'lucide-react';
+import { getSurveyProjectsAction } from '@/lib/surveys/survey-project-actions';
+import { hydrateSurveyDocument } from '@/lib/surveys/survey-hydration-adapter';
+import type { SurveyProject, SurveyType } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,6 +93,18 @@ export default function SurveysClient() {
   
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [projectFilter, setProjectFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [projects, setProjects] = useState<SurveyProject[]>([]);
+
+  useEffect(() => {
+    if (!activeWorkspaceId) return;
+    getSurveyProjectsAction(activeWorkspaceId).then((res) => {
+      if (res.success && res.projects) {
+        setProjects(res.projects);
+      }
+    });
+  }, [activeWorkspaceId]);
 
   const surveysCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -367,10 +382,20 @@ export default function SurveysClient() {
  return <div className="text-destructive">Error loading surveys: {error.message}</div>;
   }
 
-  const filteredTemplates = surveys?.filter(t => 
-    (categoryFilter === 'all' || t.status === categoryFilter) &&
-    (t.internalName?.toLowerCase().includes(searchTerm.toLowerCase()) || t.title.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) || [];
+  const filteredTemplates = useMemo(() => {
+    return (surveys || [])
+      .map((raw) => hydrateSurveyDocument(raw))
+      .filter((t) => {
+        const matchesStatus =
+          categoryFilter === 'all' || t.status === categoryFilter || t.lifecycleStatus === categoryFilter;
+        const matchesProject = projectFilter === 'all' || t.projectId === projectFilter;
+        const matchesType = typeFilter === 'all' || t.surveyType === typeFilter;
+        const matchesSearch =
+          (t.internalName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (t.title || '').toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesStatus && matchesProject && matchesType && matchesSearch;
+      });
+  }, [surveys, categoryFilter, projectFilter, typeFilter, searchTerm]);
 
     return (
         <TooltipProvider>
@@ -378,19 +403,29 @@ export default function SurveysClient() {
                 <div className="space-y-8 pb-32 w-full">
                     <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                         <div>
-                            <h1 className="text-3xl font-bold text-foreground">Surveys</h1>
-                            <p className="text-sm text-muted-foreground mt-1">Manage public survey templates and response data.</p>
+                            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2.5">
+                                <ClipboardList className="h-7 w-7 text-primary" />
+                                Surveys & Intelligence
+                            </h1>
+                            <p className="text-sm text-muted-foreground mt-1">
+                                Design, version, distribute, and analyze structured feedback across all organization touchpoints.
+                            </p>
                         </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border-border/80 shadow-sm transition-all active:scale-[0.97]">
+                        <Link href="/admin/surveys/projects">
+                            <FolderGit2 className="h-4 w-4 text-primary" /> Research Projects
+                        </Link>
+                    </Button>
                     {canCreate && (
-                        <RainbowButton asChild className="h-11 px-6 gap-2 font-semibold text-[10px] shadow-xl transition-all active:scale-95 text-white">
+                        <RainbowButton asChild className="h-11 px-5 gap-2 font-semibold text-xs shadow-xl transition-all active:scale-95 text-white">
                             <Link href="/admin/surveys/new/ai">
                                 <Sparkles className="h-4 w-4" /> AI Architect
                             </Link>
                         </RainbowButton>
                     )}
                     {canCreate && (
-                        <Button asChild className="h-11 px-6 rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all">
+                        <Button asChild className="h-11 px-5 rounded-xl font-semibold text-sm shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.97]">
                             <Link href="/admin/surveys/new">
                                 <PlusCircle className="mr-2 h-4 w-4" />
                                 New Survey
@@ -401,29 +436,61 @@ export default function SurveysClient() {
             </div>
 
             <Card className="p-4 rounded-xl border-border bg-card">
-                <div className="flex flex-col sm:flex-row items-center gap-3">
-                 <div className="relative w-full sm:w-80">
+                <div className="flex flex-col md:flex-row items-center gap-3">
+                  <div className="relative w-full md:flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
-                        placeholder="Search survey titles..." 
-                         className="pl-9 rounded-xl border-border bg-background h-10 w-full" 
+                        placeholder="Search survey titles or blueprints..." 
+                        className="pl-9 rounded-xl border-border bg-background h-10 w-full min-h-[44px]" 
                         value={searchTerm} 
                         onChange={e => setSearchTerm(e.target.value)} 
                     />
-                </div>
-                 <div className="flex items-center gap-3 w-full sm:w-auto">
-                     <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-                         <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10">
+                  </div>
+
+                  <div className="flex flex-wrap sm:flex-nowrap items-center gap-2.5 w-full md:w-auto">
+                    {/* Project Filter */}
+                    <Select value={projectFilter} onValueChange={setProjectFilter}>
+                        <SelectTrigger className="w-full sm:w-44 rounded-xl border-border bg-background h-10 min-h-[44px] text-xs">
+                            <SelectValue placeholder="All Projects" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Projects</SelectItem>
+                            {projects.map((p) => (
+                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Survey Type Filter */}
+                    <Select value={typeFilter} onValueChange={setTypeFilter}>
+                        <SelectTrigger className="w-full sm:w-36 rounded-xl border-border bg-background h-10 min-h-[44px] text-xs">
+                            <SelectValue placeholder="All Types" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="all">All Archetypes</SelectItem>
+                            <SelectItem value="feedback">Feedback</SelectItem>
+                            <SelectItem value="nps">NPS</SelectItem>
+                            <SelectItem value="csat">CSAT</SelectItem>
+                            <SelectItem value="assessment">Assessment</SelectItem>
+                            <SelectItem value="lead_qualification">Lead Gen</SelectItem>
+                            <SelectItem value="research">Research</SelectItem>
+                        </SelectContent>
+                    </Select>
+
+                    {/* Status Filter */}
+                    <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                        <SelectTrigger className="w-full sm:w-32 rounded-xl border-border bg-background h-10 min-h-[44px] text-xs">
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl">
                             <SelectItem value="all">All Status</SelectItem>
                             <SelectItem value="published">Published</SelectItem>
                             <SelectItem value="draft">Drafts</SelectItem>
+                            <SelectItem value="paused">Paused</SelectItem>
                             <SelectItem value="archived">Archived</SelectItem>
                         </SelectContent>
                     </Select>
-                 </div>
+                  </div>
                 </div>
             </Card>
              <Card className="rounded-xl border-border bg-card overflow-hidden">
@@ -464,20 +531,30 @@ export default function SurveysClient() {
                                     <Link href={survey.status === 'draft' ? `/admin/surveys/${survey.id}/edit` : `/admin/surveys/${survey.id}`} className="hover:underline hover:text-primary transition-colors text-sm font-bold truncate block">
                                         {survey.internalName || survey.title}
                                     </Link>
-                                    {survey.scoringEnabled && (
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 text-[8px] h-5 uppercase px-1.5 font-semibold gap-1">
- <Trophy className="h-2.5 w-2.5" />
-                                            Scored
+                                    <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                                        {survey.surveyType && (
+                                            <Badge variant="secondary" className="text-[9px] uppercase font-bold tracking-wider px-1.5 py-0 h-4">
+                                                {survey.surveyType.replace('_', ' ')}
+                                            </Badge>
+                                        )}
+                                        <Badge variant="outline" className="text-[9px] font-semibold text-muted-foreground px-1.5 py-0 h-4">
+                                            v{survey.currentVersionNumber || 1}
                                         </Badge>
-                                    </TooltipTrigger>
-                                    <TooltipContent>This survey uses the intelligent scoring engine.</TooltipContent>
-                                </Tooltip>
-                                )}
+                                        {survey.scoringEnabled && (
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Badge variant="outline" className="w-fit bg-primary/10 text-primary border-primary/20 text-[8px] h-4 uppercase px-1 font-semibold gap-0.5">
+                                                        <Trophy className="h-2.5 w-2.5" />
+                                                        Scored
+                                                    </Badge>
+                                                </TooltipTrigger>
+                                                <TooltipContent>This survey uses the intelligent scoring engine.</TooltipContent>
+                                            </Tooltip>
+                                        )}
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </TableCell>
+                        </TableCell>
                         <TableCell className="text-center"><Badge variant={getStatusVariant(survey.status)} className="text-[9px] font-semibold uppercase rounded-full px-2.5">{survey.status}</Badge></TableCell>
  <TableCell className="text-center">
  <Button variant="link" asChild className="font-semibold text-sm h-auto p-0 hover:text-primary">

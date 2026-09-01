@@ -833,6 +833,24 @@ service cloud.firestore {
         allow read: if true;
         allow write: if isAuthorized();
       }
+      match /versions/{vId} {
+        allow read: if isAuthorized() || resource.data.isPublished == true;
+        allow write: if isAuthorized();
+      }
+    }
+
+    match /survey_projects/{projectId} {
+      allow read, list, write: if isAuthorized();
+    }
+
+    match /question_bank/{questionId} {
+      allow get, list: if isAuthorized() || resource.data.visibility == 'system';
+      allow write: if isAuthorized();
+    }
+
+    match /survey_deployments/{deploymentId} {
+      allow get: if true;
+      allow list, write: if isAuthorized();
     }
 
     match /pdfs/{pdfId} {

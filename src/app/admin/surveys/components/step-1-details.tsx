@@ -21,6 +21,9 @@ import { Button } from '@/components/ui/button';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { getSurveyProjectsAction } from '@/lib/surveys/survey-project-actions';
+import type { SurveyProject, SurveyType } from '@/lib/types';
+import { FolderGit2 } from 'lucide-react';
 
 interface Step1DetailsProps {}
 
@@ -57,22 +60,23 @@ function EntityPickerField({
         type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig,
     });
 
-    // Results are already filtered server-side by `search`.
-    const normalizedEntities = results.map(normalize);
+    type NormalizedEntity = ReturnType<typeof normalize>;
 
-    const grouped = {
-        institution: normalizedEntities.filter(e => e.type === 'institution'),
-        family: normalizedEntities.filter(e => e.type === 'family'),
-        person: normalizedEntities.filter(e => e.type === 'person'),
-        other: normalizedEntities.filter(e => !['institution', 'family', 'person'].includes(e.type)),
+    const normalizedEntities: NormalizedEntity[] = results.map((e: WorkspaceEntity & { id: string }) => normalize(e));
+
+    const grouped: Record<keyof typeof entityTypeConfig, NormalizedEntity[]> = {
+        institution: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'institution'),
+        family: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'family'),
+        person: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'person'),
+        other: normalizedEntities.filter((e: NormalizedEntity) => !['institution', 'family', 'person'].includes(e.type)),
     };
 
     const selectedEntity = React.useMemo(() => {
         if (!field.value) return null;
-        const inResults = normalizedEntities.find(e => e.entityId === field.value);
+        const inResults = normalizedEntities.find((e: NormalizedEntity) => e.entityId === field.value);
         if (inResults) return inResults;
         const resolved = entitiesById.get(field.value);
-        return resolved ? normalize(resolved) : null;
+        return resolved ? normalize(resolved as WorkspaceEntity & { id: string }) : null;
     }, [field.value, normalizedEntities, entitiesById]);
     const selectedConfig = selectedEntity ? (entityTypeConfig[selectedEntity.type] || entityTypeConfig.other) : null;
     const SelectedIcon = selectedConfig ? selectedConfig.icon : Building;
@@ -133,9 +137,9 @@ function EntityPickerField({
                                 <Building className="h-3.5 w-3.5 text-muted-foreground" />
                                 <span className="font-bold text-sm">Global / Generic</span>
                             </CommandItem>
-                            {Object.entries(grouped).map(([type, entities]) => {
+                            {(Object.entries(grouped) as [keyof typeof entityTypeConfig, NormalizedEntity[]][]).map(([type, entities]) => {
                                 if (entities.length === 0) return null;
-                                const config = entityTypeConfig[type as keyof typeof entityTypeConfig];
+                                const config = entityTypeConfig[type];
                                 const GroupIcon = config.icon;
                                 return (
                                     <CommandGroup
@@ -147,7 +151,7 @@ function EntityPickerField({
                                             </span>
                                         }
                                     >
-                                        {entities.map(entity => (
+                                        {entities.map((entity: NormalizedEntity) => (
                                             <CommandItem
                                                 key={entity.entityId || entity.id}
                                                 value={entity.entityId || entity.id}
@@ -279,21 +283,32 @@ function VariableHelperPopover({ onInsert }: { onInsert: (token: string) => void
 
 export default function Step1Details(_props: Step1DetailsProps) {
     const { control, setValue, watch } = useFormContext();
+    const { activeWorkspaceId } = useWorkspace();
+    const [projects, setProjects] = React.useState<SurveyProject[]>([]);
+
+    React.useEffect(() => {
+        if (!activeWorkspaceId) return;
+        getSurveyProjectsAction(activeWorkspaceId).then((res) => {
+            if (res.success && res.projects) {
+                setProjects(res.projects);
+            }
+        });
+    }, [activeWorkspaceId]);
 
     return (
- <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
+        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
             {/* Identity Card */}
- <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b py-5 px-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl">
- <Type className="h-5 w-5 text-primary" />
+            <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+                <CardHeader className="bg-muted/10 border-b py-5 px-6">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-primary/10 rounded-xl">
+                            <Type className="h-5 w-5 text-primary" />
                         </div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Identity & Branding</CardTitle>
+                        <CardTitle className="text-sm font-semibold tracking-tight">Identity, Archetype & Branding</CardTitle>
                     </div>
                 </CardHeader>
- <CardContent className="p-6 space-y-6">
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <CardContent className="p-6 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                         <Controller
                             name="internalName"
                             control={control}
@@ -313,6 +328,67 @@ export default function Step1Details(_props: Step1DetailsProps) {
                                     setValue={setValue}
                                     watch={watch}
                                 />
+                            )}
+                        />
+                    </div>
+
+                    {/* Survey Archetype & Project Selection (Phase 1) */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                        <Controller
+                            name="surveyType"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold">Survey Archetype</Label>
+                                    <Select value={field.value || 'feedback'} onValueChange={field.onChange}>
+                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm">
+                                            <SelectValue placeholder="Select Survey Type" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="feedback">General Feedback</SelectItem>
+                                            <SelectItem value="nps">Net Promoter Score (NPS)</SelectItem>
+                                            <SelectItem value="csat">Customer / Parent Satisfaction (CSAT)</SelectItem>
+                                            <SelectItem value="ces">Customer Effort Score (CES)</SelectItem>
+                                            <SelectItem value="assessment">Academic / Candidate Assessment</SelectItem>
+                                            <SelectItem value="quiz">Interactive Quiz</SelectItem>
+                                            <SelectItem value="evaluation">Staff / Course Evaluation</SelectItem>
+                                            <SelectItem value="lead_qualification">Lead Qualification & Enrollment</SelectItem>
+                                            <SelectItem value="research">Longitudinal Research</SelectItem>
+                                            <SelectItem value="employee_engagement">Employee Engagement</SelectItem>
+                                            <SelectItem value="custom">Custom Survey</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+                            )}
+                        />
+
+                        <Controller
+                            name="projectId"
+                            control={control}
+                            render={({ field }) => (
+                                <div className="space-y-2">
+                                    <Label className="text-sm font-semibold flex items-center justify-between">
+                                        <span>Research Project / Study</span>
+                                        {field.value && (
+                                            <Badge variant="outline" className="text-[10px] font-normal">
+                                                Wave Linked
+                                            </Badge>
+                                        )}
+                                    </Label>
+                                    <Select value={field.value || 'none'} onValueChange={(val) => field.onChange(val === 'none' ? undefined : val)}>
+                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm">
+                                            <SelectValue placeholder="Standalone (No Project)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="none">Standalone (No Project)</SelectItem>
+                                            {projects.map((proj) => (
+                                                <SelectItem key={proj.id} value={proj.id}>
+                                                    {proj.name} ({proj.projectType})
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
                             )}
                         />
                     </div>

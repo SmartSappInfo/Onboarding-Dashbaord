@@ -11,10 +11,10 @@ import QuestionEditor from './question-editor';
 import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles, Bold, Columns } from 'lucide-react';
+import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles, Bold, Columns, Library, History, Share2, FolderGit2 } from 'lucide-react';
 import { useUser, useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyVersion } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import Link from 'next/link';
@@ -29,6 +29,10 @@ import { cn } from '@/lib/utils';
 import { autoSaveSurveyAction } from '@/lib/survey-actions';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { VersionHistoryDrawer } from './VersionHistoryDrawer';
+import { QuestionBankDrawer } from './QuestionBankDrawer';
+import { DeploymentManagerDialog } from './DeploymentManagerDialog';
+import { Badge } from '@/components/ui/badge';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -59,6 +63,30 @@ export default function SurveyFormBuilder() {
     const [isPreviewMode, setIsPreviewMode] = React.useState(false);
     const [isPropertiesBarVisible, setIsPropertiesBarVisible] = React.useState(true);
     const canvasRef = React.useRef<HTMLDivElement>(null);
+
+    // Survey 2.0 Core Platform State (Phase 1)
+    const [isVersionDrawerOpen, setIsVersionDrawerOpen] = React.useState(false);
+    const [isQuestionBankOpen, setIsQuestionBankOpen] = React.useState(false);
+    const [isDeploymentDialogOpen, setIsDeploymentDialogOpen] = React.useState(false);
+
+    const { activeWorkspaceId } = useWorkspace();
+    const currentVersionNumber = watch('currentVersionNumber') || 1;
+    const surveyTitle = watch('title') || watch('internalName') || 'Survey';
+    const defaultSlug = watch('slug') || 'survey';
+
+    const handleInsertFromBank = (question: Partial<SurveyQuestion>) => {
+        append(question);
+        toast({
+            title: 'Question Inserted',
+            description: 'Added question from Question Bank to the end of the survey.',
+        });
+    };
+
+    const handleVersionPublished = (version: SurveyVersion) => {
+        setValue('elements', version.elements, { shouldDirty: false });
+        setValue('currentVersionNumber', version.versionNumber, { shouldDirty: false });
+        setValue('lifecycleStatus', 'published', { shouldDirty: false });
+    };
 
     const elements = watch('elements') || [];
     const sections = elements.filter((el: any) => el.type === 'section');
@@ -559,6 +587,53 @@ export default function SurveyFormBuilder() {
                             </Tooltip>
                             <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
                             
+                            {/* Survey 2.0 Core Triggers */}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                                        onClick={() => setIsQuestionBankOpen(true)}
+                                    >
+                                        <Library className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Question Bank</TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                                        onClick={() => setIsVersionDrawerOpen(true)}
+                                    >
+                                        <History className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>
+                                    Version History (v{currentVersionNumber})
+                                </TooltipContent>
+                            </Tooltip>
+
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
+                                        onClick={() => setIsDeploymentDialogOpen(true)}
+                                    >
+                                        <Share2 className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Distribution & Links</TooltipContent>
+                            </Tooltip>
+
+                            <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
+
                             <AiChatEditor variant="icon" />
 
                             <Tooltip>
@@ -608,6 +683,32 @@ export default function SurveyFormBuilder() {
                     setLastSelectedId(null);
                 }}
                 onAction={handleBulkAction}
+            />
+
+            {/* Survey 2.0 Core Platform Drawers (Phase 1) */}
+            <VersionHistoryDrawer
+                open={isVersionDrawerOpen}
+                onOpenChange={setIsVersionDrawerOpen}
+                surveyId={surveyId}
+                workspaceId={activeWorkspaceId || ''}
+                currentVersionNumber={currentVersionNumber}
+                onVersionPublished={handleVersionPublished}
+            />
+
+            <QuestionBankDrawer
+                open={isQuestionBankOpen}
+                onOpenChange={setIsQuestionBankOpen}
+                workspaceId={activeWorkspaceId || ''}
+                onInsertQuestion={handleInsertFromBank}
+            />
+
+            <DeploymentManagerDialog
+                open={isDeploymentDialogOpen}
+                onOpenChange={setIsDeploymentDialogOpen}
+                surveyId={surveyId}
+                workspaceId={activeWorkspaceId || ''}
+                surveyTitle={surveyTitle}
+                defaultSlug={defaultSlug}
             />
         </div>
     );
