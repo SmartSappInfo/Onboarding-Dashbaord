@@ -881,6 +881,8 @@ export interface Pipeline {
   defaultCloseDateOffsetValue?: number;
   defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months';
   currency?: string;
+  /** Controls whether deal financial totals are displayed in Kanban stage headers. Defaults to true. */
+  showDealTotals?: boolean;
 }
 
 export const APP_PERMISSIONS = [
@@ -3136,6 +3138,10 @@ export interface SurveyResponse {
   surveyId: string;
   submittedAt: string;
   score?: number;
+  channel?: string;
+  startedAt?: string;
+  createdAt?: string;
+  outcomeId?: string;
   answers: {
     questionId: string;
     value: unknown;

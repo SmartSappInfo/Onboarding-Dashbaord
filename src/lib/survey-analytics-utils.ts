@@ -33,7 +33,7 @@ export type AnalyzedResult = {
     | { type: 'rating'; data: ChartDataPoint[]; total: number; average: number }
     | { type: 'checkbox'; data: ChartDataPoint[]; otherText: string[]; total: number }
     | { type: 'text'; data: string[]; total: number }
-    | { type: 'unknown'; data: any[] }
+    | { type: 'unknown'; data: unknown[] }
 );
 
 export type FunnelStep = {
@@ -105,7 +105,8 @@ export function computeFunnelData(survey: Survey, sessions: SurveySession[]): Fu
 
     if (survey.showIntroAsPage !== false) pageElements.push([]);
     survey.elements.forEach(element => {
-        if (element.type === 'section' && (element as any).renderAsPage && currentPage.length > 0) {
+        const sec = element as { type?: string; renderAsPage?: boolean };
+        if (sec.type === 'section' && sec.renderAsPage && currentPage.length > 0) {
             pageElements.push(currentPage);
             currentPage = [element];
         } else {
@@ -117,7 +118,7 @@ export function computeFunnelData(survey: Survey, sessions: SurveySession[]): Fu
     const totalSessions = sessions.length;
 
     return pageElements.map((page, index) => {
-        const section = page[0] as any;
+        const section = page[0] as { stepperTitle?: string; title?: string } | undefined;
         const label = index === 0 && survey.showCoverPage
             ? 'Cover Page'
             : (section?.stepperTitle || section?.title || `Step ${index + 1}`);
