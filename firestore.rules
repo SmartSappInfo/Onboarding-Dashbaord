@@ -2887,6 +2887,14 @@ service cloud.firestore {
       );
     }
 
+    match /organizations/{orgId}/workspaces/{wsId}/qr_campaigns/{campaignId} {
+      allow read, write: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin() ||
+        hasWorkspaceAccess(wsId)
+      );
+    }
+
     // --- Lead Intelligence Platform ---
     match /prospects/{prospectId} {
       allow get: if isAuthorized() && (

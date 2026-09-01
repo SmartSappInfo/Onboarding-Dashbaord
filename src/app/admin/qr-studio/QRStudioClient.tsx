@@ -33,6 +33,7 @@ import {
   Calendar,
   ShieldCheck,
   Sparkles,
+  Layers,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { Button } from '@/components/ui/button';
@@ -99,6 +100,8 @@ import type { QRCode as QRCodeType, QRStatus, QRCodeMode, QRCodeType as QRCodeTy
 import { motion, AnimatePresence } from 'framer-motion';
 import BatchImportDialog from './components/batch-import-dialog';
 import AiCreateDialog from './components/ai-create-dialog';
+import CampaignsTab from './components/campaigns/campaigns-tab';
+import AnalyticsTab from './components/analytics/analytics-tab';
 import { PageContainer } from '@/components/ui/page-container';
 
 const QR_TYPE_LABELS: Record<string, string> = {
@@ -248,6 +251,7 @@ export default function QRStudioClient() {
   const [isBulkActionLoading, setIsBulkActionLoading] = React.useState(false);
   const [showBatchDialog, setShowBatchDialog] = React.useState(false);
   const [showAiDialog, setShowAiDialog] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState<'codes' | 'campaigns' | 'analytics'>('codes');
 
   // Confirmation dialog states
   const [archiveTarget, setArchiveTarget] = React.useState<QRCodeType | null>(null);
@@ -561,15 +565,49 @@ export default function QRStudioClient() {
           </div>
         </div>
 
-        {/* Stats Row */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {statCards.map((stat) => (
-            <Card
-              key={stat.label}
-              className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200"
-            >
-              <div className="flex items-center gap-3">
-                <div className={`p-2.5 rounded-xl bg-primary/5 ${stat.color}`}>
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-1 border-b border-border/50 pb-3">
+          <Button
+            variant={activeTab === 'codes' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('codes')}
+            className="rounded-xl text-xs font-semibold"
+          >
+            <QrCode className="h-3.5 w-3.5 mr-1.5" />
+            QR Codes ({qrCodes.length})
+          </Button>
+          <Button
+            variant={activeTab === 'campaigns' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('campaigns')}
+            className="rounded-xl text-xs font-semibold"
+          >
+            <Layers className="h-3.5 w-3.5 mr-1.5" />
+            Campaigns
+          </Button>
+          <Button
+            variant={activeTab === 'analytics' ? 'default' : 'ghost'}
+            size="sm"
+            onClick={() => setActiveTab('analytics')}
+            className="rounded-xl text-xs font-semibold"
+          >
+            <BarChart3 className="h-3.5 w-3.5 mr-1.5" />
+            Analytics
+          </Button>
+        </div>
+
+        {/* Tab 1: QR Codes Management */}
+        {activeTab === 'codes' && (
+          <>
+            {/* Stats Row */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {statCards.map((stat) => (
+                <Card
+                  key={stat.label}
+                  className="p-5 rounded-2xl border-none ring-1 ring-border shadow-sm bg-card hover:ring-primary/20 hover:shadow-md transition-all duration-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`p-2.5 rounded-xl bg-primary/5 ${stat.color}`}>
                   <stat.icon className="h-5 w-5" />
                 </div>
                 <div>
@@ -1062,6 +1100,18 @@ export default function QRStudioClient() {
             </TooltipProvider>
           )}
         </Card>
+      </>
+    )}
+
+    {/* Tab 2: Campaigns Hub */}
+    {activeTab === 'campaigns' && (
+      <CampaignsTab availableQRCodes={qrCodes} />
+    )}
+
+    {/* Tab 3: Analytics Hub */}
+    {activeTab === 'analytics' && (
+      <AnalyticsTab qrCodes={qrCodes} />
+    )}
 
         {/* Archive Confirmation Dialog */}
         <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(null)}>

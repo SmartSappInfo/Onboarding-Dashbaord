@@ -6301,6 +6301,90 @@ export interface CanvasThemeTransformResult {
   themeName: string;
 }
 
+export type QRCampaignObjective =
+  | 'awareness'
+  | 'lead_generation'
+  | 'registration'
+  | 'engagement'
+  | 'payment'
+  | 'conversion'
+  | 'feedback'
+  | 'other';
+
+export type QRCampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived';
+
+export interface AttributionConfig {
+  model: 'first_touch' | 'last_touch' | 'multi_touch';
+  lookbackDays: number;
+  includeAnonymous?: boolean;
+}
+
+export interface QRCampaignMetrics {
+  totalScans: number;
+  uniqueVisitors: number;
+  leads: number;
+  conversions: number;
+  revenue?: number;
+  conversionRate?: number;
+}
+
+export interface QRCampaign {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  objective: QRCampaignObjective;
+  status: QRCampaignStatus;
+  startAt?: string;
+  endAt?: string;
+  qrCodeIds: string[];
+  metrics: QRCampaignMetrics;
+  attributionConfig: AttributionConfig;
+  tags?: string[];
+  createdBy: { userId: string; name: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CampaignAnalytics {
+  campaignId: string;
+  name: string;
+  totalScans: number;
+  uniqueVisitors: number;
+  leads: number;
+  conversionRate: number;
+  scansByDate: { date: string; scans: number; unique: number }[];
+  deviceBreakdown: { name: string; value: number }[];
+  osBreakdown: { name: string; value: number }[];
+  browserBreakdown: { name: string; value: number }[];
+  topQRCodes: { qrId: string; name: string; scans: number }[];
+  funnel: {
+    scans: number;
+    destinationVisits: number;
+    engagedSessions: number;
+    formStarts: number;
+    conversions: number;
+  };
+}
+
+export interface ScanEvent {
+  id: string;
+  qrCodeId: string;
+  campaignId?: string;
+  organizationId: string;
+  workspaceId: string;
+  timestamp: string;
+  ip?: string;
+  userAgent?: string;
+  deviceType?: 'mobile' | 'desktop' | 'tablet' | 'bot' | 'other';
+  browser?: string;
+  os?: string;
+  country?: string;
+  city?: string;
+  referer?: string;
+}
+
 export interface QRGradient {
   enabled: boolean;
   type: 'linear' | 'radial';
