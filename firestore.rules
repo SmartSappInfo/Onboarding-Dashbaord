@@ -857,6 +857,11 @@ service cloud.firestore {
       allow get, list, write: if isAuthorized();
     }
 
+    match /survey_experiments/{experimentId} {
+      allow get: if true;
+      allow list, write: if isAuthorized();
+    }
+
     match /pdfs/{pdfId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
       allow list: if isAuthorized();

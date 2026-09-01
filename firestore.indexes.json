@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "survey_experiments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "surveyId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "survey_projects",
       "queryScope": "COLLECTION",
       "fields": [
