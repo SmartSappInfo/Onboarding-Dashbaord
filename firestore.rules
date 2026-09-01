@@ -333,6 +333,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- AI-Assisted Administration (Phase 8) Collections ---
+    match /ai_workforce_recommendations/{recId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /member_risk_scores/{scoreId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));

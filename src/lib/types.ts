@@ -1788,6 +1788,73 @@ export interface OffboardingReadinessCheck {
   workload: CrmWorkloadSummary;
 }
 
+// ==========================================
+// AI-ASSISTED ADMINISTRATION (PHASE 8)
+// ==========================================
+
+export type AiRecommendationType =
+  | 'role_right_size'
+  | 'dormant_permission_prune'
+  | 'access_gap_resolve'
+  | 'sod_conflict_remediate'
+  | 'crm_portfolio_rebalance'
+  | 'mfa_enforce';
+
+export type AiRecommendationPriority = 'low' | 'medium' | 'high' | 'critical';
+
+export type AiRecommendationStatus = 'active' | 'applied' | 'dismissed';
+
+export interface AiWorkforceRecommendation {
+  id: string;
+  organizationId: string;
+  type: AiRecommendationType;
+  priority: AiRecommendationPriority;
+  title: string;
+  explanation: string;
+  evidence: string[];
+  riskDelta: number;
+  targetPersonId: string;
+  targetPersonName: string;
+  targetRoleId?: string;
+  targetRoleName?: string;
+  proposedActionPayload: Record<string, string | number | boolean | string[]>;
+  status: AiRecommendationStatus;
+  createdAt: string;
+  appliedAt?: string;
+  appliedBy?: string;
+}
+
+export type WorkforceRiskLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface RiskFactorContribution {
+  factor: string;
+  scoreContribution: number;
+  detail: string;
+}
+
+export interface MemberRiskScore {
+  personId: string;
+  personName: string;
+  personEmail: string;
+  departmentName?: string;
+  teamName?: string;
+  score: number;
+  level: WorkforceRiskLevel;
+  factors: RiskFactorContribution[];
+  lastEvaluatedAt: string;
+}
+
+export interface OrganizationRiskOverview {
+  organizationId: string;
+  averageScore: number;
+  criticalRiskCount: number;
+  highRiskCount: number;
+  mediumRiskCount: number;
+  lowRiskCount: number;
+  topRiskFactors: string[];
+  evaluatedAt: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

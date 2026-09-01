@@ -54,8 +54,7 @@ import {
   Copy,
   HelpCircle,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus, CrmWorkloadSummary } from '@/lib/types';
+import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus, CrmWorkloadSummary, MemberRiskScore } from '@/lib/types';
 import {
   updatePersonProfileAction,
   updateMembershipStatusAction,
@@ -63,6 +62,7 @@ import {
 import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
 import { AccessExplainerModal } from '@/app/admin/users/roles/components/AccessExplainerModal';
 import { getPersonCrmWorkloadAction } from '@/app/actions/crm-workforce-actions';
+import { getPersonRiskScoreAction } from '@/app/actions/ai-workforce-actions';
 import { OwnershipTransferModal } from '@/app/admin/workforce/crm/components/OwnershipTransferModal';
 
 interface PersonProfileDrawerProps {
@@ -116,6 +116,9 @@ export function PersonProfileDrawer({
   const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false);
   const [isLoadingCrm, setIsLoadingCrm] = React.useState(false);
 
+  // AI Risk Score State
+  const [riskScore, setRiskScore] = React.useState<MemberRiskScore | null>(null);
+
   const loadCrmWorkload = React.useCallback(async () => {
     if (!authUser || !activeOrganizationId || !user.id) return;
     setIsLoadingCrm(true);
@@ -136,6 +139,23 @@ export function PersonProfileDrawer({
     }
   }, [authUser, activeOrganizationId, user.id]);
 
+  const loadRiskScore = React.useCallback(async () => {
+    if (!authUser || !activeOrganizationId || !user.id) return;
+    try {
+      const idToken = await authUser.getIdToken();
+      const res = await getPersonRiskScoreAction({
+        idToken,
+        organizationId: activeOrganizationId,
+        personId: user.id,
+      });
+      if (res.success && res.riskScore) {
+        setRiskScore(res.riskScore);
+      }
+    } catch (err: unknown) {
+      console.warn('[PersonProfileDrawer] Risk score load error:', err);
+    }
+  }, [authUser, activeOrganizationId, user.id]);
+
   React.useEffect(() => {
     if (isOpen && activeTab === 'crm') {
       loadCrmWorkload();
@@ -149,8 +169,9 @@ export function PersonProfileDrawer({
       setDepartment(user.department || '');
       setFacilitatorRole(user.facilitatorRole || '');
       setActiveTab('overview');
+      loadRiskScore();
     }
-  }, [user, isOpen]);
+  }, [user, isOpen, loadRiskScore]);
 
   // Status mapping
   const statusBadge = React.useMemo(() => {
@@ -282,9 +303,26 @@ export function PersonProfileDrawer({
                   </AvatarFallback>
                 </Avatar>
                 <div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <h2 className="text-base font-bold text-foreground line-clamp-1">{user.name}</h2>
                     {statusBadge}
+                    {riskScore && (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'text-[10px] font-bold uppercase tracking-wider',
+                          riskScore.level === 'critical'
+                            ? 'bg-rose-500/10 text-rose-600 border-rose-500/30'
+                            : riskScore.level === 'high'
+                            ? 'bg-amber-500/10 text-amber-600 border-amber-500/30'
+                            : riskScore.level === 'medium'
+                            ? 'bg-yellow-500/10 text-yellow-600 border-yellow-500/30'
+                            : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+                        )}
+                      >
+                        <Sparkles className="w-3 h-3 mr-1 inline" /> Risk: {riskScore.score}/100
+                      </Badge>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5 mt-0.5">
                     <Mail className="w-3.5 h-3.5" /> {user.email}
