@@ -37,7 +37,7 @@ export function DistributionOverviewTab({
     let delivered = 0;
     let opened = 0;
     let starts = 0;
-    let completions = totalResponses || 0;
+    let deploymentCompletions = 0;
 
     deployments.forEach((d) => {
       if (d.stats) {
@@ -45,10 +45,11 @@ export function DistributionOverviewTab({
         delivered += d.stats.deliveredCount || 0;
         opened += d.stats.openedCount || 0;
         starts += d.stats.startsCount || 0;
-        completions += d.stats.completionsCount || 0;
+        deploymentCompletions += d.stats.completionsCount || 0;
       }
     });
 
+    const completions = totalResponses > 0 ? totalResponses : deploymentCompletions;
     const completionRate = starts > 0 ? Math.min(100, Math.round((completions / starts) * 100)) : 100;
     const openRate = delivered > 0 ? Math.min(100, Math.round((opened / delivered) * 100)) : 0;
 

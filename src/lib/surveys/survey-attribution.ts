@@ -159,10 +159,11 @@ export function generateIframeEmbedSnippet(url: string, title: string = 'Survey'
 <script>
 (function() {
   window.addEventListener('message', function(e) {
-    if (e.data && e.data.type === 'SURVEY_HEIGHT_CHANGED' && e.data.height) {
+    if (e.data && (e.data.type === 'SURVEY_HEIGHT_CHANGED' || e.data.type === 'iframe_resize') && e.data.height) {
       var frame = document.getElementById('${iframeId}');
-      if (frame) {
-        frame.style.height = e.data.height + 'px';
+      var h = parseInt(e.data.height, 10);
+      if (frame && !isNaN(h) && h > 0) {
+        frame.style.height = h + 'px';
       }
     }
   });
