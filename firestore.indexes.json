@@ -19,6 +19,24 @@
       ]
     },
     {
+      "collectionGroup": "form_distributions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "formId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "form_saved_views",
       "queryScope": "COLLECTION",
       "fields": [

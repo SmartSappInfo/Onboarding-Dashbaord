@@ -1474,6 +1474,11 @@ service cloud.firestore {
       allow read, write: if isAuthorized();
     }
 
+    // Form Distribution Links & Campaigns
+    match /form_distributions/{distId} {
+      allow read, write: if isAuthorized();
+    }
+
     match /form_events/{eventId} {
       allow read: if isAuthorized() && isSystemAdmin();
       allow create: if true; // Telemetry event emitter

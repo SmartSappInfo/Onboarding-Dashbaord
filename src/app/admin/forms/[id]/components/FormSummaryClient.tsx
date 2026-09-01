@@ -26,7 +26,8 @@ import {
   Check,
   FileText,
   LayoutGrid,
-  Inbox
+  Inbox,
+  Share2,
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -183,6 +184,14 @@ export default function FormSummaryClient({ id }: { id: string }) {
           </div>
 
           <div className="flex items-center gap-3 shrink-0 flex-wrap">
+            <Button
+              variant="outline"
+              className="h-11 px-5 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm min-h-[44px]"
+              onClick={() => router.push(`/admin/forms/${id}/distribution`)}
+            >
+              <Share2 className="mr-2 h-4 w-4 text-primary" />
+              Distribution
+            </Button>
             {canEdit && (
               <Button
                 variant="outline"

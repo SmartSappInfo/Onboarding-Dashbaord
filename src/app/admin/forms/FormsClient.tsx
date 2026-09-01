@@ -70,6 +70,7 @@ import {
   Code,
   BarChart3,
   Inbox,
+  Share2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -259,6 +260,15 @@ export default function FormsClient() {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => router.push(`/admin/forms/${form.id}/distribution`)}>
+              <Share2 className="h-4 w-4" />
+              <span className="sr-only">Distribute</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent><p>Share & Distribute</p></TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => router.push(`/admin/forms/${form.id}/analytics`)}>
               <BarChart3 className="h-4 w-4" />
               <span className="sr-only">Analytics</span>
@@ -287,6 +297,9 @@ export default function FormsClient() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/distribution`)}>
+            <Share2 className="mr-2 h-4 w-4 text-primary" /> Share & Distribute
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/analytics`)}>
             <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
           </DropdownMenuItem>
@@ -298,9 +311,6 @@ export default function FormsClient() {
               <Edit className="mr-2 h-4 w-4" /> Edit Builder
             </DropdownMenuItem>
           )}
-          <DropdownMenuItem onClick={() => setShareForm(form)}>
-            <Code className="mr-2 h-4 w-4" /> Share & Embed
-          </DropdownMenuItem>
           {canCreate && (
             <DropdownMenuItem onClick={() => handleClone(form)} disabled={cloningId !== null}>
               {cloningId === form.id ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CopyPlus className="mr-2 h-4 w-4" />}

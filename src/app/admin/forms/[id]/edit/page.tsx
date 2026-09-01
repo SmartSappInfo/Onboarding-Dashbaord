@@ -759,14 +759,24 @@ export default function EditFormPage() {
           </div>
 
           {formData.id && (
-            <Button
-              variant="outline"
-              onClick={() => router.push(`/admin/forms/${formData.id}/analytics`)}
-              className="rounded-xl font-semibold gap-2 px-3.5 h-10 text-[10px] active:scale-95 transition-all text-muted-foreground hover:text-foreground"
-            >
-              <BarChart3 className="h-4 w-4 text-primary" />
-              <span className="hidden sm:inline">Analytics</span>
-            </Button>
+            <>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/admin/forms/${formData.id}/distribution`)}
+                className="rounded-xl font-semibold gap-2 px-3.5 h-10 text-[10px] active:scale-95 transition-all text-muted-foreground hover:text-foreground"
+              >
+                <Share2 className="h-4 w-4 text-primary" />
+                <span className="hidden sm:inline">Share</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/admin/forms/${formData.id}/analytics`)}
+                className="rounded-xl font-semibold gap-2 px-3.5 h-10 text-[10px] active:scale-95 transition-all text-muted-foreground hover:text-foreground"
+              >
+                <BarChart3 className="h-4 w-4 text-primary" />
+                <span className="hidden sm:inline">Analytics</span>
+              </Button>
+            </>
           )}
 
           <Button
