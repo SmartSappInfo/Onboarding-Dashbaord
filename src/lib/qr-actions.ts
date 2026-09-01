@@ -27,6 +27,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { nanoid } from 'nanoid';
+import { normalizeQRCode, validateSafeUrl, generateSlug } from '@/lib/qr-helpers';
 import type {
   QRCode,
   QRCodeMode,
@@ -74,108 +75,6 @@ function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
   return cleaned as T;
 }
 
-/**
- * Normalizes raw Firestore document data into a canonical, strictly-typed `QRCode`.
- * Provides 100% backward compatibility for legacy records created prior to Platform 2.0.
- */
-export function normalizeQRCode(raw: Record<string, unknown> | undefined): QRCode | null {
-  if (!raw || typeof raw !== 'object' || !raw.id) return null;
-
-  const rawStats = (raw.stats as Record<string, unknown>) || {};
-  const rawDestination = (raw.destination as Record<string, unknown>) || {};
-  const rawDesign = (raw.design as Record<string, unknown>) || {};
-  const rawTracking = (raw.tracking as Record<string, unknown>) || {};
-  const rawLifecycle = (raw.lifecycleConfig as Record<string, unknown>) || {};
-  const rawSecurity = (raw.securityConfig as Record<string, unknown>) || {};
-  const rawCreatedBy = (raw.createdBy as Record<string, unknown>) || {};
-
-  const status = (raw.status as QRStatus) || 'active';
-  const mode = (raw.mode as QRCodeMode) || 'static';
-  const type = (raw.type as QRCodeType) || 'url';
-
-  const destination: QRDestination = {
-    url: typeof rawDestination.url === 'string' ? rawDestination.url : undefined,
-    resourceType: typeof rawDestination.resourceType === 'string' ? rawDestination.resourceType : undefined,
-    resourceId: typeof rawDestination.resourceId === 'string' ? rawDestination.resourceId : undefined,
-    resourceName: typeof rawDestination.resourceName === 'string' ? rawDestination.resourceName : undefined,
-    title: typeof rawDestination.title === 'string' ? rawDestination.title : undefined,
-    fallbackUrl: typeof rawDestination.fallbackUrl === 'string' ? rawDestination.fallbackUrl : undefined,
-    metadata: typeof rawDestination.metadata === 'object' && rawDestination.metadata !== null
-      ? (rawDestination.metadata as Record<string, unknown>)
-      : undefined,
-  };
-
-  const design: QRDesign = {
-    ...DEFAULT_QR_DESIGN,
-    ...(rawDesign as unknown as Partial<QRDesign>),
-  };
-
-  const tracking: QRTracking = {
-    enabled: typeof rawTracking.enabled === 'boolean' ? rawTracking.enabled : mode === 'dynamic',
-    utmSource: typeof rawTracking.utmSource === 'string' ? rawTracking.utmSource : undefined,
-    utmMedium: typeof rawTracking.utmMedium === 'string' ? rawTracking.utmMedium : undefined,
-    utmCampaign: typeof rawTracking.utmCampaign === 'string' ? rawTracking.utmCampaign : undefined,
-    campaignName: typeof rawTracking.campaignName === 'string' ? rawTracking.campaignName : undefined,
-    sourceLabel: typeof rawTracking.sourceLabel === 'string' ? rawTracking.sourceLabel : undefined,
-  };
-
-  const lifecycleConfig: QRLifecycleConfig = {
-    ...DEFAULT_QR_LIFECYCLE_CONFIG,
-    startAt: typeof rawLifecycle.startAt === 'string' ? rawLifecycle.startAt : undefined,
-    expiresAt: typeof rawLifecycle.expiresAt === 'string' ? rawLifecycle.expiresAt : undefined,
-    maxScans: typeof rawLifecycle.maxScans === 'number' ? rawLifecycle.maxScans : undefined,
-    fallbackUrl: typeof rawLifecycle.fallbackUrl === 'string' ? rawLifecycle.fallbackUrl : destination.fallbackUrl,
-    timezone: typeof rawLifecycle.timezone === 'string' ? rawLifecycle.timezone : undefined,
-  };
-
-  const securityConfig: QRSecurityConfig = {
-    ...DEFAULT_QR_SECURITY_CONFIG,
-    passwordProtected: typeof rawSecurity.passwordProtected === 'boolean' ? rawSecurity.passwordProtected : false,
-    passwordHash: typeof rawSecurity.passwordHash === 'string' ? rawSecurity.passwordHash : undefined,
-    restrictDomain: typeof rawSecurity.restrictDomain === 'boolean' ? rawSecurity.restrictDomain : false,
-    allowedDomains: Array.isArray(rawSecurity.allowedDomains) ? (rawSecurity.allowedDomains as string[]) : [],
-    anonymizeIp: typeof rawSecurity.anonymizeIp === 'boolean' ? rawSecurity.anonymizeIp : (DEFAULT_QR_SECURITY_CONFIG.anonymizeIp ?? true),
-    blockBotScans: typeof rawSecurity.blockBotScans === 'boolean' ? rawSecurity.blockBotScans : (DEFAULT_QR_SECURITY_CONFIG.blockBotScans ?? true),
-    maxScansPerMinutePerIp: typeof rawSecurity.maxScansPerMinutePerIp === 'number' ? rawSecurity.maxScansPerMinutePerIp : DEFAULT_QR_SECURITY_CONFIG.maxScansPerMinutePerIp,
-  };
-
-  return {
-    id: String(raw.id),
-    organizationId: String(raw.organizationId || ''),
-    workspaceId: String(raw.workspaceId || ''),
-    name: String(raw.name || 'Untitled QR Code'),
-    slug: String(raw.slug || generateSlug(String(raw.name || 'qr'))),
-    description: typeof raw.description === 'string' ? raw.description : '',
-    mode,
-    type,
-    destination,
-    shortPath: typeof raw.shortPath === 'string' ? raw.shortPath : undefined,
-    redirectUrl: typeof raw.redirectUrl === 'string' ? raw.redirectUrl : undefined,
-    design,
-    tracking,
-    status,
-    lifecycleConfig,
-    securityConfig,
-    campaignId: typeof raw.campaignId === 'string' ? raw.campaignId : undefined,
-    collectionId: typeof raw.collectionId === 'string' ? raw.collectionId : undefined,
-    notifications: raw.notifications ? (raw.notifications as QRCode['notifications']) : undefined,
-    stats: {
-      totalScans: typeof rawStats.totalScans === 'number' ? rawStats.totalScans : 0,
-      uniqueScans: typeof rawStats.uniqueScans === 'number' ? rawStats.uniqueScans : 0,
-      uniqueVisitors: typeof rawStats.uniqueVisitors === 'number' ? rawStats.uniqueVisitors : 0,
-      scanCountToday: typeof rawStats.scanCountToday === 'number' ? rawStats.scanCountToday : 0,
-      lastScannedAt: typeof rawStats.lastScannedAt === 'string' ? rawStats.lastScannedAt : undefined,
-    },
-    createdBy: {
-      userId: String(rawCreatedBy.userId || ''),
-      name: String(rawCreatedBy.name || ''),
-      email: String(rawCreatedBy.email || ''),
-    },
-    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
-    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
-  };
-}
-
 function qrCodesCollection(orgId: string, wsId: string) {
   return adminDb
     .collection('organizations')
@@ -192,65 +91,6 @@ function qrTemplatesCollection(orgId: string, wsId: string) {
     .collection('workspaces')
     .doc(wsId)
     .collection('qr_code_templates');
-}
-
-function generateSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
-    .substring(0, 60);
-}
-
-/**
- * Validates destination URLs against common phishing vectors, raw IP malware hosts,
- * direct executable downloads, and restricted spam TLDs.
- * Returns true if valid, false if invalid, or throws if throwOnInvalid is true.
- */
-export function validateSafeUrl(url: string | undefined, throwOnInvalid = false): boolean {
-  if (!url || typeof url !== 'string' || !url.trim()) {
-    if (throwOnInvalid) throw new Error('A valid destination URL is required.');
-    return false;
-  }
-
-  try {
-    const parsed = new URL(url.trim());
-    if (!['http:', 'https:'].includes(parsed.protocol.toLowerCase())) {
-      if (throwOnInvalid) throw new Error('Only HTTP and HTTPS URLs are permitted.');
-      return false;
-    }
-
-    const hostname = parsed.hostname.toLowerCase();
-
-    // 1. Block raw IPs (often used for malware hosting)
-    const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
-    if (ipPattern.test(hostname)) {
-      if (throwOnInvalid) throw new Error('Raw IP addresses are not permitted for security reasons.');
-      return false;
-    }
-
-    // 2. Block sketchy TLDs commonly used for spam
-    const suspiciousTLDs = ['.zip', '.xxx', '.ru', '.cn', '.tk', '.ml', '.ga', '.cf', '.gq'];
-    if (suspiciousTLDs.some((tld) => hostname.endsWith(tld))) {
-      if (throwOnInvalid) throw new Error('This domain extension is currently restricted.');
-      return false;
-    }
-
-    // 3. Block malicious file extensions in path
-    const suspiciousExts = ['.exe', '.apk', '.bat', '.cmd', '.sh', '.vbs', '.msi'];
-    if (suspiciousExts.some((ext) => parsed.pathname.toLowerCase().endsWith(ext))) {
-      if (throwOnInvalid) throw new Error('Linking directly to executable files is restricted.');
-      return false;
-    }
-
-    return true;
-  } catch (err: unknown) {
-    if (throwOnInvalid) {
-      if (err instanceof Error) throw err;
-      throw new Error('Invalid destination URL.');
-    }
-    return false;
-  }
 }
 
 /**

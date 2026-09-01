@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { validateSafeUrl, normalizeQRCode } from '@/lib/qr-actions';
+import { validateSafeUrl, normalizeQRCode } from '@/lib/qr-helpers';
 import { DEFAULT_QR_LIFECYCLE_CONFIG, DEFAULT_QR_SECURITY_CONFIG, DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
 import type { QRCode, QRLifecycleConfig, QRSecurityConfig } from '@/lib/types';
 

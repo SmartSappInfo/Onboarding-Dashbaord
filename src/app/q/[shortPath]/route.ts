@@ -14,7 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getQRCodeByShortPath } from '@/lib/qr-actions';
-import { evaluateSecurityRules } from '@/lib/qr-domain-security-actions';
+import { evaluateSecurityRules } from '@/lib/qr-helpers';
 import type { QRCode } from '@/lib/types';
 
 function renderBrandedStatusPage(options: {

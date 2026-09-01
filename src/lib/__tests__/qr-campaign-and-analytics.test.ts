@@ -7,7 +7,7 @@ import { describe, it, expect } from 'vitest';
 import {
   safePercent,
   normalizeQRCampaign,
-} from '@/lib/qr-campaign-actions';
+} from '@/lib/qr-helpers';
 import type { QRCampaign } from '@/lib/types';
 
 describe('QR Campaign Actions — Safe Calculation Utilities', () => {

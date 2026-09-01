@@ -8,7 +8,7 @@ import {
   hashPasscode,
   verifyPasscode,
   evaluateSecurityRules,
-} from '@/lib/qr-domain-security-actions';
+} from '@/lib/qr-helpers';
 import type { QRCode } from '@/lib/types';
 
 describe('QR Security — Salted Passcode Hashing & Constant-Time Verification', () => {

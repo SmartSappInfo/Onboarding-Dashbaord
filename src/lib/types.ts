@@ -6326,6 +6326,7 @@ export interface QRCampaignMetrics {
   conversions: number;
   revenue?: number;
   conversionRate?: number;
+  lastCalculatedAt?: string;
 }
 
 export interface QRCampaign {

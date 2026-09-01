@@ -19,6 +19,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { nanoid } from 'nanoid';
+import { safePercent, normalizeQRCampaign } from '@/lib/qr-helpers';
 import type {
   QRCampaign,
   QRCampaignObjective,
@@ -29,65 +30,13 @@ import type {
 } from '@/lib/types';
 import DOMPurify from 'isomorphic-dompurify';
 
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. Helper Functions & Normalizer
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function qrCampaignsCollection(orgId: string, wsId: string) {
+function qrCampaignsCollection(orgId: string, wsId: string) {
   return adminDb
     .collection('organizations')
     .doc(orgId)
     .collection('workspaces')
     .doc(wsId)
     .collection('qr_campaigns');
-}
-
-export function safePercent(numerator: number, denominator: number): number {
-  if (!denominator || denominator <= 0 || isNaN(numerator) || isNaN(denominator) || numerator <= 0) {
-    return 0;
-  }
-  return Math.min(100, Math.round((numerator / denominator) * 1000) / 10);
-}
-
-export function normalizeQRCampaign(docData: Record<string, unknown>): QRCampaign {
-  const metricsData = (docData.metrics as Partial<QRCampaignMetrics>) || {};
-  const totalScans = typeof metricsData.totalScans === 'number' ? metricsData.totalScans : 0;
-  const uniqueVisitors = typeof metricsData.uniqueVisitors === 'number' ? metricsData.uniqueVisitors : 0;
-  const leads = typeof metricsData.leads === 'number' ? metricsData.leads : 0;
-  const conversions = typeof metricsData.conversions === 'number' ? metricsData.conversions : 0;
-
-  return {
-    id: String(docData.id || ''),
-    organizationId: String(docData.organizationId || ''),
-    workspaceId: String(docData.workspaceId || ''),
-    name: String(docData.name || 'Untitled Campaign'),
-    description: typeof docData.description === 'string' ? docData.description : undefined,
-    objective: (docData.objective as QRCampaignObjective) || 'awareness',
-    status: (docData.status as QRCampaignStatus) || 'active',
-    startAt: typeof docData.startAt === 'string' ? docData.startAt : undefined,
-    endAt: typeof docData.endAt === 'string' ? docData.endAt : undefined,
-    qrCodeIds: Array.isArray(docData.qrCodeIds) ? docData.qrCodeIds.map(String) : [],
-    metrics: {
-      totalScans,
-      uniqueVisitors,
-      leads,
-      conversions,
-      revenue: typeof metricsData.revenue === 'number' ? metricsData.revenue : undefined,
-      conversionRate: safePercent(conversions, totalScans),
-    },
-    attributionConfig: {
-      model: (docData.attributionConfig as { model?: 'first_touch' | 'last_touch' | 'multi_touch' })?.model || 'last_touch',
-      lookbackDays: (docData.attributionConfig as { lookbackDays?: number })?.lookbackDays || 30,
-    },
-    tags: Array.isArray(docData.tags) ? docData.tags.map(String) : [],
-    createdBy: (docData.createdBy as { userId: string; name: string; email: string }) || {
-      userId: 'system',
-      name: 'Admin',
-      email: '',
-    },
-    createdAt: String(docData.createdAt || new Date().toISOString()),
-    updatedAt: String(docData.updatedAt || new Date().toISOString()),
-  };
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

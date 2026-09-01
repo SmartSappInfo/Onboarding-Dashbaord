@@ -11,38 +11,11 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { nanoid } from 'nanoid';
-import crypto from 'crypto';
+import { hashPasscode, verifyPasscode, evaluateSecurityRules } from '@/lib/qr-helpers';
 import type { QRCustomDomain, QRCode } from '@/lib/types';
 import DOMPurify from 'isomorphic-dompurify';
 
-const PASSCODE_SALT = process.env.QR_SECURITY_SALT || 'smartsapp_qr_salt_2026';
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 1. Passcode Hashing & Verification
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function hashPasscode(passcode: string): string {
-  const clean = passcode.trim();
-  return crypto
-    .createHash('sha256')
-    .update(`${clean}:${PASSCODE_SALT}`)
-    .digest('hex');
-}
-
-export function verifyPasscode(enteredPasscode: string, storedHash: string): boolean {
-  if (!enteredPasscode || !storedHash) return false;
-  const computedHash = hashPasscode(enteredPasscode);
-  return crypto.timingSafeEqual(
-    Buffer.from(computedHash, 'hex'),
-    Buffer.from(storedHash, 'hex')
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 2. Custom Domain Management
-// ─────────────────────────────────────────────────────────────────────────────
-
-export function qrCustomDomainsCollection(orgId: string, wsId: string) {
+function qrCustomDomainsCollection(orgId: string, wsId: string) {
   return adminDb
     .collection('organizations')
     .doc(orgId)
@@ -186,70 +159,4 @@ export async function getCustomDomains(orgId: string, wsId: string): Promise<QRC
       updatedAt: String(data.updatedAt || new Date().toISOString()),
     };
   });
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// 3. Security Access Rule Evaluation
-// ─────────────────────────────────────────────────────────────────────────────
-
-export interface SecurityEvaluationResult {
-  allowed: boolean;
-  requiresPasscode: boolean;
-  reason?: 'passcode_required' | 'country_restricted' | 'ip_restricted' | 'rate_limited';
-  message?: string;
-}
-
-export function evaluateSecurityRules(
-  qr: QRCode,
-  clientIp: string,
-  clientCountry?: string,
-  isPasscodeUnlocked = false
-): SecurityEvaluationResult {
-  const sec = qr.securityConfig;
-  if (!sec) {
-    return { allowed: true, requiresPasscode: false };
-  }
-
-  // 1. Passcode Protection Check
-  const isPasscodeEnabled = sec.passwordProtected || sec.passwordEnabled;
-  if (isPasscodeEnabled && sec.passwordHash) {
-    if (!isPasscodeUnlocked) {
-      return {
-        allowed: false,
-        requiresPasscode: true,
-        reason: 'passcode_required',
-        message: 'This QR destination requires a security PIN to access.',
-      };
-    }
-  }
-
-  // 2. IP Allowlist Check
-  if (sec.ipAllowlist && sec.ipAllowlist.length > 0) {
-    const isAllowedIp = sec.ipAllowlist.some((allowed) => allowed.trim() === clientIp.trim());
-    if (!isAllowedIp) {
-      return {
-        allowed: false,
-        requiresPasscode: false,
-        reason: 'ip_restricted',
-        message: 'Your IP network does not have permission to access this internal link.',
-      };
-    }
-  }
-
-  // 3. Geofence Country Restrictions Check
-  const allowedCountries = sec.allowedCountries || sec.geoRestrictions?.countries;
-  if (allowedCountries && allowedCountries.length > 0 && clientCountry) {
-    const normalizedCountry = clientCountry.toUpperCase().trim();
-    const isAllowed = allowedCountries.some((c) => c.toUpperCase().trim() === normalizedCountry);
-    if (!isAllowed) {
-      return {
-        allowed: false,
-        requiresPasscode: false,
-        reason: 'country_restricted',
-        message: `This campaign is restricted to authorized regions and is not available in ${clientCountry}.`,
-      };
-    }
-  }
-
-  return { allowed: true, requiresPasscode: false };
 }

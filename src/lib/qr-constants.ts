@@ -31,6 +31,9 @@ export const DEFAULT_QR_SECURITY_CONFIG: QRSecurityConfig = {
   passwordHash: undefined,
   restrictDomain: false,
   allowedDomains: [],
+  anonymizeIp: true,
+  blockBotScans: true,
+  maxScansPerMinutePerIp: 60,
 };
 
 export const GLOBAL_QR_TEMPLATES: Array<{ id: string; name: string; design: QRDesign }> = [

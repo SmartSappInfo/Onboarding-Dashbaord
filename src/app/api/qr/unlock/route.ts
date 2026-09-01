@@ -10,7 +10,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getQRCodeByShortPath } from '@/lib/qr-actions';
-import { verifyPasscode } from '@/lib/qr-domain-security-actions';
+import { verifyPasscode } from '@/lib/qr-helpers';
 
 export async function POST(request: NextRequest) {
   try {
