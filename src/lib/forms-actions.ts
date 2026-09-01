@@ -387,7 +387,7 @@ export async function processFormSubmissionAction(input: {
     // 6a. 3-Tier Multi-Channel Notifications (Phase 8)
     if (form.actions?.notifications) {
       const { dispatchFormNotifications } = await import('./forms/form-notification-actions');
-      const assignedOwnerId = form.actions?.taskAssignment?.assignedUserId || form.actions?.dealCreation?.ownerId;
+      const assignedOwnerId = form.actions?.taskAssignment?.assignedUserId;
       await dispatchFormNotifications({
         form,
         submissionId: subRef.id,

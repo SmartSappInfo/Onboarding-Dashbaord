@@ -71,6 +71,7 @@ import {
   BarChart3,
   Inbox,
   Share2,
+  Sparkles,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -78,6 +79,7 @@ import { EntityAvatar } from '../components/EntityAvatar';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { PageContainer } from '@/components/ui/page-container';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
+import AiFormGeneratorModal from './components/AiFormGeneratorModal';
 
 export default function FormsClient() {
   const firestore = useFirestore();
@@ -92,6 +94,7 @@ export default function FormsClient() {
   const [cloningId, setCloningId] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [shareForm, setShareForm] = useState<Form | null>(null);
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false);
 
   const { can } = usePermissions();
   const canCreate = can('studios', 'forms', 'create');
@@ -357,10 +360,24 @@ export default function FormsClient() {
                         </div>
             <div className="flex justify-end items-center gap-3 shrink-0">
               {canCreate && (
-                <Button onClick={handleCreateNew} disabled={isCreating} className="h-11 rounded-xl font-bold shadow-lg">
-                  {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                  New Form
-                </Button>
+                <>
+                  <Button
+                    onClick={() => setIsAiModalOpen(true)}
+                    className="h-11 rounded-xl font-bold bg-gradient-to-r from-indigo-600 via-indigo-700 to-primary text-white shadow-md hover:opacity-95 active:scale-[0.97] transition-all gap-2 min-h-[44px]"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Create with AI
+                  </Button>
+                  <Button
+                    onClick={handleCreateNew}
+                    disabled={isCreating}
+                    variant="outline"
+                    className="h-11 rounded-xl font-bold border-border/80 hover:bg-muted active:scale-[0.97] transition-all min-h-[44px]"
+                  >
+                    {isCreating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                    Blank Form
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -526,9 +543,18 @@ export default function FormsClient() {
                           {searchTerm || statusFilter !== 'all' ? 'No forms match your filters' : 'No forms created yet'}
                         </p>
                         {!searchTerm && statusFilter === 'all' && (
-                          <Button variant="outline" size="sm" onClick={handleCreateNew} className="mt-2 rounded-xl font-bold">
-                            <PlusCircle className="mr-2 h-4 w-4" /> Create Your First Form
-                          </Button>
+                          <div className="flex items-center gap-2 mt-2">
+                            <Button
+                              onClick={() => setIsAiModalOpen(true)}
+                              size="sm"
+                              className="rounded-xl font-bold bg-gradient-to-r from-indigo-600 to-primary text-white shadow-md gap-1.5"
+                            >
+                              <Sparkles className="h-3.5 w-3.5" /> Create with AI
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={handleCreateNew} className="rounded-xl font-bold">
+                              <PlusCircle className="mr-1.5 h-3.5 w-3.5" /> Blank Form
+                            </Button>
+                          </div>
                         )}
                       </div>
                     </TableCell>
@@ -578,6 +604,17 @@ export default function FormsClient() {
           formId={shareForm.id}
           workspaceId={shareForm.workspaceId}
           organizationId={shareForm.organizationId}
+        />
+      )}
+
+      {/* AI Form Generator Modal (Phase 9) */}
+      {user && activeWorkspaceId && (
+        <AiFormGeneratorModal
+          isOpen={isAiModalOpen}
+          onClose={() => setIsAiModalOpen(false)}
+          workspaceId={activeWorkspaceId}
+          organizationId={activeOrganizationId}
+          userId={user.uid}
         />
       )}
             </PageContainer>

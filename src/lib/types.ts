@@ -5912,6 +5912,7 @@ export interface Form {
   logicRules?: import('./forms/form-logic-types').FormLogicRule[];
   scoreRules?: import('./forms/form-logic-types').FormScoreRule[];
   calculations?: import('./forms/form-logic-types').FormCalculationRule[];
+  createdBy?: { userId: string; email?: string; name?: string } | string;
   createdAt: string;
   updatedAt?: string;
   publishedAt?: string;
@@ -5937,6 +5938,7 @@ export interface FormFieldInstance {
   defaultValueOverride?: any;
   order: number;
   width?: 'full' | 'half'; // Form layout option
+  optionsOverride?: Array<{ label: string; value: string }>;
   logicRules?: FormFieldLogicRule[];
 }
 

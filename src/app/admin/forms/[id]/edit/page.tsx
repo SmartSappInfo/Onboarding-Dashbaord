@@ -32,6 +32,7 @@ import LogicStudio from './components/LogicStudio';
 import PageManager from './components/PageManager';
 import CrmIntegrationStudio from './components/CrmIntegrationStudio';
 import NotificationStudio from './components/NotificationStudio';
+import AiFormAssistantDrawer from './components/AiFormAssistantDrawer';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import {
@@ -249,6 +250,7 @@ export default function EditFormPage() {
   [users]);
 
   const [activePageId, setActivePageId] = React.useState<string>('page_1');
+  const [isAiAssistantOpen, setIsAiAssistantOpen] = React.useState(false);
 
   const appFieldsMap = React.useMemo(() => {
     const map: Record<string, AppField> = {};
@@ -761,6 +763,15 @@ export default function EditFormPage() {
 
           {formData.id && (
             <>
+              <Button
+                variant="outline"
+                onClick={() => setIsAiAssistantOpen(prev => !prev)}
+                className="rounded-xl font-semibold gap-2 px-3.5 h-10 text-[10px] active:scale-95 transition-all bg-gradient-to-r from-indigo-500/10 via-primary/10 to-transparent border-primary/30 text-primary hover:bg-primary/20 min-h-[40px]"
+                title="Toggle AI Copilot (Cmd+J)"
+              >
+                <Sparkles className="h-4 w-4 animate-pulse text-primary" />
+                <span className="hidden sm:inline">AI Copilot</span>
+              </Button>
               <Button
                 variant="outline"
                 onClick={() => router.push(`/admin/forms/${formData.id}/distribution`)}
@@ -1984,6 +1995,29 @@ export default function EditFormPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* In-Canvas AI Form Assistant Drawer (Phase 9) */}
+      <AiFormAssistantDrawer
+        isOpen={isAiAssistantOpen}
+        onClose={() => setIsAiAssistantOpen(false)}
+        form={formData as Form}
+        pages={versionPages}
+        activePageId={activePageId}
+        fields={formData.fields || []}
+        onAddQuestion={(newField) => {
+          const currentFields = formData.fields || [];
+          updateField('fields', [...currentFields, newField]);
+        }}
+        onAddLogicRule={(newRule) => {
+          const currentRules = formData.logicRules || [];
+          updateField('logicRules', [...currentRules, newRule]);
+        }}
+        onUpdateField={(fieldId, patch) => {
+          const currentFields = formData.fields || [];
+          const updatedFields = currentFields.map(f => (f.id === fieldId ? { ...f, ...patch } : f));
+          updateField('fields', updatedFields);
+        }}
+      />
     </div>
   );
 }
