@@ -26,7 +26,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
 import { normalizeSuccessBehavior, normalizeFormEntityCapture } from '@/lib/tracking-utils';
-import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, UserPlus, Sparkles, Building2, User, Home, Rocket, GitBranch } from 'lucide-react';
+import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, UserPlus, Sparkles, Building2, User, Home, Rocket, GitBranch, Split } from 'lucide-react';
 import BuilderCanvas from './components/BuilderCanvas';
 import LogicStudio from './components/LogicStudio';
 import PageManager from './components/PageManager';
@@ -787,6 +787,14 @@ export default function EditFormPage() {
               >
                 <BarChart3 className="h-4 w-4 text-primary" />
                 <span className="hidden sm:inline">Analytics</span>
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => router.push(`/admin/forms/${formData.id}/optimize`)}
+                className="rounded-xl font-semibold gap-2 px-3.5 h-10 text-[10px] active:scale-95 transition-all text-emerald-600 dark:text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10"
+              >
+                <Split className="h-4 w-4 text-emerald-500" />
+                <span className="hidden sm:inline">Optimize</span>
               </Button>
             </>
           )}

@@ -1465,6 +1465,30 @@ service cloud.firestore {
           hasPermission('studios_edit')
         );
       }
+
+      // Forms 2.0 A/B Testing Experiments subcollection (Phase 12)
+      match /experiments/{expId} {
+        allow read: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+        );
+        allow write: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasPermission('studios_edit')
+        );
+      }
+
+      // Forms 2.0 Optimization Health Score & Diagnostics subcollection (Phase 12)
+      match /optimization/{docId} {
+        allow read: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+        );
+        allow write: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasPermission('studios_edit')
+        );
+      }
     }
 
     // Forms 2.0 Scheduled Email Reports Collection (Phase 11)

@@ -172,6 +172,16 @@ export default function FormAnalyticsClient({ id }: FormAnalyticsClientProps) {
             <Button
               variant="outline"
               size="sm"
+              onClick={() => router.push(`/admin/forms/${id}/optimize`)}
+              className="h-10 rounded-2xl text-xs font-bold gap-1.5 border-emerald-500/40 bg-emerald-500/5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 min-h-[44px] sm:min-h-0"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              <span>Optimize</span>
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setIsReportModalOpen(true)}
               className="h-10 rounded-2xl text-xs font-bold gap-1.5 border-primary/40 bg-primary/5 text-primary hover:bg-primary/10 min-h-[44px] sm:min-h-0"
             >
