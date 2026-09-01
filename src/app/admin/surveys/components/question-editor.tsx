@@ -407,7 +407,7 @@ function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: {
     );
 }
 
-const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; field: any }) => {
+const MediaLayoutEditor = ({ element, field }: { element: SurveyLayoutBlock; field: { value: string; onChange: (val: string) => void } }) => {
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     
     const handleSelect = (asset: MediaAsset) => {
@@ -871,15 +871,15 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
     }
   };
 
-  const handleDefaultChange = (newValue: any) => {
+  const handleDefaultChange = (newValue: string | string[] | { options: string[]; other: string } | undefined) => {
     setValue(`elements.${questionIndex}.defaultValue`, newValue, { shouldDirty: true, shouldValidate: true });
-  }
+  };
 
   return (
  <div className="space-y-3">
  <Label className="text-[10px] font-semibold text-muted-foreground/60">Options</Label>
       {(questionType === 'multiple-choice' || questionType === 'dropdown') && (
-        <RadioGroup onValueChange={handleDefaultChange} value={defaultValue}>
+        <RadioGroup onValueChange={(val) => handleDefaultChange(val)} value={typeof defaultValue === 'string' ? defaultValue : undefined}>
           {fields.map((field, index) => {
             const optionValue = watch(`elements.${questionIndex}.options.${index}`);
             return (
@@ -1400,7 +1400,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     index: number;
     remove: (index: number) => void;
     swap: (a: number, b: number) => void;
-    insert: (index: number, value: any) => void;
+    insert: (index: number, value: SurveyElement) => void;
     requestAddElement: (index: number) => void;
     selectedBlockIds: string[];
     setSelectedBlockIds: (ids: string[]) => void;
@@ -1413,7 +1413,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
   const isSelected = selectedBlockIds.includes(element?.id);
   const isPrimaryActive = selectedBlockIds.length === 1 && isSelected;
   const isCollapsed = isAccordion && !isPrimaryActive;
-  const hasErrors = !!(errors.elements as any)?.[index];
+  const hasErrors = !!(errors.elements as Record<string, unknown> | undefined)?.[index];
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   
@@ -1424,7 +1424,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
 
   const elements = watch('elements') || [];
   const questionNumber = elements.slice(0, index + 1).filter(isQuestion).length;
-  const sectionNumber = elements.slice(0, index + 1).filter((el: any) => el.type === 'section').length;
+  const sectionNumber = elements.slice(0, index + 1).filter((el: SurveyElement) => el.type === 'section').length;
 
   const isElementQuestion = isQuestion(element);
   const isElementLayout = isLayoutBlock(element);
@@ -2204,7 +2204,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
 }
 
 export default function QuestionEditor({ fields, remove, move, swap, insert, requestAddElement, selectedBlockIds, setSelectedBlockIds, lastSelectedId, setLastSelectedId, isAccordion }: {
-    fields: any[];
+    fields: { id: string }[];
     remove: (index: number) => void;
     move: (from: number, to: number) => void;
     swap: (indexA: number, indexB: number) => void;

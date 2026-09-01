@@ -43,7 +43,7 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
     const elements = watch('elements') || [];
     
     const activeIndex = selectedBlockIds.length === 1 
-        ? elements.findIndex((el: any) => el.id === selectedBlockIds[0]) 
+        ? elements.findIndex((el: SurveyElement) => el.id === selectedBlockIds[0]) 
         : -1;
     const element = activeIndex !== -1 ? elements[activeIndex] : null;
 
@@ -65,7 +65,7 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
                         <Label className="text-sm font-black uppercase tracking-wider text-muted-foreground">Selected Items</Label>
                         <div className="space-y-2">
                             {selectedBlockIds.map(id => {
-                                const el = elements.find((e: any) => e.id === id);
+                                const el = elements.find((e: SurveyElement) => e.id === id);
                                 if (!el) return null;
                                 return (
                                     <div key={id} className="flex items-center gap-3 p-3 bg-muted/30 rounded-2xl border border-border/50 group hover:border-primary/30 transition-colors">
@@ -124,7 +124,7 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
         const newElements = [...elements];
         
         // Base object with preserved common fields
-        const base: any = {
+        const base: Record<string, unknown> = {
             ...element,
             type: newType,
         };
