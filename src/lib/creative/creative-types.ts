@@ -327,6 +327,57 @@ export interface AiLogEntry {
   createdAt: string;
 }
 
+export type HealthVectorName =
+  | 'Attention'
+  | 'Readability'
+  | 'Contrast'
+  | 'Brand'
+  | 'Mobile'
+  | 'Accessibility'
+  | 'Platform';
+
+export interface HealthVectorScore {
+  name: HealthVectorName;
+  score: number; // 0 - 100
+  status: 'optimal' | 'warning' | 'critical';
+  description: string;
+}
+
+export type HealthIssueFixType =
+  | 'enlarge_headline'
+  | 'fix_contrast'
+  | 'shift_safe_zone'
+  | 'apply_brand_font'
+  | 'apply_brand_color'
+  | 'clean_clutter';
+
+export interface CreativeHealthIssue {
+  id: string;
+  category: 'readability' | 'contrast' | 'safe_zone' | 'brand' | 'mobile' | 'density';
+  severity: 'critical' | 'warning' | 'optimal';
+  title: string;
+  message: string;
+  targetElementId?: string;
+  fixActionType?: HealthIssueFixType;
+  fixActionLabel?: string;
+}
+
+export interface SaliencyHotspot {
+  x: number; // 0 - 100 percentage
+  y: number; // 0 - 100 percentage
+  weight: number; // 0 - 1 intensity
+  radius: number; // radius in percentage
+}
+
+export interface CreativeHealthReport {
+  overallScore: number; // 0 - 100
+  status: 'optimal' | 'warning' | 'critical';
+  vectors: HealthVectorScore[];
+  issues: CreativeHealthIssue[];
+  saliencyHotspots: SaliencyHotspot[];
+  evaluatedAt: string;
+}
+
 export interface CreativePublication {
   id: string;
   projectId: string;

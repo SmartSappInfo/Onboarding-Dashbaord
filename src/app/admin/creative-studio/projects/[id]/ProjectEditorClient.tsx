@@ -2,11 +2,12 @@
 
 /**
  * ARCHITECTURE:
- * Creative Project Full Canvas Editor Client (Phase 3 - AI Creative Director)
+ * Creative Project Full Canvas Editor Client (Phase 4 - Creative Intelligence & Health)
  * 
- * Professional WYSIWYG editor integrating AI Creative Director (Cmd+K command bar,
- * conversational collaborator drawer, 3-concept generator matrix, copy variation matrix),
- * multi-selection bounding boxes, smart guides, and responsive viewport simulations.
+ * Professional WYSIWYG editor integrating multi-vector Creative Health diagnostics,
+ * interactive attention saliency heatmap overlays, one-click auto-fix actions,
+ * AI Creative Director (Cmd+K command bar, collaborator drawer), multi-selection bounding boxes,
+ * smart guides, and responsive viewport simulations.
  * 
  * CAUTION:
  * Mid-drag updates must specify `commitToHistory = false`.
@@ -14,7 +15,7 @@
  * Strict typing (0% any).
  * 
  * TESTABILITY:
- * Verified via unit tests in src/lib/creative/__tests__/creative-ai-gateway.test.ts
+ * Verified via unit tests in src/lib/creative/__tests__/creative-health-engine.test.ts
  */
 
 import * as React from 'react';
@@ -26,14 +27,18 @@ import type {
   CreativeComment,
   CreativeVersion,
   CreativeConcept,
+  CreativeHealthReport,
+  CreativeHealthIssue,
   BrandKit,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId, THUMBNAIL_FONT_OPTIONS } from '@/lib/creative/creative-types';
 import type { MediaAsset } from '@/lib/types';
-import { analyzeThumbnailCTR } from '@/lib/thumbnail/ctr-evaluator';
+import { evaluateCreativeHealth } from '@/lib/creative/creative-health-engine';
+import { applyHealthFix, applyImproveAllFixes } from '@/lib/creative/creative-health-fixes';
 import ThumbnailCanvas from '@/components/shared/thumbnail-designer/ThumbnailCanvas';
 import { ContextualActionBar } from '@/components/shared/thumbnail-designer/ContextualActionBar';
 import { LayersTreePanel } from '@/components/shared/thumbnail-designer/LayersTreePanel';
+import { CreativeHealthPanel } from '@/components/shared/thumbnail-designer/CreativeHealthPanel';
 import {
   KeyboardShortcutsDialog,
   useKeyboardShortcuts,
@@ -83,6 +88,7 @@ import {
   Loader2,
   Smartphone,
   Keyboard,
+  Eye,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -151,11 +157,16 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [isAiCommandBarOpen, setIsAiCommandBarOpen] = useState(false);
   const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
 
-  // Attention & CTR Evaluator State
-  const [healthScore, setHealthScore] = useState(92);
-  const [recommendations, setRecommendations] = useState<
-    { id: string; type: string; severity: string; message: string }[]
-  >([]);
+  // Attention & Creative Health State (Phase 4)
+  const [heatmapVisible, setHeatmapVisible] = useState(false);
+  const [healthReport, setHealthReport] = useState<CreativeHealthReport>({
+    overallScore: 92,
+    status: 'optimal',
+    vectors: [],
+    issues: [],
+    saliencyHotspots: [],
+    evaluatedAt: new Date().toISOString(),
+  });
 
   // Brand Kit State
   const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
@@ -217,24 +228,19 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     };
   }, [projectId, initialize, toast]);
 
-  // 2. Debounced CTR / Attention Health Evaluator
+  // 2. Debounced Creative Health & Attention Evaluator (Phase 4)
   useEffect(() => {
     const timer = setTimeout(() => {
-      const result = analyzeThumbnailCTR({
-        workspaceId: document.workspaceId,
-        name: document.name,
-        backgroundColor: document.backgroundColor,
-        backgroundGradient: document.backgroundGradient,
-        backgroundImage: document.backgroundImage,
-        elements: document.elements,
-        createdAt: document.createdAt,
-        updatedAt: document.updatedAt,
-      });
-      setHealthScore(result.score);
-      setRecommendations(result.recommendations);
+      const report = evaluateCreativeHealth(
+        document.elements,
+        document.backgroundColor,
+        document.backgroundGradient,
+        brandKit
+      );
+      setHealthReport(report);
     }, 250);
     return () => clearTimeout(timer);
-  }, [document]);
+  }, [document, brandKit]);
 
   // 3. Debounced Autosave (1500ms)
   const saveDocumentNow = useCallback(async () => {
@@ -302,7 +308,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
       zIndex: document.elements.length + 1,
       text: type === 'headline' ? 'BOLD HEADLINE' : type === 'subtitle' ? 'Subheading text here' : 'LIMITED TIME',
       fontSize: type === 'headline' ? 52 : type === 'subtitle' ? 28 : 20,
-      fontFamily: brandKit?.typography.displayFont || 'Impact',
+      fontFamily: brandKit?.typography?.displayFont || 'Impact',
       fill: type === 'badge' ? '#ffffff' : '#facc15',
       textAlign: 'center',
       textStrokeColor: '#000000',
@@ -388,6 +394,54 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     }
 
     toast({ title: 'Brand Theme Applied', description: 'Applied brand kit colors, typography, and watermark.' });
+  };
+
+  // -------------------------------------------------------------
+  // Creative Health Auto-Fix Handlers (Phase 4)
+  // -------------------------------------------------------------
+
+  const handleApplyHealthFix = (issue: CreativeHealthIssue) => {
+    const fixed = applyHealthFix(document.elements, issue, brandKit);
+    useCreativeEditor.setState((s) => ({
+      document: {
+        ...s.document,
+        elements: fixed,
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+      history: {
+        past: [...s.history.past, s.history.present],
+        present: { ...s.document, elements: fixed },
+        future: [],
+      },
+    }));
+
+    toast({
+      title: 'Fix Applied',
+      description: issue.title,
+    });
+  };
+
+  const handleImproveAllHealthFixes = () => {
+    const fixed = applyImproveAllFixes(document.elements, healthReport.issues, brandKit);
+    useCreativeEditor.setState((s) => ({
+      document: {
+        ...s.document,
+        elements: fixed,
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+      history: {
+        past: [...s.history.past, s.history.present],
+        present: { ...s.document, elements: fixed },
+        future: [],
+      },
+    }));
+
+    toast({
+      title: 'Improved All Diagnostic Issues',
+      description: `Optimized ${healthReport.issues.length} health dimensions.`,
+    });
   };
 
   const handleAddComment = async () => {
@@ -647,6 +701,22 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Attention Heatmap Toggle (Phase 4) */}
+          <Button
+            onClick={() => setHeatmapVisible(!heatmapVisible)}
+            variant="outline"
+            size="sm"
+            className={cn(
+              'border-slate-800 text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97] transition-all',
+              heatmapVisible
+                ? 'bg-red-500/15 text-red-400 border-red-500/40 shadow-lg shadow-red-500/10'
+                : 'bg-slate-900 text-slate-300 hover:text-white'
+            )}
+          >
+            <Eye className="w-3.5 h-3.5 mr-1.5" />
+            <span className="hidden sm:inline">Heatmap</span>
+          </Button>
+
           {/* AI Command Bar Quick Launch (Cmd+K) */}
           <Button
             onClick={() => setIsAiCommandBarOpen(true)}
@@ -924,44 +994,16 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
               />
             </TabsContent>
 
-            {/* Tab 4: Attention Health & Recommendations */}
-            <TabsContent value="health" className="flex-1 overflow-y-auto p-4 space-y-4 m-0 scrollbar-none">
-              <div className="p-4 rounded-2xl bg-slate-900/60 border border-slate-800 text-center space-y-2">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Attention Health Score</div>
-                <div
-                  className={cn(
-                    'text-4xl font-black',
-                    healthScore >= 90 ? 'text-emerald-400' : healthScore >= 75 ? 'text-amber-400' : 'text-rose-400'
-                  )}
-                >
-                  {healthScore}
-                  <span className="text-sm text-slate-500">/100</span>
-                </div>
-                <div className="text-xs font-semibold text-slate-400">
-                  {healthScore >= 90 ? 'High conversion potential' : 'Needs attention optimization'}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">AI Recommendations</div>
-                {recommendations.length === 0 ? (
-                  <div className="text-xs text-emerald-400 font-semibold p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
-                    ✓ Composition passes all safe-zone and readability benchmarks.
-                  </div>
-                ) : (
-                  recommendations.map((rec) => (
-                    <div
-                      key={rec.id}
-                      className="p-3 rounded-xl bg-slate-900 border border-slate-800 text-xs font-medium text-slate-300 space-y-1"
-                    >
-                      <div className="flex items-center gap-1.5 font-bold text-amber-400">
-                        <span>•</span> {rec.type}
-                      </div>
-                      <p className="text-slate-400 leading-relaxed">{rec.message}</p>
-                    </div>
-                  ))
-                )}
-              </div>
+            {/* Tab 4: Creative Intelligence & Health Panel (Phase 4) */}
+            <TabsContent value="health" className="flex-1 overflow-y-auto p-4 m-0 scrollbar-none">
+              <CreativeHealthPanel
+                report={healthReport}
+                brandKit={brandKit}
+                heatmapVisible={heatmapVisible}
+                onToggleHeatmap={() => setHeatmapVisible(!heatmapVisible)}
+                onApplyFix={handleApplyHealthFix}
+                onImproveAll={handleImproveAllHealthFixes}
+              />
             </TabsContent>
           </Tabs>
         </aside>
@@ -1001,6 +1043,8 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
               setPanX(x);
               setPanY(y);
             }}
+            heatmapVisible={heatmapVisible}
+            saliencyHotspots={healthReport.saliencyHotspots}
           />
         </main>
 

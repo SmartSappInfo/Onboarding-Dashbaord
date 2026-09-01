@@ -19,9 +19,9 @@
 
 import * as React from 'react';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import type { CanvasElement } from '@/lib/thumbnail/thumbnail-types';
-import type { CreativeElement, SnapGuideLine, BoundingBox } from '@/lib/creative/creative-types';
+import type { CreativeElement, SnapGuideLine, BoundingBox, SaliencyHotspot } from '@/lib/creative/creative-types';
 import { computeBoundingBox, calculateSmartGuides } from '@/lib/creative/smart-guides';
+import { AttentionHeatmapOverlay } from './AttentionHeatmapOverlay';
 import * as LucideIcons from 'lucide-react';
 import { RotateCw, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -72,6 +72,8 @@ interface ThumbnailCanvasProps {
   panX: number;
   panY: number;
   onPanChange: (x: number, y: number) => void;
+  heatmapVisible?: boolean;
+  saliencyHotspots?: SaliencyHotspot[];
 }
 
 interface DragState {
@@ -106,6 +108,8 @@ export default function ThumbnailCanvas({
   panX,
   panY,
   onPanChange,
+  heatmapVisible,
+  saliencyHotspots,
 }: ThumbnailCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -699,6 +703,14 @@ export default function ThumbnailCanvas({
             }}
           />
         )}
+
+        {/* ------------------------------------------------------------- */}
+        {/* Attention Saliency Heatmap Overlay (Phase 4)                  */}
+        {/* ------------------------------------------------------------- */}
+        <AttentionHeatmapOverlay
+          visible={heatmapVisible ?? false}
+          hotspots={saliencyHotspots ?? []}
+        />
       </div>
     </div>
   );
