@@ -155,7 +155,11 @@ export function SendSurveyModal({
       toast({
         variant: 'destructive',
         title: 'Select a Survey',
-        description: 'Please select an active survey to dispatch.',
+        description: 'Please select an active survey to dispatch, or create a new one.',
+        actionConfig: {
+          path: '/admin/surveys/new',
+          label: 'Create Survey',
+        },
       });
       return;
     }
