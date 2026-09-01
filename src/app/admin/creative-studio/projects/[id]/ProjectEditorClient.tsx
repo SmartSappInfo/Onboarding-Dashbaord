@@ -49,6 +49,7 @@ import { BatchPersonalizationModal } from '@/components/shared/thumbnail-designe
 import { ApprovalWorkflowModal } from '@/components/shared/thumbnail-designer/ApprovalWorkflowModal';
 import { PublishingModal } from '@/components/shared/thumbnail-designer/PublishingModal';
 import { ExperimentBuilderModal } from '@/components/shared/thumbnail-designer/ExperimentBuilderModal';
+import { ExportModal } from '@/components/shared/thumbnail-designer/ExportModal';
 import {
   KeyboardShortcutsDialog,
   useKeyboardShortcuts,
@@ -122,6 +123,7 @@ import {
   Clock,
   AlertTriangle,
   FlaskConical,
+  Download,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -267,6 +269,9 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
 
   // A/B Experiment Dialog (Phase 9)
   const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false);
+
+  // Production Export Dialog (Phase 10)
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
 
   // 1. Initial Load
   useEffect(() => {
@@ -1124,6 +1129,17 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
             <span>A/B Test</span>
           </Button>
 
+          {/* Export Production Asset (Phase 10) */}
+          <Button
+            onClick={() => setIsExportModalOpen(true)}
+            variant="outline"
+            size="sm"
+            className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97] hidden sm:flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Export</span>
+          </Button>
+
           {/* Publish Trigger (Phase 8) */}
           <Button
             onClick={() => setIsPublishDialogOpen(true)}
@@ -1801,6 +1817,16 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         <ExperimentBuilderModal
           open={isExperimentModalOpen}
           onOpenChange={setIsExperimentModalOpen}
+          project={project}
+          document={document}
+        />
+      )}
+
+      {/* Production Export Modal (Phase 10) */}
+      {isExportModalOpen && project && document && (
+        <ExportModal
+          open={isExportModalOpen}
+          onOpenChange={setIsExportModalOpen}
           project={project}
           document={document}
         />

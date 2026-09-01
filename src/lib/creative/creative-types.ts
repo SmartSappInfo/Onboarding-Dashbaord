@@ -355,6 +355,37 @@ export interface StatisticalResult {
   recommendation: string;
 }
 
+export interface PerformanceMetrics {
+  projectId: string;
+  impressions: number;
+  clicks: number;
+  ctr: number;
+  conversions: number;
+  conversionRate: number;
+  pipelineValue: number; // $ USD
+  revenueGenerated: number; // $ USD
+  adSpend: number; // $ USD
+  roas: number; // Revenue / Ad Spend
+  topChannel: PublishingChannel;
+}
+
+export interface CampaignAttributionSummary {
+  campaignId: string;
+  campaignName: string;
+  totalCreatives: number;
+  totalImpressions: number;
+  totalConversions: number;
+  totalRevenue: number;
+  bestPerformingProjectId: string;
+}
+
+export interface ExportOptions {
+  format: 'png' | 'jpeg' | 'webp' | 'svg' | 'pdf';
+  scale: 1 | 2 | 4; // 1x Standard, 2x HD, 4x Ultra-HD Print
+  quality: number; // 0.8 - 1.0
+  transparentBackground: boolean;
+}
+
 export interface CreativeVersion {
   id: string;
   projectId: string;
