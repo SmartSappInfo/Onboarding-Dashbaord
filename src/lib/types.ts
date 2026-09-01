@@ -1855,6 +1855,73 @@ export interface OrganizationRiskOverview {
   evaluatedAt: string;
 }
 
+// ==========================================
+// AI-ASSISTED ADMINISTRATION (PHASE 9)
+// ==========================================
+
+export type AiAdminActionType =
+  | 'merge_duplicate_roles'
+  | 'create_access_review_campaign'
+  | 'prune_dormant_administrators'
+  | 'rebalance_inactive_crm_portfolios'
+  | 'standardize_department_roles';
+
+export type AiProposalStatus =
+  | 'proposed'
+  | 'pending_approval'
+  | 'approved'
+  | 'executing'
+  | 'completed'
+  | 'rejected'
+  | 'failed';
+
+export type BlastRadiusLevel = 'low' | 'medium' | 'high' | 'critical';
+
+export interface AiActionImpactPreview {
+  blastRadius: BlastRadiusLevel;
+  affectedUserCount: number;
+  affectedRoleCount: number;
+  affectedEntityCount: number;
+  riskScoreDelta: number;
+  changesSummary: string[];
+  diffBefore: Record<string, string | number | boolean | string[]>;
+  diffAfter: Record<string, string | number | boolean | string[]>;
+}
+
+export interface AiAdminActionProposal {
+  id: string;
+  organizationId: string;
+  naturalLanguagePrompt: string;
+  actionType: AiAdminActionType;
+  title: string;
+  explanation: string;
+  impactPreview: AiActionImpactPreview;
+  payload: Record<string, string | number | boolean | string[]>;
+  status: AiProposalStatus;
+  requiresDualApproval: boolean;
+  proposedBy: string;
+  approvedBy?: string;
+  approvedAt?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
+  executionError?: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface AiAdminExecutionAudit {
+  id: string;
+  organizationId: string;
+  proposalId: string;
+  actionType: AiAdminActionType;
+  executedBy: string;
+  itemsModifiedCount: number;
+  executionSummary: string;
+  executedAt: string;
+  status: 'success' | 'failed';
+  error?: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

@@ -344,6 +344,17 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- AI Command Center & Administration (Phase 9) Collections ---
+    match /ai_action_proposals/{proposalId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /ai_admin_execution_audit/{auditId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
