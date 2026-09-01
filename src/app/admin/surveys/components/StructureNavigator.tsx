@@ -199,7 +199,7 @@ export function StructureNavigator({
                 key={element.id}
                 onClick={() => onSelect(element.id)}
                 className={cn(
-                  'group relative flex items-center justify-between p-2 rounded-xl text-xs font-medium cursor-pointer transition-all duration-150 min-h-[40px]',
+                  'group relative flex items-center justify-between p-2 rounded-xl text-xs font-medium cursor-pointer transition-all duration-150 min-h-[44px]',
                   isSelected
                     ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/20'
                     : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
@@ -211,11 +211,11 @@ export function StructureNavigator({
                 <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
                   <div
                     className={cn(
-                      'p-1 rounded shrink-0',
+                      'p-1.5 rounded-lg shrink-0',
                       isSelected ? 'bg-primary/20 text-primary' : 'bg-muted/80 text-muted-foreground'
                     )}
                   >
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="h-4 w-4" />
                   </div>
 
                   <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -254,6 +254,7 @@ export function StructureNavigator({
                         <TooltipTrigger asChild>
                           <button
                             type="button"
+                            aria-label="Move element up"
                             disabled={originalIndex === 0}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -261,7 +262,7 @@ export function StructureNavigator({
                             }}
                             className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground disabled:opacity-30 active:scale-[0.97]"
                           >
-                            <ChevronUp className="h-3 w-3" />
+                            <ChevronUp className="h-3.5 w-3.5" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Move Up</TooltipContent>
@@ -271,6 +272,7 @@ export function StructureNavigator({
                         <TooltipTrigger asChild>
                           <button
                             type="button"
+                            aria-label="Move element down"
                             disabled={originalIndex === elements.length - 1}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -278,7 +280,7 @@ export function StructureNavigator({
                             }}
                             className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground disabled:opacity-30 active:scale-[0.97]"
                           >
-                            <ChevronDown className="h-3 w-3" />
+                            <ChevronDown className="h-3.5 w-3.5" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Move Down</TooltipContent>
@@ -288,13 +290,14 @@ export function StructureNavigator({
                         <TooltipTrigger asChild>
                           <button
                             type="button"
+                            aria-label="Duplicate element"
                             onClick={(e) => {
                               e.stopPropagation();
                               onDuplicate(originalIndex);
                             }}
                             className="p-1 rounded hover:bg-background/80 text-muted-foreground hover:text-foreground active:scale-[0.97]"
                           >
-                            <Copy className="h-3 w-3" />
+                            <Copy className="h-3.5 w-3.5" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Duplicate</TooltipContent>
@@ -304,13 +307,14 @@ export function StructureNavigator({
                         <TooltipTrigger asChild>
                           <button
                             type="button"
+                            aria-label="Delete element"
                             onClick={(e) => {
                               e.stopPropagation();
                               onDelete(originalIndex);
                             }}
-                            className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive active:scale-[0.97]"
+                            className="p-1 rounded hover:bg-destructive/10 text-destructive active:scale-[0.97]"
                           >
-                            <Trash2 className="h-3 w-3" />
+                            <Trash2 className="h-3.5 w-3.5" />
                           </button>
                         </TooltipTrigger>
                         <TooltipContent side="top">Delete</TooltipContent>

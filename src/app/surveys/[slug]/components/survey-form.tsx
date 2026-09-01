@@ -55,6 +55,7 @@ import SurveyLoader from '../../components/survey-loader';
 import VideoHero from '@/components/video-hero';
 import { submitPublicSurveyResponse, triggerSurveyWebhook } from '@/lib/survey-actions';
 import { useTheme } from 'next-themes';
+import { evaluateRuleCondition } from '@/lib/surveys/survey-logic-graph';
 
 
 
@@ -167,6 +168,46 @@ const generateSchema = (elements: SurveyElement[]) => {
             ]);
         }
 
+        // Matrix Grid: Record<string, string | string[]>
+        if (q.type === 'matrix') {
+            schema = z.record(z.string(), z.union([z.string(), z.array(z.string())]));
+        }
+
+        // Ranking / Ordering: string[]
+        if (q.type === 'ranking') {
+            schema = z.array(z.string());
+        }
+
+        // Continuous Slider, NPS, CES: number
+        if (q.type === 'slider' || q.type === 'nps' || q.type === 'ces') {
+            schema = z.union([z.number(), z.string().transform((v) => Number(v))]);
+        }
+
+        // Consent: boolean
+        if (q.type === 'consent') {
+            schema = z.boolean();
+        }
+
+        // Digital Signature: string
+        if (q.type === 'signature') {
+            schema = z.string();
+        }
+
+        // Dynamic Calculated Field: number | string
+        if (q.type === 'calculated') {
+            schema = z.union([z.number(), z.string()]);
+        }
+
+        // Date & Time
+        if (q.type === 'date' || q.type === 'time') {
+            schema = z.union([z.string(), z.date()]);
+        }
+
+        // Rating
+        if (q.type === 'rating') {
+            schema = z.union([z.number(), z.string()]);
+        }
+
         acc[q.id] = schema.optional();
         return acc;
     }, {} as Record<string, z.ZodTypeAny>);
@@ -174,10 +215,14 @@ const generateSchema = (elements: SurveyElement[]) => {
     return z.object(baseSchemaObject);
 };
 
-const isValueEmpty = (value: unknown, questionType: string, allowOther?: boolean): boolean => {
+const isValueEmpty = (value: unknown, questionType: string, allowOther?: boolean, matrixRows?: string[]): boolean => {
     if (value === undefined || value === null || value === '') return true;
+    if (questionType === 'consent') return value !== true;
     if (Array.isArray(value)) return value.length === 0;
     if (questionType === 'rating' && (value === 0 || value === '0')) return true;
+    if (questionType === 'slider' || questionType === 'nps' || questionType === 'ces') {
+        return typeof value !== 'number' || isNaN(value);
+    }
     // Checkboxes with allowOther: {options: [], other: ''}
     if (questionType === 'checkboxes' && typeof value === 'object' && value !== null) {
         const valObj = value as { options?: unknown[]; other?: string };
@@ -195,10 +240,17 @@ const isValueEmpty = (value: unknown, questionType: string, allowOther?: boolean
         if (option === '__other__') return !other || other.trim() === '';
         return !option;
     }
+    if (questionType === 'matrix' && typeof value === 'object' && value !== null) {
+        const valObj = value as Record<string, unknown>;
+        if (matrixRows && matrixRows.length > 0) {
+            return matrixRows.some((row) => !valObj[row]);
+        }
+        return Object.keys(valObj).length === 0;
+    }
     if (value instanceof Date) return !isValid(value);
     if (typeof value === 'object' && value !== null) return Object.keys(value).length === 0;
     return false;
-}
+};
 
 const StarRating = ({ value, onChange, disabled }: { value: number, onChange: (value: number) => void, disabled?: boolean }) => {
     return (
@@ -1914,12 +1966,16 @@ export default function SurveyForm({
         logicBlocks.forEach(block => {
           block.rules.forEach(rule => {
             const answer = watchedValues[rule.sourceQuestionId];
-            if (evaluateCondition(answer, rule.operator, rule.targetValue)) {
-              const { type, targetElementIds } = rule.action;
+            if (evaluateRuleCondition(answer, rule.operator, rule.targetValue)) {
+              const { type } = rule.action;
+              const targetIds: string[] = [
+                ...(rule.action.targetElementId ? [rule.action.targetElementId] : []),
+                ...(rule.action.targetElementIds || []),
+              ];
               switch (type) {
-                case 'show': targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = true; }); break;
-                case 'hide': targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = false; }); break;
-                case 'require': targetElementIds?.forEach(id => { if (initialStates[id]) initialStates[id].isRequired = true; }); break;
+                case 'show': targetIds.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = true; }); break;
+                case 'hide': targetIds.forEach(id => { if (initialStates[id]) initialStates[id].isVisible = false; }); break;
+                case 'require': targetIds.forEach(id => { if (initialStates[id]) initialStates[id].isRequired = true; }); break;
                 case 'disableSubmit': newSubmitDisabled = true; break;
               }
             }

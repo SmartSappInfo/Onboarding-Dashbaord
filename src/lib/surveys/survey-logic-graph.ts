@@ -200,7 +200,13 @@ export function evaluateRuleCondition(
   switch (operator) {
     case 'isEqualTo':
       if (typeof actualValue === 'boolean' || typeof targetValue === 'boolean') {
-        return Boolean(actualValue) === Boolean(targetValue);
+        const normActual = typeof actualValue === 'boolean' 
+          ? actualValue 
+          : (actualStr === 'true' || actualStr === 'yes' || actualStr === '1');
+        const normTarget = typeof targetValue === 'boolean' 
+          ? targetValue 
+          : (targetStr === 'true' || targetStr === 'yes' || targetStr === '1');
+        return normActual === normTarget;
       }
       if (Array.isArray(actualValue)) {
         return actualValue.map(String).includes(String(targetValue));
@@ -208,6 +214,15 @@ export function evaluateRuleCondition(
       return actualStr === targetStr;
 
     case 'isNotEqualTo':
+      if (typeof actualValue === 'boolean' || typeof targetValue === 'boolean') {
+        const normActual = typeof actualValue === 'boolean' 
+          ? actualValue 
+          : (actualStr === 'true' || actualStr === 'yes' || actualStr === '1');
+        const normTarget = typeof targetValue === 'boolean' 
+          ? targetValue 
+          : (targetStr === 'true' || targetStr === 'yes' || targetStr === '1');
+        return normActual !== normTarget;
+      }
       if (Array.isArray(actualValue)) {
         return !actualValue.map(String).includes(String(targetValue));
       }
