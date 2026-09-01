@@ -212,6 +212,76 @@ export function BackofficeCreativeClient() {
             </div>
           </div>
         </div>
+
+        {/* AI Creative Director Model Routing Card */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <Zap className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">AI Director Routing</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Model architecture and fallbacks</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Active LLM routing gateway for multi-concept generation, canvas NLP commands, and copy variation formulas.
+          </p>
+
+          <div className="space-y-2 text-xs font-bold">
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 flex items-center justify-between">
+              <div>
+                <div className="text-emerald-400">Gemini 2.5 Flash</div>
+                <div className="text-[10px] text-slate-500 font-normal">Primary Gateway (Fast Latency)</div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 uppercase font-mono">
+                Primary
+              </span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-between text-slate-400">
+              <div>
+                <div>Gemini 1.5 Pro / GPT-4o</div>
+                <div className="text-[10px] text-slate-600 font-normal">Deep Reasoning & Visual Audit</div>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-500 uppercase font-mono">
+                Standby
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* AI System Prompt Templates Card */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-400 border border-rose-500/20">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">System Prompt Templates</h2>
+              <p className="text-[11px] text-slate-400 font-medium">No-code AI behavior fine-tuning</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div>Concept Generator</div>
+              <div className="text-[10px] text-emerald-400 mt-1">v3.2 Production</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div>Canvas NLP Parser</div>
+              <div className="text-[10px] text-emerald-400 mt-1">v2.4 Production</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div>Copy Matrix Formula</div>
+              <div className="text-[10px] text-emerald-400 mt-1">v1.8 Production</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div>Visual Health Linter</div>
+              <div className="text-[10px] text-emerald-400 mt-1">v2.0 Production</div>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Migration Report */}

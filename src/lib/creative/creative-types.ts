@@ -261,19 +261,69 @@ export interface CreativeTemplate {
 export interface CreativeConcept {
   id: string;
   projectId: string;
+  workspaceId?: string;
   name: string;
-  strategy: string;
+  strategy?: string;
+  angle?: 'growth' | 'problem_pain' | 'curiosity' | 'social_proof' | 'urgency';
   emotionalTrigger: string;
   headline: string;
+  subtitle?: string;
   visualDirection: string;
   healthScore: number;
+  predictedCTRScore?: number;
+  colorMood?: string[];
   previewUrl?: string;
+  elements?: CreativeElement[];
+  backgroundColor?: string;
+  backgroundGradient?: GradientConfig;
   documentData?: {
     backgroundColor: string;
     backgroundGradient?: GradientConfig;
     elements: CreativeElement[];
   };
   createdBy: 'user' | 'ai';
+  createdAt: string;
+}
+
+export interface CopyVariation {
+  id: string;
+  headline: string;
+  hookType: 'curiosity' | 'fear_of_missing_out' | 'data_driven' | 'direct_benefit' | 'contrarian';
+  subtitle?: string;
+  badge?: string;
+  predictedImpact: string;
+  characterCount: number;
+}
+
+export interface AiCanvasCommandResult {
+  explanation: string;
+  modifiedElements: CreativeElement[];
+  actionSummary: string;
+  confidence: number;
+  backgroundColor?: string;
+  backgroundGradient?: GradientConfig;
+}
+
+export interface AiPromptTemplate {
+  id: string;
+  name: string;
+  category: 'concept_generation' | 'canvas_nlp' | 'copy_matrix' | 'visual_audit';
+  systemPrompt: string;
+  model: 'gemini-2.5-flash' | 'gemini-1.5-pro' | 'gpt-4o';
+  temperature: number;
+  isActive: boolean;
+  updatedAt: string;
+}
+
+export interface AiLogEntry {
+  id: string;
+  workspaceId: string;
+  projectId?: string;
+  action: string;
+  model: string;
+  tokensUsed?: number;
+  latencyMs: number;
+  success: boolean;
   createdAt: string;
 }
 

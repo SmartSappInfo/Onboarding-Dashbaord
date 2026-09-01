@@ -1,6 +1,20 @@
 {
   "indexes": [
     {
+      "collectionGroup": "creative_concepts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "projectId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "form_submissions",
       "queryScope": "COLLECTION",
       "fields": [

@@ -2,11 +2,11 @@
 
 /**
  * ARCHITECTURE:
- * Creative Project Full Canvas Editor Client (Phase 2 - Professional Canvas Editor)
+ * Creative Project Full Canvas Editor Client (Phase 3 - AI Creative Director)
  * 
- * Professional WYSIWYG editor integrating multi-selection, grouping, smart guides,
- * floating contextual action bars, hierarchical layer tree, global keyboard accelerators,
- * and responsive multi-device viewport simulations.
+ * Professional WYSIWYG editor integrating AI Creative Director (Cmd+K command bar,
+ * conversational collaborator drawer, 3-concept generator matrix, copy variation matrix),
+ * multi-selection bounding boxes, smart guides, and responsive viewport simulations.
  * 
  * CAUTION:
  * Mid-drag updates must specify `commitToHistory = false`.
@@ -14,18 +14,18 @@
  * Strict typing (0% any).
  * 
  * TESTABILITY:
- * Verified via unit tests in src/lib/creative/__tests__/use-creative-editor-phase2.test.ts
+ * Verified via unit tests in src/lib/creative/__tests__/creative-ai-gateway.test.ts
  */
 
 import * as React from 'react';
-import { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { useCreativeEditor } from '@/lib/creative/use-creative-editor';
 import type {
   CreativeElement,
   CreativeComment,
   CreativeVersion,
+  CreativeConcept,
   BrandKit,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId, THUMBNAIL_FONT_OPTIONS } from '@/lib/creative/creative-types';
@@ -39,6 +39,8 @@ import {
   useKeyboardShortcuts,
 } from '@/components/shared/thumbnail-designer/KeyboardShortcutsDialog';
 import { ResponsiveViewportSimulator } from '@/components/shared/thumbnail-designer/ResponsiveViewportSimulator';
+import { AiCommandBar } from '@/components/shared/thumbnail-designer/AiCommandBar';
+import { AiCreativeDirectorDrawer } from '@/components/shared/thumbnail-designer/AiCreativeDirectorDrawer';
 import {
   getCreativeProjectWithDocumentAction,
   saveCreativeDocumentAction,
@@ -51,7 +53,7 @@ import {
   addProjectCommentAction,
   resolveProjectCommentAction,
 } from '@/app/actions/creative-comment-actions';
-import { runGenerateThumbnail } from '@/app/actions/thumbnail-actions';
+import { executeAiCanvasCommandAction } from '@/app/actions/creative-ai-actions';
 import { removeImageBackgroundAction } from '@/app/actions/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -97,10 +99,7 @@ interface ProjectEditorClientProps {
 }
 
 export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
-  const searchParams = useSearchParams();
-  const initialPrompt = searchParams.get('prompt') || '';
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
 
   // Zustand Store
   const project = useCreativeEditor((s) => s.project);
@@ -148,6 +147,10 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [showShortcutsModal, setShowShortcutsModal] = useState(false);
   const [showViewportSimulator, setShowViewportSimulator] = useState(false);
 
+  // AI Creative Director Drawer & Command Bar States (Phase 3)
+  const [isAiCommandBarOpen, setIsAiCommandBarOpen] = useState(false);
+  const [isAiDrawerOpen, setIsAiDrawerOpen] = useState(false);
+
   // Attention & CTR Evaluator State
   const [healthScore, setHealthScore] = useState(92);
   const [recommendations, setRecommendations] = useState<
@@ -168,11 +171,6 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [versions, setVersions] = useState<CreativeVersion[]>([]);
   const [isVersionsOpen, setIsVersionsOpen] = useState(false);
   const [snapshotNote, setSnapshotNote] = useState('');
-
-  // AI Dialog & Generator State
-  const [isAiDialogOpen, setIsAiDialogOpen] = useState(false);
-  const [aiPromptText, setAiPromptText] = useState(initialPrompt);
-  const [videoUrl, setVideoUrl] = useState('');
 
   // Direct Publish Dialog
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
@@ -450,43 +448,94 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     toast({ title: 'Version Restored', description: `Restored snapshot ${ver.note}` });
   };
 
-  const handleGenerateAiThumbnail = () => {
-    if (!aiPromptText.trim()) return;
-    startTransition(async () => {
-      try {
-        const res = await runGenerateThumbnail({
-          prompt: aiPromptText,
-          videoUrl: videoUrl.trim() || undefined,
-        });
+  // -------------------------------------------------------------
+  // AI Creative Director Handlers (Phase 3)
+  // -------------------------------------------------------------
 
-        if (res) {
-          updateBackground({
-            backgroundColor: res.backgroundColor,
-            backgroundGradient: res.backgroundGradient,
-          });
+  const handleApplyConcept = (concept: CreativeConcept) => {
+    const elements = concept.elements || concept.documentData?.elements || [];
+    const bgGrad = concept.backgroundGradient || concept.documentData?.backgroundGradient;
+    const bgColor = concept.backgroundColor || concept.documentData?.backgroundColor || '#0f172a';
 
-          const mappedElements: CreativeElement[] = (res.elements || []).map((el) => ({
-            ...el,
-            semanticRole: el.type === 'text' ? 'headline' : el.type === 'image' ? 'subject' : 'decoration',
-          }));
-
-          useCreativeEditor.setState((s) => ({
-            document: {
-              ...s.document,
-              elements: mappedElements,
-              updatedAt: new Date().toISOString(),
-            },
-            isDirty: true,
-          }));
-
-          setIsAiDialogOpen(false);
-          toast({ title: 'AI Composition Generated', description: 'AI generated layout, colors, and typography.' });
-        }
-      } catch (err) {
-        console.error('AI generation error:', err);
-        toast({ title: 'Generation Error', description: 'Failed to generate design composition.', variant: 'destructive' });
-      }
+    updateBackground({
+      backgroundColor: bgColor,
+      backgroundGradient: bgGrad,
     });
+
+    useCreativeEditor.setState((s) => ({
+      document: {
+        ...s.document,
+        elements,
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+    }));
+
+    toast({
+      title: 'Concept Applied',
+      description: `Applied ${concept.name} (${concept.predictedCTRScore || concept.healthScore}/100 CTR).`,
+    });
+  };
+
+  const handleApplyModifiedElements = (modified: CreativeElement[]) => {
+    useCreativeEditor.setState((s) => ({
+      document: {
+        ...s.document,
+        elements: modified,
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+    }));
+    toast({ title: 'Visuals Transformed', description: 'AI adjustments committed to canvas.' });
+  };
+
+  const handleApplyHeadlineText = (headline: string, subtitle?: string, badge?: string) => {
+    const existingHeadline = document.elements.find((el) => el.semanticRole === 'headline' || el.type === 'text');
+
+    if (existingHeadline) {
+      updateElement(existingHeadline.id, { text: headline });
+    } else {
+      handleAddText('headline');
+    }
+
+    if (subtitle) {
+      const existingSub = document.elements.find((el) => el.semanticRole === 'subtitle');
+      if (existingSub) {
+        updateElement(existingSub.id, { text: subtitle });
+      }
+    }
+
+    if (badge) {
+      const existingBadge = document.elements.find((el) => el.semanticRole === 'badge');
+      if (existingBadge) {
+        updateElement(existingBadge.id, { text: badge });
+      }
+    }
+
+    toast({ title: 'Copy Injected', description: `Updated headline to "${headline}".` });
+  };
+
+  const handleSubmitAiCommand = async (instruction: string) => {
+    const res = await executeAiCanvasCommandAction(
+      projectId,
+      document.elements,
+      instruction,
+      brandKit
+    );
+
+    if (res.success && res.data) {
+      handleApplyModifiedElements(res.data.modifiedElements);
+      toast({
+        title: 'Creative Director Adjusted Layout',
+        description: res.data.actionSummary,
+      });
+    } else {
+      toast({
+        title: 'Command Failed',
+        description: res.error || 'Could not execute AI command.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleRemoveBackground = async (imageUrl: string) => {
@@ -598,6 +647,32 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-2">
+          {/* AI Command Bar Quick Launch (Cmd+K) */}
+          <Button
+            onClick={() => setIsAiCommandBarOpen(true)}
+            variant="outline"
+            size="sm"
+            className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97] hidden lg:flex items-center gap-2"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Directives</span>
+            <kbd className="px-1.5 py-0.5 rounded bg-slate-950 border border-slate-700 text-[10px] font-mono text-slate-400">⌘K</kbd>
+          </Button>
+
+          {/* AI Creative Director Drawer Trigger (Phase 3) */}
+          <Button
+            onClick={() => setIsAiDrawerOpen(!isAiDrawerOpen)}
+            size="sm"
+            className={cn(
+              'font-black text-xs h-9 px-3.5 rounded-xl shadow-lg active:scale-[0.97] transition-all min-h-[36px]',
+              isAiDrawerOpen
+                ? 'bg-emerald-400 text-slate-950 shadow-emerald-500/20'
+                : 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 shadow-emerald-500/10'
+            )}
+          >
+            <Wand2 className="w-3.5 h-3.5 mr-1.5" /> AI Director
+          </Button>
+
           {/* Viewport Preview Simulator */}
           <Button
             onClick={() => setShowViewportSimulator(true)}
@@ -606,16 +681,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
             className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97]"
           >
             <Smartphone className="w-3.5 h-3.5 mr-1.5 text-cyan-400" />
-            <span className="hidden sm:inline">Preview Devices</span>
-          </Button>
-
-          {/* AI Creative Director Trigger */}
-          <Button
-            onClick={() => setIsAiDialogOpen(true)}
-            size="sm"
-            className="bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-slate-950 font-black text-xs h-9 px-3.5 rounded-xl shadow-lg shadow-emerald-500/10 active:scale-[0.97] transition-all min-h-[36px]"
-          >
-            <Wand2 className="w-3.5 h-3.5 mr-1.5" /> AI Director
+            <span className="hidden sm:inline">Preview</span>
           </Button>
 
           {/* Comments Toggle */}
@@ -717,7 +783,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
                 </div>
               </div>
 
-              {/* Shapes & Vectors */}
+              {/* Shapes & Arrows */}
               <div className="space-y-2.5">
                 <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Shapes & Arrows</div>
                 <div className="grid grid-cols-3 gap-2">
@@ -938,8 +1004,8 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           />
         </main>
 
-        {/* Right Property Inspector (Shown when selection exists) */}
-        {selectedElements.length > 0 && (
+        {/* Right Property Inspector (Shown when selection exists and AI drawer is closed) */}
+        {selectedElements.length > 0 && !isAiDrawerOpen && (
           <aside className="w-72 sm:w-80 border-l border-slate-850 bg-slate-950 p-4 overflow-y-auto space-y-5 shrink-0 z-10 scrollbar-none animate-in fade-in duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-850">
               <span className="text-xs font-bold text-white uppercase tracking-wider">
@@ -1149,6 +1215,18 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           </aside>
         )}
 
+        {/* AI Creative Director Drawer (Phase 3) */}
+        <AiCreativeDirectorDrawer
+          open={isAiDrawerOpen}
+          onOpenChange={setIsAiDrawerOpen}
+          projectId={project.id}
+          currentElements={document.elements}
+          brandKit={brandKit}
+          onApplyConcept={handleApplyConcept}
+          onApplyModifiedElements={handleApplyModifiedElements}
+          onApplyHeadlineText={handleApplyHeadlineText}
+        />
+
         {/* Multi-User Cloud Comments Drawer */}
         {isCommentsOpen && (
           <aside className="w-80 border-l border-slate-850 bg-slate-950 p-4 flex flex-col shrink-0 z-20 animate-in slide-in-from-right duration-200">
@@ -1275,55 +1353,14 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         )}
       </div>
 
-      {/* AI Creative Director Dialog */}
-      <Dialog open={isAiDialogOpen} onOpenChange={setIsAiDialogOpen}>
-        <DialogContent className="max-w-2xl bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-xl font-black flex items-center gap-2 text-white">
-              <Sparkles className="w-5 h-5 text-emerald-400" /> AI Creative Director
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">Video Topic or Campaign Narrative</Label>
-              <Input
-                value={aiPromptText}
-                onChange={(e) => setAiPromptText(e.target.value)}
-                placeholder="e.g. Why You Lose Qualified Students Before They Visit Campus"
-                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">YouTube Video URL (Optional context parsing)</Label>
-              <Input
-                value={videoUrl}
-                onChange={(e) => setVideoUrl(e.target.value)}
-                placeholder="https://youtube.com/watch?v=..."
-                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
-              />
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2">
-              <Button
-                onClick={() => setIsAiDialogOpen(false)}
-                variant="outline"
-                className="h-10 text-xs font-bold border-slate-800 bg-slate-900 rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handleGenerateAiThumbnail}
-                disabled={isPending || !aiPromptText.trim()}
-                className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 font-black text-xs text-slate-950 rounded-xl shadow-lg shadow-emerald-500/20 active:scale-[0.97]"
-              >
-                {isPending ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Wand2 className="w-4 h-4 mr-2" />}
-                Generate Canvas Composition
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Floating AI Command Bar (Cmd+K) (Phase 3) */}
+      <AiCommandBar
+        open={isAiCommandBarOpen}
+        onOpenChange={setIsAiCommandBarOpen}
+        onSubmitCommand={handleSubmitAiCommand}
+        onOpenConcepts={() => setIsAiDrawerOpen(true)}
+        onOpenCopyMatrix={() => setIsAiDrawerOpen(true)}
+      />
 
       {/* Direct Publishing Modal */}
       <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>

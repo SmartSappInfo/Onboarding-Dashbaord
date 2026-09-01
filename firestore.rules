@@ -1103,6 +1103,17 @@ service cloud.firestore {
       allow list, create, update, delete: if isAuthorized();
     }
 
+    match /creative_concepts/{conceptId} {
+      allow get, list: if isAuthorized();
+      allow create, update, delete: if isAuthorized();
+    }
+
+    match /creative_ai_logs/{logId} {
+      allow get, list: if isAuthorized() && isSystemAdmin();
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
     // --- Message Templates (Two-Tier System) ---
     // Task 16.1: Security rules for message_templates collection
     // Global templates: read by all authenticated users, write only by super admins
