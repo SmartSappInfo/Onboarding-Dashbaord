@@ -621,6 +621,7 @@ export default function UsersClient() {
           user={inspectingUser}
           roles={allRolesList}
           workspaces={accessibleWorkspaces}
+          people={canonicalPeople}
           onManageWorkspaces={(u) => {
             setManagingWsUser(u);
           }}

@@ -327,6 +327,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- CRM-Aware Workforce & Ownership (Phase 7) Collections ---
+    match /crm_ownership_transfers/{jobId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));

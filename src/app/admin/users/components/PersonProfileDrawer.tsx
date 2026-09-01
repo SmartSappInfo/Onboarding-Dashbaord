@@ -55,13 +55,15 @@ import {
   HelpCircle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus } from '@/lib/types';
+import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus, CrmWorkloadSummary } from '@/lib/types';
 import {
   updatePersonProfileAction,
   updateMembershipStatusAction,
 } from '@/app/actions/identity-actions';
 import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
 import { AccessExplainerModal } from '@/app/admin/users/roles/components/AccessExplainerModal';
+import { getPersonCrmWorkloadAction } from '@/app/actions/crm-workforce-actions';
+import { OwnershipTransferModal } from '@/app/admin/workforce/crm/components/OwnershipTransferModal';
 
 interface PersonProfileDrawerProps {
   isOpen: boolean;
@@ -69,6 +71,7 @@ interface PersonProfileDrawerProps {
   user: UserProfile;
   roles: Role[];
   workspaces: Workspace[];
+  people?: PersonDetailView[];
   onManageWorkspaces: (user: UserProfile) => void;
   onProfileUpdated?: (updated: UserProfile) => void;
 }
@@ -107,6 +110,37 @@ export function PersonProfileDrawer({
   const [phone, setPhone] = React.useState(user.phone || '');
   const [department, setDepartment] = React.useState(user.department || '');
   const [facilitatorRole, setFacilitatorRole] = React.useState(user.facilitatorRole || '');
+
+  // CRM Workload State
+  const [crmWorkload, setCrmWorkload] = React.useState<CrmWorkloadSummary | null>(null);
+  const [isTransferModalOpen, setIsTransferModalOpen] = React.useState(false);
+  const [isLoadingCrm, setIsLoadingCrm] = React.useState(false);
+
+  const loadCrmWorkload = React.useCallback(async () => {
+    if (!authUser || !activeOrganizationId || !user.id) return;
+    setIsLoadingCrm(true);
+    try {
+      const idToken = await authUser.getIdToken();
+      const res = await getPersonCrmWorkloadAction({
+        idToken,
+        organizationId: activeOrganizationId,
+        personId: user.id,
+      });
+      if (res.success && res.workload) {
+        setCrmWorkload(res.workload);
+      }
+    } catch (err: unknown) {
+      console.warn('[PersonProfileDrawer] CRM workload load error:', err);
+    } finally {
+      setIsLoadingCrm(false);
+    }
+  }, [authUser, activeOrganizationId, user.id]);
+
+  React.useEffect(() => {
+    if (isOpen && activeTab === 'crm') {
+      loadCrmWorkload();
+    }
+  }, [isOpen, activeTab, loadCrmWorkload]);
 
   React.useEffect(() => {
     if (isOpen) {
@@ -323,6 +357,12 @@ export function PersonProfileDrawer({
                   className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none text-xs font-medium px-1 py-2.5"
                 >
                   <Bell className="w-3.5 h-3.5 mr-1.5" /> Preferences & AI
+                </TabsTrigger>
+                <TabsTrigger
+                  value="crm"
+                  className="data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none text-xs font-medium px-1 py-2.5"
+                >
+                  <Briefcase className="w-3.5 h-3.5 mr-1.5 text-primary" /> CRM & Workload
                 </TabsTrigger>
               </TabsList>
             </div>
@@ -565,6 +605,85 @@ export function PersonProfileDrawer({
                   </div>
                 </CardContent>
               </Card>
+            {/* Tab 5: CRM & Workload */}
+            <TabsContent value="crm" className="p-5 space-y-4 m-0 flex-1">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-bold text-foreground">Operational CRM Portfolio</h3>
+                  <p className="text-xs text-muted-foreground">Active deals pipeline, assigned contacts, and tasks</p>
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsTransferModalOpen(true)}
+                  disabled={!crmWorkload || crmWorkload.totalActiveEntities === 0}
+                  className="text-xs h-8 px-3 font-semibold active:scale-[0.97]"
+                >
+                  <ArrowRightLeft className="w-3.5 h-3.5 mr-1.5 text-primary" /> Transfer Portfolio
+                </Button>
+              </div>
+
+              {isLoadingCrm ? (
+                <div className="grid grid-cols-2 gap-3">
+                  {Array.from({ length: 4 }).map((_, i) => (
+                    <div key={i} className="p-4 border rounded-lg bg-muted/20 animate-pulse h-20" />
+                  ))}
+                </div>
+              ) : crmWorkload ? (
+                <div className="space-y-4">
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    <Card className="p-3 border shadow-xs space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Pipeline Value</span>
+                      <span className="text-base font-black text-foreground">
+                        ${crmWorkload.totalPipelineValue.toLocaleString()}
+                      </span>
+                      <p className="text-[10px] text-muted-foreground">{crmWorkload.dealCount} active deals</p>
+                    </Card>
+
+                    <Card className="p-3 border shadow-xs space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Managed Contacts</span>
+                      <span className="text-base font-black text-foreground">{crmWorkload.contactCount}</span>
+                      <p className="text-[10px] text-muted-foreground">{crmWorkload.leadCount} prospective leads</p>
+                    </Card>
+
+                    <Card className="p-3 border shadow-xs space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Open Tasks</span>
+                      <span className="text-base font-black text-foreground">{crmWorkload.openTaskCount}</span>
+                      <p className="text-[10px] text-muted-foreground">Pending action items</p>
+                    </Card>
+
+                    <Card className="p-3 border shadow-xs space-y-1">
+                      <span className="text-[10px] text-muted-foreground uppercase font-bold block">Automations Owned</span>
+                      <span className="text-base font-black text-foreground">{crmWorkload.automationCount}</span>
+                      <p className="text-[10px] text-muted-foreground">Active business workflows</p>
+                    </Card>
+                  </div>
+
+                  {crmWorkload.hasOrphanRisk ? (
+                    <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs space-y-1">
+                      <span className="font-bold text-amber-700 dark:text-amber-400 block">
+                        Active Operational Assets Held
+                      </span>
+                      <p className="text-muted-foreground text-[11px]">
+                        This member holds {crmWorkload.totalActiveEntities} active CRM assets. Before deactivating or suspending this user, re-assign their portfolio using the Transfer button above.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg text-xs flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                      <span className="text-muted-foreground text-[11px]">
+                        Zero orphaned assets held. Safe for offboarding or role realignment.
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-xs text-muted-foreground">
+                  Failed to load CRM workload summary.
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </div>
@@ -578,6 +697,19 @@ export function PersonProfileDrawer({
           personName={user.name || 'User'}
           permissionId={explainingPermission}
           workspaceId={user.lastActiveWorkspaceId || user.defaultWorkspaceId || user.workspaceIds?.[0]}
+        />
+      )}
+
+      {isTransferModalOpen && crmWorkload && people && (
+        <OwnershipTransferModal
+          isOpen={isTransferModalOpen}
+          onClose={() => setIsTransferModalOpen(false)}
+          sourceWorkload={crmWorkload}
+          people={people}
+          onTransferred={() => {
+            loadCrmWorkload();
+            if (onProfileUpdated) onProfileUpdated(user);
+          }}
         />
       )}
     </Sheet>

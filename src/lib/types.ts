@@ -1731,6 +1731,63 @@ export interface SavedDirectoryView {
   updatedAt?: string;
 }
 
+// ==========================================
+// CRM-AWARE WORKFORCE & OWNERSHIP (PHASE 7)
+// ==========================================
+
+export type CrmEntityType =
+  | 'lead'
+  | 'contact'
+  | 'deal'
+  | 'task'
+  | 'meeting'
+  | 'campaign'
+  | 'automation';
+
+export interface CrmWorkloadSummary {
+  personId: string;
+  personName: string;
+  personEmail: string;
+  leadCount: number;
+  contactCount: number;
+  dealCount: number;
+  totalPipelineValue: number;
+  openTaskCount: number;
+  upcomingMeetingCount: number;
+  activeCampaignCount: number;
+  automationCount: number;
+  totalActiveEntities: number;
+  hasOrphanRisk: boolean;
+  updatedAt: string;
+}
+
+export type CrmOwnershipTransferStatus = 'pending' | 'in_progress' | 'completed' | 'failed';
+
+export interface CrmOwnershipTransferJob {
+  id: string;
+  organizationId: string;
+  sourcePersonId: string;
+  sourcePersonName: string;
+  targetPersonId: string;
+  targetPersonName: string;
+  entityTypes: CrmEntityType[];
+  transferredCounts: Record<string, number>;
+  totalTransferred: number;
+  status: CrmOwnershipTransferStatus;
+  reason?: string;
+  executedBy: string;
+  startedAt: string;
+  completedAt?: string;
+  error?: string;
+}
+
+export interface OffboardingReadinessCheck {
+  personId: string;
+  canDeactivate: boolean;
+  blockingReasons: string[];
+  workload: CrmWorkloadSummary;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;
