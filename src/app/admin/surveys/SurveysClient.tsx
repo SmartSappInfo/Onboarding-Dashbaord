@@ -412,6 +412,11 @@ export default function SurveysClient() {
                             </p>
                         </div>
                 <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+                    <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border-indigo-200 dark:border-indigo-800 text-indigo-700 dark:text-indigo-400 bg-indigo-50/50 dark:bg-indigo-950/20 shadow-sm transition-all active:scale-[0.97]">
+                        <Link href="/admin/surveys/predictive">
+                            <Sparkles className="h-4 w-4 text-indigo-600" /> Predictive Hub
+                        </Link>
+                    </Button>
                     <Button asChild variant="outline" className="h-11 px-4 gap-2 font-semibold text-xs border-border/80 shadow-sm transition-all active:scale-[0.97]">
                         <Link href="/admin/surveys/projects">
                             <FolderGit2 className="h-4 w-4 text-primary" /> Research Projects

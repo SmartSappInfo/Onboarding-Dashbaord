@@ -2965,6 +2965,7 @@ export interface Survey {
 export * from './surveys/survey-crm-types';
 export * from './surveys/survey-decision-types';
 export * from './surveys/survey-longitudinal-types';
+export * from './surveys/survey-predictive-types';
 
 export interface LeadCaptureFieldSetting {
   show: boolean;

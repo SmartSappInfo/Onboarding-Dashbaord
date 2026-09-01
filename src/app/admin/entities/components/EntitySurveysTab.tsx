@@ -18,6 +18,7 @@ import {
   type EntitySurveyHistoryItem,
 } from '@/lib/surveys/survey-crm-trigger-actions';
 import { SendSurveyModal } from './SendSurveyModal';
+import { EntityPredictiveHealthCard } from './EntityPredictiveHealthCard';
 import { format, parseISO } from 'date-fns';
 import Link from 'next/link';
 
@@ -115,6 +116,9 @@ export default function EntitySurveysTab({
 
   return (
     <div className="space-y-6">
+      {/* Predictive Survey & Account Intelligence (Phase 9) */}
+      <EntityPredictiveHealthCard entityId={entityId} workspaceId={activeWsId} />
+
       {/* Header Banner & Primary CTA */}
       <Card className="rounded-2xl border-none shadow-sm bg-card overflow-hidden">
         <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
