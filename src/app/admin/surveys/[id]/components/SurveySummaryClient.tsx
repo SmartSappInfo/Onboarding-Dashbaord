@@ -13,7 +13,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { BarChart3, Edit, Calendar, Activity, Loader2, ListPlus, ExternalLink, Building2, User as UserIcon, ShieldCheck, Phone, Mail, Copy, Check } from 'lucide-react';
+import { BarChart3, Edit, Calendar, Activity, Loader2, ListPlus, ExternalLink, Building2, User as UserIcon, ShieldCheck, Phone, Mail, Copy, Check, Share2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { stripHtml } from '@/lib/utils';
@@ -353,11 +353,19 @@ export default function SurveySummaryClient({ id }: { id: string }) {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-3 shrink-0">
+                    <div className="flex items-center gap-3 shrink-0 flex-wrap">
+                        <Button 
+                            variant="outline" 
+                            className="h-11 px-5 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm active:scale-[0.97]"
+                            onClick={() => router.push(`/admin/surveys/${id}/distribution`)}
+                        >
+                            <Share2 className="mr-2 h-4 w-4 text-primary" />
+                            Distribution Center
+                        </Button>
                         {canEdit && (
                             <Button 
                                 variant="outline" 
-                                className="h-11 px-6 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm"
+                                className="h-11 px-5 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm active:scale-[0.97]"
                                 onClick={() => router.push(`/admin/surveys/${id}/edit`)}
                             >
                                 <Edit className="mr-2 h-4 w-4" />
@@ -365,7 +373,7 @@ export default function SurveySummaryClient({ id }: { id: string }) {
                             </Button>
                         )}
                         <Button 
-                            className="h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+                            className="h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.97]"
                             onClick={() => router.push(`/admin/surveys/${id}/results`)}
                         >
                             <BarChart3 className="mr-2 h-4 w-4" />

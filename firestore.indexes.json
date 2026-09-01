@@ -57,6 +57,24 @@
       ]
     },
     {
+      "collectionGroup": "survey_distribution_campaigns",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "surveyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "lead_signals",
       "queryScope": "COLLECTION",
       "fields": [

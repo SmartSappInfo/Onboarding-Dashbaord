@@ -162,22 +162,123 @@ export interface SurveyDeployment {
     startDate?: string;
     endDate?: string;
     redirectUrlOnExpiry?: string;
+    timezone?: string;
   };
   audienceConfig?: {
-    targetType?: 'all' | 'segment' | 'contact_list';
+    targetType?: 'all' | 'segment' | 'contact_list' | 'tags';
     segmentId?: string;
+    filterTagIds?: string[];
+    entityTypes?: string[];
+    pipelineId?: string;
+    stageId?: string;
+    recipientCount?: number;
   };
   attributionConfig?: {
     campaignId?: string;
     source?: string;
     medium?: string;
+    term?: string;
+    content?: string;
+    channel?: string;
     agentId?: string;
+  };
+  embedConfig?: {
+    mode: 'inline' | 'popup' | 'drawer' | 'fab';
+    buttonText?: string;
+    popupDelaySeconds?: number;
+    theme?: 'light' | 'dark' | 'auto';
+    autoResize?: boolean;
+    height?: number | string;
+    width?: number | string;
+  };
+  kioskConfig?: {
+    autoResetSeconds: number;
+    showProgressBar: boolean;
+    lockNavigation: boolean;
+    inactivityWarningSeconds?: number;
+  };
+  whatsappConfig?: {
+    templateName?: string;
+    languageCode?: string;
+    buttonText?: string;
+    customHeader?: string;
+    phoneNumberId?: string;
+  };
+  emailConfig?: {
+    subject: string;
+    templateId?: string;
+    senderName?: string;
+    senderEmail?: string;
+    previewText?: string;
+  };
+  smsConfig?: {
+    senderId?: string;
+    messageText: string;
   };
   stats?: {
     viewsCount: number;
     startsCount: number;
     completionsCount: number;
+    sentCount?: number;
+    deliveredCount?: number;
+    openedCount?: number;
+    bouncedCount?: number;
+    failedCount?: number;
   };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SurveyDistributionCampaign {
+  id: string;
+  surveyId: string;
+  deploymentId: string;
+  workspaceId: string;
+  organizationId?: string;
+  name: string;
+  channel: 'whatsapp' | 'sms' | 'email';
+  status: 'draft' | 'scheduled' | 'dispatching' | 'completed' | 'failed' | 'cancelled';
+  scheduleConfig?: {
+    scheduledAt?: string;
+    timezone?: string;
+  };
+  audienceConfig: {
+    targetType: 'all' | 'segment' | 'contact_list' | 'tags';
+    segmentId?: string;
+    filterTagIds?: string[];
+    entityTypes?: string[];
+    pipelineId?: string;
+    stageId?: string;
+    recipientCount: number;
+  };
+  messageConfig: {
+    subject?: string;
+    templateId?: string;
+    templateName?: string;
+    messageBody?: string;
+    senderId?: string;
+    buttonText?: string;
+  };
+  attributionConfig?: {
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+    utmTerm?: string;
+    utmContent?: string;
+  };
+  stats: {
+    totalRecipients: number;
+    sentCount: number;
+    deliveredCount: number;
+    openedCount: number;
+    startedCount: number;
+    completedCount: number;
+    bouncedCount: number;
+    failedCount: number;
+  };
+  dispatchedAt?: string;
+  completedAt?: string;
+  createdBy: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -853,6 +853,10 @@ service cloud.firestore {
       allow list, write: if isAuthorized();
     }
 
+    match /survey_distribution_campaigns/{campaignId} {
+      allow get, list, write: if isAuthorized();
+    }
+
     match /pdfs/{pdfId} {
       allow get: if isAuthorized() || resource.data.status == 'published';
       allow list: if isAuthorized();
