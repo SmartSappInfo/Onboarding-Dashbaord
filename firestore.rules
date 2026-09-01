@@ -1036,162 +1036,82 @@ service cloud.firestore {
     // --- Creative Studio 2.0 Collections ---
     match /creative_projects/{projectId} {
       allow get: if true; // Public access for linked shared project previews
-      allow list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
-      allow create: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(request.resource.data.workspaceId)
-      );
-      allow update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
-      );
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
     }
 
     match /creative_documents/{documentId} {
       allow get: if true; // Public access for rendering canvas preview
-      allow list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
-      allow create: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(request.resource.data.workspaceId)
-      );
-      allow update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
-      );
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
     }
 
     match /creative_assets/{assetId} {
       allow get: if true; // Public access for preview URLs
-      allow list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
-      allow create: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(request.resource.data.workspaceId)
-      );
-      allow update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
-      );
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
     }
 
     match /creative_brand_kits/{kitId} {
       allow get: if true;
-      allow list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
-      allow create: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(request.resource.data.workspaceId)
-      );
-      allow update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
-      );
+      allow list: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn();
     }
 
     match /creative_comments/{commentId} {
-      allow get, list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
-      allow create: if isAuthorized();
-      allow update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        request.auth.uid == resource.data.authorId ||
-        resource.data.authorId == null
-      );
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
     match /creative_versions/{versionId} {
-      allow get, list: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
-      allow create: if isAuthorized();
-      allow update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin()
-      );
+      allow get, list: if isSignedIn();
+      allow create, update, delete: if isSignedIn();
     }
 
     match /creative_templates/{templateId} {
-      allow get, list: if isAuthorized() || resource.data.scope == 'global';
-      allow create, update, delete: if isAuthorized() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isSystemAdmin() ||
-        (request.resource.data.scope == 'workspace' && hasWorkspaceAccess(request.resource.data.workspaceId))
-      );
+      allow get, list: if true;
+      allow create, update, delete: if isSignedIn();
     }
 
     match /creative_shares/{shareId} {
       allow get: if true; // Public access for client preview links
-      allow list, create, update, delete: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
-        isAuthorized()
-      );
+      allow list, create, update, delete: if isSignedIn();
     }
 
     match /creative_concepts/{conceptId} {
-      allow get, list: if isAuthorized();
-      allow create, update, delete: if isAuthorized();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_ai_logs/{logId} {
-      allow get, list: if isAuthorized() && isSystemAdmin();
-      allow create: if isAuthorized();
-      allow update, delete: if isAuthorized() && isSystemAdmin();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_reviews/{reviewId} {
-      allow get, list: if isAuthorized();
-      allow create, update: if isAuthorized();
-      allow delete: if isAuthorized() && isSystemAdmin();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_presence/{presenceId} {
-      allow get, list: if isAuthorized();
-      allow create, update, delete: if isAuthorized();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_publications/{pubId} {
-      allow get, list: if isAuthorized();
-      allow create, update: if isAuthorized();
-      allow delete: if isAuthorized() && isSystemAdmin();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_channels/{channelId} {
-      allow get, list: if isAuthorized();
-      allow create, update, delete: if isAuthorized();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_experiments/{expId} {
-      allow get, list: if isAuthorized();
-      allow create, update: if isAuthorized();
-      allow delete: if isAuthorized() && isSystemAdmin();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     match /creative_analytics/{analyticId} {
-      allow get, list: if isAuthorized();
-      allow create, update: if isAuthorized();
-      allow delete: if isAuthorized() && isSystemAdmin();
+      allow get, list, create, update, delete: if isSignedIn();
     }
 
     // --- Message Templates (Two-Tier System) ---
@@ -2921,6 +2841,11 @@ service cloud.firestore {
     }
 
     // --- QR Studio Layer ---
+    match /short_paths/{shortPath} {
+      allow read: if true; // Public read permitted for fast redirect routing
+      allow write: if false; // Writes strictly gated to Server Actions / Admin SDK
+    }
+
     match /organizations/{orgId}/workspaces/{wsId}/qr_codes/{qrId} {
       allow read, write: if isSignedIn() && (
         request.auth.token.email == 'admin@smartsapp.com' ||
