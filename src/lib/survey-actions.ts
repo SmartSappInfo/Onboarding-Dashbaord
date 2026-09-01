@@ -1905,13 +1905,31 @@ export async function executeSurveyPipelineAndAutomations(params: {
         surveyId: surveyData.id,
         surveyTitle: surveyData.title,
         submissionId: responseId,
-        assignedUserId: responseData.assignedUserId || null,
-        score: responseData.score || null,
         autoTags: surveyData.autoTags || [],
         source: 'survey_submission',
       });
     } catch (protoErr) {
       console.error('[survey-actions] Failed to trigger SURVEY_SUBMITTED protocol:', protoErr);
+    }
+
+    // 8. Phase 6: Deep CRM Intelligence Sync (Fields, Contacts, Tasks, Timeline)
+    try {
+      const { executeSurveyCrmSyncAction } = await import('./surveys/survey-crm-sync-actions');
+      await executeSurveyCrmSyncAction({
+        survey: surveyData,
+        responseId,
+        responseData: {
+          ...responseData,
+          submittedAt: new Date().toISOString(),
+        },
+        workspaceId,
+        organizationId,
+        entityId: cleanEntityId || null,
+        entityName: entityName || null,
+        outcomeId: outcomeId || null,
+      });
+    } catch (crmSyncErr) {
+      console.error('[survey-actions] Phase 6 CRM sync error:', crmSyncErr);
     }
   } catch (err) {
     console.error('[survey-actions] executeSurveyPipelineAndAutomations error:', err);

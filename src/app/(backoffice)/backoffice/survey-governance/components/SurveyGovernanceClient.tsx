@@ -32,6 +32,7 @@ import type {
 import DropoffIntelligenceRadar from './DropoffIntelligenceRadar';
 import SpamAbuseQueue from './SpamAbuseQueue';
 import SystemQuestionBankMatrix from './SystemQuestionBankMatrix';
+import SystemCrmFieldMappingMatrix from './SystemCrmFieldMappingMatrix';
 
 export default function SurveyGovernanceClient() {
   const getToken = useBackofficeToken();
@@ -157,6 +158,9 @@ export default function SurveyGovernanceClient() {
 
       {/* Global System Question Bank Matrix */}
       <SystemQuestionBankMatrix />
+
+      {/* Global System CRM Field Mapping Governance Matrix */}
+      <SystemCrmFieldMappingMatrix />
 
       {/* Drop-off Intelligence Radar Section */}
       <div className="space-y-3">

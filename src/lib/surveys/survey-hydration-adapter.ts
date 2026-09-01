@@ -259,3 +259,14 @@ export function isSurveyAcceptingSubmissions(
 
   return { allowed: true };
 }
+
+/**
+ * Validates whether a survey document is authorized for a specific workspaceId.
+ */
+export function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean {
+  if (!workspaceId) return false;
+  if (survey.workspaceIds && Array.isArray(survey.workspaceIds)) {
+    return survey.workspaceIds.includes(workspaceId);
+  }
+  return false;
+}

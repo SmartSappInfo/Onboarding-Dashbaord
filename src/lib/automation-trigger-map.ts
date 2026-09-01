@@ -16,6 +16,8 @@ export const ACTIVITY_TO_AUTOMATION_TRIGGER: Record<string, AutomationTrigger> =
   survey_submitted: 'SURVEY_SUBMITTED',
   survey_submission: 'SURVEY_SUBMITTED',
   survey_started: 'SURVEY_STARTED',
+  survey_detractor_flagged: 'SURVEY_DETRACTOR_FLAGGED',
+  survey_crm_synced: 'SURVEY_CRM_SYNCED',
   form_submission: 'SURVEY_SUBMITTED',
   form_submitted: 'FORM_SUBMITTED',
   task_created: 'TASK_CREATED',

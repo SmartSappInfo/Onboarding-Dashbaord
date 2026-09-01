@@ -56,13 +56,14 @@ interface KanbanBoardProps {
     customWidth?: number;
     filters: KanbanFilters;
     automations?: Automation[];
+    showDealTotals?: boolean;
 }
 
 /**
  * ARCHITECTURAL POINTER (KanbanBoard Component):
  * Real-time deal progression hub with DnD, stage filters, and stage-linked automation indicators.
  */
-export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations }: KanbanBoardProps) {
+export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations, showDealTotals = true }: KanbanBoardProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
@@ -497,6 +498,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
                   tasksByDealId={tasksByDealId}
                   automations={automations}
                   isDraggingDeal={!!activeElement && !('order' in activeElement)}
+                  showDealTotals={showDealTotals}
                 />
               </div>
             ))}
@@ -515,6 +517,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
               isOverlay
               tasksByDealId={tasksByDealId}
               automations={automations}
+              showDealTotals={showDealTotals}
             />
           ) : (
             <div className="w-72 pointer-events-none">

@@ -2166,6 +2166,21 @@ service cloud.firestore {
         (isAuthorized() &&
          hasPermission('schools_edit') &&
          hasWorkspaceAccess(resource.data.workspaceId));
+
+      match /activities/{activityId} {
+        allow read, list: if isAuthorized();
+        allow write: if isAuthorized() || isSystemAdmin();
+      }
+    }
+
+    match /contacts/{contactId} {
+      allow read, list: if isAuthorized();
+      allow write: if isAuthorized() || isSystemAdmin();
+
+      match /activities/{activityId} {
+        allow read, list: if isAuthorized();
+        allow write: if isAuthorized() || isSystemAdmin();
+      }
     }
 
     // Read-model projection of contacts (Phase 6). Flattened one-row-per-contact

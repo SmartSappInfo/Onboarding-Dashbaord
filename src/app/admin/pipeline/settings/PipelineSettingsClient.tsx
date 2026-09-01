@@ -19,8 +19,10 @@ import {
     Trash2,
     Users,
     Calendar,
-    Copy
+    Copy,
+    DollarSign
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -85,6 +87,7 @@ export default function PipelineSettingsClient() {
     const [description, setDescription] = React.useState('');
     const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
     const [columnWidth, setColumnWidth] = React.useState(320);
+    const [showDealTotals, setShowDealTotals] = React.useState<boolean>(true);
     const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'round-robin' | 'value-based' | 'unassigned'>('direct');
     const [assignmentUserIds, setAssignmentUserIds] = React.useState<string[]>([]);
     const [defaultCloseDateOffsetValue, setDefaultCloseDateOffsetValue] = React.useState<number | ''>('');
@@ -145,6 +148,7 @@ export default function PipelineSettingsClient() {
             setName(selectedPipeline.name);
             setDescription(selectedPipeline.description || '');
             setAccessRoles(selectedPipeline.accessRoles || []);
+            setShowDealTotals(selectedPipeline.showDealTotals !== false);
             setAssignmentStrategy(selectedPipeline.assignmentStrategy || 'direct');
             setAssignmentUserIds(selectedPipeline.assignmentUserIds || []);
             setDefaultCloseDateOffsetValue(selectedPipeline.defaultCloseDateOffsetValue ?? '');
@@ -154,6 +158,7 @@ export default function PipelineSettingsClient() {
             setName('');
             setDescription('');
             setAccessRoles([]);
+            setShowDealTotals(true);
             setAssignmentStrategy('direct');
             setAssignmentUserIds([]);
             setDefaultCloseDateOffsetValue('');
@@ -174,6 +179,7 @@ export default function PipelineSettingsClient() {
             description: description.trim(),
             accessRoles,
             columnWidth,
+            showDealTotals: Boolean(showDealTotals),
             assignmentStrategy,
             assignmentUserIds,
             defaultCloseDateOffsetValue: numOffset,
@@ -196,8 +202,9 @@ export default function PipelineSettingsClient() {
                 setSelectedId(docRef.id);
                 setIsAdding(false);
             }
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error.message : 'Save failed';
+            toast({ variant: 'destructive', title: 'Save Failed', description: err });
         } finally {
             setIsSaving(false);
         }
@@ -307,10 +314,10 @@ export default function PipelineSettingsClient() {
                                             />
                                         </div>
                                         
- <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
- <div className="flex justify-between items-center px-1">
- <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
- <Maximize className="h-3.5 w-3.5" /> Stage Column Width
+                                        <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
+                                            <div className="flex justify-between items-center px-1">
+                                                <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
+                                                    <Maximize className="h-3.5 w-3.5" /> Stage Column Width
                                                 </Label>
                                                 <Badge variant="outline" className="font-mono tabular-nums text-[10px] bg-card border-primary/20 text-primary">
                                                     {columnWidth}px
@@ -325,8 +332,26 @@ export default function PipelineSettingsClient() {
                                             />
                                         </div>
 
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Scope Description</Label>
+                                        {/* Kanban Board Financial Metrics Toggle */}
+                                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/60">
+                                            <div className="space-y-0.5 pr-4 text-left">
+                                                <Label htmlFor="showDealTotalsSettings" className="text-xs font-bold flex items-center gap-2 cursor-pointer text-foreground">
+                                                    <DollarSign className="h-4 w-4 text-primary" />
+                                                    Show Financial Totals in Kanban Columns
+                                                </Label>
+                                                <p className="text-[11px] text-muted-foreground font-medium">
+                                                    Display total deal revenue and weighted forecast in each Kanban column header. Enabled by default.
+                                                </p>
+                                            </div>
+                                            <Switch
+                                                id="showDealTotalsSettings"
+                                                checked={showDealTotals}
+                                                onCheckedChange={setShowDealTotals}
+                                            />
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Scope Description</Label>
                                             <Textarea 
                                                 value={description} 
                                                 onChange={e => setDescription(e.target.value)} 

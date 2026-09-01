@@ -804,7 +804,21 @@ export default function PipelineClient() {
                     </motion.div>
                 ) : activeView === 'board' ? (
                     <motion.div key={`board-${currentPipelineId}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">
-                        {currentPipelineId ? <KanbanBoard pipelineId={currentPipelineId} pipelineName={currentPipeline?.name} customWidth={columnWidth} filters={mergedFilters} automations={automations || undefined} /> : <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20"><Workflow size={120} /><p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p></div>}
+                        {currentPipelineId ? (
+                            <KanbanBoard 
+                                pipelineId={currentPipelineId} 
+                                pipelineName={currentPipeline?.name} 
+                                customWidth={columnWidth} 
+                                filters={mergedFilters} 
+                                automations={automations || undefined} 
+                                showDealTotals={currentPipeline?.showDealTotals !== false}
+                            />
+                        ) : (
+                            <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">
+                                <Workflow size={120} />
+                                <p className="font-semibold tracking-[0.4em] text-2xl">Pipeline Clear</p>
+                            </div>
+                        )}
                     </motion.div>
                 ) : activeView === 'list' ? (
                     <motion.div key={`list-${currentPipelineId}`} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} className="h-full w-full">

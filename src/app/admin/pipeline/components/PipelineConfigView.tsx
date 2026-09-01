@@ -22,8 +22,10 @@ import {
     Trash2,
     RefreshCw,
     Calendar,
-    Copy
+    Copy,
+    DollarSign
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { calculateExpectedCloseDate } from '../utils/deal-expected-close';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,6 +60,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const [isCloning, setIsCloning] = React.useState(false);
     const [pipelineType, setPipelineType] = React.useState<import('@/lib/types').PipelineType>('sales');
     const [defaultProbability, setDefaultProbability] = React.useState<number>(50);
+    const [showDealTotals, setShowDealTotals] = React.useState<boolean>(true);
     const [name, setName] = React.useState('');
     const [description, setDescription] = React.useState('');
     const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
@@ -221,6 +224,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
             setDescription(pipeline.description || '');
             setPipelineType(pipeline.type || 'sales');
             setDefaultProbability(typeof pipeline.defaultProbability === 'number' ? pipeline.defaultProbability : 50);
+            setShowDealTotals(pipeline.showDealTotals !== false);
             setAccessRoles(pipeline.accessRoles || []);
             setWorkspaceIds(pipeline.workspaceIds || []);
             setAssignmentStrategy(pipeline.assignmentStrategy || 'direct');
@@ -248,6 +252,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                 description: description.trim(),
                 type: pipelineType,
                 defaultProbability: Math.min(100, Math.max(0, defaultProbability)),
+                showDealTotals: Boolean(showDealTotals),
                 accessRoles,
                 workspaceIds,
                 columnWidth,
@@ -337,6 +342,24 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                                     <Badge variant="outline" className="font-mono text-[10px] bg-background border-primary/20 text-primary rounded-lg">{columnWidth}px</Badge>
                                 </div>
                                 <Slider value={[columnWidth]} onValueChange={([v]) => onWidthChange(v)} min={280} max={500} step={10} />
+                            </div>
+
+                            {/* Kanban Board Financial Metrics Toggle */}
+                            <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/60">
+                                <div className="space-y-0.5 pr-4 text-left">
+                                    <Label htmlFor="showDealTotals" className="text-xs font-bold flex items-center gap-2 cursor-pointer text-foreground">
+                                        <DollarSign className="h-4 w-4 text-primary" />
+                                        Show Financial Totals in Kanban Columns
+                                    </Label>
+                                    <p className="text-[11px] text-muted-foreground font-medium">
+                                        Display total deal revenue and weighted forecast in each Kanban column header. Enabled by default.
+                                    </p>
+                                </div>
+                                <Switch
+                                    id="showDealTotals"
+                                    checked={showDealTotals}
+                                    onCheckedChange={setShowDealTotals}
+                                />
                             </div>
 
                             <div className="space-y-2">

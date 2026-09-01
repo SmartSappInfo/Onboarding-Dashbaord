@@ -198,6 +198,8 @@ export type AutomationTrigger =
   | 'TASK_COMPLETED'
   | 'SURVEY_STARTED'
   | 'SURVEY_SUBMITTED'
+  | 'SURVEY_DETRACTOR_FLAGGED'
+  | 'SURVEY_CRM_SYNCED'
   | 'PDF_SIGNED'
   | 'FORM_SUBMITTED'
   | 'WEBHOOK_RECEIVED'
@@ -2953,7 +2955,10 @@ export interface Survey {
     requireExplicitCheckbox?: boolean;
   };
   deploymentIds?: string[];
+  crmConfig?: import('./surveys/survey-crm-types').SurveyCrmConfig;
 }
+
+export * from './surveys/survey-crm-types';
 
 export interface LeadCaptureFieldSetting {
   show: boolean;

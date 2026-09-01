@@ -35,6 +35,7 @@ interface StageColumnProps {
     pipelineId?: string;
     automations?: Automation[];
     isDraggingDeal?: boolean;
+    showDealTotals?: boolean;
 }
 
 /**
@@ -45,7 +46,18 @@ interface StageColumnProps {
  * When adding automations to a stage via handleAddAutomationToStage, parameters are passed in query params
  * so NewAutomationPage can auto-populate the workflow title and DEAL_STAGE_CHANGED trigger node.
  */
-export default function StageColumn({ stage, deals, isOverlay, customWidth = 320, tasksByDealId, pipelineName, pipelineId, automations, isDraggingDeal }: StageColumnProps) {
+export default function StageColumn({ 
+    stage, 
+    deals, 
+    isOverlay, 
+    customWidth = 320, 
+    tasksByDealId, 
+    pipelineName, 
+    pipelineId, 
+    automations, 
+    isDraggingDeal,
+    showDealTotals = true
+}: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const [isClearing, setIsClearing] = React.useState(false);
     const confirm = useConfirm();
@@ -299,19 +311,25 @@ export default function StageColumn({ stage, deals, isOverlay, customWidth = 320
 
                     {/* Stage Subheader: Financial Total & Velocity SLA */}
                     <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground pt-1 border-t border-border/30">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <span className="font-bold text-foreground cursor-help">
-                                        {formatCurrency(totalStageValue)}
-                                    </span>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="text-[10px]">
-                                    <p className="font-bold">Total: {formatCurrency(totalStageValue)}</p>
-                                    <p className="text-muted-foreground">Weighted Forecast: {formatCurrency(weightedStageValue)}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
+                        {showDealTotals ? (
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <span className="font-bold text-foreground cursor-help">
+                                            {formatCurrency(totalStageValue)}
+                                        </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="bottom" className="text-[10px]">
+                                        <p className="font-bold">Total: {formatCurrency(totalStageValue)}</p>
+                                        <p className="text-muted-foreground">Weighted Forecast: {formatCurrency(weightedStageValue)}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        ) : (
+                            <span className="text-[10px] text-muted-foreground font-medium">
+                                {deals.length} {deals.length === 1 ? 'deal' : 'deals'}
+                            </span>
+                        )}
 
                         <div className="flex items-center gap-2 text-[10px]">
                             {stage.slaDays && (

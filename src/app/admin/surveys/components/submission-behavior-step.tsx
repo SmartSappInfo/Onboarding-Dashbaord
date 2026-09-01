@@ -29,6 +29,7 @@ import InternalNotificationConfig from '@/app/admin/components/internal-notifica
 import ExternalNotificationConfig from './external-notification-config';
 import SurveyLeadCaptureCard from './survey-lead-capture-card';
 import { PipelineStageSelector } from './PipelineStageSelector';
+import { SurveyCrmMappingTab } from './SurveyCrmMappingTab';
 
 export default function SubmissionBehaviorStep() {
     const { control, watch, setValue } = useFormContext();
@@ -482,6 +483,8 @@ export default function SubmissionBehaviorStep() {
                 </CardContent>
             </Card>
             )}
+
+            <SurveyCrmMappingTab workspaceId={activeWorkspaceId || ''} />
 
             <div className="space-y-8">
                 <InternalNotificationConfig prefix="adminAlert" category="surveys" />
