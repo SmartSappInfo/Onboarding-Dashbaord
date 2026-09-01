@@ -1370,15 +1370,6 @@ service cloud.firestore {
       );
     }
 
-    // Form Sessions & Analytics Telemetry
-    match /form_sessions/{sessionId} {
-      allow read: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
-      );
-      allow create, update: if true; // Telemetry ingestion
-    }
-
     match /form_events/{eventId} {
       allow read: if isAuthorized() && isSystemAdmin();
       allow create: if true; // Telemetry event emitter
