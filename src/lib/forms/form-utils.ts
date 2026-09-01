@@ -2,13 +2,31 @@
  * SmartSapp Forms 2.0: Pure Utility Functions
  * 
  * Pure functions for calculations, sanitization, URL generation, embed codes,
- * and statistical significance. Zero side-effects, zero Firebase imports,
- * fully client & server compatible.
+ * phone/email normalization, and statistical significance. Zero side-effects,
+ * zero Firebase imports, fully client & server compatible.
  */
 
 import type { AutoResponderRule } from './form-notification-types';
 import type { EmbedConfig, UtmParameters } from './form-distribution-types';
 import type { StatisticalSignificanceResult } from './form-optimization-types';
+
+/**
+ * Normalizes email strings for safe case-insensitive lookup
+ */
+export function normalizeEmail(email: unknown): string | null {
+  if (!email || typeof email !== 'string') return null;
+  const trimmed = email.trim().toLowerCase();
+  return trimmed.includes('@') ? trimmed : null;
+}
+
+/**
+ * Normalizes phone numbers (removes spaces, dashes, parentheses)
+ */
+export function normalizePhone(phone: unknown): string | null {
+  if (!phone || typeof phone !== 'string') return null;
+  const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
+  return cleaned.length >= 7 ? cleaned : null;
+}
 
 /**
  * Standard Normal Distribution Error Function approximation for P-value calculation.

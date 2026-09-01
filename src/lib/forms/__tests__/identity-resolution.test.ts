@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  normalizeEmail,
-  normalizePhone,
   resolveAndEnrichCrmEntity,
   getKnownRespondentProfile,
 } from '../identity-resolution';
+import {
+  normalizeEmail,
+  normalizePhone,
+} from '../form-utils';
 import type { Form } from '@/lib/types';
 
 // Mock dependencies

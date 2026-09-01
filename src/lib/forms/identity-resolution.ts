@@ -19,6 +19,7 @@ import type { Form, EntityType, AppField } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { applyTagsAction } from '@/lib/tag-actions';
 import { createEntityAction, updateEntityAction } from '@/lib/entity-actions';
+import { normalizeEmail, normalizePhone } from './form-utils';
 
 export interface IdentityResolutionResult {
   matched: boolean;
@@ -35,24 +36,6 @@ export interface KnownRespondentProfile {
   name?: string;
   knownValues: Record<string, unknown>;
   alreadyCapturedFieldKeys: string[];
-}
-
-/**
- * Normalizes email strings for safe case-insensitive lookup
- */
-export function normalizeEmail(email: unknown): string | null {
-  if (!email || typeof email !== 'string') return null;
-  const trimmed = email.trim().toLowerCase();
-  return trimmed.includes('@') ? trimmed : null;
-}
-
-/**
- * Normalizes phone numbers (removes spaces, dashes, parentheses)
- */
-export function normalizePhone(phone: unknown): string | null {
-  if (!phone || typeof phone !== 'string') return null;
-  const cleaned = phone.replace(/[\s\-\(\)\.]/g, '');
-  return cleaned.length >= 7 ? cleaned : null;
 }
 
 /**
