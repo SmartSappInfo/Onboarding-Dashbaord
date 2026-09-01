@@ -11,6 +11,14 @@
  * 4. Strict Zero-Any Invariant.
  */
 
+export type SurveyDecisionTriggerType =
+  | 'survey_submitted'
+  | 'survey_started'
+  | 'survey_abandoned'
+  | 'question_answered'
+  | 'quota_reached'
+  | 'anomaly_flagged';
+
 export type SurveyDecisionConditionType =
   | 'score'
   | 'nps_category'
@@ -27,9 +35,15 @@ export type SurveyDecisionOperator =
   | 'greater_than'
   | 'less_than'
   | 'contains'
+  | 'does_not_contain'
+  | 'starts_with'
   | 'in_range'
   | 'has_any_tag'
-  | 'has_all_tags';
+  | 'has_all_tags'
+  | 'has_any_option'
+  | 'has_all_options'
+  | 'is_empty'
+  | 'is_not_empty';
 
 export interface SurveyDecisionCondition {
   id: string;
@@ -50,7 +64,8 @@ export type SurveyDecisionActionType =
   | 'dispatch_message'
   | 'create_task'
   | 'trigger_ai_prescription'
-  | 'redirect_campaign';
+  | 'redirect_campaign'
+  | 'trigger_webhook';
 
 export interface SurveyDecisionDealConfig {
   titleTemplate?: string;
@@ -78,6 +93,13 @@ export interface SurveyDecisionAiPrescriptionConfig {
   playbookArchetype?: string;
 }
 
+export interface SurveyDecisionWebhookConfig {
+  url: string;
+  method?: 'POST' | 'PUT';
+  headers?: Record<string, string>;
+  customPayload?: Record<string, unknown>;
+}
+
 export interface SurveyDecisionAction {
   id: string;
   type: SurveyDecisionActionType;
@@ -91,8 +113,9 @@ export interface SurveyDecisionAction {
   messageConfig?: SurveyDecisionMessageConfig;
   taskConfig?: SurveyDecisionTaskConfig;
   aiPrescriptionConfig?: SurveyDecisionAiPrescriptionConfig;
+  webhookConfig?: SurveyDecisionWebhookConfig;
   redirectUrl?: string;
-  delayMinutes?: number; // 0 = immediate, 60 = 1h delay, etc.
+  delayMinutes?: number; // 0 = immediate, 60 = 1h delay, 1440 = 24h delay, etc.
 }
 
 export interface SurveyDecisionRule {
@@ -100,6 +123,7 @@ export interface SurveyDecisionRule {
   name: string;
   description?: string;
   enabled: boolean;
+  triggerType?: SurveyDecisionTriggerType;
   conditionLogic: 'AND' | 'OR';
   conditions: SurveyDecisionCondition[];
   actions: SurveyDecisionAction[];
@@ -128,7 +152,8 @@ export type DecisionPlaybookCategory =
   | 'promoter_upsell'
   | 'lead_qualification'
   | 'retention_intervention'
-  | 'sla_breach';
+  | 'sla_breach'
+  | 'dropoff_reengagement';
 
 export interface SystemDecisionPlaybook {
   id: string;
@@ -137,4 +162,22 @@ export interface SystemDecisionPlaybook {
   category: DecisionPlaybookCategory;
   isProtected: boolean;
   rule: Omit<SurveyDecisionRule, 'id'>;
+}
+
+export interface SurveyDecisionSimulationResult {
+  ruleId: string;
+  ruleName: string;
+  matched: boolean;
+  evaluatedConditions: Array<{
+    conditionId: string;
+    type: SurveyDecisionConditionType;
+    passed: boolean;
+    reason: string;
+  }>;
+  prescribedActions: Array<{
+    actionId: string;
+    type: SurveyDecisionActionType;
+    summary: string;
+    delayMinutes?: number;
+  }>;
 }

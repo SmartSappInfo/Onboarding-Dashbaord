@@ -5,9 +5,9 @@
  * 
  * ARCHITECTURAL GUIDELINES (Rule 10 & Strict Zero-Any Invariant):
  * 1. Multi-Condition Evaluation Matrix:
- *    - AND/OR compound logical conditions across Score, NPS tiers, Sentiment, Question answers, and Contact tags.
+ *    - AND/OR compound logical conditions across Score, NPS tiers, Sentiment, Question answers, Contact tags, and Anomalies.
  * 2. Enterprise Action Pipeline:
- *    - Contact tag application, Pipeline stage routing, Task dispatch, Lead score adjustment, AI Prescriptions.
+ *    - Contact tag application, Pipeline stage routing, Task dispatch, Lead score adjustment, AI Prescriptions, Webhooks.
  * 3. Single Source of Truth for Variables & Tags:
  *    - Variable interpolation routes through FieldsVariablesService.
  *    - Tag management respects workspace tag boundaries.
@@ -24,6 +24,7 @@ import type {
   SurveyDecisionAction,
   SurveyDecisionExecutionLog,
   SystemDecisionPlaybook,
+  SurveyDecisionSimulationResult,
 } from '@/lib/types';
 import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
@@ -44,6 +45,8 @@ export interface SurveyDecisionContext {
   entityId?: string | null;
   entityName?: string | null;
   isAnomaly?: boolean;
+  isDropOff?: boolean;
+  quotaReached?: boolean;
 }
 
 /**
@@ -71,10 +74,10 @@ export function evaluateCondition(
     case 'nps_category': {
       const score = ctx.score ?? 0;
       const targetCategory = String(cond.value).toLowerCase();
-      // NPS categories: promoter (9-10), passive (7-8), detractor (0-6)
+      // NPS categories: promoter (9-10 or 90-100), passive (7-8 or 70-89), detractor (0-6 or 0-69)
       if (targetCategory === 'promoter') return score >= 9 || score >= 90;
       if (targetCategory === 'passive') return (score >= 7 && score <= 8) || (score >= 70 && score < 90);
-      if (targetCategory === 'detractor') return score <= 6 || score <= 60;
+      if (targetCategory === 'detractor') return score <= 6 || (score >= 0 && score < 70);
       return false;
     }
 
@@ -90,48 +93,76 @@ export function evaluateCondition(
     case 'question_answer': {
       if (!cond.field) return false;
       const ans = ctx.answers.find((a) => a.questionId === cond.field);
-      if (!ans || ans.value === undefined || ans.value === null) return false;
+      if (!ans || ans.value === undefined || ans.value === null) {
+        return cond.operator === 'is_empty';
+      }
 
-      const rawVal = Array.isArray(ans.value)
-        ? ans.value.join(', ')
-        : typeof ans.value === 'object'
-        ? JSON.stringify(ans.value)
-        : String(ans.value);
+      if (cond.operator === 'is_not_empty') return true;
+      if (cond.operator === 'is_empty') return false;
 
-      const targetVal = String(cond.value);
+      // Array values (multi-select / checkboxes)
+      if (Array.isArray(ans.value)) {
+        const targetStr = String(cond.value).toLowerCase();
+        const arrayStr = ans.value.map((v) => String(v).toLowerCase());
 
-      if (cond.operator === 'equals') {
-        return rawVal.trim().toLowerCase() === targetVal.trim().toLowerCase();
+        if (cond.operator === 'has_any_option') {
+          const targets = Array.isArray(cond.value) ? cond.value.map(String) : [targetStr];
+          return targets.some((t) => arrayStr.includes(t.toLowerCase()));
+        }
+        if (cond.operator === 'has_all_options') {
+          const targets = Array.isArray(cond.value) ? cond.value.map(String) : [targetStr];
+          return targets.every((t) => arrayStr.includes(t.toLowerCase()));
+        }
+        if (cond.operator === 'contains') return arrayStr.includes(targetStr);
+        if (cond.operator === 'does_not_contain') return !arrayStr.includes(targetStr);
+        return false;
       }
-      if (cond.operator === 'not_equals') {
-        return rawVal.trim().toLowerCase() !== targetVal.trim().toLowerCase();
-      }
-      if (cond.operator === 'contains') {
-        return rawVal.toLowerCase().includes(targetVal.toLowerCase());
-      }
-      if (cond.operator === 'greater_than') {
-        return Number(rawVal) > Number(targetVal);
-      }
-      if (cond.operator === 'less_than') {
-        return Number(rawVal) < Number(targetVal);
+
+      // String / numeric comparison
+      const rawVal = typeof ans.value === 'object' ? JSON.stringify(ans.value) : String(ans.value);
+      const strVal = rawVal.toLowerCase();
+      const targetStr = String(cond.value).toLowerCase();
+
+      if (cond.operator === 'equals') return strVal === targetStr;
+      if (cond.operator === 'not_equals') return strVal !== targetStr;
+      if (cond.operator === 'contains') return strVal.includes(targetStr);
+      if (cond.operator === 'does_not_contain') return !strVal.includes(targetStr);
+      if (cond.operator === 'starts_with') return strVal.startsWith(targetStr);
+
+      const numAns = Number(ans.value);
+      const numTarget = Number(cond.value);
+      if (!isNaN(numAns) && !isNaN(numTarget)) {
+        if (cond.operator === 'greater_than') return numAns > numTarget;
+        if (cond.operator === 'less_than') return numAns < numTarget;
       }
       return false;
     }
 
     case 'contact_tag': {
-      const tags = ctx.contactTags || [];
-      const targetTags = Array.isArray(cond.value) ? cond.value : [String(cond.value)];
+      const contactTags = (ctx.contactTags || []).map((t) => t.toLowerCase());
+      const targetTags = Array.isArray(cond.value)
+        ? cond.value.map((t) => String(t).toLowerCase())
+        : [String(cond.value).toLowerCase()];
+
       if (cond.operator === 'has_any_tag') {
-        return targetTags.some((t) => tags.includes(t));
+        return targetTags.some((t) => contactTags.includes(t));
       }
       if (cond.operator === 'has_all_tags') {
-        return targetTags.every((t) => tags.includes(t));
+        return targetTags.every((t) => contactTags.includes(t));
       }
       return false;
     }
 
     case 'anomaly_detected': {
-      return !!ctx.isAnomaly;
+      return Boolean(ctx.isAnomaly);
+    }
+
+    case 'drop_off': {
+      return Boolean(ctx.isDropOff);
+    }
+
+    case 'quota_reached': {
+      return Boolean(ctx.quotaReached);
     }
 
     default:
@@ -140,7 +171,7 @@ export function evaluateCondition(
 }
 
 /**
- * Evaluates all conditions of a decision rule using AND / OR logical grouping.
+ * Evaluates whether an entire decision rule matches the given context.
  */
 export function evaluateDecisionRule(
   rule: SurveyDecisionRule,
@@ -150,48 +181,37 @@ export function evaluateDecisionRule(
     return false;
   }
 
-  if (rule.conditionLogic === 'AND') {
-    return rule.conditions.every((c) => evaluateCondition(c, ctx));
-  } else {
-    // 'OR' logic
-    return rule.conditions.some((c) => evaluateCondition(c, ctx));
+  if (rule.conditionLogic === 'OR') {
+    return rule.conditions.some((cond) => evaluateCondition(cond, ctx));
   }
+
+  // Default: 'AND'
+  return rule.conditions.every((cond) => evaluateCondition(cond, ctx));
 }
 
 /**
- * Interpolates template strings with context parameters.
+ * Safely resolves dynamic variable tokens in templates.
  */
-export function interpolateDecisionTemplate(
-  template: string,
-  ctx: SurveyDecisionContext
-): string {
+function interpolateDecisionTemplate(template: string, ctx: SurveyDecisionContext): string {
   if (!template) return '';
-  const score = ctx.score ?? 0;
   return template
-    .replace(/\{\{\s*contact\.name\s*\}\}/gi, ctx.contactName || 'Respondent')
-    .replace(/\{\{\s*contact\.email\s*\}\}/gi, ctx.contactEmail || '')
-    .replace(/\{\{\s*contact\.phone\s*\}\}/gi, ctx.contactPhone || '')
-    .replace(/\{\{\s*entity\.name\s*\}\}/gi, ctx.entityName || ctx.contactName || 'Lead')
-    .replace(/\{\{\s*entity\.id\s*\}\}/gi, ctx.entityId || '')
-    .replace(/\{\{\s*survey\.title\s*\}\}/gi, ctx.survey?.title || 'Survey')
-    .replace(/\{\{\s*survey\.score\s*\}\}/gi, String(score))
-    .replace(/\{\{\s*score\s*\}\}/gi, String(score));
+    .replace(/{{s*contact.names*}}/gi, ctx.contactName || ctx.entityName || 'Respondent')
+    .replace(/{{s*entity.names*}}/gi, ctx.entityName || ctx.contactName || 'Lead')
+    .replace(/{{s*survey.titles*}}/gi, ctx.survey.title || 'Survey')
+    .replace(/{{s*scores*}}/gi, String(ctx.score ?? 0))
+    .replace(/{{s*responseIds*}}/gi, ctx.responseId || '');
 }
 
 /**
- * Executes an individual decision action against the CRM database.
+ * Executes a single decision action.
  */
 export async function executeSingleDecisionAction(
   action: SurveyDecisionAction,
   ctx: SurveyDecisionContext
 ): Promise<{ success: boolean; actionType: string; error?: string }> {
   try {
-    const { workspaceId, organizationId = 'default', contactId, entityId, contactName, survey, score = 0 } = ctx;
-    const cleanEntityId = entityId
-      ? entityId.startsWith(`${workspaceId}_`)
-        ? entityId.slice(workspaceId.length + 1)
-        : entityId
-      : null;
+    const { workspaceId, organizationId, contactId, entityId, contactName, survey, score } = ctx;
+    const cleanEntityId = entityId ? entityId.replace(/^[a-zA-Z0-9_-]+_/, '') : null;
 
     switch (action.type) {
       case 'apply_tags': {
@@ -243,7 +263,7 @@ export async function executeSingleDecisionAction(
 
         await createDeal({
           workspaceId,
-          organizationId,
+          organizationId: organizationId || '',
           pipelineId: action.pipelineId,
           stageId: action.stageId,
           name: `${ctx.entityName || contactName || 'Lead'} - ${survey.title}`,
@@ -300,7 +320,7 @@ export async function executeSingleDecisionAction(
 
         await createDeal({
           workspaceId,
-          organizationId,
+          organizationId: organizationId || '',
           pipelineId: action.pipelineId,
           stageId: action.stageId,
           name: dealTitle,
@@ -342,7 +362,6 @@ export async function executeSingleDecisionAction(
       }
 
       case 'trigger_ai_prescription': {
-        // AI Prescriptions create an actionable intervention note
         const noteContent = `[AI Intervention Prescription] Survey "${survey.title}" flagged respondent ${contactName || 'Anonymous'} (Score: ${score}/100, Sentiment: ${ctx.sentimentPolarity || 'N/A'}). Automated recovery playbook triggered.`;
 
         if (cleanEntityId) {
@@ -362,6 +381,39 @@ export async function executeSingleDecisionAction(
             category: 'survey_prescription',
             createdAt: new Date().toISOString(),
           }).catch((err: unknown) => console.error('[decision-engine] AI prescription contact note err:', err));
+        }
+        return { success: true, actionType: action.type };
+      }
+
+      case 'trigger_webhook': {
+        if (!action.webhookConfig?.url) {
+          return { success: false, actionType: action.type, error: 'Missing webhook URL' };
+        }
+        // Asynchronously dispatch webhook payload
+        try {
+          const payload = {
+            event: 'survey.decision_triggered',
+            surveyId: survey.id,
+            surveyTitle: survey.title,
+            responseId: ctx.responseId,
+            score: ctx.score,
+            sentiment: ctx.sentimentPolarity,
+            contactName: ctx.contactName,
+            contactEmail: ctx.contactEmail,
+            entityName: ctx.entityName,
+            timestamp: new Date().toISOString(),
+            ...action.webhookConfig.customPayload,
+          };
+          fetch(action.webhookConfig.url, {
+            method: action.webhookConfig.method || 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(action.webhookConfig.headers || {}),
+            },
+            body: JSON.stringify(payload),
+          }).catch((fetchErr) => console.error('[decision-engine] Webhook dispatch error:', fetchErr));
+        } catch (webhookErr) {
+          console.error('[decision-engine] Webhook error:', webhookErr);
         }
         return { success: true, actionType: action.type };
       }
@@ -441,6 +493,59 @@ export async function executeSurveyDecisioningPipelineAction(
 }
 
 /**
+ * Simulates and dry-runs a decision rule against a sample payload without mutating database records.
+ */
+export async function testSurveyDecisionRuleAction(
+  rule: SurveyDecisionRule,
+  ctx: SurveyDecisionContext
+): Promise<SurveyDecisionSimulationResult> {
+  const evaluatedConditions = rule.conditions.map((cond) => {
+    const passed = evaluateCondition(cond, ctx);
+    let reason = passed ? 'Condition matched successfully.' : 'Condition did not match sample input.';
+    if (cond.type === 'score') {
+      reason = `Sample score (${ctx.score ?? 0}) ${passed ? 'satisfies' : 'does not satisfy'} ${cond.operator} ${cond.value}.`;
+    } else if (cond.type === 'nps_category') {
+      reason = `Sample score (${ctx.score ?? 0}) ${passed ? 'matches' : 'does not match'} NPS tier "${cond.value}".`;
+    } else if (cond.type === 'sentiment') {
+      reason = `Sample sentiment "${ctx.sentimentPolarity || 'none'}" ${passed ? 'matches' : 'does not match'} "${cond.value}".`;
+    }
+    return {
+      conditionId: cond.id,
+      type: cond.type,
+      passed,
+      reason,
+    };
+  });
+
+  const matched = rule.conditionLogic === 'OR'
+    ? evaluatedConditions.some((c) => c.passed)
+    : evaluatedConditions.every((c) => c.passed);
+
+  const prescribedActions = rule.actions.map((act) => ({
+    actionId: act.id,
+    type: act.type,
+    summary: act.type === 'create_task'
+      ? `Create Task: "${interpolateDecisionTemplate(act.taskConfig?.titleTemplate || 'Follow up', ctx)}"`
+      : act.type === 'adjust_lead_score'
+      ? `Adjust Lead Score: ${(act.scoreDelta ?? 0) >= 0 ? '+' : ''}${act.scoreDelta ?? 0} pts`
+      : act.type === 'apply_tags'
+      ? `Apply Tags: ${(act.tagIds || []).length} tag(s)`
+      : act.type === 'move_pipeline_stage'
+      ? `Move Deal to Pipeline Stage`
+      : `Execute Action: ${act.type}`,
+    delayMinutes: act.delayMinutes,
+  }));
+
+  return {
+    ruleId: rule.id,
+    ruleName: rule.name,
+    matched,
+    evaluatedConditions,
+    prescribedActions,
+  };
+}
+
+/**
  * Loads decisioning configuration for a survey.
  */
 export async function getSurveyDecisionConfigAction(
@@ -448,24 +553,22 @@ export async function getSurveyDecisionConfigAction(
   workspaceId: string
 ): Promise<{ success: boolean; config?: SurveyDecisionConfig; error?: string }> {
   try {
-    if (!surveyId || !workspaceId) return { success: false, error: 'Missing parameters' };
-
-    const docSnap = await adminDb.collection('surveys').doc(surveyId).get();
-    if (!docSnap.exists) return { success: false, error: 'Survey not found' };
-
-    const survey = docSnap.data() as Survey;
-    if (!isAuthorizedForWorkspace(survey, workspaceId)) {
+    const surveyDoc = await adminDb.collection('surveys').doc(surveyId).get();
+    if (!surveyDoc.exists) {
+      return { success: false, error: 'Survey not found' };
+    }
+    const surveyData = { id: surveyDoc.id, ...surveyDoc.data() } as Survey;
+    if (!isAuthorizedForWorkspace(surveyData, workspaceId)) {
       return { success: false, error: 'Unauthorized workspace access' };
     }
-
     return {
       success: true,
-      config: survey.decisionConfig || { enabled: false, rules: [] },
+      config: surveyData.decisionConfig || { enabled: false, rules: [] },
     };
   } catch (err: unknown) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch decision config',
+      error: err instanceof Error ? err.message : 'Failed to get decision config',
     };
   }
 }
@@ -475,18 +578,17 @@ export async function getSurveyDecisionConfigAction(
  */
 export async function saveSurveyDecisionConfigAction(
   surveyId: string,
-  workspaceId: string,
-  config: SurveyDecisionConfig
+  config: SurveyDecisionConfig,
+  workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!surveyId || !workspaceId) return { success: false, error: 'Missing parameters' };
-
     const surveyRef = adminDb.collection('surveys').doc(surveyId);
-    const docSnap = await surveyRef.get();
-    if (!docSnap.exists) return { success: false, error: 'Survey not found' };
-
-    const survey = docSnap.data() as Survey;
-    if (!isAuthorizedForWorkspace(survey, workspaceId)) {
+    const surveyDoc = await surveyRef.get();
+    if (!surveyDoc.exists) {
+      return { success: false, error: 'Survey not found' };
+    }
+    const surveyData = { id: surveyDoc.id, ...surveyDoc.data() } as Survey;
+    if (!isAuthorizedForWorkspace(surveyData, workspaceId)) {
       return { success: false, error: 'Unauthorized workspace access' };
     }
 
@@ -558,6 +660,64 @@ const DEFAULT_SYSTEM_PLAYBOOKS: SystemDecisionPlaybook[] = [
       ],
       actions: [
         { id: 'a1', type: 'adjust_lead_score', scoreDelta: 15 },
+      ],
+    },
+  },
+  {
+    id: 'playbook_lead_qualification',
+    name: 'High-Intent Lead Fast-Track Routing',
+    description: 'When high score or qualified response is detected, automatically assigns account executive and accelerates pipeline stage.',
+    category: 'lead_qualification',
+    isProtected: true,
+    rule: {
+      name: 'Lead Fast-Track Protocol',
+      description: 'Triggered on high survey score (>= 80%)',
+      enabled: true,
+      conditionLogic: 'AND',
+      conditions: [
+        { id: 'c1', type: 'score', operator: 'greater_than', value: 80 },
+      ],
+      actions: [
+        { id: 'a1', type: 'adjust_lead_score', scoreDelta: 20 },
+        {
+          id: 'a2',
+          type: 'create_task',
+          taskConfig: {
+            titleTemplate: 'High-Intent Prospect: Follow up with {{contact.name}}',
+            descriptionTemplate: 'Lead scored {{score}}% on survey "{{survey.title}}". Immediate outreach recommended.',
+            priority: 'high',
+            dueInHours: 12,
+          },
+        },
+      ],
+    },
+  },
+  {
+    id: 'playbook_dropoff_reengagement',
+    name: 'Survey Drop-off Automated Re-engagement',
+    description: 'When a respondent abandons a survey, automatically schedules a friendly follow-up task and note.',
+    category: 'dropoff_reengagement',
+    isProtected: true,
+    rule: {
+      name: 'Drop-off Recovery Reminder',
+      description: 'Triggered when respondent drops off before survey completion',
+      enabled: true,
+      conditionLogic: 'AND',
+      conditions: [
+        { id: 'c1', type: 'drop_off', operator: 'equals', value: true },
+      ],
+      actions: [
+        {
+          id: 'a1',
+          type: 'create_task',
+          delayMinutes: 1440, // 24 hours
+          taskConfig: {
+            titleTemplate: 'Survey Incomplete: Re-engage {{contact.name}}',
+            descriptionTemplate: 'Respondent began survey "{{survey.title}}" but did not finish. Reach out with assistance.',
+            priority: 'medium',
+            dueInHours: 48,
+          },
+        },
       ],
     },
   },
