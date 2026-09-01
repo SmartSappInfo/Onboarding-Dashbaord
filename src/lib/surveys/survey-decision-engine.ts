@@ -28,6 +28,7 @@ import type {
 } from '@/lib/types';
 import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
+import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 
 export interface SurveyDecisionContext {
   survey: Survey;
@@ -190,16 +191,23 @@ export function evaluateDecisionRule(
 }
 
 /**
- * Safely resolves dynamic variable tokens in templates.
+ * Safely resolves dynamic variable tokens in templates using FieldsVariablesService.
  */
 function interpolateDecisionTemplate(template: string, ctx: SurveyDecisionContext): string {
   if (!template) return '';
-  return template
-    .replace(/{{s*contact.names*}}/gi, ctx.contactName || ctx.entityName || 'Respondent')
-    .replace(/{{s*entity.names*}}/gi, ctx.entityName || ctx.contactName || 'Lead')
-    .replace(/{{s*survey.titles*}}/gi, ctx.survey.title || 'Survey')
-    .replace(/{{s*scores*}}/gi, String(ctx.score ?? 0))
-    .replace(/{{s*responseIds*}}/gi, ctx.responseId || '');
+  const valuesMap = new Map<string, unknown>([
+    ['contact.name', ctx.contactName || ctx.entityName || 'Respondent'],
+    ['contact_name', ctx.contactName || ctx.entityName || 'Respondent'],
+    ['entity.name', ctx.entityName || ctx.contactName || 'Lead'],
+    ['entity_name', ctx.entityName || ctx.contactName || 'Lead'],
+    ['survey.title', ctx.survey.title || 'Survey'],
+    ['survey_title', ctx.survey.title || 'Survey'],
+    ['score', ctx.score ?? 0],
+    ['survey.score', ctx.score ?? 0],
+    ['responseId', ctx.responseId || ''],
+    ['sentiment', ctx.sentimentPolarity || 'neutral'],
+  ]);
+  return FieldsVariablesService.resolveTextWithMap(template, valuesMap, false);
 }
 
 /**
@@ -411,6 +419,7 @@ export async function executeSingleDecisionAction(
               ...(action.webhookConfig.headers || {}),
             },
             body: JSON.stringify(payload),
+            signal: AbortSignal.timeout(5000),
           }).catch((fetchErr) => console.error('[decision-engine] Webhook dispatch error:', fetchErr));
         } catch (webhookErr) {
           console.error('[decision-engine] Webhook error:', webhookErr);

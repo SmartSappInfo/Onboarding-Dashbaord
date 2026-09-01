@@ -18,6 +18,7 @@
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 import type {
+  Survey,
   SurveyElement,
   SurveyQuestion,
   SurveyDecisionConfig,
@@ -218,7 +219,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
         id: 'sim_survey',
         title: watch('title') || 'Sample Survey',
         elements,
-      } as any;
+      } as unknown as Survey;
 
       const res = await testSurveyDecisionRuleAction(editingRule, {
         survey: dummySurvey,
