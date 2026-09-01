@@ -31,6 +31,7 @@ import {
   CheckCircle2,
   Loader2,
   Globe,
+  FlaskConical,
 } from 'lucide-react';
 
 export function BackofficeCreativeClient() {
@@ -451,6 +452,40 @@ export function BackofficeCreativeClient() {
                 <span className="text-emerald-400 font-mono">50 / hour</span>
               </div>
               <div className="text-[10px] text-slate-500 font-normal mt-0.5">Rate Limit Protection</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Experimentation & Statistical Significance Hub (Phase 9) */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+              <FlaskConical className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">A/B Testing & Statistical Rigor</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Confidence thresholds & sample size policy</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Configure two-proportion z-test confidence requirements ($p &lt; 0.05$) and minimum sample size gates.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-emerald-500/40 text-slate-200">
+              <div className="flex justify-between items-center">
+                <span>Confidence Target</span>
+                <span className="text-emerald-400 font-mono">95% (p&lt;0.05)</span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-normal mt-0.5">Statistical Threshold</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div className="flex justify-between items-center">
+                <span>Min Sample Size</span>
+                <span className="text-emerald-400 font-mono">500 / variant</span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-normal mt-0.5">False Positive Barrier</div>
             </div>
           </div>
         </div>

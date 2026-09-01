@@ -48,6 +48,7 @@ import { CreativeHealthPanel } from '@/components/shared/thumbnail-designer/Crea
 import { BatchPersonalizationModal } from '@/components/shared/thumbnail-designer/BatchPersonalizationModal';
 import { ApprovalWorkflowModal } from '@/components/shared/thumbnail-designer/ApprovalWorkflowModal';
 import { PublishingModal } from '@/components/shared/thumbnail-designer/PublishingModal';
+import { ExperimentBuilderModal } from '@/components/shared/thumbnail-designer/ExperimentBuilderModal';
 import {
   KeyboardShortcutsDialog,
   useKeyboardShortcuts,
@@ -120,6 +121,7 @@ import {
   MapPin,
   Clock,
   AlertTriangle,
+  FlaskConical,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -260,8 +262,11 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [isVersionsOpen, setIsVersionsOpen] = useState(false);
   const [snapshotNote, setSnapshotNote] = useState('');
 
-  // Direct Publish Dialog
+  // Direct Publish Dialog (Phase 8)
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
+
+  // A/B Experiment Dialog (Phase 9)
+  const [isExperimentModalOpen, setIsExperimentModalOpen] = useState(false);
 
   // 1. Initial Load
   useEffect(() => {
@@ -1108,7 +1113,18 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
             <Keyboard className="w-4 h-4" />
           </Button>
 
-          {/* Publish Trigger */}
+          {/* A/B Experiment Trigger (Phase 9) */}
+          <Button
+            onClick={() => setIsExperimentModalOpen(true)}
+            variant="outline"
+            size="sm"
+            className="border-emerald-500/40 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97] hidden sm:flex items-center gap-1.5"
+          >
+            <FlaskConical className="w-3.5 h-3.5" />
+            <span>A/B Test</span>
+          </Button>
+
+          {/* Publish Trigger (Phase 8) */}
           <Button
             onClick={() => setIsPublishDialogOpen(true)}
             size="sm"
@@ -1775,6 +1791,16 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         <PublishingModal
           open={isPublishDialogOpen}
           onOpenChange={setIsPublishDialogOpen}
+          project={project}
+          document={document}
+        />
+      )}
+
+      {/* A/B Experiment Builder Modal (Phase 9) */}
+      {isExperimentModalOpen && project && document && (
+        <ExperimentBuilderModal
+          open={isExperimentModalOpen}
+          onOpenChange={setIsExperimentModalOpen}
           project={project}
           document={document}
         />

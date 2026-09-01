@@ -315,6 +315,46 @@ export interface PreFlightCheckItem {
   message: string;
 }
 
+export interface ExperimentVariant {
+  id: string;
+  name: string; // "Variant A (Control)", "Variant B (Curiosity Hook)"
+  documentId: string;
+  trafficWeight: number; // 0 - 100%
+  impressions: number;
+  clicks: number;
+  conversions: number;
+  ctr: number;
+  conversionRate: number;
+  isControl: boolean;
+  isWinner?: boolean;
+}
+
+export interface CreativeExperiment {
+  id: string;
+  projectId: string;
+  workspaceId: string;
+  name: string;
+  hypothesis: string;
+  status: 'draft' | 'running' | 'concluded';
+  channel: PublishingChannel;
+  variants: ExperimentVariant[];
+  winningVariantId?: string;
+  confidenceScore?: number; // 0 - 100%
+  startDate?: string;
+  endDate?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StatisticalResult {
+  isSignificant: boolean;
+  confidenceLevel: number; // e.g. 96.4%
+  pValue: number;
+  liftPercentage: number;
+  winningVariantId?: string;
+  recommendation: string;
+}
+
 export interface CreativeVersion {
   id: string;
   projectId: string;
