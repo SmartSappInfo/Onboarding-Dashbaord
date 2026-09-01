@@ -193,6 +193,30 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // --- Identity & Membership 2.0 Collections ---
+    match /accounts/{accountId} {
+      allow get: if isSignedIn() && (request.auth.uid == accountId || isSystemAdmin());
+      allow list, write: if false;
+    }
+
+    match /people/{personId} {
+      allow get: if isSignedIn() && (request.auth.uid == personId || isSystemAdmin() || (isAuthorized() && isOrgMatch(resource.data.organizationId)));
+      allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
+      allow write: if false;
+    }
+
+    match /organization_memberships/{membershipId} {
+      allow get: if isSignedIn() && (isSystemAdmin() || (isAuthorized() && isOrgMatch(resource.data.organizationId)));
+      allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
+      allow write: if false;
+    }
+
+    match /workspace_memberships/{membershipId} {
+      allow get: if isSignedIn() && (isSystemAdmin() || (isAuthorized() && isOrgMatch(resource.data.organizationId)));
+      allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));

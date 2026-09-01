@@ -975,6 +975,162 @@ export interface UserProfile {
   updatedAt?: string;
 }
 
+// ============================================================================
+// IDENTITY & ACCESS 2.0 CANONICAL DOMAIN TYPES (Phase 1)
+// ============================================================================
+
+export type AccountStatus =
+  | 'pending'
+  | 'active'
+  | 'suspended'
+  | 'disabled'
+  | 'locked'
+  | 'deleted';
+
+export type MfaStatus = 'not_enabled' | 'optional' | 'required' | 'enrolled';
+
+export type AuthProviderType = 'firebase' | 'google' | 'saml' | 'oidc';
+
+export type MembershipStatus =
+  | 'invited'
+  | 'pending'
+  | 'active'
+  | 'suspended'
+  | 'revoked'
+  | 'expired';
+
+export type MemberType =
+  | 'employee'
+  | 'contractor'
+  | 'partner'
+  | 'administrator'
+  | 'external';
+
+export type MembershipSource =
+  | 'signup'
+  | 'invitation'
+  | 'import'
+  | 'sso'
+  | 'scim'
+  | 'migration';
+
+export type WorkspaceMembershipStatus = 'active' | 'suspended' | 'revoked';
+
+export interface IdentityAccount {
+  id: string; // matches Firebase Auth UID
+  authUid: string;
+  authProvider: AuthProviderType;
+  email: string;
+  emailVerified: boolean;
+  phoneVerified: boolean;
+  status: AccountStatus;
+  mfaStatus: MfaStatus;
+  lastLoginAt?: string;
+  lastSeenAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface Person {
+  id: string; // matches Account ID / UID
+  organizationId: string;
+  firstName: string;
+  middleName?: string;
+  lastName: string;
+  displayName: string;
+  email: string;
+  phone?: string;
+  avatarUrl?: string;
+  jobTitle?: string;
+  departmentId?: string;
+  departmentName?: string;
+  teamIds?: string[];
+  employeeCode?: string;
+  externalReference?: string;
+  timezone?: string;
+  locale?: string;
+  notificationPreferences?: NotificationPreferences;
+  preferredAiModel?: string;
+  preferredAiProvider?: string;
+  facilitatorRole?: string;
+  facilitatorBio?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface OrganizationMembership {
+  id: string;
+  personId: string;
+  accountId: string;
+  organizationId: string;
+  status: MembershipStatus;
+  memberType: MemberType;
+  departmentId?: string;
+  departmentName?: string;
+  teamIds?: string[];
+  primaryWorkspaceId?: string;
+  source: MembershipSource;
+  invitedAt?: string;
+  joinedAt?: string;
+  suspendedAt?: string;
+  revokedAt?: string;
+  invitedBy?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface WorkspaceMembership {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  workspaceName?: string;
+  personId: string;
+  membershipId: string;
+  status: WorkspaceMembershipStatus;
+  roleAssignmentIds: string[];
+  roleNames?: string[];
+  isPrimary: boolean;
+  scopePolicy?: {
+    type: 'all' | 'team' | 'department' | 'owner' | 'custom';
+    values?: string[];
+  };
+  startsAt?: string;
+  expiresAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface UserSession {
+  id: string;
+  accountId: string;
+  organizationId: string;
+  userAgent?: string;
+  ipAddress?: string;
+  location?: string;
+  status: 'active' | 'revoked' | 'expired';
+  lastSeenAt: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface PeopleDirectoryFilter {
+  searchQuery?: string;
+  status?: MembershipStatus | 'all';
+  roleId?: string;
+  workspaceId?: string;
+  departmentId?: string;
+  memberType?: MemberType;
+}
+
+export interface PersonDetailView {
+  person: Person;
+  account: IdentityAccount;
+  membership: OrganizationMembership;
+  workspaceMemberships: WorkspaceMembership[];
+  effectivePermissionsSchema?: PermissionsSchema;
+  userProfileProjection: UserProfile;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

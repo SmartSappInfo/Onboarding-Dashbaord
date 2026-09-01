@@ -95,4 +95,29 @@ describe('Deals 2.0 Schema & Type Verification', () => {
     expect(onboardingStage.probability).toBe(20);
     expect(onboardingStage.slaDays).toBe(7);
   });
+
+  it('should support pipeline showDealTotals configuration defaulting to enabled', () => {
+    const pipelineWithDefaults: import('@/lib/types').Pipeline = {
+      id: 'pipe-1',
+      name: 'Sales Pipeline',
+      workspaceIds: ['ws-1'],
+      stageIds: ['stage-1'],
+      accessRoles: ['admin'],
+      createdAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    const pipelineWithTotalsDisabled: import('@/lib/types').Pipeline = {
+      ...pipelineWithDefaults,
+      showDealTotals: false,
+    };
+
+    const pipelineWithTotalsExplicitlyEnabled: import('@/lib/types').Pipeline = {
+      ...pipelineWithDefaults,
+      showDealTotals: true,
+    };
+
+    expect(pipelineWithDefaults.showDealTotals !== false).toBe(true);
+    expect(pipelineWithTotalsDisabled.showDealTotals !== false).toBe(false);
+    expect(pipelineWithTotalsExplicitlyEnabled.showDealTotals !== false).toBe(true);
+  });
 });

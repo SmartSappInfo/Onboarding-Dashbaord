@@ -38,6 +38,7 @@ import {
   Video,
   BarChart3,
   Plug2,
+  Users,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -67,6 +68,7 @@ const platformNavItems: NavItem[] = [
   { href: '/backoffice', icon: LayoutDashboard, label: 'Dashboard', module: 'dashboard' },
   { href: '/backoffice/health', icon: HeartPulse, label: 'Tenant Health', module: 'health' },
   { href: '/backoffice/organizations', icon: Building2, label: 'Organizations', module: 'organizations' },
+  { href: '/backoffice/identity', icon: Users, label: 'Identity & Access', module: 'organizations' },
   { href: '/backoffice/workspaces', icon: Layers, label: 'Workspaces', module: 'workspaces' },
   { href: '/backoffice/settings/system-defaults', icon: Sparkles, label: 'System Defaults', module: 'settings' },
 ];

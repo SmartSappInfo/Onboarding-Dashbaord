@@ -397,7 +397,7 @@ export default function PipelineSettingsClient() {
  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Routing Strategy</Label>
                                             <Select 
                                                 value={assignmentStrategy} 
-                                                onValueChange={(val: any) => setAssignmentStrategy(val)}
+                                                onValueChange={(val: 'direct' | 'round-robin' | 'value-based' | 'unassigned') => setAssignmentStrategy(val)}
                                             >
                                                 <SelectTrigger className="w-full h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4">
                                                     <SelectValue placeholder="Select strategy..." />
