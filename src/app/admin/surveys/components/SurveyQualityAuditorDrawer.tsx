@@ -70,7 +70,13 @@ export function SurveyQualityAuditorDrawer({
     if (!survey.id || !workspaceId) return;
     setIsLoading(true);
     try {
-      const res = await auditSurveyQualityAction(survey.id, workspaceId, { provider, modelId });
+      const res = await auditSurveyQualityAction(survey.id, workspaceId, {
+        provider,
+        modelId,
+        draftElements: (survey.elements || []) as unknown as Record<string, unknown>[],
+        draftTitle: survey.title,
+        draftDescription: survey.description,
+      });
       if (res.success && res.data) {
         setAuditData(res.data);
         toast({

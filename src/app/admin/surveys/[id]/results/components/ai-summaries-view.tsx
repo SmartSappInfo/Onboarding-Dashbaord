@@ -22,6 +22,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { format } from 'date-fns';
+import DOMPurify from 'isomorphic-dompurify';
 import { querySurveyResearchAssistantAction } from '@/lib/surveys/survey-ai-intelligence-actions';
 import type { SurveyResearchAssistantOutput } from '@/ai/schemas/survey-intelligence-schemas';
 
@@ -289,7 +290,9 @@ export default function AISummariesView({
           {/* Answer HTML */}
           <div
             className="prose dark:prose-invert prose-xs max-w-none text-xs leading-relaxed"
-            dangerouslySetInnerHTML={{ __html: latestResearchResult.answerHtml }}
+            dangerouslySetInnerHTML={{
+              __html: DOMPurify.sanitize(latestResearchResult.answerHtml, { USE_PROFILES: { html: true } }),
+            }}
           />
 
           {/* Evidence Citations */}
@@ -390,7 +393,9 @@ export default function AISummariesView({
                 <CardContent className="pt-2">
                   <div
                     className="prose dark:prose-invert prose-xs max-w-none text-xs leading-relaxed"
-                    dangerouslySetInnerHTML={{ __html: summary.summary }}
+                    dangerouslySetInnerHTML={{
+                      __html: DOMPurify.sanitize(summary.summary, { USE_PROFILES: { html: true } }),
+                    }}
                   />
                 </CardContent>
               </Card>

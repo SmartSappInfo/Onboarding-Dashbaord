@@ -3,6 +3,7 @@ import {
   auditSurveyQualityAction,
   applySurveyAiOptimizationAction,
   generateSurveyThematicInsightsAction,
+  querySurveyResearchAssistantAction,
 } from '../survey-ai-intelligence-actions';
 
 const mockGet = vi.fn();
@@ -112,6 +113,26 @@ vi.mock('@/ai/flows/survey-anomaly-detection-flow', () => ({
   }),
 }));
 
+vi.mock('@/ai/flows/query-survey-data-flow', () => ({
+  querySurveyDataFlow: vi.fn().mockResolvedValue({
+    answerHtml: '<p>Parent satisfaction is highest in academic programs.</p>',
+    confidenceScore: 92,
+    sampleSizeAnalyzed: 45,
+    keyMetrics: [
+      { label: 'Overall Satisfaction', value: '88%', comparison: 'vs 75% last year' },
+    ],
+    evidenceCitations: [
+      {
+        responseId: 'res_1',
+        questionTitle: 'Academic Feedback',
+        evidenceText: 'Curriculum rigor has noticeably improved.',
+        context: 'Grade 10 Parent',
+      },
+    ],
+    suggestedFollowUpQuestions: ['How does satisfaction compare between grade levels?'],
+  }),
+}));
+
 describe('Survey AI Intelligence Actions', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -134,6 +155,16 @@ describe('Survey AI Intelligence Actions', () => {
     expect(res.data?.grade).toBe('A');
     expect(res.data?.suggestions.length).toBe(1);
     expect(res.data?.suggestions[0].issueType).toBe('leading_bias');
+  });
+
+  it('audits unsaved survey drafts using in-memory draftElements without requiring saved doc', async () => {
+    const res = await auditSurveyQualityAction('new-survey', 'ws1', {
+      draftElements: [{ id: 'q_draft', type: 'text', title: 'Draft Question' }],
+      draftTitle: 'In-Flight Survey Draft',
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.data?.overallScore).toBe(88);
   });
 
   it('blocks unauthorized survey audit when workspace does not match', async () => {
@@ -214,5 +245,41 @@ describe('Survey AI Intelligence Actions', () => {
     expect(res.sentimentThemes?.themes.length).toBe(1);
     expect(res.anomalies?.anomaliesDetectedCount).toBe(1);
     expect(mockSet).toHaveBeenCalledTimes(1);
+  });
+
+  it('executes natural language query with evidence citations and records to summaries', async () => {
+    mockGet.mockResolvedValueOnce({
+      exists: true,
+      data: () => ({
+        id: 's1',
+        workspaceIds: ['ws1'],
+        title: 'Parent Feedback',
+        elements: [{ id: 'q1', type: 'text', title: 'Academic Feedback' }],
+      }),
+    });
+
+    mockGet.mockResolvedValueOnce({
+      docs: [
+        {
+          id: 'res_1',
+          data: () => ({
+            submittedAt: '2026-09-01T10:00:00Z',
+            answers: [{ questionId: 'q1', value: 'Curriculum rigor has noticeably improved.' }],
+          }),
+        },
+      ],
+    });
+
+    const res = await querySurveyResearchAssistantAction(
+      's1',
+      'ws1',
+      'What are parents saying about academic curriculum?'
+    );
+
+    expect(res.success).toBe(true);
+    expect(res.data?.confidenceScore).toBe(92);
+    expect(res.data?.evidenceCitations.length).toBe(1);
+    expect(res.data?.evidenceCitations[0].responseId).toBe('res_1');
+    expect(mockAdd).toHaveBeenCalledTimes(1);
   });
 });

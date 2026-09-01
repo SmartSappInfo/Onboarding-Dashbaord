@@ -45,28 +45,51 @@ function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean 
 export async function auditSurveyQualityAction(
   surveyId: string,
   workspaceId: string,
-  options?: { provider?: string; modelId?: string }
+  options?: {
+    provider?: string;
+    modelId?: string;
+    draftElements?: Record<string, unknown>[];
+    draftTitle?: string;
+    draftDescription?: string;
+  }
 ): Promise<{ success: boolean; data?: SurveyQualityAuditOutput; error?: string }> {
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'Missing required surveyId or workspaceId' };
     }
 
-    const surveyDoc = await adminDb.collection('surveys').doc(surveyId).get();
-    if (!surveyDoc.exists) {
-      return { success: false, error: 'Survey not found' };
+    let surveyTitle = options?.draftTitle || 'Survey';
+    let surveyDescription = options?.draftDescription || '';
+    let elements = options?.draftElements;
+
+    if (surveyId !== 'new-survey') {
+      const surveyDoc = await adminDb.collection('surveys').doc(surveyId).get();
+      if (surveyDoc.exists) {
+        const survey = surveyDoc.data() as Survey;
+        if (!isAuthorizedForWorkspace(survey, workspaceId)) {
+          return { success: false, error: 'Unauthorized: Survey does not belong to this workspace' };
+        }
+        if (!elements) {
+          elements = (survey.elements || []) as unknown as Record<string, unknown>[];
+        }
+        if (!options?.draftTitle) {
+          surveyTitle = survey.title;
+        }
+        if (!options?.draftDescription) {
+          surveyDescription = survey.description || '';
+        }
+      } else if (!elements) {
+        return { success: false, error: 'Survey not found' };
+      }
     }
 
-    const survey = surveyDoc.data() as Survey;
-    if (!isAuthorizedForWorkspace(survey, workspaceId)) {
-      return { success: false, error: 'Unauthorized: Survey does not belong to this workspace' };
+    if (!elements || elements.length === 0) {
+      return { success: false, error: 'No survey questions or blocks found to audit' };
     }
-
-    const elements = (survey.elements || []) as unknown as Record<string, unknown>[];
 
     const auditResult = await auditSurveyQualityFlow({
-      surveyTitle: survey.title,
-      surveyDescription: survey.description,
+      surveyTitle,
+      surveyDescription,
       elements,
       organizationId: workspaceId,
       provider: options?.provider || 'anthropic',

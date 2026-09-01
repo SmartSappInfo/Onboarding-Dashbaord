@@ -840,7 +840,7 @@ export default function SurveyFormBuilder() {
                 } as Survey}
                 workspaceId={activeWorkspaceId || ''}
                 onQuestionUpdated={(qId, updated) => {
-                    const idx = elements.findIndex((el: any) => el.id === qId);
+                    const idx = elements.findIndex((el: SurveyElement) => el.id === qId);
                     if (idx !== -1) {
                         Object.entries(updated).forEach(([key, val]) => {
                             setValue(`elements.${idx}.${key}`, val, { shouldDirty: true });
