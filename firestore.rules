@@ -1337,6 +1337,25 @@ service cloud.firestore {
         );
       }
     }
+
+    // Forms 2.0 Daily Analytics Rollup collection
+    match /form_metrics_daily/{metricId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Writes are strictly managed via Admin Server Actions with atomic increments
+      allow write: if false;
+    }
+
+    // Forms 2.0 Ingested Sessions & Telemetry collection
+    match /form_sessions/{sessionId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow write: if false;
+    }
     
     // Canonical Top-Level Form Submissions collection
     match /form_submissions/{submissionId} {

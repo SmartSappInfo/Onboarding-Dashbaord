@@ -7,6 +7,7 @@ import * as z from 'zod';
 import { Form, FormFieldInstance, AppField } from '@/lib/types';
 import { processFormSubmissionAction } from '@/lib/forms-actions';
 import { initializeFormSessionAction, recordFormEventAction } from '@/lib/forms/form-session-actions';
+import { recordFormTelemetryEventAction } from '@/lib/forms/form-analytics-actions';
 import { evaluateFormLogic } from '@/lib/forms/logic-engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -161,12 +162,18 @@ export default function FormRenderer({
   }, [form.logicRules, form.scoreRules, form.calculations, watchedValues, fieldAliasMap]);
 
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const hasStartedRef = React.useRef(false);
+  const startTimeRef = React.useRef(Date.now());
 
   // Initialize session tracking for conversion funnel and drop-off analytics
   useEffect(() => {
     let isMounted = true;
     (async () => {
       try {
+        const deviceType = typeof window !== 'undefined' 
+          ? (window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop')
+          : 'desktop';
+
         const res = await initializeFormSessionAction({
           formId: form.id,
           versionId: form.publishedVersionId || form.currentVersionId,
@@ -175,12 +182,23 @@ export default function FormRenderer({
           utmSource: trackingParams.utmSource,
           utmMedium: trackingParams.utmMedium,
           utmCampaign: trackingParams.utmCampaign,
-          device: typeof window !== 'undefined' 
-            ? (window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop')
-            : 'desktop',
+          device: deviceType,
         });
         if (isMounted && res.success && res.sessionId) {
           setSessionId(res.sessionId);
+          // Dispatch daily aggregate page view
+          recordFormTelemetryEventAction({
+            formId: form.id,
+            workspaceId: form.workspaceId,
+            organizationId: form.organizationId,
+            eventType: 'page_view',
+            sessionId: res.sessionId,
+            deviceType: deviceType as 'desktop' | 'mobile' | 'tablet',
+            utmSource: trackingParams.utmSource,
+            utmMedium: trackingParams.utmMedium,
+            utmCampaign: trackingParams.utmCampaign,
+            referrer: typeof document !== 'undefined' ? document.referrer : undefined,
+          }).catch(() => {});
         }
       } catch {
         // Non-blocking telemetry
@@ -188,6 +206,19 @@ export default function FormRenderer({
     })();
     return () => { isMounted = false; };
   }, [form.id, form.publishedVersionId, form.currentVersionId, form.workspaceId, form.organizationId, trackingParams]);
+
+  // Record first form interaction start
+  const handleFormInteraction = React.useCallback(() => {
+    if (hasStartedRef.current) return;
+    hasStartedRef.current = true;
+    recordFormTelemetryEventAction({
+      formId: form.id,
+      workspaceId: form.workspaceId,
+      organizationId: form.organizationId,
+      eventType: 'form_started',
+      sessionId: sessionId || 'anon',
+    }).catch(() => {});
+  }, [form.id, form.workspaceId, form.organizationId, sessionId]);
 
   // 3. Handle Submit
   const onSubmit = async (data: Record<string, unknown>) => {
@@ -216,6 +247,7 @@ export default function FormRenderer({
       });
 
       if (result.success) {
+        const dwellSeconds = Math.round((Date.now() - startTimeRef.current) / 1000);
         if (sessionId) {
           recordFormEventAction({
             sessionId,
@@ -223,6 +255,14 @@ export default function FormRenderer({
             eventType: 'form_submit',
           }).catch(() => {});
         }
+        recordFormTelemetryEventAction({
+          formId: form.id,
+          workspaceId: form.workspaceId,
+          organizationId: form.organizationId,
+          eventType: 'form_submitted',
+          sessionId: sessionId || 'anon',
+          dwellSeconds,
+        }).catch(() => {});
         setIsSubmitted(true);
       } else {
         alert(result.error || 'Failed to submit form');
@@ -291,7 +331,7 @@ export default function FormRenderer({
         </div>
 
         {/* Form Body */}
-        <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
+        <form onSubmit={handleSubmit(onSubmit)} onFocusCapture={handleFormInteraction} className="space-y-8">
           <div className="grid grid-cols-1 gap-y-6">
             {resolvedFields.map((field) => {
               const type = field.fieldDefinition.type;

@@ -76,6 +76,7 @@ import {
   Eye,
   Undo2,
   Redo2,
+  BarChart3,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 
@@ -756,6 +757,17 @@ export default function EditFormPage() {
               <Redo2 className="h-4 w-4" />
             </Button>
           </div>
+
+          {formData.id && (
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/admin/forms/${formData.id}/analytics`)}
+              className="rounded-xl font-semibold gap-2 px-3.5 h-10 text-[10px] active:scale-95 transition-all text-muted-foreground hover:text-foreground"
+            >
+              <BarChart3 className="h-4 w-4 text-primary" />
+              <span className="hidden sm:inline">Analytics</span>
+            </Button>
+          )}
 
           <Button
             disabled={isSaving || isPendingSave || saveStatus === 'saving'}

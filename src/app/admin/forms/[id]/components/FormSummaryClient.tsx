@@ -25,7 +25,8 @@ import {
   Copy,
   Check,
   FileText,
-  LayoutGrid
+  LayoutGrid,
+  Inbox
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
@@ -185,7 +186,7 @@ export default function FormSummaryClient({ id }: { id: string }) {
             {canEdit && (
               <Button
                 variant="outline"
-                className="h-11 px-6 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm"
+                className="h-11 px-5 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm min-h-[44px]"
                 onClick={() => router.push(`/admin/forms/${id}/edit`)}
               >
                 <Edit className="mr-2 h-4 w-4" />
@@ -193,11 +194,19 @@ export default function FormSummaryClient({ id }: { id: string }) {
               </Button>
             )}
             <Button
-              className="h-11 px-6 rounded-xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all"
+              variant="outline"
+              className="h-11 px-5 rounded-xl font-semibold border-border bg-background hover:bg-muted transition-colors shadow-sm min-h-[44px]"
+              onClick={() => router.push(`/admin/forms/${id}/analytics`)}
+            >
+              <BarChart3 className="mr-2 h-4 w-4 text-primary" />
+              Analytics
+            </Button>
+            <Button
+              className="h-11 px-5 rounded-xl font-semibold shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all min-h-[44px]"
               onClick={() => router.push(`/admin/forms/${id}/submissions`)}
             >
-              <BarChart3 className="mr-2 h-4 w-4" />
-              Submissions & Analytics
+              <Inbox className="mr-2 h-4 w-4" />
+              Submissions
             </Button>
           </div>
         </div>

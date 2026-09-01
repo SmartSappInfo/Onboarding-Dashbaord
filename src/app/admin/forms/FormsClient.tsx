@@ -68,6 +68,8 @@ import {
   BarChart2,
   Archive,
   Code,
+  BarChart3,
+  Inbox,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -255,6 +257,15 @@ export default function FormsClient() {
           </TooltipTrigger>
           <TooltipContent><p>Generate QR Code</p></TooltipContent>
         </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary transition-colors" onClick={() => router.push(`/admin/forms/${form.id}/analytics`)}>
+              <BarChart3 className="h-4 w-4" />
+              <span className="sr-only">Analytics</span>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent><p>View Analytics</p></TooltipContent>
+        </Tooltip>
         {canEdit && (
           <Tooltip>
             <TooltipTrigger asChild>
@@ -276,6 +287,12 @@ export default function FormsClient() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
+          <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/analytics`)}>
+            <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/submissions`)}>
+            <Inbox className="mr-2 h-4 w-4" /> View Submissions
+          </DropdownMenuItem>
           {canEdit && (
             <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/edit`)}>
               <Edit className="mr-2 h-4 w-4" /> Edit Builder
