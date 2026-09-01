@@ -2,12 +2,11 @@
 
 /**
  * ARCHITECTURE:
- * Creative Project Full Canvas Editor Client (Phase 4 - Creative Intelligence & Health)
+ * Creative Project Full Canvas Editor Client (Phase 5 - Templates & Brand Intelligence)
  * 
- * Professional WYSIWYG editor integrating multi-vector Creative Health diagnostics,
- * interactive attention saliency heatmap overlays, one-click auto-fix actions,
- * AI Creative Director (Cmd+K command bar, collaborator drawer), multi-selection bounding boxes,
- * smart guides, and responsive viewport simulations.
+ * Professional WYSIWYG editor integrating Brand Studio intelligence, AI rule enforcement,
+ * "Save as Template" workflow, Creative Health diagnostics, attention heatmap overlays,
+ * AI Creative Director (Cmd+K, collaborator drawer), and precision multi-selection transforms.
  * 
  * CAUTION:
  * Mid-drag updates must specify `commitToHistory = false`.
@@ -15,7 +14,7 @@
  * Strict typing (0% any).
  * 
  * TESTABILITY:
- * Verified via unit tests in src/lib/creative/__tests__/creative-health-engine.test.ts
+ * Verified via unit tests in src/lib/creative/__tests__/creative-templates.test.ts
  */
 
 import * as React from 'react';
@@ -29,12 +28,14 @@ import type {
   CreativeConcept,
   CreativeHealthReport,
   CreativeHealthIssue,
+  CreativeTemplate,
   BrandKit,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId, THUMBNAIL_FONT_OPTIONS } from '@/lib/creative/creative-types';
 import type { MediaAsset } from '@/lib/types';
 import { evaluateCreativeHealth } from '@/lib/creative/creative-health-engine';
 import { applyHealthFix, applyImproveAllFixes } from '@/lib/creative/creative-health-fixes';
+import { evaluateBrandCompliance, applyBrandRulesToElements } from '@/lib/creative/brand-intelligence';
 import ThumbnailCanvas from '@/components/shared/thumbnail-designer/ThumbnailCanvas';
 import { ContextualActionBar } from '@/components/shared/thumbnail-designer/ContextualActionBar';
 import { LayersTreePanel } from '@/components/shared/thumbnail-designer/LayersTreePanel';
@@ -53,6 +54,7 @@ import {
   listCreativeVersionsAction,
 } from '@/app/actions/creative-project-actions';
 import { getWorkspaceBrandKitAction } from '@/app/actions/brand-kit-actions';
+import { saveCanvasAsTemplateAction } from '@/app/actions/creative-template-actions';
 import {
   listProjectCommentsAction,
   addProjectCommentAction,
@@ -89,6 +91,8 @@ import {
   Smartphone,
   Keyboard,
   Eye,
+  ShieldCheck,
+  BookmarkPlus,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -168,8 +172,15 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     evaluatedAt: new Date().toISOString(),
   });
 
-  // Brand Kit State
+  // Brand Kit State (Phase 5)
   const [brandKit, setBrandKit] = useState<BrandKit | null>(null);
+
+  // Save as Template Dialog State (Phase 5)
+  const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
+  const [templateName, setTemplateName] = useState('');
+  const [templateCategory, setTemplateCategory] = useState<CreativeTemplate['category']>('general');
+  const [templateDescription, setTemplateDescription] = useState('');
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
 
   // Cloud Comments State
   const [comments, setComments] = useState<CreativeComment[]>([]);
@@ -241,6 +252,11 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     }, 250);
     return () => clearTimeout(timer);
   }, [document, brandKit]);
+
+  // Brand Compliance Report (Phase 5)
+  const brandCompliance = useMemo(() => {
+    return evaluateBrandCompliance(document.elements, brandKit);
+  }, [document.elements, brandKit]);
 
   // 3. Debounced Autosave (1500ms)
   const saveDocumentNow = useCallback(async () => {
@@ -394,6 +410,58 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     }
 
     toast({ title: 'Brand Theme Applied', description: 'Applied brand kit colors, typography, and watermark.' });
+  };
+
+  const handleApplyBrandRules = () => {
+    if (!brandKit) return;
+    const enforced = applyBrandRulesToElements(document.elements, brandKit);
+    useCreativeEditor.setState((s) => ({
+      document: {
+        ...s.document,
+        elements: enforced,
+        updatedAt: new Date().toISOString(),
+      },
+      isDirty: true,
+      history: {
+        past: [...s.history.past, s.history.present],
+        present: { ...s.document, elements: enforced },
+        future: [],
+      },
+    }));
+    toast({
+      title: 'Brand Rules Enforced',
+      description: `Synchronized typography to ${brandKit.typography.displayFont} and primary palette.`,
+    });
+  };
+
+  const handleSaveAsTemplate = async () => {
+    if (!templateName.trim() || !project || !document) return;
+    setIsSavingTemplate(true);
+    const res = await saveCanvasAsTemplateAction(
+      document.id,
+      project.workspaceId,
+      templateName.trim(),
+      templateDescription.trim(),
+      templateCategory,
+      'workspace'
+    );
+    setIsSavingTemplate(false);
+
+    if (res.success) {
+      setIsSaveTemplateOpen(false);
+      setTemplateName('');
+      setTemplateDescription('');
+      toast({
+        title: 'Template Saved to Library',
+        description: `"${res.data?.name}" is now available in your Template Marketplace.`,
+      });
+    } else {
+      toast({
+        title: 'Save Failed',
+        description: res.error || 'Could not save template.',
+        variant: 'destructive',
+      });
+    }
   };
 
   // -------------------------------------------------------------
@@ -743,6 +811,20 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
             <Wand2 className="w-3.5 h-3.5 mr-1.5" /> AI Director
           </Button>
 
+          {/* Save as Template Trigger (Phase 5) */}
+          <Button
+            onClick={() => {
+              setTemplateName(`${project.name} Template`);
+              setIsSaveTemplateOpen(true);
+            }}
+            variant="outline"
+            size="sm"
+            className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97] hidden sm:flex items-center"
+          >
+            <BookmarkPlus className="w-3.5 h-3.5 mr-1.5 text-amber-400" />
+            <span>Template</span>
+          </Button>
+
           {/* Viewport Preview Simulator */}
           <Button
             onClick={() => setShowViewportSimulator(true)}
@@ -941,13 +1023,44 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
               </div>
             </TabsContent>
 
-            {/* Tab 2: Brand Kit Quick Apply */}
+            {/* Tab 2: Brand Studio & AI Compliance (Phase 5) */}
             <TabsContent value="brand" className="flex-1 overflow-y-auto p-4 space-y-4 m-0 scrollbar-none">
-              <div className="space-y-3">
-                <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Brand Governance</div>
-                {brandKit ? (
-                  <div className="p-3.5 rounded-2xl bg-slate-900/60 border border-slate-800 space-y-3">
-                    <div className="font-bold text-xs text-white">{brandKit.name}</div>
+              {brandKit ? (
+                <div className="space-y-4">
+                  {/* Brand Health Gauge */}
+                  <div className="p-3.5 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-2 text-center">
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Brand Health</div>
+                    <div
+                      className={cn(
+                        'text-3xl font-black font-mono',
+                        brandCompliance.overallScore >= 90
+                          ? 'text-emerald-400'
+                          : brandCompliance.overallScore >= 75
+                          ? 'text-amber-400'
+                          : 'text-rose-400'
+                      )}
+                    >
+                      {brandCompliance.overallScore}/100
+                    </div>
+                    <div className="text-[11px] text-slate-400">
+                      {brandCompliance.isCompliant
+                        ? '✓ All required brand guidelines satisfied.'
+                        : '⚠ Some elements deviate from workspace guidelines.'}
+                    </div>
+                  </div>
+
+                  {/* Registered Tokens */}
+                  <div className="p-3.5 rounded-2xl bg-slate-900/50 border border-slate-800 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="font-bold text-xs text-white">{brandKit.name}</div>
+                      <Link
+                        href="/admin/creative-studio/brand"
+                        className="text-[10px] text-emerald-400 hover:underline font-bold"
+                      >
+                        Edit in Studio
+                      </Link>
+                    </div>
+
                     <div>
                       <div className="text-[10px] font-semibold text-slate-400 mb-1.5">Brand Colors</div>
                       <div className="flex gap-1.5">
@@ -961,21 +1074,56 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
                         ))}
                       </div>
                     </div>
+
                     <div>
                       <div className="text-[10px] font-semibold text-slate-400">Display Typography</div>
                       <div className="text-xs font-bold text-emerald-400">{brandKit.typography.displayFont}</div>
                     </div>
-                    <Button
-                      onClick={handleApplyBrandKit}
-                      className="w-full bg-emerald-500 hover:bg-emerald-600 font-bold text-xs text-slate-950 rounded-xl h-9 active:scale-[0.98]"
-                    >
-                      Apply Brand Kit
-                    </Button>
+
+                    <div className="pt-2 flex gap-2">
+                      <Button
+                        onClick={handleApplyBrandKit}
+                        variant="outline"
+                        className="flex-1 border-slate-800 bg-slate-950 text-slate-200 text-xs font-bold h-9 rounded-xl active:scale-[0.98]"
+                      >
+                        Apply Theme
+                      </Button>
+                      <Button
+                        onClick={handleApplyBrandRules}
+                        className="flex-1 bg-emerald-500 hover:bg-emerald-600 font-black text-xs text-slate-950 rounded-xl h-9 active:scale-[0.98]"
+                      >
+                        <ShieldCheck className="w-3.5 h-3.5 mr-1" /> Enforce Rules
+                      </Button>
+                    </div>
                   </div>
-                ) : (
-                  <div className="text-xs text-slate-500">Loading workspace brand assets...</div>
-                )}
-              </div>
+
+                  {/* AI Brand Rules */}
+                  {brandKit.aiRules && brandKit.aiRules.length > 0 && (
+                    <div className="space-y-2">
+                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">
+                        Active AI Brand Rules
+                      </div>
+                      <div className="space-y-1.5">
+                        {brandKit.aiRules.map((rule) => (
+                          <div
+                            key={rule.id}
+                            className="p-2.5 rounded-xl bg-slate-900 border border-slate-800/80 text-xs flex items-center justify-between gap-2"
+                          >
+                            <span className="text-[11px] text-slate-300 font-medium">{rule.rule}</span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded bg-slate-950 text-emerald-400 font-mono uppercase shrink-0">
+                              {rule.active ? 'Active' : 'Off'}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-xs text-slate-500 p-4 text-center">
+                  No Brand Kit configured. Visit Brand Studio to set up workspace guidelines.
+                </div>
+              )}
             </TabsContent>
 
             {/* Tab 3: Hierarchical Layers Tree Panel (Phase 2) */}
@@ -1396,6 +1544,77 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           </aside>
         )}
       </div>
+
+      {/* Save Canvas As Workspace Template Dialog (Phase 5) */}
+      <Dialog open={isSaveTemplateOpen} onOpenChange={setIsSaveTemplateOpen}>
+        <DialogContent className="max-w-md bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black flex items-center gap-2 text-white">
+              <BookmarkPlus className="w-5 h-5 text-amber-400" /> Save as Workspace Template
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Template Title</Label>
+              <Input
+                value={templateName}
+                onChange={(e) => setTemplateName(e.target.value)}
+                placeholder="e.g. Weekly Masterclass Thumbnail"
+                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Category</Label>
+              <Select
+                value={templateCategory}
+                onValueChange={(val: CreativeTemplate['category']) => setTemplateCategory(val)}
+              >
+                <SelectTrigger className="h-10 bg-slate-900 border-slate-800 text-xs font-bold text-white rounded-xl">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectItem value="business">Business & SaaS</SelectItem>
+                  <SelectItem value="education">Education & Courses</SelectItem>
+                  <SelectItem value="podcast">Podcast & Shows</SelectItem>
+                  <SelectItem value="finance">Finance & Markets</SelectItem>
+                  <SelectItem value="social">Social & Reels</SelectItem>
+                  <SelectItem value="ads">Performance Ads</SelectItem>
+                  <SelectItem value="general">General</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-bold text-slate-300">Description</Label>
+              <Input
+                value={templateDescription}
+                onChange={(e) => setTemplateDescription(e.target.value)}
+                placeholder="Reusable layout description..."
+                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
+              />
+            </div>
+
+            <div className="pt-2 flex justify-end gap-2">
+              <Button
+                onClick={() => setIsSaveTemplateOpen(false)}
+                variant="outline"
+                className="h-10 text-xs font-bold border-slate-800 bg-slate-900 rounded-xl"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveAsTemplate}
+                disabled={isSavingTemplate || !templateName.trim()}
+                className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 font-black text-xs text-slate-950 rounded-xl active:scale-[0.97]"
+              >
+                {isSavingTemplate ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : 'Save Template'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Floating AI Command Bar (Cmd+K) (Phase 3) */}
       <AiCommandBar

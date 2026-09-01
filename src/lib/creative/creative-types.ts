@@ -194,6 +194,18 @@ export interface BrandKit {
   updatedAt?: string;
 }
 
+export interface BrandComplianceReport {
+  overallScore: number; // 0 - 100
+  isCompliant: boolean;
+  violations: {
+    ruleId?: string;
+    ruleType: 'color' | 'font' | 'logo' | 'watermark' | 'layout';
+    message: string;
+    severity: 'required' | 'recommended' | 'optional';
+  }[];
+  evaluatedAt: string;
+}
+
 export interface CreativeComment {
   id: string;
   projectId: string;

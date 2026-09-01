@@ -316,6 +316,41 @@ export function BackofficeCreativeClient() {
             </div>
           </div>
         </div>
+
+        {/* Template Marketplace & Blueprints Hub (Phase 5) */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Template Marketplace Blueprints</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Global catalog management & seeding</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Seed 6 high-converting starter blueprints (Education, Podcast, Finance, B2B SaaS) into the global template catalog.
+          </p>
+
+          <div className="pt-1">
+            <Button
+              onClick={handleSeedBlueprints}
+              disabled={isSeeding}
+              className="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.97] text-slate-950 font-black text-xs h-10 rounded-xl"
+            >
+              {isSeeding ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Seeding Global Blueprints...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 mr-2" /> Seed Global Blueprints
+                </>
+              )}
+            </Button>
+          </div>
+        </div>
       </div>
 
       {/* Migration Report */}
