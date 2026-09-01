@@ -24,6 +24,10 @@ import {
   SurveyCrmTaskRule,
   SurveyCrmDealRule,
   SurveyCrmFieldDefinition,
+  CrmTargetEntityType,
+  CrmFieldWriteMode,
+  CrmTaskTriggerCondition,
+  CrmFieldTransform,
 } from '@/lib/types';
 import { getSurveyCrmFieldDefinitionsAction } from '@/lib/surveys/survey-crm-sync-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -287,7 +291,7 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
                       <TableCell>
                         <Select
                           value={mapping.targetType}
-                          onValueChange={(val) => updateFieldMapping(mapping.id, { targetType: val as any })}
+                          onValueChange={(val) => updateFieldMapping(mapping.id, { targetType: val as CrmTargetEntityType })}
                         >
                           <SelectTrigger className="h-9 text-xs rounded-xl">
                             <SelectValue />
@@ -326,7 +330,7 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
                       <TableCell>
                         <Select
                           value={mapping.writeMode}
-                          onValueChange={(val) => updateFieldMapping(mapping.id, { writeMode: val as any })}
+                          onValueChange={(val) => updateFieldMapping(mapping.id, { writeMode: val as CrmFieldWriteMode })}
                         >
                           <SelectTrigger className="h-9 text-xs rounded-xl">
                             <SelectValue />
@@ -403,7 +407,7 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
                       <Label className="text-xs font-bold">Trigger Condition:</Label>
                       <Select
                         value={rule.triggerOn}
-                        onValueChange={(val) => updateTaskRule(rule.id, { triggerOn: val as any })}
+                        onValueChange={(val) => updateTaskRule(rule.id, { triggerOn: val as CrmTaskTriggerCondition })}
                       >
                         <SelectTrigger className="h-8 w-44 text-xs rounded-lg">
                           <SelectValue />
