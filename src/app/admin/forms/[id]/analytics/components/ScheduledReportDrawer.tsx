@@ -180,7 +180,7 @@ export default function ScheduledReportDrawer({
               <SheetTitle className="text-sm font-bold text-foreground">
                 Scheduled Email Reports
               </SheetTitle>
-              <p className="text-[11px] text-muted-foreground">{form.title || 'Form'} Automated Dispatches</p>
+              <p className="text-[11px] text-muted-foreground">{formTitle} Automated Dispatches</p>
             </div>
           </div>
         </SheetHeader>
