@@ -44,6 +44,7 @@ import dynamic from 'next/dynamic';
 import ResponsesListView from "./components/responses-list-view";
 import AnalyticsView from "./components/analytics-view";
 import AISummariesView from "./components/ai-summaries-view";
+import { ThematicIntelligenceView } from "./components/ThematicIntelligenceView";
 import { QuestionAnalyticsTab } from "./components/QuestionAnalyticsTab";
 import { CrossTabsTab } from "./components/CrossTabsTab";
 import { FunnelDropoffTab } from "./components/FunnelDropoffTab";
@@ -259,10 +260,16 @@ function SurveyResultsPageContent() {
               <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Data Quality
             </TabsTrigger>
             <TabsTrigger
+              value="thematic"
+              className="rounded-xl px-3 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-primary transition-all active:scale-[0.97]"
+            >
+              <Sparkles className="mr-1.5 h-3.5 w-3.5" /> Themes & Sentiment
+            </TabsTrigger>
+            <TabsTrigger
               value="ai-summaries"
               className="rounded-xl px-3 py-1.5 text-xs font-semibold data-[state=active]:bg-background data-[state=active]:text-primary transition-all active:scale-[0.97]"
             >
-              <Brain className="mr-1.5 h-3.5 w-3.5" /> AI Summaries
+              <Brain className="mr-1.5 h-3.5 w-3.5" /> AI Research
             </TabsTrigger>
             {survey.assignmentEnabled && (survey.assignedUsers?.length ?? 0) > 0 && (
               <TabsTrigger
@@ -362,6 +369,16 @@ function SurveyResultsPageContent() {
             <ResponseQualityTab
               survey={survey}
               responses={filteredResponses}
+            />
+          </div>
+        </TabsContent>
+
+        <TabsContent value="thematic" className="m-0">
+          <div className="p-4 sm:p-6 lg:p-8">
+            <ThematicIntelligenceView
+              survey={survey}
+              responses={filteredResponses}
+              workspaceId={survey.workspaceIds?.[0] || activeOrganizationId || 'default'}
             />
           </div>
         </TabsContent>

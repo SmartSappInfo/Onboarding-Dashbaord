@@ -1,164 +1,157 @@
-
 'use server';
+
 /**
- * @fileOverview An AI flow to answer a user's natural language query about survey data.
+ * @fileOverview SmartSapp Survey Intelligence 2.0 — Evidence-Backed Natural Language Research Assistant Flow
+ * 
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS (Rule 10):
+ * 1. Evidence-Backed Response Attribution:
+ *    - Answering natural language questions over survey data with explicit response IDs and verbatim citations.
+ *    - Zero-hallucination discipline: Every assertion must be linked to quantifiable data or direct quotes.
+ * 2. Strict Zero-Any Invariant.
  */
 
 import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
-import { z } from 'genkit';
-import { getBaseUrl } from '@/lib/utils/url-helpers';
+import {
+  SurveyResearchAssistantInputSchema,
+  SurveyResearchAssistantOutputSchema,
+  type SurveyResearchAssistantInput,
+  type SurveyResearchAssistantOutput,
+} from '../schemas/survey-intelligence-schemas';
 
-const QuerySurveyDataInputSchema = z.object({
-  survey: z.unknown().describe('The survey object, including title, description, and elements array.'),
-  responses: z.array(z.unknown()).describe('An array of survey response objects.'),
-  query: z.string().describe('The user\'s natural language query about the data.'),
-  organizationId: z.string().optional().describe('The organization ID for API key resolution.'),
-  provider: z.string().optional().default('anthropic').describe('The AI provider to use.'),
-  modelId: z.string().optional().default('claude-3-5-sonnet').describe('The model ID to use.'),
-});
-export type QuerySurveyDataInput = z.infer<typeof QuerySurveyDataInputSchema>;
-
-const QuerySurveyDataOutputSchema = z.object({
-    answer: z.string().describe('The answer to the user query, formatted as a simple HTML string.'),
-});
-export type QuerySurveyDataOutput = z.infer<typeof QuerySurveyDataOutputSchema>;
-
-function renderQueryPrompt(input: {
-  title: string;
+function renderResearchQueryPrompt(input: {
+  surveyTitle: string;
   elementsJson: string;
   responsesJson: string;
   userQuery: string;
-  scoringEnabled: boolean;
-  maxScore?: number;
 }): string {
-  let p = `You are an expert data analyst. Your task is to answer a specific question from a user about a given set of survey data.
+  return `You are a Senior Principal Research Methodologist and SmartSapp Survey AI Copilot. Your mission is to answer the user's research query with rigorous, evidence-backed findings.
 
-    --- CONTEXT ---
-    Title: ${input.title}
-    Scoring Enabled: ${input.scoringEnabled}
+--- CONTEXT ---
+Survey Title: ${input.surveyTitle}
+
+--- SURVEY STRUCTURE ---
+--- ELEMENTS JSON ---\n${input.elementsJson}\n--- END ELEMENTS ---
+
+--- RESPONSE DATASET SAMPLE ---
+--- RESPONSES JSON ---\n${input.responsesJson}\n--- END RESPONSES ---
+
+--- USER RESEARCH QUERY ---
+"${input.userQuery}"
+
+--- STRICT EVIDENCE & GROUNDING INSTRUCTIONS ---
+1. answerHtml: Provide a clear, nuanced, highly structured HTML answer (<p>, <strong>, <ul>, <li>, <blockquote>). Highlight critical patterns. Do NOT use inline styles or <style> tags.
+2. confidenceScore (0-100): Assign a score reflecting certainty based on sample size and clarity of evidence.
+3. sampleSizeAnalyzed: Number of survey responses relevant to this answer.
+4. keyMetrics: Extract 2-4 critical quantitative metric data points (e.g. label: "Detractor Rate", value: "38%", comparison: "vs 14% campus benchmark").
+5. evidenceCitations: Supply 2-5 explicit citations backing your assertions. Each citation MUST provide:
+   - responseId: Exact response ID from the dataset.
+   - questionTitle: Related survey question title.
+   - evidenceText: Exact verbatim quote or quantitative answer.
+   - context: Optional respondent channel or role.
+6. suggestedFollowUpQuestions: Suggest 2-3 logical next analytical questions the researcher should investigate.
 `;
-
-  if (input.scoringEnabled && input.maxScore !== undefined) {
-    p += `    Max Possible Score: ${input.maxScore}\n`;
-  }
-
-  p += `
-    --- SURVEY STRUCTURE ---
-    \`\`\`json
-    ${input.elementsJson}
-    \`\`\`
-
-    --- RESPONSES ---
-    \`\`\`json
-    ${input.responsesJson}
-    \`\`\`
-
-    --- USER QUERY ---
-    "${input.userQuery}"
-
-    --- INSTRUCTIONS ---
-    Based on the data provided, please provide a clear and concise answer to the user's query.
-`;
-
-  if (input.scoringEnabled) {
-    p += `    - IMPORTANT: Since scoring is enabled, use the scores and result page logic to provide more meaningful context if relevant to the user's question.\n`;
-  }
-
-  p += `    - If possible, provide quantitative data (percentages, counts) to support your answer.
-    - If the query is about qualitative data (text responses), identify common themes or provide representative examples.
-    - Format your response in simple, clean HTML using tags like <p>, <strong>, <ul>, and <blockquote>. Ensure each paragraph, list item, and heading is enclosed in its own tag to ensure proper spacing. Do not use complex HTML, inline styles, or <style> tags.
-  `;
-  return p;
 }
 
-const querySurveyDataFlow = ai.defineFlow(
-    {
-        name: 'querySurveyDataFlow',
-        inputSchema: QuerySurveyDataInputSchema,
-        outputSchema: QuerySurveyDataOutputSchema,
-    },
-    async (input) => {
-        const { survey, responses, query: userQuery, organizationId, provider = 'anthropic' } = input;
-        const typedSurvey = survey as { title: string; elements: unknown[]; scoringEnabled?: boolean; maxScore?: number };
-        const modelId = input.modelId || (provider === 'openrouter' ? 'openrouter/free' : 'claude-3-5-sonnet');
-        
-        const surveyElementsJson = JSON.stringify(typedSurvey.elements, null, 2);
-        const responsesJson = JSON.stringify(responses, null, 2);
-        
-        const promptText = renderQueryPrompt({
-            title: typedSurvey.title,
-            elementsJson: surveyElementsJson,
-            responsesJson: responsesJson,
-            userQuery: userQuery,
-            scoringEnabled: !!typedSurvey.scoringEnabled,
-            maxScore: typedSurvey.maxScore,
-        });
+export const querySurveyDataFlow = ai.defineFlow(
+  {
+    name: 'querySurveyDataFlow',
+    inputSchema: SurveyResearchAssistantInputSchema,
+    outputSchema: SurveyResearchAssistantOutputSchema,
+  },
+  async (input) => {
+    const { surveyTitle, elementsJson, responsesJson, userQuery, organizationId, provider = 'anthropic' } = input;
+    const modelId = input.modelId || (provider === 'openrouter' ? 'openrouter/free' : 'claude-3-5-sonnet');
 
-        // 1. OpenRouter Custom Path
-        if (provider === 'openrouter') {
-            let apiKey: string | undefined;
-            if (organizationId) {
-                const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
-                if (orgDoc.exists) {
-                    apiKey = orgDoc.data()?.openRouterApiKey;
-                }
-            }
+    const promptText = renderResearchQueryPrompt({
+      surveyTitle,
+      elementsJson,
+      responsesJson,
+      userQuery,
+    });
 
-            if (!apiKey) {
-                apiKey = process.env.OPENROUTER_API_KEY;
-                if (!apiKey) throw new Error('OpenRouter API key is not configured.');
-            }
-
-            const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'HTTP-Referer': getBaseUrl(),
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    model: modelId,
-                    response_format: { type: 'json_object' },
-                    messages: [
-                        { role: 'system', content: 'You are an AI generating exactly formatted JSON matching the exact schema requirements defined. Every response MUST be a single JSON object with an "answer" string key.' },
-                        { role: 'user', content: `${promptText}\n\nYou MUST return raw, well-formed JSON containing a single "answer" key. Do not wrap in markdown blocks.` },
-                    ],
-                }),
-            });
-
-            if (!response.ok) throw new Error(`OpenRouter API refused generation: ${response.statusText}`);
-            const data = await response.json();
-            const contentString = data.choices?.[0]?.message?.content;
-            if (!contentString) throw new Error('OpenRouter returned an empty payload.');
-
-            const parsed = JSON.parse(contentString.replace(/```json/g, '').replace(/```/g, '').trim());
-            return QuerySurveyDataOutputSchema.parse(parsed);
+    // 1. OpenRouter Custom Path
+    if (provider === 'openrouter') {
+      let apiKey: string | undefined;
+      if (organizationId) {
+        try {
+          const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+          apiKey = orgDoc.data()?.apiKeys?.openrouter;
+        } catch {
+          // ignore
         }
+      }
+      if (!apiKey) {
+        apiKey = process.env.OPENROUTER_API_KEY;
+      }
 
-        // 2. Native Genkit Path
-        const resolvedModel = await getModel({
-            organizationId,
-            provider,
-            modelId,
+      if (apiKey) {
+        const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: modelId.replace('openrouter/', '') || 'meta-llama/llama-3.3-70b-instruct:free',
+            messages: [
+              {
+                role: 'system',
+                content: 'You are a senior survey researcher. Output ONLY valid JSON conforming to the requested schema.',
+              },
+              { role: 'user', content: promptText },
+            ],
+            response_format: { type: 'json_object' },
+          }),
         });
 
-        const generatorAi = resolvedModel.customAi || ai;
-
-        const { output } = await generatorAi.generate({
-            model: resolvedModel.modelString,
-            prompt: promptText,
-            output: { schema: QuerySurveyDataOutputSchema }
-        });
-
-        if (!output) {
-            throw new Error("The AI model failed to answer the query.");
+        if (response.ok) {
+          const data = await response.json();
+          const contentStr = data.choices?.[0]?.message?.content || '{}';
+          const parsed = JSON.parse(contentStr);
+          return SurveyResearchAssistantOutputSchema.parse(parsed);
         }
-
-        return output;
+      }
     }
+
+    // 2. Standard Genkit Path
+    const resolvedModel = await getModel({ organizationId, provider, modelId });
+    const generatorAi = resolvedModel.customAi || ai;
+    const response = await generatorAi.generate({
+      model: resolvedModel.modelString,
+      prompt: promptText,
+      output: {
+        schema: SurveyResearchAssistantOutputSchema,
+      },
+    });
+
+    const output = response.output;
+    if (!output) {
+      throw new Error('AI failed to generate research assistant answer');
+    }
+
+    return output;
+  }
 );
 
-export async function querySurveyData(input: QuerySurveyDataInput): Promise<QuerySurveyDataOutput> {
-    return querySurveyDataFlow(input);
+/**
+ * Exported wrapper for backward compatibility with existing callers.
+ */
+export async function querySurveyData(input: {
+  survey: { title: string; elements: unknown[] };
+  responses: unknown[];
+  query: string;
+  organizationId?: string;
+  provider?: string;
+  modelId?: string;
+}): Promise<SurveyResearchAssistantOutput> {
+  return querySurveyDataFlow({
+    surveyTitle: input.survey.title,
+    elementsJson: JSON.stringify(input.survey.elements, null, 2),
+    responsesJson: JSON.stringify(input.responses.slice(0, 100), null, 2),
+    userQuery: input.query,
+    organizationId: input.organizationId,
+    provider: input.provider || 'anthropic',
+    modelId: input.modelId,
+  });
 }

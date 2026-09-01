@@ -14,7 +14,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles, Bold, Columns, Library, History, Share2, FolderGit2 } from 'lucide-react';
 import { useUser, useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyVersion } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyVersion, Survey } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import Link from 'next/link';
@@ -35,6 +35,7 @@ import { DeploymentManagerDialog } from './DeploymentManagerDialog';
 import { StructureNavigator } from './StructureNavigator';
 import { LogicStudioModal } from './LogicStudioModal';
 import { AiQuestionRefinementModal } from './AiQuestionRefinementModal';
+import { SurveyQualityAuditorDrawer } from './SurveyQualityAuditorDrawer';
 import { Badge } from '@/components/ui/badge';
 import { Split, FolderTree } from 'lucide-react';
 
@@ -71,10 +72,11 @@ export default function SurveyFormBuilder() {
     const [aiRefineQuestion, setAiRefineQuestion] = React.useState<SurveyQuestion | null>(null);
     const canvasRef = React.useRef<HTMLDivElement>(null);
 
-    // Survey 2.0 Core Platform State (Phase 1 & Phase 2)
+    // Survey 2.0 Core Platform State (Phase 1 & Phase 2 & Phase 5)
     const [isVersionDrawerOpen, setIsVersionDrawerOpen] = React.useState(false);
     const [isQuestionBankOpen, setIsQuestionBankOpen] = React.useState(false);
     const [isDeploymentDialogOpen, setIsDeploymentDialogOpen] = React.useState(false);
+    const [isQualityAuditorOpen, setIsQualityAuditorOpen] = React.useState(false);
 
     const { activeWorkspaceId, activeOrganization } = useWorkspace();
     const currentVersionNumber = watch('currentVersionNumber') || 1;
@@ -693,6 +695,22 @@ export default function SurveyFormBuilder() {
 
                             <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
 
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
+                                        onClick={() => setIsQualityAuditorOpen(true)}
+                                    >
+                                        <Sparkles className="h-4 w-4" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>
+                                    AI Quality Auditor
+                                </TooltipContent>
+                            </Tooltip>
+
                             <AiChatEditor variant="icon" />
 
                             <Tooltip>
@@ -807,6 +825,27 @@ export default function SurveyFormBuilder() {
                         id: `el_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                     };
                     insert(idx !== -1 ? idx + 1 : elements.length, newElem);
+                }}
+            />
+
+            <SurveyQualityAuditorDrawer
+                open={isQualityAuditorOpen}
+                onOpenChange={setIsQualityAuditorOpen}
+                survey={{
+                    id: surveyId,
+                    title: surveyTitle,
+                    description: watch('description'),
+                    elements: elements,
+                    workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
+                } as Survey}
+                workspaceId={activeWorkspaceId || ''}
+                onQuestionUpdated={(qId, updated) => {
+                    const idx = elements.findIndex((el: any) => el.id === qId);
+                    if (idx !== -1) {
+                        Object.entries(updated).forEach(([key, val]) => {
+                            setValue(`elements.${idx}.${key}`, val, { shouldDirty: true });
+                        });
+                    }
                 }}
             />
         </div>
