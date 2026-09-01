@@ -1483,6 +1483,149 @@ export interface OnboardingInstance {
   updatedAt?: string;
 }
 
+// ==========================================
+// GOVERNANCE & SECURITY (PHASE 5)
+// ==========================================
+
+export type AccessReviewFrequency = 'quarterly' | 'biannual' | 'annual' | 'on_demand';
+
+export type AccessReviewStatus = 'draft' | 'in_progress' | 'completed' | 'expired';
+
+export interface AccessReviewCampaign {
+  id: string;
+  organizationId: string;
+  title: string;
+  description?: string;
+  frequency: AccessReviewFrequency;
+  status: AccessReviewStatus;
+  reviewerRoleIds?: string[];
+  reviewerPersonIds?: string[];
+  totalItems: number;
+  reviewedItems: number;
+  certifiedCount: number;
+  revokedCount: number;
+  dueDate: string;
+  createdAt: string;
+  completedAt?: string;
+}
+
+export interface AccessReviewDecision {
+  id: string;
+  campaignId: string;
+  organizationId: string;
+  personId: string;
+  personName: string;
+  personEmail: string;
+  roleId: string;
+  roleName: string;
+  workspaceId?: string;
+  workspaceName?: string;
+  decision: 'pending' | 'certified' | 'revoked';
+  justification?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
+}
+
+export type TemporaryAccessStatus = 'active' | 'expired' | 'revoked';
+
+export interface TemporaryAccessGrant {
+  id: string;
+  organizationId: string;
+  personId: string;
+  personName: string;
+  personEmail: string;
+  roleId: string;
+  roleName: string;
+  workspaceId?: string;
+  reason: string;
+  durationHours: number;
+  grantedBy: string;
+  granterName: string;
+  startsAt: string;
+  expiresAt: string;
+  status: TemporaryAccessStatus;
+  revokedAt?: string;
+  revokedBy?: string;
+}
+
+export type SoDRuleSeverity = 'low' | 'medium' | 'high' | 'critical';
+
+export interface SeparationOfDutyRule {
+  id: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  roleIdA: string;
+  roleNameA: string;
+  roleIdB: string;
+  roleNameB: string;
+  severity: SoDRuleSeverity;
+  enforcementMode: 'block' | 'warn';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface SoDConflict {
+  ruleId: string;
+  ruleName: string;
+  severity: SoDRuleSeverity;
+  personId: string;
+  personName: string;
+  conflictingRoleIds: [string, string];
+  conflictingRoleNames: [string, string];
+}
+
+export interface UserSession {
+  id: string;
+  organizationId: string;
+  personId: string;
+  personName: string;
+  personEmail: string;
+  device: string;
+  browser: string;
+  os: string;
+  ipAddress?: string;
+  lastActiveAt: string;
+  isCurrentSession?: boolean;
+  status: 'active' | 'revoked';
+}
+
+export type MFAEnforcementLevel = 'disabled' | 'recommended' | 'enforced_all' | 'enforced_admins';
+
+export interface SecurityPolicyConfig {
+  organizationId: string;
+  mfaEnforcement: MFAEnforcementLevel;
+  sessionIdleTimeoutMinutes: number;
+  maxConcurrentSessions: number;
+  passwordMaxAgeDays: number;
+  requireReAuthForCritical: boolean;
+  updatedAt: string;
+  updatedBy: string;
+}
+
+export interface SecurityAuditEvent {
+  id: string;
+  organizationId: string;
+  eventType:
+    | 'role_granted'
+    | 'role_revoked'
+    | 'jit_grant_created'
+    | 'jit_grant_expired'
+    | 'sod_conflict_detected'
+    | 'session_revoked'
+    | 'access_certified'
+    | 'policy_updated'
+    | 'mfa_enforced';
+  actorId: string;
+  actorName: string;
+  targetId?: string;
+  targetName?: string;
+  description: string;
+  metadata?: Record<string, string | number | boolean | string[]>;
+  timestamp: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;
