@@ -18,6 +18,7 @@ import { useFormHistory } from '@/hooks/use-form-history';
 import FieldsSidebar, { SYSTEM_CONSTANT_FIELDS } from './components/FieldsSidebar';
 import PropertiesSidebar from './components/PropertiesSidebar';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { TagSelector } from '@/components/tags/TagSelector';
 import { createTagAction } from '@/lib/tag-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -1367,15 +1368,12 @@ export default function EditFormPage() {
                           <PlusCircle className="h-3 w-3" /> New Tag
                         </Button>
                       </div>
-                      <MultiSelect
-                        options={(workspaceTags || []).map((t: any) => ({ label: t.name, value: t.id }))}
-                        value={formData.actions?.tags || []}
-                        onChange={(val) => {
+                      <TagSelector
+                        currentTagIds={formData.actions?.tags || []}
+                        onTagsChange={(val) => {
                           const currentActions = (formData.actions || {}) as FormSubmissionActions;
                           updateField('actions', { ...currentActions, tags: val });
                         }}
-                        placeholder="Deploy tags..."
-                        className="rounded-xl bg-background border border-border/50 shadow-sm font-bold min-h-[44px] transition-all"
                       />
                       <p className="text-[9px] font-bold text-muted-foreground/50 italic leading-relaxed">
                         Respondents will automatically be tagged with these labels in the CRM upon submission.

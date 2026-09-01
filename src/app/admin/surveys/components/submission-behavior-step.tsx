@@ -15,7 +15,15 @@ import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebas
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { type SurveyQuestion, type SurveyElement, type AppField } from '@/lib/types';
+import {
+    type SurveyQuestion,
+    type SurveyElement,
+    type AppField,
+    type Tag,
+    type TagCategory,
+    type Automation,
+    type FieldGroup,
+} from '@/lib/types';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
@@ -67,7 +75,7 @@ export default function SubmissionBehaviorStep() {
         if (!firestore || !activeWorkspaceId) return null;
         return query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
     }, [firestore, activeWorkspaceId]);
-    const { data: tags } = useCollection<any>(tagsQuery);
+    const { data: tags } = useCollection<Tag>(tagsQuery);
 
     const fieldsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -86,7 +94,7 @@ export default function SubmissionBehaviorStep() {
             orderBy('order', 'asc')
         );
     }, [firestore, activeWorkspaceId]);
-    const { data: fieldGroups } = useCollection<any>(fieldGroupsQuery);
+    const { data: fieldGroups } = useCollection<FieldGroup>(fieldGroupsQuery);
 
     const automationsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
@@ -96,7 +104,7 @@ export default function SubmissionBehaviorStep() {
             orderBy('name', 'asc')
         );
     }, [firestore, activeWorkspaceId]);
-    const { data: automations } = useCollection<any>(automationsQuery);
+    const { data: automations } = useCollection<Automation>(automationsQuery);
 
     // Group fields by FieldGroup for the mapping dropdown
     const groupedTargetFields = React.useMemo(() => {
@@ -136,8 +144,23 @@ export default function SubmissionBehaviorStep() {
     const selectedAutomations = watch('autoAutomations') || [];
     const hasDraftAutomations = React.useMemo(() => {
         if (!automations || selectedAutomations.length === 0) return false;
-        return automations.some(a => selectedAutomations.includes(a.id) && (a.status === 'draft' || !a.isActive));
+        return automations.some(a => selectedAutomations.includes(a.id) && !a.isActive);
     }, [automations, selectedAutomations]);
+
+    interface SearchableSelectOption {
+        label: string;
+        value?: string;
+        options?: SearchableSelectOption[];
+    }
+
+    interface SearchableSelectProps {
+        value?: string;
+        onSelect: (val: string) => void;
+        options: SearchableSelectOption[];
+        placeholder?: string;
+        triggerClassName?: string;
+        renderOption?: (opt?: SearchableSelectOption) => string;
+    }
 
     // Helper for searchable select
     const SearchableSelect = ({ 
@@ -146,11 +169,11 @@ export default function SubmissionBehaviorStep() {
         options, 
         placeholder = "Search...", 
         triggerClassName = "",
-        renderOption = (opt: any) => opt?.label || "Select..."
-    }: any) => {
+        renderOption = (opt?: SearchableSelectOption) => opt?.label || "Select..."
+    }: SearchableSelectProps) => {
         const [open, setOpen] = React.useState(false);
-        const allOptions = options[0]?.options ? options.flatMap((g: any) => g.options) : options;
-        const selectedOpt = allOptions.find((o: any) => o.value === value);
+        const allOptions = options[0]?.options ? options.flatMap((g) => g.options || []) : options;
+        const selectedOpt = allOptions.find((o) => o.value === value);
         
         return (
             <Popover open={open} onOpenChange={setOpen}>
@@ -172,18 +195,18 @@ export default function SubmissionBehaviorStep() {
                             <CommandEmpty className="py-6 text-center text-[10px] font-bold text-muted-foreground/50 italic">No results found.</CommandEmpty>
                             
                             {options[0]?.options ? (
-                                options.map((group: any) => (
+                                options.map((group) => (
                                     <React.Fragment key={group.label}>
                                         <div className="px-4 py-2 text-[9px] uppercase tracking-widest font-black text-primary/40 bg-muted/5 select-none">
                                             {group.label}
                                         </div>
                                         <CommandGroup>
-                                            {group.options.map((opt: any) => (
+                                            {(group.options || []).map((opt) => (
                                                 <CommandItem
-                                                    key={opt.value}
+                                                    key={opt.value || opt.label}
                                                     value={opt.label}
                                                     onSelect={() => {
-                                                        onSelect(opt.value);
+                                                        if (opt.value) onSelect(opt.value);
                                                         setOpen(false);
                                                     }}
                                                     className="text-[11px] font-bold py-2.5 px-4 cursor-pointer hover:bg-primary/5 aria-selected:bg-primary/10 transition-colors"
@@ -198,12 +221,12 @@ export default function SubmissionBehaviorStep() {
                                 ))
                             ) : (
                                 <CommandGroup>
-                                    {options.map((opt: any) => (
+                                    {options.map((opt) => (
                                         <CommandItem
-                                            key={opt.value}
+                                            key={opt.value || opt.label}
                                             value={opt.label}
                                             onSelect={() => {
-                                                onSelect(opt.value);
+                                                if (opt.value) onSelect(opt.value);
                                                 setOpen(false);
                                             }}
                                             className="text-[11px] font-bold py-2.5 px-4 cursor-pointer hover:bg-primary/5 aria-selected:bg-primary/10 transition-colors"
@@ -222,11 +245,11 @@ export default function SubmissionBehaviorStep() {
     };
 
     // 3. Action Handlers
-    const handleCreateTag = async (data: any) => {
+    const handleCreateTag = async (data: { name: string; category?: string; color?: string }) => {
         if (!user || !activeWorkspaceId) return;
 
         const trimmedName = data.name.trim();
-        const existingTag = tags?.find((t: any) => t.name.toLowerCase() === trimmedName.toLowerCase());
+        const existingTag = tags?.find((t: Tag) => t.name.toLowerCase() === trimmedName.toLowerCase());
         if (existingTag) {
             toast({ title: 'Tag Auto-Selected', description: `Tag "${existingTag.name}" already exists and has been selected.` });
             setIsCreateTagOpen(false);
@@ -243,7 +266,7 @@ export default function SubmissionBehaviorStep() {
                 workspaceId: activeWorkspaceId,
                 organizationId: activeOrganizationId || '',
                 name: trimmedName,
-                category: data.category || 'custom',
+                category: (['behavioral', 'demographic', 'interest', 'status', 'lifecycle', 'engagement', 'custom'].includes(data.category || '') ? (data.category as TagCategory) : 'custom'),
                 color: data.color || '#3B82F6',
                 userId: user?.uid || '',
                 userName: user?.displayName || 'System'
@@ -261,7 +284,7 @@ export default function SubmissionBehaviorStep() {
         }
     };
 
-    const handleCreateField = async (data: any) => {
+    const handleCreateField = async (data: { label: string; variableName: string; section?: string }) => {
         if (!user || !activeWorkspaceId) return;
         setIsSubmitting(true);
         try {
@@ -288,7 +311,7 @@ export default function SubmissionBehaviorStep() {
         }
     };
 
-    const handleCreateAutomation = async (data: any) => {
+    const handleCreateAutomation = async (data: { name: string }) => {
         if (!user || !activeWorkspaceId) return;
         setIsSubmitting(true);
         try {
@@ -300,7 +323,7 @@ export default function SubmissionBehaviorStep() {
                 nodes: [],
                 edges: [],
                 trigger: { type: 'SURVEY_SUBMITTED', config: {} }
-            } as any, user?.uid || '');
+            } as unknown as Automation, user?.uid || '');
             if (res.success) {
                 toast({ title: 'Automation Drafted', description: `"${data.name}" created. Remember to complete it in Step 4.` });
                 setIsCreateAutomationOpen(false);
@@ -354,7 +377,7 @@ export default function SubmissionBehaviorStep() {
                                 control={control}
                                 render={({ field }) => (
                                     <MultiSelect
-                                        options={(tags || []).map((t: any) => ({ label: t.name, value: t.id }))} // Use ID for tags
+                                        options={(tags || []).map((t: Tag) => ({ label: t.name, value: t.id }))} // Use ID for tags
                                         value={field.value || []}
                                         onChange={field.onChange}
                                         placeholder="Deploy tags..."
@@ -395,8 +418,8 @@ export default function SubmissionBehaviorStep() {
                                 control={control}
                                 render={({ field }) => (
                                     <MultiSelect
-                                        options={(automations || []).map((a: any) => ({ 
-                                            label: `${a.name}${a.status === 'draft' || !a.isActive ? ' (Draft)' : ''}`, 
+                                        options={(automations || []).map((a: Automation) => ({ 
+                                            label: `${a.name}${!a.isActive ? ' (Draft)' : ''}`, 
                                             value: a.id 
                                         }))}
                                         value={field.value || []}
@@ -559,7 +582,14 @@ export default function SubmissionBehaviorStep() {
 // Creation Components (Local Helpers)
 // ──────────────────────────────────────────────────────────────────────────────
 
-function CreateTagDialog({ open, onOpenChange, onSubmit, isSubmitting }: any) {
+interface CreateTagDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (data: { name: string; category?: string; color?: string }) => void;
+    isSubmitting: boolean;
+}
+
+function CreateTagDialog({ open, onOpenChange, onSubmit, isSubmitting }: CreateTagDialogProps) {
     const [name, setName] = React.useState('');
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
@@ -593,7 +623,14 @@ function CreateTagDialog({ open, onOpenChange, onSubmit, isSubmitting }: any) {
     );
 }
 
-function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting }: any) {
+interface CreateFieldDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (data: { label: string; variableName: string; section?: string }) => void;
+    isSubmitting: boolean;
+}
+
+function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting }: CreateFieldDialogProps) {
     const [label, setLabel] = React.useState('');
     const [variableName, setVariableName] = React.useState('');
     
@@ -643,7 +680,14 @@ function CreateFieldDialog({ open, onOpenChange, onSubmit, isSubmitting }: any) 
     );
 }
 
-function CreateAutomationDialog({ open, onOpenChange, onSubmit, isSubmitting }: any) {
+interface CreateAutomationDialogProps {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    onSubmit: (data: { name: string }) => void;
+    isSubmitting: boolean;
+}
+
+function CreateAutomationDialog({ open, onOpenChange, onSubmit, isSubmitting }: CreateAutomationDialogProps) {
     const [name, setName] = React.useState('');
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>

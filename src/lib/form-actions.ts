@@ -1,18 +1,15 @@
 'use server';
 
-import { adminDb } from './firebase-admin';
-import { Form, FormSubmission } from './types';
-import { revalidatePath } from 'next/cache';
-import { recordConversion } from './analytics-actions';
-import { processLeadCaptureAction } from './lead-actions';
-
+import { processFormSubmissionAction } from './forms-actions';
 
 /**
- * Persists a submission for a standalone form.
+ * Persists a submission for a standalone or headless form, routing through
+ * the unified processing pipeline to guarantee consistent CRM deduplication,
+ * tagging, webhooks, multi-channel notifications, and workflow automations.
  */
 export async function submitStandaloneFormAction(
     formId: string, 
-    data: Record<string, any>, 
+    data: Record<string, unknown>, 
     workspaceId: string, 
     organizationId: string,
     metadata?: { 
@@ -26,68 +23,19 @@ export async function submitStandaloneFormAction(
         utmContent?: string;
     }
 ) {
-    try {
-        const timestamp = new Date().toISOString();
-        const formRef = adminDb.collection('forms').doc(formId);
-        const formSnap = await formRef.get();
+    const stringMetadata: Record<string, string> = {};
+    if (metadata?.utmSource) stringMetadata.utmSource = metadata.utmSource;
+    if (metadata?.utmMedium) stringMetadata.utmMedium = metadata.utmMedium;
+    if (metadata?.utmCampaign) stringMetadata.utmCampaign = metadata.utmCampaign;
+    if (metadata?.utmTerm) stringMetadata.utmTerm = metadata.utmTerm;
+    if (metadata?.utmContent) stringMetadata.utmContent = metadata.utmContent;
 
-        if (!formSnap.exists) throw new Error("Form not found.");
-        const form = { id: formSnap.id, ...formSnap.data() } as Form;
-
-        // 1. Create the submission record
-        const submissionId = `sub_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        const submission: FormSubmission = {
-            id: submissionId,
-            formId,
-            workspaceId,
-            organizationId,
-            data,
-            sourcePageId: metadata?.sourcePageId,
-            ipAddress: metadata?.ipAddress,
-            userAgent: metadata?.userAgent,
-            utmSource: metadata?.utmSource,
-            utmMedium: metadata?.utmMedium,
-            utmCampaign: metadata?.utmCampaign,
-            utmTerm: metadata?.utmTerm,
-            utmContent: metadata?.utmContent,
-            submittedAt: timestamp
-        };
-
-        await adminDb.collection('form_submissions').doc(submissionId).set(submission);
-
-        // 2. Increment submission count on the form
-        await formRef.update({
-            submissionCount: (form.submissionCount || 0) + 1,
-            updatedAt: timestamp
-        });
-
-        // 3. Handle Analytics if submitted from a campaign page
-        if (metadata?.sourcePageId) {
-            await recordConversion(metadata.sourcePageId);
-            // Process as CRM lead in the background
-            processLeadCaptureAction({
-                submissionId,
-                collection: 'form_submissions',
-                data,
-                organizationId,
-                workspaceId,
-                sourcePageId: metadata.sourcePageId,
-                formId
-            }).catch(console.error);
-        }
-
-
-
-
-        // 4. Handle Actions (Automations, Tags, etc. - Implementation detail for later)
-        // For now, we just acknowledge receipt.
-
-        revalidatePath(`/admin/forms/${formId}`);
-        return { success: true, submissionId };
-
-
-    } catch (error: any) {
-        console.error(">>> [FORM:SUBMIT] Failed:", error.message);
-        return { success: false, error: error.message };
-    }
+    return processFormSubmissionAction({
+        formId,
+        data,
+        sourcePageId: metadata?.sourcePageId,
+        ipAddress: metadata?.ipAddress,
+        userAgent: metadata?.userAgent,
+        metadata: stringMetadata,
+    });
 }

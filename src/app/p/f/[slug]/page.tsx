@@ -77,7 +77,7 @@ export default async function PublicFormPage({
   const fieldsResult = await getFieldsForWorkspace(form.workspaceId);
   const registryMap = new Map((fieldsResult.fields || []).map(f => [f.id, f]));
   
-  const resolvedFields = form.fields.map(instance => ({
+  const resolvedFields = (form.fields || []).map(instance => ({
     ...instance,
     fieldDefinition: registryMap.get(instance.appFieldId)
   })).filter(f => !!f.fieldDefinition);

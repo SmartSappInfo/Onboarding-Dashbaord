@@ -141,16 +141,13 @@ export async function deleteFormAction(id: string, userId: string) {
 
     // Delete all related submissions in chunks of 400 (safely under 500 Firestore limit)
     let totalDeleted = 0;
-    let lastDoc: FirebaseFirestore.QueryDocumentSnapshot | undefined;
 
     while (true) {
-      let q = adminDb
+      const subsSnap = await adminDb
         .collection(COLLECTIONS.FORM_SUBMISSIONS)
         .where('formId', '==', id)
-        .limit(400);
-      if (lastDoc) q = q.startAfter(lastDoc);
-
-      const subsSnap = await q.get();
+        .limit(400)
+        .get();
       if (subsSnap.empty) break;
 
       const batch = adminDb.batch();
@@ -158,7 +155,6 @@ export async function deleteFormAction(id: string, userId: string) {
       await batch.commit();
 
       totalDeleted += subsSnap.size;
-      lastDoc = subsSnap.docs[subsSnap.docs.length - 1];
       if (subsSnap.size < 400) break;
     }
 
@@ -272,16 +268,28 @@ export async function processFormSubmissionAction(input: {
 
       const entityHandling = captureSettings.handlingStrategy;
 
-      // Try to match existing entity by email or phone within the workspace
+      // Try to match existing entity by email or phone within the workspace using parallel indexed queries
       if ((email || phone) && (entityHandling === 'update_matching' || entityHandling === 'create_or_update')) {
-        const matchSnap = await adminDb.collection('workspace_entities')
-          .where('workspaceId', '==', form.workspaceId)
-          .get();
-        
-        const matchedDoc = matchSnap.docs.find(doc => {
-          const d = doc.data();
-          return (email && d.primaryEmail === email) || (phone && d.primaryPhone === phone);
-        });
+        const [emailSnap, phoneSnap] = await Promise.all([
+          email
+            ? adminDb
+                .collection('workspace_entities')
+                .where('workspaceId', '==', form.workspaceId)
+                .where('primaryEmail', '==', email)
+                .limit(1)
+                .get()
+            : null,
+          phone
+            ? adminDb
+                .collection('workspace_entities')
+                .where('workspaceId', '==', form.workspaceId)
+                .where('primaryPhone', '==', phone)
+                .limit(1)
+                .get()
+            : null,
+        ]);
+
+        const matchedDoc = (emailSnap && !emailSnap.empty) ? emailSnap.docs[0] : (phoneSnap && !phoneSnap.empty) ? phoneSnap.docs[0] : null;
 
         if (matchedDoc) {
           resolvedEntityId = matchedDoc.data().entityId;
@@ -741,24 +749,26 @@ export async function exportSubmissionsAsCsvAction(
   formId: string
 ): Promise<{ success: true; csv: string; filename: string } | { success: false; error: string }> {
   try {
-    const [formSnap, subsSnap, fieldsSnap] = await Promise.all([
+    const [formSnap, subsSnap] = await Promise.all([
       adminDb.collection(COLLECTIONS.FORMS).doc(formId).get(),
       adminDb
         .collection(COLLECTIONS.FORM_SUBMISSIONS)
         .where('formId', '==', formId)
         .orderBy('submittedAt', 'desc')
         .get(),
-      adminDb.collection(COLLECTIONS.APP_FIELDS).get(), // Fields fetched broadly; filtered client-side
     ]);
 
     if (!formSnap.exists) return { success: false, error: 'Form not found.' };
 
     const form = { id: formSnap.id, ...formSnap.data() } as Form;
     const submissions = subsSnap.docs.map(d => ({ id: d.id, ...d.data() } as FormSubmission));
-    const allFields = fieldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AppField));
 
-    // Only include fields that belong to this form's workspace
-    const workspaceFields = allFields.filter(f => f.workspaceId === form.workspaceId);
+    // Fetch only fields scoped to this workspace
+    const fieldsSnap = await adminDb
+      .collection(COLLECTIONS.APP_FIELDS)
+      .where('workspaceId', '==', form.workspaceId)
+      .get();
+    const workspaceFields = fieldsSnap.docs.map(d => ({ id: d.id, ...d.data() } as AppField));
 
     const csvFields = (form.fields || []).map(ff => {
       const appField = workspaceFields.find(af => af.id === ff.appFieldId);
