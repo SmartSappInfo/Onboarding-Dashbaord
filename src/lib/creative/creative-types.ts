@@ -248,8 +248,37 @@ export interface CreativeComment {
   authorEmail: string;
   text: string;
   resolved: boolean;
+  pinX?: number; // Normalized 0 - 100%
+  pinY?: number; // Normalized 0 - 100%
+  replies?: {
+    id: string;
+    authorName: string;
+    text: string;
+    createdAt: string;
+  }[];
   createdAt: string;
   updatedAt?: string;
+}
+
+export interface PresenceUser {
+  id: string;
+  name: string;
+  email: string;
+  avatarUrl?: string;
+  color: string;
+  cursorX?: number; // Normalized 0 - 100%
+  cursorY?: number; // Normalized 0 - 100%
+  selectedElementId?: string;
+  lastActive: string;
+}
+
+export interface CreativeApprovalDecision {
+  projectId: string;
+  status: 'approved' | 'changes_requested' | 'in_review';
+  reviewerName: string;
+  reviewerEmail: string;
+  note?: string;
+  decisionAt: string;
 }
 
 export interface CreativeVersion {

@@ -22,6 +22,8 @@ import { useEffect, useRef, useState, useMemo } from 'react';
 import type { CreativeElement, SnapGuideLine, BoundingBox, SaliencyHotspot } from '@/lib/creative/creative-types';
 import { computeBoundingBox, calculateSmartGuides } from '@/lib/creative/smart-guides';
 import { AttentionHeatmapOverlay } from './AttentionHeatmapOverlay';
+import { LiveCursorOverlay } from './LiveCursorOverlay';
+import { CanvasCommentPinOverlay } from './CanvasCommentPinOverlay';
 import * as LucideIcons from 'lucide-react';
 import { RotateCw, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -74,6 +76,12 @@ interface ThumbnailCanvasProps {
   onPanChange: (x: number, y: number) => void;
   heatmapVisible?: boolean;
   saliencyHotspots?: SaliencyHotspot[];
+  liveUsers?: PresenceUser[];
+  comments?: CreativeComment[];
+  isPinDropperActive?: boolean;
+  onDropCommentPin?: (x: number, y: number) => void;
+  onSelectCommentPin?: (comment: CreativeComment) => void;
+  activeCommentId?: string | null;
 }
 
 interface DragState {
@@ -98,18 +106,26 @@ export default function ThumbnailCanvas({
   backgroundImage,
   elements,
   selectedId,
-  selectedIds: rawSelectedIds,
+  selectedIds,
   onSelectElement,
   onSelectMultiple,
   onUpdateElement,
   onUpdateElementsBatch,
-  onDeleteElement: _onDeleteElement,
+  onDeleteElement,
+  onUndo,
+  onRedo,
   zoomPercent,
   panX,
   panY,
   onPanChange,
   heatmapVisible,
   saliencyHotspots,
+  liveUsers,
+  comments,
+  isPinDropperActive,
+  onDropCommentPin,
+  onSelectCommentPin,
+  activeCommentId,
 }: ThumbnailCanvasProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLDivElement>(null);
@@ -710,6 +726,22 @@ export default function ThumbnailCanvas({
         <AttentionHeatmapOverlay
           visible={heatmapVisible ?? false}
           hotspots={saliencyHotspots ?? []}
+        />
+
+        {/* ------------------------------------------------------------- */}
+        {/* Live Multi-User Cursor & Presence Overlay (Phase 7)           */}
+        {/* ------------------------------------------------------------- */}
+        <LiveCursorOverlay users={liveUsers ?? []} />
+
+        {/* ------------------------------------------------------------- */}
+        {/* Canvas Visual Comment Pin Layer (Phase 7)                     */}
+        {/* ------------------------------------------------------------- */}
+        <CanvasCommentPinOverlay
+          comments={comments ?? []}
+          isPinDropperActive={isPinDropperActive ?? false}
+          onDropPin={onDropCommentPin ?? (() => {})}
+          onSelectPin={onSelectCommentPin ?? (() => {})}
+          activeCommentId={activeCommentId}
         />
       </div>
     </div>
