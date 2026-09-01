@@ -12,7 +12,7 @@ export default function CreativeStudioLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col selection:bg-emerald-500 selection:text-slate-950">
+    <div className="min-h-screen bg-background text-foreground flex flex-col selection:bg-emerald-500 selection:text-white dark:selection:text-slate-950 transition-colors">
       <CreativeStudioNav />
       <main className="flex-1 flex flex-col">{children}</main>
     </div>

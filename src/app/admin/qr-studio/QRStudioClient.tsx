@@ -32,6 +32,7 @@ import {
   Clock,
   Calendar,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { Button } from '@/components/ui/button';
@@ -41,6 +42,13 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
 import {
   Select,
   SelectContent,
@@ -86,9 +94,11 @@ import {
   bulkQRAction,
   updateQRCode,
 } from '@/lib/qr-actions';
+import { exportBatchQRsToZip, type BatchExportProgress } from '@/lib/batch-zip-exporter';
 import type { QRCode as QRCodeType, QRStatus, QRCodeMode, QRCodeType as QRCodeTypeEnum } from '@/lib/types';
 import { motion, AnimatePresence } from 'framer-motion';
 import BatchImportDialog from './components/batch-import-dialog';
+import AiCreateDialog from './components/ai-create-dialog';
 import { PageContainer } from '@/components/ui/page-container';
 
 const QR_TYPE_LABELS: Record<string, string> = {
@@ -237,6 +247,7 @@ export default function QRStudioClient() {
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
   const [isBulkActionLoading, setIsBulkActionLoading] = React.useState(false);
   const [showBatchDialog, setShowBatchDialog] = React.useState(false);
+  const [showAiDialog, setShowAiDialog] = React.useState(false);
 
   // Confirmation dialog states
   const [archiveTarget, setArchiveTarget] = React.useState<QRCodeType | null>(null);
@@ -368,6 +379,48 @@ export default function QRStudioClient() {
     }
   };
 
+  // Batch ZIP export state & handler
+  const [isExportingZip, setIsExportingZip] = React.useState(false);
+  const [exportProgress, setExportProgress] = React.useState<BatchExportProgress | null>(null);
+
+  const handleBulkExportZip = async () => {
+    const selectedQRs = qrCodes.filter((qr) => selectedIds.includes(qr.id));
+    if (selectedQRs.length === 0) return;
+
+    setIsExportingZip(true);
+    setExportProgress({ current: 0, total: selectedQRs.length, percentage: 0, phase: 'rendering' });
+
+    try {
+      const { blob, filename } = await exportBatchQRsToZip(selectedQRs, {
+        onProgress: setExportProgress,
+      });
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      a.click();
+      window.URL.revokeObjectURL(url);
+
+      toast({
+        title: 'ZIP Export Complete',
+        description: `Exported ${selectedQRs.length} QR codes with manifest.csv index.`,
+      });
+    } catch (err) {
+      console.error('Batch export failed:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Export Failed',
+        description: 'Failed to generate batch ZIP archive.',
+      });
+    } finally {
+      setTimeout(() => {
+        setIsExportingZip(false);
+        setExportProgress(null);
+      }, 800);
+    }
+  };
+
   const filteredCodes = React.useMemo(() => {
     const q = debouncedSearch.toLowerCase();
     const searched = qrCodes.filter((qr) => {
@@ -482,6 +535,14 @@ export default function QRStudioClient() {
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setShowAiDialog(true)}
+              className="rounded-xl h-11 px-4 font-semibold text-sm border-primary/30 text-primary hover:bg-primary/5 active:scale-[0.97] transition-all shadow-sm"
+            >
+              <Sparkles className="h-4 w-4 mr-2 text-primary animate-pulse" />
+              Create with AI
+            </Button>
             <Button
               variant="outline"
               onClick={() => setShowBatchDialog(true)}
@@ -623,8 +684,17 @@ export default function QRStudioClient() {
                   <Button
                     variant="outline"
                     size="sm"
+                    className="h-8 rounded-lg font-semibold text-primary border-primary/30 hover:bg-primary/5 active:scale-[0.97]"
+                    disabled={isBulkActionLoading || isExportingZip}
+                    onClick={handleBulkExportZip}
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1 text-primary" /> Export ZIP
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     className="h-8 rounded-lg active:scale-[0.97]"
-                    disabled={isBulkActionLoading}
+                    disabled={isBulkActionLoading || isExportingZip}
                     onClick={() => handleBulkAction('resume')}
                   >
                     <Play className="h-3.5 w-3.5 mr-1" /> Resume
@@ -633,7 +703,7 @@ export default function QRStudioClient() {
                     variant="outline"
                     size="sm"
                     className="h-8 rounded-lg active:scale-[0.97]"
-                    disabled={isBulkActionLoading}
+                    disabled={isBulkActionLoading || isExportingZip}
                     onClick={() => handleBulkAction('pause')}
                   >
                     <Pause className="h-3.5 w-3.5 mr-1" /> Pause
@@ -642,7 +712,7 @@ export default function QRStudioClient() {
                     variant="outline"
                     size="sm"
                     className="h-8 rounded-lg text-destructive hover:bg-destructive/10 active:scale-[0.97]"
-                    disabled={isBulkActionLoading}
+                    disabled={isBulkActionLoading || isExportingZip}
                     onClick={() => handleBulkAction('archive')}
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-1" /> Archive
@@ -1076,6 +1146,45 @@ export default function QRStudioClient() {
             }
           />
         )}
+
+        {/* Batch ZIP Export Progress Dialog */}
+        <Dialog open={isExportingZip} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-[420px] rounded-2xl bg-card border-border shadow-2xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold flex items-center gap-2">
+                <Download className="h-5 w-5 text-primary" />
+                Generating Batch ZIP Archive
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Rendering high-resolution vector assets and indexing manifest.csv...
+              </DialogDescription>
+            </DialogHeader>
+            <div className="py-6 space-y-4">
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-semibold text-foreground">
+                  <span className="capitalize">{exportProgress?.phase || 'Rendering'}</span>
+                  <span>{exportProgress?.percentage ?? 0}%</span>
+                </div>
+                <div className="w-full bg-muted rounded-full h-2.5 overflow-hidden">
+                  <div
+                    className="bg-primary h-2.5 rounded-full transition-all duration-300"
+                    style={{ width: `${exportProgress?.percentage ?? 0}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground text-center">
+                  Processing {exportProgress?.current ?? 0} of {exportProgress?.total ?? 0} codes
+                </p>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Create with AI Modal Dialog */}
+        <AiCreateDialog
+          open={showAiDialog}
+          onOpenChange={setShowAiDialog}
+          onSuccess={fetchData}
+        />
       </div>
     </PageContainer>
   );

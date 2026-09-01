@@ -72,23 +72,23 @@ export function BrandStudioClient({
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 p-6 md:p-10 space-y-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full space-y-8 animate-in fade-in duration-300">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-850 pb-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-border pb-6">
         <div className="space-y-1.5">
           <div className="flex items-center gap-2">
             <Link
               href="/admin/creative-studio/projects"
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 transition-colors"
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <div className="p-1.5 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
               <Palette className="w-5 h-5" />
             </div>
-            <h1 className="text-xl md:text-2xl font-black text-white">Brand Studio</h1>
+            <h1 className="text-xl md:text-2xl font-black text-foreground">Brand Studio</h1>
           </div>
-          <p className="text-xs md:text-sm text-slate-400 max-w-2xl">
+          <p className="text-xs md:text-sm text-muted-foreground max-w-2xl">
             Configure workspace brand design tokens, display typography, logos, and AI compliance rules.
           </p>
         </div>
@@ -98,7 +98,7 @@ export function BrandStudioClient({
             <Button
               variant="outline"
               size="sm"
-              className="h-10 px-4 text-xs font-bold bg-slate-900 border-slate-800 text-slate-300 hover:text-white rounded-xl active:scale-[0.97]"
+              className="h-10 px-4 text-xs font-bold bg-card border-border text-foreground hover:bg-muted rounded-xl active:scale-[0.97]"
             >
               Template Marketplace
             </Button>
@@ -106,7 +106,7 @@ export function BrandStudioClient({
           <Button
             onClick={handleSaveBrandKit}
             disabled={isPending}
-            className="h-10 px-5 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/10"
+            className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 active:scale-[0.97] text-white dark:text-slate-950 font-black text-xs rounded-xl shadow-lg shadow-emerald-500/10"
           >
             {isPending ? (
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -123,44 +123,44 @@ export function BrandStudioClient({
         {/* Left 2 Columns: Palettes, Typography, Watermark */}
         <div className="lg:col-span-2 space-y-6">
           {/* Brand Identity & Name */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-850 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
+          <div className="p-6 rounded-3xl bg-card border border-border space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Workspace Brand Identity</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-300">Brand Kit Name</Label>
+                <Label className="text-xs font-bold text-foreground">Brand Kit Name</Label>
                 <Input
                   value={brandKit.name}
                   onChange={(e) => setBrandKit({ ...brandKit, name: e.target.value })}
                   placeholder="e.g. SmartSapp Global Brand"
-                  className="h-10 bg-slate-950 border-slate-800 text-xs font-semibold text-white rounded-xl"
+                  className="h-10 bg-background border-border text-xs font-semibold text-foreground placeholder:text-muted-foreground rounded-xl"
                 />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-300">Watermark / Logo URL</Label>
+                <Label className="text-xs font-bold text-foreground">Watermark / Logo URL</Label>
                 <Input
                   value={brandKit.watermarkUrl || ''}
                   onChange={(e) => setBrandKit({ ...brandKit, watermarkUrl: e.target.value })}
                   placeholder="https://.../logo-watermark.png"
-                  className="h-10 bg-slate-950 border-slate-800 text-xs font-semibold text-white rounded-xl"
+                  className="h-10 bg-background border-border text-xs font-semibold text-foreground placeholder:text-muted-foreground rounded-xl"
                 />
               </div>
             </div>
           </div>
 
           {/* Color Palettes */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-850 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Palette className="w-4 h-4 text-emerald-400" />
+          <div className="p-6 rounded-3xl bg-card border border-border space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Palette className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Brand Color Palette</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {/* Primary Color 1 */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-300">Primary Brand Accent</Label>
+                <Label className="text-xs font-bold text-foreground">Primary Brand Accent</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -170,7 +170,7 @@ export function BrandStudioClient({
                       updated[0] = e.target.value;
                       setBrandKit({ ...brandKit, colors: { ...brandKit.colors, primary: updated } });
                     }}
-                    className="w-10 h-10 rounded-xl border border-slate-800 bg-transparent cursor-pointer"
+                    className="w-10 h-10 rounded-xl border border-border bg-transparent cursor-pointer"
                   />
                   <Input
                     value={brandKit.colors.primary[0] || '#10b981'}
@@ -179,14 +179,14 @@ export function BrandStudioClient({
                       updated[0] = e.target.value;
                       setBrandKit({ ...brandKit, colors: { ...brandKit.colors, primary: updated } });
                     }}
-                    className="h-10 bg-slate-950 border-slate-800 text-xs font-mono text-white rounded-xl"
+                    className="h-10 bg-background border-border text-xs font-mono text-foreground rounded-xl"
                   />
                 </div>
               </div>
 
               {/* Primary Color 2 / Secondary */}
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-300">Secondary / Background Color</Label>
+                <Label className="text-xs font-bold text-foreground">Secondary / Background Color</Label>
                 <div className="flex items-center gap-2">
                   <input
                     type="color"
@@ -196,7 +196,7 @@ export function BrandStudioClient({
                       updated[1] = e.target.value;
                       setBrandKit({ ...brandKit, colors: { ...brandKit.colors, primary: updated } });
                     }}
-                    className="w-10 h-10 rounded-xl border border-slate-800 bg-transparent cursor-pointer"
+                    className="w-10 h-10 rounded-xl border border-border bg-transparent cursor-pointer"
                   />
                   <Input
                     value={brandKit.colors.primary[1] || '#0f172a'}
@@ -205,7 +205,7 @@ export function BrandStudioClient({
                       updated[1] = e.target.value;
                       setBrandKit({ ...brandKit, colors: { ...brandKit.colors, primary: updated } });
                     }}
-                    className="h-10 bg-slate-950 border-slate-800 text-xs font-mono text-white rounded-xl"
+                    className="h-10 bg-background border-border text-xs font-mono text-foreground rounded-xl"
                   />
                 </div>
               </div>
@@ -213,15 +213,15 @@ export function BrandStudioClient({
           </div>
 
           {/* Typography Governance */}
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-850 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <Type className="w-4 h-4 text-emerald-400" />
+          <div className="p-6 rounded-3xl bg-card border border-border space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Type className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Typography Standards</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-300">Display / Headline Font</Label>
+                <Label className="text-xs font-bold text-foreground">Display / Headline Font</Label>
                 <Select
                   value={brandKit.typography.displayFont || 'Impact'}
                   onValueChange={(val) =>
@@ -231,10 +231,10 @@ export function BrandStudioClient({
                     })
                   }
                 >
-                  <SelectTrigger className="h-10 bg-slate-950 border-slate-800 text-xs font-bold text-white rounded-xl">
+                  <SelectTrigger className="h-10 bg-background border-border text-xs font-bold text-foreground rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-popover border-border text-popover-foreground">
                     {THUMBNAIL_FONT_OPTIONS.map((f) => (
                       <SelectItem key={f} value={f} className="text-xs font-bold">
                         {f}
@@ -245,7 +245,7 @@ export function BrandStudioClient({
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-xs font-bold text-slate-300">Subtitle / Body Font</Label>
+                <Label className="text-xs font-bold text-foreground">Subtitle / Body Font</Label>
                 <Select
                   value={brandKit.typography.bodyFont || 'Inter'}
                   onValueChange={(val) =>
@@ -255,10 +255,10 @@ export function BrandStudioClient({
                     })
                   }
                 >
-                  <SelectTrigger className="h-10 bg-slate-950 border-slate-800 text-xs font-bold text-white rounded-xl">
+                  <SelectTrigger className="h-10 bg-background border-border text-xs font-bold text-foreground rounded-xl">
                     <SelectValue />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
+                  <SelectContent className="bg-popover border-border text-popover-foreground">
                     {THUMBNAIL_FONT_OPTIONS.map((f) => (
                       <SelectItem key={f} value={f} className="text-xs font-bold">
                         {f}
@@ -273,13 +273,13 @@ export function BrandStudioClient({
 
         {/* Right Column: AI Brand Rules Engine */}
         <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-slate-900/60 border border-slate-850 space-y-4 shadow-xl">
-            <div className="flex items-center gap-2 text-sm font-bold text-white">
-              <ShieldCheck className="w-4 h-4 text-emerald-400" />
+          <div className="p-6 rounded-3xl bg-card border border-border space-y-4 shadow-sm">
+            <div className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>AI Brand Rules</span>
             </div>
 
-            <p className="text-xs text-slate-400 leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Rules enforced by the AI Creative Director and real-time Health Linter during composition generation.
             </p>
 
@@ -287,21 +287,21 @@ export function BrandStudioClient({
               {(brandKit.aiRules || []).map((rule) => (
                 <div
                   key={rule.id}
-                  className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 space-y-2 flex items-start justify-between gap-3"
+                  className="p-3 rounded-2xl bg-muted/40 border border-border space-y-2 flex items-start justify-between gap-3"
                 >
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold px-1.5 py-0.2 rounded bg-slate-900 border border-slate-700 text-emerald-400 uppercase font-mono">
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-background border border-border text-emerald-600 dark:text-emerald-400 uppercase font-mono">
                         {rule.type}
                       </span>
-                      <span className="text-[10px] text-slate-500 uppercase">{rule.severity}</span>
+                      <span className="text-[10px] text-muted-foreground uppercase">{rule.severity}</span>
                     </div>
-                    <p className="text-xs font-medium text-slate-200 leading-relaxed">{rule.rule}</p>
+                    <p className="text-xs font-medium text-foreground leading-relaxed">{rule.rule}</p>
                   </div>
                   <Switch
                     checked={rule.active}
                     onCheckedChange={() => handleToggleRule(rule.id)}
-                    className="data-[state=checked]:bg-emerald-500 shrink-0 mt-1"
+                    className="data-[state=checked]:bg-emerald-600 dark:data-[state=checked]:bg-emerald-500 shrink-0 mt-1"
                   />
                 </div>
               ))}

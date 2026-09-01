@@ -6209,6 +6209,98 @@ export type QRCornerDotStyle = 'square' | 'dot';
 export type QRErrorCorrection = 'L' | 'M' | 'Q' | 'H';
 export type QRStatus = 'draft' | 'active' | 'scheduled' | 'paused' | 'expired' | 'suspended' | 'archived';
 
+export type BarcodeSymbology = 'code128' | 'ean13' | 'upca' | 'code39' | 'itf14' | 'datamatrix';
+
+export interface BarcodeDesign {
+  symbology: BarcodeSymbology;
+  barColor?: string;
+  backgroundColor?: string;
+  showText?: boolean;
+  textPosition?: 'bottom' | 'top';
+  fontSize?: number;
+  height?: number; // px, default 100
+  margin?: number; // px, default 10
+}
+
+export interface BatchQRItem {
+  name: string;
+  destinationUrl: string;
+  type?: QRCodeType;
+  utmSource?: string;
+  utmMedium?: string;
+  utmCampaign?: string;
+  startAt?: string;
+  expiresAt?: string;
+  maxScans?: number;
+  fallbackUrl?: string;
+  customData?: Record<string, string>;
+  contactId?: string;
+}
+
+export interface QRBatchJob {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  name: string;
+  totalCount: number;
+  successfulCount: number;
+  failedCount: number;
+  status: 'pending' | 'processing' | 'completed' | 'failed';
+  itemIds: string[];
+  manifestUrl?: string;
+  createdBy: { userId: string; name: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AiGeneratedQRConfig {
+  name: string;
+  type: QRCodeType;
+  destinationUrl: string;
+  ctaText: string;
+  headline: string;
+  subheadline?: string;
+  frameStyle: QRFrameStyle;
+  frameIcon?: QRFrameIcon;
+  foregroundColor: string;
+  backgroundColor: string;
+  cornerSquareColor?: string;
+  cornerDotColor?: string;
+  dotStyle: QRDotStyle;
+  cornerSquareStyle: QRCornerSquareStyle;
+  cornerDotStyle: QRCornerDotStyle;
+  errorCorrection: QRErrorCorrection;
+  campaignTags: string[];
+  tracking: {
+    utmSource?: string;
+    utmMedium?: string;
+    utmCampaign?: string;
+  };
+  reasoning: string;
+}
+
+export interface ContextualCopyResult {
+  headline: string;
+  subheadline: string;
+  ctaSuggestions: string[];
+  instructions: string;
+  emailSnippet: {
+    subject: string;
+    body: string;
+  };
+  smsText: string;
+  whatsAppBroadcast: string;
+}
+
+export interface CanvasThemeTransformResult {
+  backgroundColor: string;
+  primaryTextColor: string;
+  secondaryTextColor: string;
+  accentColor: string;
+  fontFamily: string;
+  themeName: string;
+}
+
 export interface QRGradient {
   enabled: boolean;
   type: 'linear' | 'radial';

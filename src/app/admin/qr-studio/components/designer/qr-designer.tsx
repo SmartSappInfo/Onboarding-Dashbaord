@@ -18,6 +18,7 @@ import FrameControls from './frame-controls';
 import AdvancedControls from './advanced-controls';
 import ScannabilityChecker, { computeScannabilityScore } from './scannability-checker';
 import TemplateControls from './template-controls';
+import AiCopywriterDrawer from './ai-copywriter-drawer';
 
 // Lazy load the poster designer to keep the simple mode fast
 const CanvasPosterDesigner = React.lazy(() => import('./canvas-poster-designer'));
@@ -45,6 +46,7 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
   const [future, setFuture] = React.useState<QRDesign[]>([]);
   const [saveModalOpen, setSaveModalOpen] = React.useState(false);
   const [templateName, setTemplateName] = React.useState('');
+  const [showCopyDrawer, setShowCopyDrawer] = React.useState(false);
 
   const scoreData = React.useMemo(() => computeScannabilityScore(design), [design]);
 
@@ -187,6 +189,18 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
           >
             <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />
             Apply Brand
+          </Button>
+
+          {/* AI Copywriter & CTA Assistant */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowCopyDrawer(true)}
+            className="rounded-xl h-8 text-xs font-semibold border-violet-500/30 text-violet-600 dark:text-violet-400 hover:bg-violet-500/5 active:scale-[0.97]"
+            title="Generate catchy CTAs and multi-channel copy"
+          >
+            <Sparkles className="h-3.5 w-3.5 mr-1.5 text-violet-500" />
+            AI Copywriter
           </Button>
 
           {/* Undo/Redo */}
@@ -385,6 +399,16 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* In-Designer AI Copywriter & CTA Drawer */}
+      <AiCopywriterDrawer
+        open={showCopyDrawer}
+        onOpenChange={setShowCopyDrawer}
+        qrName={templateName || 'Our Experience'}
+        destinationUrl={data}
+        type="url"
+        onApplyCTA={(ctaText) => updateDesign({ frameText: ctaText })}
+      />
     </div>
   );
 }

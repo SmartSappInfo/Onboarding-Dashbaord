@@ -131,8 +131,8 @@ export function ProjectsClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white">Creative Projects</h1>
-          <p className="text-xs sm:text-sm font-medium text-slate-400 mt-1">
+          <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">Creative Projects</h1>
+          <p className="text-xs sm:text-sm font-medium text-muted-foreground mt-1">
             Manage, edit, and organize all visual assets and campaign creative projects.
           </p>
         </div>
@@ -142,35 +142,35 @@ export function ProjectsClient() {
           <DropdownMenuTrigger asChild>
             <Button
               disabled={isCreating}
-              className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] font-black text-slate-950 rounded-xl text-xs h-10 px-5 shadow-lg shadow-emerald-500/20 transition-all min-h-[44px]"
+              className="bg-emerald-600 hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600 active:scale-[0.97] font-black text-white dark:text-slate-950 rounded-xl text-xs h-10 px-5 shadow-lg shadow-emerald-500/20 transition-all min-h-[44px]"
             >
               <Plus className="w-4 h-4 mr-1.5" /> Create Project
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200 rounded-xl p-1 shadow-2xl">
+          <DropdownMenuContent align="end" className="w-56 bg-popover border-border text-popover-foreground rounded-xl p-1 shadow-2xl">
             <DropdownMenuItem
               onClick={() => handleCreateNew('youtube_thumbnail')}
-              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"
+              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-muted flex items-center gap-2"
             >
-              <Video className="w-4 h-4 text-rose-400" /> YouTube Cover (16:9)
+              <Video className="w-4 h-4 text-rose-500" /> YouTube Cover (16:9)
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCreateNew('social')}
-              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"
+              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-muted flex items-center gap-2"
             >
-              <Instagram className="w-4 h-4 text-pink-400" /> Social Square (1:1)
+              <Instagram className="w-4 h-4 text-pink-500" /> Social Square (1:1)
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCreateNew('ad')}
-              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"
+              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-muted flex items-center gap-2"
             >
-              <Megaphone className="w-4 h-4 text-amber-400" /> Ad Banner (1200×628)
+              <Megaphone className="w-4 h-4 text-amber-500" /> Ad Banner (1200×628)
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => handleCreateNew('email')}
-              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-slate-800 flex items-center gap-2"
+              className="cursor-pointer font-bold text-xs p-2.5 rounded-lg hover:bg-muted flex items-center gap-2"
             >
-              <Mail className="w-4 h-4 text-emerald-400" /> Email Graphic (600×300)
+              <Mail className="w-4 h-4 text-emerald-500" /> Email Graphic (600×300)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -179,7 +179,7 @@ export function ProjectsClient() {
       {/* Filter and Search Controls */}
       <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
         {/* Type Tabs */}
-        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none bg-slate-900/60 p-1 rounded-xl border border-slate-800/80">
+        <div className="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 scrollbar-none bg-muted/60 p-1 rounded-xl border border-border">
           {TYPE_TABS.map((tab) => (
             <button
               key={tab.id}
@@ -187,8 +187,8 @@ export function ProjectsClient() {
               className={cn(
                 'px-3.5 py-1.5 rounded-lg text-xs font-bold whitespace-nowrap transition-all min-h-[36px] active:scale-[0.97]',
                 selectedType === tab.id
-                  ? 'bg-emerald-500 text-slate-950 shadow-sm'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-emerald-600 dark:bg-emerald-500 text-white dark:text-slate-950 shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
               {tab.label}
@@ -198,12 +198,12 @@ export function ProjectsClient() {
 
         {/* Search Bar */}
         <div className="relative w-full sm:w-72">
-          <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-500" />
+          <Search className="absolute left-3.5 top-3 h-4 w-4 text-muted-foreground" />
           <Input
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Search projects..."
-            className="pl-10 h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-slate-200 rounded-xl"
+            className="pl-10 h-10 bg-background border-border text-xs font-semibold text-foreground placeholder:text-muted-foreground rounded-xl"
           />
         </div>
       </div>
@@ -212,16 +212,16 @@ export function ProjectsClient() {
       {isLoading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
           {[1, 2, 3, 4, 5, 6].map((n) => (
-            <div key={n} className="aspect-video rounded-2xl bg-slate-900 animate-pulse border border-slate-850" />
+            <div key={n} className="aspect-video rounded-2xl bg-muted/40 animate-pulse border border-border" />
           ))}
         </div>
       ) : filteredProjects.length === 0 ? (
-        <div className="p-12 border border-slate-850 rounded-3xl bg-slate-900/20 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto text-slate-500">
+        <div className="p-12 border border-border rounded-3xl bg-card/60 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-muted border border-border flex items-center justify-center mx-auto text-muted-foreground">
             <Layers className="w-6 h-6" />
           </div>
-          <div className="text-sm font-bold text-slate-200">No Projects Found</div>
-          <p className="text-xs text-slate-400 max-w-sm mx-auto">
+          <div className="text-sm font-bold text-foreground">No Projects Found</div>
+          <p className="text-xs text-muted-foreground max-w-sm mx-auto">
             Try adjusting your search or format filters, or create a new project above.
           </p>
         </div>
@@ -231,9 +231,9 @@ export function ProjectsClient() {
             <Link
               key={proj.id}
               href={`/admin/creative-studio/projects/${proj.id}`}
-              className="group relative border border-slate-850 bg-slate-900/40 rounded-2xl overflow-hidden hover:border-slate-700 transition-all flex flex-col shadow-lg hover:shadow-emerald-500/5 active:scale-[0.98]"
+              className="group relative border border-border bg-card/60 hover:bg-card rounded-2xl overflow-hidden hover:border-border/80 transition-all flex flex-col shadow-sm hover:shadow-md active:scale-[0.98]"
             >
-              <div className="aspect-video bg-slate-950 relative overflow-hidden flex items-center justify-center border-b border-slate-850">
+              <div className="aspect-video bg-muted/30 relative overflow-hidden flex items-center justify-center border-b border-border">
                 {proj.thumbnailUrl ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
                   <img
@@ -242,20 +242,20 @@ export function ProjectsClient() {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                   />
                 ) : (
-                  <div className="flex flex-col items-center justify-center text-slate-600 text-xs font-bold gap-1">
-                    <Layers className="w-6 h-6 text-slate-700" />
+                  <div className="flex flex-col items-center justify-center text-muted-foreground text-xs font-bold gap-1">
+                    <Layers className="w-6 h-6 text-muted-foreground/60" />
                     <span>Canvas Draft</span>
                   </div>
                 )}
 
-                <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-slate-950/80 backdrop-blur-sm text-[10px] font-bold text-slate-300 border border-slate-800 uppercase tracking-wider">
+                <div className="absolute top-2.5 left-2.5 px-2 py-0.5 rounded-md bg-background/80 backdrop-blur-sm text-[10px] font-bold text-foreground border border-border uppercase tracking-wider">
                   {proj.type.replace('_', ' ')}
                 </div>
 
                 <button
                   onClick={(e) => handleDelete(e, proj.id)}
                   title="Delete Project"
-                  className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-slate-950/80 hover:bg-red-500/20 text-slate-400 hover:text-red-400 border border-slate-800 transition-colors opacity-0 group-hover:opacity-100 min-h-[32px] min-w-[32px] flex items-center justify-center"
+                  className="absolute top-2.5 right-2.5 p-1.5 rounded-lg bg-background/80 hover:bg-red-500/20 text-muted-foreground hover:text-red-500 border border-border transition-colors opacity-0 group-hover:opacity-100 min-h-[32px] min-w-[32px] flex items-center justify-center"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -263,22 +263,22 @@ export function ProjectsClient() {
 
               <div className="p-4 flex-1 flex flex-col justify-between">
                 <div>
-                  <div className="font-bold text-sm text-slate-200 group-hover:text-emerald-400 transition-colors truncate" title={proj.name}>
+                  <div className="font-bold text-sm text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate" title={proj.name}>
                     {proj.name}
                   </div>
                   {proj.campaignName && (
-                    <div className="text-[11px] font-semibold text-emerald-400/80 truncate mt-0.5">
+                    <div className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 truncate mt-0.5">
                       Campaign: {proj.campaignName}
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-800/60 text-[11px] text-slate-400 font-medium">
+                <div className="flex items-center justify-between mt-4 pt-3 border-t border-border text-[11px] text-muted-foreground font-medium">
                   <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3 text-slate-500" />
+                    <Clock className="w-3 h-3 text-muted-foreground" />
                     {new Date(proj.updatedAt).toLocaleDateString()}
                   </span>
-                  <span className="text-emerald-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
                     Edit <Edit3 className="w-3 h-3" />
                   </span>
                 </div>

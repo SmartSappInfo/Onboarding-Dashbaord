@@ -38,6 +38,7 @@ import type {
   QRLifecycleConfig,
   QRSecurityConfig,
   QRCodeTemplate,
+  BatchQRItem,
 } from '@/lib/types';
 import {
   DEFAULT_QR_DESIGN,
@@ -368,26 +369,20 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
   return { id, shortPath };
 }
 
-export interface BatchQRItem {
-  name: string;
-  destinationUrl: string;
-  utmSource?: string;
-  utmMedium?: string;
-  utmCampaign?: string;
-  startAt?: string;
-  expiresAt?: string;
-}
-
 export async function batchCreateQRCodes(
   orgId: string,
   wsId: string,
   baseDesign: Partial<QRDesign>,
   items: BatchQRItem[],
-  createdBy: { userId: string; name: string; email: string }
-): Promise<{ count: number }> {
-  const CHUNK_SIZE = 100;
+  createdBy: { userId: string; name: string; email: string },
+  jobName?: string
+): Promise<{ count: number; batchJobId: string }> {
+  // Bounded chunk size to stay safely within Firestore 500-op limits (25 items = 50 writes)
+  const CHUNK_SIZE = 25;
   const col = qrCodesCollection(orgId, wsId);
   const now = new Date().toISOString();
+  const batchJobId = nanoid(14);
+  const createdIds: string[] = [];
   let count = 0;
 
   for (let i = 0; i < items.length; i += CHUNK_SIZE) {
@@ -397,6 +392,7 @@ export async function batchCreateQRCodes(
     for (const item of chunk) {
       const id = nanoid(12);
       const shortPath = await generateUniqueShortPath();
+      createdIds.push(id);
 
       const tracking: QRTracking = {
         enabled: true,
@@ -409,6 +405,8 @@ export async function batchCreateQRCodes(
         ...DEFAULT_QR_LIFECYCLE_CONFIG,
         startAt: item.startAt || undefined,
         expiresAt: item.expiresAt || undefined,
+        maxScans: item.maxScans || undefined,
+        fallbackUrl: item.fallbackUrl || undefined,
       };
 
       const qrCode: QRCode = {
@@ -417,9 +415,9 @@ export async function batchCreateQRCodes(
         workspaceId: wsId,
         name: item.name,
         slug: generateSlug(item.name),
-        description: '',
+        description: item.customData ? JSON.stringify(item.customData) : '',
         mode: 'dynamic',
-        type: 'url',
+        type: item.type || 'url',
         destination: { url: item.destinationUrl },
         shortPath,
         redirectUrl: `/q/${shortPath}`,
@@ -450,9 +448,96 @@ export async function batchCreateQRCodes(
     }
 
     await batch.commit();
+    // Inter-batch pause to prevent Firestore rate limit pressure
+    await new Promise((resolve) => setTimeout(resolve, 30));
   }
 
-  return { count };
+  // Record batch job metadata for audit history
+  try {
+    const jobDoc = adminDb
+      .collection('organizations')
+      .doc(orgId)
+      .collection('workspaces')
+      .doc(wsId)
+      .collection('qr_batch_jobs')
+      .doc(batchJobId);
+
+    await jobDoc.set({
+      id: batchJobId,
+      organizationId: orgId,
+      workspaceId: wsId,
+      name: jobName || `Batch Import (${count} codes)`,
+      totalCount: count,
+      successfulCount: count,
+      failedCount: 0,
+      status: 'completed',
+      itemIds: createdIds,
+      createdBy,
+      createdAt: now,
+      updatedAt: now,
+    });
+  } catch (err) {
+    console.error('Failed to log batch job metadata:', err);
+  }
+
+  return { count, batchJobId };
+}
+
+/**
+ * Generates personalized dynamic QR codes in bulk for targeted CRM contacts.
+ */
+export async function generateQRsForAudienceAction(
+  orgId: string,
+  wsId: string,
+  contacts: { id: string; name: string; email?: string; destinationUrl: string }[],
+  baseDesign: Partial<QRDesign>,
+  createdBy: { userId: string; name: string; email: string },
+  campaignName?: string
+): Promise<{ count: number; batchJobId: string }> {
+  const items: BatchQRItem[] = contacts.map((contact) => ({
+    name: contact.name,
+    destinationUrl: contact.destinationUrl,
+    contactId: contact.id,
+    utmSource: 'crm_batch',
+    utmCampaign: campaignName || 'cohort_outreach',
+    customData: {
+      contactId: contact.id,
+      email: contact.email || '',
+    },
+  }));
+
+  return batchCreateQRCodes(orgId, wsId, baseDesign, items, createdBy, campaignName || 'CRM Audience Batch');
+}
+
+/**
+ * Bulk updates workspace contact tags on selected QR codes.
+ */
+export async function bulkTagQRCodesAction(
+  orgId: string,
+  wsId: string,
+  qrIds: string[],
+  tags: string[]
+): Promise<{ success: boolean; updatedCount: number }> {
+  const col = qrCodesCollection(orgId, wsId);
+  const CHUNK_SIZE = 25;
+  let updatedCount = 0;
+
+  for (let i = 0; i < qrIds.length; i += CHUNK_SIZE) {
+    const chunk = qrIds.slice(i, i + CHUNK_SIZE);
+    const batch = adminDb.batch();
+
+    for (const qrId of chunk) {
+      batch.update(col.doc(qrId), {
+        tags,
+        updatedAt: new Date().toISOString(),
+      });
+      updatedCount++;
+    }
+
+    await batch.commit();
+  }
+
+  return { success: true, updatedCount };
 }
 
 // ─────────────────────────────────────────────────
