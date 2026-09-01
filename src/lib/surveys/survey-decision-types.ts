@@ -181,3 +181,23 @@ export interface SurveyDecisionSimulationResult {
     delayMinutes?: number;
   }>;
 }
+
+export interface SurveyDecisionContext {
+  survey: import('../types').Survey;
+  responseId: string;
+  score?: number;
+  sentimentPolarity?: string;
+  answers: Array<{ questionId: string; value: string | string[] | number | boolean | Record<string, unknown> }>;
+  workspaceId: string;
+  organizationId?: string;
+  contactId?: string | null;
+  contactEmail?: string | null;
+  contactPhone?: string | null;
+  contactName?: string | null;
+  contactTags?: string[];
+  entityId?: string | null;
+  entityName?: string | null;
+  isAnomaly?: boolean;
+  isDropOff?: boolean;
+  quotaReached?: boolean;
+}

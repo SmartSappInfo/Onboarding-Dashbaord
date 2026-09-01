@@ -35,8 +35,6 @@ import {
   evaluateDecisionRule,
 } from './survey-decision-evaluator';
 
-export type { SurveyDecisionContext };
-
 /**
  * Safely resolves dynamic variable tokens in templates using FieldsVariablesService.
  */
