@@ -1,3 +1,28 @@
+/**
+ * @fileoverview SmartSapp QR Platform 2.0 Server Actions
+ *
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR FUTURE MAINTAINERS:
+ * ────────────────────────────────────────────────────────
+ * 1. Multi-Tenant Isolation:
+ *    - All operational QR assets (`qr_codes`, `qr_code_templates`, `qr_scan_events`) reside strictly within
+ *      `organizations/{orgId}/workspaces/{wsId}/...` collections.
+ *    - The root collection `short_paths/{shortPath}` is a global index used exclusively for fast O(1)
+ *      redirect lookup without needing slow cross-workspace `collectionGroup` queries.
+ *
+ * 2. Normalization Guarantee (`normalizeQRCode`):
+ *    - Legacy documents in Firestore may lack new lifecycle, security, or typed statistical attributes.
+ *    - ALWAYS pass raw Firestore documents through `normalizeQRCode()` before returning to callers.
+ *
+ * 3. Atomic Collision Safety:
+ *    - Dynamic shortlink reservations write to both the workspace document and the global `short_paths`
+ *      document. When renaming or replacing shortlinks, use Firestore `batch` or transactions.
+ *
+ * 4. Zero `any` Policy:
+ *    - All inputs, return types, and utility functions must remain strictly typed.
+ *
+ * @testability Exported server actions verified in unit and integration test suites.
+ */
+
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
@@ -10,12 +35,18 @@ import type {
   QRDestination,
   QRTracking,
   QRStatus,
+  QRLifecycleConfig,
+  QRSecurityConfig,
   QRCodeTemplate,
 } from '@/lib/types';
-import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
+import {
+  DEFAULT_QR_DESIGN,
+  DEFAULT_QR_LIFECYCLE_CONFIG,
+  DEFAULT_QR_SECURITY_CONFIG,
+} from '@/lib/qr-constants';
 
 // ─────────────────────────────────────────────────
-// Helpers
+// Helpers & Data Normalization
 // ─────────────────────────────────────────────────
 
 /**
@@ -23,16 +54,16 @@ import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
  * does not reject the document. Nested objects are cleaned recursively.
  * Arrays are preserved but their elements are also cleaned.
  */
-function stripUndefined<T extends Record<string, any>>(obj: T): T {
-  const cleaned: Record<string, any> = {};
+function stripUndefined<T extends Record<string, unknown>>(obj: T): T {
+  const cleaned: Record<string, unknown> = {};
   for (const [key, value] of Object.entries(obj)) {
     if (value === undefined) continue;
     if (value !== null && typeof value === 'object' && !Array.isArray(value) && !(value instanceof Date)) {
-      cleaned[key] = stripUndefined(value);
+      cleaned[key] = stripUndefined(value as Record<string, unknown>);
     } else if (Array.isArray(value)) {
       cleaned[key] = value.map((item) =>
         item !== null && typeof item === 'object' && !Array.isArray(item)
-          ? stripUndefined(item)
+          ? stripUndefined(item as Record<string, unknown>)
           : item
       );
     } else {
@@ -40,6 +71,108 @@ function stripUndefined<T extends Record<string, any>>(obj: T): T {
     }
   }
   return cleaned as T;
+}
+
+/**
+ * Normalizes raw Firestore document data into a canonical, strictly-typed `QRCode`.
+ * Provides 100% backward compatibility for legacy records created prior to Platform 2.0.
+ */
+export function normalizeQRCode(raw: Record<string, unknown> | undefined): QRCode | null {
+  if (!raw || typeof raw !== 'object' || !raw.id) return null;
+
+  const rawStats = (raw.stats as Record<string, unknown>) || {};
+  const rawDestination = (raw.destination as Record<string, unknown>) || {};
+  const rawDesign = (raw.design as Record<string, unknown>) || {};
+  const rawTracking = (raw.tracking as Record<string, unknown>) || {};
+  const rawLifecycle = (raw.lifecycleConfig as Record<string, unknown>) || {};
+  const rawSecurity = (raw.securityConfig as Record<string, unknown>) || {};
+  const rawCreatedBy = (raw.createdBy as Record<string, unknown>) || {};
+
+  const status = (raw.status as QRStatus) || 'active';
+  const mode = (raw.mode as QRCodeMode) || 'static';
+  const type = (raw.type as QRCodeType) || 'url';
+
+  const destination: QRDestination = {
+    url: typeof rawDestination.url === 'string' ? rawDestination.url : undefined,
+    resourceType: typeof rawDestination.resourceType === 'string' ? rawDestination.resourceType : undefined,
+    resourceId: typeof rawDestination.resourceId === 'string' ? rawDestination.resourceId : undefined,
+    resourceName: typeof rawDestination.resourceName === 'string' ? rawDestination.resourceName : undefined,
+    title: typeof rawDestination.title === 'string' ? rawDestination.title : undefined,
+    fallbackUrl: typeof rawDestination.fallbackUrl === 'string' ? rawDestination.fallbackUrl : undefined,
+    metadata: typeof rawDestination.metadata === 'object' && rawDestination.metadata !== null
+      ? (rawDestination.metadata as Record<string, unknown>)
+      : undefined,
+  };
+
+  const design: QRDesign = {
+    ...DEFAULT_QR_DESIGN,
+    ...(rawDesign as unknown as Partial<QRDesign>),
+  };
+
+  const tracking: QRTracking = {
+    enabled: typeof rawTracking.enabled === 'boolean' ? rawTracking.enabled : mode === 'dynamic',
+    utmSource: typeof rawTracking.utmSource === 'string' ? rawTracking.utmSource : undefined,
+    utmMedium: typeof rawTracking.utmMedium === 'string' ? rawTracking.utmMedium : undefined,
+    utmCampaign: typeof rawTracking.utmCampaign === 'string' ? rawTracking.utmCampaign : undefined,
+    campaignName: typeof rawTracking.campaignName === 'string' ? rawTracking.campaignName : undefined,
+    sourceLabel: typeof rawTracking.sourceLabel === 'string' ? rawTracking.sourceLabel : undefined,
+  };
+
+  const lifecycleConfig: QRLifecycleConfig = {
+    ...DEFAULT_QR_LIFECYCLE_CONFIG,
+    startAt: typeof rawLifecycle.startAt === 'string' ? rawLifecycle.startAt : undefined,
+    expiresAt: typeof rawLifecycle.expiresAt === 'string' ? rawLifecycle.expiresAt : undefined,
+    maxScans: typeof rawLifecycle.maxScans === 'number' ? rawLifecycle.maxScans : undefined,
+    fallbackUrl: typeof rawLifecycle.fallbackUrl === 'string' ? rawLifecycle.fallbackUrl : destination.fallbackUrl,
+    timezone: typeof rawLifecycle.timezone === 'string' ? rawLifecycle.timezone : undefined,
+  };
+
+  const securityConfig: QRSecurityConfig = {
+    ...DEFAULT_QR_SECURITY_CONFIG,
+    passwordProtected: typeof rawSecurity.passwordProtected === 'boolean' ? rawSecurity.passwordProtected : false,
+    passwordHash: typeof rawSecurity.passwordHash === 'string' ? rawSecurity.passwordHash : undefined,
+    restrictDomain: typeof rawSecurity.restrictDomain === 'boolean' ? rawSecurity.restrictDomain : false,
+    allowedDomains: Array.isArray(rawSecurity.allowedDomains) ? (rawSecurity.allowedDomains as string[]) : [],
+    anonymizeIp: typeof rawSecurity.anonymizeIp === 'boolean' ? rawSecurity.anonymizeIp : (DEFAULT_QR_SECURITY_CONFIG.anonymizeIp ?? true),
+    blockBotScans: typeof rawSecurity.blockBotScans === 'boolean' ? rawSecurity.blockBotScans : (DEFAULT_QR_SECURITY_CONFIG.blockBotScans ?? true),
+    maxScansPerMinutePerIp: typeof rawSecurity.maxScansPerMinutePerIp === 'number' ? rawSecurity.maxScansPerMinutePerIp : DEFAULT_QR_SECURITY_CONFIG.maxScansPerMinutePerIp,
+  };
+
+  return {
+    id: String(raw.id),
+    organizationId: String(raw.organizationId || ''),
+    workspaceId: String(raw.workspaceId || ''),
+    name: String(raw.name || 'Untitled QR Code'),
+    slug: String(raw.slug || generateSlug(String(raw.name || 'qr'))),
+    description: typeof raw.description === 'string' ? raw.description : '',
+    mode,
+    type,
+    destination,
+    shortPath: typeof raw.shortPath === 'string' ? raw.shortPath : undefined,
+    redirectUrl: typeof raw.redirectUrl === 'string' ? raw.redirectUrl : undefined,
+    design,
+    tracking,
+    status,
+    lifecycleConfig,
+    securityConfig,
+    campaignId: typeof raw.campaignId === 'string' ? raw.campaignId : undefined,
+    collectionId: typeof raw.collectionId === 'string' ? raw.collectionId : undefined,
+    notifications: raw.notifications ? (raw.notifications as QRCode['notifications']) : undefined,
+    stats: {
+      totalScans: typeof rawStats.totalScans === 'number' ? rawStats.totalScans : 0,
+      uniqueScans: typeof rawStats.uniqueScans === 'number' ? rawStats.uniqueScans : 0,
+      uniqueVisitors: typeof rawStats.uniqueVisitors === 'number' ? rawStats.uniqueVisitors : 0,
+      scanCountToday: typeof rawStats.scanCountToday === 'number' ? rawStats.scanCountToday : 0,
+      lastScannedAt: typeof rawStats.lastScannedAt === 'string' ? rawStats.lastScannedAt : undefined,
+    },
+    createdBy: {
+      userId: String(rawCreatedBy.userId || ''),
+      name: String(rawCreatedBy.name || ''),
+      email: String(rawCreatedBy.email || ''),
+    },
+    createdAt: typeof raw.createdAt === 'string' ? raw.createdAt : new Date().toISOString(),
+    updatedAt: typeof raw.updatedAt === 'string' ? raw.updatedAt : new Date().toISOString(),
+  };
 }
 
 function qrCodesCollection(orgId: string, wsId: string) {
@@ -69,64 +202,72 @@ function generateSlug(name: string): string {
 }
 
 /**
- * Basic heuristic check to prevent generation of QR codes for known bad patterns.
- * This checks for common phishing keywords, sketchy TLDs, or raw IPs which
- * are often used in malicious links.
+ * Validates destination URLs against common phishing vectors, raw IP malware hosts,
+ * direct executable downloads, and restricted spam TLDs.
+ * Returns true if valid, false if invalid, or throws if throwOnInvalid is true.
  */
-function validateSafeUrl(url: string | undefined) {
-  if (!url) return;
-  
+export function validateSafeUrl(url: string | undefined, throwOnInvalid = false): boolean {
+  if (!url || typeof url !== 'string' || !url.trim()) {
+    if (throwOnInvalid) throw new Error('A valid destination URL is required.');
+    return false;
+  }
+
   try {
-    const parsed = new URL(url);
+    const parsed = new URL(url.trim());
+    if (!['http:', 'https:'].includes(parsed.protocol.toLowerCase())) {
+      if (throwOnInvalid) throw new Error('Only HTTP and HTTPS URLs are permitted.');
+      return false;
+    }
+
     const hostname = parsed.hostname.toLowerCase();
-    
+
     // 1. Block raw IPs (often used for malware hosting)
     const ipPattern = /^(?:[0-9]{1,3}\.){3}[0-9]{1,3}$/;
     if (ipPattern.test(hostname)) {
-      throw new Error('Raw IP addresses are not permitted for security reasons.');
+      if (throwOnInvalid) throw new Error('Raw IP addresses are not permitted for security reasons.');
+      return false;
     }
-    
+
     // 2. Block sketchy TLDs commonly used for spam
     const suspiciousTLDs = ['.zip', '.xxx', '.ru', '.cn', '.tk', '.ml', '.ga', '.cf', '.gq'];
-    if (suspiciousTLDs.some(tld => hostname.endsWith(tld))) {
-      throw new Error('This domain extension is currently restricted.');
+    if (suspiciousTLDs.some((tld) => hostname.endsWith(tld))) {
+      if (throwOnInvalid) throw new Error('This domain extension is currently restricted.');
+      return false;
     }
 
     // 3. Block malicious file extensions in path
-    const suspiciousExts = ['.exe', '.apk', '.bat', '.cmd', '.sh', '.vbs'];
-    if (suspiciousExts.some(ext => parsed.pathname.toLowerCase().endsWith(ext))) {
-      throw new Error('Linking directly to executable files is restricted.');
+    const suspiciousExts = ['.exe', '.apk', '.bat', '.cmd', '.sh', '.vbs', '.msi'];
+    if (suspiciousExts.some((ext) => parsed.pathname.toLowerCase().endsWith(ext))) {
+      if (throwOnInvalid) throw new Error('Linking directly to executable files is restricted.');
+      return false;
     }
-  } catch (err: any) {
-    if (err.message.includes('restricted') || err.message.includes('security')) {
-      throw err;
+
+    return true;
+  } catch (err: unknown) {
+    if (throwOnInvalid) {
+      if (err instanceof Error) throw err;
+      throw new Error('Invalid destination URL.');
     }
-    // If it's just an invalid URL parse error, we let it pass or fail elsewhere
+    return false;
   }
 }
 
 /**
  * Generates a unique shortPath for dynamic QR codes.
- * Checks Firestore for collisions and retries up to 3 times.
+ * Checks Firestore for collisions and retries up to 3 times before expanding character space.
  */
 async function generateUniqueShortPath(maxAttempts = 3): Promise<string> {
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
     const candidate = nanoid(8);
-    // Check root 'short_paths' collection instead of collectionGroup
-    const existing = await adminDb
-      .collection('short_paths')
-      .doc(candidate)
-      .get();
-      
+    const existing = await adminDb.collection('short_paths').doc(candidate).get();
     if (!existing.exists) return candidate;
     console.warn(`[QR] shortPath collision on "${candidate}", retrying (${attempt + 1}/${maxAttempts})`);
   }
-  // Fallback: use longer ID to virtually eliminate collision
   return nanoid(12);
 }
 
 // ─────────────────────────────────────────────────
-// Create
+// Create Operations
 // ─────────────────────────────────────────────────
 
 export interface CreateQRCodeInput {
@@ -139,6 +280,9 @@ export interface CreateQRCodeInput {
   destination: QRDestination;
   design?: Partial<QRDesign>;
   tracking?: Partial<QRTracking>;
+  lifecycleConfig?: Partial<QRLifecycleConfig>;
+  securityConfig?: Partial<QRSecurityConfig>;
+  status?: QRStatus;
   createdBy: { userId: string; name: string; email: string };
   customShortPath?: string;
 }
@@ -151,7 +295,7 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
 
   const col = qrCodesCollection(input.organizationId, input.workspaceId);
   const id = nanoid(12);
-  
+
   let shortPath: string | undefined = undefined;
   if (input.mode === 'dynamic') {
     if (input.customShortPath) {
@@ -159,10 +303,7 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
       if (!/^[a-zA-Z0-9-]+$/.test(sanitized)) {
         throw new Error('Custom shortlink can only contain letters, numbers, and hyphens.');
       }
-      const existing = await adminDb
-        .collection('short_paths')
-        .doc(sanitized)
-        .get();
+      const existing = await adminDb.collection('short_paths').doc(sanitized).get();
       if (existing.exists) {
         throw new Error('This custom shortlink is already in use. Please choose another one.');
       }
@@ -173,14 +314,16 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
   }
 
   const now = new Date().toISOString();
-
   const design: QRDesign = { ...DEFAULT_QR_DESIGN, ...input.design };
   const tracking: QRTracking = { enabled: input.mode === 'dynamic', ...input.tracking };
+  const lifecycleConfig: QRLifecycleConfig = { ...DEFAULT_QR_LIFECYCLE_CONFIG, ...input.lifecycleConfig };
+  const securityConfig: QRSecurityConfig = { ...DEFAULT_QR_SECURITY_CONFIG, ...input.securityConfig };
 
-  // For dynamic QR codes, the redirect URL is through our domain
   const redirectUrl = shortPath ? `/q/${shortPath}` : undefined;
 
-  const qrCode = {
+  const initialStatus: QRStatus = input.status || (lifecycleConfig.startAt && new Date(lifecycleConfig.startAt) > new Date() ? 'scheduled' : 'active');
+
+  const qrCode: QRCode = {
     id,
     organizationId: input.organizationId,
     workspaceId: input.workspaceId,
@@ -190,22 +333,29 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
     mode: input.mode,
     type: input.type,
     destination: input.destination,
-    shortPath: shortPath || null,
-    redirectUrl: redirectUrl || null,
+    shortPath,
+    redirectUrl,
     design,
     tracking,
-    status: 'active' as const,
-    stats: { totalScans: 0 },
+    status: initialStatus,
+    lifecycleConfig,
+    securityConfig,
+    stats: {
+      totalScans: 0,
+      uniqueScans: 0,
+      uniqueVisitors: 0,
+      scanCountToday: 0,
+    },
     createdBy: input.createdBy,
     createdAt: now,
     updatedAt: now,
   };
 
-  await col.doc(id).set(stripUndefined(qrCode));
-  
-  // Register the short path globally for fast lookup and uniqueness
+  const batch = adminDb.batch();
+  batch.set(col.doc(id), stripUndefined(qrCode as unknown as Record<string, unknown>));
+
   if (shortPath) {
-    await adminDb.collection('short_paths').doc(shortPath).set({
+    batch.set(adminDb.collection('short_paths').doc(shortPath), {
       orgId: input.organizationId,
       wsId: input.workspaceId,
       qrId: id,
@@ -213,7 +363,9 @@ export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: stri
     });
   }
 
-  return { id, shortPath: shortPath || undefined };
+  await batch.commit();
+
+  return { id, shortPath };
 }
 
 export interface BatchQRItem {
@@ -222,6 +374,8 @@ export interface BatchQRItem {
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  startAt?: string;
+  expiresAt?: string;
 }
 
 export async function batchCreateQRCodes(
@@ -251,6 +405,12 @@ export async function batchCreateQRCodes(
         utmCampaign: item.utmCampaign || undefined,
       };
 
+      const lifecycleConfig: QRLifecycleConfig = {
+        ...DEFAULT_QR_LIFECYCLE_CONFIG,
+        startAt: item.startAt || undefined,
+        expiresAt: item.expiresAt || undefined,
+      };
+
       const qrCode: QRCode = {
         id,
         organizationId: orgId,
@@ -260,23 +420,25 @@ export async function batchCreateQRCodes(
         description: '',
         mode: 'dynamic',
         type: 'url',
-        destination: {
-          url: item.destinationUrl,
-        },
+        destination: { url: item.destinationUrl },
         shortPath,
         redirectUrl: `/q/${shortPath}`,
         design: { ...DEFAULT_QR_DESIGN, ...baseDesign },
         tracking,
-        status: 'active',
-        stats: { totalScans: 0 },
+        lifecycleConfig,
+        status: lifecycleConfig.startAt && new Date(lifecycleConfig.startAt) > new Date() ? 'scheduled' : 'active',
+        stats: {
+          totalScans: 0,
+          uniqueScans: 0,
+          uniqueVisitors: 0,
+          scanCountToday: 0,
+        },
         createdBy,
         createdAt: now,
         updatedAt: now,
       };
 
-      batch.set(col.doc(id), stripUndefined(qrCode));
-      
-      // Register the short path globally
+      batch.set(col.doc(id), stripUndefined(qrCode as unknown as Record<string, unknown>));
       batch.set(adminDb.collection('short_paths').doc(shortPath), {
         orgId,
         wsId,
@@ -294,7 +456,7 @@ export async function batchCreateQRCodes(
 }
 
 // ─────────────────────────────────────────────────
-// Read
+// Read Operations (Strictly Normalized)
 // ─────────────────────────────────────────────────
 
 export async function getQRCode(
@@ -304,7 +466,7 @@ export async function getQRCode(
 ): Promise<QRCode | null> {
   const doc = await qrCodesCollection(orgId, wsId).doc(qrId).get();
   if (!doc.exists) return null;
-  return doc.data() as QRCode;
+  return normalizeQRCode(doc.data() as Record<string, unknown>);
 }
 
 export async function getQRCodeByUrl(
@@ -316,9 +478,9 @@ export async function getQRCodeByUrl(
     .where('destination.url', '==', url)
     .limit(1)
     .get();
-    
+
   if (snapshot.empty) return null;
-  return snapshot.docs[0].data() as QRCode;
+  return normalizeQRCode(snapshot.docs[0].data() as Record<string, unknown>);
 }
 
 export interface ListQRCodesFilter {
@@ -352,20 +514,36 @@ export async function listQRCodes(
   }
 
   const snapshot = await query.get();
-  return snapshot.docs.map((doc) => doc.data() as QRCode);
+  return snapshot.docs
+    .map((doc) => normalizeQRCode(doc.data() as Record<string, unknown>))
+    .filter((item): item is QRCode => item !== null);
 }
 
 // ─────────────────────────────────────────────────
-// Update
+// Update Operations & Lifecycle Mutations
 // ─────────────────────────────────────────────────
 
 export async function updateQRCode(
   orgId: string,
   wsId: string,
   qrId: string,
-  updates: Partial<Pick<QRCode, 'name' | 'description' | 'destination' | 'design' | 'tracking' | 'status' | 'notifications'>>
+  updates: Partial<
+    Pick<
+      QRCode,
+      | 'name'
+      | 'description'
+      | 'destination'
+      | 'design'
+      | 'tracking'
+      | 'status'
+      | 'lifecycleConfig'
+      | 'securityConfig'
+      | 'notifications'
+      | 'campaignId'
+      | 'collectionId'
+    >
+  >
 ): Promise<void> {
-  // Validate destination safety on update
   if (updates.destination?.url) {
     validateSafeUrl(updates.destination.url);
   }
@@ -375,7 +553,7 @@ export async function updateQRCode(
     stripUndefined({
       ...updates,
       updatedAt: new Date().toISOString(),
-    })
+    } as Record<string, unknown>)
   );
 }
 
@@ -397,6 +575,73 @@ export async function updateQRDestination(
   await updateQRCode(orgId, wsId, qrId, { destination });
 }
 
+export async function updateQRLifecycle(
+  orgId: string,
+  wsId: string,
+  qrId: string,
+  lifecycleConfig: QRLifecycleConfig
+): Promise<void> {
+  const current = await getQRCode(orgId, wsId, qrId);
+  if (!current) throw new Error('QR Code not found');
+
+  let newStatus: QRStatus = current.status;
+  if (lifecycleConfig.startAt && new Date(lifecycleConfig.startAt) > new Date() && current.status === 'active') {
+    newStatus = 'scheduled';
+  } else if (lifecycleConfig.expiresAt && new Date(lifecycleConfig.expiresAt) < new Date()) {
+    newStatus = 'expired';
+  } else if (current.status === 'scheduled' && (!lifecycleConfig.startAt || new Date(lifecycleConfig.startAt) <= new Date())) {
+    newStatus = 'active';
+  }
+
+  await updateQRCode(orgId, wsId, qrId, {
+    lifecycleConfig,
+    status: newStatus,
+  });
+}
+
+export async function updateQRSecurity(
+  orgId: string,
+  wsId: string,
+  qrId: string,
+  securityConfig: QRSecurityConfig
+): Promise<void> {
+  await updateQRCode(orgId, wsId, qrId, { securityConfig });
+}
+
+export async function scheduleQRCode(
+  orgId: string,
+  wsId: string,
+  qrId: string,
+  startAt: string,
+  expiresAt?: string,
+  fallbackUrl?: string
+): Promise<void> {
+  const lifecycleConfig: QRLifecycleConfig = {
+    startAt,
+    expiresAt,
+    fallbackUrl,
+  };
+  await updateQRLifecycle(orgId, wsId, qrId, lifecycleConfig);
+}
+
+export async function expireQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  await updateQRCode(orgId, wsId, qrId, { status: 'expired' });
+}
+
+export async function pauseQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  await updateQRCode(orgId, wsId, qrId, { status: 'paused' });
+}
+
+export async function resumeQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  const current = await getQRCode(orgId, wsId, qrId);
+  const isScheduled = current?.lifecycleConfig?.startAt && new Date(current.lifecycleConfig.startAt) > new Date();
+  await updateQRCode(orgId, wsId, qrId, { status: isScheduled ? 'scheduled' : 'active' });
+}
+
+export async function archiveQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  await updateQRCode(orgId, wsId, qrId, { status: 'archived' });
+}
+
 export async function updateQRShortPath(
   orgId: string,
   wsId: string,
@@ -409,11 +654,7 @@ export async function updateQRShortPath(
       return { success: false, error: 'Custom shortlink can only contain letters, numbers, and hyphens.' };
     }
 
-    const existing = await adminDb
-      .collection('short_paths')
-      .doc(sanitized)
-      .get();
-
+    const existing = await adminDb.collection('short_paths').doc(sanitized).get();
     if (existing.exists) {
       if (existing.data()?.qrId !== qrId) {
         return { success: false, error: 'This custom shortlink is already in use. Please choose another one.' };
@@ -421,29 +662,23 @@ export async function updateQRShortPath(
     }
 
     const col = qrCodesCollection(orgId, wsId);
-    
-    // Check if the QR code exists and get its current shortPath
     const qrDoc = await col.doc(qrId).get();
     if (!qrDoc.exists) {
       return { success: false, error: 'QR Code not found.' };
     }
     const oldShortPath = qrDoc.data()?.shortPath;
 
-    // Run as batch to update both qr_code and short_paths safely
     const batch = adminDb.batch();
-    
     batch.update(col.doc(qrId), {
       shortPath: sanitized,
       redirectUrl: `/q/${sanitized}`,
       updatedAt: new Date().toISOString(),
     });
 
-    // Remove old short_path document if it changed
     if (oldShortPath && oldShortPath !== sanitized) {
       batch.delete(adminDb.collection('short_paths').doc(oldShortPath));
     }
 
-    // Set new short_path document
     batch.set(adminDb.collection('short_paths').doc(sanitized), {
       orgId,
       wsId,
@@ -453,38 +688,21 @@ export async function updateQRShortPath(
 
     await batch.commit();
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Failed to update short path:', error);
     return { success: false, error: 'Internal Server Error: Could not save shortlink.' };
   }
-}
-
-// ─────────────────────────────────────────────────
-// Status management
-// ─────────────────────────────────────────────────
-
-export async function pauseQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
-  await updateQRCode(orgId, wsId, qrId, { status: 'paused' });
-}
-
-export async function resumeQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
-  await updateQRCode(orgId, wsId, qrId, { status: 'active' });
-}
-
-export async function archiveQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
-  await updateQRCode(orgId, wsId, qrId, { status: 'archived' });
 }
 
 export async function bulkQRAction(
   orgId: string,
   wsId: string,
   qrIds: string[],
-  action: 'pause' | 'resume' | 'archive' | 'delete'
+  action: 'pause' | 'resume' | 'archive' | 'delete' | 'expire'
 ): Promise<void> {
   const col = qrCodesCollection(orgId, wsId);
-  // Break into chunks of 500 for batch limits
   const CHUNK_SIZE = 500;
-  
+
   for (let i = 0; i < qrIds.length; i += CHUNK_SIZE) {
     const chunk = qrIds.slice(i, i + CHUNK_SIZE);
     const batch = adminDb.batch();
@@ -494,9 +712,11 @@ export async function bulkQRAction(
       if (action === 'delete') {
         batch.delete(docRef);
       } else {
-        batch.update(docRef, { 
-          status: action === 'resume' ? 'active' : action,
-          updatedAt: new Date().toISOString()
+        const nextStatus: QRStatus =
+          action === 'resume' ? 'active' : action === 'expire' ? 'expired' : (action as QRStatus);
+        batch.update(docRef, {
+          status: nextStatus,
+          updatedAt: new Date().toISOString(),
         });
       }
     }
@@ -504,15 +724,11 @@ export async function bulkQRAction(
   }
 }
 
-// ─────────────────────────────────────────────────
-// Duplicate
-// ─────────────────────────────────────────────────
-
 export async function duplicateQRCode(
   orgId: string,
   wsId: string,
   qrId: string,
-  userId: { userId: string; name: string; email: string }
+  user: { userId: string; name: string; email: string }
 ): Promise<{ id: string }> {
   const original = await getQRCode(orgId, wsId, qrId);
   if (!original) throw new Error('QR code not found');
@@ -527,22 +743,30 @@ export async function duplicateQRCode(
     destination: original.destination,
     design: original.design,
     tracking: original.tracking,
-    createdBy: userId,
+    lifecycleConfig: original.lifecycleConfig,
+    securityConfig: original.securityConfig,
+    createdBy: user,
   });
 
   return { id: result.id };
 }
 
-// ─────────────────────────────────────────────────
-// Delete (hard delete for workspace cleanup)
-// ─────────────────────────────────────────────────
-
 export async function deleteQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
-  await qrCodesCollection(orgId, wsId).doc(qrId).delete();
+  const col = qrCodesCollection(orgId, wsId);
+  const doc = await col.doc(qrId).get();
+  if (doc.exists) {
+    const shortPath = doc.data()?.shortPath;
+    const batch = adminDb.batch();
+    batch.delete(col.doc(qrId));
+    if (shortPath) {
+      batch.delete(adminDb.collection('short_paths').doc(shortPath));
+    }
+    await batch.commit();
+  }
 }
 
 // ─────────────────────────────────────────────────
-// Templates
+// Template Management
 // ─────────────────────────────────────────────────
 
 export async function saveQRTemplate(
@@ -568,7 +792,7 @@ export async function saveQRTemplate(
     updatedAt: now,
   };
 
-  await col.doc(id).set(stripUndefined(template));
+  await col.doc(id).set(stripUndefined(template as unknown as Record<string, unknown>));
   return { id };
 }
 
@@ -583,7 +807,7 @@ export async function updateQRTemplate(
     stripUndefined({
       ...updates,
       updatedAt: new Date().toISOString(),
-    })
+    } as Record<string, unknown>)
   );
 }
 
@@ -612,7 +836,6 @@ export async function deleteQRTemplate(
 export async function getQRCodeByShortPath(
   shortPath: string
 ): Promise<QRCode | null> {
-  // Direct lookup in root 'short_paths' collection
   const pathDoc = await adminDb.collection('short_paths').doc(shortPath).get();
   if (!pathDoc.exists) return null;
 
@@ -621,7 +844,7 @@ export async function getQRCodeByShortPath(
 }
 
 // ─────────────────────────────────────────────────
-// Stats helpers (uses count() aggregation)
+// Aggregated Stats Helper
 // ─────────────────────────────────────────────────
 
 export async function getQRStudioStats(
@@ -630,24 +853,38 @@ export async function getQRStudioStats(
 ): Promise<{
   totalCodes: number;
   activeDynamic: number;
+  scheduledCount: number;
+  pausedCount: number;
+  expiredCount: number;
   totalScans: number;
 }> {
   const col = qrCodesCollection(orgId, wsId);
 
-  // Run counts in parallel using Firestore count() aggregation
-  const [totalSnap, activeDynamicSnap, allCodes] = await Promise.all([
+  const [totalSnap, activeDynamicSnap, scheduledSnap, pausedSnap, expiredSnap, allCodes] = await Promise.all([
     col.count().get(),
     col.where('mode', '==', 'dynamic').where('status', '==', 'active').count().get(),
-    // We still need scan totals — but use select() to only fetch the stats field
+    col.where('status', '==', 'scheduled').count().get(),
+    col.where('status', '==', 'paused').count().get(),
+    col.where('status', '==', 'expired').count().get(),
     col.select('stats.totalScans').get(),
   ]);
 
   const totalCodes = totalSnap.data().count;
   const activeDynamic = activeDynamicSnap.data().count;
+  const scheduledCount = scheduledSnap.data().count;
+  const pausedCount = pausedSnap.data().count;
+  const expiredCount = expiredSnap.data().count;
   const totalScans = allCodes.docs.reduce(
-    (sum, doc) => sum + (doc.data()?.stats?.totalScans || 0),
+    (sum, doc) => sum + (Number(doc.data()?.stats?.totalScans) || 0),
     0
   );
 
-  return { totalCodes, activeDynamic, totalScans };
+  return {
+    totalCodes,
+    activeDynamic,
+    scheduledCount,
+    pausedCount,
+    expiredCount,
+    totalScans,
+  };
 }

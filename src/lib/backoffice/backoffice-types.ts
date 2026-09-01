@@ -171,6 +171,7 @@ export type PlatformTemplateType =
   | 'meeting'
   | 'dunning'
   | 'qr_credential'
+  | 'qr_template'
   | 'brand_voice'
   | 'prompt';
 

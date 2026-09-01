@@ -60,8 +60,12 @@ export function EmbeddedQRCode({ qrId, organizationId, workspaceId, isInModal = 
     );
   }
 
-  // Construct short path URL, falling back to redirectUrl if shortPath isn't defined
-  const qrValue = qrCode.shortPath ? `${window.location.origin}/q/${qrCode.shortPath}` : (qrCode.redirectUrl || '');
+  // Construct short path URL, falling back to destination.url or redirectUrl
+  const origin = typeof window !== 'undefined' ? window.location.origin : '';
+  const qrValue =
+    qrCode.mode === 'dynamic' && qrCode.shortPath
+      ? `${origin}/q/${qrCode.shortPath}`
+      : qrCode.destination?.url || qrCode.redirectUrl || '';
 
   return (
     <div className="flex flex-col items-center justify-center p-8 space-y-6 text-center">

@@ -232,8 +232,9 @@ function getWorkspaceSubcollectionForType(type: PlatformTemplateType): string | 
       return 'document_templates';
     case 'dunning':
       return 'dunning_templates';
+    case 'qr_template':
     case 'qr_credential':
-      return 'credential_templates';
+      return 'qr_templates';
     case 'brand_voice':
       return 'brand_profiles';
     case 'prompt':

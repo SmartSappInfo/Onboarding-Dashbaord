@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { Lock } from 'lucide-react';
 import type { CanvasElement } from './canvas-types';
 
 interface Props {
@@ -9,22 +10,40 @@ interface Props {
   scaleFactor: number;
   onSelect: (e: React.MouseEvent) => void;
   onUpdate: (patch: Partial<CanvasElement>) => void;
+  onSnapGuide?: (guides: { x?: number; y?: number } | null) => void;
   children: React.ReactNode;
 }
 
-export default function CanvasInteractiveElement({ element, isSelected, scaleFactor, onSelect, onUpdate, children }: Props) {
-  const dragRef = React.useRef<{ type: 'move' | 'resize'; handle?: string; startX: number; startY: number; elX: number; elY: number; elW: number; elH: number } | null>(null);
+export default function CanvasInteractiveElement({
+  element,
+  isSelected,
+  scaleFactor,
+  onSelect,
+  onUpdate,
+  onSnapGuide,
+  children,
+}: Props) {
+  const dragRef = React.useRef<{
+    type: 'move' | 'resize';
+    handle?: string;
+    startX: number;
+    startY: number;
+    elX: number;
+    elY: number;
+    elW: number;
+    elH: number;
+  } | null>(null);
 
   const startDrag = (e: React.MouseEvent, type: 'move' | 'resize', handle?: string) => {
+    if (element.isLocked) return;
     e.stopPropagation();
     onSelect(e);
-    
-    // We need the parent container to calculate relative percentages
+
     const container = (e.target as HTMLElement).closest('.canvas-container');
     if (!container) return;
-    
+
     const rect = container.getBoundingClientRect();
-    
+
     dragRef.current = {
       type,
       handle,
@@ -42,10 +61,34 @@ export default function CanvasInteractiveElement({ element, isSelected, scaleFac
       const dy = ((ev.clientY - dragRef.current.startY) / rect.height) * 100;
 
       if (dragRef.current.type === 'move') {
-        onUpdate({
-          x: dragRef.current.elX + dx,
-          y: dragRef.current.elY + dy,
-        });
+        let newX = dragRef.current.elX + dx;
+        let newY = dragRef.current.elY + dy;
+
+        // Snapping thresholds (1.5% magnetic snap)
+        const snapThreshold = 1.5;
+        const centerX = newX + dragRef.current.elW / 2;
+        const centerY = newY + dragRef.current.elH / 2;
+        const guides: { x?: number; y?: number } = {};
+
+        // Snap Center X to 50%
+        if (Math.abs(centerX - 50) < snapThreshold) {
+          newX = 50 - dragRef.current.elW / 2;
+          guides.x = 50;
+        }
+        // Snap Left to 10% (safe margin)
+        else if (Math.abs(newX - 10) < snapThreshold) {
+          newX = 10;
+          guides.x = 10;
+        }
+
+        // Snap Center Y to 50%
+        if (Math.abs(centerY - 50) < snapThreshold) {
+          newY = 50 - dragRef.current.elH / 2;
+          guides.y = 50;
+        }
+
+        onSnapGuide?.(Object.keys(guides).length > 0 ? guides : null);
+        onUpdate({ x: newX, y: newY });
       } else if (dragRef.current.type === 'resize' && dragRef.current.handle) {
         let newX = dragRef.current.elX;
         let newY = dragRef.current.elY;
@@ -53,12 +96,12 @@ export default function CanvasInteractiveElement({ element, isSelected, scaleFac
         let newH = dragRef.current.elH;
 
         const h = dragRef.current.handle;
-        
-        if (h.includes('e')) newW = Math.max(1, dragRef.current.elW + dx);
+
+        if (h.includes('e')) newW = Math.max(2, dragRef.current.elW + dx);
         if (h.includes('s')) newH = Math.max(1, dragRef.current.elH + dy);
         if (h.includes('w')) {
-          newW = Math.max(1, dragRef.current.elW - dx);
-          if (newW > 1) newX = dragRef.current.elX + dx;
+          newW = Math.max(2, dragRef.current.elW - dx);
+          if (newW > 2) newX = dragRef.current.elX + dx;
         }
         if (h.includes('n')) {
           newH = Math.max(1, dragRef.current.elH - dy);
@@ -71,6 +114,7 @@ export default function CanvasInteractiveElement({ element, isSelected, scaleFac
 
     const handleMouseUp = () => {
       dragRef.current = null;
+      onSnapGuide?.(null);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
@@ -92,34 +136,42 @@ export default function CanvasInteractiveElement({ element, isSelected, scaleFac
         zIndex: element.isQR ? 10 : element.type === 'rect' || element.type === 'circle' ? 1 : 5,
       }}
     >
-      {/* The actual element content, scaled to fit the bounding box exactly */}
-      <div 
+      {/* The actual element content */}
+      <div
         className="w-full h-full"
-        onMouseDown={e => startDrag(e, 'move')}
-        onClick={e => e.stopPropagation()}
-        style={{ 
-          cursor: isSelected ? 'move' : 'pointer',
+        onMouseDown={(e) => startDrag(e, 'move')}
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          cursor: element.isLocked ? 'not-allowed' : isSelected ? 'move' : 'pointer',
           transform: `rotate(${element.rotation || 0}deg)`,
-          transformOrigin: 'center center'
+          transformOrigin: 'center center',
         }}
       >
         {children}
       </div>
 
+      {/* Lock Indicator Badge */}
+      {element.isLocked && isSelected && (
+        <div className="absolute top-1 right-1 p-1 rounded bg-zinc-900/80 text-white shadow pointer-events-none">
+          <Lock className="h-3 w-3" />
+        </div>
+      )}
+
       {/* Selection outline and resize handles */}
-      {isSelected && (
-        <div className="absolute inset-0 border-2 border-primary pointer-events-none">
-          {handles.map(h => (
+      {isSelected && !element.isLocked && (
+        <div className="absolute inset-0 border-2 border-primary pointer-events-none shadow-[0_0_8px_rgba(37,99,235,0.3)]">
+          {handles.map((h) => (
             <div
               key={h}
-              className="absolute bg-white border border-primary pointer-events-auto"
+              className="absolute bg-white border-2 border-primary shadow-sm pointer-events-auto rounded-full transition-transform hover:scale-125"
               style={{
-                width: '8px', height: '8px', borderRadius: '50%',
-                top: h.includes('n') ? '-4px' : h.includes('s') ? 'calc(100% - 4px)' : 'calc(50% - 4px)',
-                left: h.includes('w') ? '-4px' : h.includes('e') ? 'calc(100% - 4px)' : 'calc(50% - 4px)',
+                width: `${Math.max(8, 9 / scaleFactor)}px`,
+                height: `${Math.max(8, 9 / scaleFactor)}px`,
+                top: h.includes('n') ? '-5px' : h.includes('s') ? 'calc(100% - 4px)' : 'calc(50% - 4px)',
+                left: h.includes('w') ? '-5px' : h.includes('e') ? 'calc(100% - 4px)' : 'calc(50% - 4px)',
                 cursor: `${h}-resize`,
               }}
-              onMouseDown={e => startDrag(e, 'resize', h)}
+              onMouseDown={(e) => startDrag(e, 'resize', h)}
             />
           ))}
         </div>

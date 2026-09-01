@@ -6173,21 +6173,41 @@ export interface FormSubmission {
 }
 
 // ─────────────────────────────────────────────────
-// QR Studio Types
+// QR Studio Platform 2.0 Types
+// Strict typing, canonical lifecycle, security & poster state
 // ─────────────────────────────────────────────────
 
 export type QRCodeMode = 'static' | 'dynamic';
 
 export type QRCodeType =
-  | 'url' | 'survey' | 'form' | 'landing_page' | 'public_portal'
-  | 'doc_signing' | 'meeting' | 'invoice' | 'vcard' | 'wifi'
-  | 'email' | 'sms' | 'whatsapp' | 'text' | 'file';
+  | 'url'
+  | 'survey'
+  | 'form'
+  | 'landing_page'
+  | 'portal'
+  | 'public_portal'
+  | 'doc_signing'
+  | 'document'
+  | 'meeting'
+  | 'payment'
+  | 'invoice'
+  | 'vcard'
+  | 'wifi'
+  | 'email'
+  | 'sms'
+  | 'whatsapp'
+  | 'text'
+  | 'file'
+  | 'attendance'
+  | 'event'
+  | 'campaign'
+  | 'custom';
 
 export type QRDotStyle = 'square' | 'rounded' | 'dots' | 'classy' | 'classy-rounded' | 'extra-rounded';
 export type QRCornerSquareStyle = 'square' | 'dot' | 'extra-rounded';
 export type QRCornerDotStyle = 'square' | 'dot';
 export type QRErrorCorrection = 'L' | 'M' | 'Q' | 'H';
-export type QRStatus = 'active' | 'paused' | 'archived';
+export type QRStatus = 'draft' | 'active' | 'scheduled' | 'paused' | 'expired' | 'suspended' | 'archived';
 
 export interface QRGradient {
   enabled: boolean;
@@ -6195,6 +6215,68 @@ export interface QRGradient {
   rotation?: number;
   colorStops: { offset: number; color: string }[];
 }
+
+export interface QRCanvasElement {
+  type: 'text' | 'qr' | 'rect' | 'circle' | 'line' | 'image';
+  id: string;
+  x: number; // percentage 0-100
+  y: number;
+  width: number;
+  height: number;
+  text?: string;
+  fontSize?: number;
+  fontFamily?: string;
+  fontWeight?: string;
+  fontStyle?: string;
+  fill?: string;
+  textAlign?: string;
+  shapeFill?: string;
+  shapeStroke?: string;
+  shapeStrokeWidth?: number;
+  borderRadius?: number;
+  opacity?: number;
+  isQR?: boolean;
+  imageSrc?: string;
+  lineColor?: string;
+  lineWidth?: number;
+  selected?: boolean;
+  rotation?: number;
+}
+
+export interface QRCanvasState {
+  width: number;
+  height: number;
+  backgroundColor: string;
+  elements: QRCanvasElement[];
+  selectedId: string | null;
+}
+
+export type QRFrameStyle =
+  | 'none'
+  | 'bottom-banner'
+  | 'top-banner'
+  | 'rounded-box'
+  | 'polaroid'
+  | 'phone-mockup'
+  | 'scan-me-badge'
+  | 'ticket-stub'
+  | 'minimalist-pill'
+  | 'bubble-callout'
+  | 'banner-bottom'
+  | 'banner-top'
+  | 'rounded-bottom'
+  | 'pill';
+
+export type QRFrameIcon =
+  | 'camera'
+  | 'arrow-down'
+  | 'sparkles'
+  | 'lock'
+  | 'link'
+  | 'phone'
+  | 'star'
+  | 'shopping-bag'
+  | 'none';
 
 export interface QRDesign {
   foregroundColor: string;
@@ -6208,13 +6290,15 @@ export interface QRDesign {
   logoUrl?: string;
   logoSize?: number;        // percentage 10-30
   logoMargin?: number;      // px around logo
-  frameStyle?: 'none' | 'banner-bottom' | 'banner-top' | 'rounded-bottom' | 'pill';
+  frameStyle?: QRFrameStyle;
   frameText?: string;
   frameColor?: string;
+  frameTextColor?: string;
+  frameIcon?: QRFrameIcon;
   quietZone?: number;       // px
   errorCorrection: QRErrorCorrection;
   size?: number;            // px, default 300
-  posterData?: any;         // Serialized CanvasState for advanced poster designer
+  posterData?: QRCanvasState; // Strictly typed CanvasState
 }
 
 export interface QRDestination {
@@ -6222,7 +6306,9 @@ export interface QRDestination {
   resourceType?: string;
   resourceId?: string;
   resourceName?: string;
+  title?: string;
   fallbackUrl?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface QRTracking {
@@ -6232,6 +6318,24 @@ export interface QRTracking {
   utmCampaign?: string;
   campaignName?: string;
   sourceLabel?: string;
+}
+
+export interface QRLifecycleConfig {
+  startAt?: string;          // ISO 8601 UTC timestamp for scheduled activation
+  expiresAt?: string;        // ISO 8601 UTC timestamp for expiration
+  maxScans?: number;         // Scan threshold before auto-expiring
+  fallbackUrl?: string;      // URL to redirect when paused/expired/scheduled
+  timezone?: string;
+}
+
+export interface QRSecurityConfig {
+  passwordProtected?: boolean;
+  passwordHash?: string;
+  restrictDomain?: boolean;
+  allowedDomains?: string[];
+  anonymizeIp?: boolean;
+  blockBotScans?: boolean;
+  maxScansPerMinutePerIp?: number;
 }
 
 export interface QRCode {
@@ -6249,10 +6353,14 @@ export interface QRCode {
   design: QRDesign;
   tracking: QRTracking;
   status: QRStatus;
+  lifecycleConfig?: QRLifecycleConfig;
+  securityConfig?: QRSecurityConfig;
+  campaignId?: string;
+  collectionId?: string;
   notifications?: {
     internalAlerts?: {
       enabled: boolean;
-      userIds: string[];
+      userIds?: string[];
       emailTemplateId?: string;
       smsTemplateId?: string;
       whatsappTemplateId?: string;
@@ -6263,6 +6371,8 @@ export interface QRCode {
   stats: {
     totalScans: number;
     uniqueScans?: number;
+    uniqueVisitors?: number;
+    scanCountToday?: number;
     lastScannedAt?: string;
   };
   createdBy: { userId: string; name: string; email: string };
@@ -6274,7 +6384,7 @@ export interface QRCodeTemplate {
   id: string;
   workspaceId: string;
   organizationId: string;
-  scope: 'workspace';
+  scope: 'workspace' | 'system';
   name: string;
   category: string;
   design: QRDesign;

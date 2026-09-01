@@ -1,4 +1,4 @@
-import type { QRDesign } from '@/lib/types';
+import type { QRDesign, QRLifecycleConfig, QRSecurityConfig } from '@/lib/types';
 
 /**
  * Default QR code design configuration.
@@ -18,6 +18,21 @@ export const DEFAULT_QR_DESIGN: QRDesign = {
   frameStyle: 'none',
 };
 
+export const DEFAULT_QR_LIFECYCLE_CONFIG: QRLifecycleConfig = {
+  fallbackUrl: undefined,
+  startAt: undefined,
+  expiresAt: undefined,
+  maxScans: undefined,
+  timezone: undefined,
+};
+
+export const DEFAULT_QR_SECURITY_CONFIG: QRSecurityConfig = {
+  passwordProtected: false,
+  passwordHash: undefined,
+  restrictDomain: false,
+  allowedDomains: [],
+};
+
 export const GLOBAL_QR_TEMPLATES: Array<{ id: string; name: string; design: QRDesign }> = [
   {
     id: 'tpl-modern-blue',
@@ -28,7 +43,7 @@ export const GLOBAL_QR_TEMPLATES: Array<{ id: string; name: string; design: QRDe
       backgroundColor: '#FFFFFF',
       dotStyle: 'rounded',
       cornerSquareStyle: 'extra-rounded',
-      cornerDotStyle: 'dot' as any,
+      cornerDotStyle: 'dot',
       gradient: undefined,
     },
   },
@@ -54,7 +69,7 @@ export const GLOBAL_QR_TEMPLATES: Array<{ id: string; name: string; design: QRDe
       backgroundColor: '#FFFFFF',
       dotStyle: 'classy',
       cornerSquareStyle: 'extra-rounded',
-      cornerDotStyle: 'dot' as any,
+      cornerDotStyle: 'dot',
       gradient: undefined,
     },
   },

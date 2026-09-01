@@ -19,8 +19,8 @@ import { authorizeBackoffice } from '@/lib/backoffice/backoffice-auth';
 import { logBackofficeAction } from '@/lib/backoffice/audit-logger';
 import { getErrorMessage } from '@/lib/backoffice/backoffice-errors';
 import { chunkArray } from '@/lib/backoffice/template-propagation-engine';
-import type { PlatformTemplate, PlatformTemplateType } from '@/lib/backoffice/backoffice-types';
 import { CANONICAL_ROLE_BLUEPRINTS } from '@/lib/role-blueprint-presets';
+import { SYSTEM_POSTER_TEMPLATES } from '@/lib/poster-templates';
 
 export interface SeedDomainResult {
   pages: number;
@@ -35,6 +35,7 @@ export interface SeedDomainResult {
   pdfs: number;
   dunning: number;
   credentials: number;
+  qr_templates?: number;
   governance: number;
   total: number;
 }

@@ -10,8 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
 import { createQRCode } from '@/lib/qr-actions';
-import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
-import type { QRCodeMode, QRCodeType, QRDesign, QRDestination, QRTracking } from '@/lib/types';
+import type { QRCodeMode, QRCodeType, QRDesign, QRDestination, QRTracking, QRLifecycleConfig, QRSecurityConfig } from '@/lib/types';
+import { DEFAULT_QR_DESIGN, DEFAULT_QR_LIFECYCLE_CONFIG, DEFAULT_QR_SECURITY_CONFIG } from '@/lib/qr-constants';
 
 import StepType from './step-type';
 import StepDestination from './step-destination';
@@ -25,6 +25,8 @@ export interface WizardState {
   mode: QRCodeMode;
   design: QRDesign;
   tracking: QRTracking;
+  lifecycleConfig: QRLifecycleConfig;
+  securityConfig: QRSecurityConfig;
   name: string;
   description: string;
   customShortPath?: string;
@@ -36,6 +38,8 @@ const INITIAL_STATE: WizardState = {
   mode: 'dynamic',
   design: { ...DEFAULT_QR_DESIGN },
   tracking: { enabled: true },
+  lifecycleConfig: { ...DEFAULT_QR_LIFECYCLE_CONFIG },
+  securityConfig: { ...DEFAULT_QR_SECURITY_CONFIG },
   name: '',
   description: '',
 };
@@ -164,6 +168,8 @@ export default function CreateQRWizard() {
         destination: state.destination,
         design: state.design,
         tracking: state.tracking,
+        lifecycleConfig: state.lifecycleConfig,
+        securityConfig: state.securityConfig,
         customShortPath: state.mode === 'dynamic' && state.customShortPath ? state.customShortPath : undefined,
         createdBy: {
           userId: user.uid,

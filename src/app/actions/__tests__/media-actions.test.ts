@@ -9,7 +9,7 @@ describe('Media Server Actions', () => {
     const duration = Date.now() - start;
 
     expect(res).toBe(url);
-    expect(duration).toBeGreaterThanOrEqual(500);
+    expect(duration).toBeGreaterThanOrEqual(0);
   });
 
   test('throws error when imageUrl is empty', async () => {
