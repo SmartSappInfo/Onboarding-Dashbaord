@@ -2,20 +2,23 @@
 
 /**
  * ARCHITECTURE:
- * Creative Project Full Canvas Editor Client (Creative Studio 2.0 - Phase 1)
+ * Creative Project Full Canvas Editor Client (Phase 2 - Professional Canvas Editor)
  * 
- * Professional WYSIWYG editor integrating Zustand state store, multi-user
- * cloud comments, version history snapshots, Genkit AI generation flows,
- * dynamic Google font loader, snapping guides, and CTR/Attention health checks.
+ * Professional WYSIWYG editor integrating multi-selection, grouping, smart guides,
+ * floating contextual action bars, hierarchical layer tree, global keyboard accelerators,
+ * and responsive multi-device viewport simulations.
  * 
  * CAUTION:
  * Mid-drag updates must specify `commitToHistory = false`.
- * Touch targets must be >= 44px for mobile devices.
- * 0% any/any[] strictly enforced.
+ * Touch targets must be >= 36px (>= 44px on mobile).
+ * Strict typing (0% any).
+ * 
+ * TESTABILITY:
+ * Verified via unit tests in src/lib/creative/__tests__/use-creative-editor-phase2.test.ts
  */
 
 import * as React from 'react';
-import { useState, useEffect, useTransition, useCallback } from 'react';
+import { useState, useEffect, useTransition, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useCreativeEditor } from '@/lib/creative/use-creative-editor';
@@ -26,10 +29,16 @@ import type {
   BrandKit,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId, THUMBNAIL_FONT_OPTIONS } from '@/lib/creative/creative-types';
-import type { CanvasElement } from '@/lib/thumbnail/thumbnail-types';
 import type { MediaAsset } from '@/lib/types';
 import { analyzeThumbnailCTR } from '@/lib/thumbnail/ctr-evaluator';
 import ThumbnailCanvas from '@/components/shared/thumbnail-designer/ThumbnailCanvas';
+import { ContextualActionBar } from '@/components/shared/thumbnail-designer/ContextualActionBar';
+import { LayersTreePanel } from '@/components/shared/thumbnail-designer/LayersTreePanel';
+import {
+  KeyboardShortcutsDialog,
+  useKeyboardShortcuts,
+} from '@/components/shared/thumbnail-designer/KeyboardShortcutsDialog';
+import { ResponsiveViewportSimulator } from '@/components/shared/thumbnail-designer/ResponsiveViewportSimulator';
 import {
   getCreativeProjectWithDocumentAction,
   saveCreativeDocumentAction,
@@ -43,6 +52,7 @@ import {
   resolveProjectCommentAction,
 } from '@/app/actions/creative-comment-actions';
 import { runGenerateThumbnail } from '@/app/actions/thumbnail-actions';
+import { removeImageBackgroundAction } from '@/app/actions/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -57,8 +67,6 @@ import {
   ArrowLeft,
   Wand2,
   Save,
-  Lock,
-  Unlock,
   Copy,
   ZoomIn,
   ZoomOut,
@@ -71,6 +79,8 @@ import {
   X,
   Globe,
   Loader2,
+  Smartphone,
+  Keyboard,
 } from 'lucide-react';
 import * as LucideIcons from 'lucide-react';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
@@ -79,7 +89,7 @@ import { cn } from '@/lib/utils';
 const EMOJI_OPTIONS = ['🔥', '😱', '🚨', '👉', '💡', '💰', '❌', '✅', '👑', '💥', '👀', '💯', '📈', '🚀'];
 const PRESET_ICONS = [
   'Play', 'TrendingUp', 'AlertCircle', 'CheckCircle2', 'XCircle',
-  'ThumbsUp', 'Bell', 'Video', 'DollarSign', 'Flame', 'Sparkles'
+  'ThumbsUp', 'Bell', 'Video', 'DollarSign', 'Flame', 'Sparkles',
 ];
 
 interface ProjectEditorClientProps {
@@ -95,15 +105,33 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   // Zustand Store
   const project = useCreativeEditor((s) => s.project);
   const document = useCreativeEditor((s) => s.document);
-  const selectedId = useCreativeEditor((s) => s.selectedId);
+  const selectedIds = useCreativeEditor((s) => s.selectedIds);
   const isDirty = useCreativeEditor((s) => s.isDirty);
   const isSaving = useCreativeEditor((s) => s.isSaving);
+
   const initialize = useCreativeEditor((s) => s.initialize);
   const selectElement = useCreativeEditor((s) => s.selectElement);
+  const selectMultiple = useCreativeEditor((s) => s.selectMultiple);
+  const selectAll = useCreativeEditor((s) => s.selectAll);
+  const clearSelection = useCreativeEditor((s) => s.clearSelection);
+
   const addElement = useCreativeEditor((s) => s.addElement);
   const updateElement = useCreativeEditor((s) => s.updateElement);
+  const updateElementsBatch = useCreativeEditor((s) => s.updateElementsBatch);
   const deleteElement = useCreativeEditor((s) => s.deleteElement);
-  const duplicateElement = useCreativeEditor((s) => s.duplicateElement);
+  const deleteSelected = useCreativeEditor((s) => s.deleteSelected);
+  const duplicateSelected = useCreativeEditor((s) => s.duplicateSelected);
+  const reorderElement = useCreativeEditor((s) => s.reorderElement);
+
+  const groupSelected = useCreativeEditor((s) => s.groupSelected);
+  const ungroupSelected = useCreativeEditor((s) => s.ungroupSelected);
+  const toggleGroupLock = useCreativeEditor((s) => s.toggleGroupLock);
+  const toggleGroupVisibility = useCreativeEditor((s) => s.toggleGroupVisibility);
+
+  const alignSelected = useCreativeEditor((s) => s.alignSelected);
+  const distributeSelected = useCreativeEditor((s) => s.distributeSelected);
+  const nudgeSelected = useCreativeEditor((s) => s.nudgeSelected);
+
   const updateBackground = useCreativeEditor((s) => s.updateBackground);
   const undo = useCreativeEditor((s) => s.undo);
   const redo = useCreativeEditor((s) => s.redo);
@@ -117,6 +145,8 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
   const [panY, setPanY] = useState(0);
   const [iconSearch, setIconSearch] = useState('');
   const [showMediaDialog, setShowMediaDialog] = useState(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const [showViewportSimulator, setShowViewportSimulator] = useState(false);
 
   // Attention & CTR Evaluator State
   const [healthScore, setHealthScore] = useState(92);
@@ -240,6 +270,28 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     return () => clearTimeout(timer);
   }, [isDirty, saveDocumentNow]);
 
+  // 4. Global Keyboard Shortcuts Listener
+  useKeyboardShortcuts({
+    onSelectAll: selectAll,
+    onClearSelection: clearSelection,
+    onGroupSelected: groupSelected,
+    onUngroupSelected: ungroupSelected,
+    onDuplicateSelected: duplicateSelected,
+    onDeleteSelected: deleteSelected,
+    onNudgeSelected: nudgeSelected,
+    onUndo: undo,
+    onRedo: redo,
+    onOpenShortcutsHelp: () => setShowShortcutsModal(true),
+  });
+
+  // Selected Elements Array
+  const selectedElements = useMemo(() => {
+    const set = new Set(selectedIds);
+    return document.elements.filter((el) => set.has(el.id));
+  }, [document.elements, selectedIds]);
+
+  const selectedPrimaryElement = selectedElements.length === 1 ? selectedElements[0] : null;
+
   // Actions
   const handleAddText = (type: 'headline' | 'subtitle' | 'badge') => {
     const newEl: CreativeElement = {
@@ -347,7 +399,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
       authorEmail,
       text: newCommentText.trim(),
       documentId: document.id,
-      elementId: selectedId || undefined,
+      elementId: selectedIds.length > 0 ? selectedIds[0] : undefined,
     });
 
     if (res.success && res.data) {
@@ -387,7 +439,6 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
       backgroundGradient: ver.backgroundGradient,
       backgroundImage: ver.backgroundImage,
     });
-    // Replace elements
     useCreativeEditor.setState((s) => ({
       document: {
         ...s.document,
@@ -414,7 +465,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
             backgroundGradient: res.backgroundGradient,
           });
 
-          const mappedElements: CreativeElement[] = (res.elements || []).map((el: CanvasElement) => ({
+          const mappedElements: CreativeElement[] = (res.elements || []).map((el) => ({
             ...el,
             semanticRole: el.type === 'text' ? 'headline' : el.type === 'image' ? 'subject' : 'decoration',
           }));
@@ -438,6 +489,19 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     });
   };
 
+  const handleRemoveBackground = async (imageUrl: string) => {
+    toast({ title: 'Extracting Subject...', description: 'Running AI background removal cutout model.' });
+    try {
+      const cutoutUrl = await removeImageBackgroundAction(imageUrl);
+      if (selectedPrimaryElement) {
+        updateElement(selectedPrimaryElement.id, { imageSrc: cutoutUrl });
+      }
+      toast({ title: 'Subject Isolated', description: 'Background removed successfully.' });
+    } catch {
+      toast({ title: 'Cutout Error', description: 'Failed to remove background.', variant: 'destructive' });
+    }
+  };
+
   const handlePublishSimulated = () => {
     setIsPublishing(true);
     setTimeout(() => {
@@ -449,8 +513,6 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
       });
     }, 1200);
   };
-
-  const selectedElement = document.elements.find((el) => el.id === selectedId) || null;
 
   if (isLoading || !project) {
     return (
@@ -496,7 +558,7 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           </div>
         </div>
 
-        {/* Center: Undo/Redo & Zoom */}
+        {/* Center: Undo/Redo & Zoom Controls */}
         <div className="hidden md:flex items-center gap-1 bg-slate-900/80 p-1 rounded-xl border border-slate-800/80">
           <Button
             onClick={undo}
@@ -536,6 +598,17 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
 
         {/* Right Action Controls */}
         <div className="flex items-center gap-2">
+          {/* Viewport Preview Simulator */}
+          <Button
+            onClick={() => setShowViewportSimulator(true)}
+            variant="outline"
+            size="sm"
+            className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white text-xs h-9 px-3 rounded-xl min-h-[36px] active:scale-[0.97]"
+          >
+            <Smartphone className="w-3.5 h-3.5 mr-1.5 text-cyan-400" />
+            <span className="hidden sm:inline">Preview Devices</span>
+          </Button>
+
           {/* AI Creative Director Trigger */}
           <Button
             onClick={() => setIsAiDialogOpen(true)}
@@ -573,6 +646,17 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           >
             <History className="w-3.5 h-3.5 mr-1.5 text-slate-400" />
             <span className="hidden sm:inline">Versions</span>
+          </Button>
+
+          {/* Keyboard Shortcuts Trigger */}
+          <Button
+            onClick={() => setShowShortcutsModal(true)}
+            variant="ghost"
+            size="sm"
+            className="h-9 w-9 p-0 text-slate-400 hover:text-white rounded-xl"
+            title="Keyboard Shortcuts (?)"
+          >
+            <Keyboard className="w-4 h-4" />
           </Button>
 
           {/* Publish Trigger */}
@@ -758,54 +842,20 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
               </div>
             </TabsContent>
 
-            {/* Tab 3: Layers Management */}
-            <TabsContent value="layers" className="flex-1 overflow-y-auto p-4 space-y-3 m-0 scrollbar-none">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Layer Hierarchy</div>
-              {document.elements.length === 0 ? (
-                <div className="text-xs text-slate-500 text-center py-6">No elements on canvas</div>
-              ) : (
-                <div className="space-y-1.5">
-                  {[...document.elements].reverse().map((el) => {
-                    const isSelected = el.id === selectedId;
-                    return (
-                      <div
-                        key={el.id}
-                        onClick={() => selectElement(el.id)}
-                        className={cn(
-                          'p-2.5 rounded-xl border flex items-center justify-between gap-2 cursor-pointer text-xs font-bold transition-colors active:scale-[0.98]',
-                          isSelected
-                            ? 'bg-emerald-500/10 border-emerald-500/40 text-emerald-400'
-                            : 'bg-slate-900 border-slate-800 text-slate-300 hover:bg-slate-850'
-                        )}
-                      >
-                        <div className="truncate flex-1">
-                          {el.type === 'text' ? el.text || 'Text' : el.type.toUpperCase()}
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              updateElement(el.id, { isLocked: !el.isLocked });
-                            }}
-                            className="p-1 text-slate-500 hover:text-white"
-                          >
-                            {el.isLocked ? <Lock className="w-3.5 h-3.5 text-amber-400" /> : <Unlock className="w-3.5 h-3.5" />}
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              deleteElement(el.id);
-                            }}
-                            className="p-1 text-slate-500 hover:text-red-400"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            {/* Tab 3: Hierarchical Layers Tree Panel (Phase 2) */}
+            <TabsContent value="layers" className="flex-1 overflow-y-auto p-4 m-0 scrollbar-none">
+              <LayersTreePanel
+                elements={document.elements}
+                selectedIds={selectedIds}
+                onSelectElement={selectElement}
+                onUpdateElement={updateElement}
+                onDeleteElement={deleteElement}
+                onReorderElement={reorderElement}
+                onGroupSelected={groupSelected}
+                onUngroupSelected={ungroupSelected}
+                onToggleGroupLock={toggleGroupLock}
+                onToggleGroupVisibility={toggleGroupVisibility}
+              />
             </TabsContent>
 
             {/* Tab 4: Attention Health & Recommendations */}
@@ -850,16 +900,31 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           </Tabs>
         </aside>
 
-        {/* Center Viewport Canvas */}
+        {/* Center Viewport Canvas & Floating Contextual Bar */}
         <main className="flex-1 flex flex-col items-center justify-center p-4 sm:p-8 bg-slate-950 overflow-hidden relative">
+          {/* Floating Action Bar */}
+          <ContextualActionBar
+            selectedElements={selectedElements}
+            onUpdateElement={updateElement}
+            onAlignSelected={alignSelected}
+            onDistributeSelected={distributeSelected}
+            onGroupSelected={groupSelected}
+            onUngroupSelected={ungroupSelected}
+            onDuplicateSelected={duplicateSelected}
+            onDeleteSelected={deleteSelected}
+            onRemoveBackground={handleRemoveBackground}
+          />
+
           <ThumbnailCanvas
             backgroundColor={document.backgroundColor}
             backgroundGradient={document.backgroundGradient}
             backgroundImage={document.backgroundImage}
             elements={document.elements}
-            selectedId={selectedId}
+            selectedIds={selectedIds}
             onSelectElement={selectElement}
+            onSelectMultiple={selectMultiple}
             onUpdateElement={updateElement}
+            onUpdateElementsBatch={updateElementsBatch}
             onDeleteElement={deleteElement}
             onUndo={undo}
             onRedo={redo}
@@ -873,29 +938,67 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           />
         </main>
 
-        {/* Right Property Inspector (Shown when an element is selected) */}
-        {selectedElement && (
-          <aside className="w-72 sm:w-80 border-l border-slate-850 bg-slate-950 p-4 overflow-y-auto space-y-5 shrink-0 z-10 scrollbar-none">
+        {/* Right Property Inspector (Shown when selection exists) */}
+        {selectedElements.length > 0 && (
+          <aside className="w-72 sm:w-80 border-l border-slate-850 bg-slate-950 p-4 overflow-y-auto space-y-5 shrink-0 z-10 scrollbar-none animate-in fade-in duration-150">
             <div className="flex items-center justify-between pb-2 border-b border-slate-850">
               <span className="text-xs font-bold text-white uppercase tracking-wider">
-                {selectedElement.type} Properties
+                {selectedElements.length > 1 ? `${selectedElements.length} Items Selected` : `${selectedPrimaryElement?.type} Properties`}
               </span>
               <button
-                onClick={() => selectElement(null)}
+                onClick={() => clearSelection()}
                 className="p-1 rounded-lg text-slate-400 hover:text-white"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Text Properties */}
-            {selectedElement.type === 'text' && (
+            {/* Multi-Selection Batch Controls */}
+            {selectedElements.length > 1 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-slate-300">Batch Alignment</Label>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <Button onClick={() => alignSelected('left')} variant="outline" className="h-8 text-xs font-bold bg-slate-900 border-slate-800">
+                      Left
+                    </Button>
+                    <Button onClick={() => alignSelected('center')} variant="outline" className="h-8 text-xs font-bold bg-slate-900 border-slate-800">
+                      Center
+                    </Button>
+                    <Button onClick={() => alignSelected('right')} variant="outline" className="h-8 text-xs font-bold bg-slate-900 border-slate-800">
+                      Right
+                    </Button>
+                    <Button onClick={() => alignSelected('top')} variant="outline" className="h-8 text-xs font-bold bg-slate-900 border-slate-800">
+                      Top
+                    </Button>
+                    <Button onClick={() => alignSelected('middle')} variant="outline" className="h-8 text-xs font-bold bg-slate-900 border-slate-800">
+                      Middle
+                    </Button>
+                    <Button onClick={() => alignSelected('bottom')} variant="outline" className="h-8 text-xs font-bold bg-slate-900 border-slate-800">
+                      Bottom
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="pt-2 flex gap-2">
+                  <Button onClick={groupSelected} className="flex-1 bg-emerald-500 text-slate-950 font-bold text-xs h-9 rounded-xl">
+                    Group Selection
+                  </Button>
+                  <Button onClick={ungroupSelected} variant="outline" className="h-9 border-slate-800 bg-slate-900 text-xs font-bold text-slate-300 rounded-xl">
+                    Ungroup
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Single Text Properties */}
+            {selectedPrimaryElement?.type === 'text' && (
               <div className="space-y-4">
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-300">Text Content</Label>
                   <Input
-                    value={selectedElement.text || ''}
-                    onChange={(e) => updateElement(selectedElement.id, { text: e.target.value })}
+                    value={selectedPrimaryElement.text || ''}
+                    onChange={(e) => updateElement(selectedPrimaryElement.id, { text: e.target.value })}
                     className="h-9 bg-slate-900 border-slate-800 text-xs font-bold text-white rounded-xl"
                   />
                 </div>
@@ -903,8 +1006,8 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
                 <div className="space-y-1.5">
                   <Label className="text-xs font-semibold text-slate-300">Font Family</Label>
                   <Select
-                    value={selectedElement.fontFamily || 'Impact'}
-                    onValueChange={(val) => updateElement(selectedElement.id, { fontFamily: val })}
+                    value={selectedPrimaryElement.fontFamily || 'Impact'}
+                    onValueChange={(val) => updateElement(selectedPrimaryElement.id, { fontFamily: val })}
                   >
                     <SelectTrigger className="h-9 bg-slate-900 border-slate-800 text-xs font-bold text-white rounded-xl">
                       <SelectValue />
@@ -922,14 +1025,14 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs font-semibold text-slate-300">
                     <span>Font Size</span>
-                    <span className="text-emerald-400 font-bold">{selectedElement.fontSize || 48}px</span>
+                    <span className="text-emerald-400 font-bold">{selectedPrimaryElement.fontSize || 48}px</span>
                   </div>
                   <Slider
                     min={14}
                     max={120}
                     step={1}
-                    value={[selectedElement.fontSize || 48]}
-                    onValueChange={([val]) => updateElement(selectedElement.id, { fontSize: val }, false)}
+                    value={[selectedPrimaryElement.fontSize || 48]}
+                    onValueChange={([val]) => updateElement(selectedPrimaryElement.id, { fontSize: val }, false)}
                     className="py-2"
                   />
                 </div>
@@ -939,70 +1042,103 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
                   <div className="flex items-center gap-2">
                     <input
                       type="color"
-                      value={selectedElement.fill || '#ffffff'}
-                      onChange={(e) => updateElement(selectedElement.id, { fill: e.target.value })}
+                      value={selectedPrimaryElement.fill || '#ffffff'}
+                      onChange={(e) => updateElement(selectedPrimaryElement.id, { fill: e.target.value })}
                       className="w-9 h-9 rounded-xl border border-slate-800 bg-transparent cursor-pointer"
                     />
                     <Input
-                      value={selectedElement.fill || '#ffffff'}
-                      onChange={(e) => updateElement(selectedElement.id, { fill: e.target.value })}
+                      value={selectedPrimaryElement.fill || '#ffffff'}
+                      onChange={(e) => updateElement(selectedPrimaryElement.id, { fill: e.target.value })}
                       className="h-9 bg-slate-900 border-slate-800 text-xs font-mono text-white rounded-xl"
                     />
                   </div>
                 </div>
 
+                {/* Advanced Rotation Controls */}
                 <div className="space-y-1.5">
                   <div className="flex justify-between text-xs font-semibold text-slate-300">
-                    <span>Outline Stroke</span>
-                    <span className="text-emerald-400 font-bold">{selectedElement.textStrokeWidth || 0}px</span>
+                    <span>Rotation</span>
+                    <span className="text-emerald-400 font-bold">{selectedPrimaryElement.rotation || 0}°</span>
                   </div>
                   <Slider
                     min={0}
-                    max={16}
+                    max={360}
                     step={1}
-                    value={[selectedElement.textStrokeWidth || 0]}
-                    onValueChange={([val]) => updateElement(selectedElement.id, { textStrokeWidth: val }, false)}
+                    value={[selectedPrimaryElement.rotation || 0]}
+                    onValueChange={([val]) => updateElement(selectedPrimaryElement.id, { rotation: val }, false)}
                     className="py-2"
                   />
                 </div>
               </div>
             )}
 
-            {/* Shape Properties */}
-            {(selectedElement.type === 'rect' || selectedElement.type === 'circle' || selectedElement.type === 'arrow') && (
+            {/* Single Image Frame Mask Controls */}
+            {selectedPrimaryElement?.type === 'image' && (
               <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-slate-300">Fill Color</Label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={selectedElement.shapeFill || '#10b981'}
-                      onChange={(e) => updateElement(selectedElement.id, { shapeFill: e.target.value })}
-                      className="w-9 h-9 rounded-xl border border-slate-800 bg-transparent cursor-pointer"
-                    />
-                    <Input
-                      value={selectedElement.shapeFill || '#10b981'}
-                      onChange={(e) => updateElement(selectedElement.id, { shapeFill: e.target.value })}
-                      className="h-9 bg-slate-900 border-slate-800 text-xs font-mono text-white rounded-xl"
-                    />
+                  <Label className="text-xs font-semibold text-slate-300">Frame & Shape Mask</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={() => updateElement(selectedPrimaryElement.id, { frameShape: 'none', clipPath: undefined })}
+                      variant="outline"
+                      className="h-9 bg-slate-900 border-slate-800 text-xs font-bold"
+                    >
+                      Rectangle
+                    </Button>
+                    <Button
+                      onClick={() => updateElement(selectedPrimaryElement.id, { frameShape: 'circle', clipPath: 'circle(50% at 50% 50%)' })}
+                      variant="outline"
+                      className="h-9 bg-slate-900 border-slate-800 text-xs font-bold text-teal-400"
+                    >
+                      Circle Avatar
+                    </Button>
+                    <Button
+                      onClick={() => updateElement(selectedPrimaryElement.id, { frameShape: 'squircle', borderRadius: 24 })}
+                      variant="outline"
+                      className="h-9 bg-slate-900 border-slate-800 text-xs font-bold"
+                    >
+                      Squircle
+                    </Button>
+                    <Button
+                      onClick={() => updateElement(selectedPrimaryElement.id, { frameShape: 'phone_mockup' })}
+                      variant="outline"
+                      className="h-9 bg-slate-900 border-slate-800 text-xs font-bold text-cyan-400"
+                    >
+                      Phone Frame
+                    </Button>
                   </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between text-xs font-semibold text-slate-300">
+                    <span>Opacity</span>
+                    <span className="text-emerald-400 font-bold">{Math.round((selectedPrimaryElement.opacity ?? 1) * 100)}%</span>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={100}
+                    step={1}
+                    value={[Math.round((selectedPrimaryElement.opacity ?? 1) * 100)]}
+                    onValueChange={([val]) => updateElement(selectedPrimaryElement.id, { opacity: val / 100 }, false)}
+                    className="py-2"
+                  />
                 </div>
               </div>
             )}
 
-            {/* Common Alignment & Layer Ordering */}
+            {/* Duplicate & Delete Common Controls */}
             <div className="pt-4 border-t border-slate-850 space-y-2">
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Layer Actions</div>
+              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Quick Actions</div>
               <div className="grid grid-cols-2 gap-2">
                 <Button
-                  onClick={() => duplicateElement(selectedElement.id)}
+                  onClick={duplicateSelected}
                   variant="outline"
                   className="h-8 bg-slate-900 border-slate-800 text-xs font-bold rounded-xl"
                 >
                   <Copy className="w-3.5 h-3.5 mr-1" /> Duplicate
                 </Button>
                 <Button
-                  onClick={() => deleteElement(selectedElement.id)}
+                  onClick={deleteSelected}
                   variant="outline"
                   className="h-8 bg-slate-900 border-red-500/30 text-red-400 hover:bg-red-500/20 text-xs font-bold rounded-xl"
                 >
@@ -1270,6 +1406,19 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
           }}
         />
       )}
+
+      {/* Keyboard Shortcuts Dialog */}
+      <KeyboardShortcutsDialog
+        open={showShortcutsModal}
+        onOpenChange={setShowShortcutsModal}
+      />
+
+      {/* Responsive Viewport Simulator */}
+      <ResponsiveViewportSimulator
+        open={showViewportSimulator}
+        onOpenChange={setShowViewportSimulator}
+        document={document}
+      />
     </div>
   );
 }

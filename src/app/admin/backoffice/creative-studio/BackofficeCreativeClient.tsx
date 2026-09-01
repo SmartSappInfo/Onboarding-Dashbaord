@@ -29,10 +29,8 @@ import {
   Layers,
   Sparkles,
   CheckCircle2,
-  AlertTriangle,
   Loader2,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 export function BackofficeCreativeClient() {
   const firestore = useFirestore();
@@ -150,6 +148,70 @@ export function BackofficeCreativeClient() {
             Run FER Migration Pipeline
           </Button>
         </div>
+
+        {/* Canvas Engine & Snapping Calibration Card */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-teal-500/10 text-teal-400 border border-teal-500/20">
+              <Layers className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Canvas Snapping & Guides</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Precision alignment tolerances</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Configure magnetic snapping distance thresholds and dynamic equidistant spacing guide sensitivity.
+          </p>
+
+          <div className="grid grid-cols-3 gap-2 pt-1">
+            <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-center">
+              <div className="text-xs font-bold text-white">Tight (4px)</div>
+              <div className="text-[10px] text-slate-500">Fine control</div>
+            </div>
+            <div className="p-2.5 bg-slate-950 rounded-xl border border-emerald-500/40 text-center shadow-sm">
+              <div className="text-xs font-bold text-emerald-400">Standard (8px)</div>
+              <div className="text-[10px] text-emerald-500/80">Active Default</div>
+            </div>
+            <div className="p-2.5 bg-slate-950 rounded-xl border border-slate-800 text-center">
+              <div className="text-xs font-bold text-white">Magnetic (12px)</div>
+              <div className="text-[10px] text-slate-500">Strong snap</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Frame Shapes Registry Card */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Clipping Frame Presets</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Shape masks for images and avatars</p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 flex items-center justify-between">
+              <span>Circle Avatar</span>
+              <span className="text-[10px] text-emerald-400 uppercase">Active</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 flex items-center justify-between">
+              <span>Squircle Frame</span>
+              <span className="text-[10px] text-emerald-400 uppercase">Active</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 flex items-center justify-between">
+              <span>Phone Mockup</span>
+              <span className="text-[10px] text-emerald-400 uppercase">Active</span>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 flex items-center justify-between">
+              <span>Rounded Pill</span>
+              <span className="text-[10px] text-emerald-400 uppercase">Active</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Migration Report */}
@@ -186,7 +248,7 @@ export function BackofficeCreativeClient() {
           <div className="text-xs text-slate-500">Loading templates...</div>
         ) : !globalTemplates || globalTemplates.length === 0 ? (
           <div className="p-8 rounded-2xl bg-slate-900/20 border border-slate-800 text-center text-xs text-slate-400">
-            No global templates registered. Click "Seed Global Blueprints" above to populate the database.
+            No global templates registered. Click &quot;Seed Global Blueprints&quot; above to populate the database.
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

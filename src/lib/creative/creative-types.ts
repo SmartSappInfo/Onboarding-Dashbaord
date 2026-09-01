@@ -65,14 +65,39 @@ export interface GradientConfig {
   colors: string[]; // Hex or rgba color strings
 }
 
-/**
- * CreativeElement is the comprehensive, editable component on a canvas.
- * It is fully backwards-compatible with CanvasElement.
- */
 export interface CreativeElement extends CanvasElement {
   semanticRole?: SemanticRole;
   semanticDescription?: string;
   assetId?: string;
+  keepAspectRatio?: boolean;
+  clipPath?: string;
+  frameShape?: 'circle' | 'squircle' | 'pill' | 'phone_mockup' | 'none';
+}
+
+export interface CreativeGroup {
+  id: string;
+  name: string;
+  elementIds: string[];
+  isLocked?: boolean;
+  isHidden?: boolean;
+  rotation?: number;
+}
+
+export type AlignmentType = 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom';
+export type DistributionType = 'horizontal' | 'vertical';
+
+export interface SnapGuideLine {
+  orientation: 'horizontal' | 'vertical';
+  position: number; // percentage (0 - 100)
+  label?: string;
+}
+
+export interface BoundingBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation?: number;
 }
 
 export interface CanvasFormatConfig {
