@@ -2938,6 +2938,7 @@ export interface Survey {
   thankYouRedirectUrl?: string;
   thankYouConfettiEnabled?: boolean;
   resultPages?: SurveyResultPage[];
+  category?: string;
   // SmartSapp Surveys 2.0 Core Platform Extensions (Phase 1)
   projectId?: string;
   surveyType?: 'feedback' | 'nps' | 'csat' | 'ces' | 'poll' | 'assessment' | 'quiz' | 'evaluation' | 'research' | 'audit' | 'inspection' | 'registration' | 'intake' | 'lead_qualification' | 'customer_health' | 'employee_engagement' | 'market_research' | 'custom';
@@ -3163,6 +3164,10 @@ export interface SurveyResponse {
   respondentEntityId?: string | null;
   contactEmail?: string | null;
   contactPhone?: string | null;
+  respondentEmail?: string | null;
+  respondentPhone?: string | null;
+  sentimentPolarity?: 'positive' | 'mostly_positive' | 'neutral' | 'mostly_negative' | 'negative' | 'mixed' | string | null;
+  sentimentScore?: number | null;
   leadDetails?: Record<string, unknown>;
   variables?: Record<string, unknown>;
   automationsTriggered?: boolean;

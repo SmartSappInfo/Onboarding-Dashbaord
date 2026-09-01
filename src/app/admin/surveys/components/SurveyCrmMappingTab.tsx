@@ -30,6 +30,7 @@ import {
   CrmFieldTransform,
 } from '@/lib/types';
 import { getSurveyCrmFieldDefinitionsAction } from '@/lib/surveys/survey-crm-sync-actions';
+import { SurveyCrmInboundTriggersCard } from './SurveyCrmInboundTriggersCard';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 
@@ -470,6 +471,9 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
           )}
         </CardContent>
       </Card>
+
+      {/* Inbound CRM Triggers Card (CRM -> Survey) */}
+      <SurveyCrmInboundTriggersCard workspaceId={workspaceId} />
     </div>
   );
 }

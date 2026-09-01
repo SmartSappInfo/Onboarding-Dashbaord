@@ -59,6 +59,30 @@ export interface SurveyCrmDealRule {
   assignedUserId?: string;
 }
 
+export type CrmInboundTriggerEvent =
+  | 'deal_won'
+  | 'deal_stage_changed'
+  | 'meeting_completed'
+  | 'contact_created'
+  | 'lead_status_changed';
+
+export interface SurveyCrmInboundTriggerRule {
+  id: string;
+  enabled: boolean;
+  event: CrmInboundTriggerEvent;
+  pipelineId?: string;
+  stageId?: string;
+  leadStatus?: string;
+  delayDays?: number; // e.g. 0 (immediate), 7 (after 7 days), 14
+  channel: 'email' | 'sms' | 'whatsapp';
+  customMessage?: string;
+}
+
+export interface SurveyCrmInboundTriggerConfig {
+  enabled: boolean;
+  rules: SurveyCrmInboundTriggerRule[];
+}
+
 export interface SurveyCrmConfig {
   enabled: boolean;
   autoUpsertContact: boolean;
@@ -66,8 +90,9 @@ export interface SurveyCrmConfig {
   fieldMappings: SurveyCrmFieldMapping[];
   taskRules: SurveyCrmTaskRule[];
   dealRules: SurveyCrmDealRule[];
+  inboundTriggers?: SurveyCrmInboundTriggerConfig;
   leadScoreAdjustment?: {
-    enabled: boolean;
+    enabled?: boolean;
     pointsPerSurveyCompleted?: number;
     pointsForPromoter?: number;
     pointsForDetractor?: number;

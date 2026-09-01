@@ -55,6 +55,7 @@ import {
     BarChart3,
     Handshake,
     ListTodo,
+    FileQuestion,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -97,6 +98,7 @@ import EntityNotesWidget from '../components/EntityNotesWidget';
 import EntityContactDirectory from '../components/EntityContactDirectory';
 import EntityCustomFieldGroups from './components/EntityCustomFieldGroups';
 import EntityAutomationsTab from '../components/EntityAutomationsTab';
+import EntitySurveysTab from '../components/EntitySurveysTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
 import { createTaskAction } from '@/lib/task-server-actions';
@@ -479,6 +481,10 @@ export default function EntityDetailPage() {
  <Receipt className="h-3 w-3" /> Billing
                         </TabsTrigger>
 
+                        <TabsTrigger value="surveys" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <FileQuestion className="h-3 w-3" /> Surveys
+                        </TabsTrigger>
+
                         <TabsTrigger value="automations" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Zap className="h-3 w-3" /> Automations
                         </TabsTrigger>
@@ -636,11 +642,13 @@ export default function EntityDetailPage() {
                         </div>
                     </TabsContent>
 
- <TabsContent value="billing" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                    <TabsContent value="billing" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityBillingTab entity={entityData} workspaceEntity={weData} />
                     </TabsContent>
 
-
+                    <TabsContent value="surveys" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        <EntitySurveysTab entity={entityData} workspaceEntity={weData} workspaceId={activeWorkspaceId} />
+                    </TabsContent>
                     
                     <TabsContent value="automations" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
                         <EntityAutomationsTab entityId={entityId} />
