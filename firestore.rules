@@ -1441,6 +1441,18 @@ service cloud.firestore {
           hasPermission('studios_edit')
         );
       }
+
+      // Forms 2.0 response intelligence & qualitative clusters subcollection (Phase 10)
+      match /intelligence/{docId} {
+        allow read: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+        );
+        allow write: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasPermission('studios_edit')
+        );
+      }
     }
 
     // Forms 2.0 Daily Analytics Rollup collection

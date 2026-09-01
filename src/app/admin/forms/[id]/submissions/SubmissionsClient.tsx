@@ -26,6 +26,7 @@ import { getFormSubmissionsAction } from '@/lib/forms-actions';
 
 import ResponseCenterHeader from './components/ResponseCenterHeader';
 import ResponseCenterStats from './components/ResponseCenterStats';
+import FormTopicClustersCard from './components/FormTopicClustersCard';
 import ResponseCenterGrid from './components/ResponseCenterGrid';
 import ResponseBulkToolbar from './components/ResponseBulkToolbar';
 import ColumnCustomizerModal from './components/ColumnCustomizerModal';
@@ -270,6 +271,39 @@ export default function SubmissionsClient({
     }
   };
 
+  const handleBulkAiClassify = async () => {
+    if (selectedIds.length === 0) return;
+    setIsProcessingBulk(true);
+    try {
+      const { batchClassifySubmissionsAction } = await import('@/lib/forms/form-intelligence-actions');
+      const res = await batchClassifySubmissionsAction({
+        formId: form.id,
+        submissionIds: selectedIds,
+      });
+
+      if (res.success) {
+        const resultMap = new Map(res.results.map(r => [r.submissionId, r.classification]));
+        setSubmissions(prev => prev.map(s => {
+          const classified = resultMap.get(s.id);
+          return classified ? { ...s, aiClassification: classified } : s;
+        }));
+        setSelectedIds([]);
+        toast({
+          title: 'AI Batch Classification Complete ✨',
+          description: `Classified ${res.successCount} submissions.`,
+        });
+      } else {
+        toast({
+          title: 'Batch Classification Failed',
+          description: res.error || 'Could not classify selected submissions.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsProcessingBulk(false);
+    }
+  };
+
   // CSV Export
   const handleExportCsv = (exportSubs: FormSubmission[]) => {
     if (exportSubs.length === 0) {
@@ -346,6 +380,12 @@ export default function SubmissionsClient({
           onSelectStatus={setActiveStatus}
         />
 
+        {/* ── 2b. AI Topic Clusters & Qualitative Research Synthesis (Phase 10) ── */}
+        <FormTopicClustersCard
+          form={form}
+          totalSubmissions={submissions.length}
+        />
+
         {/* ── 3. Submissions Table Grid ── */}
         <ResponseCenterGrid
           submissions={filteredSubmissions}
@@ -387,6 +427,7 @@ export default function SubmissionsClient({
             const selectedSubs = submissions.filter(s => selectedIds.includes(s.id));
             handleExportCsv(selectedSubs);
           }}
+          onBulkAiClassify={handleBulkAiClassify}
           isProcessing={isProcessingBulk}
         />
 

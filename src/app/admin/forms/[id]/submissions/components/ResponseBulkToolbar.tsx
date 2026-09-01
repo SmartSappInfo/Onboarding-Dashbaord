@@ -45,6 +45,7 @@ interface ResponseBulkToolbarProps {
   onBulkStatusChange: (status: SubmissionStatus) => Promise<void>;
   onBulkDelete: () => Promise<void>;
   onBulkExport: () => void;
+  onBulkAiClassify?: () => Promise<void>;
   isProcessing?: boolean;
 }
 
@@ -54,6 +55,7 @@ export default function ResponseBulkToolbar({
   onBulkStatusChange,
   onBulkDelete,
   onBulkExport,
+  onBulkAiClassify,
   isProcessing = false,
 }: ResponseBulkToolbarProps) {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -91,6 +93,20 @@ export default function ResponseBulkToolbar({
 
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
+              {/* AI Classify Button */}
+              {onBulkAiClassify && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onBulkAiClassify}
+                  disabled={isProcessing}
+                  className="h-9 text-xs font-bold rounded-2xl gap-1.5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 min-h-[44px] sm:min-h-0"
+                >
+                  <Sparkles className="h-3.5 w-3.5 text-indigo-500 animate-pulse" />
+                  <span className="hidden sm:inline">AI Classify</span>
+                </Button>
+              )}
+
               {/* Mark Status Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

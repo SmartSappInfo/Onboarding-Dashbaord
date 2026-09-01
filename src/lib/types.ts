@@ -5890,7 +5890,7 @@ export interface Form {
   contactScope?: 'institution' | 'family' | 'person'; // Only populated if bound
   fields: FormFieldInstance[];
   theme: FormThemeConfig;
-  successBehavior: FormSuccessBehavior;
+  successBehavior?: FormSuccessBehavior;
   actions: FormSubmissionActions;
   status: 'draft' | 'published' | 'archived';
   submissionCount: number;
@@ -6010,6 +6010,7 @@ export interface FormSubmission {
   scoreBreakdown?: Record<string, number>;
   appliedTags?: string[];
   isDisqualified?: boolean;
+  aiClassification?: import('./forms/form-intelligence-types').FormSubmissionAiClassification;
   submittedAt: string;
 }
 

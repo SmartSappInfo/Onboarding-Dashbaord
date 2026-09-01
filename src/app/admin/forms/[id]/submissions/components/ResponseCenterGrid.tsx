@@ -249,6 +249,47 @@ export default function ResponseCenterGrid({
                       );
                     }
 
+                    if (col.key === 'sentiment') {
+                      const sentiment = sub.aiClassification?.sentiment;
+                      return (
+                        <TableCell key={col.key} className="py-3">
+                          {sentiment === 'positive' && (
+                            <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
+                              Positive
+                            </Badge>
+                          )}
+                          {sentiment === 'negative' && (
+                            <Badge className="bg-rose-500/15 text-rose-600 dark:text-rose-400 border-rose-500/30 text-[10px] font-bold">
+                              Negative
+                            </Badge>
+                          )}
+                          {sentiment === 'neutral' && (
+                            <Badge className="bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-bold">
+                              Neutral
+                            </Badge>
+                          )}
+                          {!sentiment && (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      );
+                    }
+
+                    if (col.key === 'intent') {
+                      const intent = sub.aiClassification?.intent;
+                      return (
+                        <TableCell key={col.key} className="py-3">
+                          {intent ? (
+                            <span className="text-xs font-semibold text-foreground bg-primary/10 text-primary px-2 py-0.5 rounded-lg whitespace-nowrap">
+                              {intent}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          )}
+                        </TableCell>
+                      );
+                    }
+
                     if (col.key === 'crm') {
                       return (
                         <TableCell key={col.key} className="py-3" onClick={(e) => e.stopPropagation()}>

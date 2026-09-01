@@ -34,6 +34,7 @@ import { TagSelector } from '@/components/tags/TagSelector';
 import { formatFieldValue, parseDateSafe } from '@/lib/forms-utils';
 import { updateSubmissionStatusAction } from '@/lib/forms/form-response-actions';
 import SubmissionNotesSection from './SubmissionNotesSection';
+import SubmissionAiIntelligenceSection from './SubmissionAiIntelligenceSection';
 import { useToast } from '@/hooks/use-toast';
 import type { Form, FormSubmission } from '@/lib/types';
 import type { SubmissionStatus } from '@/lib/forms/form-response-types';
@@ -186,6 +187,12 @@ export default function SubmissionProfileDrawer({
         </SheetHeader>
 
         <div className="p-6 space-y-6">
+          {/* ── 0. AI Response Intelligence (Phase 10) ── */}
+          <SubmissionAiIntelligenceSection
+            submission={submission}
+            form={form}
+          />
+
           {/* ── 1. Linked CRM Record & Automated Pipeline ── */}
           <section className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
