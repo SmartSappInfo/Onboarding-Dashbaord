@@ -958,6 +958,7 @@ export interface UserProfile {
   lastActiveWorkspaceId?: string;
   lastActiveOrganizationId?: string;
   defaultWorkspaceId?: string;
+  requiresPasswordReset?: boolean;
   
   // Notification Preferences
   notificationPreferences?: NotificationPreferences;
@@ -3027,6 +3028,7 @@ export interface Survey {
   webhookEnabled?: boolean;
   webhookId?: string;
   showDebugProcessingModal?: boolean;
+  totalResponses?: number;
   adminAlertsEnabled?: boolean;
   adminAlertChannel?: 'email' | 'sms' | 'whatsapp' | 'both' | 'all';
   adminAlertChannels?: Array<'email' | 'sms' | 'whatsapp'>;

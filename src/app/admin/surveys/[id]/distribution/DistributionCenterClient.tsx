@@ -85,7 +85,8 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
     ) : null),
     [firestore, surveyId]
   );
-  const { data: deployments = [], mutate: refetchDeployments } = useCollection<SurveyDeployment>(deploymentsQuery);
+  const { data: rawDeployments } = useCollection<SurveyDeployment>(deploymentsQuery);
+  const deployments = React.useMemo(() => rawDeployments || [], [rawDeployments]);
 
   // Build Default Public URL
   const defaultUrl = React.useMemo(() => {
@@ -242,7 +243,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               totalResponses={survey.totalResponses || 0}
-              onRefresh={() => refetchDeployments?.()}
+              onRefresh={() => {}}
             />
           </TabsContent>
 
@@ -251,7 +252,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => refetchDeployments?.()}
+              onRefresh={() => {}}
             />
           </TabsContent>
 
@@ -260,7 +261,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => refetchDeployments?.()}
+              onRefresh={() => {}}
             />
           </TabsContent>
 
@@ -269,7 +270,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => refetchDeployments?.()}
+              onRefresh={() => {}}
             />
           </TabsContent>
 
@@ -278,7 +279,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => refetchDeployments?.()}
+              onRefresh={() => {}}
             />
           </TabsContent>
 

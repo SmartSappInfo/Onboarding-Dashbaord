@@ -25,6 +25,7 @@ import { generateEmbedSnippet } from '@/lib/forms/form-utils';
 import type { Form } from '@/lib/types';
 import type { EmbedConfig } from '@/lib/forms/form-distribution-types';
 import { cn } from '@/lib/utils';
+import { useToast } from '@/hooks/use-toast';
 
 interface EmbedStudioCardProps {
   form: Form;

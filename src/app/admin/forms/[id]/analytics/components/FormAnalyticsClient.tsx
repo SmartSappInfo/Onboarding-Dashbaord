@@ -17,7 +17,8 @@ import {
   RefreshCw, 
   ArrowLeft, 
   Edit, 
-  Inbox, 
+  Inbox,
+  Sparkles, 
 } from 'lucide-react';
 import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';

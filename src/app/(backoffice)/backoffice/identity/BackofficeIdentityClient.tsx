@@ -40,7 +40,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
 import { useBackoffice } from '../context/BackofficeProvider';
-import type { PersonDetailView, Organization, ReconciliationReport } from '@/lib/types';
+import type { PersonDetailView, Organization } from '@/lib/types';
+import type { ReconciliationReport } from '@/lib/services/identity/identity-migration-service';
 import {
   getPeopleDirectoryAction,
   reconcileOrganizationIdentitiesAction,
@@ -69,11 +70,11 @@ export function BackofficeIdentityClient() {
       if (!authUser) return;
       try {
         const token = await authUser.getIdToken();
-        const { listOrganizationsAction } = await import('@/lib/backoffice/backoffice-org-actions');
-        const orgs = await listOrganizationsAction(token);
-        if (isMounted && orgs && orgs.length > 0) {
-          setOrganizations(orgs);
-          setSelectedOrgId(orgs[0].id);
+        const { listAllOrganizations } = await import('@/lib/backoffice/backoffice-org-actions');
+        const res = await listAllOrganizations(token);
+        if (isMounted && res.success && res.data && res.data.length > 0) {
+          setOrganizations(res.data);
+          setSelectedOrgId(res.data[0].id);
         }
       } catch (err: unknown) {
         console.warn('[BackofficeIdentityClient] Failed to load organizations:', err);

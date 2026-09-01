@@ -54,7 +54,7 @@ export function ExperimentsClient({
         setExperiments((prev) =>
           prev.map((exp) =>
             exp.id === experimentId
-              ? { ...exp, status: 'concluded', winningVariantId }
+              ? { ...exp, status: 'concluded', winningVariantId: winnerVariantId }
               : exp
           )
         );

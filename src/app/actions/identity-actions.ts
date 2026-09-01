@@ -90,10 +90,11 @@ async function verifyCallerContext(idToken: string, targetOrgId?: string): Promi
     email === 'admin@smartsapp.com' || profile.permissions?.includes('system_admin')
   );
 
+  const permissionsList = (profile.permissions || []) as string[];
   const canManageUsers = Boolean(
     isSystemAdmin ||
-    profile.permissions?.includes('users_manage') ||
-    profile.permissions?.includes('management_users') ||
+    permissionsList.includes('users_manage') ||
+    permissionsList.includes('management_users') ||
     profile.permissionsSchema?.management?.features?.users?.edit ||
     profile.permissionsSchema?.management?.features?.users?.create
   );
@@ -633,18 +634,22 @@ export async function invitePersonAction(params: {
     let smsSent = false;
 
     const emailTemplate = await resolveAndRender('users', 'user_invitation', params.organizationId, {
-      fullName,
-      email,
-      temporaryPassword: tempPassword,
-      loginLink,
-      orgName,
+      extraVars: {
+        fullName,
+        email,
+        temporaryPassword: tempPassword,
+        loginLink,
+        orgName,
+      },
     });
 
     const smsTemplate = await resolveAndRender('users', 'user_invitation_sms', params.organizationId, {
-      fullName,
-      temporaryPassword: tempPassword,
-      loginLink,
-      orgName,
+      extraVars: {
+        fullName,
+        temporaryPassword: tempPassword,
+        loginLink,
+        orgName,
+      },
     });
 
     const emailHtml = emailTemplate?.body || `
@@ -673,7 +678,7 @@ export async function invitePersonAction(params: {
           html: emailHtml,
           from: 'SmartSapp <noreply@smartsapp.com>',
         }).then((res) => {
-          if (res.success) emailSent = true;
+          if (res?.id || res?.status === 'success') emailSent = true;
         })
       );
     }
@@ -681,11 +686,11 @@ export async function invitePersonAction(params: {
     if (sendMethods.includes('sms') && phone) {
       promises.push(
         sendSms({
-          to: phone,
+          recipient: phone,
           message: smsBody,
-          organizationId: params.organizationId,
+          sender: orgName.substring(0, 11) || 'SmartSapp',
         }).then((res) => {
-          if (res.success) smsSent = true;
+          if (res?.status === 'success' || res?.code === '1000') smsSent = true;
         })
       );
     }

@@ -22,6 +22,7 @@ import type {
   FormMetricsDaily,
 } from './form-analytics-types';
 import { safePercentage, formatDurationSeconds } from './form-utils';
+export { formatDurationSeconds };
 
 /**
  * Ingests a lightweight non-blocking telemetry event and atomically updates form_metrics_daily.

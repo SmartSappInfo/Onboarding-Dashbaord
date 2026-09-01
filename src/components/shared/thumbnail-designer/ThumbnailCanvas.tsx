@@ -19,7 +19,15 @@
 
 import * as React from 'react';
 import { useEffect, useRef, useState, useMemo } from 'react';
-import type { CreativeElement, SnapGuideLine, BoundingBox, SaliencyHotspot } from '@/lib/creative/creative-types';
+import type {
+  CreativeElement,
+  CanvasElement,
+  SnapGuideLine,
+  BoundingBox,
+  SaliencyHotspot,
+  PresenceUser,
+  CreativeComment,
+} from '@/lib/creative/creative-types';
 import { computeBoundingBox, calculateSmartGuides } from '@/lib/creative/smart-guides';
 import { AttentionHeatmapOverlay } from './AttentionHeatmapOverlay';
 import { LiveCursorOverlay } from './LiveCursorOverlay';
@@ -57,7 +65,7 @@ interface ThumbnailCanvasProps {
     angle?: number;
   };
   backgroundImage?: string;
-  elements: (CreativeElement | CanvasElement)[];
+  elements: CreativeElement[];
   selectedId?: string | null;
   selectedIds?: string[];
   onSelectElement: (id: string | null, multi?: boolean) => void;
@@ -138,10 +146,10 @@ export default function ThumbnailCanvas({
 
   // Normalize active selection IDs
   const activeSelectedIds = useMemo(() => {
-    if (rawSelectedIds && rawSelectedIds.length > 0) return rawSelectedIds;
+    if (selectedIds && selectedIds.length > 0) return selectedIds;
     if (selectedId) return [selectedId];
     return [];
-  }, [rawSelectedIds, selectedId]);
+  }, [selectedIds, selectedId]);
 
   const selectedElements = useMemo(() => {
     const set = new Set(activeSelectedIds);
@@ -249,7 +257,7 @@ export default function ThumbnailCanvas({
     if (isMulti) {
       onSelectElement(el.id, true);
       nextSelectedIds = isAlreadySelected
-        ? activeSelectedIds.filter((id) => id !== el.id)
+        ? activeSelectedIds.filter((id: string) => id !== el.id)
         : [...activeSelectedIds, el.id];
     } else if (!isAlreadySelected) {
       onSelectElement(el.id, false);

@@ -42,6 +42,7 @@ export type CreativeProjectObjective =
 export type CreativeProjectStatus =
   | 'draft'
   | 'in_review'
+  | 'changes_requested'
   | 'approved'
   | 'scheduled'
   | 'published'

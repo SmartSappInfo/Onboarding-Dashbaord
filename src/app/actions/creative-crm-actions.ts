@@ -293,7 +293,7 @@ export async function generateBatchPersonalizedCreativesAction(
           backgroundGradient: sourceDocument.backgroundGradient,
           backgroundImage: sourceDocument.backgroundImage,
           elements: personalizedElements,
-          status: health.overallScore >= 80 ? 'approved' : 'draft',
+          status: 'draft',
           createdAt: now,
           updatedAt: now,
         };

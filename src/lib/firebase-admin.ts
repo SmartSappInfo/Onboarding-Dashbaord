@@ -84,3 +84,17 @@ export const adminDb = firestoreInstance;
 export const adminAuth = getAuth(app);
 export const adminStorage = getStorage(app).bucket();
 export { FieldValue };
+
+/**
+ * Returns the initialized Firebase Admin Firestore instance.
+ */
+export function getAdminFirestore() {
+  return adminDb;
+}
+
+/**
+ * Returns the initialized Firebase Admin Auth instance.
+ */
+export function getAdminAuth() {
+  return adminAuth;
+}

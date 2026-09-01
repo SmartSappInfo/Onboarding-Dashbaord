@@ -47,8 +47,8 @@ export function ExportModal({
   const [transparent, setTransparent] = useState(false);
   const [isPending, startTransition] = useTransition();
 
-  const baseWidth = document.format === 'youtube_thumbnail' ? 1920 : document.format === 'story' ? 1080 : 1080;
-  const baseHeight = document.format === 'youtube_thumbnail' ? 1080 : document.format === 'story' ? 1920 : 1080;
+  const baseWidth = document.format?.width || 1920;
+  const baseHeight = document.format?.height || 1080;
   const dimensions = getExportDimensions(baseWidth, baseHeight, scale);
 
   const handleExecuteExport = () => {

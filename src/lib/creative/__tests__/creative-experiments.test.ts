@@ -4,9 +4,10 @@ import {
   calculateStatisticalSignificance,
   cloneDocumentForExperimentVariant,
 } from '../creative-experiments-engine';
-import type {
+import {
   ExperimentVariant,
   CreativeDocument,
+  FORMAT_PRESETS,
 } from '../creative-types';
 
 describe('Creative Experiments & Statistical Significance Engine (Phase 9)', () => {
@@ -90,7 +91,7 @@ describe('Creative Experiments & Statistical Significance Engine (Phase 9)', () 
       projectId: 'proj-1',
       workspaceId: 'ws-1',
       name: 'Masterclass Hero',
-      format: 'youtube_thumbnail',
+      format: FORMAT_PRESETS.youtube_thumbnail,
       backgroundColor: '#0f172a',
       elements: [
         {
@@ -100,19 +101,21 @@ describe('Creative Experiments & Statistical Significance Engine (Phase 9)', () 
           y: 20,
           width: 50,
           height: 15,
+          zIndex: 1,
           text: 'ORIGINAL HEADLINE',
         },
         {
           id: 'el-2',
-          type: 'badge',
+          type: 'text',
           x: 70,
           y: 20,
           width: 20,
           height: 10,
+          zIndex: 2,
           text: 'NEW',
         },
       ],
-      status: 'approved',
+      status: 'draft',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

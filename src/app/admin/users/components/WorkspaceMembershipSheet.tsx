@@ -295,7 +295,7 @@ export function WorkspaceMembershipSheet({
                       </Label>
                       <MultiSelect
                         options={roleOptions}
-                        selected={item.roleAssignmentIds}
+                        value={item.roleAssignmentIds}
                         onChange={(selected) => handleUpdateRoles(item.workspaceId, selected)}
                         placeholder="Select workspace roles..."
                         className="w-full text-xs"

@@ -16,6 +16,7 @@ import * as React from 'react';
 import type {
   CreativeHealthReport,
   CreativeHealthIssue,
+  BrandKit,
 } from '@/lib/creative/creative-types';
 import { Button } from '@/components/ui/button';
 import {

@@ -119,3 +119,6 @@ export async function saveWorkspaceBrandKitAction(
     return { success: false, error: message };
   }
 }
+
+export { saveWorkspaceBrandKitAction as saveBrandKitAction };
+

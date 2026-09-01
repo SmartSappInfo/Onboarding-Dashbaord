@@ -48,7 +48,7 @@ export function BrandStudioClient({
 
   const handleSaveBrandKit = () => {
     startTransition(async () => {
-      const res = await saveBrandKitAction(brandKit);
+      const res = await saveBrandKitAction(brandKit.workspaceId || 'default', brandKit);
       if (res.success) {
         toast({
           title: 'Brand Kit Saved',

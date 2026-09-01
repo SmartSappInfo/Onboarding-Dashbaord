@@ -195,16 +195,12 @@ export function PersonProfileDrawer({
 
     setIsResettingPassword(true);
     try {
-      const res = await adminResetUserPasswordAction({
-        userId: user.id,
-        organizationId: activeOrganizationId || '',
-        sendMethods: ['email'],
-      });
+      const res = await adminResetUserPasswordAction(user.id);
 
       if (res.success) {
         toast({
           title: 'Password Reset Dispatched',
-          description: `New credentials generated. Temporary password: ${res.tempPassword}`,
+          description: res.message || `Password reset instructions sent to ${user.email}`,
         });
       } else {
         throw new Error(res.error || 'Failed to reset password');

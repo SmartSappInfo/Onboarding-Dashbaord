@@ -158,11 +158,12 @@ export function validatePreFlightPublishing(
 
   // 2. Format / Aspect Ratio Compatibility
   const spec = CHANNEL_SPECS[channel];
+  const formatType = document.format.type;
   const isOptimalFormat =
-    (channel === 'youtube' && document.format === 'youtube_thumbnail') ||
-    (channel === 'instagram' && (document.format === 'story' || document.format === 'square')) ||
-    (channel === 'facebook' && (document.format === 'square' || document.format === 'youtube_thumbnail')) ||
-    (channel === 'linkedin' && (document.format === 'youtube_thumbnail' || document.format === 'square')) ||
+    (channel === 'youtube' && formatType === 'youtube_thumbnail') ||
+    (channel === 'instagram' && (formatType === 'social' || formatType === 'ad')) ||
+    (channel === 'facebook' && (formatType === 'social' || formatType === 'ad' || formatType === 'youtube_thumbnail')) ||
+    (channel === 'linkedin' && (formatType === 'social' || formatType === 'ad' || formatType === 'youtube_thumbnail')) ||
     channel === 'crm_asset';
 
   if (!isOptimalFormat) {
@@ -171,7 +172,7 @@ export function validatePreFlightPublishing(
       label: 'Format Compatibility',
       passed: false,
       severity: 'warning',
-      message: `Document format "${document.format}" may be letterboxed on ${spec.name} (recommended: ${spec.recommendedAspectRatio}).`,
+      message: `Document format "${document.format.label}" may be letterboxed on ${spec.name} (recommended: ${spec.recommendedAspectRatio}).`,
     });
   } else {
     checks.push({
