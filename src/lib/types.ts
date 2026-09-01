@@ -1377,6 +1377,112 @@ export interface BulkOperationResult {
   errors: Array<{ id: string; error: string }>;
 }
 
+// ==========================================
+// ONBOARDING JOURNEY ENGINE (PHASE 4)
+// ==========================================
+
+export type OnboardingAudience =
+  | 'founder'
+  | 'employee'
+  | 'manager'
+  | 'finance'
+  | 'sales'
+  | 'contractor'
+  | 'custom';
+
+export type OnboardingTrigger =
+  | 'signup'
+  | 'invitation'
+  | 'role_assigned'
+  | 'workspace_added'
+  | 'manual';
+
+export type OnboardingStepType =
+  | 'profile'
+  | 'form'
+  | 'workspace_selection'
+  | 'team_selection'
+  | 'role_confirmation'
+  | 'mfa_setup'
+  | 'policy_acceptance'
+  | 'manager_approval'
+  | 'guide_video'
+  | 'checklist'
+  | 'ai_conversation'
+  | 'automation';
+
+export interface OnboardingStepCondition {
+  field: string;
+  operator: PolicyConditionOperator;
+  value: string | number | boolean | string[];
+}
+
+export interface OnboardingStepDefinition {
+  id: string;
+  title: string;
+  description?: string;
+  type: OnboardingStepType;
+  isRequired: boolean;
+  order: number;
+  config?: Record<string, string | number | boolean | string[]>;
+  conditions?: OnboardingStepCondition[];
+}
+
+export interface OnboardingJourney {
+  id: string;
+  organizationId: string;
+  name: string;
+  description?: string;
+  audience: OnboardingAudience;
+  trigger: OnboardingTrigger;
+  steps: OnboardingStepDefinition[];
+  automationIds?: string[];
+  status: 'draft' | 'published' | 'archived';
+  isDefault?: boolean;
+  version: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type OnboardingInstanceStatus =
+  | 'not_started'
+  | 'in_progress'
+  | 'waiting_approval'
+  | 'completed'
+  | 'abandoned';
+
+export interface OnboardingStepInstance {
+  id: string;
+  stepId: string;
+  stepTitle: string;
+  type: OnboardingStepType;
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+  responseData?: Record<string, string | number | boolean | string[]>;
+  completedAt?: string;
+  completedBy?: string;
+}
+
+export interface OnboardingInstance {
+  id: string;
+  journeyId: string;
+  journeyName: string;
+  journeyVersion: number;
+  personId: string;
+  personName: string;
+  personEmail: string;
+  organizationId: string;
+  status: OnboardingInstanceStatus;
+  currentStepIndex: number;
+  totalSteps: number;
+  completionPercent: number;
+  stepInstances: OnboardingStepInstance[];
+  startedAt?: string;
+  completedAt?: string;
+  lastActivityAt?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;
