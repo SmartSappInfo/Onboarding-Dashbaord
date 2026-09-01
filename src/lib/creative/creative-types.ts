@@ -1,0 +1,431 @@
+/**
+ * ARCHITECTURE:
+ * SmartSapp Creative Studio 2.0 Core Domain Types & Data Contracts
+ * 
+ * Provides strict TypeScript models for Projects, Documents, Elements,
+ * Assets, Brand Kits, Versions, Comments, Concepts, and Publications.
+ * 
+ * CAUTION:
+ * All element coordinate models use relative percentages (0-100%) to maintain
+ * responsive rendering across viewports and export resolutions.
+ * Strict typing is enforced (0% any / any[]).
+ * 
+ * TESTABILITY:
+ * Verified via unit tests in src/lib/creative/__tests__/creative-types.test.ts
+ */
+
+import type { CanvasElement, ElementShadow, ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
+
+export type { ElementShadow, CanvasElement };
+
+export type CreativeProjectType =
+  | 'youtube_thumbnail'
+  | 'social'
+  | 'ad'
+  | 'email'
+  | 'landing_page'
+  | 'presentation'
+  | 'podcast'
+  | 'event'
+  | 'custom';
+
+export type CreativeProjectObjective =
+  | 'awareness'
+  | 'engagement'
+  | 'traffic'
+  | 'lead_generation'
+  | 'conversion'
+  | 'sales'
+  | 'education'
+  | 'announcement';
+
+export type CreativeProjectStatus =
+  | 'draft'
+  | 'in_review'
+  | 'approved'
+  | 'scheduled'
+  | 'published'
+  | 'archived';
+
+export type SemanticRole =
+  | 'headline'
+  | 'subtitle'
+  | 'body'
+  | 'cta'
+  | 'subject'
+  | 'background'
+  | 'brand_logo'
+  | 'badge'
+  | 'decoration'
+  | 'safe_zone';
+
+export interface GradientConfig {
+  type: 'linear' | 'radial';
+  angle?: number; // In degrees, default 135
+  colors: string[]; // Hex or rgba color strings
+}
+
+/**
+ * CreativeElement is the comprehensive, editable component on a canvas.
+ * It is fully backwards-compatible with CanvasElement.
+ */
+export interface CreativeElement extends CanvasElement {
+  semanticRole?: SemanticRole;
+  semanticDescription?: string;
+  assetId?: string;
+}
+
+export interface CanvasFormatConfig {
+  type: CreativeProjectType;
+  width: number;
+  height: number;
+  aspectRatio: number; // e.g. 16/9, 1/1, 9/16, 4/5
+  platform?: string; // 'youtube' | 'instagram' | 'linkedin' | 'facebook' | 'web'
+  label: string;
+}
+
+export interface CreativeDocument {
+  id: string;
+  projectId: string;
+  workspaceId: string;
+  name: string;
+  format: CanvasFormatConfig;
+  backgroundColor: string;
+  backgroundGradient?: GradientConfig;
+  backgroundImage?: string;
+  elements: CreativeElement[];
+  currentVersionId?: string;
+  thumbnailUrl?: string; // Rendered CDN link in Firebase Storage
+  status: 'draft' | 'locked' | 'archived';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreativeProject {
+  id: string;
+  workspaceId: string;
+  name: string;
+  description?: string;
+  type: CreativeProjectType;
+  objective: CreativeProjectObjective;
+  status: CreativeProjectStatus;
+  
+  // CRM Linkages
+  campaignId?: string;
+  campaignName?: string;
+  segmentId?: string;
+  contentId?: string;
+  dealId?: string;
+  
+  audience?: {
+    description?: string;
+    segmentIds?: string[];
+  };
+  
+  brandKitId?: string;
+  thumbnailUrl?: string;
+  documentId?: string; // Primary document ID
+  
+  // Metadata
+  ownerId?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BrandAIRule {
+  id: string;
+  type: 'color' | 'font' | 'logo' | 'imagery' | 'tone' | 'layout' | 'accessibility';
+  rule: string;
+  severity: 'required' | 'recommended' | 'optional';
+  active: boolean;
+}
+
+export interface BrandKit {
+  id?: string;
+  workspaceId: string;
+  name: string;
+  logos?: {
+    primary?: string;
+    secondary?: string;
+    monochrome?: string;
+    icon?: string;
+  };
+  colors: {
+    primary: string[];
+    secondary: string[];
+    accent: string[];
+    neutral: string[];
+  };
+  typography: {
+    displayFont: string;
+    headingFont: string;
+    bodyFont: string;
+  };
+  watermarkUrl?: string;
+  aiRules?: BrandAIRule[];
+  isDefault?: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface CreativeComment {
+  id: string;
+  projectId: string;
+  documentId?: string;
+  elementId?: string;
+  authorId?: string;
+  authorName: string;
+  authorEmail: string;
+  text: string;
+  resolved: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreativeVersion {
+  id: string;
+  projectId: string;
+  documentId: string;
+  versionNumber: number;
+  elements: CreativeElement[];
+  backgroundColor: string;
+  backgroundGradient?: GradientConfig;
+  backgroundImage?: string;
+  previewUrl?: string;
+  note?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CreativeAsset {
+  id: string;
+  workspaceId: string;
+  name: string;
+  type: 'image' | 'video' | 'logo' | 'font' | 'icon' | 'illustration' | 'cutout';
+  source: 'upload' | 'ai_generated' | 'stock' | 'crm' | 'system';
+  storagePath: string;
+  previewUrl: string;
+  mimeType: string;
+  fileSize?: number;
+  width?: number;
+  height?: number;
+  tags?: string[];
+  dominantColors?: string[];
+  createdBy: string;
+  createdAt: string;
+}
+
+export interface CreativeTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: 'business' | 'gaming' | 'finance' | 'podcast' | 'education' | 'social' | 'ads' | 'general';
+  format: CanvasFormatConfig;
+  scope: 'global' | 'workspace';
+  workspaceId?: string;
+  baselineHealthScore: number;
+  backgroundColor: string;
+  backgroundGradient?: GradientConfig;
+  backgroundImage?: string;
+  elements: CreativeElement[];
+  previewUrl?: string;
+  createdAt: string;
+}
+
+export interface CreativeConcept {
+  id: string;
+  projectId: string;
+  name: string;
+  strategy: string;
+  emotionalTrigger: string;
+  headline: string;
+  visualDirection: string;
+  healthScore: number;
+  previewUrl?: string;
+  documentData?: {
+    backgroundColor: string;
+    backgroundGradient?: GradientConfig;
+    elements: CreativeElement[];
+  };
+  createdBy: 'user' | 'ai';
+  createdAt: string;
+}
+
+export interface CreativePublication {
+  id: string;
+  projectId: string;
+  documentId: string;
+  channel: 'youtube' | 'facebook' | 'instagram' | 'linkedin' | 'website' | 'email';
+  destinationId?: string; // e.g. YouTube video ID or LinkedIn post ID
+  status: 'draft' | 'scheduled' | 'published' | 'failed';
+  scheduledFor?: string;
+  publishedAt?: string;
+  error?: string;
+  createdAt: string;
+}
+
+export const THUMBNAIL_FONT_OPTIONS: string[] = [
+  'Inter',
+  'Impact',
+  'Montserrat',
+  'Outfit',
+  'Arial Black',
+  'Georgia',
+  'Playfair Display',
+];
+
+export const FORMAT_PRESETS: Record<CreativeProjectType, CanvasFormatConfig> = {
+  youtube_thumbnail: {
+    type: 'youtube_thumbnail',
+    width: 1280,
+    height: 720,
+    aspectRatio: 16 / 9,
+    platform: 'youtube',
+    label: 'YouTube Cover (16:9 - 1280×720)',
+  },
+  social: {
+    type: 'social',
+    width: 1080,
+    height: 1080,
+    aspectRatio: 1,
+    platform: 'instagram',
+    label: 'Social Square (1:1 - 1080×1080)',
+  },
+  ad: {
+    type: 'ad',
+    width: 1200,
+    height: 628,
+    aspectRatio: 1200 / 628,
+    platform: 'facebook',
+    label: 'Landscape Ad (1200×628)',
+  },
+  email: {
+    type: 'email',
+    width: 600,
+    height: 300,
+    aspectRatio: 2,
+    platform: 'email',
+    label: 'Email Header (600×300)',
+  },
+  landing_page: {
+    type: 'landing_page',
+    width: 1920,
+    height: 1080,
+    aspectRatio: 16 / 9,
+    platform: 'web',
+    label: 'Hero Banner (1920×1080)',
+  },
+  podcast: {
+    type: 'podcast',
+    width: 3000,
+    height: 3000,
+    aspectRatio: 1,
+    platform: 'podcast',
+    label: 'Podcast Artwork (3000×3000)',
+  },
+  presentation: {
+    type: 'presentation',
+    width: 1920,
+    height: 1080,
+    aspectRatio: 16 / 9,
+    platform: 'presentation',
+    label: 'Slide Deck 16:9 (1920×1080)',
+  },
+  event: {
+    type: 'event',
+    width: 1200,
+    height: 675,
+    aspectRatio: 16 / 9,
+    platform: 'event',
+    label: 'Event Banner (1200×675)',
+  },
+  custom: {
+    type: 'custom',
+    width: 1280,
+    height: 720,
+    aspectRatio: 16 / 9,
+    platform: 'custom',
+    label: 'Custom Dimensions',
+  },
+};
+
+// -------------------------------------------------------------
+// Utilities & Compatibility Mappers
+// -------------------------------------------------------------
+
+export function makeUniqueId(): string {
+  return `${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Converts a legacy ThumbnailDesign into a modern CreativeProject & CreativeDocument pair.
+ * Ensures 100% backwards compatibility when loading existing thumbnail documents.
+ */
+export function thumbnailDesignToCreativeProject(design: ThumbnailDesign): {
+  project: CreativeProject;
+  document: CreativeDocument;
+} {
+  const projectId = design.id || makeUniqueId();
+  const documentId = `doc-${projectId}`;
+  const now = new Date().toISOString();
+
+  const creativeElements: CreativeElement[] = (design.elements || []).map((el) => ({
+    ...el,
+    semanticRole: el.type === 'text' ? 'headline' : el.type === 'image' ? 'subject' : 'decoration',
+  }));
+
+  const project: CreativeProject = {
+    id: projectId,
+    workspaceId: design.workspaceId || 'default-workspace',
+    name: design.name || 'Untitled Thumbnail Project',
+    type: 'youtube_thumbnail',
+    objective: 'traffic',
+    status: 'draft',
+    thumbnailUrl: design.thumbnailUrl,
+    documentId,
+    createdBy: 'system',
+    createdAt: design.createdAt || now,
+    updatedAt: design.updatedAt || now,
+  };
+
+  const document: CreativeDocument = {
+    id: documentId,
+    projectId,
+    workspaceId: design.workspaceId || 'default-workspace',
+    name: design.name || 'Untitled Thumbnail Project',
+    format: FORMAT_PRESETS.youtube_thumbnail,
+    backgroundColor: design.backgroundColor || '#0f172a',
+    backgroundGradient: design.backgroundGradient,
+    backgroundImage: design.backgroundImage,
+    elements: creativeElements,
+    thumbnailUrl: design.thumbnailUrl,
+    status: 'draft',
+    createdAt: design.createdAt || now,
+    updatedAt: design.updatedAt || now,
+  };
+
+  return { project, document };
+}
+
+/**
+ * Converts a modern CreativeDocument back into a legacy ThumbnailDesign.
+ * Ensures full compatibility for legacy thumbnail consumers, export actions, and media selectors.
+ */
+export function creativeDocumentToThumbnailDesign(
+  doc: CreativeDocument,
+  elements?: CreativeElement[]
+): ThumbnailDesign {
+  return {
+    id: doc.projectId || doc.id,
+    workspaceId: doc.workspaceId,
+    name: doc.name,
+    backgroundColor: doc.backgroundColor,
+    backgroundGradient: doc.backgroundGradient,
+    backgroundImage: doc.backgroundImage,
+    elements: elements || doc.elements || [],
+    thumbnailUrl: doc.thumbnailUrl,
+    createdAt: doc.createdAt,
+    updatedAt: doc.updatedAt,
+  };
+}

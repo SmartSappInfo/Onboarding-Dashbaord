@@ -8,7 +8,8 @@ import { Input } from '@/components/ui/input';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { Image as ImageIcon, Search, Wand2, Plus, Edit3 } from 'lucide-react';
+import Link from 'next/link';
+import { Image as ImageIcon, Search, Wand2, Plus, Edit3, Sparkles } from 'lucide-react';
 import type { ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
 import ThumbnailDesignerDialog from '@/components/shared/thumbnail-designer/ThumbnailDesignerDialog';
 
@@ -70,9 +71,16 @@ export default function ThumbnailsClient() {
               Create scroll-stopping, high-CTR video cover thumbnails with AI.
             </p>
           </div>
-          <Button onClick={handleCreateNew} className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-5 transition-all">
-            <Plus className="w-4 h-4 mr-1" /> Create Thumbnail
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/creative-studio">
+              <Button variant="outline" className="border-slate-800 bg-slate-900 text-slate-300 hover:text-white hover:bg-slate-800 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-4 transition-all">
+                <Sparkles className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> Explore Creative Studio 2.0
+              </Button>
+            </Link>
+            <Button onClick={handleCreateNew} className="bg-emerald-500 hover:bg-emerald-600 active:scale-[0.97] font-bold rounded-xl text-xs h-10 px-5 transition-all">
+              <Plus className="w-4 h-4 mr-1" /> Create Thumbnail
+            </Button>
+          </div>
         </div>
 
         {/* Search filter bar */}
