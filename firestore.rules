@@ -1009,6 +1009,100 @@ service cloud.firestore {
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
+    // --- Creative Studio 2.0 Collections ---
+    match /creative_projects/{projectId} {
+      allow get: if true; // Public access for linked shared project previews
+      allow list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /creative_documents/{documentId} {
+      allow get: if true; // Public access for rendering canvas preview
+      allow list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /creative_assets/{assetId} {
+      allow get: if true; // Public access for preview URLs
+      allow list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /creative_brand_kits/{kitId} {
+      allow get: if isAuthorized() || isSystemAdmin();
+      allow list: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /creative_comments/{commentId} {
+      allow get, list: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        request.auth.uid == resource.data.authorId ||
+        resource.data.authorId == null
+      );
+    }
+
+    match /creative_versions/{versionId} {
+      allow get, list: if isAuthorized();
+      allow create: if isAuthorized();
+      allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /creative_templates/{templateId} {
+      allow get, list: if isAuthorized() || resource.data.scope == 'global';
+      allow create, update, delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (request.resource.data.scope == 'workspace' && hasWorkspaceAccess(request.resource.data.workspaceId))
+      );
+    }
+
+    match /creative_shares/{shareId} {
+      allow get: if true; // Public access for client preview links
+      allow list, create, update, delete: if isAuthorized();
+    }
+
     // --- Message Templates (Two-Tier System) ---
     // Task 16.1: Security rules for message_templates collection
     // Global templates: read by all authenticated users, write only by super admins
@@ -1368,6 +1462,16 @@ service cloud.firestore {
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );
+
+      // Submission Internal Staff Notes
+      match /notes/{noteId} {
+        allow read, write: if isAuthorized();
+      }
+    }
+
+    // Form Saved View Presets
+    match /form_saved_views/{viewId} {
+      allow read, write: if isAuthorized();
     }
 
     match /form_events/{eventId} {

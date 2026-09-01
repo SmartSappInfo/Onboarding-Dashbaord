@@ -6019,7 +6019,13 @@ export interface FormSubmission {
   formId: string;
   workspaceId: string;
   organizationId: string;
-  data: Record<string, any>; // The parsed JSON answers { variableName: value }
+  data: Record<string, unknown>; // The parsed JSON answers { variableName: value }
+  status?: 'new' | 'processing' | 'qualified' | 'unqualified' | 'contacted' | 'converted' | 'rejected' | 'needs_review' | 'ai_flagged';
+  assignedTo?: string; // User ID of assigned team member
+  assignedToName?: string;
+  notesCount?: number;
+  dealId?: string; // Linked Deal ID
+  taskId?: string; // Linked Task ID
   entityId?: string; // Linked entity if created/updated
   sourcePageId?: string; // Campaign page that embedded this form (indirect tracking)
   ipAddress?: string;
