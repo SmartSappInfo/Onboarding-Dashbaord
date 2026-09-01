@@ -32,6 +32,13 @@ export const dealIntelligenceInputSchema = z.object({
     unitPrice: z.number(),
     total: z.number(),
   })).optional(),
+  availableCatalog: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    unitPrice: z.number(),
+    isRecurring: z.boolean(),
+    billingInterval: z.string().optional(),
+  })).optional(),
 });
 
 export const dealIntelligenceOutputSchema = z.object({
@@ -40,6 +47,16 @@ export const dealIntelligenceOutputSchema = z.object({
   winDrivers: z.array(z.string()).describe('Top 2-3 factors increasing deal likelihood'),
   riskFactors: z.array(z.string()).describe('Top 2-3 potential obstacles, stalls, or risks'),
   dealHealthAssessment: z.enum(['healthy', 'at_risk', 'stalled']).describe('Overall opportunity health assessment'),
+  recommendedProducts: z.array(z.object({
+    productId: z.string().describe('Product or package ID from available catalog'),
+    name: z.string().describe('Product or package name'),
+    rationale: z.string().describe('Why this product or package should be proposed to this client'),
+    suggestedQuantity: z.number().default(1),
+  })).optional().describe('Top 1-3 recommended upsell or initial catalog offerings'),
+  pricingHealth: z.object({
+    marginRating: z.enum(['optimal', 'discount_heavy', 'underpriced']).describe('Commercial pricing health evaluation'),
+    assessmentNotes: z.string().describe('Observations on contract value, recurring stability, or margin retention'),
+  }).optional(),
   nextBestActions: z.array(
     z.object({
       title: z.string().describe('Actionable imperative next step (e.g. Schedule Executive Demo)'),
@@ -57,6 +74,10 @@ export const dealIntelligenceFlow = ai.defineFlow(
     outputSchema: dealIntelligenceOutputSchema,
   },
   async (input) => {
+    const catalogSnippet = input.availableCatalog && input.availableCatalog.length > 0
+      ? input.availableCatalog.map(c => `- [${c.id}] ${c.name} (${input.currency} ${c.unitPrice} - ${c.isRecurring ? `Recurring ${c.billingInterval || 'monthly'}` : 'One-time'})`).join('\n')
+      : 'No predefined catalog offerings provided.';
+
     const prompt = `You are a Principal Revenue Operations Consultant and AI Sales Coach for enterprise software and B2B SaaS.
 Analyze the following deal opportunity and provide grounded, highly actionable intelligence.
 
@@ -69,11 +90,16 @@ Line Items: ${input.lineItems?.map(l => `${l.quantity}x ${l.name} (${input.curre
 Recent Notes / Context:
 ${input.notes?.map(n => `- ${n}`).join('\n') || 'No specific notes recorded.'}
 
+Available Commercial Catalog Offerings:
+${catalogSnippet}
+
 Provide an executive assessment adhering strictly to the structured schema:
 1. Executive Summary: Crisp, professional synthesis.
 2. Win Probability & Key Drivers: Realistic probability based on stage, velocity, and stakeholders.
 3. Identified Risk Factors: Stagnation, missing decision-makers, or lack of commercial items.
-4. Next-Best-Actions: 3 prioritized, immediate actions for the account executive.`;
+4. Recommended Catalog Items: Select 1-3 best-fit offerings from the available catalog to upsell or itemize.
+5. Pricing Health: Evaluate if the deal is healthy, underpriced, or heavily discounted.
+6. Next-Best-Actions: 3 prioritized, immediate actions for the account executive.`;
 
     const resolvedModel = await getModel({
       provider: 'googleai',

@@ -397,20 +397,122 @@ export async function savePriceBookItemsAction(
   }
 }
 
-export async function getPriceBookItemsAction(
-  priceBookId: string
-): Promise<{ success: boolean; items?: PriceBookItem[]; error?: string }> {
+export async function deleteProductCategoryAction(
+  categoryId: string,
+  userId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
   try {
-    if (!priceBookId) return { success: true, items: [] };
+    const catRef = adminDb.collection('product_categories').doc(categoryId);
+    const snap = await catRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Category not found.' };
+    }
 
-    const snap = await adminDb.collection('price_book_items')
-      .where('priceBookId', '==', priceBookId)
-      .get();
+    const permission = await canUser(userId, 'operations', 'pipeline', 'delete', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason || 'Permission denied to delete category.' };
+    }
 
-    const items: PriceBookItem[] = snap.docs.map(doc => doc.data() as PriceBookItem);
-    return { success: true, items };
+    await catRef.delete();
+    revalidatePath('/admin/pipeline');
+    revalidatePath('/admin/finance/packages');
+    return { success: true };
   } catch (error: unknown) {
-    const msg = error instanceof Error ? error.message : 'Failed to get price book items';
+    const msg = error instanceof Error ? error.message : 'Failed to delete category';
     return { success: false, error: msg };
   }
 }
+
+export async function updateProductCategoryAction(
+  categoryId: string,
+  updates: { name?: string; description?: string; color?: string; order?: number },
+  userId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const catRef = adminDb.collection('product_categories').doc(categoryId);
+    const snap = await catRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Category not found.' };
+    }
+
+    const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason || 'Permission denied.' };
+    }
+
+    await catRef.update({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/admin/finance/packages');
+    return { success: true };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to update category';
+    return { success: false, error: msg };
+  }
+}
+
+export async function deletePriceBookAction(
+  priceBookId: string,
+  userId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const pbRef = adminDb.collection('price_books').doc(priceBookId);
+    const snap = await pbRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Price book not found.' };
+    }
+
+    const permission = await canUser(userId, 'operations', 'pipeline', 'delete', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason || 'Permission denied to delete price book.' };
+    }
+
+    await pbRef.update({
+      isActive: false,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/admin/finance/packages');
+    return { success: true };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to delete price book';
+    return { success: false, error: msg };
+  }
+}
+
+export async function updatePriceBookAction(
+  priceBookId: string,
+  updates: { name?: string; description?: string; currency?: string; isStandard?: boolean; isActive?: boolean },
+  userId: string,
+  workspaceId: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const pbRef = adminDb.collection('price_books').doc(priceBookId);
+    const snap = await pbRef.get();
+    if (!snap.exists) {
+      return { success: false, error: 'Price book not found.' };
+    }
+
+    const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason || 'Permission denied.' };
+    }
+
+    await pbRef.update({
+      ...updates,
+      updatedAt: new Date().toISOString(),
+    });
+
+    revalidatePath('/admin/finance/packages');
+    return { success: true };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to update price book';
+    return { success: false, error: msg };
+  }
+}
+

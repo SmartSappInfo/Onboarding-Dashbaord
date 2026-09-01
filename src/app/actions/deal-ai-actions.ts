@@ -31,6 +31,16 @@ export interface DealAiInsightsResult {
     winDrivers: string[];
     riskFactors: string[];
     dealHealthAssessment: 'healthy' | 'at_risk' | 'stalled';
+    recommendedProducts?: Array<{
+      productId: string;
+      name: string;
+      rationale: string;
+      suggestedQuantity: number;
+    }>;
+    pricingHealth?: {
+      marginRating: 'optimal' | 'discount_heavy' | 'underpriced';
+      assessmentNotes: string;
+    };
     nextBestActions: Array<{
       title: string;
       rationale: string;
@@ -82,6 +92,50 @@ export async function generateDealAiInsightsAction(
       }
     });
 
+    // Fetch active products and packages for smart recommendations
+    const [productsSnap, packagesSnap] = await Promise.all([
+      adminDb.collection('products')
+        .where('workspaceId', '==', workspaceId)
+        .where('isActive', '==', true)
+        .limit(20)
+        .get(),
+      adminDb.collection('subscription_packages')
+        .where('workspaceIds', 'array-contains', workspaceId)
+        .where('isActive', '==', true)
+        .limit(10)
+        .get(),
+    ]);
+
+    const availableCatalog: Array<{
+      id: string;
+      name: string;
+      unitPrice: number;
+      isRecurring: boolean;
+      billingInterval?: string;
+    }> = [];
+
+    productsSnap.forEach(d => {
+      const p = d.data();
+      availableCatalog.push({
+        id: d.id,
+        name: p.name || 'Unnamed Product',
+        unitPrice: typeof p.unitPrice === 'number' ? p.unitPrice : 0,
+        isRecurring: Boolean(p.isRecurring),
+        billingInterval: p.billingInterval || 'one_time',
+      });
+    });
+
+    packagesSnap.forEach(d => {
+      const pkg = d.data();
+      availableCatalog.push({
+        id: d.id,
+        name: pkg.name || 'Unnamed Package',
+        unitPrice: typeof pkg.ratePerStudent === 'number' ? pkg.ratePerStudent : 0,
+        isRecurring: true,
+        billingInterval: pkg.billingTerm === 'annually' || pkg.billingTerm === 'year' ? 'annual' : 'monthly',
+      });
+    });
+
     const daysInStage = calculateDaysInStage(deal.stageEnteredAt, deal.createdAt);
 
     const inputData = {
@@ -103,6 +157,7 @@ export async function generateDealAiInsightsAction(
         unitPrice: l.unitPrice,
         total: l.total,
       })),
+      availableCatalog,
     };
 
     const output = await dealIntelligenceFlow(inputData);

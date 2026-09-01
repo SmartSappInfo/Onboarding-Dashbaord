@@ -68,6 +68,7 @@ export type TagScope = 'global' | 'workspace';
  */
 export interface Tag {
   id: string;
+  isManualEnrolment?: boolean;
   workspaceId: string;           // Workspace-scoped
   organizationId: string;        // For org-level analytics
   name: string;                  // Display name (max 50 chars)
@@ -1477,7 +1478,11 @@ export type {
   StageBottleneck,
   RevenueAttribution,
   ForecastRiskSummary,
-  DealsAnalyticsDataset
+  DealsAnalyticsDataset,
+  UnifiedCatalogItem,
+  SkuPerformanceMetric,
+  CategoryRevenueMetric,
+  CommercialAnalyticsSummary
 } from './deals/deal-types';
 
 export type {
@@ -1569,9 +1574,11 @@ export interface SubscriptionPackage {
   name: string;
   description: string;
   ratePerStudent: number;
-  billingTerm: 'term' | 'semester' | 'year';
+  billingTerm: 'term' | 'semester' | 'year' | 'monthly' | 'termly' | 'annually';
   currency: string;
   isActive: boolean;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BillingPeriod {
@@ -2927,6 +2934,23 @@ export interface Survey {
   thankYouRedirectUrl?: string;
   thankYouConfettiEnabled?: boolean;
   resultPages?: SurveyResultPage[];
+  // SmartSapp Surveys 2.0 Core Platform Extensions (Phase 1)
+  projectId?: string;
+  surveyType?: 'feedback' | 'nps' | 'csat' | 'ces' | 'poll' | 'assessment' | 'quiz' | 'evaluation' | 'research' | 'audit' | 'inspection' | 'registration' | 'intake' | 'lead_qualification' | 'customer_health' | 'employee_engagement' | 'market_research' | 'custom';
+  lifecycleStatus?: 'draft' | 'in_review' | 'approved' | 'scheduled' | 'published' | 'paused' | 'closed' | 'archived';
+  currentVersionNumber?: number;
+  currentDraftVersionId?: string;
+  publishedVersionId?: string;
+  privacyMode?: 'anonymous' | 'confidential' | 'identified' | 'crm_linked';
+  consentConfig?: {
+    enabled: boolean;
+    noticeTitle?: string;
+    noticeBody?: string;
+    policyVersion?: string;
+    policyUrl?: string;
+    requireExplicitCheckbox?: boolean;
+  };
+  deploymentIds?: string[];
 }
 
 export interface LeadCaptureFieldSetting {
@@ -3135,6 +3159,26 @@ export interface SurveySession {
   assignedUserId?: string; // The representative who shared the link (from ?ref= param)
   startedAt?: string; // First visit timestamp for completion time calculation
 }
+
+// Re-export Survey 2.0 Platform Core Types
+export type {
+  SurveyType,
+  SurveyLifecycleStatus,
+  SurveyPrivacyMode,
+  DeploymentChannel,
+  SurveyProject,
+  SurveyVersion,
+  QuestionBankItem,
+  SurveyDeployment,
+  ConsentConfig,
+} from '@/lib/surveys/survey-v2-types';
+export {
+  SURVEY_ARCHETYPES,
+  SURVEY_LIFECYCLE_STATUSES,
+  SURVEY_PRIVACY_MODES,
+  DEPLOYMENT_CHANNELS,
+} from '@/lib/surveys/survey-v2-types';
+
 
 export interface LearningSignal {
   id: string;

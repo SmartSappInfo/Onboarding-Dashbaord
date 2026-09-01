@@ -36,6 +36,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import Link from 'next/link';
+import { useCallModal } from '@/context/CallModalContext';
+import { Phone } from 'lucide-react';
 
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -51,6 +53,7 @@ interface EntityCardProps {
  * Updated to use dynamic Entity Status labels and independent workspace lifecycles.
  */
 export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
+  const { openCallModal } = useCallModal();
     const { activeWorkspace } = useWorkspace();
     const { singular } = useTerminology();
 
@@ -135,6 +138,11 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
 
 
 
+                                
+                                <DropdownMenuItem onClick={() => openCallModal({ entityId: entity.entityId })} className="rounded-lg p-2 gap-2.5 text-left cursor-pointer">
+                                    <Phone className="h-3.5 w-3.5 text-indigo-500" />
+                                    <span className="font-bold text-xs">Call Now</span>
+                                </DropdownMenuItem>
                                 <DropdownMenuSeparator className="my-1" />
                                 <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5 text-left">
                                     <Link href={`/admin/entities/${entity.entityId}/edit`}>

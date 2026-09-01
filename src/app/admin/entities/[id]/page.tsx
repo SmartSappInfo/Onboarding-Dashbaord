@@ -3,6 +3,7 @@
 import * as React from 'react';
 import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
+import { useCallModal } from '@/context/CallModalContext';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
 import { doc, collection, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
 import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
@@ -152,6 +153,7 @@ export default function EntityDetailPage() {
 
     const [convertModalOpen, setConvertModalOpen] = React.useState(false);
     const [activeTab, setActiveTab] = React.useState('overview');
+    const { openCallModal } = useCallModal();
 
     // Inline Online Presence editing
     const [isEditingPresence, setIsEditingPresence] = React.useState(false);
@@ -443,6 +445,9 @@ export default function EntityDetailPage() {
                         </Button>
                         <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={() => setIsCampaignDialogOpen(true)}>
                             <PhoneCall className="h-4 w-4 text-indigo-500" /> Call Campaign
+                        </Button>
+                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors" onClick={() => openCallModal({ entityId: params.id as string })}>
+                            <PhoneCall className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Call Now
                         </Button>
                         <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={handleExportNTT}>
                             <Download className="h-4 w-4 text-primary" /> Export (.ntt)

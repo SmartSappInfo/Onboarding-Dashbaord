@@ -63,6 +63,8 @@ import { formatCurrency } from '@/lib/currency-utils';
 import { calculateDealHealth, calculateDaysInStage, calculateWeightedValue } from '@/lib/deals/deal-health-engine';
 import QuickEditDealModal from './QuickEditDealModal';
 import DuplicateDealModal from './DuplicateDealModal';
+import { useCallModal } from '@/context/CallModalContext';
+import { Phone } from 'lucide-react';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
     overdue: AlertCircle,
@@ -89,6 +91,7 @@ interface DealCardProps {
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
 export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }: DealCardProps) {
+  const { openCallModal } = useCallModal();
   const { singular } = useTerminology();
   const confirm = useConfirm();
   const { toast } = useToast();
@@ -306,6 +309,14 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }
                         </Link>
                     </DropdownMenuItem>
 
+                    
+                    <DropdownMenuItem 
+                        onClick={(e) => { e.stopPropagation(); openCallModal({ entityId: deal.entityId, dealId: deal.id }); }}
+                        className="rounded-lg p-2 gap-2.5 cursor-pointer"
+                    >
+                        <Phone className="h-3.5 w-3.5 text-indigo-500" />
+                        <span className="font-bold text-xs">Call Now</span>
+                    </DropdownMenuItem>
                     <DropdownMenuSeparator className="my-1" />
                     <DropdownMenuItem 
                         onClick={(e) => {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Suspense, type ReactNode } from 'react';
 import { ThemeProvider } from '@/components/theme-provider';
+import { CallModalProvider } from '@/context/CallModalContext';
 import AdminLayoutClient from './layout-client';
 import FirebaseBootstrap from '@/firebase/FirebaseBootstrap';
 import '@/lib/whatsapp-template-actions';
@@ -27,7 +28,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           }
         `}} />
         <FirebaseBootstrap />
-        <AdminLayoutClient>{children}</AdminLayoutClient>
+        <AdminLayoutClient><CallModalProvider>{children}</CallModalProvider></AdminLayoutClient>
       </ThemeProvider>
     </Suspense>
   );

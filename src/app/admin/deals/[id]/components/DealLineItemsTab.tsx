@@ -75,7 +75,8 @@ import {
   deleteDealQuoteAction
 } from '@/app/actions/deal-line-item-actions';
 import { listProductsAction } from '@/app/actions/product-actions';
-import type { Deal, DealLineItem, DealQuote, Product } from '@/lib/types';
+import Link from 'next/link';
+import type { Deal, DealLineItem, DealQuote, Product, SubscriptionPackage } from '@/lib/types';
 import { nanoid } from 'nanoid';
 
 interface DealLineItemsTabProps {
@@ -113,6 +114,19 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
       .catch(err => console.error('Failed to load catalog products:', err))
       .finally(() => setIsLoadingCatalog(false));
   }, [deal.workspaceId]);
+
+  // Catalog Subscription Packages Live Subscription
+  const packagesQuery = useMemoFirebase(() => {
+    if (!firestore || !deal.workspaceId) return null;
+    return query(
+      collection(firestore, 'subscription_packages'),
+      where('workspaceIds', 'array-contains', deal.workspaceId),
+      where('isActive', '==', true)
+    );
+  }, [firestore, deal.workspaceId]);
+
+  const { data: rawPackages } = useCollection<SubscriptionPackage>(packagesQuery);
+  const catalogPackages = React.useMemo(() => rawPackages || [], [rawPackages]);
 
   // Quotes Real-Time Subscription
   const quotesQuery = useMemoFirebase(() => {
@@ -183,6 +197,29 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
     toast({
       title: 'Product Added',
       description: `Added "${product.name}" from catalog.`,
+    });
+  };
+
+  const handleAddPackageFromCatalog = (pkg: SubscriptionPackage) => {
+    const interval = pkg.billingTerm === 'annually' || pkg.billingTerm === 'year' ? 'annual' : 'monthly';
+    const rate = pkg.ratePerStudent || 0;
+    const newItem: DealLineItem = {
+      id: `item_${nanoid(8)}`,
+      productId: pkg.id,
+      name: pkg.name,
+      description: pkg.description || `Subscription Package (${pkg.billingTerm} cycle)`,
+      quantity: 1,
+      unitPrice: rate,
+      discountPercent: 0,
+      taxRate: 0,
+      isRecurring: true,
+      billingInterval: interval,
+      total: rate,
+    };
+    setItems(prev => [...prev, newItem]);
+    toast({
+      title: 'Subscription Tier Added',
+      description: `Added "${pkg.name}" from Finance Hub.`,
     });
   };
 
@@ -370,7 +407,22 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
           </div>
 
           <div className="flex items-center gap-2 shrink-0 flex-wrap">
-            {catalogProducts.length > 0 && (
+            {/* Direct Deep Link to Finance Hub Commercial Catalog */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              asChild
+              className="h-9 rounded-xl font-bold text-xs border-border/80 hover:bg-muted/30 gap-1.5 min-h-[38px] cursor-pointer"
+            >
+              <Link href="/admin/finance/packages" target="_blank">
+                <Package className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Manage Catalog & Packages</span>
+                <ArrowUpRight className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+              </Link>
+            </Button>
+
+            {(catalogProducts.length > 0 || catalogPackages.length > 0) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button
@@ -383,29 +435,63 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                     <span>From Catalog</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64 max-h-72 overflow-y-auto rounded-xl p-1 shadow-xl">
-                  {catalogProducts.map(prod => (
-                    <DropdownMenuItem
-                      key={prod.id}
-                      onClick={() => handleAddProductFromCatalog(prod)}
-                      className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
-                    >
-                      <div className="flex items-center justify-between w-full">
-                        <span className="font-bold text-xs text-foreground truncate">{prod.name}</span>
-                        <span className="text-[11px] font-black text-primary">{formatCurrency(prod.unitPrice, prod.currency)}</span>
+                <DropdownMenuContent align="end" className="w-72 max-h-80 overflow-y-auto rounded-xl p-1 shadow-xl">
+                  {catalogProducts.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-muted-foreground bg-muted/30 rounded-md my-0.5">
+                        Products & Services
                       </div>
-                      <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
-                        {prod.isRecurring ? (
-                          <Badge className="text-[9px] px-1 py-0 bg-emerald-500/10 text-emerald-600 border-none">
-                            Recurring ({prod.billingInterval})
-                          </Badge>
-                        ) : (
-                          <span>One-time</span>
-                        )}
-                        {prod.sku && <span>• {prod.sku}</span>}
+                      {catalogProducts.map(prod => (
+                        <DropdownMenuItem
+                          key={prod.id}
+                          onClick={() => handleAddProductFromCatalog(prod)}
+                          className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-xs text-foreground truncate">{prod.name}</span>
+                            <span className="text-[11px] font-black text-primary">{formatCurrency(prod.unitPrice, prod.currency)}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            {prod.isRecurring ? (
+                              <Badge className="text-[9px] px-1 py-0 bg-emerald-500/10 text-emerald-600 border-none">
+                                Recurring ({prod.billingInterval})
+                              </Badge>
+                            ) : (
+                              <span>One-time</span>
+                            )}
+                            {prod.sku && <span>• {prod.sku}</span>}
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
+
+                  {catalogPackages.length > 0 && (
+                    <>
+                      <div className="px-2 py-1.5 text-[10px] font-black uppercase tracking-wider text-primary bg-primary/5 rounded-md my-0.5 mt-1.5">
+                        Subscription Packages (Tiers)
                       </div>
-                    </DropdownMenuItem>
-                  ))}
+                      {catalogPackages.map(pkg => (
+                        <DropdownMenuItem
+                          key={pkg.id}
+                          onClick={() => handleAddPackageFromCatalog(pkg)}
+                          className="flex flex-col items-start gap-0.5 p-2 rounded-lg cursor-pointer hover:bg-muted/50"
+                        >
+                          <div className="flex items-center justify-between w-full">
+                            <span className="font-bold text-xs text-foreground truncate">{pkg.name}</span>
+                            <span className="text-[11px] font-black text-emerald-600 dark:text-emerald-400">
+                              {formatCurrency(pkg.ratePerStudent, pkg.currency)}/user
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                            <Badge className="text-[9px] px-1 py-0 bg-primary/10 text-primary border-none">
+                              {pkg.billingTerm} cycle
+                            </Badge>
+                          </div>
+                        </DropdownMenuItem>
+                      ))}
+                    </>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             )}
@@ -641,13 +727,16 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                   Add products, service fees, or license subscriptions to itemize this deal and automatically synchronize its total revenue.
                 </p>
               </div>
-              <div className="flex items-center gap-2 mt-1">
-                {catalogProducts.length > 0 && (
+              <div className="flex items-center gap-2 mt-1 flex-wrap justify-center">
+                {(catalogProducts.length > 0 || catalogPackages.length > 0) && (
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={() => handleAddProductFromCatalog(catalogProducts[0])}
+                    onClick={() => {
+                      if (catalogProducts.length > 0) handleAddProductFromCatalog(catalogProducts[0]);
+                      else if (catalogPackages.length > 0) handleAddPackageFromCatalog(catalogPackages[0]);
+                    }}
                     className="h-9 px-4 rounded-xl font-bold text-xs border-primary/30 text-primary"
                   >
                     <Package className="h-3.5 w-3.5 mr-1" /> Add from Catalog
@@ -660,6 +749,17 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                   className="h-9 px-4 rounded-xl font-bold text-xs"
                 >
                   <Plus className="h-3.5 w-3.5 mr-1" /> Add Custom Item
+                </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  asChild
+                  className="h-9 px-3 rounded-xl text-xs font-semibold text-muted-foreground hover:text-foreground"
+                >
+                  <Link href="/admin/finance/packages" target="_blank">
+                    Manage in Finance Hub <ArrowUpRight className="h-3.5 w-3.5 ml-1" />
+                  </Link>
                 </Button>
               </div>
             </div>

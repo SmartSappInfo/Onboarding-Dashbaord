@@ -1,61 +1,140 @@
-# Technical Blueprint & Code Review: Forms Module
+# Technical Blueprint & Comprehensive Architectural Review: Forms Module
 
-This document provides a comprehensive architectural breakdown and senior code review of the **Forms Module** in the onboarding dashboard. It is structured to serve as an industry-grade technical document for software architects, security engineers, and product experts looking to scale, secure, or extend the system.
-
----
-
-## 1. Executive Summary & Core Capabilities
-
-The Forms Module is a multi-tenant, enterprise-ready form creation, rendering, and ingestion system. It allows administrative users to build custom data gathering structures, host them publicly, track conversions, and map collected variables directly into CRM entities and automated workflow pipelines.
-
-### Key Capabilities
-*   **Visual Form Builder:** Drag-and-drop form canvas supporting multi-field configurations, layout width adjustments, placeholders, logic rules, and validation criteria.
-*   **Interactive Viewport Sandbox:** Real-time preview of form rendering across desktop, tablet, and mobile dimensions.
-*   **Public Routing & Standalone Rendering:** Automated hosting under `/forms/[slug]` with dynamic SEO metadata, loading skeletons, and code-split thank you presentation views.
-*   **Polymorphic CRM Lead Ingestion:** Configurable lead parsing strategy that update existing contacts or creates new person/family/institution entities depending on deduplication policy rules.
-*   **Action Engine Integration:** Auto-applies tags, runs background webhooks, triggers user automation cycles, and sends team notifications across Email, SMS, and WhatsApp immediately upon ingestion.
-*   **Analytics & Submissions Panel:** Listview table with dynamic, field-specific columns, full search, pagination, and multi-field CSV export.
+This document provides an exhaustive, industry-grade technical blueprint and senior code review of the **Forms Module** in the Onboarding Dashboard. It covers all active capabilities, component topologies, ingestion pipelines, database schemas, integration layers, UI/UX aesthetics, identified security/performance vulnerabilities, and a strategic roadmap for future scaling.
 
 ---
 
-## 2. Technical Architecture & State Flow
+## 1. Executive Summary & Core Pillars
 
-The module is built with Next.js App Router, combining Server Components (RSC) for rapid first-paint loading and Client Components for rich user interfaces.
+The Forms Module is a multi-tenant, enterprise-grade form creation, rendering, and ingestion system. It provides an end-to-end framework allowing administrators to design custom data gathering structures, host them on public standalone URLs, embed them in landing pages, accept submissions from external headless frontends, and route collected data directly into CRM entities and automated workflow pipelines.
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                          Next.js Router Path                           │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │
-                       ┌────────────┴────────────┐
-                       ▼                         ▼
-            [Admin Route]                     [Public Route]
-      `/admin/forms/[id]/submissions`       `/forms/[slug]/page.tsx`
-                       │                         │
-                       ▼                         ▼
-            [RSC Parallel Fetch]             [RSC Dynamic cache()]
-        (Preloads metadata & docs)       (Preloads form definition & SEO)
-                       │                         │
-                       ▼                         ▼
-            [SubmissionsClient]              [FormRenderer Component]
-      (Horizontal scroll tables & sheet)     (Validates schema & captures data)
-                       │                         │
-                       ▼                         ▼
-            [Submission Drawer]             [Server Action Pipeline]
-       (Resolves friendly overrides)       `processFormSubmissionAction`
+┌─────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    FORMS MODULE PILLARS                                         │
+├──────────────────────┬──────────────────────┬───────────────────────┬───────────────────────────┤
+│ 1. VISUAL BUILDER    │ 2. INGESTION & APIS  │ 3. AUTOMATION & CRM   │ 4. SUBMISSIONS & INSIGHTS │
+├──────────────────────┼──────────────────────┼───────────────────────┼───────────────────────────┤
+│ • 4-Step Wizard Flow │ • Standalone Hosted  │ • Polymorphic CRM     │ • Dynamic Field Columns   │
+│ • Dnd-Kit Sortable   │   Routes (/p/f/)     │   Entity Resolution   │ • Safe Date Normalizer    │
+│ • Real-time Logic    │ • Page Builder Embed │ • 3-Tier Alert Matrix │ • Export CSV Builder      │
+│ • Theme & Sandbox    │ • Headless REST API  │ • Webhooks & Taggers  │ • Detail Drawer Panel     │
+└──────────────────────┴──────────────────────┴───────────────────────┴───────────────────────────┘
+```
+
+---
+
+## 2. Complete Subsystems & Feature Breakdown
+
+### 2.1 The 4-Step Form Builder Wizard
+Located at `src/app/admin/forms/[id]/edit/page.tsx`, the builder organizes the creation lifecycle into four structured phases:
+
+1.  **Step 1 — Details & Scope Configuration:**
+    *   **Form Type:** Selection between **Bound Forms** (strictly scoped to a contact context) and **Global Forms** (open public lead generation).
+    *   **Contact Scope:** Strict binding to `institution`, `family`, or `person` entity models.
+    *   **Multi-Workspace Visibility:** Toggles for cross-workspace visibility (`allowCrossVisibility`, `workspaceIds`).
+    *   **SEO & Social Graph Engine:** Canonical metadata management (Meta Title, Description, Keywords, OG Images, and Twitter Card tags).
+2.  **Step 2 — Builder Canvas & Visual Layout:**
+    *   **Draggable Catalog (`FieldsSidebar.tsx`):** Displays available workspace `AppFields` grouped by system categories (`common`, `institution`, `family`, `person`, etc.) with instant search and status indicators.
+    *   **Sortable Visual Canvas (`BuilderCanvas.tsx`):** Powered by `@dnd-kit/core` and `@dnd-kit/sortable` for vertical drag-and-drop reordering.
+    *   **Properties Drawer (`PropertiesSidebar.tsx`):** Controls field instance overrides (Custom Labels, Placeholders, Help Texts, Default Values, Required toggles, Hidden toggles, and Layout Width: `full` vs `half`).
+    *   **Conditional Logic Engine:** Direct rule configuration per field for dynamic interactive behaviors.
+    *   **Theme Customizer:** Selection between 4 presets (`minimal`, `professional`, `card`, `embedded`), with granular control over border radius, accent colors, background opacity, CTA alignment, and button styles.
+    *   **Viewport Sandbox (`ViewportToggle.tsx`):** Real-time interactive canvas scaling across **Desktop (100%)**, **Tablet (768px)**, and **Mobile (375px)** viewports.
+3.  **Step 3 — Actions, CRM & Automations:**
+    *   **CRM Ingestion Strategy:** Determines how submissions resolve contacts (`create_or_update`, `create_new`, or `update_matching`).
+    *   **Automated Tagging:** Selection of workspace tags to automatically apply to resolved CRM entities.
+    *   **External Webhook Dispatcher:** Registration of third-party API endpoints with inline payload test buttons.
+    *   **Success Behavior Handler:** Configuration of post-submission presentation (Inline Modal, Full Thank You Page, or External URL Redirection with countdown delays, confetti triggers, and UTM parameter forwarding).
+    *   **3-Tier Notification Matrix:** Multi-channel alert dispatching.
+4.  **Step 4 — Distribution & Sharing:**
+    *   **Public Direct Link:** One-click copyable standalone link (`https://domain/p/f/[slug]`).
+    *   **Embed Snippet Generator:** Copyable responsive HTML `<iframe>` snippet with auto-height postMessage script.
+    *   **QR Code Studio Integration:** High-resolution PNG and SVG QR code generator with download triggers.
+
+---
+
+### 2.2 Conditional Logic & Dependency Engine
+The logic engine evaluates dynamic field display rules in real-time within `<FormRenderer>` and `<BuilderCanvas>`:
+*   **Actions:** `show` | `hide`.
+*   **Conditions:** `equals`, `not_equals`, `contains`, `empty`, `not_empty`.
+*   **Evaluation Model:** Targets any prerequisite field (`targetFieldId`) in the form. As respondents type or select values, the dependency graph updates visibility instantly.
+
+---
+
+### 2.3 Standalone Hosted Public Forms (`/p/f/[slug]`)
+Located at `src/app/p/f/[slug]/page.tsx`:
+*   **Server-Side Rendering:** Uses React `cache()` to eliminate duplicate database calls between `generateMetadata` and page body rendering.
+*   **Dynamic Theming:** Injects theme configurations (colors, card styles, button rounding) as custom CSS variables on page generation.
+*   **Success Presentation:** Supports confetti celebrations (`canvas-confetti`) and smooth redirect transitions.
+
+---
+
+### 2.4 Page Builder & Campaign Landing Page Embeds (`<EmbeddedForm>`)
+Located at `src/components/page-builder/embeds/EmbeddedForm.tsx`:
+*   **Authentication Bypass:** Uses `getPublicFormDefinitionAction` Server Action via Firebase Admin SDK to fetch form schemas and active `app_fields` on public `/p/[slug]` landing pages without requiring visitor authentication.
+*   **Theme Handshake:** Listens for parent window `postMessage` events, dynamically syncing theme modes (light/dark) between the landing page builder and the form iframe.
+*   **Campaign Conversion Telemetry:** Passes `sourcePageId` to track conversion rates and trigger campaign-specific lifecycle tags (`source-<pageId>`).
+
+---
+
+### 2.5 Headless / External Form Submission REST API
+Located at `src/app/api/external/forms/submit/route.ts`:
+*   **Cross-Origin Resource Sharing (CORS):** Employs `Access-Control-Allow-Origin: *` to accept submissions from third-party websites (WordPress, Webflow, Shopify, custom HTML, mobile apps).
+*   **Content-Type Flexibility:** Handles `application/json`, `multipart/form-data`, and `application/x-www-form-urlencoded`.
+*   **Response Modes:** Returns standard JSON `{ success: true, submissionId }` for AJAX requests or executes HTTP 303 redirects when `redirectUrl` is supplied.
+
+---
+
+### 2.6 Dynamic Submissions Listview & Submissions Panel
+Located at `src/app/admin/forms/[id]/submissions/`:
+*   **Dynamic Column Matrix (`SubmissionsTable.tsx`):** Iterates over `form.fields` dynamically, rendering dedicated `<TableHead>` and `<TableCell>` columns with Title Case fallback formatting (`formatFieldLabel`).
+*   **Resilient Date Parsing (`parseDateSafe`):** Sanitizes Firestore `Timestamp` instances, numeric seconds, and ISO strings, preventing client-side `RangeError` crashes.
+*   **Responsive Table Container:** Employs `overflow-x-auto` with fixed minimum column widths (`min-w-[150px]`) ensuring seamless horizontal scrolling for wide forms.
+*   **Submission Details Drawer (`SubmissionDrawer.tsx`):** Displays submission payloads with mapped field overrides, metadata timestamps, IP/UserAgent network telemetry, and direct deep-links to matched CRM records.
+
+---
+
+### 2.7 3-Tier Multi-Channel Notification Matrix
+Located at `src/app/admin/forms/components/form-notification-settings.tsx`:
+*   **Tier 1 — Internal Team Alerts:** Dispatches alerts to selected workspace team members (`userIds`).
+*   **Tier 2 — Respondent Confirmation:** Detects email/phone fields from submitted data and fires confirmation messages to the submitter.
+*   **Tier 3 — External Distribution Lists:** Forwards notification payloads to arbitrary third-party email addresses (`emailAddresses`).
+*   **Omnichannel Support:** Independent template selection for **Email**, **SMS**, **WhatsApp**, **In-App Alerts**, and **Push Notifications**.
+*   **Inline Template Workshop (`TemplateWorkshopSheet`):** Allows admins to build or edit messaging templates inside a modal without abandoning the form builder.
+
+---
+
+## 3. Architecture & Routing Topography
+
+```
+┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                     ROUTING TOPOGRAPHY                                           │
+└────────────────────────────────────────────────┬─────────────────────────────────────────────────┘
+                                                 │
+      ┌──────────────────────────────────────────┼───────────────────────────────────────────┐
+      ▼                                          ▼                                           ▼
+[ADMIN SURFACES]                          [PUBLIC SURFACES]                           [HEADLESS API]
+• `/admin/forms`                          • `/p/f/[slug]`                             • `/api/external/forms/submit`
+  (Management Hub)                          (Hosted Form Landing Page)                  (CORS Ingestion Endpoint)
+• `/admin/forms/[id]`                     • `/p/[slug]`
+  (Form Overview Summary)                   (Campaign Page with <EmbeddedForm>)
+• `/admin/forms/[id]/edit`
+  (4-Step Visual Wizard)                  *Note: `/forms/[pdfId]` is dedicated to
+• `/admin/forms/[id]/submissions`          PDF Document Signing & Contract Studios.
+  (Dynamic Columns Listview)
 ```
 
 ### Key Architectural Patterns
-*   **RSC Parallel Fetching:** The submissions route (`/admin/forms/[id]/submissions/page.tsx`) queries the form definition and the first page of submissions concurrently via `Promise.all` before passing state down, eliminating network waterfalls.
-*   **Undo/Redo History Pipeline:** The Form Builder maintains a client-side state history stack (`useFormHistory`) capturing field modifications and enabling standard hotkeys (`Ctrl+Z`, `Ctrl+Shift+Z`) for state rollback.
-*   **Conflict Resolution & Concurrency Checks:** Form configuration edits enforce dynamic version checking. Edits are committed via Server Actions (`updateFormAction`) passing a `version` field. If the database version is higher than the client version, the commit fails, preventing overwriting concurrent edits.
-*   **Debounced Autosaving:** A 2-second debounced state listener monitors builder canvas edits. When inactive, it automatically executes the commit action using React `startSaveTransition` to keep the UI interactive.
+1.  **RSC Parallel Fetching:** `/admin/forms/[id]/submissions/page.tsx` executes `Promise.all([getFormByIdAction(id), getFormSubmissionsAction(id)])` to preload metadata and records on the server, eliminating client waterfalls.
+2.  **Undo/Redo History Stack:** `useFormHistory` captures canvas modifications, enabling full keyboard shortcut rollback (`Ctrl+Z`, `Ctrl+Shift+Z`).
+3.  **Concurrency Conflict Protection:** Edits send a `version` attribute to `updateFormAction`. If database version > client version, it throws a concurrency conflict error.
+4.  **Debounced Autosave:** A 2-second debounce timer commits dirty form state via `startSaveTransition` to maintain non-blocking UI responsiveness.
 
 ---
 
-## 3. Database Schema Models
+## 4. Database Schema Specifications
 
-The module is backed by Cloud Firestore. The primary schemas are defined as follows:
+Backed by Cloud Firestore (`forms` and `form_submissions` collections):
 
 ```typescript
 export interface Form {
@@ -80,22 +159,35 @@ export interface Form {
   assignmentEnabled?: boolean;
   allowResubmission?: boolean;
   allowCrossVisibility?: boolean;
+  showDebugProcessingModal?: boolean;
+  notifyAssignedUsers?: {
+    email: boolean;
+    sms: boolean;
+  };
   createdAt: string;
   updatedAt?: string;
 }
 
 export interface FormFieldInstance {
-  id: string; // Unique ID (e.g. f_ms361ljj_1qmk)
-  appFieldId: string; // Target AppField reference
+  id: string; // e.g. "f_ms361ljj_1qmk"
+  appFieldId: string; // Target AppField reference (e.g. "contact_name")
   labelOverride?: string;
   placeholderOverride?: string;
   helpTextOverride?: string;
   required: boolean;
   hidden: boolean;
-  defaultValueOverride?: any;
+  defaultValueOverride?: string | number | boolean;
   order: number;
   width?: 'full' | 'half';
   logicRules?: FormFieldLogicRule[];
+}
+
+export interface FormFieldLogicRule {
+  id: string;
+  action: 'show' | 'hide';
+  condition: 'equals' | 'not_equals' | 'contains' | 'empty' | 'not_empty';
+  targetFieldId: string;
+  value?: string;
 }
 
 export interface FormSubmission {
@@ -103,82 +195,81 @@ export interface FormSubmission {
   formId: string;
   workspaceId: string;
   organizationId: string;
-  data: Record<string, unknown>; // Maps FormFieldInstance.id to captured values
-  entityId?: string; // Resolved CRM contact reference
-  sourcePageId?: string;
+  data: Record<string, unknown>; // Maps FormFieldInstance.id -> captured values
+  entityId?: string; // Resolved CRM Entity reference
+  sourcePageId?: string; // Originating Campaign Page ID
   ipAddress?: string;
   userAgent?: string;
   submittedAt: string;
   utmSource?: string;
   utmMedium?: string;
   utmCampaign?: string;
+  utmTerm?: string;
+  utmContent?: string;
 }
 ```
 
 ---
 
-## 4. Integration Specifications
+## 5. Ingestion Pipeline & Integrations
 
-The form submission processing action (`processFormSubmissionAction` in `forms-actions.ts`) serves as the central hub connecting multiple microservices:
-
-```
-                            ┌────────────────────────┐
-                            │      Form Ingest       │
-                            └───────────┬────────────┘
-                                        │
-                                        ▼
-                            ┌────────────────────────┐
-                            │    CRM Lead Engine     │
-                            │ (Deduplication Search) │
-                            └───────────┬────────────┘
-                                        │
-                                        ├─────────────────────────────────────────┐
-                                        ▼                                         ▼
-                            ┌────────────────────────┐               ┌────────────────────────┐
-                            │   Automation Engine    │               │    Auditing Log Engine   │
-                            │  (FORM_SUBMITTED event)│               │  (Record Activity Log) │
-                            └───────────┬────────────┘               └────────────────────────┘
-                                        │
-             ┌──────────────────────────┼──────────────────────────┐
-             ▼                          ▼                          ▼
- ┌───────────────────────┐  ┌───────────────────────┐  ┌───────────────────────┐
- │    Notification Engine│  │         Tagging       │  │        Webhooks       │
- │   (Email/SMS/WhatsApp)│  │     (Apply tags)      │  │ (Parallel dispatching)│
- └───────────────────────┘  └───────────────────────┘  └───────────────────────┘
+```mermaid
+flowchart TD
+    A[Form Submitted: Hosted / Embedded / External API] --> B[processFormSubmissionAction]
+    B --> C{CRM Lead Capture Enabled?}
+    C -->|Yes| D[Deduplication Query: Email / Phone]
+    D -->|Contact Found| E[updateEntityAction: Update Existing Entity]
+    D -->|No Match| F[createEntityAction: Create Polymorphic Entity]
+    B --> G[Persist Document in form_submissions]
+    B --> H[Atomically Increment Form submissionCount]
+    B --> I{Post-Submission Actions Dispatcher}
+    I --> J[Apply Workspace Tags via applyTagAction]
+    I --> K[Dispatch Webhooks via Promise.allSettled]
+    I --> L[Send Respondent Alerts: Email / SMS / WhatsApp]
+    I --> M[Send Team Alerts to Assigned UserIds]
+    I --> N[Trigger Automation Protocols: FORM_SUBMITTED]
+    I --> O[Log Conversions in activity-logger & campaign_pages]
 ```
 
-*   **CRM Lead Engine:** Queries matching database contacts by email or phone. Depending on the form rules, it updates the existing contact (`updateEntityAction`) or issues a new polymorphic entity (`createEntityAction`) respecting the correct scope (`person` / `institution`).
-*   **Auditing Log Engine:** Dispatches conversions telemetry to the `activity-logger` tracking UTM metadata, client network headers, and page origins.
-*   **Tagging:** Applies assigned workspace tags to the matched or created CRM entity record.
-*   **Automation Engine:** Dispatches a `FORM_SUBMITTED` trigger payload containing the ingestion context, triggering background automated workflows.
-*   **Notification Engine:** Fires parallel alerts (Email, SMS, WhatsApp templates) both to the respondent confirming receipt, and internally to team members.
-*   **Webhook Dispatches:** Forwards JSON payloads in parallel to configured external API endpoints using `Promise.allSettled` to prevent single endpoint timeouts from blocking execution.
+*   **CRM Lead Engine:** Resolves matching records using phone or email. Updates existing contacts or creates new person/family/institution records based on the configured strategy (`create_or_update`, `create_new`, `update_matching`).
+*   **Tagging Module (`tag-actions.ts`):** Applies tags on submission to the resolved CRM entity.
+*   **Webhook Engine (`webhook-engine.ts`):** Dispatches JSON payloads in parallel to configured webhook endpoints using `Promise.allSettled` to prevent single failures from blocking other endpoints.
+*   **Messaging Engine (`messaging-engine.ts`):** Dispatches respondent-facing confirmation notifications across Email, SMS, or WhatsApp channels using workspace template keys.
+*   **Notification Engine (`notification-engine.ts`):** Sends internal alerts to defined team members via all configured templates (SMS, email, push, WhatsApp).
+*   **Automation Processor (`automation-processor.ts`):** Triggers workspace automation blueprints mapped to the `FORM_SUBMITTED` event.
+*   **Activity Logger (`activity-logger.ts`):** Logs submission audits and conversion telemetry for campaign landing pages.
+*   **QR Studio (`CreateQRButton`):** Integrates directly to output QR codes pointing to public form routes.
 
 ---
 
-## 5. UI and UX Layout Architecture
+## 6. UI/UX Design Standards
 
-The user interface follows clean, responsive layout guidelines matching Vercel Design standards:
-*   **Responsive Dynamic Viewports:** The edit workspace embeds a desktop/tablet/mobile toggler (`ViewportToggle.tsx`) scaling iframe targets seamlessly.
-*   **Cross-Window Synchronization:** Iframe containers use a `postMessage` protocol. Edits in the builder configuration or dark-mode updates trigger real-time iframe theme overrides.
-*   **Render Performance optimization:** Table elements use a hybrid styling pattern. Rows employ `content-visibility: auto` to optimize repaint times during long list scroll cycles.
+*   **Micro-Animations:** Employs Framer Motion layout animations for card scaling, modal entry, and stepper transition progress indicators conforming to Emil Kowalski guidelines.
+*   **Render Performance Optimization:** Submissions table rows use `content-visibility: auto` to optimize repaint times during long list scroll cycles.
 *   **Dynamic Code Splitting:** Heavy libraries (e.g. `canvas-confetti` animations for submission completion page) are dynamically imported (`next/dynamic`) to maintain a lightweight core package size.
+*   **Mobile Touch Ergonomics:** All inputs, controls, and buttons enforce a `min-h-[44px]` touch target standard.
 
 ---
 
-## 6. Senior Code Review: Vulnerabilities & Optimization Points
+## 7. Senior Code Review: Vulnerabilities & Optimization Points
 
-During the review of the forms engine, five significant performance, architectural, and security vulnerabilities were identified that require attention:
+During the architectural review, five critical performance, tenant security, and code quality issues were identified:
 
-### A. Memory Leak & OOM Vulnerability in CRM Matching
-*   **Vulnerability:** The code queries and downloads **all workspace entity documents** matching `workspaceId` into memory, then performs array filtering in the runtime process:
+### 1. High-Risk Memory Leak & OOM Crash in CRM Lead Deduplication
+*   **Location:** `src/lib/forms-actions.ts` (lines 277–280)
+*   **Vulnerability:** The action queries and downloads **all workspace entity documents** into serverless memory to perform linear array filtering:
     ```typescript
     const matchSnap = await adminDb.collection('workspace_entities')
       .where('workspaceId', '==', form.workspaceId)
       .get();
+    
+    const matchedDoc = matchSnap.docs.find(doc => {
+      const d = doc.data();
+      return (email && d.primaryEmail === email) || (phone && d.primaryPhone === phone);
+    });
     ```
-*   **Critique:** For larger workspaces with thousands of contacts, this will consume excessive serverless memory, slow down response speeds, and trigger Node.js memory exhaustion (OOM) failures.
-*   **Resolution:** Change this to parallelized, index-backed queries pointing specifically to the parsed email/phone constraints:
+*   **Critique:** Workspaces with 10,000+ entities will trigger severe latency, exorbitant Firestore read costs, and Node.js Out-Of-Memory (OOM) process crashes.
+*   **Resolution:** Implement parallelized, index-backed queries targeting email and phone directly:
     ```typescript
     const [emailSnap, phoneSnap] = await Promise.all([
       email ? adminDb.collection('workspace_entities')
@@ -190,67 +281,83 @@ During the review of the forms engine, five significant performance, architectur
         .where('primaryPhone', '==', phone)
         .limit(1).get() : null
     ]);
+    const matchedDoc = emailSnap?.docs[0] || phoneSnap?.docs[0] || null;
     ```
 
-### B. Tenant Isolation Security Leak in CSV Exports
-*   **Vulnerability:** The CSV exporter pulls the **entire** collection of custom fields without scoping boundaries, filtering them in memory by workspace:
+---
+
+### 2. Tenant Isolation & Security Breach in Custom Fields Lookup
+*   **Location:** `src/lib/forms-actions.ts` (line 751)
+*   **Vulnerability:** The CSV exporter pulls the **entire** database collection of custom fields without scoping boundaries, filtering them in memory by workspace:
     ```typescript
     adminDb.collection(COLLECTIONS.APP_FIELDS).get()
     ```
-*   **Critique:** Pulling the entire collection without workspace isolation filters is highly inefficient and creates a risk of tenant metadata exposure.
-*   **Resolution:** Scope the query directly:
+*   **Critique:** Reading the entire global collection presents a severe tenant data leakage vulnerability and excessive database read overhead.
+*   **Resolution:** Scope the query directly to the form's workspace:
     ```typescript
     adminDb.collection(COLLECTIONS.APP_FIELDS)
       .where('workspaceId', '==', form.workspaceId)
       .get()
     ```
 
-### C. Offset Pagination Bug in Batch Deletions
-*   **Vulnerability:** The collection purge function uses cursor offsets while deleting records in the same loop:
+---
+
+### 3. Cursor Pagination Bug in Batch Deletions
+*   **Location:** `src/lib/forms-actions.ts` (lines 146–163)
+*   **Vulnerability:** Purge loop passes `startAfter(lastDoc)` after deleting `lastDoc` in the prior batch:
     ```typescript
-    if (lastDoc) q = q.startAfter(lastDoc);
-    ...
-    subsSnap.docs.forEach(doc => batch.delete(doc.ref));
+    while (true) {
+      let q = adminDb.collection(COLLECTIONS.FORM_SUBMISSIONS).where('formId', '==', id).limit(400);
+      if (lastDoc) q = q.startAfter(lastDoc);
+      ...
+      subsSnap.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
+      lastDoc = subsSnap.docs[subsSnap.docs.length - 1];
+    }
     ```
-*   **Critique:** Because records are deleted within each batch transaction, passing the previously deleted `lastDoc` as a cursor pointer is invalid and leads to skipped/orphaned records.
-*   **Resolution:** Query the first offset limit continuously without cursor shifts until the collection is empty:
+*   **Critique:** Since `lastDoc` has been deleted, using it as a cursor offset in the next iteration fails or terminates prematurely, leaving orphaned submissions in the database.
+*   **Resolution:** Query the first offset limit continuously without cursor shifts until empty:
     ```typescript
     while (true) {
       const subsSnap = await adminDb.collection(COLLECTIONS.FORM_SUBMISSIONS)
         .where('formId', '==', id)
         .limit(400).get();
       if (subsSnap.empty) break;
-      // delete batch...
+      const batch = adminDb.batch();
+      subsSnap.docs.forEach(doc => batch.delete(doc.ref));
+      await batch.commit();
     }
     ```
 
-### D. Tag Selection Source-of-Truth Violation
-*   **Vulnerability:** The form builder's action editor uses a generic `<MultiSelect>` component mapping `workspaceTags` instead of the standardized `<TagSelector>` component.
-*   **Critique:** Violates the workspace rule (`Tag Selection & Input Single Source of Truth`):
-    > "Any feature requiring user selection or application of workspace contact tags in the UI must exclusively use the standardized `<TagSelector>` component (located at `src/components/tags/TagSelector.tsx`)."
-*   **Resolution:** Replace `<MultiSelect>` with `<TagSelector>` in client/draft mode (omitting `contactId` and `contactType` properties):
+---
+
+### 4. Tag Selector Single Source-of-Truth Violation
+*   **Location:** `src/app/admin/forms/[id]/edit/page.tsx` (lines 1370–1378)
+*   **Vulnerability:** Uses a generic `<MultiSelect>` component mapping `workspaceTags` instead of the standardized `<TagSelector>` component.
+*   **Critique:** Violates workspace rule `Tag Selection & Input Single Source of Truth`.
+*   **Resolution:** Replace `<MultiSelect>` with `<TagSelector>` in client/draft mode:
     ```tsx
     <TagSelector
       currentTagIds={formData.actions?.tags || []}
-      onTagsChange={(tagIds) => updateField('actions', { ...formData.actions, tags: tagIds })}
+      onTagsChange={(tagIds) => {
+        const currentActions = (formData.actions || {}) as FormSubmissionActions;
+        updateField('actions', { ...currentActions, tags: tagIds });
+      }}
     />
     ```
 
-### E. Unimplemented Auto-Assignment Features
-*   **Vulnerability:** The Form schema defines fields for user routing (`autoAssign`, `notifyAssignedUsers`), but these configurations are currently stubs. Matched leads are never assigned to team members on submission, and notification triggers are never fired.
-*   **Resolution:** Implement routing hooks inside the Server Action to assign the new entity and fire an internal notification to the assigned user's profile.
+---
+
+### 5. Architectural Pipeline Duality (`forms-actions.ts` vs `form-actions.ts`)
+*   **Observation:** Submissions from `/p/f/[slug]` trigger `processFormSubmissionAction` (in `forms-actions.ts`), while embedded and headless submissions trigger `submitStandaloneFormAction` (in `form-actions.ts`).
+*   **Critique:** The two pipelines have slight divergences (e.g., webhook and multi-tier notification execution is present in `processFormSubmissionAction` but omitted from `submitStandaloneFormAction`).
+*   **Resolution:** Consolidate `submitStandaloneFormAction` into a single shared core pipeline so all submissions (hosted, embedded, and headless) execute identical post-submission actions.
 
 ---
 
-## 7. Recommendations for Improvement & Feature Expansion
+## 8. Strategic Roadmap & Expansion Recommendations
 
-To take the Forms Module from a solid foundation to a highly advanced, market-competitive product, we recommend the following strategic improvements:
-
-1.  **Introduce an AI Form Builder:**
-    *   Integrate LLM structured generation (similar to the surveys generator) to allow users to generate forms from plain text prompts (e.g., *"Build me a demo request form for a school admissions team"*).
-2.  **Add Real-time Collaboration:**
-    *   Support collaborative building (multiple editors editing the same form definition simultaneously) using WebSockets or a shared state sync engine (e.g., Yjs or Liveblocks).
-3.  **Implement Advanced Layouts & Multi-Step Forms:**
-    *   Extend the rendering engine to support multi-page forms (stepper progress) and conditional logical branching (jump from Page 1 to Page 3 based on field value answers).
-4.  **Introduce Native Analytics & Submissions Reports:**
-    *   Build standard analytics views (similar to surveys) tracking conversion rates, drop-off rates by field, and submission trend charts directly inside the forms results view.
+1.  **AI Form Generator:** Integrate Gemini structured generation (mirroring the survey AI generator) to create complete forms from natural language prompts.
+2.  **Multi-Step Stepper & Page Breaks:** Extend the builder canvas to support multi-page forms with conditional branch jumping between pages.
+3.  **Real-Time Collaborative Builder:** Implement WebSockets / Yjs shared editing state to support simultaneous multi-user form editing.
+4.  **Native Form Analytics Dashboard:** Add visual conversion funnel charts, field drop-off analytics, and geographic submission trends directly inside the form results view.

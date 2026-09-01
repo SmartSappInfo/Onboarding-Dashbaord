@@ -554,3 +554,89 @@ export interface DealsAnalyticsDataset {
   };
 }
 
+/**
+ * Unified Commercial Catalog Item representation for Dual Autocomplete & Finance Hub
+ */
+export type UnifiedCatalogItem =
+  | {
+      id: string;
+      type: 'product';
+      name: string;
+      sku?: string;
+      description?: string;
+      unitPrice: number;
+      currency: string;
+      isRecurring: boolean;
+      billingInterval: 'monthly' | 'quarterly' | 'annual' | 'one_time';
+      taxRate?: number;
+      categoryId?: string;
+      categoryName?: string;
+      isActive: boolean;
+    }
+  | {
+      id: string;
+      type: 'package';
+      name: string;
+      sku?: string;
+      description?: string;
+      ratePerStudent: number;
+      unitPrice: number; // Normalized alias for calculations
+      currency: string;
+      isRecurring: boolean; // true for institutional subscription tiers
+      billingInterval: 'monthly' | 'quarterly' | 'annual' | 'one_time';
+      billingTerm: 'term' | 'semester' | 'year' | 'monthly' | 'termly' | 'annually';
+      taxRate?: number;
+      isActive: boolean;
+    };
+
+/**
+ * SKU / Product Performance Metric in Commercial Analytics
+ */
+export interface SkuPerformanceMetric {
+  skuOrId: string;
+  name: string;
+  categoryName: string;
+  isRecurring: boolean;
+  totalRevenueWon: number;
+  totalPipelineValue: number;
+  totalQuantitySold: number;
+  dealsWonCount: number;
+  dealsTotalCount: number;
+  winRatePercentage: number;
+  avgDiscountPercentage: number;
+}
+
+/**
+ * Category Revenue Contribution Metric
+ */
+export interface CategoryRevenueMetric {
+  categoryId: string;
+  categoryName: string;
+  color?: string;
+  totalRevenueWon: number;
+  dealsCount: number;
+  revenuePercentage: number;
+  mrrContribution: number;
+}
+
+/**
+ * Commercial & Pricing Analytics Summary
+ */
+export interface CommercialAnalyticsSummary {
+  totalCatalogRevenueWon: number;
+  totalActiveSkus: number;
+  totalActivePackages: number;
+  totalPriceBooks: number;
+  recurringVsOneTimeRatio: {
+    mrr: number;
+    arr: number;
+    recurringTotal: number;
+    oneTimeTotal: number;
+    recurringPercentage: number;
+  };
+  topProducts: SkuPerformanceMetric[];
+  categoryBreakdown: CategoryRevenueMetric[];
+  avgDiscountDepth: number;
+}
+
+

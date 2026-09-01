@@ -207,6 +207,57 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
               </div>
             </div>
 
+            {/* Pricing Health & Commercial Recommendation Cards */}
+            {insights.pricingHealth && (
+              <div className="p-4 rounded-2xl bg-card border border-border/70 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <Sparkles className="h-3.5 w-3.5 text-primary" />
+                    Commercial Margin & Pricing Assessment
+                  </span>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-[9px] font-black uppercase px-2 py-0.5 ${
+                      insights.pricingHealth.marginRating === 'optimal' 
+                        ? 'border-emerald-500/30 text-emerald-600 bg-emerald-500/10'
+                        : insights.pricingHealth.marginRating === 'discount_heavy'
+                        ? 'border-amber-500/30 text-amber-600 bg-amber-500/10'
+                        : 'border-blue-500/30 text-blue-600 bg-blue-500/10'
+                    }`}
+                  >
+                    {insights.pricingHealth.marginRating.replace('_', ' ')}
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  {insights.pricingHealth.assessmentNotes}
+                </p>
+              </div>
+            )}
+
+            {/* Recommended Products & Upsells */}
+            {insights.recommendedProducts && insights.recommendedProducts.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Recommended Catalog Offerings ({insights.recommendedProducts.length})
+                </h4>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {insights.recommendedProducts.map((prod, idx) => (
+                    <div key={idx} className="p-3.5 rounded-2xl bg-muted/20 border border-border/60 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-xs text-foreground">{prod.name}</span>
+                        <Badge variant="outline" className="text-[9px] font-bold">Qty: {prod.suggestedQuantity}</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        {prod.rationale}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Next Best Actions */}
             <div className="space-y-3">
               <h4 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
