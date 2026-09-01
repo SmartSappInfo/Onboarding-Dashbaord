@@ -40,7 +40,11 @@ import type { MediaAsset } from '@/lib/types';
 import { evaluateCreativeHealth } from '@/lib/creative/creative-health-engine';
 import { applyHealthFix, applyImproveAllFixes } from '@/lib/creative/creative-health-fixes';
 import { evaluateBrandCompliance, applyBrandRulesToElements } from '@/lib/creative/brand-intelligence';
-import { resolveElementsForContact } from '@/lib/creative/creative-crm-engine';
+import {
+  resolveElementsForContact,
+  SAMPLE_CAMPAIGNS,
+  SAMPLE_CONTACTS,
+} from '@/lib/creative/creative-crm-engine';
 import ThumbnailCanvas from '@/components/shared/thumbnail-designer/ThumbnailCanvas';
 import { ContextualActionBar } from '@/components/shared/thumbnail-designer/ContextualActionBar';
 import { LayersTreePanel } from '@/components/shared/thumbnail-designer/LayersTreePanel';
@@ -69,8 +73,6 @@ import {
   listCrmCampaignsAction,
   getCrmContactPreviewDataAction,
   linkCreativeToCrmCampaignAction,
-  SAMPLE_CAMPAIGNS,
-  SAMPLE_CONTACTS,
 } from '@/app/actions/creative-crm-actions';
 import {
   listProjectCommentsAction,

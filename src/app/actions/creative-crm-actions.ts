@@ -26,7 +26,11 @@ import type {
   BatchPersonalizationJob,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId } from '@/lib/creative/creative-types';
-import { resolveElementsForContact } from '@/lib/creative/creative-crm-engine';
+import {
+  resolveElementsForContact,
+  SAMPLE_CAMPAIGNS,
+  SAMPLE_CONTACTS,
+} from '@/lib/creative/creative-crm-engine';
 import { evaluateCreativeHealth } from '@/lib/creative/creative-health-engine';
 
 export interface ActionResponse<T> {
@@ -35,78 +39,6 @@ export interface ActionResponse<T> {
   error?: string;
   message?: string;
 }
-
-/**
- * Sample fallback CRM campaigns for preview and testing.
- */
-export const SAMPLE_CAMPAIGNS: CrmCampaignContext[] = [
-  {
-    campaignId: 'camp-q3-enrollment',
-    campaignName: 'Q3 School Admissions Growth',
-    targetAudience: 'Private School Principals & Founders',
-    objective: 'lead_generation',
-    segmentId: 'seg-schools-k12',
-    segmentName: 'K-12 Decision Makers',
-  },
-  {
-    campaignId: 'camp-saas-founders',
-    campaignName: 'B2B Founder Outreach Q3',
-    targetAudience: 'Seed & Series A Tech Founders',
-    objective: 'sales_conversion',
-    segmentId: 'seg-tech-founders',
-    segmentName: 'SaaS CEOs',
-  },
-  {
-    campaignId: 'camp-podcast-vip',
-    campaignName: 'VIP Podcast Invitation Series',
-    targetAudience: 'Top 1% Industry Operators',
-    objective: 'event_attendance',
-    segmentId: 'seg-podcast-guests',
-    segmentName: 'Podcast Guest Prospects',
-  },
-];
-
-/**
- * Sample fallback CRM contacts for live preview switcher.
- */
-export const SAMPLE_CONTACTS: CrmContactPreview[] = [
-  {
-    id: 'ct-101',
-    firstName: 'Sarah',
-    lastName: 'Jenkins',
-    email: 'sarah.jenkins@stmarys.edu',
-    company: 'St. Mary’s Preparatory',
-    phone: '+1 555-0192',
-    avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'ct-102',
-    firstName: 'Marcus',
-    lastName: 'Vance',
-    email: 'marcus@apexcloud.io',
-    company: 'Apex Cloud Systems',
-    phone: '+1 555-0144',
-    avatarUrl: 'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'ct-103',
-    firstName: 'Elena',
-    lastName: 'Rostova',
-    email: 'elena@novacapital.com',
-    company: 'Nova Capital Partners',
-    phone: '+1 555-0188',
-    avatarUrl: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=400&auto=format&fit=crop&q=80',
-  },
-  {
-    id: 'ct-104',
-    firstName: 'David',
-    lastName: 'Kim',
-    email: 'david@solardynamics.org',
-    company: 'Solar Dynamics Global',
-    phone: '+1 555-0177',
-    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400&auto=format&fit=crop&q=80',
-  },
-];
 
 /**
  * Links a creative project to a CRM Campaign & Target Audience.

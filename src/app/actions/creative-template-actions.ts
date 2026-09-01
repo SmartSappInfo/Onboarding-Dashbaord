@@ -36,10 +36,9 @@ export interface ActionResponse<T> {
   message?: string;
 }
 
-/**
- * 6 Production-Grade Starter Blueprints for Global Seed Catalog
- */
-export const STARTER_BLUEPRINTS: CreativeTemplate[] = [
+import { STARTER_BLUEPRINTS } from '@/lib/creative/creative-templates-data';
+
+const _UNUSED_STARTER_BLUEPRINTS: CreativeTemplate[] = [
   {
     id: 'tmpl-edu-growth',
     name: 'Education Enrollment Secret',

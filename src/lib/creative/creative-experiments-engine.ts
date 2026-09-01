@@ -17,6 +17,7 @@ import type {
   CreativeDocument,
   ExperimentVariant,
   StatisticalResult,
+  CreativeExperiment,
 } from './creative-types';
 import { makeUniqueId } from './creative-types';
 
@@ -131,3 +132,47 @@ export function cloneDocumentForExperimentVariant(
     updatedAt: now,
   };
 }
+
+export const SAMPLE_EXPERIMENTS: CreativeExperiment[] = [
+  {
+    id: 'exp-1',
+    projectId: 'proj-demo-1',
+    workspaceId: 'default-workspace',
+    name: 'Growth Webinar: Curiosity vs. Benefit Hook',
+    hypothesis: 'A curiosity-driven question headline increases YouTube CTR by >20% compared to feature listing.',
+    status: 'running',
+    channel: 'youtube',
+    variants: [
+      {
+        id: 'var-control',
+        name: 'Variant A (Feature List)',
+        documentId: 'doc-control',
+        trafficWeight: 50,
+        impressions: 1420,
+        clicks: 58,
+        conversions: 12,
+        ctr: 4.08,
+        conversionRate: 0.85,
+        isControl: true,
+      },
+      {
+        id: 'var-test',
+        name: 'Variant B (Curiosity Hook)',
+        documentId: 'doc-test',
+        trafficWeight: 50,
+        impressions: 1450,
+        clicks: 94,
+        conversions: 26,
+        ctr: 6.48,
+        conversionRate: 1.79,
+        isControl: false,
+        isWinner: true,
+      },
+    ],
+    confidenceScore: 97.8,
+    winningVariantId: 'var-test',
+    startDate: new Date(Date.now() - 3 * 86400000).toISOString(),
+    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
+    updatedAt: new Date().toISOString(),
+  },
+];

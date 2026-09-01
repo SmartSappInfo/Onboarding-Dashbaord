@@ -24,6 +24,7 @@ import type {
 import {
   calculateROAS,
   aggregateCampaignAttribution,
+  SAMPLE_PERFORMANCE_METRICS,
 } from '@/lib/creative/creative-performance-engine';
 
 export interface ActionResponse<T> {
@@ -32,22 +33,6 @@ export interface ActionResponse<T> {
   error?: string;
   message?: string;
 }
-
-export const SAMPLE_PERFORMANCE_METRICS: Record<string, PerformanceMetrics> = {
-  'proj-demo-1': {
-    projectId: 'proj-demo-1',
-    impressions: 48200,
-    clicks: 2940,
-    ctr: 6.1,
-    conversions: 184,
-    conversionRate: 6.26,
-    pipelineValue: 46000,
-    revenueGenerated: 18400,
-    adSpend: 3200,
-    roas: 5.75,
-    topChannel: 'youtube',
-  },
-};
 
 /**
  * Retrieves full-funnel CRM conversion and attribution metrics for a creative project.

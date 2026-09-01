@@ -20,6 +20,40 @@ import type {
 } from './creative-types';
 import { normalizeCanvasElements } from './creative-ai-gateway';
 
+export const DEFAULT_BRAND_KIT: BrandKit = {
+  workspaceId: 'default',
+  name: 'Default Brand Palette',
+  colors: {
+    primary: ['#0f172a', '#1e293b', '#334155'],
+    secondary: ['#10b981', '#06b6d4', '#3b82f6'],
+    accent: ['#facc15', '#f97316', '#ef4444'],
+    neutral: ['#ffffff', '#f8fafc', '#64748b', '#020617'],
+  },
+  typography: {
+    displayFont: 'Impact',
+    headingFont: 'Montserrat',
+    bodyFont: 'Inter',
+  },
+  watermarkUrl: '',
+  aiRules: [
+    {
+      id: 'rule-high-contrast',
+      type: 'accessibility',
+      rule: 'Headlines must maintain a minimum contrast ratio of 4.5:1 against the canvas background.',
+      severity: 'required',
+      active: true,
+    },
+    {
+      id: 'rule-brand-accent',
+      type: 'color',
+      rule: 'Use high-vibrancy accent colors (#facc15 or #10b981) on focal text badges.',
+      severity: 'recommended',
+      active: true,
+    },
+  ],
+  isDefault: true,
+};
+
 /**
  * Evaluates Brand Kit compliance across design elements.
  */

@@ -5,7 +5,7 @@ import {
 } from '../brand-intelligence';
 import {
   STARTER_BLUEPRINTS,
-} from '@/app/actions/creative-template-actions';
+} from '../creative-templates-data';
 import type {
   CreativeElement,
   BrandKit,
