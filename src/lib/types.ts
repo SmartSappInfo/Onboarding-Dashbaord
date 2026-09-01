@@ -1999,6 +1999,91 @@ export interface EnterpriseSessionConfig {
   updatedAt: string;
 }
 
+// ==========================================
+// WORKFORCE INTELLIGENCE & EXECUTIVE ANALYTICS (PHASE 11)
+// ==========================================
+
+export type UserHealthStatus =
+  | 'flourishing'
+  | 'healthy'
+  | 'strained'
+  | 'at_risk'
+  | 'dormant';
+
+export interface UserHealthScore {
+  personId: string;
+  personName: string;
+  personEmail: string;
+  departmentName?: string;
+  teamName?: string;
+  score: number;
+  status: UserHealthStatus;
+  activityConsistency: number;
+  onboardingScore: number;
+  leastPrivilegeScore: number;
+  crmEfficiencyScore: number;
+  lastActiveAt: string;
+}
+
+export type TeamCapacityStatus =
+  | 'under_utilized'
+  | 'optimal'
+  | 'near_capacity'
+  | 'overloaded';
+
+export interface TeamIntelligenceSummary {
+  teamId: string;
+  teamName: string;
+  departmentName: string;
+  memberCount: number;
+  activePipelineValue: number;
+  openTasksCount: number;
+  capacityPercent: number;
+  status: TeamCapacityStatus;
+  bottlenecks: string[];
+}
+
+export type RoleEffectivenessRating =
+  | 'optimal'
+  | 'trim_permissions'
+  | 'merge_role'
+  | 'deprecate';
+
+export interface RoleIntelligenceSummary {
+  roleId: string;
+  roleName: string;
+  assignedMembersCount: number;
+  activePermissionsCount: number;
+  utilizationRate: number;
+  redundancyScore: number;
+  rating: RoleEffectivenessRating;
+}
+
+export interface AiStrategicInsight {
+  id: string;
+  category: 'capacity' | 'security' | 'onboarding' | 'governance' | 'workload';
+  title: string;
+  summary: string;
+  recommendation: string;
+  impactLevel: 'low' | 'medium' | 'high';
+}
+
+export interface WorkforceIntelligenceSnapshot {
+  id: string;
+  organizationId: string;
+  overallHealthScore: number;
+  flourishingMembersCount: number;
+  strainedMembersCount: number;
+  atRiskMembersCount: number;
+  averageTeamCapacity: number;
+  enterpriseIamMaturityScore: number;
+  userHealthScores: UserHealthScore[];
+  teamSummaries: TeamIntelligenceSummary[];
+  roleSummaries: RoleIntelligenceSummary[];
+  strategicInsights: AiStrategicInsight[];
+  generatedAt: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

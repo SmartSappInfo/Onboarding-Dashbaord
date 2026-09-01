@@ -381,6 +381,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Workforce Intelligence & Executive Analytics (Phase 11) Collections ---
+    match /workforce_intelligence_snapshots/{id} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
