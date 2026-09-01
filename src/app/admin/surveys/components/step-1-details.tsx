@@ -34,8 +34,8 @@ function EntityPickerField({
     watch
 }: {
     field: { value: string | null; onChange: (v: string | null) => void };
-    setValue: (name: string, value: any, options?: any) => void;
-    watch: (name: string) => any;
+    setValue: (name: string, value: unknown, options?: { shouldDirty?: boolean }) => void;
+    watch: (name: string) => unknown;
 }) {
     const [open, setOpen] = React.useState(false);
     const [search, setSearch] = React.useState('');
