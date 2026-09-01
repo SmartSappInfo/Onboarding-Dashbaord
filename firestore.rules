@@ -877,6 +877,11 @@ service cloud.firestore {
       allow list, write: if isAuthorized();
     }
 
+    match /surveyDeployments/{deploymentId} {
+      allow get: if true;
+      allow list, write: if isAuthorized();
+    }
+
     match /survey_distribution_campaigns/{campaignId} {
       allow get, list, write: if isAuthorized();
     }

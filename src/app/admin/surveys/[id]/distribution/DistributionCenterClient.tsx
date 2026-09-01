@@ -79,7 +79,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
   // Fetch Deployments
   const deploymentsQuery = useMemoFirebase(
     () => (firestore && surveyId ? query(
-      collection(firestore, 'surveyDeployments'),
+      collection(firestore, 'survey_deployments'),
       where('surveyId', '==', surveyId),
       orderBy('createdAt', 'desc')
     ) : null),
