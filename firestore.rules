@@ -1012,15 +1012,17 @@ service cloud.firestore {
     // --- Creative Studio 2.0 Collections ---
     match /creative_projects/{projectId} {
       allow get: if true; // Public access for linked shared project previews
-      allow list: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
+      allow list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
       );
       allow create: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(request.resource.data.workspaceId)
       );
       allow update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );
@@ -1028,15 +1030,17 @@ service cloud.firestore {
 
     match /creative_documents/{documentId} {
       allow get: if true; // Public access for rendering canvas preview
-      allow list: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
+      allow list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
       );
       allow create: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(request.resource.data.workspaceId)
       );
       allow update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );
@@ -1044,40 +1048,48 @@ service cloud.firestore {
 
     match /creative_assets/{assetId} {
       allow get: if true; // Public access for preview URLs
-      allow list: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
+      allow list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
       );
       allow create: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(request.resource.data.workspaceId)
       );
       allow update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );
     }
 
     match /creative_brand_kits/{kitId} {
-      allow get: if isAuthorized() || isSystemAdmin();
-      allow list: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
+      allow get: if true;
+      allow list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
       );
       allow create: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(request.resource.data.workspaceId)
       );
       allow update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );
     }
 
     match /creative_comments/{commentId} {
-      allow get, list: if isAuthorized();
+      allow get, list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
+      );
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         request.auth.uid == resource.data.authorId ||
         resource.data.authorId == null
@@ -1085,14 +1097,21 @@ service cloud.firestore {
     }
 
     match /creative_versions/{versionId} {
-      allow get, list: if isAuthorized();
+      allow get, list: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
+      );
       allow create: if isAuthorized();
-      allow update, delete: if isAuthorized() && isSystemAdmin();
+      allow update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isSystemAdmin()
+      );
     }
 
     match /creative_templates/{templateId} {
       allow get, list: if isAuthorized() || resource.data.scope == 'global';
       allow create, update, delete: if isAuthorized() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
         isSystemAdmin() ||
         (request.resource.data.scope == 'workspace' && hasWorkspaceAccess(request.resource.data.workspaceId))
       );
@@ -1100,7 +1119,10 @@ service cloud.firestore {
 
     match /creative_shares/{shareId} {
       allow get: if true; // Public access for client preview links
-      allow list, create, update, delete: if isAuthorized();
+      allow list, create, update, delete: if isSignedIn() && (
+        request.auth.token.email == 'admin@smartsapp.com' ||
+        isAuthorized()
+      );
     }
 
     match /creative_concepts/{conceptId} {
@@ -1112,6 +1134,40 @@ service cloud.firestore {
       allow get, list: if isAuthorized() && isSystemAdmin();
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /creative_reviews/{reviewId} {
+      allow get, list: if isAuthorized();
+      allow create, update: if isAuthorized();
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /creative_presence/{presenceId} {
+      allow get, list: if isAuthorized();
+      allow create, update, delete: if isAuthorized();
+    }
+
+    match /creative_publications/{pubId} {
+      allow get, list: if isAuthorized();
+      allow create, update: if isAuthorized();
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /creative_channels/{channelId} {
+      allow get, list: if isAuthorized();
+      allow create, update, delete: if isAuthorized();
+    }
+
+    match /creative_experiments/{expId} {
+      allow get, list: if isAuthorized();
+      allow create, update: if isAuthorized();
+      allow delete: if isAuthorized() && isSystemAdmin();
+    }
+
+    match /creative_analytics/{analyticId} {
+      allow get, list: if isAuthorized();
+      allow create, update: if isAuthorized();
+      allow delete: if isAuthorized() && isSystemAdmin();
     }
 
     // --- Message Templates (Two-Tier System) ---
