@@ -87,7 +87,7 @@ describe('CRM Intelligence & Two-Way Sync (Phase 6)', () => {
           data: () => mockSurvey,
         },
       ],
-      forEach: (cb: (doc: any) => void) => {
+      forEach: (cb: (doc: { id: string; data: () => unknown }) => void) => {
         cb({
           id: 's_crm_1',
           data: () => mockSurvey,
@@ -151,7 +151,7 @@ describe('CRM Intelligence & Two-Way Sync (Phase 6)', () => {
                 where: () => ({
                   get: vi.fn().mockResolvedValue({
                     docs: [{ id: 'res_1', data: () => mockResponse }],
-                    forEach: (cb: (doc: any) => void) => {
+                    forEach: (cb: (doc: { id: string; data: () => unknown }) => void) => {
                       cb({ id: 'res_1', data: () => mockResponse });
                     },
                   }),

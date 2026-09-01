@@ -53,6 +53,25 @@ interface ExecuteSurveyCrmSyncParams {
   sentimentPolarity?: 'positive' | 'mostly_positive' | 'neutral' | 'mostly_negative' | 'negative' | 'mixed';
 }
 
+function interpolateCrmTemplate(
+  template: string,
+  vars: {
+    contactName?: string | null;
+    entityName?: string | null;
+    surveyTitle?: string | null;
+    score?: number | string | null;
+    responseId?: string | null;
+  }
+): string {
+  if (!template) return '';
+  return template
+    .replace(/\{\{\s*contact\.name\s*\}\}/gi, vars.contactName || vars.entityName || 'Respondent')
+    .replace(/\{\{\s*entity\.name\s*\}\}/gi, vars.entityName || vars.contactName || 'Lead')
+    .replace(/\{\{\s*survey\.title\s*\}\}/gi, vars.surveyTitle || 'Survey')
+    .replace(/\{\{\s*score\s*\}\}/gi, String(vars.score ?? 0))
+    .replace(/\{\{\s*responseId\s*\}\}/gi, vars.responseId || '');
+}
+
 /**
  * Executes comprehensive CRM synchronization for a survey response submission:
  * 1. Upserts Contact & Entity records with mapped fields.
@@ -260,9 +279,13 @@ export async function executeSurveyCrmSyncAction(
         else if (rule.triggerOn === 'outcome_matched' && outcomeId && rule.matchedOutcomeId === outcomeId) shouldTriggerDeal = true;
 
         if (shouldTriggerDeal && rule.pipelineId && rule.stageId) {
-          const dealTitle = (rule.dealTitleTemplate || 'Survey Lead: {{contact.name}}')
-            .replace(/\{\{contact\.name\}\}/g, responseData.respondentName || entityName || 'Lead')
-            .replace(/\{\{survey\.title\}\}/g, survey.title);
+          const rawDealTitle = rule.dealTitleTemplate || 'Survey Lead: {{contact.name}}';
+          const dealTitle = interpolateCrmTemplate(rawDealTitle, {
+            contactName: responseData.respondentName,
+            entityName,
+            surveyTitle: survey.title,
+            score: currentScore,
+          });
 
           let dealValue = rule.fixedDealValue || 0;
           if (rule.dealValueQuestionId) {
@@ -312,14 +335,23 @@ export async function executeSurveyCrmSyncAction(
         }
 
         if (shouldCreateTask) {
-          const taskTitle = (taskRule.taskTitleTemplate || 'Follow up on survey feedback from {{contact.name}}')
-            .replace(/\{\{contact\.name\}\}/g, responseData.respondentName || entityName || 'Respondent')
-            .replace(/\{\{survey\.title\}\}/g, survey.title)
-            .replace(/\{\{score\}\}/g, String(currentScore));
+          const rawTaskTitle = taskRule.taskTitleTemplate || 'Follow up on survey feedback from {{contact.name}}';
+          const taskTitle = interpolateCrmTemplate(rawTaskTitle, {
+            contactName: responseData.respondentName,
+            entityName,
+            surveyTitle: survey.title,
+            score: currentScore,
+            responseId,
+          });
 
-          const taskDescription = (taskRule.taskDescriptionTemplate || 'Automated task created from survey response submission {{responseId}}')
-            .replace(/\{\{responseId\}\}/g, responseId)
-            .replace(/\{\{survey\.title\}\}/g, survey.title);
+          const rawTaskDescription = taskRule.taskDescriptionTemplate || 'Automated task created from survey response submission {{responseId}}';
+          const taskDescription = interpolateCrmTemplate(rawTaskDescription, {
+            contactName: responseData.respondentName,
+            entityName,
+            surveyTitle: survey.title,
+            score: currentScore,
+            responseId,
+          });
 
           const dueTimestamp = new Date(Date.now() + (taskRule.dueInHours || 24) * 3600 * 1000).toISOString();
 

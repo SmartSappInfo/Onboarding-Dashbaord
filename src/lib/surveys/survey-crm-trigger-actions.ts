@@ -163,13 +163,18 @@ export async function getEntitySurveyHistoryAction(
     let totalScoreSum = 0;
     let scoredCount = 0;
 
-    for (const surveyDoc of surveysSnap.docs) {
-      const surveyData = surveyDoc.data() as Survey;
-      const responsesSnap = await surveyDoc.ref
-        .collection('responses')
-        .where('entityId', 'in', [cleanEntityId, `${workspaceId}_${cleanEntityId}`])
-        .get();
+    const nestedResults = await Promise.all(
+      surveysSnap.docs.map(async (surveyDoc) => {
+        const surveyData = surveyDoc.data() as Survey;
+        const responsesSnap = await surveyDoc.ref
+          .collection('responses')
+          .where('entityId', 'in', [cleanEntityId, `${workspaceId}_${cleanEntityId}`])
+          .get();
+        return { surveyDoc, surveyData, responsesSnap };
+      })
+    );
 
+    for (const { surveyDoc, surveyData, responsesSnap } of nestedResults) {
       responsesSnap.forEach((respDoc) => {
         const rData = respDoc.data() as SurveyResponse;
         const score = typeof rData.score === 'number' ? rData.score : undefined;
