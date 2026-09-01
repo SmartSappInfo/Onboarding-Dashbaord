@@ -355,6 +355,32 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Enterprise Identity & Federation (Phase 10) Collections ---
+    match /enterprise_idp_configs/{id} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /mfa_policy_configs/{id} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /directory_sync_configs/{id} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /directory_sync_logs/{logId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
+    match /enterprise_session_configs/{id} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if false;
+    }
+
     match /roles/{roleId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));

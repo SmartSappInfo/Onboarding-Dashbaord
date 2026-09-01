@@ -1922,6 +1922,83 @@ export interface AiAdminExecutionAudit {
   error?: string;
 }
 
+// ==========================================
+// ENTERPRISE IDENTITY & FEDERATION (PHASE 10)
+// ==========================================
+
+export type EnterpriseIdpType = 'saml' | 'oidc';
+
+export type EnterpriseIdpStatus = 'active' | 'inactive' | 'testing';
+
+export interface EnterpriseIdpConfig {
+  id: string;
+  organizationId: string;
+  providerType: EnterpriseIdpType;
+  displayName: string;
+  issuer: string;
+  ssoUrl: string;
+  certificate?: string;
+  clientId?: string;
+  clientSecretMasked?: string;
+  domains: string[];
+  enforceSso: boolean;
+  allowBreakGlass: boolean;
+  status: EnterpriseIdpStatus;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export type MfaFactorType = 'totp' | 'sms' | 'passkey' | 'email';
+
+export interface MfaPolicyConfig {
+  organizationId: string;
+  enforceMfa: boolean;
+  allowedFactors: MfaFactorType[];
+  enforceForRoles: string[];
+  gracePeriodDays: number;
+  requirePasskeysForAdmin: boolean;
+  updatedAt: string;
+}
+
+export type DirectorySyncProvider =
+  | 'okta'
+  | 'azure_ad'
+  | 'google_workspace'
+  | 'onelogin'
+  | 'generic_scim';
+
+export interface DirectorySyncConfig {
+  organizationId: string;
+  provider: DirectorySyncProvider;
+  scimBaseUrl: string;
+  bearerTokenMasked: string;
+  syncEnabled: boolean;
+  autoDeactivateOnDelete: boolean;
+  defaultRoleId: string;
+  lastSyncedAt?: string;
+  totalUsersSynced: number;
+  totalGroupsSynced: number;
+}
+
+export interface DirectorySyncLog {
+  id: string;
+  organizationId: string;
+  timestamp: string;
+  eventType: 'user_created' | 'user_updated' | 'user_deprovisioned' | 'group_synced';
+  targetEmail: string;
+  status: 'success' | 'failed';
+  error?: string;
+}
+
+export interface EnterpriseSessionConfig {
+  organizationId: string;
+  idleTimeoutMinutes: number;
+  maxSessionDurationHours: number;
+  concurrentSessionLimit: number;
+  forceReauthOnSensitiveActions: boolean;
+  updatedAt: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;
