@@ -72,6 +72,7 @@ import {
   Inbox,
   Share2,
   Sparkles,
+  Split,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -305,6 +306,9 @@ export default function FormsClient() {
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/analytics`)}>
             <BarChart3 className="mr-2 h-4 w-4" /> View Analytics
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/optimize`)}>
+            <Split className="mr-2 h-4 w-4 text-emerald-500" /> Optimize (A/B Tests)
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => router.push(`/admin/forms/${form.id}/submissions`)}>
             <Inbox className="mr-2 h-4 w-4" /> View Submissions

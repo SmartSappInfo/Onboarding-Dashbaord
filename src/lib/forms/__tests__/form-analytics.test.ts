@@ -1,11 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { 
-  safePercentage, 
-  formatDurationSeconds, 
   recordFormTelemetryEventAction, 
   getFormAnalyticsAction, 
   exportAnalyticsDataAsCsvAction 
 } from '../form-analytics-actions';
+import { safePercentage, formatDurationSeconds } from '../form-utils';
 
 // Mock firebase-admin
 vi.mock('@/lib/firebase-admin', () => {

@@ -39,11 +39,11 @@ import {
 } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
 import { 
-  buildDistributionUrl, 
   createDistributionLinkAction, 
   getFormDistributionsAction, 
   deleteDistributionLinkAction 
 } from '@/lib/forms/form-distribution-actions';
+import { buildDistributionUrl } from '@/lib/forms/form-utils';
 import type { Form } from '@/lib/types';
 import type { FormDistributionLink, DistributionChannel } from '@/lib/forms/form-distribution-types';
 

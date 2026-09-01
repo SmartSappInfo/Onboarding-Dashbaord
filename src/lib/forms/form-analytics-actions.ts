@@ -21,28 +21,7 @@ import type {
   AnalyticsDateRangePreset,
   FormMetricsDaily,
 } from './form-analytics-types';
-
-/**
- * Safe percentage division helper guarding against zero/negative denominators and NaN.
- */
-export function safePercentage(numerator: number, denominator: number): number {
-  if (!denominator || denominator <= 0 || !numerator || isNaN(numerator) || isNaN(denominator)) {
-    return 0;
-  }
-  const result = (numerator / denominator) * 100;
-  return Math.round(result * 10) / 10;
-}
-
-/**
- * Formats seconds into human-readable duration (e.g. "2m 15s" or "45s").
- */
-export function formatDurationSeconds(seconds: number): string {
-  if (!seconds || seconds <= 0) return '0s';
-  const mins = Math.floor(seconds / 60);
-  const remainingSecs = Math.round(seconds % 60);
-  if (mins === 0) return `${remainingSecs}s`;
-  return `${mins}m ${remainingSecs}s`;
-}
+import { safePercentage, formatDurationSeconds } from './form-utils';
 
 /**
  * Ingests a lightweight non-blocking telemetry event and atomically updates form_metrics_daily.

@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  sanitizeCsvCell,
   updateSubmissionStatusAction,
   bulkUpdateSubmissionsAction,
   addSubmissionNoteAction,
@@ -9,6 +8,7 @@ import {
   getFormSavedViewsAction,
   deleteFormSavedViewAction,
 } from '../form-response-actions';
+import { sanitizeCsvCell } from '../form-utils';
 
 // Mock firebase-admin
 vi.mock('@/lib/firebase-admin', () => {

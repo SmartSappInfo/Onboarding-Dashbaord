@@ -20,8 +20,8 @@ import type {
 import { 
   updateSubmissionStatusAction, 
   bulkUpdateSubmissionsAction, 
-  sanitizeCsvCell 
 } from '@/lib/forms/form-response-actions';
+import { sanitizeCsvCell } from '@/lib/forms/form-utils';
 import { getFormSubmissionsAction } from '@/lib/forms-actions';
 
 import ResponseCenterHeader from './components/ResponseCenterHeader';

@@ -1,12 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  buildDistributionUrl,
   updateFormSlugAction,
   createDistributionLinkAction,
   getFormDistributionsAction,
   deleteDistributionLinkAction,
-  generateEmbedSnippet,
 } from '../form-distribution-actions';
+import { buildDistributionUrl, generateEmbedSnippet } from '../form-utils';
 
 // Mock firebase-admin
 vi.mock('@/lib/firebase-admin', () => {

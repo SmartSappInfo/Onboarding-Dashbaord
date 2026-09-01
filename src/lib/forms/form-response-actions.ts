@@ -17,17 +17,7 @@ import type {
   SubmissionNote,
   FormSavedView,
 } from './form-response-types';
-
-/**
- * Neutralizes CSV Formula Injection vulnerabilities by prefixing special characters.
- */
-export function sanitizeCsvCell(value: unknown): string {
-  if (value === null || value === undefined) return '""';
-  const str = typeof value === 'object' ? JSON.stringify(value) : String(value);
-  const isFormula = /^[=+\-@\t\r]/.test(str) || /^[=+\-@\t\r]/.test(str.trim());
-  const safeStr = isFormula ? `'${str}` : str;
-  return `"${safeStr.replace(/"/g, '""')}"`;
-}
+import { sanitizeCsvCell } from './form-utils';
 
 /**
  * Updates the qualification status of an individual submission.

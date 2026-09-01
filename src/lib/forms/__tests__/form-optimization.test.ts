@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
-  calculateStatisticalSignificance,
   computeFormHealthScoreAction,
   scanFormAnomaliesAction,
   getFormExperimentsAction,
@@ -8,6 +7,7 @@ import {
   updateExperimentStatusAction,
   promoteWinningVariantAction,
 } from '../form-optimization-actions';
+import { calculateStatisticalSignificance } from '../form-utils';
 
 // Mock Firebase Admin
 const mockFormDocGet = vi.fn();

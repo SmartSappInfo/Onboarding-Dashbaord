@@ -40,7 +40,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
 import type { WorkspaceExecutiveReportData, ReportDateRange } from '@/lib/forms/form-report-types';
 import { getWorkspaceFormsExecutiveReportAction } from '@/lib/forms/form-reports-actions';
-import { sanitizeCsvCell } from '@/lib/forms/form-response-actions';
+import { sanitizeCsvCell } from '@/lib/forms/form-utils';
 
 interface FormsExecutiveReportClientProps {
   initialReport: WorkspaceExecutiveReportData;

@@ -38,7 +38,7 @@ import type {
   ReportWidgetToggle,
 } from '@/lib/forms/form-report-types';
 import { generateFormCustomReportAction } from '@/lib/forms/form-reports-actions';
-import { sanitizeCsvCell } from '@/lib/forms/form-response-actions';
+import { sanitizeCsvCell } from '@/lib/forms/form-utils';
 
 interface ReportStudioModalProps {
   formId: string;

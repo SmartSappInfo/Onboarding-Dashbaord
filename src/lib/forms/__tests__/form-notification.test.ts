@@ -2,9 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   saveFormNotificationSettingsAction,
   getWorkspaceNotificationTemplatesAction,
-  evaluateAutoResponderCondition,
   dispatchFormNotifications,
 } from '../form-notification-actions';
+import { evaluateAutoResponderCondition } from '../form-utils';
 import type { Form } from '@/lib/types';
 import type { AutoResponderRule } from '../form-notification-types';
 

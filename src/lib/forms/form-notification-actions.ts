@@ -17,6 +17,7 @@ import type {
   TestNotificationPayload,
   AutoResponderRule,
 } from './form-notification-types';
+import { evaluateAutoResponderCondition } from './form-utils';
 
 /**
  * Persists 3-tier notification configuration onto the form document.
@@ -101,53 +102,6 @@ export async function sendTestFormNotificationAction(
   }
 }
 
-/**
- * Evaluates whether an auto-responder rule condition matches submission answers or scores.
- */
-export function evaluateAutoResponderCondition(
-  rule: AutoResponderRule,
-  answers: Record<string, string | number | boolean>,
-  totalScore?: number
-): boolean {
-  if (!rule.enabled) return false;
-
-  if (rule.triggerType === 'immediate') {
-    return true;
-  }
-
-  if (rule.triggerType === 'score_threshold') {
-    if (typeof rule.minScore !== 'number') return true;
-    return (totalScore || 0) >= rule.minScore;
-  }
-
-  if (rule.triggerType === 'conditional' && rule.condition) {
-    const { fieldId, operator, value } = rule.condition;
-    if (!fieldId) return false;
-
-    const answerVal = answers[fieldId];
-    if (answerVal === undefined || answerVal === null) return false;
-
-    const answerStr = String(answerVal).toLowerCase();
-    const targetStr = String(value).toLowerCase();
-
-    switch (operator) {
-      case 'equals':
-        return answerStr === targetStr;
-      case 'not_equals':
-        return answerStr !== targetStr;
-      case 'contains':
-        return answerStr.includes(targetStr);
-      case 'greater_than':
-        return Number(answerVal) > Number(value);
-      case 'less_than':
-        return Number(answerVal) < Number(value);
-      default:
-        return false;
-    }
-  }
-
-  return false;
-}
 
 /**
  * Dispatches 3-Tier Multi-Channel Notifications with fail-safe non-blocking execution.
