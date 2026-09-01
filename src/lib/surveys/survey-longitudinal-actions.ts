@@ -30,15 +30,18 @@ function calculateStatisticalSignificance(
   mean1: number,
   n1: number,
   mean2: number,
-  n2: number
+  n2: number,
+  stdDev1?: number,
+  stdDev2?: number
 ): { isSignificant: boolean; pValue: number } {
   if (n1 < 10 || n2 < 10) {
     return { isSignificant: false, pValue: 1.0 };
   }
 
-  // Assuming normalized variance approximation for 0-100 scale (std dev ~ 20)
-  const pooledStdDev = 20;
-  const standardError = Math.sqrt((pooledStdDev ** 2 / n1) + (pooledStdDev ** 2 / n2));
+  // Exact sample variance or normalized pooled standard deviation approximation (default ~ 20 for 0-100 scale)
+  const s1 = typeof stdDev1 === 'number' && stdDev1 > 0 ? stdDev1 : 20;
+  const s2 = typeof stdDev2 === 'number' && stdDev2 > 0 ? stdDev2 : 20;
+  const standardError = Math.sqrt((s1 ** 2 / n1) + (s2 ** 2 / n2));
   
   if (standardError === 0) {
     return { isSignificant: false, pValue: 1.0 };
