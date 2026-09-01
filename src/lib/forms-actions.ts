@@ -158,12 +158,25 @@ export async function deleteFormAction(id: string, userId: string) {
       if (subsSnap.size < 400) break;
     }
 
+    // Drain all version snapshot documents in versions subcollection if supported
+    if (typeof ref.collection === 'function') {
+      while (true) {
+        const verSnap = await ref.collection('versions').limit(400).get();
+        if (verSnap.empty) break;
+        const verBatch = adminDb.batch();
+        verSnap.docs.forEach(doc => verBatch.delete(doc.ref));
+        await verBatch.commit();
+        if (verSnap.size < 400) break;
+      }
+    }
+
     await ref.delete();
     revalidatePath(REVALIDATION_PATH);
     return { success: true, deletedSubmissions: totalDeleted };
-  } catch (error: any) {
-    console.error('>>> [FORMS] Delete Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : String(error);
+    console.error('>>> [FORMS] Delete Failed:', msg);
+    return { success: false, error: msg };
   }
 }
 
@@ -246,7 +259,7 @@ export async function processFormSubmissionAction(input: {
   sourcePageId?: string; // If embedded in a campaign page
   ipAddress?: string;
   userAgent?: string;
-  metadata?: Record<string, string>;
+  metadata?: Record<string, unknown>;
 }) {
   try {
     const timestamp = new Date().toISOString();
@@ -257,195 +270,41 @@ export async function processFormSubmissionAction(input: {
     if (!formSnap.exists) throw new Error('Form not found');
     const form = { id: formSnap.id, ...formSnap.data() } as Form;
 
-    // 2. Evaluate Lead & Entity Capture Settings
-    const captureSettings = normalizeFormEntityCapture(form.formType || 'global', form.actions);
+    const meta = input.metadata || {};
+    const totalScore = typeof meta.totalScore === 'number' ? meta.totalScore : undefined;
+    const scoreBreakdown = typeof meta.scoreBreakdown === 'object' && meta.scoreBreakdown !== null ? meta.scoreBreakdown as Record<string, number> : undefined;
+    const appliedTags = Array.isArray(meta.appliedTags) ? meta.appliedTags as string[] : undefined;
+
+    // 2. Multi-Attribute CRM Identity Resolution & Progressive Profiling (Phase 4)
     let resolvedEntityId = input.entityId || null;
+    const captureSettings = normalizeFormEntityCapture(form.formType || 'global', form.actions);
 
-    if (captureSettings.enabled && !resolvedEntityId) {
-      const email = input.data.email || input.data.primaryEmail;
-      const phone = input.data.phone || input.data.primaryPhone;
-      const displayName = input.data.name || input.data.displayName || input.data.schoolName || 'Form Contact';
-
-      const entityHandling = captureSettings.handlingStrategy;
-
-      // Try to match existing entity by email or phone within the workspace using parallel indexed queries
-      if ((email || phone) && (entityHandling === 'update_matching' || entityHandling === 'create_or_update')) {
-        const [emailSnap, phoneSnap] = await Promise.all([
-          email
-            ? adminDb
-                .collection('workspace_entities')
-                .where('workspaceId', '==', form.workspaceId)
-                .where('primaryEmail', '==', email)
-                .limit(1)
-                .get()
-            : null,
-          phone
-            ? adminDb
-                .collection('workspace_entities')
-                .where('workspaceId', '==', form.workspaceId)
-                .where('primaryPhone', '==', phone)
-                .limit(1)
-                .get()
-            : null,
-        ]);
-
-        const matchedDoc = (emailSnap && !emailSnap.empty) ? emailSnap.docs[0] : (phoneSnap && !phoneSnap.empty) ? phoneSnap.docs[0] : null;
-
-        if (matchedDoc) {
-          resolvedEntityId = matchedDoc.data().entityId;
-        }
-      }
-
-      // Separate native vs custom data based on form fields definitions
-      const fieldsSnap = await adminDb.collection(COLLECTIONS.APP_FIELDS)
-        .where('workspaceId', '==', form.workspaceId)
-        .get();
-      
-      const fieldsMap = new Map(fieldsSnap.docs.map(doc => [doc.data().variableName, doc.data()]));
-
-      const entityUpdates: Record<string, any> = {};
-      const customData: Record<string, any> = {};
-
-      Object.entries(input.data).forEach(([varName, val]) => {
-        const definition = fieldsMap.get(varName);
-        if (definition) {
-          if (definition.isNative) {
-            entityUpdates[varName] = val;
-          } else {
-            customData[varName] = val;
-          }
-        }
+    if (captureSettings.enabled || (form.formType === 'bound' && resolvedEntityId)) {
+      const { resolveAndEnrichCrmEntity } = await import('./forms/identity-resolution');
+      const resolution = await resolveAndEnrichCrmEntity({
+        workspaceId: form.workspaceId,
+        organizationId: form.organizationId,
+        form,
+        formData: input.data,
+        explicitEntityId: resolvedEntityId || undefined,
+        appliedTags: appliedTags || [],
+        metadata: {
+          totalScore,
+          scoreBreakdown,
+          utmSource: typeof meta.utmSource === 'string' ? meta.utmSource : undefined,
+          utmMedium: typeof meta.utmMedium === 'string' ? meta.utmMedium : undefined,
+          utmCampaign: typeof meta.utmCampaign === 'string' ? meta.utmCampaign : undefined,
+        },
       });
 
-      if (captureSettings.leadSource) {
-        customData.leadSource = captureSettings.leadSource;
+      if (resolution.entityId) {
+        resolvedEntityId = resolution.entityId;
       }
-
-      if (resolvedEntityId && entityHandling !== 'create_new') {
-        const { updateEntityAction } = await import('./entity-actions');
-        
-        const updatePayload: any = {
-          ...entityUpdates,
-          customData
-        };
-
-        if (input.data.firstName || input.data.lastName) {
-          updatePayload.personData = {
-            firstName: input.data.firstName || '',
-            lastName: input.data.lastName || ''
-          };
-        }
-        if (input.data.familyName) {
-          updatePayload.familyData = {
-            familyName: input.data.familyName
-          };
-        }
-
-        await updateEntityAction(
-          resolvedEntityId,
-          updatePayload,
-          `system-form-${form.id}`,
-          form.workspaceId,
-          form.organizationId
-        );
-      } else if (entityHandling !== 'update_matching') {
-        // Create new entity lead
-        const { createEntityAction } = await import('./entity-actions');
-        const contacts = [];
-        if (email || phone) {
-          contacts.push({
-            name: displayName,
-            email,
-            phone,
-            typeKey: 'other',
-            isPrimary: true,
-            isSignatory: true,
-          });
-        }
-
-        const entityPayload: any = {
-          name: displayName,
-          contacts,
-          personData: {
-            firstName: input.data.firstName || displayName.split(' ')[0] || '',
-            lastName: input.data.lastName || displayName.split(' ').slice(1).join(' ') || '',
-          },
-        };
-
-        if (Object.keys(customData).length > 0) {
-          entityPayload.customData = customData;
-        }
-
-        let entityType = captureSettings.entityScope;
-        if (!entityType || entityType === 'workspace_default') {
-          entityType = (form.contactScope || 'person') as any;
-        }
-
-        const createRes = await createEntityAction(
-          entityPayload,
-          `system-form-${form.id}`,
-          form.workspaceId,
-          entityType as any,
-          form.organizationId,
-          true // forceCreate to avoid duplicate error loop
-        );
-
-        if (createRes.success && createRes.id) {
-          resolvedEntityId = createRes.id;
-        }
-      }
-    } else if (form.formType === 'bound' && resolvedEntityId) {
-      // If entityId is passed, update it
-      const fieldsSnap = await adminDb.collection(COLLECTIONS.APP_FIELDS)
-        .where('workspaceId', '==', form.workspaceId)
-        .get();
-      
-      const fieldsMap = new Map(fieldsSnap.docs.map(doc => [doc.data().variableName, doc.data()]));
-
-      const entityUpdates: Record<string, any> = {};
-      const customData: Record<string, any> = {};
-
-      Object.entries(input.data).forEach(([varName, val]) => {
-        const definition = fieldsMap.get(varName);
-        if (definition) {
-          if (definition.isNative) {
-            entityUpdates[varName] = val;
-          } else {
-            customData[varName] = val;
-          }
-        }
-      });
-
-      const { updateEntityAction } = await import('./entity-actions');
-      
-      const updatePayload: any = {
-        ...entityUpdates,
-        customData
-      };
-
-      if (input.data.firstName || input.data.lastName) {
-        updatePayload.personData = {
-          firstName: input.data.firstName || '',
-          lastName: input.data.lastName || ''
-        };
-      }
-      if (input.data.familyName) {
-        updatePayload.familyData = {
-          familyName: input.data.familyName
-        };
-      }
-
-      await updateEntityAction(
-        resolvedEntityId,
-        updatePayload,
-        `system-form-${form.id}`,
-        form.workspaceId,
-        form.organizationId
-      );
     }
 
     // 2b. Persist Submission
     const subRef = adminDb.collection('form_submissions').doc();
+
     const submission: FormSubmission = {
       id: subRef.id,
       formId: input.formId,
@@ -454,6 +313,9 @@ export async function processFormSubmissionAction(input: {
       data: input.data,
       entityId: resolvedEntityId || undefined,
       sourcePageId: input.sourcePageId || undefined,
+      totalScore,
+      scoreBreakdown,
+      appliedTags,
       submittedAt: timestamp,
       ipAddress: input.ipAddress,
       userAgent: input.userAgent,
@@ -467,14 +329,19 @@ export async function processFormSubmissionAction(input: {
     });
 
     // 5. Execute FormActions: Tagging & Webhooks
-    if (form.actions) {
-      // 5a. Tagging
-      if (form.actions.tags?.length && resolvedEntityId) {
+    if (form.actions || appliedTags?.length) {
+      // 5a. Tagging (combine static action tags with dynamic logic-applied tags)
+      const allTagsToApply = Array.from(new Set([
+        ...(form.actions?.tags || []),
+        ...(appliedTags || []),
+      ]));
+
+      if (allTagsToApply.length > 0 && resolvedEntityId) {
         const { applyTagsAction } = await import('./tag-actions');
         await applyTagsAction(
           resolvedEntityId,
           'workspace_entity',
-          form.actions.tags,
+          allTagsToApply,
           'system-form-engine',
           'Form Submission Engine'
         );

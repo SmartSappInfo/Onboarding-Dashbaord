@@ -122,6 +122,18 @@ export const createFirebaseAdminMock = (mockStore: MockStore) => {
             id,
             parent: { id: name },
             get: async () => {
+              if (name === 'workspace_entities') {
+                const entityDoc = mockStore.entities.get(id);
+                if (entityDoc) {
+                  return { exists: true, id, data: () => entityDoc, ref: docRef };
+                }
+                for (const arr of mockStore.workspace_entities.values()) {
+                  const found = arr.find(item => item.id === id || item.entityId === id);
+                  if (found) return { exists: true, id, data: () => found, ref: docRef };
+                }
+                return { exists: false, id, data: () => undefined, ref: docRef };
+              }
+
               const map = getMapForCollection(name);
               const data = map ? map.get(id) : undefined;
               return {
@@ -140,13 +152,12 @@ export const createFirebaseAdminMock = (mockStore: MockStore) => {
             },
             update: async (data: any) => {
               const map = getMapForCollection(name);
-              if (map) {
+              if (map && map.has(id)) {
                 const existing = map.get(id) || {};
                 const updated = { ...existing };
                 for (const [k, v] of Object.entries(data)) {
-                  // check if it's a FieldValue.increment
-                  if (v && typeof v === 'object' && (v.constructor?.name === 'NumericIncrementTransform' || v._methodName === 'FieldValue.increment')) {
-                    const operand = v.operand ?? v.value ?? 1;
+                  if (v && typeof v === 'object' && ((v as any)._methodName === 'FieldValue.increment' || (v as any).operand !== undefined || (v as any).value !== undefined)) {
+                    const operand = (v as any).operand ?? (v as any).value ?? 1;
                     updated[k] = (Number(existing[k]) || 0) + operand;
                   } else {
                     updated[k] = v;
@@ -160,6 +171,9 @@ export const createFirebaseAdminMock = (mockStore: MockStore) => {
               if (map) {
                 map.delete(id);
               }
+            },
+            collection: (subName: string) => {
+              return dbMock.collection(`${name}_${id}_${subName}`);
             },
           };
           return docRef;
@@ -193,11 +207,25 @@ export const createFirebaseAdminMock = (mockStore: MockStore) => {
             get: async () => {
               const map = getMapForCollection(name);
               if (!map) {
-                // Fallback for special mock collections (activities, tasks, message_logs, etc. stored as arrays)
+                // Fallback for special mock collections
                 let arrayDocs: any[] = [];
-                if (name === 'workspace_entities' && field === 'workspaceId') {
-                  const weData = mockStore.workspace_entities.get(value) || [];
-                  arrayDocs = weData.map((data) => ({ id: data.id, data: () => data }));
+                if (name === 'workspace_entities') {
+                  const wsFilter = filters.find(f => f.field === 'workspaceId');
+                  const weData = wsFilter
+                    ? (mockStore.workspace_entities.get(wsFilter.value) || [])
+                    : Array.from(mockStore.workspace_entities.values()).flat();
+                  
+                  let filtered = weData;
+                  for (const filter of filters) {
+                    filtered = filtered.filter(item => {
+                      const val = item[filter.field];
+                      if (filter.op === '==') return val === filter.value;
+                      if (filter.op === 'in') return Array.isArray(filter.value) && filter.value.includes(val);
+                      return true;
+                    });
+                  }
+                  if (limitCount) filtered = filtered.slice(0, limitCount);
+                  arrayDocs = filtered.map(data => ({ id: data.id, data: () => data }));
                 } else if (name === 'activities' && field === 'workspaceId') {
                   const activities = mockStore.activities.get(value) || [];
                   arrayDocs = activities.map((data, idx) => ({ id: `activity_${idx}`, data: () => data }));

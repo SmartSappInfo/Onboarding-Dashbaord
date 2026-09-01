@@ -3222,6 +3222,37 @@ export {
   DEPLOYMENT_CHANNELS,
 } from '@/lib/surveys/survey-v2-types';
 
+// Re-export Forms 2.0 Platform Core Types
+export type {
+  FormPurpose,
+  AudienceMode,
+  FormLifecycleStatus,
+  FieldSemanticType,
+  FormComponentType,
+  FormValidationRule,
+  FormFieldOption,
+  CrmFieldMapping,
+  FormField,
+  FormComponent,
+  FormPage,
+  FormVersion,
+  FormSettings,
+  FormSession,
+  FormEvent,
+} from '@/lib/forms/form-types';
+
+export type {
+  FormLogicRule,
+  LogicComparisonOperator,
+  LogicActionType,
+  LogicCondition,
+  LogicConditionGroup,
+  LogicAction,
+  FormCalculationRule,
+  FormScoreRule,
+  LogicEvaluationResult,
+} from '@/lib/forms/form-logic-types';
+
 
 export interface LearningSignal {
   id: string;
@@ -5854,6 +5885,8 @@ export interface Form {
   /** Canonical SEO & social-sharing config for the public form page. @see SeoConfig */
   seo?: SeoConfig;
   formType: 'bound' | 'global';
+  purpose?: import('./forms/form-types').FormPurpose;
+  audienceMode?: import('./forms/form-types').AudienceMode;
   contactScope?: 'institution' | 'family' | 'person'; // Only populated if bound
   fields: FormFieldInstance[];
   theme: FormThemeConfig;
@@ -5871,6 +5904,14 @@ export interface Form {
     email: boolean;
     sms: boolean;
   };
+  currentVersionId?: string;
+  publishedVersionId?: string;
+  publishedVersionNumber?: number;
+  currentVersion?: import('./forms/form-types').FormVersion;
+  pages?: import('./forms/form-types').FormPage[];
+  logicRules?: import('./forms/form-logic-types').FormLogicRule[];
+  scoreRules?: import('./forms/form-logic-types').FormScoreRule[];
+  calculations?: import('./forms/form-logic-types').FormCalculationRule[];
   createdAt: string;
   updatedAt?: string;
   publishedAt?: string;
@@ -5950,6 +5991,11 @@ export interface FormSubmissionActions {
   };
   webhooks: string[]; // URLs or Webhook document IDs
   entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // Legacy fallback
+  leadSource?: string;
+  dealCreation?: import('./forms/form-crm-types').DealCreationRule;
+  taskAssignment?: import('./forms/form-crm-types').TaskAssignmentRule;
+  progressiveProfiling?: import('./forms/form-crm-types').ProgressiveProfilingConfig;
+  hideKnownFields?: boolean;
   /** Comprehensive Lead & Entity Capture Configuration */
   entityCapture?: FormEntityCaptureSettings;
 }
@@ -5983,6 +6029,10 @@ export interface FormSubmission {
   utmCampaign?: string;
   utmTerm?: string;
   utmContent?: string;
+  totalScore?: number;
+  scoreBreakdown?: Record<string, number>;
+  appliedTags?: string[];
+  isDisqualified?: boolean;
   submittedAt: string;
 }
 

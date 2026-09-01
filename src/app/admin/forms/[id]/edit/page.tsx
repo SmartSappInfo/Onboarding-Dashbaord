@@ -14,6 +14,8 @@ import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { FormNotificationSettings } from '../../components/form-notification-settings';
 import SaveStatusIndicator, { type SaveStatus } from './components/SaveStatusIndicator';
 import { updateFormAction } from '@/lib/forms-actions';
+import { publishFormVersionAction } from '@/lib/forms-version-actions';
+import { normalizeFormToVersion } from '@/lib/forms/form-compatibility';
 import { useFormHistory } from '@/hooks/use-form-history';
 import FieldsSidebar, { SYSTEM_CONSTANT_FIELDS } from './components/FieldsSidebar';
 import PropertiesSidebar from './components/PropertiesSidebar';
@@ -24,8 +26,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
 import { normalizeSuccessBehavior, normalizeFormEntityCapture } from '@/lib/tracking-utils';
-import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, UserPlus, Sparkles, Building2, User, Home } from 'lucide-react';
+import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, UserPlus, Sparkles, Building2, User, Home, Rocket, GitBranch } from 'lucide-react';
 import BuilderCanvas from './components/BuilderCanvas';
+import LogicStudio from './components/LogicStudio';
+import PageManager from './components/PageManager';
+import CrmIntegrationStudio from './components/CrmIntegrationStudio';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import {
@@ -93,8 +98,9 @@ function Stepper({ currentStep, onStepClick }: { currentStep: number; onStepClic
   const steps = [
     { n: 1, label: 'Details', icon: Settings2 },
     { n: 2, label: 'Builder', icon: Layout },
-    { n: 3, label: 'Actions', icon: Zap },
-    { n: 4, label: 'Share', icon: Share2 },
+    { n: 3, label: 'Logic', icon: GitBranch },
+    { n: 4, label: 'Actions', icon: Zap },
+    { n: 5, label: 'Share', icon: Share2 },
   ];
 
   return (
@@ -239,6 +245,20 @@ export default function EditFormPage() {
   const userOptions = React.useMemo(() => 
     users?.map(u => ({ label: u.name || u.email, value: u.id })) || [], 
   [users]);
+
+  const [activePageId, setActivePageId] = React.useState<string>('page_1');
+
+  const appFieldsMap = React.useMemo(() => {
+    const map: Record<string, AppField> = {};
+    (availableFields || []).forEach(f => {
+      map[f.id] = f;
+    });
+    return map;
+  }, [availableFields]);
+
+  const versionPages = React.useMemo(() => {
+    return normalizeFormToVersion(formData as Form, appFieldsMap).pages;
+  }, [formData, appFieldsMap]);
 
   // Dialog & Form states for dynamic tag and webhook creation
   const [isTagDialogOpen, setIsTagDialogOpen] = React.useState(false);
@@ -486,20 +506,66 @@ export default function EditFormPage() {
   };
 
   const handlePublish = async () => {
-    if (!firestore || !formId) return;
+    if (!formId || !user) return;
+    if (!formData.fields || formData.fields.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'Cannot Publish Empty Form',
+        description: 'Please add at least one field before publishing.',
+      });
+      return;
+    }
+
     setIsSaving(true);
     try {
-      const ref = doc(firestore, 'forms', formId);
-      await updateDoc(ref, {
-        ...formData,
-        status: 'published',
-        publishedAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+      const appFieldsMap: Record<string, AppField> = {};
+      (availableFields || []).forEach(f => {
+        appFieldsMap[f.id] = f;
       });
-      toast({ title: '🚀 Form Published!', description: 'Your form is now live.' });
-      router.push('/admin/forms');
-    } catch (err) {
-      toast({ variant: 'destructive', title: 'Publish Failed' });
+
+      const version = normalizeFormToVersion(formData as Form, appFieldsMap);
+      const res = await publishFormVersionAction(
+        formId,
+        user.uid,
+        version.pages,
+        {
+          internalName: formData.internalName,
+          title: formData.title,
+          slug: formData.slug,
+          description: formData.description,
+          formType: formData.formType,
+          purpose: formData.purpose,
+          audienceMode: formData.audienceMode,
+          contactScope: formData.contactScope,
+          fields: formData.fields,
+          theme: formData.theme,
+          successBehavior: formData.successBehavior,
+          actions: formData.actions,
+          seo: formData.seo,
+        }
+      );
+
+      if (res.success) {
+        setFormData(prev => ({
+          ...prev,
+          status: 'published',
+          publishedVersionId: res.versionId,
+          publishedVersionNumber: ((prev as any).publishedVersionNumber || 0) + 1,
+        }));
+        toast({
+          title: '🚀 Form Published!',
+          description: `Version published and live at /p/f/${formData.slug}`,
+          actionConfig: {
+            path: `/p/f/${formData.slug}`,
+            label: 'View Live Form',
+          },
+        });
+      } else {
+        toast({ variant: 'destructive', title: 'Publish Failed', description: res.error || 'Could not publish form.' });
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      toast({ variant: 'destructive', title: 'Publish Error', description: msg });
     } finally {
       setIsSaving(false);
     }
@@ -695,10 +761,19 @@ export default function EditFormPage() {
             disabled={isSaving || isPendingSave || saveStatus === 'saving'}
             onClick={handleSave}
             variant="outline"
-            className="rounded-xl font-semibold gap-2 px-5 h-10 text-[10px] active:scale-95 transition-all"
+            className="rounded-xl font-semibold gap-2 px-4 h-10 text-[10px] active:scale-95 transition-all"
           >
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save
+          </Button>
+
+          <Button
+            disabled={isSaving || isPendingSave}
+            onClick={handlePublish}
+            className="rounded-xl font-semibold gap-2 px-5 h-10 text-[10px] bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm active:scale-95 transition-all"
+          >
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+            Publish
           </Button>
         </div>
       </header>
@@ -771,25 +846,52 @@ export default function EditFormPage() {
 
                     <Card className="rounded-2xl border border-border shadow-sm bg-card">
                       <CardHeader>
-                        <CardTitle className="text-base font-semibold">Form Type</CardTitle>
+                        <CardTitle className="text-base font-semibold">Form Type & Purpose</CardTitle>
+                        <CardDescription className="text-xs">Classify the intended business outcome and respondent audience.</CardDescription>
                       </CardHeader>
                       <CardContent className="space-y-4 text-left">
-                        <Select value={formData.formType || 'global'} onValueChange={v => updateField('formType', v as Form['formType'])}>
-                          <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl">
-                            <SelectItem value="global">Global (standalone form)</SelectItem>
-                            <SelectItem value="bound">Bound (linked to an entity)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        {formData.formType === 'bound' && (
-                          <Select value={formData.contactScope || 'institution'} onValueChange={v => updateField('contactScope', v as Form['contactScope'])}>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Form Purpose</Label>
+                          <Select value={formData.purpose || 'lead_capture'} onValueChange={v => updateField('purpose', v as any)}>
                             <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
-                              <SelectItem value="institution">Institution</SelectItem>
-                              <SelectItem value="family">Family</SelectItem>
-                              <SelectItem value="person">Person</SelectItem>
+                              <SelectItem value="lead_capture">Lead Capture & Gen</SelectItem>
+                              <SelectItem value="contact">General Contact Inquiry</SelectItem>
+                              <SelectItem value="application">Application / Admissions</SelectItem>
+                              <SelectItem value="registration">Event / Program Registration</SelectItem>
+                              <SelectItem value="onboarding">Client Onboarding</SelectItem>
+                              <SelectItem value="feedback">Customer Feedback</SelectItem>
+                              <SelectItem value="assessment">Evaluation / Assessment</SelectItem>
+                              <SelectItem value="booking_intake">Appointment & Booking Intake</SelectItem>
+                              <SelectItem value="payment">Payment & Checkout</SelectItem>
+                              <SelectItem value="custom">Custom Data Capture</SelectItem>
                             </SelectContent>
                           </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Deployment Scope</Label>
+                          <Select value={formData.formType || 'global'} onValueChange={v => updateField('formType', v as Form['formType'])}>
+                            <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-xl">
+                              <SelectItem value="global">Global (standalone hosted / embed URL)</SelectItem>
+                              <SelectItem value="bound">Bound (linked to specific CRM entity)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {formData.formType === 'bound' && (
+                          <div className="space-y-2">
+                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity Scope</Label>
+                            <Select value={formData.contactScope || 'institution'} onValueChange={v => updateField('contactScope', v as Form['contactScope'])}>
+                              <SelectTrigger className="h-11 rounded-xl"><SelectValue /></SelectTrigger>
+                              <SelectContent className="rounded-xl">
+                                <SelectItem value="institution">Institution / Account</SelectItem>
+                                <SelectItem value="family">Family Unit</SelectItem>
+                                <SelectItem value="person">Individual Person</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
                         )}
                       </CardContent>
                     </Card>
@@ -963,6 +1065,18 @@ export default function EditFormPage() {
                   </div>
                 </div>
 
+                {/* Multi-Page Management Navigation Strip */}
+                <div className="bg-card/30 border-b px-8 py-2.5 shrink-0">
+                  <PageManager
+                    pages={versionPages}
+                    activePageId={activePageId || versionPages[0]?.id || 'page_1'}
+                    onActivePageChange={setActivePageId}
+                    onPagesChange={(updatedPages) => updateField('pages', updatedPages)}
+                    fields={fields}
+                    getAppField={getAppField}
+                  />
+                </div>
+
                 <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                   <div className="flex-1 flex min-h-0 overflow-hidden">
                     {/* Left Sidebar: Fields Registry */}
@@ -1013,8 +1127,24 @@ export default function EditFormPage() {
               </motion.div>
             )}
 
-            {/* ── Step 3: Actions ── */}
-            {step === 3 && (() => {
+            {/* ── Step 3: Logic Studio ── */}
+            {step === 3 && (
+              <motion.div key="step3" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-6">
+                <LogicStudio
+                  fields={fields}
+                  getAppField={getAppField}
+                  rules={formData.logicRules || []}
+                  onRulesChange={(newRules) => updateField('logicRules', newRules)}
+                  calculations={formData.calculations || []}
+                  onCalculationsChange={(newCalcs) => updateField('calculations', newCalcs)}
+                  scoreRules={formData.scoreRules || []}
+                  onScoreRulesChange={(newScores) => updateField('scoreRules', newScores)}
+                />
+              </motion.div>
+            )}
+
+            {/* ── Step 4: Actions ── */}
+            {step === 4 && (() => {
               const normalizedEntityCapture = normalizeFormEntityCapture(formData.formType || 'global', formData.actions);
               const updateEntityCapture = (patch: Partial<FormEntityCaptureSettings>) => {
                 const currentActions = (formData.actions || { tags: [], automations: [], webhooks: [] }) as FormSubmissionActions;
@@ -1345,40 +1475,41 @@ export default function EditFormPage() {
                   </CardContent>
                 </Card>
 
-                {/* ── 2. Tags, Webhooks & Notifications Card ── */}
+                {/* ── 2. Dedicated CRM Integration Studio (Phase 4) ── */}
+                <CrmIntegrationStudio
+                  workspaceId={activeWorkspaceId}
+                  contactScope={formData.contactScope || 'person'}
+                  actions={formData.actions || {}}
+                  availableFields={availableFields || []}
+                  onChange={(updated) => {
+                    const currentActions = (formData.actions || {}) as Record<string, any>;
+                    const newActions: FormSubmissionActions = {
+                      tags: currentActions.tags || [],
+                      automations: currentActions.automations || [],
+                      webhooks: currentActions.webhooks || [],
+                      ...currentActions,
+                    };
+                    if (updated.entityHandling !== undefined) newActions.entityHandling = updated.entityHandling;
+                    if (updated.leadSource !== undefined) newActions.leadSource = updated.leadSource;
+                    if (updated.progressiveProfiling !== undefined) newActions.progressiveProfiling = updated.progressiveProfiling;
+                    if (updated.dealCreation !== undefined) newActions.dealCreation = updated.dealCreation;
+                    if (updated.taskAssignment !== undefined) newActions.taskAssignment = updated.taskAssignment;
+                    if (updated.tags !== undefined) newActions.tags = updated.tags;
+
+                    if (updated.contactScope !== undefined) {
+                      updateField('contactScope', updated.contactScope);
+                    }
+                    updateField('actions', newActions);
+                  }}
+                />
+
+                {/* ── 3. Webhooks & Notifications Card ── */}
                 <Card className="rounded-2xl border-none shadow-sm">
                   <CardHeader>
-                    <CardTitle className="text-base font-semibold">Post-Submission Actions</CardTitle>
-                    <CardDescription className="text-xs">Configure what happens after someone submits this form.</CardDescription>
+                    <CardTitle className="text-base font-semibold">External Integrations & Alerts</CardTitle>
+                    <CardDescription className="text-xs">Configure outbound webhooks and multi-channel notifications.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6 text-left">
-                    {/* Tags */}
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold flex items-center gap-2">
-                          <Tags className="h-4 w-4 text-primary" /> Auto-Apply Registry Tags
-                        </Label>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          className="h-6 text-primary hover:bg-primary/10 rounded-full px-2 gap-1 text-[10px] font-bold uppercase tracking-wider"
-                          onClick={() => setIsTagDialogOpen(true)}
-                        >
-                          <PlusCircle className="h-3 w-3" /> New Tag
-                        </Button>
-                      </div>
-                      <TagSelector
-                        currentTagIds={formData.actions?.tags || []}
-                        onTagsChange={(val) => {
-                          const currentActions = (formData.actions || {}) as FormSubmissionActions;
-                          updateField('actions', { ...currentActions, tags: val });
-                        }}
-                      />
-                      <p className="text-[9px] font-bold text-muted-foreground/50 italic leading-relaxed">
-                        Respondents will automatically be tagged with these labels in the CRM upon submission.
-                      </p>
-                    </div>
 
                     {/* Webhooks */}
                     <div className="space-y-4 pt-2">
@@ -1449,9 +1580,9 @@ export default function EditFormPage() {
               </motion.div>
             ); })()}
 
-            {/* ── Step 4: Share ── */}
-            {step === 4 && (
-              <motion.div key="step4" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
+            {/* ── Step 5: Share ── */}
+            {step === 5 && (
+              <motion.div key="step5" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }} className="space-y-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
                   {/* Left Column: Connectivity & Access */}
                   <Card className="rounded-2xl border border-border bg-card overflow-hidden">

@@ -6,6 +6,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Form, FormFieldInstance, AppField } from '@/lib/types';
 import { processFormSubmissionAction } from '@/lib/forms-actions';
+import { initializeFormSessionAction, recordFormEventAction } from '@/lib/forms/form-session-actions';
+import { evaluateFormLogic } from '@/lib/forms/logic-engine';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,12 +26,15 @@ interface ResolvedField extends FormFieldInstance {
   fieldDefinition: AppField;
 }
 
+import type { KnownRespondentProfile } from '@/lib/forms/identity-resolution';
+
 interface FormRendererProps {
   form: Form;
   resolvedFields: ResolvedField[];
   isEmbed?: boolean;
   entityId?: string;
   orgBranding?: OrgBranding | null;
+  knownProfile?: KnownRespondentProfile;
 }
 
 export default function FormRenderer({ 
@@ -37,7 +42,8 @@ export default function FormRenderer({
   resolvedFields, 
   isEmbed, 
   entityId,
-  orgBranding
+  orgBranding,
+  knownProfile,
 }: FormRendererProps) {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -110,41 +116,120 @@ export default function FormRenderer({
 
   const schema = z.object(schemaObject);
 
-  // 2. Initialize Form with Default Values
-  const defaultValues: Record<string, any> = {};
+  // 2. Initialize Form with Default Values (and Progressive Profiling auto-fill)
+  const defaultValues: Record<string, unknown> = {};
   resolvedFields.forEach((field) => {
-    if (field.defaultValueOverride !== undefined) {
-      defaultValues[field.fieldDefinition.variableName] = field.defaultValueOverride;
+    const varName = field.fieldDefinition.variableName;
+    if (knownProfile?.knownValues[varName] !== undefined) {
+      defaultValues[varName] = knownProfile.knownValues[varName];
+    } else if (field.defaultValueOverride !== undefined) {
+      defaultValues[varName] = field.defaultValueOverride;
     }
   });
 
   const {
     register,
     handleSubmit,
+    watch,
     formState: { errors },
   } = useForm({
     resolver: zodResolver(schema),
     defaultValues,
   });
 
+  const watchedValues = watch();
+
+  // Field Alias Map: bridges field instance ID <-> CRM variableName
+  const fieldAliasMap = React.useMemo(() => {
+    const map: Record<string, string> = {};
+    resolvedFields.forEach(rf => {
+      map[rf.id] = rf.fieldDefinition.variableName;
+      map[rf.fieldDefinition.variableName] = rf.id;
+    });
+    return map;
+  }, [resolvedFields]);
+
+  // Evaluate dynamic logic rules, calculations and scores
+  const logicResult = React.useMemo(() => {
+    return evaluateFormLogic(
+      form.logicRules || [],
+      form.scoreRules || [],
+      form.calculations || [],
+      watchedValues,
+      fieldAliasMap
+    );
+  }, [form.logicRules, form.scoreRules, form.calculations, watchedValues, fieldAliasMap]);
+
+  const [sessionId, setSessionId] = useState<string | null>(null);
+
+  // Initialize session tracking for conversion funnel and drop-off analytics
+  useEffect(() => {
+    let isMounted = true;
+    (async () => {
+      try {
+        const res = await initializeFormSessionAction({
+          formId: form.id,
+          versionId: form.publishedVersionId || form.currentVersionId,
+          workspaceId: form.workspaceId,
+          organizationId: form.organizationId,
+          utmSource: trackingParams.utmSource,
+          utmMedium: trackingParams.utmMedium,
+          utmCampaign: trackingParams.utmCampaign,
+          device: typeof window !== 'undefined' 
+            ? (window.innerWidth < 768 ? 'mobile' : window.innerWidth < 1024 ? 'tablet' : 'desktop')
+            : 'desktop',
+        });
+        if (isMounted && res.success && res.sessionId) {
+          setSessionId(res.sessionId);
+        }
+      } catch {
+        // Non-blocking telemetry
+      }
+    })();
+    return () => { isMounted = false; };
+  }, [form.id, form.publishedVersionId, form.currentVersionId, form.workspaceId, form.organizationId, trackingParams]);
+
   // 3. Handle Submit
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: Record<string, unknown>) => {
+    if (logicResult.isDisqualified) {
+      alert(logicResult.disqualificationMessage || 'Thank you for your submission.');
+      return;
+    }
+
     setIsSubmitting(true);
     try {
+      const mergedData = {
+        ...data,
+        ...logicResult.overrideValues,
+      };
+
       const result = await processFormSubmissionAction({
         formId: form.id,
-        data,
+        data: mergedData,
         entityId,
-        metadata: trackingParams,
+        metadata: {
+          ...trackingParams,
+          totalScore: logicResult.totalScore,
+          scoreBreakdown: logicResult.scoreBreakdown,
+          appliedTags: logicResult.appliedTags,
+        },
       });
 
       if (result.success) {
+        if (sessionId) {
+          recordFormEventAction({
+            sessionId,
+            formId: form.id,
+            eventType: 'form_submit',
+          }).catch(() => {});
+        }
         setIsSubmitted(true);
       } else {
         alert(result.error || 'Failed to submit form');
       }
-    } catch (error) {
-      console.error('Submission error:', error);
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error('Submission error:', msg);
       alert('An unexpected error occurred.');
     } finally {
       setIsSubmitting(false);
@@ -181,6 +266,17 @@ export default function FormRenderer({
         isGlass ? "glass shadow-2xl border border-white/20 p-8 sm:p-12 mb-10" : "bg-white shadow-xl border border-slate-200 p-8 sm:p-12 mb-10",
         cardRadius
       )}>
+        {/* Progressive Profiling Pre-Fill Indicator */}
+        {knownProfile?.name && (
+          <div className="mb-6 p-3.5 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-between text-xs">
+            <span className="font-semibold text-slate-800 dark:text-slate-200">
+              👋 Pre-filled for <span className="font-bold text-primary">{knownProfile.name}</span>
+            </span>
+            <span className="text-[11px] text-muted-foreground hidden sm:inline">
+              Data synchronized with your CRM record
+            </span>
+          </div>
+        )}
         
         {/* Header */}
         <div className="mb-10 text-center">
@@ -200,7 +296,11 @@ export default function FormRenderer({
             {resolvedFields.map((field) => {
               const type = field.fieldDefinition.type;
 
-              if (field.hidden) {
+              const isConcealedByProgressiveProfiling = 
+                Boolean((form.actions?.progressiveProfiling?.hideKnownFields || (form.actions as any)?.hideKnownFields) &&
+                knownProfile?.alreadyCapturedFieldKeys.includes(field.fieldDefinition.variableName));
+
+              if (field.hidden || logicResult.hiddenFieldIds.has(field.id) || isConcealedByProgressiveProfiling) {
                 return (
                   <input
                     key={field.id}
@@ -210,30 +310,89 @@ export default function FormRenderer({
                 );
               }
 
+              const displayLabel = logicResult.labelOverrides[field.id] || field.labelOverride || field.fieldDefinition.label;
+              const displayHelp = logicResult.helpTextOverrides[field.id] || field.helpTextOverride || field.fieldDefinition.helpText;
+              const isDisabled = logicResult.disabledFieldIds.has(field.id);
+              const isReq = field.required || logicResult.requiredFieldIds.has(field.id);
+
               return (
                 <div key={field.id} className="space-y-2">
                   <Label 
                     htmlFor={field.fieldDefinition.variableName} 
                     className="text-sm font-semibold text-slate-700 ml-1"
                   >
-                    {field.labelOverride || field.fieldDefinition.label}
-                    {field.required && <span className="text-rose-500 ml-1">*</span>}
+                    {displayLabel}
+                    {isReq && <span className="text-rose-500 ml-1">*</span>}
                   </Label>
                   
                   {type === 'long_text' ? (
                     <Textarea
                       id={field.fieldDefinition.variableName}
+                      disabled={isDisabled}
                       placeholder={field.placeholderOverride || field.fieldDefinition.placeholder}
                       {...register(field.fieldDefinition.variableName)}
                       className={cn(
                         "min-h-[120px] transition-all focus:ring-2",
                         isGlass ? "bg-white/50 border-white/30" : "bg-slate-50 border-slate-200",
-                        errors[field.fieldDefinition.variableName] && "border-rose-500 focus:ring-rose-200"
+                        errors[field.fieldDefinition.variableName] && "border-rose-500 focus:ring-rose-200",
+                        isDisabled && "opacity-50 cursor-not-allowed"
                       )}
                     />
+                  ) : type === 'select' && (field.fieldDefinition.options?.length || 0) > 0 ? (
+                    <select
+                      id={field.fieldDefinition.variableName}
+                      disabled={isDisabled}
+                      {...register(field.fieldDefinition.variableName)}
+                      className={cn(
+                        "h-12 w-full px-3.5 bg-white border border-slate-200 rounded-xl text-sm transition-all focus:ring-2 focus:ring-primary focus:outline-none",
+                        errors[field.fieldDefinition.variableName] && "border-rose-500 focus:ring-rose-200",
+                        isDisabled && "opacity-50 cursor-not-allowed"
+                      )}
+                    >
+                      <option value="">{field.placeholderOverride || field.fieldDefinition.placeholder || 'Select an option...'}</option>
+                      {field.fieldDefinition.options?.map(opt => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label || opt.value}
+                        </option>
+                      ))}
+                    </select>
+                  ) : type === 'yes_no' ? (
+                    <div className="flex items-center gap-4 pt-1">
+                      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                        <input
+                          type="radio"
+                          value="yes"
+                          disabled={isDisabled}
+                          {...register(field.fieldDefinition.variableName)}
+                          className="h-4 w-4 text-primary focus:ring-primary"
+                        />
+                        <span>Yes</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700">
+                        <input
+                          type="radio"
+                          value="no"
+                          disabled={isDisabled}
+                          {...register(field.fieldDefinition.variableName)}
+                          className="h-4 w-4 text-primary focus:ring-primary"
+                        />
+                        <span>No</span>
+                      </label>
+                    </div>
+                  ) : type === 'checkbox' ? (
+                    <label className="flex items-center gap-2.5 cursor-pointer text-sm font-medium text-slate-700 pt-1">
+                      <input
+                        type="checkbox"
+                        disabled={isDisabled}
+                        {...register(field.fieldDefinition.variableName)}
+                        className="h-4 w-4 rounded text-primary focus:ring-primary"
+                      />
+                      <span>{field.placeholderOverride || field.fieldDefinition.placeholder || displayLabel}</span>
+                    </label>
                   ) : (
                     <Input
                       id={field.fieldDefinition.variableName}
+                      disabled={isDisabled}
                       type={
                         type === 'email' ? 'email' : 
                         type === 'phone' ? 'tel' : 
@@ -246,14 +405,15 @@ export default function FormRenderer({
                       className={cn(
                         "h-12 transition-all focus:ring-2",
                         isGlass ? "bg-white/50 border-white/30" : "bg-slate-50 border-slate-200",
-                        errors[field.fieldDefinition.variableName] && "border-rose-500 focus:ring-rose-200"
+                        errors[field.fieldDefinition.variableName] && "border-rose-500 focus:ring-rose-200",
+                        isDisabled && "opacity-50 cursor-not-allowed"
                       )}
                     />
                   )}
 
-                  {(field.helpTextOverride || field.fieldDefinition.helpText) && (
+                  {displayHelp && (
                     <p className="text-xs text-slate-500 mt-1 ml-1 leading-normal">
-                      {field.helpTextOverride || field.fieldDefinition.helpText}
+                      {displayHelp}
                     </p>
                   )}
                   
@@ -266,6 +426,17 @@ export default function FormRenderer({
               );
             })}
           </div>
+
+          {/* Active Logic Warning Messages */}
+          {logicResult.activeMessages.length > 0 && (
+            <div className="space-y-2">
+              {logicResult.activeMessages.map((msg, i) => (
+                <div key={i} className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-700 dark:text-amber-300 text-xs font-semibold">
+                  {msg}
+                </div>
+              ))}
+            </div>
+          )}
 
           {/* Footer Actions */}
           <div className="pt-6">

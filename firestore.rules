@@ -1293,7 +1293,7 @@ service cloud.firestore {
      * during and after the schoolId to entityId migration.
      */
     
-    // Forms collection - dual-write migration support
+    // Forms 2.0 collection
     match /forms/{formId} {
       allow get: if resource.data.status == 'published' || (
         isAuthorized() && (
@@ -1303,7 +1303,8 @@ service cloud.firestore {
       );
       allow list: if isAuthorized() && (
         isSystemAdmin() ||
-        hasPermission('studios_edit')
+        hasPermission('studios_edit') ||
+        hasWorkspaceAccess(resource.data.workspaceId)
       );
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
@@ -1321,19 +1322,53 @@ service cloud.firestore {
         (hasPermission('studios_edit') && 
          hasWorkspaceAccess(resource.data.workspaceId))
       );
+
+      // Forms 2.0 version snapshots subcollection
+      match /versions/{versionId} {
+        allow read: if resource.data.status == 'published' || (
+          isAuthorized() && (
+            isSystemAdmin() ||
+            hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+          )
+        );
+        allow write: if isAuthorized() && (
+          isSystemAdmin() ||
+          hasPermission('studios_edit')
+        );
+      }
     }
     
-    // Form submissions - workspace boundary enforcement
-    match /forms/{formId}/submissions/{submissionId} {
+    // Canonical Top-Level Form Submissions collection
+    match /form_submissions/{submissionId} {
       allow read: if isAuthorized() && (
         isSystemAdmin() ||
-        hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+        hasWorkspaceAccess(resource.data.workspaceId)
       );
       allow create: if true; // Public form submissions
       allow update, delete: if isAuthorized() && (
         isSystemAdmin() ||
-        hasWorkspaceAccess(get(/databases/$(database)/documents/forms/$(formId)).data.workspaceId)
+        hasWorkspaceAccess(resource.data.workspaceId)
       );
+    }
+
+    // Form Sessions & Analytics Telemetry
+    match /form_sessions/{sessionId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create, update: if true; // Telemetry ingestion
+    }
+
+    match /form_events/{eventId} {
+      allow read: if isAuthorized() && isSystemAdmin();
+      allow create: if true; // Telemetry event emitter
+    }
+
+    // Form Drafts & Resume Later
+    match /form_drafts/{draftId} {
+      allow get, create, update: if true; // Public token-based draft resume
+      allow delete: if isAuthorized();
     }
     
     // Automation logs - workspace boundary enforcement

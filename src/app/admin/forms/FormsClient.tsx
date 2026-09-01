@@ -453,14 +453,28 @@ export default function FormsClient() {
                         </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant="outline" className="text-[9px] font-semibold uppercase h-5 px-2">
-                          {form.formType}
-                        </Badge>
+                        <div className="flex flex-col items-center gap-1">
+                          <Badge variant="outline" className="text-[9px] font-semibold uppercase h-5 px-2">
+                            {form.purpose ? form.purpose.replace(/_/g, ' ') : form.formType}
+                          </Badge>
+                          {form.contactScope && (
+                            <span className="text-[8px] text-muted-foreground uppercase font-mono tracking-tight">
+                              {form.contactScope}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge variant={getStatusVariant(form.status)} className="text-[9px] font-semibold uppercase rounded-full px-2.5">
-                          {form.status}
-                        </Badge>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <Badge variant={getStatusVariant(form.status)} className="text-[9px] font-semibold uppercase rounded-full px-2.5">
+                            {form.status}
+                          </Badge>
+                          {form.publishedVersionNumber && form.status === 'published' && (
+                            <Badge variant="outline" className="text-[8px] font-mono h-4 px-1.5 opacity-70">
+                              v{form.publishedVersionNumber}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center font-semibold text-sm tabular-nums">{form.fields?.length || 0}</TableCell>
                       <TableCell className="text-center font-semibold text-sm tabular-nums">
