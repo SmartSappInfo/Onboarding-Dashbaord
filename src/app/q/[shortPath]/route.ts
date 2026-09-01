@@ -14,6 +14,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getQRCodeByShortPath } from '@/lib/qr-actions';
+import { evaluateSecurityRules } from '@/lib/qr-domain-security-actions';
 import type { QRCode } from '@/lib/types';
 
 function renderBrandedStatusPage(options: {
@@ -198,7 +199,49 @@ export async function GET(
       });
     }
 
-    // 6. Destination URL Resolution
+    // 6. Enterprise Security Guardrails (Passcode, Geofence, IP Allowlists)
+    const clientIp = request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || '127.0.0.1';
+    const clientCountry =
+      request.headers.get('x-vercel-ip-country') ||
+      request.headers.get('cf-ipcountry') ||
+      request.headers.get('x-country') ||
+      undefined;
+
+    const isUnlockedCookie = request.cookies.get(`qr_unlocked_${shortPath}`)?.value === '1';
+    const isUnlockedParam = request.nextUrl.searchParams.get('unlocked') === 'true';
+    const isPasscodeUnlocked = isUnlockedCookie || isUnlockedParam;
+
+    const securityEval = evaluateSecurityRules(qr, clientIp, clientCountry, isPasscodeUnlocked);
+
+    if (!securityEval.allowed) {
+      if (securityEval.requiresPasscode) {
+        // Redirect to branded PIN unlock screen
+        const unlockUrl = new URL(`/q/${shortPath}/unlock`, request.url);
+        return NextResponse.redirect(unlockUrl, 302);
+      }
+
+      if (fallbackUrl) return NextResponse.redirect(fallbackUrl, 302);
+
+      if (securityEval.reason === 'country_restricted') {
+        return renderBrandedStatusPage({
+          badge: 'Restricted Location',
+          badgeColor: '#ef4444',
+          title: 'Access Restricted in Your Region',
+          description: securityEval.message || 'This campaign is only accessible within authorized geographical regions.',
+        });
+      }
+
+      if (securityEval.reason === 'ip_restricted') {
+        return renderBrandedStatusPage({
+          badge: 'Network Restricted',
+          badgeColor: '#ef4444',
+          title: 'Access Restricted to Authorized Networks',
+          description: securityEval.message || 'Your network IP is not permitted to access this destination.',
+        });
+      }
+    }
+
+    // 7. Destination URL Resolution
     const destinationUrl = qr.destination.url;
     if (!destinationUrl) {
       return NextResponse.json(

@@ -34,6 +34,7 @@ import {
   ShieldCheck,
   Sparkles,
   Layers,
+  Globe,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { Button } from '@/components/ui/button';
@@ -102,6 +103,7 @@ import BatchImportDialog from './components/batch-import-dialog';
 import AiCreateDialog from './components/ai-create-dialog';
 import CampaignsTab from './components/campaigns/campaigns-tab';
 import AnalyticsTab from './components/analytics/analytics-tab';
+import CustomDomainsDialog from './components/domains/custom-domains-dialog';
 import { PageContainer } from '@/components/ui/page-container';
 
 const QR_TYPE_LABELS: Record<string, string> = {
@@ -251,6 +253,7 @@ export default function QRStudioClient() {
   const [isBulkActionLoading, setIsBulkActionLoading] = React.useState(false);
   const [showBatchDialog, setShowBatchDialog] = React.useState(false);
   const [showAiDialog, setShowAiDialog] = React.useState(false);
+  const [showDomainsDialog, setShowDomainsDialog] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState<'codes' | 'campaigns' | 'analytics'>('codes');
 
   // Confirmation dialog states
@@ -546,6 +549,14 @@ export default function QRStudioClient() {
             >
               <Sparkles className="h-4 w-4 mr-2 text-primary animate-pulse" />
               Create with AI
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowDomainsDialog(true)}
+              className="rounded-xl h-11 px-4 font-semibold text-sm active:scale-[0.97] transition-transform"
+            >
+              <Globe className="h-4 w-4 mr-2 text-primary" />
+              Domains
             </Button>
             <Button
               variant="outline"
@@ -1234,6 +1245,12 @@ export default function QRStudioClient() {
           open={showAiDialog}
           onOpenChange={setShowAiDialog}
           onSuccess={fetchData}
+        />
+
+        {/* Custom Domains Manager Dialog */}
+        <CustomDomainsDialog
+          open={showDomainsDialog}
+          onOpenChange={setShowDomainsDialog}
         />
       </div>
     </PageContainer>

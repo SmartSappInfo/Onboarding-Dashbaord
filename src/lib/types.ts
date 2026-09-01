@@ -6504,11 +6504,34 @@ export interface QRLifecycleConfig {
   timezone?: string;
 }
 
+export interface QRCustomDomain {
+  id: string;
+  organizationId: string;
+  workspaceId: string;
+  domain: string;
+  status: 'pending_verification' | 'verified' | 'failed';
+  cnameTarget: string;
+  isDefault: boolean;
+  sslActive: boolean;
+  lastCheckedAt?: string;
+  createdBy: { userId: string; name: string; email: string };
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface QRSecurityConfig {
   passwordProtected?: boolean;
+  passwordEnabled?: boolean;
   passwordHash?: string;
+  passcodePlain?: string;
   restrictDomain?: boolean;
   allowedDomains?: string[];
+  allowedCountries?: string[];
+  geoRestrictions?: {
+    type: 'allow' | 'block';
+    countries: string[];
+  };
+  ipAllowlist?: string[];
   anonymizeIp?: boolean;
   blockBotScans?: boolean;
   maxScansPerMinutePerIp?: number;
