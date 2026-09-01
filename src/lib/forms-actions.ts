@@ -385,68 +385,17 @@ export async function processFormSubmissionAction(input: {
       submission_id: subRef.id
     };
 
-    // 6a. Notifications
+    // 6a. 3-Tier Multi-Channel Notifications (Phase 8)
     if (form.actions?.notifications) {
-      const { triggerInternalNotification, triggerExternalNotification } = await import('./notification-engine');
-      const { sendMessage } = await import('./messaging-engine');
-      
-      const { internalAlerts, respondentAlerts } = form.actions.notifications;
-
-      // Internal Notifications. 'all' fires each channel that has a template
-      // set (the engine guards each by its template id), which is equivalent to
-      // the previous email/sms derivation and additionally covers WhatsApp.
-      if (internalAlerts?.enabled) {
-        await triggerInternalNotification({
-          specificUserIds: internalAlerts.userIds || [],
-          variables: automationVars,
-          emailTemplateId: internalAlerts.emailTemplateId,
-          smsTemplateId: internalAlerts.smsTemplateId,
-          whatsappTemplateId: internalAlerts.whatsappTemplateId,
-          channel: 'all',
-        });
-      }
-
-      // External Respondent Confirmation
-      if (respondentAlerts?.enabled) {
-        const respondentEmail = respondentAlerts.respondentEmailField ? input.data[respondentAlerts.respondentEmailField] : undefined;
-        const respondentPhone = respondentAlerts.respondentPhoneField ? input.data[respondentAlerts.respondentPhoneField] : undefined;
-
-        if (respondentAlerts.emailTemplateId && respondentEmail) {
-          await sendMessage({
-            templateId: respondentAlerts.emailTemplateId,
-            senderProfileId: 'default',
-            organizationId: form.organizationId,
-            recipient: respondentEmail,
-            variables: automationVars,
-            entityId: resolvedEntityId || undefined,
-            workspaceId: form.workspaceId
-          });
-        }
-
-        if (respondentAlerts.smsTemplateId && respondentPhone) {
-          await sendMessage({
-            templateId: respondentAlerts.smsTemplateId,
-            senderProfileId: 'default',
-            organizationId: form.organizationId,
-            recipient: respondentPhone,
-            variables: automationVars,
-            entityId: resolvedEntityId || undefined,
-            workspaceId: form.workspaceId
-          });
-        }
-
-        if (respondentAlerts.whatsappTemplateId && respondentPhone) {
-          await sendMessage({
-            templateId: respondentAlerts.whatsappTemplateId,
-            senderProfileId: 'default',
-            organizationId: form.organizationId,
-            recipient: respondentPhone,
-            variables: automationVars,
-            entityId: resolvedEntityId || undefined,
-            workspaceId: form.workspaceId
-          });
-        }
-      }
+      const { dispatchFormNotifications } = await import('./forms/form-notification-actions');
+      await dispatchFormNotifications({
+        form,
+        submissionId: subRef.id,
+        submissionData: input.data,
+        totalScore,
+        resolvedEntityId: resolvedEntityId || undefined,
+        automationVars,
+      });
     }
 
     // 6b. Automation Triggers

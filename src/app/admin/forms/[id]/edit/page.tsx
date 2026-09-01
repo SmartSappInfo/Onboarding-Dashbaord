@@ -31,6 +31,7 @@ import BuilderCanvas from './components/BuilderCanvas';
 import LogicStudio from './components/LogicStudio';
 import PageManager from './components/PageManager';
 import CrmIntegrationStudio from './components/CrmIntegrationStudio';
+import NotificationStudio from './components/NotificationStudio';
 import ViewportToggle, { type ViewportSize } from './components/ViewportToggle';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import {
@@ -1564,35 +1565,17 @@ export default function EditFormPage() {
                       </p>
                     </div>
 
-                    {/* Notifications */}
-                    <div className="space-y-4 pt-4">
-                      <FormNotificationSettings
-                        internalAlerts={formData.actions?.notifications?.internalAlerts}
-                        respondentAlerts={formData.actions?.notifications?.respondentAlerts}
-                        externalAlerts={formData.actions?.notifications?.externalAlerts}
+                    {/* Modernized 3-Tier Notification Studio (Phase 8) */}
+                    <div className="pt-4 border-t border-border/30">
+                      <NotificationStudio
+                        form={formData as Form}
+                        settings={formData.actions?.notifications || {}}
                         availableFields={formFieldOptions}
-                        onChangeInternal={(val: any) => {
+                        onChange={(newSettings) => {
                           const currentActions = (formData.actions || {}) as FormSubmissionActions;
-                          const currentNotifications = currentActions.notifications || {};
                           updateField('actions', {
                             ...currentActions,
-                            notifications: { ...currentNotifications, internalAlerts: val as any }
-                          });
-                        }}
-                        onChangeRespondent={(val: any) => {
-                          const currentActions = (formData.actions || {}) as FormSubmissionActions;
-                          const currentNotifications = currentActions.notifications || {};
-                          updateField('actions', {
-                            ...currentActions,
-                            notifications: { ...currentNotifications, respondentAlerts: val as any }
-                          });
-                        }}
-                        onChangeExternal={(val: any) => {
-                          const currentActions = (formData.actions || {}) as FormSubmissionActions;
-                          const currentNotifications = currentActions.notifications || {};
-                          updateField('actions', {
-                            ...currentActions,
-                            notifications: { ...currentNotifications, externalAlerts: val as any }
+                            notifications: newSettings,
                           });
                         }}
                       />

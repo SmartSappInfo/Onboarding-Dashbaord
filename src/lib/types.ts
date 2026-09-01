@@ -5957,38 +5957,7 @@ export interface FormThemeConfig {
 export interface FormSubmissionActions {
   tags: string[]; // Applied immediately or post-creation
   automations: string[]; // Triggers 'form_submitted:<formId>' or these explicitly
-  notifications?: {
-    internalUserIds?: string[]; // @deprecated - use internalAlerts.userIds instead
-    sendConfirmationEmail?: boolean; // @deprecated - use respondentAlerts instead
-    internalAlerts?: {
-      enabled: boolean;
-      userIds: string[];
-      emailTemplateId?: string;
-      smsTemplateId?: string;
-      whatsappTemplateId?: string;
-      pushTemplateId?: string;
-      inAppTemplateId?: string;
-    };
-    respondentAlerts?: {
-      enabled: boolean;
-      respondentEmailField?: string;
-      respondentPhoneField?: string;
-      emailTemplateId?: string;
-      smsTemplateId?: string;
-      whatsappTemplateId?: string;
-      pushTemplateId?: string;
-      inAppTemplateId?: string;
-    };
-    externalAlerts?: {
-      enabled: boolean;
-      emailAddresses: string[];
-      emailTemplateId?: string;
-      smsTemplateId?: string;
-      whatsappTemplateId?: string;
-      pushTemplateId?: string;
-      inAppTemplateId?: string;
-    };
-  };
+  notifications?: import('./forms/form-notification-types').FormNotificationSettings;
   webhooks: string[]; // URLs or Webhook document IDs
   entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // Legacy fallback
   leadSource?: string;
