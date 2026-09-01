@@ -47,6 +47,7 @@ import { LayersTreePanel } from '@/components/shared/thumbnail-designer/LayersTr
 import { CreativeHealthPanel } from '@/components/shared/thumbnail-designer/CreativeHealthPanel';
 import { BatchPersonalizationModal } from '@/components/shared/thumbnail-designer/BatchPersonalizationModal';
 import { ApprovalWorkflowModal } from '@/components/shared/thumbnail-designer/ApprovalWorkflowModal';
+import { PublishingModal } from '@/components/shared/thumbnail-designer/PublishingModal';
 import {
   KeyboardShortcutsDialog,
   useKeyboardShortcuts,
@@ -261,9 +262,6 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
 
   // Direct Publish Dialog
   const [isPublishDialogOpen, setIsPublishDialogOpen] = useState(false);
-  const [publishPlatform, setPublishPlatform] = useState<'youtube' | 'facebook' | 'linkedin'>('youtube');
-  const [publishVideoId, setPublishVideoId] = useState('');
-  const [isPublishing, setIsPublishing] = useState(false);
 
   // 1. Initial Load
   useEffect(() => {
@@ -862,18 +860,6 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
     } catch {
       toast({ title: 'Cutout Error', description: 'Failed to remove background.', variant: 'destructive' });
     }
-  };
-
-  const handlePublishSimulated = () => {
-    setIsPublishing(true);
-    setTimeout(() => {
-      setIsPublishing(false);
-      setIsPublishDialogOpen(false);
-      toast({
-        title: 'Publishing Scheduled',
-        description: `Visual synchronized to ${publishPlatform.toUpperCase()} video cover.`,
-      });
-    }, 1200);
   };
 
   if (isLoading || !project) {
@@ -1784,61 +1770,15 @@ export function ProjectEditorClient({ projectId }: ProjectEditorClientProps) {
         onOpenCopyMatrix={() => setIsAiDrawerOpen(true)}
       />
 
-      {/* Direct Publishing Modal */}
-      <Dialog open={isPublishDialogOpen} onOpenChange={setIsPublishDialogOpen}>
-        <DialogContent className="max-w-md bg-slate-950 border-slate-800 text-slate-100 p-6 rounded-3xl">
-          <DialogHeader>
-            <DialogTitle className="text-lg font-black flex items-center gap-2 text-white">
-              <Globe className="w-5 h-5 text-blue-400" /> Direct Publishing Portal
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">Destination Platform</Label>
-              <Select
-                value={publishPlatform}
-                onValueChange={(val: 'youtube' | 'facebook' | 'linkedin') => setPublishPlatform(val)}
-              >
-                <SelectTrigger className="h-10 bg-slate-900 border-slate-800 text-xs font-bold text-white rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
-                  <SelectItem value="youtube">YouTube (Video Cover)</SelectItem>
-                  <SelectItem value="facebook">Facebook (Ad / Post)</SelectItem>
-                  <SelectItem value="linkedin">LinkedIn (Media Post)</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold text-slate-300">Target Video ID or Post ID</Label>
-              <Input
-                value={publishVideoId}
-                onChange={(e) => setPublishVideoId(e.target.value)}
-                placeholder="e.g. dQw4w9WgXcQ"
-                className="h-10 bg-slate-900 border-slate-800 text-xs font-semibold text-white rounded-xl"
-              />
-            </div>
-
-            <div className="pt-2 flex justify-end gap-2">
-              <Button
-                onClick={() => setIsPublishDialogOpen(false)}
-                variant="outline"
-                className="h-10 text-xs font-bold border-slate-800 bg-slate-900 rounded-xl"
-              >
-                Cancel
-              </Button>
-              <Button
-                onClick={handlePublishSimulated}
-                disabled={isPublishing}
-                className="h-10 px-5 bg-blue-600 hover:bg-blue-500 font-black text-xs text-white rounded-xl active:scale-[0.97]"
-              >
-                {isPublishing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : 'Confirm Publish'}
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Multi-Platform Publishing & Distribution Modal (Phase 8) */}
+      {isPublishDialogOpen && project && document && (
+        <PublishingModal
+          open={isPublishDialogOpen}
+          onOpenChange={setIsPublishDialogOpen}
+          project={project}
+          document={document}
+        />
+      )}
 
       {/* Media Selector Dialog */}
       {showMediaDialog && project && (

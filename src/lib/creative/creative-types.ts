@@ -281,6 +281,40 @@ export interface CreativeApprovalDecision {
   decisionAt: string;
 }
 
+export type PublishingChannel = 'youtube' | 'facebook' | 'instagram' | 'linkedin' | 'crm_asset';
+
+export interface ConnectedChannel {
+  id: string;
+  channel: PublishingChannel;
+  accountName: string;
+  accountAvatarUrl?: string;
+  connected: boolean;
+  lastSyncedAt: string;
+}
+
+export interface PublicationRecord {
+  id: string;
+  projectId: string;
+  documentId: string;
+  workspaceId: string;
+  channel: PublishingChannel;
+  targetIdentifier: string; // e.g. YouTube Video ID, FB Page ID, LinkedIn Post URN
+  status: 'published' | 'scheduled' | 'failed';
+  publishedAt?: string;
+  scheduledFor?: string;
+  platformPostUrl?: string;
+  authorName: string;
+  createdAt: string;
+}
+
+export interface PreFlightCheckItem {
+  id: string;
+  label: string;
+  passed: boolean;
+  severity: 'error' | 'warning';
+  message: string;
+}
+
 export interface CreativeVersion {
   id: string;
   projectId: string;

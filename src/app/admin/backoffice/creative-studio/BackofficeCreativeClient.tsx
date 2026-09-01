@@ -30,6 +30,7 @@ import {
   Sparkles,
   CheckCircle2,
   Loader2,
+  Globe,
 } from 'lucide-react';
 
 export function BackofficeCreativeClient() {
@@ -416,6 +417,40 @@ export function BackofficeCreativeClient() {
                 <span className="text-emerald-400 font-mono">24 Hours</span>
               </div>
               <div className="text-[10px] text-slate-500 font-normal mt-0.5">Turnaround Target</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Multi-Channel Publishing & Distribution Hub (Phase 8) */}
+        <div className="p-6 rounded-3xl bg-slate-900/40 border border-slate-800 space-y-4 shadow-xl">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
+              <Globe className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-white">Multi-Channel Publishing & Rate Limits</h2>
+              <p className="text-[11px] text-slate-400 font-medium">Platform channel enablement & hourly caps</p>
+            </div>
+          </div>
+
+          <p className="text-xs text-slate-300 leading-relaxed">
+            Configure external channel adapters (YouTube, Facebook, Instagram, LinkedIn) and hourly API publication quotas.
+          </p>
+
+          <div className="grid grid-cols-2 gap-2 text-xs font-bold">
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-blue-500/40 text-slate-200">
+              <div className="flex justify-between items-center">
+                <span>Channel Adapters</span>
+                <span className="text-blue-400 font-mono">5 Active</span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-normal mt-0.5">YouTube, FB, IG, LI, CRM</div>
+            </div>
+            <div className="p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <div className="flex justify-between items-center">
+                <span>Hourly Limit</span>
+                <span className="text-emerald-400 font-mono">50 / hour</span>
+              </div>
+              <div className="text-[10px] text-slate-500 font-normal mt-0.5">Rate Limit Protection</div>
             </div>
           </div>
         </div>
