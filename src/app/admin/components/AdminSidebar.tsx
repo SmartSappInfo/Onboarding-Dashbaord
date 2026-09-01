@@ -68,7 +68,11 @@ import {
     Building,
     Check,
     User,
-    Building2
+    Building2,
+    BrainCircuit,
+    Compass,
+    Terminal,
+    ArrowRightLeft
 } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -212,11 +216,21 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/social/accounts'), icon: Settings, label: 'Connected Profiles', visible: isFeatureEnabled('social_intelligence'), disabled: !can('studios', 'socialIntelligence', 'view') },
   ], [wrapHref, isFeatureEnabled, can]);
 
+  const workforceNavItems = React.useMemo(() => [
+    { href: wrapHref('/admin/workforce/intelligence'), icon: BrainCircuit, label: 'Workforce Intelligence', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/users'), icon: Users, label: 'People Hub', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/onboarding'), icon: Compass, label: 'Onboarding Journeys', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/command-center'), icon: Terminal, label: 'AI Command Center', visible: isSystemAdmin },
+    { href: wrapHref('/admin/workforce/ai'), icon: Sparkles, label: 'AI Workforce Advisor', visible: isSystemAdmin },
+    { href: wrapHref('/admin/users/governance'), icon: ShieldCheck, label: 'Governance & Security', visible: isSystemAdmin },
+    { href: wrapHref('/admin/workforce/crm'), icon: ArrowRightLeft, label: 'CRM Workload & Transfer', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/enterprise-identity'), icon: Building2, label: 'Enterprise SSO & SCIM', visible: isSystemAdmin },
+    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
+  ], [wrapHref, can, isSystemAdmin]);
+
   const systemNavItems = React.useMemo(() => [
     { href: wrapHref('/admin/activities'), icon: History, label: 'Activities', visible: can('management', 'activities', 'view') },
-    { href: wrapHref('/admin/users'), icon: Users, label: 'Users', visible: can('management', 'users', 'view') },
     { href: wrapHref('/admin/entities/lead-scoring'), icon: Sparkles, label: 'Lead Scores', visible: isFeatureEnabled('entities'), disabled: !can('operations', 'campuses', 'view') },
-    { href: wrapHref('/admin/users/roles'), icon: ShieldEllipsis, label: 'Roles & Permissions', visible: isSystemAdmin },
     { href: wrapHref('/admin/settings/invitation'), icon: Mail, label: 'Messaging', visible: can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/settings/fields'), icon: Database, label: 'Fields & Variables', visible: can('management', 'fields', 'view') },
     { href: wrapHref('/admin/ai-prompts'), icon: Bot, label: 'AI Prompts', visible: can('management', 'systemSettings', 'view') },
@@ -225,7 +239,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/settings/developer'), icon: Code, label: 'Developer API', visible: can('management', 'systemSettings', 'view') },
     { href: wrapHref('/admin/webhooks'), icon: Unplug, label: 'Webhooks', visible: can('management', 'systemSettings', 'view') },
     { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
-  ], [wrapHref, can, isSystemAdmin, hasBackofficeAccess]);
+  ], [wrapHref, can, isFeatureEnabled, hasBackofficeAccess]);
 
   const renderNavGroup = (title: string, items: any[], defaultOpen = false) => {
     const visibleItems = items.filter(i => i.visible);
@@ -467,7 +481,8 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         
         <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">
           {renderNavGroup("Operations", coreNavItems, true)}
-          {renderNavGroup("Studios", studioNavItems, true)}
+          {renderNavGroup("Workforce & Identity", workforceNavItems, true)}
+          {renderNavGroup("Studios", studioNavItems, false)}
           {renderNavGroup("Finance Hub", financeNavItems, false)}
           {renderNavGroup("Social Hub", socialNavItems, false)}
           <div className="mt-auto pt-4 mb-2">
@@ -536,7 +551,8 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
 
           <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none">
             {renderNavGroup("Operations", coreNavItems, true)}
-            {renderNavGroup("Studios", studioNavItems, true)}
+            {renderNavGroup("Workforce & Identity", workforceNavItems, true)}
+            {renderNavGroup("Studios", studioNavItems, false)}
             {renderNavGroup("Finance Hub", financeNavItems, false)}
             {renderNavGroup("Social Hub", socialNavItems, false)}
             <div className="mt-auto pt-4 mb-2">

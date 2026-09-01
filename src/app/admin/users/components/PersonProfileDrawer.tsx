@@ -643,6 +643,8 @@ export function PersonProfileDrawer({
                   </div>
                 </CardContent>
               </Card>
+            </TabsContent>
+
             {/* Tab 5: CRM & Workload */}
             <TabsContent value="crm" className="p-5 space-y-4 m-0 flex-1">
               <div className="flex items-center justify-between">
