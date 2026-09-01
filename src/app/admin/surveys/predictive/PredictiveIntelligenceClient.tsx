@@ -85,6 +85,10 @@ export function PredictiveIntelligenceClient() {
         toast({
           title: 'Prescription Executed',
           description: "Follow-up CRM task dispatched for " + entity.entityName,
+          actionConfig: {
+            path: '/admin/tasks',
+            label: 'View Tasks',
+          },
         });
       } else {
         toast({

@@ -88,6 +88,10 @@ export function EntityPredictiveHealthCard({
         toast({
           title: 'Prescription Executed',
           description: "Created follow-up CRM task: " + health.nextBestAction.title,
+          actionConfig: {
+            path: '/admin/tasks',
+            label: 'View Tasks',
+          },
         });
       } else {
         toast({

@@ -173,7 +173,13 @@ export async function calculateEntityPredictiveHealthAction(
     crmScore = Math.min(100, Math.max(0, crmScore));
 
     // --- C. Composite Health Score Formulation ---
-    const compositeHealthScore = Math.round(surveyScore * 0.55 + crmScore * 0.45);
+    const weightsRes = await getSystemPredictiveWeightsAction();
+    const sWeight = weightsRes.config?.surveyWeight ?? 40;
+    const cWeight = weightsRes.config?.crmWeight ?? 30;
+    const totalWeights = (sWeight + cWeight) || 100;
+    const normSurvey = sWeight / totalWeights;
+    const normCrm = cWeight / totalWeights;
+    const compositeHealthScore = Math.round(surveyScore * normSurvey + crmScore * normCrm);
 
     // --- D. Churn Risk & Conversion Propensity ---
     let churnRisk = Math.max(0, Math.min(100, 100 - compositeHealthScore));
@@ -428,12 +434,11 @@ export async function getSystemPredictiveWeightsAction(): Promise<{
 }> {
   try {
     const doc = await adminDb.collection('system_config').doc('predictive_weights').get();
-    if (!doc.exists) {
+    if (!doc || !doc.exists) {
       return { success: true, config: DEFAULT_WEIGHTS };
     }
-    return { success: true, config: { ...DEFAULT_WEIGHTS, ...doc.data() } };
-  } catch (err: unknown) {
-    console.error('[survey-predictive-actions] getSystemPredictiveWeightsAction error:', err);
+    return { success: true, config: { ...DEFAULT_WEIGHTS, ...(doc.data() || {}) } };
+  } catch {
     return { success: true, config: DEFAULT_WEIGHTS };
   }
 }
