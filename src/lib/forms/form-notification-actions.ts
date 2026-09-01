@@ -209,12 +209,15 @@ export async function dispatchFormNotifications(params: {
     dispatchPromises.push(
       (async () => {
         try {
-          const respondentEmail = respondentAlerts.respondentEmailField
-            ? String(submissionData[respondentAlerts.respondentEmailField] || '').trim()
-            : undefined;
-          const respondentPhone = respondentAlerts.respondentPhoneField
-            ? String(submissionData[respondentAlerts.respondentPhoneField] || '').trim()
-            : undefined;
+          const rawEmail = respondentAlerts.respondentEmailField
+            ? submissionData[respondentAlerts.respondentEmailField]
+            : (submissionData.email || submissionData.primaryEmail || submissionData.emailAddress);
+          const respondentEmail = rawEmail ? String(rawEmail).trim() : undefined;
+
+          const rawPhone = respondentAlerts.respondentPhoneField
+            ? submissionData[respondentAlerts.respondentPhoneField]
+            : (submissionData.phone || submissionData.phoneNumber || submissionData.mobile);
+          const respondentPhone = rawPhone ? String(rawPhone).trim() : undefined;
 
           // Default Multi-Channel Receipt
           if (respondentAlerts.emailTemplateId && respondentEmail && respondentEmail.includes('@')) {
@@ -289,18 +292,19 @@ export async function dispatchFormNotifications(params: {
         try {
           const templateId = externalAlerts.emailTemplateId;
           if (templateId) {
-            for (const email of externalAlerts.emailAddresses || []) {
-              if (email && email.includes('@')) {
-                await sendMessage({
+            const validEmails = (externalAlerts.emailAddresses || []).filter(e => e && e.includes('@'));
+            await Promise.allSettled(
+              validEmails.map(email =>
+                sendMessage({
                   templateId,
                   senderProfileId: 'default',
                   organizationId: form.organizationId,
                   recipient: email.trim(),
                   variables: automationVars,
                   workspaceId: form.workspaceId,
-                });
-              }
-            }
+                })
+              )
+            );
           }
           dispatchedTiers.push('tier_3_external');
         } catch (err) {

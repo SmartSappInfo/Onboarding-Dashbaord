@@ -6,9 +6,8 @@ import type { Form, FormSubmission, AppField, FormFieldInstance } from './types'
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 import { COLLECTIONS } from './collection-constants';
-import { submissionsToCSV, normaliseSubmissionData } from './forms-utils';
+import { submissionsToCSV } from './forms-utils';
 import { normalizeFormEntityCapture } from './tracking-utils';
-import { z } from 'zod';
 
 /**
  * @fileOverview Server-side actions for the Form Builder.
@@ -388,11 +387,13 @@ export async function processFormSubmissionAction(input: {
     // 6a. 3-Tier Multi-Channel Notifications (Phase 8)
     if (form.actions?.notifications) {
       const { dispatchFormNotifications } = await import('./forms/form-notification-actions');
+      const assignedOwnerId = form.actions?.taskAssignment?.assignedUserId || form.actions?.dealCreation?.ownerId;
       await dispatchFormNotifications({
         form,
         submissionId: subRef.id,
         submissionData: input.data,
         totalScore,
+        assignedDealOwnerId: assignedOwnerId || undefined,
         resolvedEntityId: resolvedEntityId || undefined,
         automationVars,
       });
