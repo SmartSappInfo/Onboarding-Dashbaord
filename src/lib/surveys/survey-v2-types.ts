@@ -72,6 +72,7 @@ export type DeploymentChannel = (typeof DEPLOYMENT_CHANNELS)[number];
 export interface SurveyProject {
   id: string;
   workspaceId: string;
+  workspaceIds?: string[];
   organizationId: string;
   name: string;
   description?: string;

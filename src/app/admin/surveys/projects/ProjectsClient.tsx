@@ -321,10 +321,10 @@ export default function ProjectsClient() {
                   {/* Action Link */}
                   <div className="pt-2 border-t border-border/40">
                     <Link
-                      href={`/admin/surveys?projectId=${project.id}`}
+                      href={`/admin/surveys/projects/${project.id}`}
                       className="inline-flex items-center justify-between w-full text-xs font-semibold text-primary hover:text-primary/80 transition-colors py-1"
                     >
-                      <span>View Study Instruments</span>
+                      <span>Open Longitudinal Workspace</span>
                       <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-1 transition-transform" />
                     </Link>
                   </div>

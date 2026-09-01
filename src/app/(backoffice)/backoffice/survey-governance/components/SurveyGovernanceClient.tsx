@@ -34,6 +34,7 @@ import SpamAbuseQueue from './SpamAbuseQueue';
 import SystemQuestionBankMatrix from './SystemQuestionBankMatrix';
 import SystemCrmFieldMappingMatrix from './SystemCrmFieldMappingMatrix';
 import SystemDecisionPlaybookMatrix from './SystemDecisionPlaybookMatrix';
+import { SystemResearchGovernanceMatrix } from './SystemResearchGovernanceMatrix';
 
 export default function SurveyGovernanceClient() {
   const getToken = useBackofficeToken();
@@ -165,6 +166,9 @@ export default function SurveyGovernanceClient() {
 
       {/* Global System Autonomous Decision Playbooks Matrix */}
       <SystemDecisionPlaybookMatrix />
+
+      {/* Global System Research & Data Retention Governance Matrix */}
+      <SystemResearchGovernanceMatrix />
 
       {/* Drop-off Intelligence Radar Section */}
       <div className="space-y-3">

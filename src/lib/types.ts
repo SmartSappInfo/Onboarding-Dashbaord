@@ -2958,10 +2958,13 @@ export interface Survey {
   deploymentIds?: string[];
   crmConfig?: import('./surveys/survey-crm-types').SurveyCrmConfig;
   decisionConfig?: import('./surveys/survey-decision-types').SurveyDecisionConfig;
+  experimentConfig?: import('./surveys/survey-longitudinal-types').SurveyExperimentConfig;
+  retentionPolicy?: import('./surveys/survey-longitudinal-types').SurveyRetentionPolicy;
 }
 
 export * from './surveys/survey-crm-types';
 export * from './surveys/survey-decision-types';
+export * from './surveys/survey-longitudinal-types';
 
 export interface LeadCaptureFieldSetting {
   show: boolean;
@@ -3168,6 +3171,8 @@ export interface SurveyResponse {
   respondentPhone?: string | null;
   sentimentPolarity?: 'positive' | 'mostly_positive' | 'neutral' | 'mostly_negative' | 'negative' | 'mixed' | string | null;
   sentimentScore?: number | null;
+  variantId?: string | null;
+  waveId?: string | null;
   leadDetails?: Record<string, unknown>;
   variables?: Record<string, unknown>;
   automationsTriggered?: boolean;

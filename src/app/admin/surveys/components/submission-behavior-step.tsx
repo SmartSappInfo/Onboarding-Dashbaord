@@ -31,6 +31,7 @@ import SurveyLeadCaptureCard from './survey-lead-capture-card';
 import { PipelineStageSelector } from './PipelineStageSelector';
 import { SurveyCrmMappingTab } from './SurveyCrmMappingTab';
 import { SurveyDecisionHub } from './SurveyDecisionHub';
+import { SurveyExperimentStudio } from './SurveyExperimentStudio';
 
 export default function SubmissionBehaviorStep() {
     const { control, watch, setValue } = useFormContext();
@@ -488,6 +489,8 @@ export default function SubmissionBehaviorStep() {
             <SurveyDecisionHub workspaceId={activeWorkspaceId || ''} />
 
             <SurveyCrmMappingTab workspaceId={activeWorkspaceId || ''} />
+
+            <SurveyExperimentStudio surveyId={watch('id') || ''} workspaceId={activeWorkspaceId || ''} />
 
             <div className="space-y-8">
                 <InternalNotificationConfig prefix="adminAlert" category="surveys" />
