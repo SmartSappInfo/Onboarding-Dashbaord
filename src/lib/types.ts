@@ -1626,6 +1626,111 @@ export interface SecurityAuditEvent {
   timestamp: string;
 }
 
+// ==========================================
+// ACTIVITY & EVENT ANALYTICS (PHASE 6)
+// ==========================================
+
+export type PlatformEventCategory =
+  | 'auth'
+  | 'navigation'
+  | 'workforce'
+  | 'crm'
+  | 'governance'
+  | 'onboarding';
+
+export type PlatformEventType =
+  | 'login'
+  | 'logout'
+  | 'page_view'
+  | 'action_executed'
+  | 'record_created'
+  | 'deal_advanced'
+  | 'onboarding_step_completed'
+  | 'onboarding_completed'
+  | 'role_assigned'
+  | 'role_revoked'
+  | 'jit_granted'
+  | 'session_revoked';
+
+export interface PlatformEvent {
+  id: string;
+  organizationId: string;
+  workspaceId?: string;
+  personId: string;
+  personName: string;
+  personEmail: string;
+  eventType: PlatformEventType;
+  category: PlatformEventCategory;
+  targetEntity?: string;
+  targetId?: string;
+  metadata?: Record<string, string | number | boolean | string[]>;
+  timestamp: string;
+}
+
+export type MemberEngagementStatus = 'highly_active' | 'active' | 'dormant' | 'inactive';
+
+export interface MemberActivityMetric {
+  personId: string;
+  personName: string;
+  personEmail: string;
+  departmentName?: string;
+  teamName?: string;
+  engagementStatus: MemberEngagementStatus;
+  totalEvents7d: number;
+  totalEvents30d: number;
+  lastActiveAt: string;
+  firstActionAt?: string;
+  timeToFirstActionMinutes?: number;
+}
+
+export interface OrganizationAdoptionSummary {
+  organizationId: string;
+  date: string;
+  dau: number;
+  wau: number;
+  mau: number;
+  dauMauRatio: number;
+  totalMembers: number;
+  highlyActiveCount: number;
+  activeCount: number;
+  dormantCount: number;
+  inactiveCount: number;
+  onboardingCompletionRate: number;
+  mfaAdoptionPercent: number;
+  updatedAt: string;
+}
+
+export interface PermissionUsageRecord {
+  id: string;
+  organizationId: string;
+  roleId: string;
+  roleName: string;
+  permissionId: string;
+  actionCount90d: number;
+  lastUsedAt?: string;
+  isDormant: boolean;
+}
+
+export interface SavedDirectoryView {
+  id: string;
+  organizationId: string;
+  userId: string;
+  name: string;
+  icon?: string;
+  isPreset?: boolean;
+  filters: {
+    status?: string;
+    roleId?: string;
+    departmentId?: string;
+    teamId?: string;
+    workspaceId?: string;
+    engagementStatus?: MemberEngagementStatus;
+    searchQuery?: string;
+  };
+  createdAt: string;
+  updatedAt?: string;
+}
+
 export interface OnboardingStage {
   id: string;
   pipelineId: string;

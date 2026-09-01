@@ -75,6 +75,8 @@ import { BulkActionsFloatingToolbar } from './components/BulkActionsFloatingTool
 import { TeamsDepartmentsManager } from './components/TeamsDepartmentsManager';
 import { InvitationsManager } from './components/InvitationsManager';
 import { AccessRequestsManager } from './components/AccessRequestsManager';
+import { SavedViewsPillBar } from './components/SavedViewsPillBar';
+import type { SavedDirectoryView } from '@/lib/types';
 import { getPeopleDirectoryAction } from '@/app/actions/identity-actions';
 import { listDepartmentsAction, listTeamsAction } from '@/app/actions/workforce-actions';
 import {
@@ -122,9 +124,28 @@ export default function UsersClient() {
   // Search & Filter State
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedStatus, setSelectedStatus] = React.useState<MembershipStatus | 'all'>('all');
+  const [activeViewId, setActiveViewId] = React.useState('preset_all');
   const [advancedFilters, setAdvancedFilters] = React.useState<PeopleDirectoryFilter>({
     status: 'all',
   });
+
+  const handleSelectSavedView = (view: SavedDirectoryView) => {
+    setActiveViewId(view.id);
+    if (view.filters.status) {
+      setSelectedStatus(view.filters.status as MembershipStatus);
+    } else {
+      setSelectedStatus('all');
+    }
+    setAdvancedFilters({
+      department: view.filters.departmentId,
+      teamId: view.filters.teamId,
+      workspaceId: view.filters.workspaceId,
+      roleId: view.filters.roleId,
+    });
+    if (view.filters.searchQuery) {
+      setSearchQuery(view.filters.searchQuery);
+    }
+  };
 
   // Departments & Teams State
   const [canonicalDepartments, setCanonicalDepartments] = React.useState<Department[]>([]);
@@ -376,6 +397,12 @@ export default function UsersClient() {
             users={users || []}
             selectedStatus={selectedStatus}
             onSelectStatus={setSelectedStatus}
+          />
+
+          {/* Saved Views Quick Filter Bar */}
+          <SavedViewsPillBar
+            activeViewId={activeViewId}
+            onSelectView={handleSelectSavedView}
           />
 
           {/* Search and Filters Bar */}
