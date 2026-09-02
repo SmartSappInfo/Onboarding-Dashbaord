@@ -65,6 +65,7 @@ const nextConfig: NextConfig = {
       bodySizeLimit: '2mb',
     },
   },
+  turbopack: {},
   webpack: (config, { isServer }) => {
     // Optimize memory usage
     config.optimization = {
