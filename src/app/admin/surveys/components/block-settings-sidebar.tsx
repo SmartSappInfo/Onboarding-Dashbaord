@@ -33,12 +33,25 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MediaSelect } from '../../entities/components/media-select';
+import { SurveyHealthOverview } from './inspector/SurveyHealthOverview';
 
 interface BlockSettingsSidebarProps {
     selectedBlockIds: string[];
+    onOpenLogicStudio?: () => void;
+    onOpenQualityAuditor?: () => void;
+    onOpenQuestionBank?: () => void;
+    onOpenVersionHistory?: () => void;
+    onAddQuestion?: (type?: SurveyQuestion['type']) => void;
 }
 
-export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettingsSidebarProps) {
+export default function BlockSettingsSidebar({
+    selectedBlockIds,
+    onOpenLogicStudio,
+    onOpenQualityAuditor,
+    onOpenQuestionBank,
+    onOpenVersionHistory,
+    onAddQuestion,
+}: BlockSettingsSidebarProps) {
     const { watch, setValue, control, register, getValues } = useFormContext();
     const elements = watch('elements') || [];
     
@@ -101,16 +114,20 @@ export default function BlockSettingsSidebar({ selectedBlockIds }: BlockSettings
     }
 
     if (!element) {
+        const surveyTitle = watch('title') || watch('internalName') || 'Survey';
+        const currentVersionNumber = watch('currentVersionNumber') || 1;
+
         return (
-            <div className="h-full flex flex-col items-center justify-center text-center p-8 space-y-4 opacity-40">
-                <div className="h-20 w-20 rounded-full bg-muted flex items-center justify-center">
-                    <Settings className="h-10 w-10 text-muted-foreground" />
-                </div>
-                <div className="space-y-1">
-                    <p className="font-bold text-lg">No Block Selected</p>
-                    <p className="text-sm">Click a block in the canvas to configure its settings here.</p>
-                </div>
-            </div>
+            <SurveyHealthOverview
+                elements={elements}
+                surveyTitle={surveyTitle}
+                currentVersionNumber={currentVersionNumber}
+                onOpenLogicStudio={onOpenLogicStudio}
+                onOpenQualityAuditor={onOpenQualityAuditor}
+                onOpenQuestionBank={onOpenQuestionBank}
+                onOpenVersionHistory={onOpenVersionHistory}
+                onAddQuestion={onAddQuestion}
+            />
         );
     }
 

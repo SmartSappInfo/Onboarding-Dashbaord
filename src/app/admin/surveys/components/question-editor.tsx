@@ -1463,8 +1463,15 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             id={element.id}
             data-block-id={element.id}
             className={cn(
-                "border transition-all duration-500 overflow-hidden rounded-[2rem]",
-                isSelected ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-border/60 shadow-sm hover:border-foreground/20",
+                "border transition-all duration-300 overflow-hidden rounded-2xl",
+                element.type === 'multiple-choice' || element.type === 'checkboxes' || element.type === 'dropdown' || element.type === 'yes-no' ? 'border-l-4 border-l-indigo-500' :
+                element.type === 'rating' || element.type === 'csat' || element.type === 'nps' ? 'border-l-4 border-l-emerald-500' :
+                element.type === 'matrix' || element.type === 'ranking' || element.type === 'slider' ? 'border-l-4 border-l-cyan-500' :
+                element.type === 'logic' ? 'border-l-4 border-l-amber-500' :
+                element.type === 'section' ? 'border-l-4 border-l-purple-500' :
+                element.type === 'file-upload' || element.type === 'signature' || element.type === 'consent' ? 'border-l-4 border-l-rose-500' :
+                'border-l-4 border-l-blue-500',
+                isSelected ? "ring-4 ring-primary/5 shadow-xl border-primary" : "border-border/60 shadow-xs hover:border-foreground/20",
                 isPrimaryActive ? "bg-primary/[0.01]" : "bg-card",
                 hasErrors ? "border-destructive shadow-lg" : "",
                 element.hidden ? "opacity-60 grayscale-[0.5]" : "bg-card",
@@ -1472,20 +1479,20 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
             )}
         >
             <CardHeader className={cn(
-                "py-3 px-6 transition-colors border-b border-border/20",
+                "py-3.5 px-5 transition-colors border-b border-border/20",
                 isSelected ? "bg-primary/[0.02]" : "bg-transparent",
                 isCollapsed && "cursor-pointer py-3"
             )}>
                 <div className="flex justify-between items-center w-full">
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3.5 flex-1 min-w-0 mr-2">
                         <div className={cn(
-                            "flex items-center justify-center rounded-xl border shadow-xs transition-all duration-300",
+                            "flex items-center justify-center rounded-xl border shadow-xs transition-all duration-300 shrink-0",
                             isSelected ? "bg-primary text-primary-foreground border-primary" : "bg-muted border-border text-muted-foreground",
                             "h-8 w-8"
                         )}>
                             <ElementIcon className={cn("shrink-0 transition-all h-4 w-4")} />
                         </div>
-                        <div className="flex flex-col gap-0">
+                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                                 <span className={cn("text-[9px] font-bold uppercase tracking-[0.15em] transition-colors", isSelected ? "text-primary" : "text-muted-foreground")}>
                                     {isElementQuestion ? `Question ${questionNumber}`
@@ -1493,23 +1500,38 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                     : isElementLayout ? `${element.type} Block`
                                     : 'Logic Node'}
                                 </span>
-                                {isElementQuestion && element.isRequired && (
-                                    <span className="text-destructive font-black text-xs animate-pulse">*</span>
+                                {!isCollapsed && isElementQuestion && element.isRequired && (
+                                    <Badge variant="outline" className="h-4 text-[7px] font-bold uppercase tracking-wider px-1.5 border-destructive/30 text-destructive bg-destructive/5">
+                                        Required
+                                    </Badge>
+                                )}
+                                {!isCollapsed && isElementQuestion && element.enableScoring && (
+                                    <Badge variant="outline" className="h-4 text-[7px] font-bold uppercase tracking-wider px-1.5 border-amber-500/30 text-amber-600 bg-amber-500/5">
+                                        🏆 {element.points || 0} pts
+                                    </Badge>
                                 )}
                             </div>
-                            {!isCollapsed && isElementQuestion && element.isRequired && (
-                                <Badge variant="outline" className="h-4 text-[7px] font-black uppercase tracking-tighter px-1.5 border-destructive/20 text-destructive bg-destructive/5">Required</Badge>
-                            )}
                             {isCollapsed && (
-                                <div className="flex items-center gap-2 max-w-md">
+                                <div className="flex items-center justify-between gap-3 w-full min-w-0">
                                     <span className={cn(
-                                        "font-bold tracking-tight truncate transition-all duration-300 text-sm text-muted-foreground",
-                                        isSelected && "text-foreground"
+                                        "font-semibold tracking-tight truncate transition-all duration-300 text-sm",
+                                        isSelected ? "text-foreground font-bold" : "text-muted-foreground"
                                     )}>
                                         {stripHtml((element.type === 'section' || element.type === 'heading') ? (element.title || 'Untitled Section') : (element.title || element.text || 'New Block'))}
                                     </span>
-                                    {element.hidden && <Badge variant="secondary" className="h-3 text-[6px] font-black uppercase tracking-tighter px-1 opacity-50">Hidden</Badge>}
-                                    {element.isRequired && <div className="flex items-center gap-0.5"><Asterisk className="h-3 w-3 text-destructive" /><span className="text-[9px] uppercase font-black tracking-widest text-destructive">Required</span></div>}
+                                    <div className="flex items-center gap-1.5 shrink-0">
+                                        {element.hidden && <Badge variant="secondary" className="h-4 text-[8px] font-bold px-1.5 opacity-70">Hidden</Badge>}
+                                        {isElementQuestion && element.isRequired && (
+                                            <Badge variant="outline" className="h-4 text-[8px] font-bold px-1.5 border-destructive/30 text-destructive bg-destructive/5">
+                                                Required
+                                            </Badge>
+                                        )}
+                                        {isElementQuestion && element.enableScoring && (
+                                            <Badge variant="outline" className="h-4 text-[8px] font-bold px-1.5 border-amber-500/30 text-amber-600 bg-amber-500/5">
+                                                🏆 {element.points || 0} pts
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                             )}
                         </div>

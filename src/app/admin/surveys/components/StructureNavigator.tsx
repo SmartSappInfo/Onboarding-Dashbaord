@@ -4,10 +4,10 @@
  * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS (Rule 10):
  * 1. Single Source of Truth for Survey Structure Hierarchy & Quick Traversal.
  * 2. Provides:
- *    - Linear & section tree navigation.
- *    - Search & filter across questions.
+ *    - Linear & section tree navigation with visual hierarchy nesting.
+ *    - Search & filter across questions with complete HTML tag stripping.
  *    - Badges for Required (*), Scoring (Points), Logic Branching (Jump), and Hidden states.
- *    - Fast Reordering (Move Up / Move Down) and Selection syncing with Canvas and Right Inspector.
+ *    - Fast Reordering (Move Up / Move Down), Duplicate, Delete, and Selection syncing.
  * 3. Strict Zero-Any Invariant.
  * 4. Touch-optimized (min-h-[44px], active:scale-[0.97]).
  */
@@ -44,13 +44,15 @@ import {
   FolderTree,
   EyeOff,
   Sparkles,
+  Layers,
+  Folder,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyLogicBlock } from '@/lib/types';
 
 interface StructureNavigatorProps {
@@ -116,6 +118,24 @@ export function getQuestionIcon(type: string) {
   }
 }
 
+/**
+ * Extracts a clean, human-readable summary for a logic block.
+ */
+function getLogicSummary(block: SurveyLogicBlock, elementMap: Map<string, string>): string {
+  if (!block.rules || block.rules.length === 0) {
+    return 'Unconfigured Logic Rule';
+  }
+  const firstRule = block.rules[0];
+  const sourceTitle = stripHtml(elementMap.get(firstRule.sourceQuestionId) || 'Q').slice(0, 14);
+  const targetId = firstRule.action.targetElementId || firstRule.action.targetElementIds?.[0];
+  const targetTitle = targetId ? stripHtml(elementMap.get(targetId) || 'Target').slice(0, 14) : 'Target';
+  
+  if (block.rules.length === 1) {
+    return `If ${sourceTitle} ${firstRule.operator} ${firstRule.value || ''} → ${targetTitle}`;
+  }
+  return `${block.rules.length} Conditional Rules`;
+}
+
 export function StructureNavigator({
   elements,
   selectedId,
@@ -129,18 +149,32 @@ export function StructureNavigator({
 }: StructureNavigatorProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
 
+  // Map of element ID -> raw title for fast lookup in logic summaries
+  const elementTitleMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    elements.forEach((el, idx) => {
+      const raw = el.title || ('text' in el ? (el as SurveyLayoutBlock).text : '') || `Q${idx + 1}`;
+      map.set(el.id, raw);
+    });
+    return map;
+  }, [elements]);
+
   const filteredElements = React.useMemo(() => {
-    if (!searchQuery.trim()) return elements.map((el, idx) => ({ element: el, originalIndex: idx }));
-    const q = searchQuery.toLowerCase();
+    if (!searchQuery.trim()) {
+      return elements.map((el, idx) => ({ element: el, originalIndex: idx }));
+    }
+    const q = searchQuery.toLowerCase().trim();
     return elements
       .map((el, idx) => ({ element: el, originalIndex: idx }))
       .filter(({ element }) => {
-        const title = element.title || ('text' in element ? (element as SurveyLayoutBlock).text : '') || '';
-        return title.toLowerCase().includes(q) || element.type.toLowerCase().includes(q);
+        const rawTitle = element.title || ('text' in element ? (element as SurveyLayoutBlock).text : '') || '';
+        const clean = stripHtml(rawTitle).toLowerCase();
+        return clean.includes(q) || element.type.toLowerCase().includes(q);
       });
   }, [elements, searchQuery]);
 
-  let questionCounter = 0;
+  // Track if items are inside a section for indentation
+  let insideSection = false;
 
   return (
     <div className={cn('flex flex-col h-full bg-background border-r border-border/60 select-none', className)}>
@@ -156,7 +190,7 @@ export function StructureNavigator({
           </Badge>
         </div>
 
-        {/* Search */}
+        {/* Search Input with Clean Query Filter */}
         <div className="relative">
           <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
           <Input
@@ -178,10 +212,6 @@ export function StructureNavigator({
               element.type
             );
 
-            if (isQuestion) {
-              questionCounter += 1;
-            }
-
             const questionObj = isQuestion ? (element as SurveyQuestion) : null;
             const isRequired = questionObj?.isRequired;
             const hasScoring = questionObj?.enableScoring;
@@ -189,10 +219,21 @@ export function StructureNavigator({
             const isLogic = element.type === 'logic';
             const isSection = element.type === 'section';
 
-            const displayTitle =
+            if (isSection) {
+              insideSection = true;
+            }
+
+            // Extract and clean raw title
+            const rawTitle =
               element.title ||
               ('text' in element ? (element as SurveyLayoutBlock).text : '') ||
               `Untitled ${element.type}`;
+            const cleanTitle = stripHtml(rawTitle).trim() || `Untitled ${element.type}`;
+
+            // Logic Node Summary
+            const logicSummary = isLogic
+              ? getLogicSummary(element as SurveyLogicBlock, elementTitleMap)
+              : null;
 
             return (
               <div
@@ -203,28 +244,39 @@ export function StructureNavigator({
                   isSelected
                     ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/20'
                     : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
-                  isSection && 'bg-muted/40 font-bold border-l-2 border-primary',
-                  isLogic && 'bg-amber-500/5 border border-amber-500/20 text-amber-600 dark:text-amber-400'
+                  isSection && 'bg-muted/50 font-bold border-l-2 border-primary mt-2',
+                  isLogic && 'bg-amber-500/5 border border-amber-500/20 text-amber-600 dark:text-amber-400',
+                  insideSection && !isSection && 'ml-2.5 border-l border-border/40 pl-2.5'
                 )}
               >
-                {/* Left info */}
+                {/* Left block info */}
                 <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
                   <div
                     className={cn(
                       'p-1.5 rounded-lg shrink-0',
-                      isSelected ? 'bg-primary/20 text-primary' : 'bg-muted/80 text-muted-foreground'
+                      isSelected ? 'bg-primary/20 text-primary' : 'bg-muted/80 text-muted-foreground',
+                      isSection && 'bg-primary/10 text-primary'
                     )}
                   >
                     <Icon className="h-4 w-4" />
                   </div>
 
-                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                    {isQuestion && (
-                      <span className="text-[10px] font-mono font-bold text-muted-foreground/70 shrink-0">
-                        Q{originalIndex + 1}
+                  <div className="flex flex-col min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      {isQuestion && (
+                        <span className="text-[10px] font-mono font-bold text-muted-foreground/70 shrink-0">
+                          Q{originalIndex + 1}
+                        </span>
+                      )}
+                      <span className="truncate font-semibold text-foreground">
+                        {isLogic ? logicSummary : cleanTitle}
+                      </span>
+                    </div>
+                    {isLogic && (
+                      <span className="text-[9px] text-amber-600/80 truncate">
+                        {cleanTitle !== 'Untitled logic' ? cleanTitle : 'Conditional branch node'}
                       </span>
                     )}
-                    <span className="truncate">{displayTitle}</span>
                   </div>
                 </div>
 
@@ -247,7 +299,7 @@ export function StructureNavigator({
                   )}
                   {isHidden && <EyeOff className="h-3 w-3 text-muted-foreground/50" />}
 
-                  {/* Hover Reordering & Actions */}
+                  {/* Hover Reordering & Quick Action Dock */}
                   <div className="hidden group-hover:flex items-center gap-0.5 ml-1">
                     <TooltipProvider>
                       <Tooltip>
@@ -341,7 +393,7 @@ export function StructureNavigator({
           size="sm"
           variant="outline"
           onClick={() => onAddQuestion('multiple-choice')}
-          className="flex-1 h-8 text-xs gap-1.5 rounded-lg active:scale-[0.97]"
+          className="flex-1 h-9 text-xs gap-1.5 rounded-xl active:scale-[0.97] font-semibold"
         >
           <Plus className="h-3.5 w-3.5 text-primary" />
           Add Question

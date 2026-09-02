@@ -725,7 +725,16 @@ export default function SurveyFormBuilder() {
 
                     {isPropertiesBarVisible && (
                         <div className="flex-1 overflow-y-auto w-full no-scrollbar pb-10">
-                            <BlockSettingsSidebar selectedBlockIds={selectedBlockIds} />
+                            <BlockSettingsSidebar
+                                selectedBlockIds={selectedBlockIds}
+                                onOpenLogicStudio={() => setIsLogicStudioOpen(true)}
+                                onOpenQualityAuditor={() => setIsQualityAuditorOpen(true)}
+                                onOpenQuestionBank={() => setIsQuestionBankOpen(true)}
+                                onOpenVersionHistory={() => setIsVersionDrawerOpen(true)}
+                                onAddQuestion={(type) => {
+                                    handleElementSelect(type || 'multiple-choice');
+                                }}
+                            />
                         </div>
                     )}
                 </div>
@@ -741,7 +750,16 @@ export default function SurveyFormBuilder() {
                             </Button>
                         </SheetTrigger>
                         <SheetContent side="bottom" className="h-[80vh] p-0 overflow-hidden sm:max-w-none w-full border-t-2 border-primary/20 rounded-t-3xl">
-                            <BlockSettingsSidebar selectedBlockIds={selectedBlockIds} />
+                            <BlockSettingsSidebar
+                                selectedBlockIds={selectedBlockIds}
+                                onOpenLogicStudio={() => setIsLogicStudioOpen(true)}
+                                onOpenQualityAuditor={() => setIsQualityAuditorOpen(true)}
+                                onOpenQuestionBank={() => setIsQuestionBankOpen(true)}
+                                onOpenVersionHistory={() => setIsVersionDrawerOpen(true)}
+                                onAddQuestion={(type) => {
+                                    handleElementSelect(type || 'multiple-choice');
+                                }}
+                            />
                         </SheetContent>
                     </Sheet>
                 </div>
