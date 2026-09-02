@@ -1035,15 +1035,27 @@ service cloud.firestore {
         allow read: if isAuthorized() || isSignedIn() || resource.data.isPublished == true;
         allow write: if isAuthorized() || isSignedIn();
       }
+      match /ai_insights/{insightId} {
+        allow get, list, write: if isAuthorized() || isSignedIn();
+      }
+      match /ai_audits/{auditId} {
+        allow get, list, write: if isAuthorized() || isSignedIn();
+      }
+      match /experiments/{experimentId} {
+        allow get, list, write: if isAuthorized() || isSignedIn();
+      }
+      match /retention_waves/{waveId} {
+        allow get, list, write: if isAuthorized() || isSignedIn();
+      }
     }
 
     match /survey_projects/{projectId} {
-      allow read, list, write: if isAuthorized();
+      allow read, list, write: if isAuthorized() || isSignedIn();
     }
 
     match /question_bank/{questionId} {
-      allow get, list: if isAuthorized() || resource.data.visibility == 'system';
-      allow write: if isAuthorized();
+      allow get, list: if isAuthorized() || isSignedIn() || resource.data.visibility == 'system';
+      allow write: if isAuthorized() || isSignedIn();
     }
 
     match /survey_deployments/{deploymentId} {
