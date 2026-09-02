@@ -370,17 +370,29 @@ export default function UsersClient() {
 
       {/* Main Top Tab Navigation */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'directory' | 'teams' | 'invitations' | 'requests')}>
-        <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="directory" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+        <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
+          <TabsTrigger
+            value="directory"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Users className="w-3.5 h-3.5 mr-1.5" /> Directory ({users?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="teams" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="teams"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Building2 className="w-3.5 h-3.5 mr-1.5" /> Teams & Departments
           </TabsTrigger>
-          <TabsTrigger value="invitations" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="invitations"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Mail className="w-3.5 h-3.5 mr-1.5" /> Invitations
           </TabsTrigger>
-          <TabsTrigger value="requests" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+          <TabsTrigger
+            value="requests"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <ShieldAlert className="w-3.5 h-3.5 mr-1.5" /> Access Requests
           </TabsTrigger>
         </TabsList>

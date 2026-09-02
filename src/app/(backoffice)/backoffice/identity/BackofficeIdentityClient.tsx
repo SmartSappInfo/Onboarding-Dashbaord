@@ -354,14 +354,23 @@ export function BackofficeIdentityClient() {
 
       {/* Navigation Tabs */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'people' | 'roles' | 'invitations')}>
-        <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="people" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+        <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
+          <TabsTrigger
+            value="people"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Users className="w-3.5 h-3.5 mr-1.5" /> Member Graphs ({people.length})
           </TabsTrigger>
-          <TabsTrigger value="roles" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="roles"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Grid3X3 className="w-3.5 h-3.5 mr-1.5" /> Roles Observatory ({tenantRoles.length})
           </TabsTrigger>
-          <TabsTrigger value="invitations" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="invitations"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Mail className="w-3.5 h-3.5 mr-1.5" /> Invitation Queue ({tenantInvitations.length})
           </TabsTrigger>
         </TabsList>

@@ -151,17 +151,29 @@ export function PeopleAnalyticsClient() {
 
       {/* Tabs Control */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'adoption' | 'teams' | 'privilege' | 'stream')}>
-        <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="adoption" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+        <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
+          <TabsTrigger
+            value="adoption"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <TrendingUp className="w-3.5 h-3.5 mr-1.5" /> Adoption & Engagement
           </TabsTrigger>
-          <TabsTrigger value="teams" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="teams"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Users2 className="w-3.5 h-3.5 mr-1.5" /> Team Leaderboard ({leaderboard.length})
           </TabsTrigger>
-          <TabsTrigger value="privilege" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="privilege"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <ShieldAlert className="w-3.5 h-3.5 mr-1.5" /> Least-Privilege Heatmap
           </TabsTrigger>
-          <TabsTrigger value="stream" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="stream"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Activity className="w-3.5 h-3.5 mr-1.5" /> Live Activity Stream
           </TabsTrigger>
         </TabsList>
