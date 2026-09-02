@@ -61,50 +61,44 @@ async function resolveWorkspaceFromPathname(pathname: string, firestore: unknown
     const keywords = ['new', 'edit', 'settings', 'import', 'upload', 'logs', 'analytics', 'reports', 'profile'];
     if (!targetId || keywords.includes(targetId)) return null;
 
-    const { getDoc, doc } = await import('firebase/firestore');
-    const typedFirestore = firestore as import('firebase/firestore').Firestore;
-    
-    let collectionName = '';
-    if (section === 'automations') collectionName = 'automations';
-    else if (section === 'surveys') collectionName = 'surveys';
-    else if (section === 'pdfs') collectionName = 'pdfs';
-    else if (section === 'meetings') collectionName = 'meetings';
-    else if (section === 'entities') collectionName = 'workspace_entities';
-    else if (section === 'deals') collectionName = 'deals';
-    else if (section === 'pages') collectionName = 'campaign_pages';
-    else if (section === 'finance' && segments[3] === 'contracts' && segments[4] && !keywords.includes(segments[4])) {
-      collectionName = 'contracts';
-      const contractId = segments[4];
-      try {
-        const docRef = doc(typedFirestore, collectionName, contractId);
-        const fetchPromise = getDoc(docRef).then(snap => {
+    try {
+      const { getDoc, doc } = await import('firebase/firestore');
+      const typedFirestore = firestore as import('firebase/firestore').Firestore;
+      
+      let collectionName = '';
+      if (section === 'automations') collectionName = 'automations';
+      else if (section === 'surveys') collectionName = 'surveys';
+      else if (section === 'pdfs') collectionName = 'pdfs';
+      else if (section === 'meetings') collectionName = 'meetings';
+      else if (section === 'entities') collectionName = 'workspace_entities';
+      else if (section === 'deals') collectionName = 'deals';
+      else if (section === 'pages') collectionName = 'campaign_pages';
+      else if (section === 'finance' && segments[3] === 'contracts' && segments[4] && !keywords.includes(segments[4])) {
+        collectionName = 'contracts';
+        const contractId = segments[4];
+        try {
+          const docRef = doc(typedFirestore, collectionName, contractId);
+          const snap = await getDoc(docRef);
           if (snap.exists()) {
             const data = snap.data();
             return (data?.workspaceId || data?.workspaceIds?.[0] || null) as string | null;
           }
           return null;
-        });
-        return withTimeout(fetchPromise, 2500, null);
-      } catch (e) {
-        console.warn('Failed to resolve workspace from contracts pathname:', e);
-        return null;
-      }
-    }
-
-    if (!collectionName) return null;
-
-    try {
-      const docRef = doc(typedFirestore, collectionName, targetId);
-      const fetchPromise = getDoc(docRef).then(snap => {
-        if (snap.exists()) {
-          const data = snap.data();
-          return (data?.workspaceId || data?.workspaceIds?.[0] || null) as string | null;
+        } catch {
+          return null;
         }
-        return null;
-      });
-      return withTimeout(fetchPromise, 2500, null);
-    } catch (e) {
-      console.warn(`Failed to resolve workspace from pathname for collection ${collectionName}:`, e);
+      }
+
+      if (!collectionName) return null;
+
+      const docRef = doc(typedFirestore, collectionName, targetId);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        return (data?.workspaceId || data?.workspaceIds?.[0] || null) as string | null;
+      }
+      return null;
+    } catch {
       return null;
     }
   }
@@ -144,6 +138,15 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
     return profile?.permissions?.includes('system_admin' as any) || false;
   }, [profile]);
 
+  // Keep activeOrganizationId aligned with profile to prevent cross-tenant permission violations
+  React.useEffect(() => {
+    if (!profile || isProfileLoading) return;
+    if (!isSuperAdmin && profile.organizationId && activeOrganizationId !== profile.organizationId) {
+      setActiveOrganizationIdState(profile.organizationId);
+      localStorage.setItem('activeOrganizationId', profile.organizationId);
+    }
+  }, [profile, isProfileLoading, isSuperAdmin, activeOrganizationId]);
+
   const hasPermission = React.useCallback((perm: AppPermissionId) => {
     // If we have an active workspace, check its specific permissions first. 
     // Fall back to global permissions for backwards compatibility during migration.
@@ -160,10 +163,8 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { data: allOrgs, isLoading: isAllOrgsLoading } = useCollection<Organization>(orgsQuery);
 
   const orgDocRef = useMemoFirebase(() => {
-    // Prefer the profile's org; fall back to the resolved active org so the org
-    // document (brand colors, switcher) still loads for users whose profile has
-    // no organizationId but whose org was recovered from their workspace.
-    const orgId = profile?.organizationId || activeOrganizationId;
+    // Non-superadmins must strictly query their assigned profile.organizationId doc
+    const orgId = isSuperAdmin ? (profile?.organizationId || activeOrganizationId) : profile?.organizationId;
     if (!firestore || !user || isProfileLoading || isSuperAdmin || !orgId) return null;
     return doc(firestore, 'organizations', orgId);
   }, [firestore, user, isProfileLoading, isSuperAdmin, profile?.organizationId, activeOrganizationId]);
@@ -182,7 +183,7 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
 
   // 3. Fetch Workspaces belonging to organization context (Fetched globally for superadmins)
   const workspacesQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !profile || !profile.isAuthorized) return null;
+    if (!firestore || !user || !profile || !profile.isAuthorized || !activeOrganizationId) return null;
     
     if (isSuperAdmin) {
       return query(
@@ -199,18 +200,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   }, [firestore, activeOrganizationId, user, profile, isSuperAdmin]);
   const { data: orgWorkspaces, isLoading: isWorkspacesLoading } = useCollection<Workspace>(workspacesQuery);
 
-  // 3b. Deadlock breaker: when an active workspace is known but the organization
-  // hasn't resolved (e.g. the user's profile has no organizationId, so the
-  // org-filtered workspaces query above returns nothing), fetch the workspace doc
-  // directly by id to recover its organizationId. Without this the org can never
-  // resolve for such users — the org-filtered query needs the org that it would
-  // itself provide. Only runs while the org is unresolved, so it adds no steady
-  // -state reads.
+  // 3b. Deadlock breaker: only query workspace if authorized to prevent permission errors
   const orphanWorkspaceRef = useMemoFirebase(() =>
-    firestore && activeWorkspaceId && !activeOrganizationId
+    firestore && activeWorkspaceId && !activeOrganizationId && (isSuperAdmin || profile?.workspaceIds?.includes(activeWorkspaceId))
       ? doc(firestore, 'workspaces', activeWorkspaceId)
       : null,
-  [firestore, activeWorkspaceId, activeOrganizationId]);
+  [firestore, activeWorkspaceId, activeOrganizationId, isSuperAdmin, profile?.workspaceIds]);
   const { data: orphanWorkspace } = useDoc<Workspace>(orphanWorkspaceRef);
 
   React.useEffect(() => {

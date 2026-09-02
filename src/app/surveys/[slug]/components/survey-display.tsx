@@ -259,6 +259,8 @@ export default function SurveyDisplay({
     }, [isSubmitted, survey.thankYouConfettiEnabled]);
 
     const isDark = resolvedTheme === 'dark';
+    const activePatternColor = survey.patternColor || '#3B82F6';
+    const activeBgColor = isDark ? '#090D16' : (survey.backgroundColor || '#F8FAFC');
     const bgColor = isDark ? '#090d16' : (survey.backgroundColor || '#F1F5F9');
     const isEmbedded = searchParams?.get('embed') === 'true';
     const resolvedSourcePageId = searchParams?.get('sourcePageId') || sourcePageId;
@@ -419,9 +421,6 @@ export default function SurveyDisplay({
 
     const hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;
     const showHeader = !!survey.showSurveyTitles;
-
-    const activePatternColor = survey.patternColor || '#3B82F6';
-    const activeBgColor = isDark ? '#090D16' : (survey.backgroundColor || '#F8FAFC');
 
     return (
         <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>

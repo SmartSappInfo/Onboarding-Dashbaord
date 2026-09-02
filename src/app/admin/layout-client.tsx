@@ -186,8 +186,12 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             
             const resolvedRoles = await Promise.all(
                 roleIds.map(async (id: string) => {
+                  try {
                     const snap = await getDoc(doc(firestore, 'roles', id));
-                    return snap.exists() ? { id: snap.id, name: (snap.data() as Role).name } : null;
+                    return snap.exists() ? { id: snap.id, name: (snap.data() as Role).name } : { id, name: id };
+                  } catch {
+                    return { id, name: id };
+                  }
                 })
             ).then(results => results.filter((r): r is { id: string, name: string } => r !== null));
             setUserRolesData(resolvedRoles);

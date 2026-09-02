@@ -73,8 +73,8 @@ export const sumActiveCapacity = cache(async (workspaceId: string): Promise<numb
       .aggregate({ total: AggregateField.sum('nominalRoll') })
       .get();
     return snap.data().total ?? 0;
-  } catch (error) {
-    console.warn("sumActiveCapacity aggregate query failed, falling back to in-memory calculation:", error);
+  } catch (_error) {
+    // If aggregate index is building or missing, compute in-memory via lightweight projection
     const entities = await getEntityProjections(workspaceId);
     return entities.reduce((sum, we) => sum + (we.nominalRoll || 0), 0);
   }

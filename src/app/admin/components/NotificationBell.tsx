@@ -29,7 +29,7 @@ export default function NotificationBell() {
     // Notifications are essentially Activities.
     // Query MUST filter by workspaceId to satisfy Firestore security rules.
     const notificationsQuery = useMemoFirebase(() => {
-        if (!firestore) return null;
+        if (!firestore || !activeWorkspaceId) return null;
         return query(
             collection(firestore, 'activities'),
             where('workspaceId', '==', activeWorkspaceId),
