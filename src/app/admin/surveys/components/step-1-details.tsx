@@ -1,5 +1,14 @@
-
 'use client';
+
+/**
+ * @fileOverview SmartSapp Survey Intelligence 2.0 — Survey Design Studio Inspector
+ * 
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS (Rule 10):
+ * 1. 4-Tab Inspector IA: Identity, Media & Hero, Theme & Palette, Layout & Stepper.
+ * 2. Strict Zero-Any Invariant across all controller renders, helpers, and entities.
+ * 3. Mobile-first touch optimization (min-h-[44px], active:scale-[0.97]).
+ * 4. Integrates with ThemePalettePicker, PatternSwatchSelector, StepperStyleSelector, and StudioMediaField.
+ */
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
@@ -8,713 +17,794 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Layout, Building, Video, Palette, Type, MessageSquareText, ArrowRight, Image as ImageIcon, Search, Users, User, Sparkles } from 'lucide-react';
-import { MediaSelect } from '@/app/admin/entities/components/media-select';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
-import { cn } from '@/lib/utils';
-import type { WorkspaceEntity } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import {
+  Sparkles,
+  Building,
+  Users,
+  User,
+  Layout,
+  Video,
+  Palette,
+  Sliders,
+  FolderGit2,
+  Layers,
+  MessageSquareText,
+  Type,
+} from 'lucide-react';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { getSurveyProjectsAction } from '@/lib/surveys/survey-project-actions';
-import type { SurveyProject, SurveyType } from '@/lib/types';
-import { FolderGit2 } from 'lucide-react';
+import type { SurveyProject, SurveyType, WorkspaceEntity } from '@/lib/types';
+import { cn } from '@/lib/utils';
+import { ThemePalettePicker } from './inspector/ThemePalettePicker';
+import { PatternSwatchSelector } from './inspector/PatternSwatchSelector';
+import { StepperStyleSelector } from './inspector/StepperStyleSelector';
+import { StudioMediaField } from './inspector/StudioMediaField';
+import type { StudioInspectorTab, SurveyBackgroundPattern, SurveyStepperVariant } from './inspector/types';
 
 interface Step1DetailsProps {}
 
-// Sub-component to avoid hooks-in-render-prop violation
+// Sub-component for Entity Selection
 function EntityPickerField({
-    field,
-    setValue,
-    watch
+  field,
+  setValue,
+  watch,
 }: {
-    field: { value: string | null; onChange: (v: string | null) => void };
-    setValue: (name: string, value: unknown, options?: { shouldDirty?: boolean }) => void;
-    watch: (name: string) => unknown;
+  field: { value: string | null; onChange: (v: string | null) => void };
+  setValue: (name: string, value: unknown, options?: { shouldDirty?: boolean }) => void;
+  watch: (name: string) => unknown;
 }) {
-    const [open, setOpen] = React.useState(false);
-    const [search, setSearch] = React.useState('');
+  const [open, setOpen] = React.useState(false);
+  const [search, setSearch] = React.useState('');
 
-    // Server-side paginated search instead of loading all entities (Phase 5.2).
-    const { results, hasMore, loadMore } = useEntitySearch({ search, enabled: open, pageSize: 25 });
-    const { entitiesById, resolveIds } = useEntityResolver();
-    React.useEffect(() => {
-        if (field.value) resolveIds([field.value]);
-    }, [field.value, resolveIds]);
+  const { results, hasMore, loadMore } = useEntitySearch({ search, enabled: open, pageSize: 25 });
+  const { entitiesById, resolveIds } = useEntityResolver();
 
-    const entityTypeConfig = {
-        institution: { label: 'Institution', icon: Building, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-        family: { label: 'Family', icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
-        person: { label: 'Person', icon: User, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
-        other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-muted/100/10' },
-    };
+  React.useEffect(() => {
+    if (field.value) resolveIds([field.value]);
+  }, [field.value, resolveIds]);
 
-    const normalize = (e: WorkspaceEntity & { id: string }) => ({
-        ...e,
-        label: e.displayName || e.entityId || e.id || 'Unnamed Entity',
-        type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig,
-    });
+  const entityTypeConfig = {
+    institution: { label: 'Institution', icon: Building, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+    family: { label: 'Family', icon: Users, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+    person: { label: 'Person', icon: User, color: 'text-emerald-500', bgColor: 'bg-emerald-500/10' },
+    other: { label: 'Other', icon: Layout, color: 'text-slate-500', bgColor: 'bg-muted/100/10' },
+  };
 
-    type NormalizedEntity = ReturnType<typeof normalize>;
+  const normalize = (e: WorkspaceEntity & { id: string }) => ({
+    ...e,
+    label: e.displayName || e.entityId || e.id || 'Unnamed Entity',
+    type: (e.entityType || 'other').toLowerCase() as keyof typeof entityTypeConfig,
+  });
 
-    const normalizedEntities: NormalizedEntity[] = results.map((e: WorkspaceEntity & { id: string }) => normalize(e));
+  type NormalizedEntity = ReturnType<typeof normalize>;
+  const normalizedEntities: NormalizedEntity[] = results.map((e: WorkspaceEntity & { id: string }) => normalize(e));
 
-    const grouped: Record<keyof typeof entityTypeConfig, NormalizedEntity[]> = {
-        institution: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'institution'),
-        family: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'family'),
-        person: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'person'),
-        other: normalizedEntities.filter((e: NormalizedEntity) => !['institution', 'family', 'person'].includes(e.type)),
-    };
+  const grouped: Record<keyof typeof entityTypeConfig, NormalizedEntity[]> = {
+    institution: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'institution'),
+    family: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'family'),
+    person: normalizedEntities.filter((e: NormalizedEntity) => e.type === 'person'),
+    other: normalizedEntities.filter((e: NormalizedEntity) => !['institution', 'family', 'person'].includes(e.type)),
+  };
 
-    const selectedEntity = React.useMemo(() => {
-        if (!field.value) return null;
-        const inResults = normalizedEntities.find((e: NormalizedEntity) => e.entityId === field.value);
-        if (inResults) return inResults;
-        const resolved = entitiesById.get(field.value);
-        return resolved ? normalize(resolved as WorkspaceEntity & { id: string }) : null;
-    }, [field.value, normalizedEntities, entitiesById]);
-    const selectedConfig = selectedEntity ? (entityTypeConfig[selectedEntity.type] || entityTypeConfig.other) : null;
-    const SelectedIcon = selectedConfig ? selectedConfig.icon : Building;
+  const selectedEntity = React.useMemo(() => {
+    if (!field.value) return null;
+    const inResults = normalizedEntities.find((e: NormalizedEntity) => e.entityId === field.value);
+    if (inResults) return inResults;
+    const resolved = entitiesById.get(field.value);
+    return resolved ? normalize(resolved as WorkspaceEntity & { id: string }) : null;
+  }, [field.value, normalizedEntities, entitiesById]);
 
-    return (
-        <div className="space-y-2">
-            <Label className="text-sm font-semibold">Associated Entity</Label>
-            <Popover open={open} onOpenChange={setOpen}>
-                <PopoverTrigger asChild>
-                    <button
-                        type="button"
+  const selectedConfig = selectedEntity ? entityTypeConfig[selectedEntity.type] || entityTypeConfig.other : null;
+  const SelectedIcon = selectedConfig ? selectedConfig.icon : Building;
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-semibold">Associated Entity</Label>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button
+            type="button"
+            className={cn(
+              'w-full h-11 px-3 flex items-center gap-2.5 rounded-xl bg-muted/20 text-left font-bold text-sm',
+              'border border-border/50 shadow-xs hover:bg-muted/30 transition-colors',
+              !field.value && 'text-muted-foreground'
+            )}
+          >
+            {selectedEntity ? (
+              <>
+                <div className={cn('p-1 rounded-lg shrink-0', selectedConfig?.bgColor)}>
+                  <SelectedIcon className={cn('h-3.5 w-3.5', selectedConfig?.color)} />
+                </div>
+                <span className="flex-1 truncate">{selectedEntity.label}</span>
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[9px] font-semibold uppercase shrink-0 border-0',
+                    selectedConfig?.bgColor,
+                    selectedConfig?.color
+                  )}
+                >
+                  {selectedConfig?.label}
+                </Badge>
+              </>
+            ) : (
+              <>
+                <Building className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+                <span>Global / Generic</span>
+              </>
+            )}
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-[320px] p-0 rounded-2xl shadow-2xl border border-border/50" align="start">
+          <Command shouldFilter={false}>
+            <CommandInput
+              placeholder="Search entities..."
+              value={search}
+              onValueChange={setSearch}
+              className="h-10"
+            />
+            <CommandList className="max-h-[280px]">
+              <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">
+                No entities found.
+              </CommandEmpty>
+              <CommandItem
+                value="none"
+                onSelect={() => {
+                  field.onChange(null);
+                  setValue('entityName', null, { shouldDirty: true });
+                  setOpen(false);
+                  setSearch('');
+                }}
+                className={cn('rounded-xl mx-1 my-0.5 gap-2', !field.value && 'bg-primary/5 text-primary')}
+              >
+                <Building className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="font-bold text-sm">Global / Generic</span>
+              </CommandItem>
+              {(Object.entries(grouped) as [keyof typeof entityTypeConfig, NormalizedEntity[]][]).map(([type, entities]) => {
+                if (entities.length === 0) return null;
+                const config = entityTypeConfig[type];
+                const GroupIcon = config.icon;
+                return (
+                  <CommandGroup
+                    key={type}
+                    heading={
+                      <span className={cn('flex items-center gap-1.5 text-[9px] font-semibold', config.color)}>
+                        <GroupIcon className="h-3 w-3" />
+                        {config.label}s
+                      </span>
+                    }
+                  >
+                    {entities.map((entity: NormalizedEntity) => (
+                      <CommandItem
+                        key={entity.entityId || entity.id}
+                        value={entity.entityId || entity.id}
+                        onSelect={() => {
+                          field.onChange(entity.entityId);
+                          setValue('entityName', entity.label, { shouldDirty: true });
+
+                          // Auto-sync logo if enabled
+                          if (watch('useEntityLogo') && entity.logoUrl) {
+                            setValue('logoUrl', entity.logoUrl, { shouldDirty: true });
+                          }
+
+                          setOpen(false);
+                          setSearch('');
+                        }}
                         className={cn(
-                            "w-full h-11 px-3 flex items-center gap-2.5 rounded-xl bg-muted/20 text-left font-bold text-sm",
-                            "border-none shadow-none hover:bg-muted/30 transition-colors",
-                            !field.value && "text-muted-foreground"
+                          'rounded-xl mx-1 my-0.5 gap-2',
+                          field.value === entity.entityId && 'bg-primary/5 text-primary'
                         )}
-                    >
-                        {selectedEntity ? (
-                            <>
-                                <div className={cn("p-1 rounded-lg shrink-0", selectedConfig?.bgColor)}>
-                                    <SelectedIcon className={cn("h-3.5 w-3.5", selectedConfig?.color)} />
-                                </div>
-                                <span className="flex-1 truncate">{selectedEntity.label}</span>
-                                <Badge variant="outline" className={cn("text-[9px] font-semibold uppercase shrink-0 border-0", selectedConfig?.bgColor, selectedConfig?.color)}>
-                                    {selectedConfig?.label}
-                                </Badge>
-                            </>
-                        ) : (
-                            <>
-                                <Building className="h-4 w-4 text-muted-foreground/50 shrink-0" />
-                                <span>Global / Generic</span>
-                            </>
+                      >
+                        <div className={cn('p-0.5 rounded shrink-0', config.bgColor)}>
+                          <GroupIcon className={cn('h-3 w-3', config.color)} />
+                        </div>
+                        <span className="font-bold text-sm flex-1 truncate">{entity.label}</span>
+                        {field.value === entity.entityId && (
+                          <span className="text-primary text-[10px] font-semibold">✓</span>
                         )}
-                    </button>
-                </PopoverTrigger>
-                <PopoverContent className="w-[320px] p-0 rounded-2xl shadow-2xl border border-border/50" align="start">
-                    <Command shouldFilter={false}>
-                        <CommandInput
-                            placeholder="Search entities..."
-                            value={search}
-                            onValueChange={setSearch}
-                            className="h-10"
-                        />
-                        <CommandList className="max-h-[280px]">
-                            <CommandEmpty className="py-6 text-center text-xs text-muted-foreground">
-                                No entities found.
-                            </CommandEmpty>
-                            <CommandItem
-                                value="none"
-                                onSelect={() => {
-                                    field.onChange(null);
-                                    setValue('entityName', null, { shouldDirty: true });
-                                    setOpen(false);
-                                    setSearch('');
-                                }}
-                                className={cn("rounded-xl mx-1 my-0.5 gap-2", !field.value && "bg-primary/5 text-primary")}
-                            >
-                                <Building className="h-3.5 w-3.5 text-muted-foreground" />
-                                <span className="font-bold text-sm">Global / Generic</span>
-                            </CommandItem>
-                            {(Object.entries(grouped) as [keyof typeof entityTypeConfig, NormalizedEntity[]][]).map(([type, entities]) => {
-                                if (entities.length === 0) return null;
-                                const config = entityTypeConfig[type];
-                                const GroupIcon = config.icon;
-                                return (
-                                    <CommandGroup
-                                        key={type}
-                                        heading={
-                                            <span className={cn("flex items-center gap-1.5 text-[9px] font-semibold", config.color)}>
-                                                <GroupIcon className="h-3 w-3" />
-                                                {config.label}s
-                                            </span>
-                                        }
-                                    >
-                                        {entities.map((entity: NormalizedEntity) => (
-                                            <CommandItem
-                                                key={entity.entityId || entity.id}
-                                                value={entity.entityId || entity.id}
-                                                onSelect={() => {
-                                                    field.onChange(entity.entityId);
-                                                    setValue('entityName', entity.label, { shouldDirty: true });
-                                                    
-                                                    // Auto-sync logo if enabled
-                                                    if (watch('useEntityLogo') && entity.logoUrl) {
-                                                        setValue('logoUrl', entity.logoUrl, { shouldDirty: true });
-                                                    }
-                                                    
-                                                    setOpen(false);
-                                                    setSearch('');
-                                                }}
-                                                className={cn(
-                                                    "rounded-xl mx-1 my-0.5 gap-2",
-                                                    field.value === entity.entityId && "bg-primary/5 text-primary"
-                                                )}
-                                            >
-                                                <div className={cn("p-0.5 rounded shrink-0", config.bgColor)}>
-                                                    <GroupIcon className={cn("h-3 w-3", config.color)} />
-                                                </div>
-                                                <span className="font-bold text-sm flex-1 truncate">{entity.label}</span>
-                                                {field.value === entity.entityId && (
-                                                    <span className="text-primary text-[10px] font-semibold">✓</span>
-                                                )}
-                                            </CommandItem>
-                                        ))}
-                                    </CommandGroup>
-                                );
-                            })}
-                            {hasMore && (
-                                <CommandItem
-                                    value="__load_more__"
-                                    onSelect={() => loadMore()}
-                                    className="justify-center text-[10px] font-bold text-primary"
-                                >
-                                    Load more…
-                                </CommandItem>
-                            )}
-                        </CommandList>
-                    </Command>
-                </PopoverContent>
-            </Popover>
-        </div>
-    );
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                );
+              })}
+              {hasMore && (
+                <CommandItem
+                  value="__load_more__"
+                  onSelect={() => loadMore()}
+                  className="justify-center text-[10px] font-bold text-primary"
+                >
+                  Load more…
+                </CommandItem>
+              )}
+            </CommandList>
+          </Command>
+        </PopoverContent>
+      </Popover>
+    </div>
+  );
 }
 
 function VariableHelperPopover({ onInsert }: { onInsert: (token: string) => void }) {
-    const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
-    const [open, setOpen] = React.useState(false);
+  const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
+  const [open, setOpen] = React.useState(false);
 
-    return (
-        <Popover open={open} onOpenChange={setOpen}>
-            <PopoverTrigger asChild>
-                <Button 
-                    type="button" 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-7 px-2 text-xs font-semibold text-primary hover:text-primary/90 hover:bg-primary/10 gap-1.5 rounded-lg"
-                >
-                    <Sparkles className="h-3.5 w-3.5" />
-                    <span>Insert Variable</span>
-                </Button>
-            </PopoverTrigger>
-            <PopoverContent align="end" className="w-[320px] p-3 rounded-2xl shadow-xl border-border bg-card">
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
-                        <span className="text-xs font-bold text-foreground">Personalization Variables</span>
-                        <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary bg-primary/10 border-0">
-                            Dynamic
-                        </Badge>
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Insert inline variables that personalize dynamically. You can add a fallback using <code className="bg-muted px-1 rounded text-[10px]">{'{{key|fallback}}'}</code>.
-                    </p>
-                    <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
-                        {[
-                            { label: 'Entity / School Name', token: '{{entity.name}}', fallbackToken: '{{entity.name|SmartSapp}}' },
-                            { label: 'Recipient Contact Name', token: '{{contact.name}}', fallbackToken: '{{contact.name|Valued Respondent}}' },
-                            { label: 'Recipient Contact Email', token: '{{contact.email}}', fallbackToken: '{{contact.email}}' },
-                            { label: 'Recipient Contact Phone', token: '{{contact.phone}}', fallbackToken: '{{contact.phone}}' },
-                        ].map((v) => (
-                            <div key={v.label} className="p-2 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors flex flex-col gap-1.5">
-                                <span className="text-xs font-semibold text-foreground">{v.label}</span>
-                                <div className="flex items-center gap-1.5">
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="h-6 text-[10px] font-mono font-medium rounded-md px-2 bg-background hover:bg-primary hover:text-primary-foreground"
-                                        onClick={() => {
-                                            onInsert(v.token);
-                                            setOpen(false);
-                                        }}
-                                    >
-                                        {v.token}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-6 text-[10px] font-mono font-medium rounded-md px-2 text-muted-foreground hover:text-foreground"
-                                        onClick={() => {
-                                            onInsert(v.fallbackToken);
-                                            setOpen(false);
-                                        }}
-                                        title="With Fallback"
-                                    >
-                                        + Fallback
-                                    </Button>
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                    {activeWorkspaceId && (
-                        <div className="pt-2 border-t border-border/50">
-                            <span className="text-[10px] text-muted-foreground/70 block">
-                                Tip: Type <code className="bg-muted px-1 rounded text-[10px]">{'{{'}</code> in text to trigger inline variables.
-                            </span>
-                        </div>
-                    )}
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs font-semibold text-primary hover:text-primary/90 hover:bg-primary/10 gap-1.5 rounded-lg active:scale-[0.97]"
+        >
+          <Sparkles className="h-3.5 w-3.5" />
+          <span>Insert Variable</span>
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent align="end" className="w-[320px] p-3 rounded-2xl shadow-xl border-border bg-card">
+        <div className="space-y-3">
+          <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
+            <span className="text-xs font-bold text-foreground">Personalization Variables</span>
+            <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary bg-primary/10 border-0">
+              Dynamic
+            </Badge>
+          </div>
+          <p className="text-[11px] text-muted-foreground leading-relaxed">
+            Insert inline variables that personalize dynamically. Add fallbacks via <code className="bg-muted px-1 rounded text-[10px]">{'{{key|fallback}}'}</code>.
+          </p>
+          <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
+            {[
+              { label: 'Entity / School Name', token: '{{entity.name}}', fallbackToken: '{{entity.name|SmartSapp}}' },
+              { label: 'Recipient Contact Name', token: '{{contact.name}}', fallbackToken: '{{contact.name|Valued Respondent}}' },
+              { label: 'Recipient Contact Email', token: '{{contact.email}}', fallbackToken: '{{contact.email}}' },
+              { label: 'Recipient Contact Phone', token: '{{contact.phone}}', fallbackToken: '{{contact.phone}}' },
+            ].map((v) => (
+              <div key={v.label} className="p-2 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors flex flex-col gap-1.5">
+                <span className="text-xs font-semibold text-foreground">{v.label}</span>
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-6 text-[10px] font-mono font-medium rounded-md px-2 bg-background hover:bg-primary hover:text-primary-foreground active:scale-[0.97]"
+                    onClick={() => {
+                      onInsert(v.token);
+                      setOpen(false);
+                    }}
+                  >
+                    {v.token}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[10px] font-mono font-medium rounded-md px-2 text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                    onClick={() => {
+                      onInsert(v.fallbackToken);
+                      setOpen(false);
+                    }}
+                    title="With Fallback"
+                  >
+                    + Fallback
+                  </Button>
                 </div>
-            </PopoverContent>
-        </Popover>
-    );
+              </div>
+            ))}
+          </div>
+          {activeWorkspaceId && (
+            <div className="pt-2 border-t border-border/50">
+              <span className="text-[10px] text-muted-foreground/70 block">
+                Tip: Type <code className="bg-muted px-1 rounded text-[10px]">{'{{'}</code> in text to trigger inline variables.
+              </span>
+            </div>
+          )}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
 }
 
 export default function Step1Details(_props: Step1DetailsProps) {
-    const { control, setValue, watch } = useFormContext();
-    const { activeWorkspaceId } = useWorkspace();
-    const [projects, setProjects] = React.useState<SurveyProject[]>([]);
+  const { control, setValue, watch } = useFormContext();
+  const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
+  const [activeTab, setActiveTab] = React.useState<StudioInspectorTab>('identity');
 
-    React.useEffect(() => {
-        if (!activeWorkspaceId) return;
-        getSurveyProjectsAction(activeWorkspaceId).then((res) => {
-            if (res.success && res.projects) {
-                setProjects(res.projects);
-            }
-        });
-    }, [activeWorkspaceId]);
+  // Load Projects for longitudinal study linkage
+  const [projects, setProjects] = React.useState<SurveyProject[]>([]);
+  React.useEffect(() => {
+    if (!activeWorkspaceId) return;
+    getSurveyProjectsAction(activeWorkspaceId).then((res) => {
+      if (res.success && res.projects) {
+        setProjects(res.projects);
+      }
+    });
+  }, [activeWorkspaceId]);
 
-    return (
-        <div className="space-y-8 animate-in fade-in slide-in-from-left-4 duration-500 text-left">
-            {/* Identity Card */}
-            <Card className="rounded-2xl border border-border bg-card overflow-hidden">
-                <CardHeader className="bg-muted/10 border-b py-5 px-6">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2 bg-primary/10 rounded-xl">
-                            <Type className="h-5 w-5 text-primary" />
-                        </div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Identity, Archetype & Branding</CardTitle>
+  return (
+    <div className="space-y-5">
+      {/* 4-Tab Studio Inspector Navigation */}
+      <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as StudioInspectorTab)} className="w-full">
+        <TabsList className="w-full grid grid-cols-4 p-1 rounded-2xl bg-muted/50 border border-border/60 h-auto gap-1">
+          <TabsTrigger
+            value="identity"
+            className="rounded-xl py-2 px-2 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.97]"
+          >
+            <Building className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Identity</span>
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="media"
+            className="rounded-xl py-2 px-2 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.97]"
+          >
+            <Video className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Media & Hero</span>
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="palette"
+            className="rounded-xl py-2 px-2 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.97]"
+          >
+            <Palette className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Theme</span>
+          </TabsTrigger>
+
+          <TabsTrigger
+            value="layout"
+            className="rounded-xl py-2 px-2 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.97]"
+          >
+            <Sliders className="h-3.5 w-3.5 shrink-0" />
+            <span className="hidden sm:inline">Layout</span>
+          </TabsTrigger>
+        </TabsList>
+
+        {/* TAB 1: IDENTITY & ARCHETYPE */}
+        <TabsContent value="identity" className="mt-4 space-y-6">
+          <Card className="rounded-2xl border border-border bg-card shadow-xs">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                  <Building className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <CardTitle className="text-base font-bold text-foreground">Survey Identity & Scope</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Define administrative names, target entity binding, and public title.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 pt-0 space-y-6">
+              {/* Internal Name & Entity Binding */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Controller
+                  name="internalName"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Internal Admin Name</Label>
+                      <Input
+                        {...field}
+                        placeholder="e.g. Q3 Parent Feedback Wave"
+                        className="h-11 rounded-xl bg-card border border-border/60 focus-visible:ring-1 focus-visible:ring-primary/40"
+                      />
                     </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Controller
-                            name="internalName"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-semibold">Internal Blueprint Name</Label>
-                                    <Input {...field} placeholder="e.g. 2024 Parent Satisfaction Audit" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                </div>
-                            )}
-                        />
-                        <Controller
-                            name="entityId"
-                            control={control}
-                            render={({ field }) => (
-                                <EntityPickerField
-                                    field={field}
-                                    setValue={setValue}
-                                    watch={watch}
-                                />
-                            )}
-                        />
+                  )}
+                />
+
+                <Controller
+                  name="entityId"
+                  control={control}
+                  render={({ field }) => (
+                    <EntityPickerField field={field} setValue={setValue} watch={watch} />
+                  )}
+                />
+              </div>
+
+              {/* Survey Archetype & Project */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Controller
+                  name="surveyArchetype"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Survey Archetype</Label>
+                      <Select
+                        value={field.value || 'feedback'}
+                        onValueChange={(val) => field.onChange(val as SurveyType)}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/60">
+                          <SelectValue placeholder="Select archetype..." />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="feedback">Feedback & CSAT</SelectItem>
+                          <SelectItem value="nps">NPS & Loyalty</SelectItem>
+                          <SelectItem value="evaluation">Academic / Course Evaluation</SelectItem>
+                          <SelectItem value="assessment">Psychometric & Assessment</SelectItem>
+                          <SelectItem value="lead_capture">Lead Capture & Intake</SelectItem>
+                          <SelectItem value="poll">Quick Pulse Poll</SelectItem>
+                        </SelectContent>
+                      </Select>
                     </div>
+                  )}
+                />
 
-                    {/* Survey Archetype & Project Selection (Phase 1) */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                        <Controller
-                            name="surveyType"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-semibold">Survey Archetype</Label>
-                                    <Select value={field.value || 'feedback'} onValueChange={field.onChange}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm">
-                                            <SelectValue placeholder="Select Survey Type" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="feedback">General Feedback</SelectItem>
-                                            <SelectItem value="nps">Net Promoter Score (NPS)</SelectItem>
-                                            <SelectItem value="csat">Customer / Parent Satisfaction (CSAT)</SelectItem>
-                                            <SelectItem value="ces">Customer Effort Score (CES)</SelectItem>
-                                            <SelectItem value="assessment">Academic / Candidate Assessment</SelectItem>
-                                            <SelectItem value="quiz">Interactive Quiz</SelectItem>
-                                            <SelectItem value="evaluation">Staff / Course Evaluation</SelectItem>
-                                            <SelectItem value="lead_qualification">Lead Qualification & Enrollment</SelectItem>
-                                            <SelectItem value="research">Longitudinal Research</SelectItem>
-                                            <SelectItem value="employee_engagement">Employee Engagement</SelectItem>
-                                            <SelectItem value="custom">Custom Survey</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
-
-                        <Controller
-                            name="projectId"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <Label className="text-sm font-semibold flex items-center justify-between">
-                                        <span>Research Project / Study</span>
-                                        {field.value && (
-                                            <Badge variant="outline" className="text-[10px] font-normal">
-                                                Wave Linked
-                                            </Badge>
-                                        )}
-                                    </Label>
-                                    <Select value={field.value || 'none'} onValueChange={(val) => field.onChange(val === 'none' ? undefined : val)}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm">
-                                            <SelectValue placeholder="Standalone (No Project)" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="none">Standalone (No Project)</SelectItem>
-                                            {projects.map((proj) => (
-                                                <SelectItem key={proj.id} value={proj.id}>
-                                                    {proj.name} ({proj.projectType})
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
-                    </div>
-
-                    <div className="h-px bg-border/50" />
-
-                    <div className="space-y-6">
-                        <Controller
-                            name="title"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-semibold">Public Header Title</Label>
-                                        <VariableHelperPopover onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)} />
-                                    </div>
-                                    <Input {...field} placeholder="e.g. Help Us Improve or {{entity.name|SmartSapp}}" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                </div>
-                            )}
-                        />
-                        <Controller
-                            name="description"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <Label className="text-sm font-semibold">Introductory Prose</Label>
-                                        <VariableHelperPopover onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)} />
-                                    </div>
-                                    <Textarea {...field} placeholder="Share the purpose of this audit..." className="min-h-[100px] rounded-xl bg-card border border-border/50 shadow-sm p-4 focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                </div>
-                            )}
-                        />
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Controller
-                                name="startButtonText"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-3">
-                                        <Label className="text-sm font-semibold">Start Button Label</Label>
-                                        <Input
-                                            {...field}
-                                            value={field.value || ''}
-                                            placeholder="e.g. Start the 2-Minute Survey"
-                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                                        />
-                                        <div className="flex items-center gap-2 pt-1">
-                                            <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
-                                                style={{ width: 'fit-content' }}
-                                            >
-                                                {field.value?.trim() || "Let's Start"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            />
-                            <Controller
-                                name="submitButtonText"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-3">
-                                        <Label className="text-sm font-semibold">Submit Button Label</Label>
-                                        <Input
-                                            {...field}
-                                            value={field.value || ''}
-                                            placeholder="e.g. Submit Survey"
-                                            className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold"
-                                        />
-                                        <div className="flex items-center gap-2 pt-1">
-                                            <span className="text-[9px] font-bold text-muted-foreground/50 tracking-tighter ml-1">Preview:</span>
-                                            <button
-                                                type="button"
-                                                className="inline-flex items-center gap-2 h-9 px-5 rounded-2xl bg-primary text-primary-foreground font-semibold text-xs shadow-md transition-all whitespace-nowrap"
-                                                style={{ width: 'fit-content' }}
-                                            >
-                                                {field.value?.trim() || "Submit"} <ArrowRight className="h-3.5 w-3.5 shrink-0" />
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                            />
-                        </div>
-                    </div>
-
-                    <div className="h-px bg-border/50" />
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Controller
-                            name="showBranding"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-4">
-                                    <Label className="text-sm font-semibold">Survey Branding</Label>
-                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 h-[88px]">
-                                        <Switch 
-                                            checked={field.value} 
-                                            onCheckedChange={field.onChange} 
-                                            className="mt-1"
-                                        />
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-bold leading-none">{field.value ? 'Branding Enabled' : 'No Branding'}</p>
-                                            <p className="text-[10px] text-muted-foreground font-semibold leading-snug">
-                                                {field.value 
-                                                    ? 'Survey shows company logo' 
-                                                    : 'Survey completely unbranded'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        />
-                        <Controller
-                            name="showIntroAsPage"
-                            control={control}
-                            defaultValue={true}
-                            render={({ field }) => (
-                                <div className="space-y-4">
-                                    <Label className="text-sm font-semibold">Intro Layout</Label>
-                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border border-border/50 h-[88px]">
-                                        <Switch 
-                                            checked={field.value ?? true} 
-                                            onCheckedChange={field.onChange} 
-                                            className="mt-1"
-                                        />
-                                        <div className="space-y-1">
-                                            <p className="text-sm font-bold leading-none">{(field.value ?? true) ? 'Standalone Intro' : 'Inline Intro'}</p>
-                                            <p className="text-[10px] text-muted-foreground font-semibold leading-snug">
-                                                {(field.value ?? true)
-                                                    ? 'Dedicated start page' 
-                                                    : 'Header shown on every page'}
-                                            </p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        />
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Immersive Media Card */}
- <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b py-5 px-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl">
- <Video className="h-5 w-5 text-primary" />
-                        </div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Immersive Hero</CardTitle>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 space-y-8">
- <div className="space-y-8">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <Controller
-                                name="videoUrl"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        <Label className="text-sm font-semibold">Feature Video URL</Label>
-                                        <MediaSelect 
-                                            {...field} 
-                                            filterType="video" 
-                                            placeholder="YouTube, Vimeo, or direct MP4 link..." 
-                                            className="rounded-xl" 
-                                        />
-                                    </div>
-                                )}
-                            />
-                            <Controller
-                                name="videoCaption"
-                                control={control}
-                                render={({ field }) => (
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
-                                            <MessageSquareText className="h-3 w-3" /> Call-to-Action Text
-                                        </Label>
-                                        <Input {...field} value={field.value || ''} placeholder="e.g. Watch our Director's Welcome" className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30" />
-                                        <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tighter ml-1 italic">Defaults to "Click to watch video" if empty.</p>
-                                    </div>
-                                )}
-                            />
-                        </div>
-
-                        <div className="space-y-6">
-                            <div className="flex items-center gap-3">
-                                <ImageIcon className="h-4 w-4 text-primary" />
-                                <h4 className="text-[10px] font-black uppercase tracking-widest text-primary">Media Assets</h4>
-                                <Separator className="flex-1 border-dashed" />
-                            </div>
-                            <div className="grid grid-cols-1 gap-8">
-                                {watch('showBranding') && (
-                                    <Controller
-                                        name="logoUrl"
-                                        control={control}
-                                        render={({ field }) => (
-                                            <div className="space-y-2">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1 flex items-center gap-2">
-                                                    Custom Brand Logo (Optional Override)
-                                                </Label>
-                                                <MediaSelect 
-                                                    {...field} 
-                                                    filterType="image" 
-                                                    className="rounded-xl" 
-                                                />
-                                                <p className="text-[9px] font-bold text-primary tracking-tighter ml-1 italic">
-                                                    If left empty, the associated entity logo will be used automatically.
-                                                </p>
-                                            </div>
-                                        )}
-                                    />
-                                )}
-                                <Controller
-                                    name="videoThumbnailUrl"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-semibold">Video Poster (Frame)</Label>
-                                            <MediaSelect {...field} filterType="image" className="rounded-xl" />
-                                        </div>
-                                    )}
-                                />
-                                <Controller
-                                    name="bannerImageUrl"
-                                    control={control}
-                                    render={({ field }) => (
-                                        <div className="space-y-2">
-                                            <Label className="text-sm font-semibold">Cover Image (Fallback)</Label>
-                                            <MediaSelect {...field} filterType="image" className="rounded-xl" />
-                                        </div>
-                                    )}
-                                />
-                            </div>
-                        </div>
-                    </div>
-                </CardContent>
-            </Card>
-
-            {/* Aesthetics Card */}
- <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b py-5 px-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl">
- <Palette className="h-5 w-5 text-primary" />
-                        </div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Visual Theme</CardTitle>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 space-y-6">
- <div className="grid grid-cols-2 gap-6">
-                        <Controller
-                            name="backgroundColor"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Base Color</Label>
- <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/20 border shadow-inner">
- <Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" />
- <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] font-semibold " />
-                                    </div>
-                                </div>
-                            )}
-                        />
-                        <Controller
-                            name="patternColor"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Pattern Tint</Label>
- <div className="flex items-center gap-2 p-1.5 rounded-xl bg-muted/20 border shadow-inner">
- <Input type="color" {...field} className="w-10 h-10 p-0 border-none bg-transparent rounded-lg cursor-pointer" />
- <Input value={field.value} onChange={e => field.onChange(e.target.value)} className="h-8 border-none bg-transparent shadow-none font-mono text-[10px] font-semibold " />
-                                    </div>
-                                </div>
-                            )}
-                        />
-                    </div>
-                    <Controller
-                        name="backgroundPattern"
-                        control={control}
-                        render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Overlay Pattern</Label>
-                                <Select onValueChange={field.onChange} value={field.value || 'none'}>
- <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
-                                        <SelectValue placeholder="Select pattern..." />
-                                    </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                        <SelectItem value="none">Solid (None)</SelectItem>
-                                        <SelectItem value="dots">Dots</SelectItem>
-                                        <SelectItem value="grid">Grid</SelectItem>
-                                        <SelectItem value="circuit">Circuit</SelectItem>
-                                        <SelectItem value="topography">Topography</SelectItem>
-                                        <SelectItem value="cubes">Cubes</SelectItem>
-                                        <SelectItem value="gradient">Aura Gradient</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
+                <Controller
+                  name="projectId"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold flex items-center justify-between">
+                        <span>Research Project</span>
+                        {field.value && (
+                          <Badge variant="outline" className="text-[10px] font-normal">
+                            Wave Linked
+                          </Badge>
                         )}
-                    />
-                    <div className="pb-2">
-                        <Controller
-                            name="stepperVariant"
-                            control={control}
-                            render={({ field }) => (
-                                <div className="space-y-2 pt-1 md:pt-0">
-                                    <Label className="text-sm font-semibold">Survey Stepper Style</Label>
-                                    <Select onValueChange={field.onChange} value={field.value || 'full'}>
-                                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-colors focus-visible:ring-1 focus-visible:ring-primary/30">
-                                            <SelectValue placeholder="Select stepper style..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl">
-                                            <SelectItem value="full">Details (Full Text)</SelectItem>
-                                            <SelectItem value="simple">Minimal (Dots/Dashes)</SelectItem>
-                                            <SelectItem value="linear">Linear (Lines and Text)</SelectItem>
-                                            <SelectItem value="none">None (Hidden)</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
+                      </Label>
+                      <Select
+                        value={field.value || 'none'}
+                        onValueChange={(val) => field.onChange(val === 'none' ? undefined : val)}
+                      >
+                        <SelectTrigger className="h-11 rounded-xl bg-card border border-border/60">
+                          <SelectValue placeholder="Standalone (No Project)" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="none">Standalone (No Project)</SelectItem>
+                          {projects.map((proj) => (
+                            <SelectItem key={proj.id} value={proj.id}>
+                              {proj.name} ({proj.projectType})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                </CardContent>
-            </Card>
-        </div>
-    );
+                  )}
+                />
+              </div>
+
+              <div className="h-px bg-border/50" />
+
+              {/* Public Header Title & Prose */}
+              <div className="space-y-4">
+                <Controller
+                  name="title"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-semibold">Public Header Title</Label>
+                        <VariableHelperPopover
+                          onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)}
+                        />
+                      </div>
+                      <Input
+                        {...field}
+                        placeholder="e.g. Help Us Improve or {{entity.name|SmartSapp}}"
+                        className="h-11 rounded-xl bg-card border border-border/60 focus-visible:ring-1 focus-visible:ring-primary/40"
+                      />
+                    </div>
+                  )}
+                />
+
+                <Controller
+                  name="description"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-sm font-semibold">Introductory Prose</Label>
+                        <VariableHelperPopover
+                          onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)}
+                        />
+                      </div>
+                      <Textarea
+                        {...field}
+                        placeholder="Explain why this survey matters to your community..."
+                        className="min-h-[100px] rounded-xl bg-card border border-border/60 focus-visible:ring-1 focus-visible:ring-primary/40 leading-relaxed text-sm"
+                      />
+                    </div>
+                  )}
+                />
+              </div>
+
+              {/* Button Labels */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Controller
+                  name="startButtonText"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Start Button Label</Label>
+                      <Input
+                        {...field}
+                        placeholder="Let's Start"
+                        className="h-11 rounded-xl bg-card border border-border/60"
+                      />
+                    </div>
+                  )}
+                />
+
+                <Controller
+                  name="submitButtonText"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Label className="text-sm font-semibold">Submit Button Label</Label>
+                      <Input
+                        {...field}
+                        placeholder="Submit Response"
+                        className="h-11 rounded-xl bg-card border border-border/60"
+                      />
+                    </div>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 2: MEDIA & HERO */}
+        <TabsContent value="media" className="mt-4 space-y-6">
+          <Card className="rounded-2xl border border-border bg-card shadow-xs">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                  <Video className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <CardTitle className="text-base font-bold text-foreground">Immersive Hero & Media Assets</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Embed welcome videos, poster frames, cover artwork, and brand insignia.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 pt-0 space-y-6">
+              {/* Feature Video URL */}
+              <Controller
+                name="videoUrl"
+                control={control}
+                render={({ field }) => (
+                  <StudioMediaField
+                    label="Feature Video"
+                    description="YouTube, Vimeo, or direct MP4 link for introductory welcome video"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    filterType="video"
+                    placeholder="https://youtu.be/... or direct .mp4 URL"
+                  />
+                )}
+              />
+
+              {/* Video Call to Action text */}
+              <Controller
+                name="videoCaption"
+                control={control}
+                render={({ field }) => (
+                  <div className="space-y-2">
+                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <MessageSquareText className="h-3.5 w-3.5 text-primary" /> Video Call-to-Action Text
+                    </Label>
+                    <Input
+                      {...field}
+                      value={field.value || ''}
+                      placeholder="e.g. Watch Director's Welcome (0:45)"
+                      className="h-11 rounded-xl bg-card border border-border/60"
+                    />
+                  </div>
+                )}
+              />
+
+              <div className="h-px bg-border/50" />
+
+              {/* Video Poster Frame */}
+              <Controller
+                name="videoThumbnailUrl"
+                control={control}
+                render={({ field }) => (
+                  <StudioMediaField
+                    label="Video Poster Frame (Thumbnail)"
+                    description="High-resolution visual displayed before the respondent presses play"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    filterType="image"
+                    placeholder="Paste image URL or pick from library..."
+                  />
+                )}
+              />
+
+              {/* Banner Cover Image (Fallback) */}
+              <Controller
+                name="bannerImageUrl"
+                control={control}
+                render={({ field }) => (
+                  <StudioMediaField
+                    label="Cover Banner Image (Fallback)"
+                    description="Header banner displayed when no intro video is configured"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    filterType="image"
+                    placeholder="Paste image URL or pick from library..."
+                  />
+                )}
+              />
+
+              {/* Custom Brand Logo Override */}
+              <Controller
+                name="logoUrl"
+                control={control}
+                render={({ field }) => (
+                  <StudioMediaField
+                    label="Custom Brand Logo Override"
+                    description="Leave empty to use the associated entity's verified institutional logo"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    filterType="image"
+                    placeholder="Paste logo URL or pick from library..."
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 3: THEME & PALETTE */}
+        <TabsContent value="palette" className="mt-4 space-y-6">
+          <Card className="rounded-2xl border border-border bg-card shadow-xs">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                  <Palette className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <CardTitle className="text-base font-bold text-foreground">Visual Theme & Aesthetics</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Customize background palettes, contrast ratios, and SVG geometry patterns.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 pt-0 space-y-6">
+              {/* Palette Presets + Custom Color Pickers with Contrast Safety */}
+              <Controller
+                name="backgroundColor"
+                control={control}
+                render={({ field: bgField }) => (
+                  <Controller
+                    name="patternColor"
+                    control={control}
+                    render={({ field: patternField }) => (
+                      <ThemePalettePicker
+                        backgroundColor={bgField.value || '#F8FAFC'}
+                        patternColor={patternField.value || '#3B82F6'}
+                        onBackgroundChange={bgField.onChange}
+                        onPatternChange={patternField.onChange}
+                      />
+                    )}
+                  />
+                )}
+              />
+
+              <div className="h-px bg-border/50" />
+
+              {/* Pattern Swatch Selector */}
+              <Controller
+                name="backgroundPattern"
+                control={control}
+                render={({ field }) => (
+                  <PatternSwatchSelector
+                    value={field.value || 'none'}
+                    patternColor={watch('patternColor') || '#3B82F6'}
+                    onChange={(pattern: SurveyBackgroundPattern) => field.onChange(pattern)}
+                  />
+                )}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* TAB 4: LAYOUT & STEPPER */}
+        <TabsContent value="layout" className="mt-4 space-y-6">
+          <Card className="rounded-2xl border border-border bg-card shadow-xs">
+            <CardHeader className="pb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                  <Sliders className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center">
+                  <CardTitle className="text-base font-bold text-foreground">Layout & Progress Dynamics</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Configure question steppers, intro layout presentation, and branding display.
+                  </CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+
+            <CardContent className="p-6 pt-0 space-y-6">
+              {/* Visual Stepper Style Selector */}
+              <Controller
+                name="stepperVariant"
+                control={control}
+                render={({ field }) => (
+                  <StepperStyleSelector
+                    value={field.value || 'full'}
+                    onChange={(val: SurveyStepperVariant) => field.onChange(val)}
+                  />
+                )}
+              />
+
+              <div className="h-px bg-border/50" />
+
+              {/* Intro Presentation Switch */}
+              <Controller
+                name="showIntroAsPage"
+                control={control}
+                render={({ field }) => (
+                  <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/70">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs font-bold text-foreground">
+                        {(field.value ?? true) ? 'Dedicated Cover Intro Page' : 'Inline Header Presentation'}
+                      </Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        {(field.value ?? true)
+                          ? 'Shows a standalone landing screen with welcome video and Start button'
+                          : 'Shows survey title and intro directly above question 1'}
+                      </p>
+                    </div>
+                    <Switch
+                      checked={field.value ?? true}
+                      onCheckedChange={field.onChange}
+                    />
+                  </div>
+                )}
+              />
+
+              {/* Presentation Toggles */}
+              <div className="space-y-3">
+                <Controller
+                  name="showBranding"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border/60">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-bold">Show Institutional Logo</Label>
+                        <p className="text-[10px] text-muted-foreground">Displays logo in survey header</p>
+                      </div>
+                      <Switch checked={field.value ?? true} onCheckedChange={field.onChange} />
+                    </div>
+                  )}
+                />
+
+                <Controller
+                  name="showSurveyTitles"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="flex items-center justify-between p-3.5 rounded-xl bg-card border border-border/60">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-bold">Show Survey Title on Steps</Label>
+                        <p className="text-[10px] text-muted-foreground">Keeps survey name visible throughout audit</p>
+                      </div>
+                      <Switch checked={field.value ?? true} onCheckedChange={field.onChange} />
+                    </div>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
 }
