@@ -48,6 +48,9 @@ import {
   Loader2,
   Plus,
   Search,
+  Check,
+  X,
+  Building2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Invitation, InvitationStatus, Role, Workspace, Department } from '@/lib/types';
@@ -56,6 +59,7 @@ import {
   resendInvitationAction,
   revokeInvitationAction,
   listInvitationsAction,
+  createOrUpdateDepartmentAction,
 } from '@/app/actions/workforce-actions';
 
 interface InvitationsManagerProps {
@@ -69,6 +73,7 @@ export function InvitationsManager({
   roles,
   workspaces,
   departments,
+  onRefresh,
 }: InvitationsManagerProps) {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -79,6 +84,16 @@ export function InvitationsManager({
   const [isLoading, setIsLoading] = React.useState(false);
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [searchQuery, setSearchQuery] = React.useState('');
+
+  // Department State with inline creation support
+  const [localDepartments, setLocalDepartments] = React.useState<Department[]>(departments);
+  const [isCreatingInlineDept, setIsCreatingInlineDept] = React.useState(false);
+  const [inlineDeptName, setInlineDeptName] = React.useState('');
+  const [isSavingInlineDept, setIsSavingInlineDept] = React.useState(false);
+
+  React.useEffect(() => {
+    setLocalDepartments(departments);
+  }, [departments]);
 
   // Single Invite Modal State
   const [singleModalOpen, setSingleModalOpen] = React.useState(false);
@@ -96,6 +111,49 @@ export function InvitationsManager({
   const [csvText, setCsvText] = React.useState('');
   const [parsedCsvRows, setParsedCsvRows] = React.useState<Array<{ email: string; name?: string; valid: boolean }>>([]);
   const [isDispatchingCsv, setIsDispatchingCsv] = React.useState(false);
+
+  // Handle Inline Department Creation
+  const handleSaveInlineDepartment = async () => {
+    if (!authUser || !activeOrganizationId || !inlineDeptName.trim()) return;
+    setIsSavingInlineDept(true);
+    try {
+      const idToken = await authUser.getIdToken();
+      const trimmedName = inlineDeptName.trim();
+      const code = trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 10) || 'DEPT';
+      const res = await createOrUpdateDepartmentAction({
+        idToken,
+        organizationId: activeOrganizationId,
+        data: {
+          name: trimmedName,
+          code,
+          description: 'Created inline during team member invitation',
+        },
+      });
+
+      if (res.success && res.department) {
+        setLocalDepartments((prev) => [...prev, res.department!]);
+        setInviteDeptId(res.department.id);
+        setIsCreatingInlineDept(false);
+        setInlineDeptName('');
+        toast({
+          title: 'Department Created',
+          description: `"${res.department.name}" was successfully created and selected.`,
+        });
+        if (onRefresh) onRefresh();
+      } else {
+        throw new Error(res.error || 'Failed to create department');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Creation failed';
+      toast({
+        title: 'Department Creation Failed',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingInlineDept(false);
+    }
+  };
 
   const roleOptions = roles.map((r) => ({ label: r.name, value: r.id }));
 
@@ -558,20 +616,105 @@ export function InvitationsManager({
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Department</Label>
-                  <Select value={inviteDeptId} onValueChange={setInviteDeptId}>
-                    <SelectTrigger className="h-9 text-xs">
-                      <SelectValue placeholder="Department..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none" className="text-xs">-- None --</SelectItem>
-                      {departments.map((d) => (
-                        <SelectItem key={d.id} value={d.id} className="text-xs">
-                          {d.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold">Department</Label>
+                    {!isCreatingInlineDept && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCreatingInlineDept(true);
+                          setInlineDeptName('');
+                        }}
+                        className="text-[11px] text-primary hover:underline font-medium flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3" /> New
+                      </button>
+                    )}
+                  </div>
+
+                  {isCreatingInlineDept ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        value={inlineDeptName}
+                        onChange={(e) => setInlineDeptName(e.target.value)}
+                        placeholder="Department name..."
+                        className="h-9 text-xs flex-1 bg-background"
+                        autoFocus
+                        disabled={isSavingInlineDept}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleSaveInlineDepartment();
+                          } else if (e.key === 'Escape') {
+                            e.preventDefault();
+                            setIsCreatingInlineDept(false);
+                            setInlineDeptName('');
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        onClick={handleSaveInlineDepartment}
+                        disabled={isSavingInlineDept || !inlineDeptName.trim()}
+                        className="h-9 px-2 text-xs font-semibold shrink-0 active:scale-[0.97]"
+                        title="Save Department"
+                      >
+                        {isSavingInlineDept ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <Check className="w-3.5 h-3.5" />
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          setIsCreatingInlineDept(false);
+                          setInlineDeptName('');
+                        }}
+                        disabled={isSavingInlineDept}
+                        className="h-9 px-2 text-xs text-muted-foreground hover:text-foreground shrink-0"
+                        title="Cancel"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
+                  ) : (
+                    <Select value={inviteDeptId} onValueChange={setInviteDeptId}>
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue placeholder="Department..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none" className="text-xs">-- None --</SelectItem>
+                        {localDepartments.map((d) => (
+                          <SelectItem key={d.id} value={d.id} className="text-xs">
+                            {d.name}
+                          </SelectItem>
+                        ))}
+                        <div className="p-1 border-t border-border mt-1">
+                          <button
+                            type="button"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              setIsCreatingInlineDept(true);
+                              setInlineDeptName('');
+                            }}
+                            className="w-full flex items-center gap-1.5 px-2 py-1.5 text-xs text-primary font-semibold rounded-sm hover:bg-primary/10 transition-colors cursor-pointer text-left"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            Create new department inline
+                          </button>
+                        </div>
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
 

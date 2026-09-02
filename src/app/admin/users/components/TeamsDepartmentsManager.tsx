@@ -47,6 +47,8 @@ import {
   Loader2,
   Save,
   Search,
+  Check,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Department, Team, PersonDetailView, Workspace } from '@/lib/types';
@@ -99,6 +101,46 @@ export function TeamsDepartmentsManager({
   const [teamLeadId, setTeamLeadId] = React.useState<string>('none');
   const [teamMemberIds, setTeamMemberIds] = React.useState<string[]>([]);
   const [isSavingTeam, setIsSavingTeam] = React.useState(false);
+
+  // Inline Quick Department Add State
+  const [isInlineAddingDept, setIsInlineAddingDept] = React.useState(false);
+  const [inlineDeptName, setInlineDeptName] = React.useState('');
+  const [inlineDeptCode, setInlineDeptCode] = React.useState('');
+  const [isSavingInlineDept, setIsSavingInlineDept] = React.useState(false);
+
+  const handleSaveInlineDept = async () => {
+    if (!authUser || !activeOrganizationId || !inlineDeptName.trim()) return;
+    setIsSavingInlineDept(true);
+    try {
+      const idToken = await authUser.getIdToken();
+      const name = inlineDeptName.trim();
+      const code = inlineDeptCode.trim() || name.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 8) || 'DEPT';
+      const res = await createOrUpdateDepartmentAction({
+        idToken,
+        organizationId: activeOrganizationId,
+        data: {
+          name,
+          code,
+          description: 'Created inline from department management',
+        },
+      });
+
+      if (res.success) {
+        toast({ title: 'Department Created', description: `Department "${name}" created successfully.` });
+        setIsInlineAddingDept(false);
+        setInlineDeptName('');
+        setInlineDeptCode('');
+        onRefresh();
+      } else {
+        throw new Error(res.error || 'Failed to create department');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Save failed';
+      toast({ title: 'Creation Failed', description: msg, variant: 'destructive' });
+    } finally {
+      setIsSavingInlineDept(false);
+    }
+  };
 
   const peopleOptions = people.map((p) => ({
     label: p.person.displayName || p.person.email,
@@ -367,6 +409,93 @@ export function TeamsDepartmentsManager({
       {/* Tab 1: Departments */}
       {activeTab === 'departments' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {/* Inline Quick Add Card */}
+          {!isInlineAddingDept ? (
+            <button
+              type="button"
+              onClick={() => setIsInlineAddingDept(true)}
+              className="border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 rounded-xl p-4 flex flex-col items-center justify-center gap-2 text-muted-foreground hover:text-primary transition-all min-h-[120px] cursor-pointer text-xs font-semibold active:scale-[0.98]"
+            >
+              <div className="p-2 rounded-full bg-muted/40">
+                <Plus className="w-4 h-4" />
+              </div>
+              <span>+ Quick Add Department Inline</span>
+            </button>
+          ) : (
+            <Card className="border-2 border-primary/40 bg-card shadow-sm p-4 space-y-3 flex flex-col justify-between">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <Building2 className="w-3.5 h-3.5 text-primary" /> New Department
+                </span>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsInlineAddingDept(false)}
+                  className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </Button>
+              </div>
+              <div className="space-y-2">
+                <Input
+                  value={inlineDeptName}
+                  onChange={(e) => {
+                    setInlineDeptName(e.target.value);
+                    if (!inlineDeptCode) {
+                      setInlineDeptCode(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 8));
+                    }
+                  }}
+                  placeholder="Name (e.g. Admissions)"
+                  className="h-8 text-xs bg-background"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveInlineDept();
+                    } else if (e.key === 'Escape') {
+                      e.preventDefault();
+                      setIsInlineAddingDept(false);
+                    }
+                  }}
+                />
+                <Input
+                  value={inlineDeptCode}
+                  onChange={(e) => setInlineDeptCode(e.target.value.toUpperCase())}
+                  placeholder="Code (e.g. ADM)"
+                  className="h-8 text-xs font-mono uppercase bg-background"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSaveInlineDept();
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex items-center justify-end gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setIsInlineAddingDept(false)}
+                  className="h-7 text-xs px-2.5"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={handleSaveInlineDept}
+                  disabled={isSavingInlineDept || !inlineDeptName.trim()}
+                  className="h-7 text-xs px-3 font-semibold active:scale-[0.97]"
+                >
+                  {isSavingInlineDept ? <Loader2 className="w-3 h-3 animate-spin mr-1" /> : <Check className="w-3 h-3 mr-1" />}
+                  Create
+                </Button>
+              </div>
+            </Card>
+          )}
+
           {filteredDepts.length > 0 ? (
             filteredDepts.map((dept) => (
               <Card key={dept.id} className="border bg-card shadow-xs hover:border-primary/40 transition-all">
