@@ -553,202 +553,45 @@ export default function SurveyFormBuilder() {
                     </AnimatePresence>
                 </div>
                     
-                {/* 2. Right Sidebar - Contextual Settings & Global Tools */}
+                {/* 2. Right Sidebar - Contextual Settings & Architecture Overview */}
                 <div className={cn(
-                    "shrink-0 border border-border bg-card rounded-2xl shadow-sm hidden xl:flex overflow-hidden transition-all duration-500 relative z-10 self-start max-h-full xl:sticky xl:top-6 xl:z-20", 
+                    "shrink-0 border border-border bg-card rounded-2xl shadow-sm hidden xl:flex overflow-hidden transition-all duration-300 relative z-10 self-start max-h-full xl:sticky xl:top-2 xl:z-20", 
                     isPreviewMode ? "opacity-0 translate-x-full pointer-events-none absolute right-0" : "",
-                    isPropertiesBarVisible && !isPreviewMode ? "w-[340px] flex-col min-h-[500px] h-fit" : "w-16 flex-col h-fit"
+                    isPropertiesBarVisible && !isPreviewMode ? "w-[340px] xl:w-[360px] flex-col min-h-[500px] h-fit" : "w-12 flex-col h-fit"
                 )}>
-                    {/* Toolbar (Horizontal when open, Vertical when closed) */}
+                    {/* Dedicated Title Area with Collapse/Expand Toggle Button */}
                     <div className={cn(
-                        "p-2 border-border bg-muted/5 flex items-center shrink-0 transition-all duration-500",
-                        isPropertiesBarVisible ? "border-b flex-row flex-nowrap gap-1 overflow-x-auto no-scrollbar" : "flex-col gap-4 border-r pb-6 w-16"
+                        "p-2 border-border bg-muted/10 flex items-center justify-between shrink-0",
+                        isPropertiesBarVisible ? "border-b px-3.5 py-2.5" : "flex-col gap-2 p-1.5"
                     )}>
-                        <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="rounded-lg h-8 w-8 hover:bg-muted/50 text-muted-foreground bg-background/50 backdrop-blur-sm border border-border/50 shrink-0" 
-                            onClick={() => setIsPropertiesBarVisible(!isPropertiesBarVisible)}
-                            title={isPropertiesBarVisible ? "Collapse Sidebar" : "Expand Settings"}
-                        >
-                            {isPropertiesBarVisible ? <PanelRightClose className="h-4 w-4" /> : <PanelRightOpen className="h-4 w-4" />}
-                        </Button>
-                        <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
-                        {!isPropertiesBarVisible && (
+                        {isPropertiesBarVisible ? (
                             <>
-                                <TooltipProvider>
-                                    <Tooltip>
-                                        <TooltipTrigger asChild>
-                                            <div className="h-10 w-10 flex items-center justify-center mb-2">
-                                                {autosaveStatus === 'saving' ? (
-                                                    <CloudUpload className="h-5 w-5 animate-pulse text-primary" />
-                                                ) : autosaveStatus === 'saved' ? (
-                                                    <Check className="h-5 w-5 text-emerald-500" />
-                                                ) : (
-                                                    <ShieldCheck className="h-5 w-5 opacity-20" />
-                                                )}
-                                            </div>
-                                        </TooltipTrigger>
-                                        <TooltipContent side="left">Cloud Sync Status</TooltipContent>
-                                    </Tooltip>
-                                </TooltipProvider>
-                                <Separator className="w-8" />
+                                <div className="flex items-center gap-2">
+                                    <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                                        {selectedBlockIds.length === 1 ? 'Block Settings' : selectedBlockIds.length > 1 ? 'Batch Editor' : 'Properties Panel'}
+                                    </span>
+                                </div>
+                                <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="rounded-lg h-7 w-7 hover:bg-muted/80 text-muted-foreground active:scale-[0.97]" 
+                                    onClick={() => setIsPropertiesBarVisible(false)}
+                                    title="Collapse Properties Bar"
+                                >
+                                    <PanelRightClose className="h-4 w-4" />
+                                </Button>
                             </>
+                        ) : (
+                            <Button 
+                                variant="ghost" 
+                                size="icon" 
+                                className="rounded-lg h-8 w-8 hover:bg-muted/80 text-muted-foreground active:scale-[0.97]" 
+                                onClick={() => setIsPropertiesBarVisible(true)}
+                                title="Expand Properties Bar"
+                            >
+                                <PanelRightOpen className="h-4 w-4" />
+                            </Button>
                         )}
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0" onClick={handleUndo} disabled={!canUndo}><Undo className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Undo</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0" onClick={handleRedo} disabled={!canRedo}><Redo className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Redo</TooltipContent>
-                            </Tooltip>
-
-                            <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", isAccordion ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleAccordion}>
-                                        {isAccordion ? <FoldVertical className="h-4 w-4" /> : <UnfoldVertical className="h-4 w-4" />}
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Toggle Focus Mode</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", allPagesEnabled ? "bg-emerald-500/10 text-emerald-500" : "text-muted-foreground hover:text-foreground")} onClick={toggleAllPageBreaks}><Layout className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Toggle All Page Breaks</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", allValidationEnabled ? "bg-amber-500/10 text-amber-500" : "text-muted-foreground hover:text-foreground")} onClick={toggleAllValidation}><ShieldCheck className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Strict Section Validation</TooltipContent>
-                            </Tooltip>
-                            
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", watch('questionTitleBold') !== false ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")} onClick={toggleQuestionBolding}><Bold className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Question Title Weight</TooltipContent>
-                            </Tooltip>
-                            
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", watch('optionsColumns') > 1 ? "bg-indigo-500/10 text-indigo-500" : "text-muted-foreground hover:text-foreground")} onClick={toggleColumns}><Columns className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Options Layout: {watch('optionsColumns') || 1} Col</TooltipContent>
-                            </Tooltip>
-                            <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
-                            
-                            {/* Structure Tree & Logic Triggers */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0", isStructureNavigatorOpen ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground")}
-                                        onClick={() => setIsStructureNavigatorOpen(!isStructureNavigatorOpen)}
-                                    >
-                                        <FolderTree className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Structure Tree</TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-500/10 shrink-0"
-                                        onClick={() => setIsLogicStudioOpen(true)}
-                                    >
-                                        <Split className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Visual Logic Studio</TooltipContent>
-                            </Tooltip>
-
-                            {/* Survey 2.0 Core Triggers */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
-                                        onClick={() => setIsQuestionBankOpen(true)}
-                                    >
-                                        <Library className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Question Bank</TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
-                                        onClick={() => setIsVersionDrawerOpen(true)}
-                                    >
-                                        <History className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>
-                                    Version History (v{currentVersionNumber})
-                                </TooltipContent>
-                            </Tooltip>
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted shrink-0"
-                                        onClick={() => setIsDeploymentDialogOpen(true)}
-                                    >
-                                        <Share2 className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Distribution & Links</TooltipContent>
-                            </Tooltip>
-
-                            <Separator orientation={isPropertiesBarVisible ? "vertical" : "horizontal"} className={cn(isPropertiesBarVisible ? "h-5 mx-0.5" : "w-8 my-1")} />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button
-                                        size="icon"
-                                        variant="ghost"
-                                        className="h-8 w-8 text-primary hover:text-primary hover:bg-primary/10 shrink-0"
-                                        onClick={() => setIsQualityAuditorOpen(true)}
-                                    >
-                                        <Sparkles className="h-4 w-4" />
-                                    </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>
-                                    AI Quality Auditor
-                                </TooltipContent>
-                            </Tooltip>
-
-                            <AiChatEditor variant="icon" />
-
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Button size="icon" variant="ghost" className={cn("h-8 w-8 transition-all hover:bg-muted shrink-0 ml-auto", isPreviewMode ? "bg-primary text-white" : "text-primary hover:bg-primary/10")} onClick={() => setIsPreviewMode(!isPreviewMode)}><Eye className="h-4 w-4" /></Button>
-                                </TooltipTrigger>
-                                <TooltipContent side={isPropertiesBarVisible ? "bottom" : "left"}>Preview Mode</TooltipContent>
-                            </Tooltip>
-
-                        </TooltipProvider>
                     </div>
 
                     {isPropertiesBarVisible && (

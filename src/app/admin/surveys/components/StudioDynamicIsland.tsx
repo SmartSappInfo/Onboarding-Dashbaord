@@ -108,7 +108,7 @@ export function StudioDynamicIsland({
   className,
 }: StudioDynamicIslandProps) {
   return (
-    <div className={cn('sticky top-2 z-30 flex justify-center px-2 pointer-events-none select-none', className)}>
+    <div className={cn('sticky top-2 z-30 flex justify-center px-2 mb-6 pointer-events-none select-none', className)}>
       <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 p-1.5 sm:px-3 rounded-full bg-background/90 dark:bg-slate-900/90 backdrop-blur-xl border border-border/80 shadow-2xl transition-all duration-300 hover:shadow-primary/5 hover:border-primary/30 max-w-full overflow-x-auto no-scrollbar">
         <TooltipProvider delayDuration={150}>
           {/* SEGMENT 1: HISTORY (Undo / Redo) */}

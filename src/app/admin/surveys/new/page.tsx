@@ -125,8 +125,8 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     ];
 
     return (
-        <div className="flex justify-center items-center mb-2.5 max-w-2xl mx-auto px-2 select-none">
-            <div className="flex items-center gap-1 sm:gap-2 p-1 rounded-full bg-muted/40 border border-border/60 shadow-xs max-w-full overflow-x-auto no-scrollbar">
+        <div className="flex justify-center items-center mb-3 w-full max-w-4xl mx-auto px-2 select-none">
+            <div className="flex items-center gap-1 sm:gap-1.5 p-1 rounded-full bg-muted/40 border border-border/60 shadow-xs">
                 {steps.map((step, index) => {
                     const isActive = currentStep === step.n;
                     const isCompleted = currentStep > step.n;
@@ -137,6 +137,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                             <button 
                                 type="button"
                                 onClick={() => onStepClick(step.n)}
+                                title={`${step.n}. ${step.label}`}
                                 className={cn(
                                     'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 outline-none active:scale-[0.97] shrink-0',
                                     isActive
@@ -146,22 +147,23 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                                 )}
                             >
-                                <div className="flex items-center justify-center">
+                                <div className="flex items-center justify-center shrink-0">
                                     {isCompleted ? (
                                         <Check className="w-3.5 h-3.5 text-primary stroke-[3]" />
                                     ) : (
-                                        <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                                        <Icon className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
                                     )}
                                 </div>
                                 <span className={cn(
-                                    "text-[11px] uppercase tracking-wider font-bold",
-                                    isActive ? "text-primary-foreground" : isCompleted ? "text-primary" : "text-muted-foreground"
+                                    "text-[11px] uppercase tracking-wider font-bold whitespace-nowrap",
+                                    isActive ? "text-primary-foreground" : isCompleted ? "text-primary" : "text-muted-foreground",
+                                    !isActive && "hidden xl:inline"
                                 )}>
                                     {step.n}. {step.label}
                                 </span>
                             </button>
                             {index < steps.length - 1 && (
-                                <div className="w-3 sm:w-5 h-[2px] bg-border rounded-full overflow-hidden shrink-0 relative">
+                                <div className="w-2 sm:w-3 md:w-5 h-[2px] bg-border rounded-full overflow-hidden shrink-0 relative">
                                     <motion.div 
                                         initial={false}
                                         animate={{ width: isCompleted ? '100%' : '0%' }}
