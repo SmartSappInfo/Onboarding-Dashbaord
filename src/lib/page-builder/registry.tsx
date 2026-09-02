@@ -100,9 +100,192 @@ export function registerBlock<TProps extends Record<string, unknown>>(
   blockRegistry[def.type] = def as unknown as AnyBlockDefinition;
 }
 
-/** Look up a block definition by type, or `undefined` if unregistered. */
-export function getBlock(type: PageBlockType): AnyBlockDefinition | undefined {
-  return blockRegistry[type];
+/**
+ * Maps raw, PascalCase, hyphenated, or semantic block type aliases to canonical PageBlockType.
+ * Eliminates "Unknown block: HeroSection" failures when AI or external templates use legacy naming.
+ *
+ * CAUTION FOR MAINTAINERS:
+ * When adding new blocks to PageBlockType, ensure any relevant shorthand or PascalCase
+ * aliases are mapped here to preserve backward compatibility and resilient AI generation.
+ */
+export function normalizeBlockType(rawType: string): PageBlockType {
+  if (!rawType) return 'text';
+  const clean = rawType.trim();
+
+  // Exact match fast-path against registered types
+  if (clean in blockRegistry) {
+    return clean as PageBlockType;
+  }
+
+  const normalized = clean.toLowerCase().replace(/[-_\s]+/g, '');
+
+  switch (normalized) {
+    case 'herosection':
+    case 'hero':
+    case 'banner':
+    case 'mainhero':
+    case 'heroheader':
+      return 'hero';
+
+    case 'videoherosection':
+    case 'videohero':
+      return 'video_hero';
+
+    case 'textcontentsection':
+    case 'textsection':
+    case 'text':
+    case 'content':
+    case 'paragraph':
+    case 'prose':
+    case 'richtext':
+      return 'text';
+
+    case 'featuresgridsection':
+    case 'featuresgrid':
+    case 'featurecards':
+    case 'features':
+    case 'choicecards':
+    case 'choicecard':
+    case 'gridfeatures':
+    case 'cardgrid':
+      return 'choice_cards';
+
+    case 'testimonialsection':
+    case 'testimonialgrid':
+    case 'testimonialsgrid':
+    case 'reviews':
+    case 'feedback':
+      return 'testimonial_grid';
+
+    case 'singletestimonial':
+    case 'testimonial':
+    case 'quote':
+      return 'testimonial';
+
+    case 'faqsection':
+    case 'faq':
+    case 'accordion':
+    case 'questions':
+    case 'faqs':
+      return 'faq';
+
+    case 'stepsection':
+    case 'steps':
+    case 'step':
+    case 'process':
+      return 'step_section';
+
+    case 'proceduresection':
+    case 'procedurelist':
+    case 'procedure':
+    case 'numberedlist':
+      return 'procedure_list';
+
+    case 'ctasection':
+    case 'cta':
+    case 'calltoaction':
+    case 'actionbanner':
+      return 'cta';
+
+    case 'statssection':
+    case 'stats':
+    case 'metrics':
+    case 'kpi':
+    case 'stat':
+      return 'stats';
+
+    case 'titlesection':
+    case 'title':
+    case 'heading':
+    case 'sectionheading':
+    case 'headline':
+      return 'title';
+
+    case 'logogrid':
+    case 'logos':
+    case 'partners':
+    case 'clients':
+      return 'logo_grid';
+
+    case 'columns':
+    case 'row':
+    case 'grid':
+    case 'twocolumns':
+    case 'threecolumns':
+      return 'columns';
+
+    case 'container':
+    case 'box':
+    case 'wrapper':
+    case 'sectioncontainer':
+      return 'container';
+
+    case 'appdownload':
+    case 'downloadapp':
+      return 'app_download';
+
+    case 'countdown':
+    case 'countdowntimer':
+    case 'timer':
+      return 'countdown';
+
+    case 'image':
+    case 'picture':
+    case 'photo':
+      return 'image';
+
+    case 'video':
+    case 'videoembed':
+      return 'video';
+
+    case 'divider':
+    case 'separator':
+    case 'line':
+      return 'divider';
+
+    case 'spacer':
+    case 'whitespace':
+    case 'gap':
+      return 'spacer';
+
+    case 'form':
+    case 'contactform':
+    case 'leadform':
+      return 'form';
+
+    case 'survey':
+    case 'quiz':
+      return 'survey';
+
+    case 'agreement':
+    case 'terms':
+    case 'contract':
+      return 'agreement';
+
+    case 'meeting':
+    case 'booking':
+    case 'calendly':
+      return 'meeting';
+
+    case 'qr':
+    case 'qrcode':
+      return 'qr';
+
+    case 'paymentmethods':
+    case 'paymentmethod':
+    case 'payments':
+      return 'payment_methods';
+
+    default:
+      // Return raw type if it exists in registry, else fallback to 'text'
+      return (clean in blockRegistry ? clean : 'text') as PageBlockType;
+  }
+}
+
+/** Look up a block definition by type, or `undefined` if unregistered. Normalizes aliases defensively. */
+export function getBlock(type: PageBlockType | string): AnyBlockDefinition | undefined {
+  const canonical = normalizeBlockType(type);
+  return blockRegistry[canonical];
 }
 
 /** Returns an array of all currently registered block definitions. */
@@ -120,7 +303,8 @@ export function getBlocksByCategory(category: 'layout' | 'content' | 'data' | 'e
  * Returns safe parsed props or fallback defaults on error without throwing.
  */
 export function validateBlockProps(block: PageBlock): Record<string, unknown> {
-  const def = getBlock(block.type);
+  const canonical = normalizeBlockType(block.type);
+  const def = getBlock(canonical);
   if (!def) {
     return block.props || {};
   }
@@ -134,3 +318,4 @@ export function allBlocks(): AnyBlockDefinition[] {
     (def): def is AnyBlockDefinition => def !== undefined,
   );
 }
+

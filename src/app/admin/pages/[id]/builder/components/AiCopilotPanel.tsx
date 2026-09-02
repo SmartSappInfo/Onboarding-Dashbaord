@@ -14,6 +14,8 @@ import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
 interface AiCopilotPanelProps {
   readonly version: CampaignPageVersion;
   readonly onAppendSection: (sectionProps: Record<string, unknown>, blocks: PageBlock[]) => void;
+  readonly onAppendMultipleSections?: (sections: import('@/lib/types').PageSection[]) => void;
+  readonly onApplyPageStructure?: (structure: import('@/lib/types').CampaignPageStructure) => void;
   readonly onUpdateBlockProps: (blockId: string, props: Record<string, unknown>) => void;
   readonly selectedBlockId: string | null;
 }
@@ -22,9 +24,11 @@ interface Message {
   role: 'user' | 'assistant';
   content: string;
   suggestedAction?: {
-    type: 'add_section' | 'update_text';
+    type: 'generate_page' | 'add_multiple_sections' | 'add_section' | 'update_text';
     label: string;
     payload?: {
+      pageStructure?: import('@/lib/types').CampaignPageStructure;
+      sections?: import('@/lib/types').PageSection[];
       blockId?: string;
       props?: Record<string, unknown>;
       sectionProps?: Record<string, unknown>;
@@ -36,6 +40,8 @@ interface Message {
 export function AiCopilotPanel({
   version,
   onAppendSection,
+  onAppendMultipleSections,
+  onApplyPageStructure,
   onUpdateBlockProps,
   selectedBlockId,
 }: AiCopilotPanelProps) {
@@ -48,14 +54,14 @@ export function AiCopilotPanel({
   const [messages, setMessages] = useState<Message[]>([
     {
       role: 'assistant',
-      content: "Hello! I am your SmartSapp AI Experience Copilot. I can draft copy, apply layout styles, or build high-converting sections tailored for Ghanaian school admissions and team workflows. Ask me anything!",
+      content: "Hello! I am your SmartSapp AI Experience Copilot. I can draft copy, apply layout styles, build full landing pages, or create multi-section storytelling experiences (like the Marigold Montessori Hero's Journey). How can I assist?",
     }
   ]);
 
   const suggestions = [
+    "Generate Marigold Montessori Page",
     "Draft Ghana Admissions Copy",
-    "Generate Sunset Hero Section",
-    "Review Page CTA Placement",
+    "Insert 3-Card Method Grid",
     "Make styles minimal & dark"
   ];
 
@@ -100,10 +106,40 @@ export function AiCopilotPanel({
           props: b.props as Record<string, unknown>,
         })) as import('@/lib/types').PageBlock[] | undefined;
 
+        const payloadSections = response.suggestedAction.payload?.sections?.map(s => ({
+          id: s.id,
+          type: 'section' as const,
+          props: s.props as Record<string, unknown>,
+          blocks: s.blocks.map(b => ({
+            id: b.id,
+            type: b.type as import('@/lib/types').PageBlockType,
+            props: b.props as Record<string, unknown>,
+          })),
+        })) as import('@/lib/types').PageSection[] | undefined;
+
+        let payloadPageStructure: import('@/lib/types').CampaignPageStructure | undefined = undefined;
+        if (response.suggestedAction.payload?.pageStructure) {
+          payloadPageStructure = {
+            ...version.structureJson,
+            sections: (response.suggestedAction.payload.pageStructure.sections || []).map(s => ({
+              id: s.id,
+              type: 'section' as const,
+              props: s.props as Record<string, unknown>,
+              blocks: (s.blocks || []).map(b => ({
+                id: b.id,
+                type: b.type as import('@/lib/types').PageBlockType,
+                props: b.props as Record<string, unknown>,
+              })),
+            })),
+          };
+        }
+
         assistantMsg.suggestedAction = {
-          type: response.suggestedAction.type as 'add_section' | 'update_text',
+          type: response.suggestedAction.type as 'generate_page' | 'add_multiple_sections' | 'add_section' | 'update_text',
           label: response.suggestedAction.label,
           payload: {
+            pageStructure: payloadPageStructure,
+            sections: payloadSections,
             blockId: response.suggestedAction.payload?.blockId,
             props: response.suggestedAction.payload?.props as Record<string, unknown> | undefined,
             sectionProps: response.suggestedAction.payload?.sectionProps as Record<string, unknown> | undefined,
@@ -127,7 +163,29 @@ export function AiCopilotPanel({
   };
 
   const handleApplyAction = (action: Exclude<Message['suggestedAction'], undefined>) => {
-    if (action.type === 'add_section') {
+    if (action.type === 'generate_page' && action.payload?.pageStructure) {
+      if (onApplyPageStructure) {
+        onApplyPageStructure(action.payload.pageStructure);
+      } else if (onAppendMultipleSections && action.payload.pageStructure.sections) {
+        onAppendMultipleSections(action.payload.pageStructure.sections);
+      }
+      toast({
+        title: "Complete Page Generated",
+        description: "AI Page Architect applied layout to canvas. Use Cmd+Z to undo anytime.",
+      });
+    } else if (action.type === 'add_multiple_sections' && action.payload?.sections) {
+      if (onAppendMultipleSections) {
+        onAppendMultipleSections(action.payload.sections);
+      } else {
+        action.payload.sections.forEach(sec => {
+          onAppendSection(sec.props || {}, sec.blocks || []);
+        });
+      }
+      toast({
+        title: "Sections Inserted",
+        description: `${action.payload.sections.length} AI-generated sections appended to canvas.`,
+      });
+    } else if (action.type === 'add_section') {
       onAppendSection(action.payload?.sectionProps || {}, action.payload?.blocks || []);
       toast({
         title: "Section Inserted",
@@ -138,7 +196,7 @@ export function AiCopilotPanel({
         onUpdateBlockProps(action.payload.blockId, action.payload.props || {});
         toast({
           title: "Copy Updated",
-          description: "Injected dynamic parent admissions copy into active block props.",
+          description: "Injected dynamic copy into active block props.",
         });
       }
     }

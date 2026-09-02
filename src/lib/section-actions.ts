@@ -26,9 +26,10 @@ export async function saveSectionAction(
     
     await adminDb.collection('campaign_page_sections').doc(sectionId).set(template);
     return { success: true, id: sectionId };
-  } catch (error: any) {
-    console.error(">>> [SECTION] Save Template Failed:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : 'Unknown error occurred while saving section template';
+    console.error(">>> [SECTION] Save Template Failed:", errMsg);
+    return { success: false, error: errMsg };
   }
 }
 
@@ -42,7 +43,7 @@ export async function getSectionTemplatesAction(organizationId: string) {
             .get();
         
         return snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as PageSectionTemplate));
-    } catch (e) {
+    } catch (e: unknown) {
         console.error(">>> [SECTION] Fetch Failed:", e);
         return [];
     }

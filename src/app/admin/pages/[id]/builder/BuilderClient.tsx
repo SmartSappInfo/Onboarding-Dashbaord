@@ -1157,6 +1157,23 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                             }
                         });
                     }}
+                    onAppendMultipleSections={(sections) => {
+                        builder.updateStructure((prev) => ({
+                            ...prev,
+                            sections: [...prev.sections, ...sections],
+                        }));
+                        toast({
+                            title: "Sections Appended",
+                            description: `${sections.length} AI sections appended to canvas.`,
+                        });
+                    }}
+                    onApplyPageStructure={(newStructure) => {
+                        builder.dispatch({ type: 'UPDATE_STRUCTURE', payload: newStructure });
+                        toast({
+                            title: "Page Generated",
+                            description: "AI Page Architect applied layout to canvas. Use Cmd+Z to undo anytime.",
+                        });
+                    }}
                 />
 
                 {/* ─── PROPERTIES PANEL ON THE RIGHT ─── */}

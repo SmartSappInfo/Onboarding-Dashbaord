@@ -144,6 +144,8 @@ interface CanvasProps {
     onUpdateFooter?: (updates: Partial<PageFooterSettings>) => void;
     onSetViewport?: (viewport: 'desktop' | 'tablet' | 'mobile') => void;
     onAppendSection?: (sectionProps: Record<string, unknown>, blocks: PageBlock[]) => void;
+    onAppendMultipleSections?: (sections: PageSection[]) => void;
+    onApplyPageStructure?: (structure: import('@/lib/types').CampaignPageStructure) => void;
 }
 
 // Custom PointerSensor to support custom scaled drag offsets without escaping pointer bounds
@@ -904,6 +906,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onUpdateFooter,
     onSetViewport,
     onAppendSection,
+    onAppendMultipleSections,
+    onApplyPageStructure,
 }, ref) => {
     // Canvas Viewport Panning & Zooming Engine States
     const [zoom, setZoom] = useState(0.9);
@@ -2669,6 +2673,8 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                     <AiCopilotPanel
                         version={version}
                         onAppendSection={onAppendSection || (() => {})}
+                        onAppendMultipleSections={onAppendMultipleSections}
+                        onApplyPageStructure={onApplyPageStructure}
                         onUpdateBlockProps={onUpdateBlockProps}
                         selectedBlockId={selectedBlockId}
                     />

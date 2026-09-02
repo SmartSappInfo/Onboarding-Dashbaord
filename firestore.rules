@@ -2232,6 +2232,11 @@ service cloud.firestore {
       allow write: if isAuthorized() && (isSystemAdmin() || hasPermission('studios_edit'));
     }
 
+    match /campaign_page_sections/{sectionId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
+      allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));
+    }
+
     match /ai_change_sets/{changeSetId} {
       allow get, list: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow write: if isAuthorized() && (isSystemAdmin() || (hasPermission('studios_edit') && isOrgMatch(request.resource.data.organizationId)));

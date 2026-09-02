@@ -8,7 +8,7 @@
  * non-breaking fallback instead of crashing the page.
  */
 import React from 'react';
-import { getBlock, type BlockRenderContext } from '@/lib/page-builder/registry';
+import { getBlock, normalizeBlockType, type BlockRenderContext } from '@/lib/page-builder/registry';
 import type { PageBlock } from '@/lib/types';
 
 interface BlockRendererProps {
@@ -26,7 +26,8 @@ function UnknownBlock({ type, mode }: { type: string; mode: BlockRenderContext['
 }
 
 export const BlockRenderer = React.memo(function BlockRenderer({ block, ctx }: BlockRendererProps) {
-  const def = getBlock(block.type);
+  const canonicalType = normalizeBlockType(block.type);
+  const def = getBlock(canonicalType);
   if (!def) {
     return <UnknownBlock type={block.type} mode={ctx.mode} />;
   }
@@ -47,5 +48,6 @@ export const BlockRenderer = React.memo(function BlockRenderer({ block, ctx }: B
       }
     : ctx;
 
-  return def.render(props, block, renderCtx);
+  return def.render(props, { ...block, type: canonicalType }, renderCtx);
 });
+

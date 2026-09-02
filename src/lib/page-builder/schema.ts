@@ -9,7 +9,7 @@
  */
 import { z } from 'zod';
 import type { CampaignPageStructure, PageValidationResult, ValidationError, PageBlock, PageSection } from '@/lib/types';
-import { validateBlockProps } from './registry';
+import { validateBlockProps, normalizeBlockType } from './registry';
 
 const blockSchema: z.ZodTypeAny = z.lazy(() =>
   z.object({
@@ -149,7 +149,8 @@ export function validatePageStructure(raw: unknown): PageValidationResult {
 
   // Recursively validate blocks
   function inspectBlock(block: PageBlock, pathPrefix: string): PageBlock {
-    const safeProps = validateBlockProps(block);
+    const canonicalType = normalizeBlockType(block.type);
+    const safeProps = validateBlockProps({ ...block, type: canonicalType });
     
     // Check nested children if any
     let safeChildBlocks: PageBlock[] | undefined = undefined;
@@ -159,6 +160,7 @@ export function validatePageStructure(raw: unknown): PageValidationResult {
 
     return {
       ...block,
+      type: canonicalType,
       props: safeProps,
       blocks: safeChildBlocks,
     };

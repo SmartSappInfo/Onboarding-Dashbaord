@@ -4075,6 +4075,20 @@
       ]
     },
     {
+      "collectionGroup": "campaign_page_sections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "organizationId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "campaign_pages",
       "queryScope": "COLLECTION",
       "fields": [
