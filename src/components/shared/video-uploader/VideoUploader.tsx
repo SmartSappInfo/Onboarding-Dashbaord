@@ -1,9 +1,17 @@
 'use client';
 
+/**
+ * @fileOverview SmartSapp Unified Video Uploader — Single Source of Truth
+ * 
+ * Supports YouTube / Vimeo / MP4 streaming, direct video uploads with progress meter,
+ * integrated poster frame / thumbnail management, AI Thumbnail Designer, and Media Library video selection.
+ */
+
 import React, { useState, useRef } from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { addDoc, collection } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { uploadPageMedia, uploadPageImage } from '@/lib/page-builder/upload';
 import { EmptyState } from './EmptyState';
 import { UploadingState } from './UploadingState';
@@ -11,7 +19,10 @@ import { UploadedState } from './UploadedState';
 import { UrlDialog } from './UrlDialog';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import ThumbnailDesignerDialog from '@/components/shared/thumbnail-designer/ThumbnailDesignerDialog';
+import { Label } from '@/components/ui/label';
+import { Video } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 export interface VideoUploaderValue {
   videoUrl: string;
@@ -23,10 +34,11 @@ export interface VideoUploaderValue {
 }
 
 export interface VideoUploaderProps {
-  value?: VideoUploaderValue;
+  value?: VideoUploaderValue | string;
   onChange: (value: VideoUploaderValue) => void;
   workspaceId?: string;
   label?: string;
+  description?: string;
   maxVideoSizeMB?: number;
   className?: string;
 }
@@ -41,17 +53,27 @@ function extractYouTubeID(url?: string): string | null {
 export function VideoUploader({
   value = { videoUrl: '', thumbnailUrl: '', title: '', description: '' },
   onChange,
-  workspaceId,
+  workspaceId: propWorkspaceId,
   label,
+  description,
   maxVideoSizeMB = 150,
   className
 }: VideoUploaderProps) {
   const firestore = useFirestore();
   const { user } = useUser();
   const { toast } = useToast();
+  const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
+  const effectiveWorkspaceId = propWorkspaceId || activeWorkspaceId || undefined;
   
   const videoInputRef = useRef<HTMLInputElement>(null);
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+
+  const normalizedValue: VideoUploaderValue = React.useMemo(() => {
+    if (typeof value === 'string') {
+      return { videoUrl: value, thumbnailUrl: '', title: '', description: '' };
+    }
+    return value || { videoUrl: '', thumbnailUrl: '', title: '', description: '' };
+  }, [value]);
 
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoProgress, setVideoProgress] = useState(0);
@@ -108,23 +130,23 @@ export function VideoUploader({
     setTempVideoPreview(objectUrl);
 
     try {
-      const directWorkspaceId = workspaceId || 'temp';
+      const directWorkspaceId = effectiveWorkspaceId || 'temp';
       const downloadUrl = await uploadPageMedia(file, directWorkspaceId, (percent: number) => {
         setVideoProgress(percent);
       });
 
       // Register in media library if workspaceId is present
-      if (workspaceId && firestore && user) {
+      if (effectiveWorkspaceId && firestore && user) {
         const newAssetData = {
           name: file.name,
           originalName: file.name,
           url: downloadUrl,
-          fullPath: `media/page-builder/${workspaceId}/${file.name}`,
+          fullPath: `media/page-builder/${effectiveWorkspaceId}/${file.name}`,
           type: 'video' as const,
           mimeType: file.type || 'video/mp4',
           size: file.size,
           uploadedBy: user.uid,
-          workspaceIds: [workspaceId],
+          workspaceIds: [effectiveWorkspaceId],
           category: 'Page Builder',
           createdAt: new Date().toISOString()
         };
@@ -136,7 +158,7 @@ export function VideoUploader({
       const sizeStr = kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(1)} KB`;
 
       onChange({
-        ...value,
+        ...normalizedValue,
         videoUrl: downloadUrl,
         thumbnailUrl: '', // Reset thumbnail for new file upload
         fileName: file.name,
@@ -145,14 +167,14 @@ export function VideoUploader({
 
       toast({
         title: 'Video uploaded successfully',
-        description: workspaceId ? 'Registered in your Media.' : 'Applied successfully.'
+        description: effectiveWorkspaceId ? 'Registered in your Media Library.' : 'Applied successfully.'
       });
     } catch (error) {
-      console.error('Video uploader failed:', error);
+      console.error('Video upload failed:', error);
       toast({
         variant: 'destructive',
         title: 'Video upload failed',
-        description: 'An error occurred during file upload.'
+        description: 'An error occurred during video upload.'
       });
     } finally {
       setIsUploadingVideo(false);
@@ -162,29 +184,37 @@ export function VideoUploader({
   };
 
   const handleThumbnailUpload = async (file: File) => {
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: 'destructive',
+        title: 'Image size too large',
+        description: 'Thumbnail image must be less than 5MB.'
+      });
+      return;
+    }
+
     setIsUploadingThumbnail(true);
     setThumbnailProgress(0);
     const objectUrl = URL.createObjectURL(file);
     setTempThumbnailPreview(objectUrl);
 
     try {
-      const directWorkspaceId = workspaceId || 'temp';
+      const directWorkspaceId = effectiveWorkspaceId || 'temp';
       const downloadUrl = await uploadPageImage(file, directWorkspaceId, (percent: number) => {
         setThumbnailProgress(percent);
       });
 
-      // Register in media library if workspaceId is present
-      if (workspaceId && firestore && user) {
+      if (effectiveWorkspaceId && firestore && user) {
         const newAssetData = {
           name: file.name,
           originalName: file.name,
           url: downloadUrl,
-          fullPath: `media/page-builder/${workspaceId}/${file.name}`,
+          fullPath: `media/page-builder/${effectiveWorkspaceId}/${file.name}`,
           type: 'image' as const,
           mimeType: file.type || 'image/jpeg',
           size: file.size,
           uploadedBy: user.uid,
-          workspaceIds: [workspaceId],
+          workspaceIds: [effectiveWorkspaceId],
           category: 'Page Builder',
           createdAt: new Date().toISOString()
         };
@@ -192,20 +222,20 @@ export function VideoUploader({
       }
 
       onChange({
-        ...value,
+        ...normalizedValue,
         thumbnailUrl: downloadUrl
       });
 
       toast({
         title: 'Thumbnail uploaded',
-        description: 'Custom cover image applied successfully.'
+        description: 'Poster frame applied successfully.'
       });
     } catch (error) {
       console.error('Thumbnail upload failed:', error);
       toast({
         variant: 'destructive',
         title: 'Thumbnail upload failed',
-        description: 'An error occurred during file upload.'
+        description: 'Failed to upload poster image.'
       });
     } finally {
       setIsUploadingThumbnail(false);
@@ -215,67 +245,72 @@ export function VideoUploader({
   };
 
   const handleVideoLinkConfirm = (url: string) => {
-    // Reset thumbnail and extract new YouTube thumbnail if it is a YouTube URL
-    let derivedThumb = '';
-    const ytid = extractYouTubeID(url);
-    if (ytid) {
-      derivedThumb = `https://img.youtube.com/vi/${ytid}/maxresdefault.jpg`;
+    let thumb = normalizedValue.thumbnailUrl;
+    const ytId = extractYouTubeID(url);
+    if (ytId && !thumb) {
+      thumb = `https://img.youtube.com/vi/${ytId}/hqdefault.jpg`;
     }
 
     onChange({
-      ...value,
+      ...normalizedValue,
       videoUrl: url,
-      thumbnailUrl: derivedThumb,
-      fileName: 'linked-video.mp4',
-      fileSize: undefined
+      thumbnailUrl: thumb,
+      fileName: 'Streaming Link'
     });
 
     toast({
       title: 'Video link applied',
-      description: 'Successfully set the direct video URL.'
+      description: 'Stream URL set successfully.'
     });
   };
 
   const handleThumbnailLinkConfirm = (url: string) => {
     onChange({
-      ...value,
+      ...normalizedValue,
       thumbnailUrl: url
     });
+
     toast({
       title: 'Thumbnail link applied',
-      description: 'Successfully set custom cover image URL.'
+      description: 'Custom poster frame link set.'
     });
   };
 
-  const handleMetadataChange = (meta: { title: string; description: string }) => {
+  const handleSelectVideoAsset = (asset: MediaAsset) => {
     onChange({
-      ...value,
-      title: meta.title,
-      description: meta.description
+      ...normalizedValue,
+      videoUrl: asset.url,
+      fileName: asset.name,
+      fileSize: asset.size ? `${(asset.size / 1024 / 1024).toFixed(1)} MB` : undefined
     });
+    setIsVideoGalleryOpen(false);
   };
 
-  const handleRemoveVideo = () => {
+  const handleSelectThumbnailAsset = (asset: MediaAsset) => {
     onChange({
-      videoUrl: '',
-      thumbnailUrl: '',
-      title: '',
-      description: '',
-      fileName: undefined,
-      fileSize: undefined
+      ...normalizedValue,
+      thumbnailUrl: asset.url
     });
-  };
-
-  const handleRemoveThumbnail = () => {
-    onChange({
-      ...value,
-      thumbnailUrl: ''
-    });
+    setIsThumbnailGalleryOpen(false);
   };
 
   return (
-    <div className="w-full">
-      {/* Hidden file selector inputs */}
+    <div className={cn("w-full space-y-2", className)}>
+      {label && (
+        <div className="space-y-0.5 text-left">
+          <div className="flex items-center gap-2">
+            <div className="p-1 rounded-md bg-primary/10 text-primary">
+              <Video className="h-3.5 w-3.5" />
+            </div>
+            <Label className="text-xs font-bold text-foreground">{label}</Label>
+          </div>
+          {description && (
+            <p className="text-[10px] text-muted-foreground pl-6">{description}</p>
+          )}
+        </div>
+      )}
+
+      {/* Hidden inputs */}
       <input
         ref={videoInputRef}
         type="file"
@@ -295,103 +330,98 @@ export function VideoUploader({
         <UploadingState
           previewUrl={tempVideoPreview}
           progress={videoProgress}
-          className={className}
+          label="Uploading video file…"
+          isVideo
         />
       ) : isUploadingThumbnail ? (
         <UploadingState
           previewUrl={tempThumbnailPreview}
           progress={thumbnailProgress}
-          className={className}
+          label="Uploading poster image…"
         />
-      ) : value.videoUrl ? (
+      ) : normalizedValue.videoUrl ? (
         <UploadedState
-          videoUrl={value.videoUrl}
-          thumbnailUrl={value.thumbnailUrl}
-          title={value.title || ''}
-          description={value.description || ''}
-          fileName={value.fileName}
-          fileSize={value.fileSize}
-          showGallery={!!workspaceId}
+          videoUrl={normalizedValue.videoUrl}
+          thumbnailUrl={normalizedValue.thumbnailUrl}
+          title={normalizedValue.title || ''}
+          description={normalizedValue.description || ''}
+          fileName={normalizedValue.fileName}
+          fileSize={normalizedValue.fileSize}
+          showGallery={Boolean(effectiveWorkspaceId)}
           onTriggerReplaceVideo={handleTriggerVideoReplace}
           onTriggerReplaceThumbnail={handleTriggerThumbnailReplace}
           onTriggerGalleryVideo={() => setIsVideoGalleryOpen(true)}
           onTriggerGalleryThumbnail={() => setIsThumbnailGalleryOpen(true)}
           onOpenLinkVideo={() => setIsVideoLinkOpen(true)}
           onOpenLinkThumbnail={() => setIsThumbnailLinkOpen(true)}
-          onRemoveVideo={handleRemoveVideo}
-          onRemoveThumbnail={handleRemoveThumbnail}
-          onMetadataChange={handleMetadataChange}
-          onOpenAiDesigner={workspaceId ? () => setIsAiDesignerOpen(true) : undefined}
+          onRemoveVideo={() => onChange({ videoUrl: '', thumbnailUrl: '', title: '', description: '' })}
+          onRemoveThumbnail={() => onChange({ ...normalizedValue, thumbnailUrl: '' })}
+          onMetadataChange={(meta) => onChange({ ...normalizedValue, ...meta })}
+          onOpenAiDesigner={() => setIsAiDesignerOpen(true)}
         />
       ) : (
         <EmptyState
-          onTriggerReplace={handleTriggerVideoReplace}
-          onOpenGallery={() => setIsVideoGalleryOpen(true)}
-          onOpenLink={() => setIsVideoLinkOpen(true)}
-          showGallery={!!workspaceId}
+          onTriggerReplaceVideo={handleTriggerVideoReplace}
+          onOpenGalleryVideo={() => setIsVideoGalleryOpen(true)}
+          onOpenLinkVideo={() => setIsVideoLinkOpen(true)}
+          showGallery={Boolean(effectiveWorkspaceId)}
           maxSizeMB={maxVideoSizeMB}
-          className={className}
         />
       )}
 
-      {/* URL entry dialogs */}
+      {/* Dialogs */}
       <UrlDialog
         open={isVideoLinkOpen}
         onOpenChange={setIsVideoLinkOpen}
         onConfirm={handleVideoLinkConfirm}
+        initialValue={normalizedValue.videoUrl}
+        title="Link External Video Stream"
+        description="Paste a YouTube, Vimeo, or direct MP4 stream URL."
+        placeholder="https://www.youtube.com/watch?v=..."
       />
+
       <UrlDialog
         open={isThumbnailLinkOpen}
         onOpenChange={setIsThumbnailLinkOpen}
         onConfirm={handleThumbnailLinkConfirm}
+        initialValue={normalizedValue.thumbnailUrl}
+        title="Link Poster Frame Image"
+        description="Paste an image URL to use as the video cover."
+        placeholder="https://example.com/poster.jpg"
       />
 
-      {/* Media Selector Dialogs */}
-      {workspaceId && (
+      {effectiveWorkspaceId && (
         <>
           <MediaSelectorDialog
             open={isVideoGalleryOpen}
             onOpenChange={setIsVideoGalleryOpen}
-            onSelectAsset={(asset: MediaAsset) => {
-              onChange({
-                ...value,
-                videoUrl: asset.url,
-                thumbnailUrl: '', // Reset thumbnail for new gallery selection
-                fileName: asset.name,
-                fileSize: asset.size ? `${(asset.size / (1024 * 1024)).toFixed(1)} MB` : undefined
-              });
-              setIsVideoGalleryOpen(false);
-            }}
+            onSelectAsset={handleSelectVideoAsset}
             filterType="video"
-            workspaceId={workspaceId}
           />
           <MediaSelectorDialog
             open={isThumbnailGalleryOpen}
             onOpenChange={setIsThumbnailGalleryOpen}
-            onSelectAsset={(asset: MediaAsset) => {
-              onChange({
-                ...value,
-                thumbnailUrl: asset.url
-              });
-              setIsThumbnailGalleryOpen(false);
-            }}
+            onSelectAsset={handleSelectThumbnailAsset}
             filterType="image"
-            workspaceId={workspaceId}
-          />
-          <ThumbnailDesignerDialog
-            open={isAiDesignerOpen}
-            onOpenChange={setIsAiDesignerOpen}
-            workspaceId={workspaceId}
-            onSave={(imageUrl) => {
-              onChange({
-                ...value,
-                thumbnailUrl: imageUrl
-              });
-              setIsAiDesignerOpen(false);
-            }}
           />
         </>
       )}
+
+      {/* AI Thumbnail Designer */}
+      <ThumbnailDesignerDialog
+        open={isAiDesignerOpen}
+        onOpenChange={setIsAiDesignerOpen}
+        onApply={(url: string) => {
+          onChange({
+            ...normalizedValue,
+            thumbnailUrl: url
+          });
+          setIsAiDesignerOpen(false);
+        }}
+        initialTitle={normalizedValue.title || 'Institutional Overview'}
+        initialSubtitle={normalizedValue.description || 'Watch to learn more'}
+        contextName={normalizedValue.title || 'SmartSapp Video'}
+      />
     </div>
   );
 }

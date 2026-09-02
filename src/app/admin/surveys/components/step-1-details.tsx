@@ -46,7 +46,8 @@ import { cn } from '@/lib/utils';
 import { ThemePalettePicker } from './inspector/ThemePalettePicker';
 import { PatternSwatchSelector } from './inspector/PatternSwatchSelector';
 import { StepperStyleSelector } from './inspector/StepperStyleSelector';
-import { StudioMediaField } from './inspector/StudioMediaField';
+import { ImageUploader } from '@/components/shared/image-uploader';
+import { VideoUploader } from '@/components/shared/video-uploader';
 import type { StudioInspectorTab, SurveyBackgroundPattern, SurveyStepperVariant } from './inspector/types';
 
 interface Step1DetailsProps {}
@@ -571,71 +572,59 @@ export default function Step1Details(_props: Step1DetailsProps) {
             </CardHeader>
 
             <CardContent className="p-6 pt-0 space-y-6">
-              {/* Feature Video URL */}
-              <Controller
-                name="videoUrl"
-                control={control}
-                render={({ field }) => (
-                  <StudioMediaField
-                    label="Feature Video"
-                    description="YouTube, Vimeo, or direct MP4 link for introductory welcome video"
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                    filterType="video"
-                    placeholder="https://youtu.be/... or direct .mp4 URL"
-                  />
-                )}
-              />
+              {/* Feature Video & Poster Management */}
+              <div className="space-y-4">
+                <VideoUploader
+                  value={{
+                    videoUrl: watch('videoUrl') || '',
+                    thumbnailUrl: watch('videoThumbnailUrl') || '',
+                    title: watch('title') || '',
+                    description: watch('videoCaption') || '',
+                  }}
+                  onChange={(val) => {
+                    setValue('videoUrl', val.videoUrl, { shouldDirty: true });
+                    setValue('videoThumbnailUrl', val.thumbnailUrl, { shouldDirty: true });
+                    if (val.description) {
+                      setValue('videoCaption', val.description, { shouldDirty: true });
+                    }
+                  }}
+                  label="Introductory Feature Video & Poster Frame"
+                  description="YouTube, Vimeo, or direct MP4 link with integrated poster frame and AI thumbnail designer"
+                />
 
-              {/* Video Call to Action text */}
-              <Controller
-                name="videoCaption"
-                control={control}
-                render={({ field }) => (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
-                      <MessageSquareText className="h-3.5 w-3.5 text-primary" /> Video Call-to-Action Text
-                    </Label>
-                    <Input
-                      {...field}
-                      value={field.value || ''}
-                      placeholder="e.g. Watch Director's Welcome (0:45)"
-                      className="h-11 rounded-xl bg-card border border-border/60"
-                    />
-                  </div>
-                )}
-              />
+                {/* Video Call to Action text */}
+                <Controller
+                  name="videoCaption"
+                  control={control}
+                  render={({ field }) => (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <MessageSquareText className="h-3.5 w-3.5 text-primary" /> Video Call-to-Action Text
+                      </Label>
+                      <Input
+                        {...field}
+                        value={field.value || ''}
+                        placeholder="e.g. Watch Director's Welcome (0:45)"
+                        className="h-11 rounded-xl bg-card border border-border/60"
+                      />
+                    </div>
+                  )}
+                />
+              </div>
 
               <div className="h-px bg-border/50" />
-
-              {/* Video Poster Frame */}
-              <Controller
-                name="videoThumbnailUrl"
-                control={control}
-                render={({ field }) => (
-                  <StudioMediaField
-                    label="Video Poster Frame (Thumbnail)"
-                    description="High-resolution visual displayed before the respondent presses play"
-                    value={field.value || ''}
-                    onChange={field.onChange}
-                    filterType="image"
-                    placeholder="Paste image URL or pick from library..."
-                  />
-                )}
-              />
 
               {/* Banner Cover Image (Fallback) */}
               <Controller
                 name="bannerImageUrl"
                 control={control}
                 render={({ field }) => (
-                  <StudioMediaField
+                  <ImageUploader
                     label="Cover Banner Image (Fallback)"
                     description="Header banner displayed when no intro video is configured"
                     value={field.value || ''}
                     onChange={field.onChange}
-                    filterType="image"
-                    placeholder="Paste image URL or pick from library..."
+                    aspectRatio="video"
                   />
                 )}
               />
@@ -645,13 +634,12 @@ export default function Step1Details(_props: Step1DetailsProps) {
                 name="logoUrl"
                 control={control}
                 render={({ field }) => (
-                  <StudioMediaField
+                  <ImageUploader
                     label="Custom Brand Logo Override"
                     description="Leave empty to use the associated entity's verified institutional logo"
                     value={field.value || ''}
                     onChange={field.onChange}
-                    filterType="image"
-                    placeholder="Paste logo URL or pick from library..."
+                    aspectRatio="square"
                   />
                 )}
               />
