@@ -301,8 +301,58 @@
           "order": "ASCENDING"
         },
         {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "survey_deployments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "surveyId",
+          "order": "ASCENDING"
+        },
+        {
           "fieldPath": "workspaceId",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "surveyDeployments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "surveyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
+        }
+      ]
+    },
+    {
+      "collectionGroup": "surveyDeployments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "surveyId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "createdAt",
+          "order": "DESCENDING"
         }
       ]
     },

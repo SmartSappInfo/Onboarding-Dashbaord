@@ -42,6 +42,8 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { getSurveyDeploymentsAction } from '@/lib/surveys/survey-deployment-actions';
+import { DeploymentManagerDialog } from '@/app/admin/surveys/components/DeploymentManagerDialog';
 
 import { DistributionOverviewTab } from './components/DistributionOverviewTab';
 import { LinksTab } from './components/LinksTab';
@@ -62,6 +64,8 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
   const firestore = useFirestore();
 
   const activeTab = searchParams.get('tab') || 'overview';
+  const [managerOpen, setManagerOpen] = React.useState(false);
+  const [serverDeployments, setServerDeployments] = React.useState<SurveyDeployment[]>([]);
 
   const setTab = (newTab: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -76,7 +80,25 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
   );
   const { data: survey, isLoading: isLoadingSurvey } = useDoc<Survey>(surveyDocRef);
 
-  // Fetch Deployments
+  const activeWorkspaceId = survey?.workspaceIds?.[0] || '';
+
+  const fetchDeployments = React.useCallback(async () => {
+    if (!surveyId) return;
+    try {
+      const res = await getSurveyDeploymentsAction(surveyId, activeWorkspaceId || 'default');
+      if (res.success && res.deployments) {
+        setServerDeployments(res.deployments);
+      }
+    } catch {
+      // Ignored: fallback to Firestore listener
+    }
+  }, [surveyId, activeWorkspaceId]);
+
+  React.useEffect(() => {
+    fetchDeployments();
+  }, [fetchDeployments]);
+
+  // Fetch Deployments via Firestore Live Listener
   const deploymentsQuery = useMemoFirebase(
     () => (firestore && surveyId ? query(
       collection(firestore, 'survey_deployments'),
@@ -86,7 +108,10 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
     [firestore, surveyId]
   );
   const { data: rawDeployments } = useCollection<SurveyDeployment>(deploymentsQuery);
-  const deployments = React.useMemo(() => rawDeployments || [], [rawDeployments]);
+  const deployments = React.useMemo(() => {
+    if (rawDeployments && rawDeployments.length > 0) return rawDeployments;
+    return serverDeployments;
+  }, [rawDeployments, serverDeployments]);
 
   // Build Default Public URL
   const defaultUrl = React.useMemo(() => {
@@ -150,6 +175,15 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
           </div>
 
           <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setManagerOpen(true)}
+              className="rounded-xl h-10 px-4 text-xs font-semibold gap-1.5"
+            >
+              <Share2 className="h-3.5 w-3.5 text-primary" />
+              Manage Channels & Links
+            </Button>
             <Button
               variant="outline"
               size="sm"
@@ -243,7 +277,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               totalResponses={survey.totalResponses || 0}
-              onRefresh={() => {}}
+              onRefresh={fetchDeployments}
             />
           </TabsContent>
 
@@ -252,7 +286,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => {}}
+              onRefresh={fetchDeployments}
             />
           </TabsContent>
 
@@ -261,7 +295,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => {}}
+              onRefresh={fetchDeployments}
             />
           </TabsContent>
 
@@ -270,7 +304,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => {}}
+              onRefresh={fetchDeployments}
             />
           </TabsContent>
 
@@ -279,7 +313,7 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
               survey={survey}
               deployments={deployments}
               defaultUrl={defaultUrl}
-              onRefresh={() => {}}
+              onRefresh={fetchDeployments}
             />
           </TabsContent>
 
@@ -304,6 +338,19 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
             />
           </TabsContent>
         </Tabs>
+
+        {/* Deployment Manager Dialog */}
+        <DeploymentManagerDialog
+          open={managerOpen}
+          onOpenChange={(val) => {
+            setManagerOpen(val);
+            if (!val) fetchDeployments();
+          }}
+          surveyId={surveyId}
+          workspaceId={activeWorkspaceId || 'default'}
+          surveyTitle={survey.title || 'Survey'}
+          defaultSlug={survey.slug || surveyId}
+        />
       </div>
     </PageContainerFluid>
   );
