@@ -63,6 +63,13 @@ export async function seedInfrastructureAction(): Promise<SeedInfrastructureResu
     const { ensureOrgDefaultStyleAdmin } = await import('@/lib/services/style-resolver-server');
     await ensureOrgDefaultStyleAdmin(orgId, { name: 'SmartSapp HQ' });
 
+    // Auto-provision seed departments for smartsapp-hq
+    const { DepartmentSeedService } = await import('@/lib/services/workforce/department-seed-service');
+    const deptSeedResult = await DepartmentSeedService.seedDepartmentsForOrganization(orgId, 'SaaS');
+    if (deptSeedResult.count > 0) {
+      seeded.push(`Departments (${deptSeedResult.count}): ${orgId}`);
+    }
+
     // 2. Ensure Core Workspaces anchored to Org
     const coreWorkspaces = [
       { id: 'onboarding', name: 'Client Onboarding', orgId, color: '#3B5FFF', contactScope: 'institution' },

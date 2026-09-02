@@ -8,6 +8,7 @@ import { getErrorMessage } from './backoffice-errors';
 import { enqueueApproval } from './approval-registry';
 
 import type { Organization } from '../types';
+import { DepartmentSeedService } from '../services/workforce/department-seed-service';
 
 // Security: every action verifies the caller's ID token and enforces RBAC via
 // `authorizeBackoffice` (server-auth-actions). The audit actor is derived
@@ -369,6 +370,14 @@ export async function createOrganizationFromBackofficeAction(
     };
 
     await newOrgRef.set(newOrgData);
+
+    // Auto-provision industry seed departments for new organization
+    await DepartmentSeedService.seedDepartmentsForOrganization(
+      slug,
+      (data as { industry?: string }).industry
+    ).catch((seedErr) => {
+      console.warn(`[createOrganizationAction] Department auto-seed warning for ${slug}:`, seedErr);
+    });
 
     // Write audit log
     const after = createAuditSnapshot(newOrgData as Record<string, unknown>);

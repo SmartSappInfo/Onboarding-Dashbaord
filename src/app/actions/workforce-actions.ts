@@ -27,6 +27,7 @@ import type {
   UserProfile,
 } from '@/lib/types';
 import { DepartmentService, CreateDepartmentPayload, UpdateDepartmentPayload } from '@/lib/services/workforce/department-service';
+import { DepartmentSeedService, type BackfillSummary } from '@/lib/services/workforce/department-seed-service';
 import { TeamService, CreateTeamPayload, UpdateTeamPayload } from '@/lib/services/workforce/team-service';
 import { InvitationLifecycleService, CreateInvitationPayload } from '@/lib/services/workforce/invitation-lifecycle-service';
 import { AccessRequestService, SubmitAccessRequestPayload } from '@/lib/services/workforce/access-request-service';
@@ -178,11 +179,38 @@ export async function listDepartmentsAction(params: {
 }> {
   try {
     await verifyCallerAuth(params.idToken, params.organizationId);
-    const departments = await DepartmentService.listDepartments(params.organizationId);
+    let departments = await DepartmentService.listDepartments(params.organizationId);
+    if (departments.length === 0) {
+      // Auto-provision industry seed departments if organization has 0 departments
+      const seedRes = await DepartmentSeedService.seedDepartmentsForOrganization(params.organizationId);
+      if (seedRes.departments && seedRes.departments.length > 0) {
+        departments = seedRes.departments;
+      }
+    }
     return { success: true, departments };
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : 'Failed to list departments';
     return { success: false, departments: [], error };
+  }
+}
+
+export async function backfillDepartmentSeedsAction(params: {
+  idToken: string;
+}): Promise<{
+  success: boolean;
+  summary?: BackfillSummary;
+  error?: string;
+}> {
+  try {
+    const caller = await verifyCallerAuth(params.idToken, '');
+    if (!caller.isSystemAdmin) {
+      throw new Error('Forbidden: System Administrator privileges required for global department backfill.');
+    }
+    const summary = await DepartmentSeedService.backfillOrganizationsWithoutDepartments();
+    return { success: true, summary };
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : 'Failed to backfill departments';
+    return { success: false, error };
   }
 }
 
