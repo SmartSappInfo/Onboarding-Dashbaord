@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Download, Printer, Sliders } from 'lucide-react';
+import { Download, Printer, Sliders, QrCode } from 'lucide-react';
 import type { Survey } from '@/lib/types';
 
 export interface QrStudioTabProps {
@@ -37,11 +37,11 @@ export function QrStudioTab({ survey, defaultUrl }: QrStudioTabProps) {
     async function initQR() {
       if (!qrContainerRef.current) return;
       try {
-        const QRCodeStylingModule = (await import('qr-code-styling')).default;
-        if (!active) return;
+        const QRCodeStyling = (await import('qr-code-styling')).default;
+        if (!active || !qrContainerRef.current) return;
 
         qrContainerRef.current.innerHTML = '';
-        const qrCode = new QRCodeStylingModule({
+        const qrCode = new QRCodeStyling({
           width: 260,
           height: 260,
           type: 'svg',
@@ -103,15 +103,17 @@ export function QrStudioTab({ survey, defaultUrl }: QrStudioTabProps) {
       <div className="lg:col-span-7 space-y-6">
         <Card className="rounded-2xl border-border bg-card shadow-sm">
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                <Sliders className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-bold">QR Design Studio</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Customize colors, pattern geometry, and brand logos for physical touchpoints.
-                </CardDescription>
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
+                  <Sliders className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-base font-bold text-foreground">QR Design Studio</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Customize colors, pattern geometry, and brand logos for physical touchpoints.
+                  </CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -189,9 +191,21 @@ export function QrStudioTab({ survey, defaultUrl }: QrStudioTabProps) {
 
       {/* Right QR Live Preview & Action Kits */}
       <div className="lg:col-span-5 space-y-6">
-        <Card className="rounded-2xl border-border bg-card shadow-sm text-center">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold">Print & Digital Vector Preview</CardTitle>
+        <Card className="rounded-2xl border-border bg-card shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
+                  <QrCode className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-sm font-bold text-foreground">Print & Digital Vector Preview</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    High-resolution vector QR for signage, tent cards, and print materials.
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="space-y-5 flex flex-col items-center">
             <div className="p-4 rounded-2xl bg-white shadow-md border border-slate-200 inline-flex items-center justify-center min-h-[280px] min-w-[280px]">

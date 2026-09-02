@@ -61,15 +61,17 @@ export function WebEmbedTab({ survey, defaultUrl }: WebEmbedTabProps) {
     <div className="space-y-6">
       <Card className="rounded-2xl border-border bg-card shadow-sm">
         <CardHeader className="pb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
-              <Layers className="h-5 w-5" />
-            </div>
-            <div>
-              <CardTitle className="text-base font-bold">Web Embed & Widget SDK</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Embed this survey seamlessly into websites, web applications, or student/parent portals.
-              </CardDescription>
+          <div className="flex items-center justify-between gap-4 w-full">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
+                <Code className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col justify-center min-w-0">
+                <CardTitle className="text-base font-bold text-foreground">Web Embed & Widget SDK</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                  Embed this survey seamlessly into websites, web applications, or student/parent portals.
+                </CardDescription>
+              </div>
             </div>
           </div>
         </CardHeader>

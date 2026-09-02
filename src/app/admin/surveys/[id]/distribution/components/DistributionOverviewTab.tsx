@@ -101,16 +101,23 @@ export function DistributionOverviewTab({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Funnel Card */}
         <Card className="lg:col-span-6 rounded-2xl border-border bg-card shadow-sm">
-          <CardHeader className="pb-4 flex flex-row items-center justify-between">
-            <div>
-              <CardTitle className="text-sm font-bold">Distribution & Conversion Funnel</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Progression from delivery to final completed response.
-              </CardDescription>
+          <CardHeader className="pb-4">
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
+                  <BarChart3 className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-sm font-bold text-foreground">Distribution & Conversion Funnel</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Progression from delivery to final completed response.
+                  </CardDescription>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={onRefresh} className="h-8 text-xs text-muted-foreground hover:text-foreground ml-auto shrink-0 active:scale-[0.97]">
+                <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={onRefresh} className="h-8 text-xs text-muted-foreground hover:text-foreground">
-              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
-            </Button>
           </CardHeader>
 
           <CardContent className="space-y-4">
@@ -149,10 +156,22 @@ export function DistributionOverviewTab({
         {/* Right Channel Performance */}
         <Card className="lg:col-span-6 rounded-2xl border-border bg-card shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="text-sm font-bold">Active Channel Deployments</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Performance breakdown across omnichannel surfaces.
-            </CardDescription>
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
+                  <Layers className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-sm font-bold text-foreground">Active Channel Deployments</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Performance breakdown across omnichannel surfaces.
+                  </CardDescription>
+                </div>
+              </div>
+              <Badge variant="outline" className="font-mono text-xs font-semibold ml-auto shrink-0">
+                {deployments.length} Channels
+              </Badge>
+            </div>
           </CardHeader>
 
           <CardContent>

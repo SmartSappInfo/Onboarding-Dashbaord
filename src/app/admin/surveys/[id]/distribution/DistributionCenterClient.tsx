@@ -212,59 +212,59 @@ export default function DistributionCenterClient({ surveyId }: DistributionCente
         {/* Tab Navigation */}
         <Tabs value={activeTab} onValueChange={setTab} className="space-y-6">
           <div className="overflow-x-auto pb-1 scrollbar-none">
-            <TabsList className="bg-muted/40 p-1 rounded-2xl h-auto gap-1 border border-border/40 inline-flex min-w-full sm:min-w-0">
+            <TabsList className="bg-muted/50 p-1.5 rounded-2xl h-auto gap-1 border border-border/60 inline-flex min-w-full sm:min-w-0">
               <TabsTrigger
                 value="overview"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <Share2 className="h-3.5 w-3.5 text-primary" />
                 Overview
               </TabsTrigger>
               <TabsTrigger
                 value="links"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <Link2 className="h-3.5 w-3.5 text-emerald-500" />
                 Links & Slugs
               </TabsTrigger>
               <TabsTrigger
                 value="email"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <Mail className="h-3.5 w-3.5 text-blue-500" />
                 Email Campaign
               </TabsTrigger>
               <TabsTrigger
                 value="sms"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <Smartphone className="h-3.5 w-3.5 text-violet-500" />
                 SMS Blast
               </TabsTrigger>
               <TabsTrigger
                 value="whatsapp"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <MessageSquare className="h-3.5 w-3.5 text-emerald-600" />
                 WhatsApp
               </TabsTrigger>
               <TabsTrigger
                 value="qr"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <QrCode className="h-3.5 w-3.5 text-amber-500" />
                 QR Studio
               </TabsTrigger>
               <TabsTrigger
                 value="embed"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <Code className="h-3.5 w-3.5 text-indigo-500" />
                 Web Embed
               </TabsTrigger>
               <TabsTrigger
                 value="kiosk"
-                className="rounded-xl px-4 py-2 text-xs font-bold data-[state=active]:bg-background data-[state=active]:shadow-xs min-h-[44px] sm:min-h-[38px] flex items-center gap-2"
+                className="rounded-xl px-4 py-2 text-xs font-bold transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-sm data-[state=active]:border data-[state=active]:border-border/60 min-h-[44px] sm:min-h-[38px] flex items-center gap-2 active:scale-[0.97]"
               >
                 <Monitor className="h-3.5 w-3.5 text-slate-500" />
                 Kiosk Mode

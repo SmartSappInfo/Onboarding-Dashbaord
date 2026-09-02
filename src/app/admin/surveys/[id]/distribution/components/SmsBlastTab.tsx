@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Smartphone, Send, Loader2, CheckCircle2 } from 'lucide-react';
+import { Smartphone, Send, Loader2, CheckCircle2, MessageSquare } from 'lucide-react';
 import { AudienceSelector } from './AudienceSelector';
 import { createSurveyDistributionCampaignAction, dispatchSurveyDistributionCampaignAction } from '@/lib/surveys/survey-campaign-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -41,11 +41,11 @@ export function SmsBlastTab({
   const { user } = useUser();
   const { toast } = useToast();
 
-  const [campaignName, setCampaignName] = React.useState(`${survey.title || 'Survey'} SMS Blast`);
+  const [campaignName, setCampaignName] = React.useState(`${survey.title || 'Survey'} - SMS Blast`);
   const [selectedTagIds, setSelectedTagIds] = React.useState<string[]>([]);
   const [audienceCount, setAudienceCount] = React.useState(0);
   const [messageBody, setMessageBody] = React.useState(
-    'Hi {{recipient_name}}, please take 2 mins to complete our survey: {{survey_link}}'
+    'Hello {{recipient_name}}, please take 2 minutes to fill out our survey: {{survey_link}}'
   );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [lastResult, setLastResult] = React.useState<{ dispatched: number; failed: number } | null>(null);
@@ -78,7 +78,7 @@ export function SmsBlastTab({
         },
         messageConfig: {
           messageBody,
-          templateId: 'sms_survey_blast',
+          templateId: 'sms_survey_invitation',
         },
         createdBy: user.uid,
       });
@@ -111,15 +111,17 @@ export function SmsBlastTab({
       <div className="lg:col-span-7 space-y-6">
         <Card className="rounded-2xl border-border bg-card shadow-sm">
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
-                <Smartphone className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-bold">SMS Text Blast</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Send direct SMS invitations with high deliverability and personalized tracking tokens.
-                </CardDescription>
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 shrink-0 flex items-center justify-center">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-base font-bold text-foreground">SMS Text Blast</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Send direct SMS invitations with high deliverability and personalized tracking tokens.
+                  </CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -187,9 +189,21 @@ export function SmsBlastTab({
 
       {/* SMS Screen Mockup */}
       <div className="lg:col-span-5 space-y-6">
-        <Card className="rounded-2xl border-border bg-card shadow-sm text-center">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold">SMS Mobile Preview</CardTitle>
+        <Card className="rounded-2xl border-border bg-card shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-600 shrink-0 flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-sm font-bold text-foreground">SMS Mobile Preview</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Live preview of the recipient SMS message bubble.
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col items-center">
             <div className="w-[280px] rounded-[32px] border-[6px] border-slate-800 bg-slate-100 p-3 shadow-xl text-left text-xs">

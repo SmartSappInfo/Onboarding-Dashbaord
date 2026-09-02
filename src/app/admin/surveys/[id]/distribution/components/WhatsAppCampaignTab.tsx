@@ -115,15 +115,17 @@ export function WhatsAppCampaignTab({
       <div className="lg:col-span-7 space-y-6">
         <Card className="rounded-2xl border-border bg-card shadow-sm">
           <CardHeader className="pb-4">
-            <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600">
-                <MessageSquare className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-bold">WhatsApp Cloud Campaign</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Send high-converting WhatsApp survey notifications with interactive CTA buttons.
-                </CardDescription>
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0 flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-base font-bold text-foreground">WhatsApp Cloud Campaign</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Send high-converting WhatsApp survey notifications with interactive CTA buttons.
+                  </CardDescription>
+                </div>
               </div>
             </div>
           </CardHeader>
@@ -197,9 +199,21 @@ export function WhatsAppCampaignTab({
 
       {/* WhatsApp Message Preview */}
       <div className="lg:col-span-5 space-y-6">
-        <Card className="rounded-2xl border-border bg-card shadow-sm text-center">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-bold">WhatsApp Recipient Preview</CardTitle>
+        <Card className="rounded-2xl border-border bg-card shadow-sm">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between gap-4 w-full">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-600 shrink-0 flex items-center justify-center">
+                  <Smartphone className="h-5 w-5" />
+                </div>
+                <div className="flex flex-col justify-center min-w-0">
+                  <CardTitle className="text-sm font-bold text-foreground">WhatsApp Recipient Preview</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Live preview of Meta WhatsApp business chat bubble.
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
           </CardHeader>
           <CardContent className="flex flex-col items-center">
             {/* Phone Screen Mockup */}

@@ -65,19 +65,19 @@ export function LinksTab({
       {/* Primary Public Link Card */}
       <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden">
         <CardHeader className="pb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-primary/10 text-primary">
+          <div className="flex items-center justify-between gap-4 w-full">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
                 <Globe className="h-5 w-5" />
               </div>
-              <div>
-                <CardTitle className="text-base font-bold">Canonical Public Link</CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
+              <div className="flex flex-col justify-center min-w-0">
+                <CardTitle className="text-base font-bold text-foreground">Public Link</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
                   The primary respondent-facing URL for this survey blueprint.
                 </CardDescription>
               </div>
             </div>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold text-xs">
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold text-xs ml-auto shrink-0">
               <ShieldCheck className="h-3.5 w-3.5 mr-1" />
               {survey.status === 'published' ? 'Active & Published' : 'Draft / Private'}
             </Badge>
@@ -128,16 +128,23 @@ export function LinksTab({
 
       {/* Web Deployments List */}
       <Card className="rounded-2xl border-border bg-card shadow-sm">
-        <CardHeader className="pb-3 flex flex-row items-center justify-between">
-          <div>
-            <CardTitle className="text-sm font-bold">Web Distribution Channels</CardTitle>
-            <CardDescription className="text-xs text-muted-foreground">
-              Segmented tracking links created for targeted web channels.
-            </CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between gap-4 w-full">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 rounded-xl bg-primary/10 text-primary shrink-0 flex items-center justify-center">
+                <Link2 className="h-5 w-5" />
+              </div>
+              <div className="flex flex-col justify-center min-w-0">
+                <CardTitle className="text-sm font-bold text-foreground">Web Distribution Channels</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                  Segmented tracking links created for targeted web channels.
+                </CardDescription>
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={onRefresh} className="h-8 text-xs text-muted-foreground hover:text-foreground ml-auto shrink-0 active:scale-[0.97]">
+              <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+            </Button>
           </div>
-          <Button variant="ghost" size="sm" onClick={onRefresh} className="h-8 text-xs text-muted-foreground hover:text-foreground">
-            <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
-          </Button>
         </CardHeader>
         <CardContent>
           {webDeployments.length === 0 ? (
