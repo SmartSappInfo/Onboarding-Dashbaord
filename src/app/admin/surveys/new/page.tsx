@@ -125,37 +125,54 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     ];
 
     return (
-        <div className="flex items-center justify-center gap-2 mb-12 max-w-2xl mx-auto px-4">
-            {steps.map((step, i) => {
-                const isActive = currentStep === step.n;
-                const isCompleted = currentStep > step.n;
-                
-                return (
-                    <React.Fragment key={step.label}>
-                        <button
-                            type="button"
-                            onClick={() => onStepClick(step.n)}
-                            className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all duration-200 ${
-                                isActive
-                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
-                                    : isCompleted
-                                    ? 'bg-primary/10 text-primary cursor-pointer hover:bg-primary/20'
-                                    : 'bg-muted text-muted-foreground cursor-pointer hover:bg-muted/80'
-                            }`}
-                        >
-                            {isCompleted ? (
-                                <Check className="h-3 w-3" />
-                            ) : (
-                                <span>{step.n}</span>
+        <div className="flex justify-center items-center mb-2.5 max-w-2xl mx-auto px-2 select-none">
+            <div className="flex items-center gap-1 sm:gap-2 p-1 rounded-full bg-muted/40 border border-border/60 shadow-xs max-w-full overflow-x-auto no-scrollbar">
+                {steps.map((step, index) => {
+                    const isActive = currentStep === step.n;
+                    const isCompleted = currentStep > step.n;
+                    const Icon = step.icon;
+
+                    return (
+                        <React.Fragment key={step.label}>
+                            <button 
+                                type="button"
+                                onClick={() => onStepClick(step.n)}
+                                className={cn(
+                                    'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 outline-none active:scale-[0.97] shrink-0',
+                                    isActive
+                                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                                        : isCompleted
+                                        ? 'text-primary hover:bg-primary/10'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
+                                )}
+                            >
+                                <div className="flex items-center justify-center">
+                                    {isCompleted ? (
+                                        <Check className="w-3.5 h-3.5 text-primary stroke-[3]" />
+                                    ) : (
+                                        <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                                    )}
+                                </div>
+                                <span className={cn(
+                                    "text-[11px] uppercase tracking-wider font-bold",
+                                    isActive ? "text-primary-foreground" : isCompleted ? "text-primary" : "text-muted-foreground"
+                                )}>
+                                    {step.n}. {step.label}
+                                </span>
+                            </button>
+                            {index < steps.length - 1 && (
+                                <div className="w-3 sm:w-5 h-[2px] bg-border rounded-full overflow-hidden shrink-0 relative">
+                                    <motion.div 
+                                        initial={false}
+                                        animate={{ width: isCompleted ? '100%' : '0%' }}
+                                        className="absolute inset-0 bg-primary"
+                                    />
+                                </div>
                             )}
-                            <span className="hidden sm:inline">{step.label}</span>
-                        </button>
-                        {i < steps.length - 1 && (
-                            <div className={`flex-1 h-0.5 rounded-full transition-colors ${isCompleted ? 'bg-primary/40' : 'bg-border'}`} />
-                        )}
-                    </React.Fragment>
-                );
-            })}
+                        </React.Fragment>
+                    );
+                })}
+            </div>
         </div>
     );
 };

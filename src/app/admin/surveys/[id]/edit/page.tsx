@@ -175,47 +175,54 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     ];
 
     return (
-        <div className="flex justify-center items-center mb-3 max-w-xl mx-auto px-2">
-            {steps.map((step, index) => {
-                const isActive = currentStep === step.n;
-                const isCompleted = currentStep > step.n;
-                const Icon = step.icon;
+        <div className="flex justify-center items-center mb-2.5 max-w-2xl mx-auto px-2 select-none">
+            <div className="flex items-center gap-1 sm:gap-2 p-1 rounded-full bg-muted/40 border border-border/60 shadow-xs max-w-full overflow-x-auto no-scrollbar">
+                {steps.map((step, index) => {
+                    const isActive = currentStep === step.n;
+                    const isCompleted = currentStep > step.n;
+                    const Icon = step.icon;
 
-                return (
-                    <React.Fragment key={step.label}>
-                        <button 
-                            type="button"
-                            onClick={() => onStepClick(step.n)}
-                            className="flex flex-col items-center group outline-none active:scale-[0.97] transition-transform"
-                        >
-                            <div
+                    return (
+                        <React.Fragment key={step.label}>
+                            <button 
+                                type="button"
+                                onClick={() => onStepClick(step.n)}
                                 className={cn(
-                                    'flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 shadow-xs',
-                                    isCompleted ? 'bg-primary border-primary text-white' : 
-                                    isActive ? 'bg-primary/10 border-primary text-primary ring-2 ring-primary/20 shadow-xs' : 'bg-background border-border text-muted-foreground hover:border-foreground/30',
+                                    'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 outline-none active:scale-[0.97] shrink-0',
+                                    isActive
+                                        ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
+                                        : isCompleted
+                                        ? 'text-primary hover:bg-primary/10'
+                                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/80'
                                 )}
                             >
-                                {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-4 h-4" />}
-                            </div>
-                            <p className={cn(
-                                'mt-1 text-[9px] font-bold uppercase tracking-wider transition-colors', 
-                                isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
-                            )}>
-                                {step.label}
-                            </p>
-                        </button>
-                        {index < steps.length - 1 && (
-                            <div className="flex-1 mx-2.5 h-[2px] bg-muted rounded-full overflow-hidden relative">
-                                <motion.div 
-                                    initial={false}
-                                    animate={{ width: isCompleted ? '100%' : '0%' }}
-                                    className="absolute inset-0 bg-primary"
-                                />
-                            </div>
-                        )}
-                    </React.Fragment>
-                );
-            })}
+                                <div className="flex items-center justify-center">
+                                    {isCompleted ? (
+                                        <Check className="w-3.5 h-3.5 text-primary stroke-[3]" />
+                                    ) : (
+                                        <Icon className={cn("w-3.5 h-3.5", isActive ? "text-primary-foreground" : "text-muted-foreground")} />
+                                    )}
+                                </div>
+                                <span className={cn(
+                                    "text-[11px] uppercase tracking-wider font-bold",
+                                    isActive ? "text-primary-foreground" : isCompleted ? "text-primary" : "text-muted-foreground"
+                                )}>
+                                    {step.n}. {step.label}
+                                </span>
+                            </button>
+                            {index < steps.length - 1 && (
+                                <div className="w-3 sm:w-5 h-[2px] bg-border rounded-full overflow-hidden shrink-0 relative">
+                                    <motion.div 
+                                        initial={false}
+                                        animate={{ width: isCompleted ? '100%' : '0%' }}
+                                        className="absolute inset-0 bg-primary"
+                                    />
+                                </div>
+                            )}
+                        </React.Fragment>
+                    );
+                })}
+            </div>
         </div>
     );
 };

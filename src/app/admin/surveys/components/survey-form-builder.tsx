@@ -36,6 +36,7 @@ import { StructureNavigator } from './StructureNavigator';
 import { LogicStudioModal } from './LogicStudioModal';
 import { AiQuestionRefinementModal } from './AiQuestionRefinementModal';
 import { SurveyQualityAuditorDrawer } from './SurveyQualityAuditorDrawer';
+import { StudioDynamicIsland } from './StudioDynamicIsland';
 import { Badge } from '@/components/ui/badge';
 import { Split, FolderTree } from 'lucide-react';
 
@@ -397,6 +398,33 @@ export default function SurveyFormBuilder() {
 
                 {/* 1. Middle Canvas - The Question Editor or Preview */}
                 <div className="flex-1 relative overflow-hidden bg-transparent flex flex-col">
+                    {/* Floating Studio Dynamic Island Action Dock */}
+                    <StudioDynamicIsland
+                        canUndo={canUndo}
+                        canRedo={canRedo}
+                        onUndo={handleUndo}
+                        onRedo={handleRedo}
+                        isAccordion={isAccordion}
+                        onToggleAccordion={toggleAccordion}
+                        allPagesEnabled={allPagesEnabled}
+                        onToggleAllPageBreaks={toggleAllPageBreaks}
+                        allValidationEnabled={allValidationEnabled}
+                        onToggleAllValidation={toggleAllValidation}
+                        isTitleBold={watch('questionTitleBold') !== false}
+                        onToggleTitleBold={toggleQuestionBolding}
+                        optionsColumns={watch('optionsColumns') || 1}
+                        onToggleColumns={toggleColumns}
+                        isStructureTreeOpen={isStructureNavigatorOpen}
+                        onToggleStructureTree={() => setIsStructureNavigatorOpen(!isStructureNavigatorOpen)}
+                        onOpenLogicStudio={() => setIsLogicStudioOpen(true)}
+                        onOpenQualityAuditor={() => setIsQualityAuditorOpen(true)}
+                        onOpenQuestionBank={() => setIsQuestionBankOpen(true)}
+                        onOpenVersionHistory={() => setIsVersionDrawerOpen(true)}
+                        onOpenDeployments={() => setIsDeploymentDialogOpen(true)}
+                        isPreviewMode={isPreviewMode}
+                        onTogglePreviewMode={() => setIsPreviewMode(!isPreviewMode)}
+                        currentVersionNumber={currentVersionNumber}
+                    />
                     <div 
                         ref={canvasRef}
                         className="flex-1 overflow-y-auto no-scrollbar scroll-smooth"
