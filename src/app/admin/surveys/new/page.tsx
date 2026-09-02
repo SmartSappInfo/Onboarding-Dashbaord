@@ -120,7 +120,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     const steps = [
         { n: 1, label: 'Details', icon: Settings2 },
         { n: 2, label: 'Builder', icon: Layout },
-        { n: 3, label: 'Results', icon: Zap },
+        { n: 3, label: 'Results', icon: BarChart3 },
         { n: 4, label: 'Publish', icon: Share2 }
     ];
 

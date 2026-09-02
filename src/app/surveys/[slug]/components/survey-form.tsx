@@ -2030,8 +2030,12 @@ export default function SurveyForm({
     };
 
     const resolveOutcome = (score: number | undefined): SurveyResultRule | undefined => {
-        if (score === undefined || !survey.resultRules) return undefined;
-        return [...survey.resultRules].sort((a, b) => a.priority - b.priority).find(rule => score >= rule.minScore && score <= rule.maxScore);
+        if (!survey.resultRules || survey.resultRules.length === 0) return undefined;
+        if (score === undefined) {
+            // Without scoring, resolve default rule (rule 0) for automatic messaging
+            return survey.resultRules[0];
+        }
+        return [...survey.resultRules].sort((a, b) => a.priority - b.priority).find(rule => score >= rule.minScore && score <= rule.maxScore) || survey.resultRules[0];
     };
 
     const validateAllRequired = (data: Record<string, any>) => {
@@ -2201,8 +2205,8 @@ export default function SurveyForm({
             q.title.toLowerCase().includes('contact number')
         );
         
-        const respondentEmail = emailQuestion ? data[emailQuestion.id] : null;
-        const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : null;
+        const respondentEmail = emailQuestion ? data[emailQuestion.id] : (data.email || data.respondentEmail || null);
+        const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : (data.phone || data.respondentPhone || null);
 
         const initialTasks: AutomationStatus[] = [
             { id: 'db', label: 'Persistent State Sync', status: 'pending', icon: Zap },
@@ -2793,7 +2797,7 @@ export default function SurveyForm({
                                             {interpolateText(survey.description)}
                                         </div>
                                     </div>
-                            <button type="button" style={{ backgroundColor: survey.patternColor || undefined }} className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:opacity-90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide text-white" onClick={handleNext}>
+                            <button type="button" style={getContrastButtonStyles(survey.patternColor)} className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:opacity-90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide" onClick={handleNext}>
                                 {survey.startButtonText?.trim() ? interpolateText(survey.startButtonText) : "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                             </button>
                         </div>
@@ -2866,17 +2870,17 @@ export default function SurveyForm({
 
                             <div className={cn("flex flex-col sm:flex-row items-center mt-12 gap-4 px-4", isMultiPage ? "sm:justify-between" : "sm:justify-end")}>
                                 {isMultiPage && currentPageIndex > 0 && (
-                                    <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-bold text-muted-foreground hover:text-foreground w-full sm:w-auto text-base uppercase tracking-tight gap-2" onClick={handlePrev} disabled={isSubmitting}>
+                                    <Button type="button" variant="outline" size="lg" className="h-14 px-10 rounded-2xl font-bold text-foreground bg-card hover:bg-muted/80 border-2 border-border/80 shadow-sm w-full sm:w-auto text-base uppercase tracking-tight gap-2 active:scale-95" onClick={handlePrev} disabled={isSubmitting}>
                                         <ArrowLeft className="h-5 w-5" /> Back
                                     </Button>
                                 )}
                                 {isMultiPage && !isLastVisiblePage && (
-                                    <Button type="button" size="lg" className="h-14 px-10 rounded-2xl font-bold shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 text-base uppercase tracking-tight" onClick={handleNext} disabled={isSubmitting}>
+                                    <Button type="button" size="lg" style={getContrastButtonStyles(survey.patternColor)} className="h-14 px-10 rounded-2xl font-bold shadow-xl w-full sm:w-auto sm:ml-auto transition-transform hover:scale-105 active:scale-95 text-base uppercase tracking-tight gap-2" onClick={handleNext} disabled={isSubmitting}>
                                         Next <ArrowRight className="ml-2 h-5 w-5" />
                                     </Button>
                                 )}
                                 {(currentPageIndex === pages.length - 1 || isLastVisiblePage) && (
-                                    <Button type="submit" size="lg" style={{ backgroundColor: (isSubmitting || isSubmitDisabled) ? undefined : (survey.patternColor || undefined) }} className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight text-white", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
+                                    <Button type="submit" size="lg" style={(isSubmitting || isSubmitDisabled) ? undefined : getContrastButtonStyles(survey.patternColor)} className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto text-base uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
                                         {isSubmitting ? (
                                             <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
                                         ) : isSubmitDisabled ? (

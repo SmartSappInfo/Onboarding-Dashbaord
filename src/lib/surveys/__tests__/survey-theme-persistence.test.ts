@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest';
 import { SURVEY_PALETTE_PRESETS } from '@/app/admin/surveys/components/inspector/theme-presets';
-import { calculateContrastScore } from '@/app/admin/surveys/components/inspector/contrast-utils';
+import { 
+  calculateContrastScore, 
+  hexToHslString, 
+  getContrastTextColor, 
+  getContrastButtonStyles 
+} from '@/app/admin/surveys/components/inspector/contrast-utils';
 import { hydrateSurveyDocument } from '../survey-hydration-adapter';
 import type { Survey } from '@/lib/types';
 
@@ -33,6 +38,40 @@ describe('Survey Theme Persistence & Governance Suite', () => {
         expect(result.ratio).toBeGreaterThanOrEqual(4.5);
         expect(result.isAaPassed).toBe(true);
       });
+    });
+  });
+
+  describe('WCAG Contrast & Theme Color Utilities', () => {
+    it('converts hex colors to valid Tailwind HSL space strings', () => {
+      const hslEmerald = hexToHslString('#10B981');
+      expect(hslEmerald).toMatch(/^\d+\s+\d+%\s+\d+%$/);
+
+      const hslBlue = hexToHslString('#3B82F6');
+      expect(hslBlue).toMatch(/^\d+\s+\d+%\s+\d+%$/);
+    });
+
+    it('resolves optimal contrast text color for green/emerald and dark accents', () => {
+      // Emerald (#10B981) has higher contrast with dark text (#0F172A)
+      const emeraldText = getContrastTextColor('#10B981');
+      expect(emeraldText).toBe('#0F172A');
+
+      // Obsidian (#0F172A) has higher contrast with white text (#FFFFFF)
+      const obsidianText = getContrastTextColor('#0F172A');
+      expect(obsidianText).toBe('#FFFFFF');
+
+      // Dark Blue (#1E3A8A) has higher contrast with white text (#FFFFFF)
+      const navyText = getContrastTextColor('#1E3A8A');
+      expect(navyText).toBe('#FFFFFF');
+    });
+
+    it('produces contrast-safe button styles', () => {
+      const emeraldButton = getContrastButtonStyles('#10B981');
+      expect(emeraldButton.backgroundColor).toBe('#10B981');
+      expect(emeraldButton.color).toBe('#0F172A');
+
+      const navyButton = getContrastButtonStyles('#1E3A8A');
+      expect(navyButton.backgroundColor).toBe('#1E3A8A');
+      expect(navyButton.color).toBe('#FFFFFF');
     });
   });
 

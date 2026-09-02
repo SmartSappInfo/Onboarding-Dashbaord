@@ -1737,6 +1737,10 @@ export async function executeSurveyPipelineAndAutomations(params: {
       const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
       matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
     }
+    if (!matchedRule && surveyData.resultRules?.length) {
+      // Non-scoring or fallback: resolve default rule for automatic messaging & triggers
+      matchedRule = surveyData.resultRules[0];
+    }
 
     const score = responseData.score !== undefined ? responseData.score : 0;
     const maxScore = surveyData.maxScore || 100;
@@ -1987,6 +1991,10 @@ async function triggerPostSubmissionAutomations(
     const score = responseData.score;
     const sortedRules = [...surveyData.resultRules].sort((a, b) => (a.priority || 0) - (b.priority || 0));
     matchedRule = sortedRules.find((r) => score >= (r.minScore || 0) && score <= (r.maxScore || 0));
+  }
+  if (!matchedRule && surveyData.resultRules?.length) {
+    // Non-scoring or fallback: resolve default rule for automatic messaging & triggers
+    matchedRule = surveyData.resultRules[0];
   }
 
   const resultMsg = matchedRule?.message || matchedRule?.description || matchedRule?.title || matchedRule?.label || '';

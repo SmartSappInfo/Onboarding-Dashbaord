@@ -1,10 +1,11 @@
 /**
- * @fileOverview SmartSapp Survey Intelligence 2.0 — WCAG 2.1 Contrast Ratio Engine
+ * @fileOverview SmartSapp Survey Intelligence 2.0 — WCAG 2.1 Contrast Ratio Engine & Theme Color Bridge
  */
 
 import type { ContrastScoreResult } from './types';
 
-function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+export function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
+  if (!hex || typeof hex !== 'string') return null;
   const sanitized = hex.replace(/^#/, '').trim();
   if (sanitized.length === 3) {
     return {
@@ -23,7 +24,7 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } | null {
   return null;
 }
 
-function getRelativeLuminance(r: number, g: number, b: number): number {
+export function getRelativeLuminance(r: number, g: number, b: number): number {
   const [rs, gs, bs] = [r, g, b].map((c) => {
     const s = c / 255;
     return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4);
@@ -57,4 +58,65 @@ export function calculateContrastScore(bgHex: string, textHex: string = '#0F172A
     isAaaPassed,
     status,
   };
+}
+
+/**
+ * Converts a hex color string into a Tailwind-compatible HSL string (e.g. "160 84% 39%")
+ * so that CSS variables work seamlessly with hsl(var(--primary)).
+ */
+export function hexToHslString(hex: string): string {
+  const rgb = hexToRgb(hex);
+  if (!rgb) return '230 97% 59%'; // Fallback to standard primary
+  const r = rgb.r / 255;
+  const g = rgb.g / 255;
+  const b = rgb.b / 255;
+
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = (g - b) / d + (g < b ? 6 : 0);
+        break;
+      case g:
+        h = (b - r) / d + 2;
+        break;
+      case b:
+        h = (r - g) / d + 4;
+        break;
+    }
+    h /= 6;
+  }
+
+  const hDeg = Math.round(h * 360);
+  const sPct = Math.round(s * 100);
+  const lPct = Math.round(l * 100);
+
+  return `${hDeg} ${sPct}% ${lPct}%`;
+}
+
+/**
+ * Returns either '#FFFFFF' or '#0F172A' depending on which text color provides
+ * maximum WCAG contrast ratio on top of the given background hex color.
+ */
+export function getContrastTextColor(bgHex: string): string {
+  if (!bgHex) return '#FFFFFF';
+  const whiteScore = calculateContrastScore(bgHex, '#FFFFFF');
+  const darkScore = calculateContrastScore(bgHex, '#0F172A');
+  return whiteScore.ratio >= darkScore.ratio ? '#FFFFFF' : '#0F172A';
+}
+
+/**
+ * Generates inline style properties for theme buttons ensuring high contrast and consistent brand color.
+ */
+export function getContrastButtonStyles(accentColor?: string): { backgroundColor: string; color: string } {
+  const bg = accentColor || '#3B82F6';
+  const color = getContrastTextColor(bg);
+  return { backgroundColor: bg, color };
 }

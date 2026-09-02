@@ -17,6 +17,7 @@ import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import type { SenderProfile, SurveyResultBlock } from '@/lib/types';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { fetchTemplatesCached } from '../../components/template-cache-manager';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 export function MinimalRespondentMessage() {
@@ -40,7 +41,54 @@ export function MinimalRespondentMessage() {
         }
     }, [rules.length, setValue]);
 
-    const { activeOrganization } = useWorkspace();
+    const { activeWorkspaceId, activeOrganization } = useWorkspace();
+
+    // Auto-link default survey message blueprints without requiring manual user action
+    React.useEffect(() => {
+        let isMounted = true;
+        async function autoLinkDefaultSurveyMessages() {
+            try {
+                const templates = await fetchTemplatesCached('all', activeWorkspaceId, activeOrganization?.id);
+                if (!isMounted || !templates || templates.length === 0) return;
+
+                const currentRules = watch('resultRules') || [];
+                const currentEmailId = currentRules[0]?.emailTemplateId;
+                const currentSmsId = currentRules[0]?.smsTemplateId;
+
+                // Auto-resolve default survey email blueprint if unassigned
+                if (!currentEmailId || currentEmailId === 'none') {
+                    const defaultEmail = templates.find(t => 
+                        t.channel === 'email' && 
+                        t.isActive !== false &&
+                        (t.category === 'surveys' || t.recipientType === 'respondent' || t.templateType?.includes('survey'))
+                    ) || templates.find(t => t.channel === 'email' && t.category === 'surveys' && t.isActive !== false);
+
+                    if (defaultEmail && isMounted) {
+                        setValue('resultRules.0.emailTemplateId', defaultEmail.id, { shouldDirty: true });
+                    }
+                }
+
+                // Auto-resolve default survey SMS blueprint if unassigned
+                if (!currentSmsId || currentSmsId === 'none') {
+                    const defaultSms = templates.find(t => 
+                        t.channel === 'sms' && 
+                        t.isActive !== false &&
+                        (t.category === 'surveys' || t.recipientType === 'respondent' || t.templateType?.includes('survey'))
+                    ) || templates.find(t => t.channel === 'sms' && t.category === 'surveys' && t.isActive !== false);
+
+                    if (defaultSms && isMounted) {
+                        setValue('resultRules.0.smsTemplateId', defaultSms.id, { shouldDirty: true });
+                    }
+                }
+            } catch (err) {
+                console.warn('[MinimalRespondentMessage] Auto-link default survey blueprints:', err);
+            }
+        }
+
+        autoLinkDefaultSurveyMessages();
+        return () => { isMounted = false; };
+    }, [activeWorkspaceId, activeOrganization?.id, setValue, watch]);
+
     const profilesQuery = useMemoFirebase(() => {
         const orgId = activeOrganization?.id;
         if (!firestore || !orgId) return null;

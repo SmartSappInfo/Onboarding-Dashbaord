@@ -430,7 +430,8 @@ export default function SurveyFormBuilder() {
                         ref={canvasRef}
                         className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative"
                         style={{
-                            '--primary': watchedForm.patternColor || '#3B82F6',
+                            '--primary': hexToHslString(watchedForm.patternColor || '#3B82F6'),
+                            '--primary-foreground': hexToHslString(getContrastTextColor(watchedForm.patternColor || '#3B82F6')),
                             '--survey-accent': watchedForm.patternColor || '#3B82F6',
                             '--survey-bg': watchedForm.backgroundColor || '#F8FAFC',
                         } as React.CSSProperties}

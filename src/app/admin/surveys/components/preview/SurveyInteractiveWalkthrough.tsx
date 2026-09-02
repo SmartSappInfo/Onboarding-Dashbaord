@@ -239,8 +239,8 @@ export function SurveyInteractiveWalkthrough({
           <Button
             type="button"
             onClick={handleNext}
-            className="h-12 px-8 rounded-xl font-bold text-sm shadow-lg gap-2 active:scale-[0.97] transition-all hover:scale-[1.02] text-white"
-            style={{ backgroundColor: accentColor }}
+            className="h-12 px-8 rounded-xl font-bold text-sm shadow-lg gap-2 active:scale-[0.97] transition-all hover:scale-[1.02]"
+            style={getContrastButtonStyles(accentColor)}
           >
             <span>{currentIndex === totalQuestions - 1 ? 'Complete Simulation' : 'Next Step'}</span>
             <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/20 text-white">
