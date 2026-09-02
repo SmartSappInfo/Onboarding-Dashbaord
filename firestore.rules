@@ -1012,24 +1012,28 @@ service cloud.firestore {
     }
 
     match /surveys/{surveyId} {
-      allow get: if isAuthorized() || resource.data.status == 'published';
-      allow list: if isAuthorized();
+      allow get: if isAuthorized() || isSignedIn() || resource.data.status == 'published';
+      allow list: if isAuthorized() || isSignedIn();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
 
       match /responses/{rId} {
         allow create: if true;
-        allow read, list: if isAuthorized();
+        allow read, list: if isAuthorized() || isSignedIn();
+      }
+      match /sessions/{sId} {
+        allow create, update: if true;
+        allow read, list, write: if isAuthorized() || isSignedIn();
       }
       match /summaries/{sId} {
-        allow read, list, write: if isAuthorized();
+        allow read, list, write: if isAuthorized() || isSignedIn();
       }
       match /resultPages/{pId} {
         allow read: if true;
-        allow write: if isAuthorized();
+        allow write: if isAuthorized() || isSignedIn();
       }
       match /versions/{vId} {
-        allow read: if isAuthorized() || resource.data.isPublished == true;
-        allow write: if isAuthorized();
+        allow read: if isAuthorized() || isSignedIn() || resource.data.isPublished == true;
+        allow write: if isAuthorized() || isSignedIn();
       }
     }
 
@@ -1798,7 +1802,11 @@ service cloud.firestore {
     }
     match /survey_sessions/{sId} {
       allow create, update: if true;
-      allow read, list: if isAuthorized();
+      allow read, list: if isAuthorized() || isSignedIn();
+    }
+    match /surveySessions/{sId} {
+      allow create, update: if true;
+      allow read, list: if isAuthorized() || isSignedIn();
     }
     match /campaign_sessions/{sId} {
       allow get, create, update: if true; // Public campaign visitor session
