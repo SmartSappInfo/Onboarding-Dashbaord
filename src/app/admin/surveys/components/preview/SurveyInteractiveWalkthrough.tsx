@@ -2,6 +2,8 @@
 
 /**
  * @fileOverview SmartSapp Survey Intelligence 2.0 — Interactive Survey Step Walkthrough
+ * 
+ * Supports both standalone question progression and Inline Header Presentation.
  */
 
 import * as React from 'react';
@@ -9,42 +11,55 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { ArrowRight, ArrowLeft, Check, Sparkles, CornerDownLeft } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
-import { cn } from '@/lib/utils';
+import { cn, stripHtml } from '@/lib/utils';
+import VideoHero from '@/components/video-hero';
 
 export interface SurveyInteractiveWalkthroughProps {
   elements?: SurveyElement[];
   stepperVariant?: 'full' | 'simple' | 'linear' | 'none';
   accentColor?: string;
+  showInlineHeader?: boolean;
+  surveyTitle?: string;
+  surveyDescription?: string;
+  bannerImageUrl?: string;
+  videoUrl?: string;
+  videoThumbnailUrl?: string;
+  videoCaption?: string;
 }
 
 export function SurveyInteractiveWalkthrough({
   elements = [],
   stepperVariant = 'full',
   accentColor = '#3B82F6',
+  showInlineHeader = false,
+  surveyTitle = 'Survey Title',
+  surveyDescription,
+  bannerImageUrl,
+  videoUrl,
+  videoThumbnailUrl,
+  videoCaption,
 }: SurveyInteractiveWalkthroughProps) {
   // Extract questions from elements
   const questions = React.useMemo(() => {
-    const list = elements.filter((el) => el.type === 'question') as SurveyQuestion[];
+    const list = elements.filter((el) => el.type !== 'section' && el.type !== 'heading' && el.type !== 'description' && el.type !== 'divider') as unknown as SurveyQuestion[];
     if (list.length > 0) return list;
 
     // Default sample questions if survey has no questions yet
     return [
       {
         id: 'sample-q1',
-        type: 'question',
-        questionType: 'text',
+        type: 'text',
         title: 'What is your primary email address?',
         description: 'We will use this to send your personalized audit report.',
-        required: true,
+        isRequired: true,
       },
       {
         id: 'sample-q2',
-        type: 'question',
-        questionType: 'multiple_choice',
+        type: 'multiple-choice',
         title: 'How would you rate your institutional satisfaction?',
         description: 'Select the option that best describes your experience.',
         options: ['Exceeds Expectations', 'Meets Expectations', 'Needs Improvement'],
-        required: true,
+        isRequired: true,
       },
     ] as unknown as SurveyQuestion[];
   }, [elements]);
@@ -68,8 +83,43 @@ export function SurveyInteractiveWalkthrough({
     }
   };
 
+  const cleanQTitle = stripHtml(currentQuestion?.title || ('text' in currentQuestion ? (currentQuestion as any).text : '') || 'Question Title');
+  const cleanQDesc = currentQuestion?.description ? stripHtml(currentQuestion.description) : null;
+  const isRequired = currentQuestion?.isRequired || (currentQuestion as any)?.required;
+
   return (
     <div className="space-y-6 max-w-xl mx-auto text-left animate-in fade-in slide-in-from-bottom-3 duration-300">
+      {/* INLINE HEADER PRESENTATION (When showIntroAsPage is false) */}
+      {showInlineHeader && (
+        <div className="p-5 sm:p-6 rounded-3xl bg-card/90 border border-border/80 shadow-md space-y-4 text-center animate-in fade-in slide-in-from-top-3 duration-400">
+          {videoUrl ? (
+            <div className="w-full">
+              <VideoHero
+                videoUrl={videoUrl}
+                thumbnailUrl={videoThumbnailUrl}
+                title={stripHtml(surveyTitle)}
+                videoCaption={stripHtml(videoCaption || '')}
+              />
+            </div>
+          ) : bannerImageUrl ? (
+            <div className="relative aspect-video rounded-2xl overflow-hidden shadow-md border-2 border-white/60 bg-card w-full">
+              <img src={bannerImageUrl} alt="Banner" className="w-full h-full object-cover" />
+            </div>
+          ) : null}
+
+          <div className="space-y-1.5">
+            <h2 className="text-xl sm:text-2xl font-black tracking-tight text-foreground">
+              {surveyTitle || 'Survey Title'}
+            </h2>
+            {surveyDescription && (
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed font-medium">
+                {surveyDescription}
+              </p>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Stepper Header Simulation */}
       {stepperVariant !== 'none' && (
         <div className="space-y-2">
@@ -135,14 +185,14 @@ export function SurveyInteractiveWalkthrough({
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-[10px] font-bold tracking-widest uppercase text-primary">
             <span>Question {currentIndex + 1} of {totalQuestions}</span>
-            {currentQuestion?.required && <span className="text-destructive">*</span>}
+            {isRequired && <span className="text-destructive">*</span>}
           </div>
           <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground leading-snug">
-            {currentQuestion?.title || 'Question Title'}
+            {cleanQTitle}
           </h3>
-          {currentQuestion?.description && (
+          {cleanQDesc && (
             <p className="text-xs sm:text-sm font-medium text-muted-foreground">
-              {currentQuestion.description}
+              {cleanQDesc}
             </p>
           )}
         </div>
@@ -151,17 +201,20 @@ export function SurveyInteractiveWalkthrough({
         <div className="space-y-3">
           {currentQuestion?.options && currentQuestion.options.length > 0 ? (
             <div className="space-y-2">
-              {currentQuestion.options.map((opt, i) => (
-                <div
-                  key={i}
-                  className="p-3.5 rounded-xl border border-border/70 bg-muted/20 hover:border-primary hover:bg-primary/5 transition-all text-xs font-semibold flex items-center justify-between cursor-pointer"
-                >
-                  <span>{typeof opt === 'string' ? opt : (opt as { label?: string }).label || 'Option'}</span>
-                  <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border">
-                    {i + 1}
-                  </kbd>
-                </div>
-              ))}
+              {currentQuestion.options.map((opt: any, i: number) => {
+                const optLabel = typeof opt === 'string' ? opt : (opt as { label?: string; text?: string })?.label || (opt as any)?.text || `Option ${i + 1}`;
+                return (
+                  <div
+                    key={i}
+                    className="p-3.5 rounded-xl border border-border/70 bg-muted/20 hover:border-primary hover:bg-primary/5 transition-all text-xs font-semibold flex items-center justify-between cursor-pointer active:scale-[0.98]"
+                  >
+                    <span>{stripHtml(optLabel)}</span>
+                    <kbd className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground border">
+                      {i + 1}
+                    </kbd>
+                  </div>
+                );
+              })}
             </div>
           ) : (
             <div className="h-12 w-full rounded-xl border border-border/80 bg-background/80 px-4 flex items-center text-xs text-muted-foreground/60 shadow-xs focus-within:ring-2 focus-within:ring-primary/20">
@@ -178,7 +231,7 @@ export function SurveyInteractiveWalkthrough({
             size="sm"
             disabled={currentIndex === 0}
             onClick={handlePrev}
-            className="h-10 rounded-xl text-xs font-semibold active:scale-[0.97]"
+            className="h-11 px-4 rounded-xl text-xs font-semibold active:scale-[0.97]"
           >
             <ArrowLeft className="h-4 w-4 mr-1" /> Previous
           </Button>
@@ -186,7 +239,7 @@ export function SurveyInteractiveWalkthrough({
           <Button
             type="button"
             onClick={handleNext}
-            className="h-11 px-6 rounded-xl font-bold text-xs shadow-md gap-2 active:scale-[0.97]"
+            className="h-12 px-8 rounded-xl font-bold text-sm shadow-lg gap-2 active:scale-[0.97] transition-all hover:scale-[1.02] text-white"
             style={{ backgroundColor: accentColor }}
           >
             <span>{currentIndex === totalQuestions - 1 ? 'Complete Simulation' : 'Next Step'}</span>

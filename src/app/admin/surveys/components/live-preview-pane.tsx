@@ -6,7 +6,7 @@
  * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS (Rule 10):
  * 1. Realistic Viewports: macOS Safari window chrome (Desktop) & iPhone 16 Pro frame (Mobile).
  * 2. Independent Lighting Engine: Preview Light/Dark mode without impacting dashboard theme.
- * 3. Interactive Walkthrough: Allows stepping through real questions with keyboard hints.
+ * 3. Interactive Walkthrough: Allows stepping through real questions with inline header and responsive buttons.
  * 4. Strict Zero-Any Invariant.
  */
 
@@ -64,6 +64,10 @@ export default function LivePreviewPane() {
     stepperVariant = 'full',
     elements = [],
   } = watchedValues;
+
+  // If inline header presentation is active (showIntroAsPage === false), effective screen mode is questions
+  const isInlineHeaderActive = showIntroAsPage === false;
+  const effectiveScreenMode = isInlineHeaderActive ? 'questions' : screenMode;
 
   // Determine active simulation theme
   const isSimulatedDark = React.useMemo(() => {
@@ -164,8 +168,8 @@ export default function LivePreviewPane() {
             </div>
           )}
 
-          {/* SCREEN 1: COVER PAGE / HERO */}
-          {screenMode === 'cover' && (
+          {/* SCREEN 1: COVER PAGE / HERO (Only when showIntroAsPage is true) */}
+          {effectiveScreenMode === 'cover' && (
             <div className="space-y-8 w-full animate-in fade-in duration-300">
               {/* Video Hero or Cover Banner */}
               {videoUrl ? (
@@ -188,35 +192,42 @@ export default function LivePreviewPane() {
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
                   {title || 'Survey Title'}
                 </h1>
-                <p className="text-sm sm:text-base opacity-80 leading-relaxed font-medium">
+                <p className="text-sm sm:text-base opacity-80 leading-relaxed font-medium max-w-lg mx-auto">
                   {description || 'Share your feedback to help us build a better experience for everyone.'}
                 </p>
               </div>
 
-              {/* Start Call-to-Action */}
-              <div className="pt-2 flex flex-col items-center gap-2">
+              {/* Start Call-to-Action with Proper Button Sizing */}
+              <div className="pt-2 flex flex-col items-center gap-2.5">
                 <Button
                   type="button"
                   size="lg"
                   onClick={() => setScreenMode('questions')}
-                  className="h-13 px-8 rounded-2xl font-bold text-sm shadow-xl gap-2 active:scale-[0.97] transition-all hover:scale-[1.02]"
+                  className="h-13 sm:h-14 px-10 sm:px-14 rounded-2xl font-black text-sm sm:text-base shadow-xl gap-3 active:scale-[0.97] transition-all hover:scale-[1.02] text-white"
                   style={{ backgroundColor: patternColor }}
                 >
                   <span>{startButtonText || "Let's Start"}</span>
-                  <ArrowRight className="h-4 w-4" />
+                  <ArrowRight className="h-4 w-4 stroke-[2.5]" />
                 </Button>
-                <span className="text-[11px] text-muted-foreground/70">Click to preview questions</span>
+                <span className="text-[11px] text-muted-foreground/70 font-medium">Click to preview questions</span>
               </div>
             </div>
           )}
 
-          {/* SCREEN 2: INTERACTIVE QUESTIONS WALKTHROUGH */}
-          {screenMode === 'questions' && (
+          {/* SCREEN 2: INTERACTIVE QUESTIONS WALKTHROUGH (Supports Inline Header Presentation) */}
+          {effectiveScreenMode === 'questions' && (
             <div className="w-full">
               <SurveyInteractiveWalkthrough
                 elements={elements}
                 stepperVariant={stepperVariant}
                 accentColor={patternColor}
+                showInlineHeader={isInlineHeaderActive}
+                surveyTitle={title}
+                surveyDescription={description}
+                bannerImageUrl={bannerImageUrl}
+                videoUrl={videoUrl}
+                videoThumbnailUrl={videoThumbnailUrl}
+                videoCaption={videoCaption}
               />
             </div>
           )}
@@ -236,43 +247,51 @@ export default function LivePreviewPane() {
           </div>
           <span className="text-xs font-bold text-foreground hidden sm:inline">Live Simulation</span>
 
-          {/* Screen Switcher (Cover vs Questions) */}
+          {/* Screen Switcher (Cover vs Questions vs Inline) */}
           <div className="flex items-center gap-1 p-0.5 rounded-xl bg-muted/50 border border-border/60">
-            <button
-              type="button"
-              onClick={() => setScreenMode('cover')}
-              className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]',
-                screenMode === 'cover'
-                  ? 'bg-card text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Cover
-            </button>
-            <button
-              type="button"
-              onClick={() => setScreenMode('questions')}
-              className={cn(
-                'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]',
-                screenMode === 'questions'
-                  ? 'bg-card text-foreground shadow-xs'
-                  : 'text-muted-foreground hover:text-foreground'
-              )}
-            >
-              Questions
-            </button>
+            {isInlineHeaderActive ? (
+              <span className="px-3 py-1 rounded-lg text-xs font-bold text-primary bg-card shadow-xs">
+                Inline Questions Mode
+              </span>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setScreenMode('cover')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]',
+                    effectiveScreenMode === 'cover'
+                      ? 'bg-card text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Cover
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setScreenMode('questions')}
+                  className={cn(
+                    'px-2.5 py-1 rounded-lg text-xs font-semibold transition-all active:scale-[0.97]',
+                    effectiveScreenMode === 'questions'
+                      ? 'bg-card text-foreground shadow-xs'
+                      : 'text-muted-foreground hover:text-foreground'
+                  )}
+                >
+                  Questions
+                </button>
+              </>
+            )}
           </div>
         </div>
 
-        {/* Right: Lighting Mode & Device Viewport Switcher */}
+        {/* Right: Lighting Engine & Device Viewport Selector */}
         <div className="flex items-center gap-2">
-          {/* Lighting Mode Selector */}
-          <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-muted/50 border border-border/60">
+          {/* Lighting Mode Switcher */}
+          <div className="flex items-center p-0.5 rounded-xl bg-muted/50 border border-border/60">
             <button
               type="button"
               onClick={() => setThemeMode('light')}
-              title="Preview in Light Mode"
+              title="Simulation Light Mode"
               className={cn(
                 'p-1.5 rounded-lg transition-all active:scale-[0.97]',
                 themeMode === 'light' ? 'bg-card text-amber-500 shadow-xs' : 'text-muted-foreground hover:text-foreground'
@@ -283,7 +302,7 @@ export default function LivePreviewPane() {
             <button
               type="button"
               onClick={() => setThemeMode('dark')}
-              title="Preview in Dark Mode"
+              title="Simulation Dark Mode"
               className={cn(
                 'p-1.5 rounded-lg transition-all active:scale-[0.97]',
                 themeMode === 'dark' ? 'bg-card text-indigo-400 shadow-xs' : 'text-muted-foreground hover:text-foreground'
@@ -294,7 +313,7 @@ export default function LivePreviewPane() {
             <button
               type="button"
               onClick={() => setThemeMode('sync')}
-              title="Sync with Dashboard Theme"
+              title="Sync with System Theme"
               className={cn(
                 'p-1.5 rounded-lg transition-all active:scale-[0.97]',
                 themeMode === 'sync' ? 'bg-card text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'
@@ -304,15 +323,15 @@ export default function LivePreviewPane() {
             </button>
           </div>
 
-          {/* Device Switcher */}
-          <div className="flex items-center gap-0.5 p-0.5 rounded-xl bg-muted/50 border border-border/60">
+          {/* Device Frame Switcher */}
+          <div className="flex items-center p-0.5 rounded-xl bg-muted/50 border border-border/60">
             <button
               type="button"
               onClick={() => setDevice('desktop')}
-              title="Desktop Safari View"
+              title="Desktop Browser View"
               className={cn(
                 'p-1.5 rounded-lg transition-all active:scale-[0.97]',
-                device === 'desktop' ? 'bg-card text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                device === 'desktop' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <Monitor className="h-3.5 w-3.5" />
@@ -320,10 +339,10 @@ export default function LivePreviewPane() {
             <button
               type="button"
               onClick={() => setDevice('mobile')}
-              title="Mobile iPhone 16 Pro View"
+              title="iPhone 16 Pro Mobile View"
               className={cn(
                 'p-1.5 rounded-lg transition-all active:scale-[0.97]',
-                device === 'mobile' ? 'bg-card text-primary shadow-xs' : 'text-muted-foreground hover:text-foreground'
+                device === 'mobile' ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
               )}
             >
               <Smartphone className="h-3.5 w-3.5" />
@@ -332,14 +351,20 @@ export default function LivePreviewPane() {
         </div>
       </div>
 
-      {/* Simulator Viewport Display Container */}
-      <div className="flex-1 overflow-auto p-4 sm:p-6 flex items-center justify-center">
+      {/* Main Simulation Stage */}
+      <div className="flex-1 overflow-hidden p-3 sm:p-6 flex items-center justify-center">
         {device === 'desktop' ? (
-          <MacBrowserFrame slug={slug || 'parent-feedback'} className="w-full h-full min-h-[540px]">
+          <MacBrowserFrame
+            slug={slug || 'preview'}
+            isDark={isSimulatedDark}
+            className="w-full h-full max-h-[640px] shadow-2xl"
+          >
             {CanvasContent}
           </MacBrowserFrame>
         ) : (
-          <IPhoneFrame>{CanvasContent}</IPhoneFrame>
+          <IPhoneFrame isDark={isSimulatedDark} className="h-full max-h-[640px] shadow-2xl">
+            {CanvasContent}
+          </IPhoneFrame>
         )}
       </div>
     </div>

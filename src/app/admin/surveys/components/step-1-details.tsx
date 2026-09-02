@@ -751,24 +751,27 @@ export default function Step1Details(_props: Step1DetailsProps) {
               <Controller
                 name="showIntroAsPage"
                 control={control}
-                render={({ field }) => (
-                  <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/70">
-                    <div className="space-y-0.5">
-                      <Label className="text-xs font-bold text-foreground">
-                        {(field.value ?? true) ? 'Dedicated Cover Intro Page' : 'Inline Header Presentation'}
-                      </Label>
-                      <p className="text-[11px] text-muted-foreground">
-                        {(field.value ?? true)
-                          ? 'Shows a standalone landing screen with welcome video and Start button'
-                          : 'Shows survey title and intro directly above question 1'}
-                      </p>
+                render={({ field }) => {
+                  const isInlineActive = field.value === false;
+                  return (
+                    <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/70">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-bold text-foreground">
+                          Inline Header Presentation
+                        </Label>
+                        <p className="text-[11px] text-muted-foreground">
+                          {isInlineActive
+                            ? 'Shows survey title and intro directly above question 1'
+                            : 'Shows a standalone landing screen with welcome video and Start button'}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={isInlineActive}
+                        onCheckedChange={(checked) => field.onChange(!checked)}
+                      />
                     </div>
-                    <Switch
-                      checked={field.value ?? true}
-                      onCheckedChange={field.onChange}
-                    />
-                  </div>
-                )}
+                  );
+                }}
               />
 
               {/* Presentation Toggles */}
