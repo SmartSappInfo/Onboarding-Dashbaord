@@ -135,7 +135,12 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const { data: profile, isLoading: isProfileLoading } = useDoc<UserProfile>(userRef);
 
   const isSuperAdmin = React.useMemo(() => {
-    return profile?.permissions?.includes('system_admin' as any) || false;
+    return (
+      profile?.permissions?.includes('system_admin' as any) ||
+      profile?.roles?.includes('super_admin') ||
+      profile?.roles?.includes('system_admin') ||
+      false
+    );
   }, [profile]);
 
   // Keep activeOrganizationId aligned with profile to prevent cross-tenant permission violations

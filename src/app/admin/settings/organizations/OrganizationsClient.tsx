@@ -17,7 +17,8 @@ import {
     Phone,
     MapPin,
     ArrowRight,
-    Database
+    Database,
+    ShieldAlert
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,19 +45,41 @@ export default function OrganizationsClient() {
     const firestore = useFirestore();
     const router = useRouter();
     const { toast } = useToast();
-    const { user } = useUser();
-    const { setActiveOrganization, switchOrganizationAndWorkspace } = useTenant();
+    const { user, isUserLoading } = useUser();
+    const { isSuperAdmin, isLoading: isTenantLoading, setActiveOrganization, switchOrganizationAndWorkspace } = useTenant();
 
     const [isDialogOpen, setIsDialogOpen] = React.useState(false);
     const [editingOrganization, setEditingOrganization] = React.useState<Organization | null>(null);
     const [deleteConfirmOrg, setDeleteConfirmOrg] = React.useState<Organization | null>(null);
 
+    const isCheckingAuth = isTenantLoading || isUserLoading;
+
+    // Only query organizations if user is confirmed to be a platform super administrator
     const organizationsQuery = useMemoFirebase(() => 
-        firestore && user ? query(collection(firestore, 'organizations'), orderBy('createdAt', 'desc')) : null, 
-    [firestore, user]);
+        firestore && user && isSuperAdmin ? query(collection(firestore, 'organizations'), orderBy('createdAt', 'desc')) : null, 
+    [firestore, user, isSuperAdmin]);
     const { data: organizations, isLoading } = useCollection<Organization>(organizationsQuery);
 
+    React.useEffect(() => {
+        if (!isCheckingAuth && !isSuperAdmin) {
+            toast({
+                variant: 'destructive',
+                title: 'Access Restricted',
+                description: 'Only platform Super Administrators are authorized to view or manage multiple organizations.',
+                actionConfig: {
+                    path: '/admin',
+                    label: 'Return to Dashboard',
+                },
+            });
+            const timer = setTimeout(() => {
+                router.replace('/admin');
+            }, 800);
+            return () => clearTimeout(timer);
+        }
+    }, [isCheckingAuth, isSuperAdmin, router, toast]);
+
     const handleSelectOrganization = (org: Organization) => {
+        if (!isSuperAdmin) return;
         if (org.defaultWorkspaceId) {
             switchOrganizationAndWorkspace(org.id, org.defaultWorkspaceId);
             router.push(`/admin?track=${org.defaultWorkspaceId}`);
@@ -68,12 +91,13 @@ export default function OrganizationsClient() {
     };
 
     const handleOpenEdit = (org?: Organization) => {
+        if (!isSuperAdmin) return;
         setEditingOrganization(org || null);
         setIsDialogOpen(true);
     };
 
     const handleDelete = async (org: Organization) => {
-        if (!user) return;
+        if (!user || !isSuperAdmin) return;
         const result = await deleteOrganizationAction(org.id, user.uid);
         
         if (result.success) {
@@ -89,12 +113,58 @@ export default function OrganizationsClient() {
     };
 
     const handleArchive = async (org: Organization) => {
-        if (!user) return;
+        if (!user || !isSuperAdmin) return;
         const result = await archiveOrganizationAction(org.id, org.status !== 'archived', user.uid);
         if (result.success) {
             toast({ title: org.status === 'archived' ? 'Organization Restored' : 'Organization Archived' });
         }
     };
+
+    if (isCheckingAuth) {
+        return (
+            <PageContainerFluid>
+                <div className="space-y-8 pb-32 w-full">
+                    <div className="flex flex-col gap-2">
+                        <Skeleton className="h-9 w-48 rounded-xl" />
+                        <Skeleton className="h-4 w-72 rounded-lg" />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        {Array.from({ length: 3 }).map((_, i) => (
+                            <Skeleton key={i} className="h-64 rounded-2xl" />
+                        ))}
+                    </div>
+                </div>
+            </PageContainerFluid>
+        );
+    }
+
+    if (!isSuperAdmin) {
+        return (
+            <PageContainerFluid>
+                <div className="flex flex-col items-center justify-center min-h-[60vh] max-w-md mx-auto text-center space-y-6">
+                    <div className="p-4 rounded-2xl bg-destructive/10 text-destructive border border-destructive/20 shadow-lg">
+                        <ShieldAlert className="h-10 w-10" />
+                    </div>
+                    <div className="space-y-2">
+                        <h2 className="text-2xl font-black tracking-tight text-foreground">
+                            Access Restricted
+                        </h2>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                            The Tenant Hub provides multi-tenant provisioning and system sovereignty controls. Only platform <span className="font-semibold text-foreground">Super Administrators</span> have authorization to view or manage organizations.
+                        </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                        <Button onClick={() => router.replace('/admin')} className="rounded-xl font-bold h-11 px-6 shadow-md">
+                            Return to Dashboard
+                        </Button>
+                        <Button variant="outline" onClick={() => router.replace('/admin/settings')} className="rounded-xl font-bold h-11 px-6">
+                            Workspace Settings
+                        </Button>
+                    </div>
+                </div>
+            </PageContainerFluid>
+        );
+    }
 
     return (
         <PageContainerFluid>

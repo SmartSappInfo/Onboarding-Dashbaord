@@ -85,7 +85,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const auth = useAuth();
   const { toast } = useToast();
   const { singular, plural, dealPlural } = useTerminology();
-  const { activeWorkspaceId, activeOrganization } = useTenant();
+  const { activeWorkspaceId, activeOrganization, isSuperAdmin } = useTenant();
   const { isFeatureEnabled } = useFeatures();
   
   const [mounted, setMounted] = React.useState(false);
@@ -228,6 +228,24 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
         router.push('/login');
     }
   }, [isUserLoading, user, mounted, firestore, auth, router, toast]);
+
+  // Super-admin only route guard (e.g. /admin/settings/organizations, /admin/seeds)
+  React.useEffect(() => {
+    if (!isReady || isUserLoading) return;
+    const isSuperAdminOnlyRoute = pathname.startsWith('/admin/settings/organizations') || pathname.startsWith('/admin/seeds');
+    if (isSuperAdminOnlyRoute && !isSuperAdmin && !isSystemAdmin) {
+      toast({
+        variant: 'destructive',
+        title: 'Access Restricted',
+        description: 'Only platform Super Administrators are authorized to access multi-organization governance.',
+        actionConfig: {
+          path: '/admin',
+          label: 'Return to Dashboard',
+        },
+      });
+      router.replace('/admin');
+    }
+  }, [pathname, isSuperAdmin, isSystemAdmin, isReady, isUserLoading, router, toast]);
 
   if (!mounted) {
  return <div className="min-h-screen w-full bg-background" suppressHydrationWarning />;

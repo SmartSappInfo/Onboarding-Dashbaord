@@ -26,6 +26,8 @@ interface MediaSelectorTriggerProps {
     className?: string;
     previewClassName?: string;
     workspaceId?: string;
+    fallbackInitials?: string;
+    hideText?: boolean;
 }
 
 export default function MediaSelectorTrigger({
@@ -36,7 +38,9 @@ export default function MediaSelectorTrigger({
     subLabel,
     className,
     previewClassName,
-    workspaceId
+    workspaceId,
+    fallbackInitials,
+    hideText = false
 }: MediaSelectorTriggerProps) {
     const [isMenuOpen, setIsMenuOpen] = React.useState(false);
     const [isLibraryOpen, setIsLibraryOpen] = React.useState(false);
@@ -68,39 +72,54 @@ export default function MediaSelectorTrigger({
                     >
                         {value ? (
                             <img src={value} alt="Preview" className="h-full w-full object-cover" />
+                        ) : fallbackInitials ? (
+                            <div className="h-full w-full flex flex-col items-center justify-center bg-gradient-to-br from-primary/15 via-primary/5 to-muted text-primary font-black text-2xl md:text-3xl tracking-wider select-none">
+                                {fallbackInitials}
+                            </div>
                         ) : (
                             <ImageIcon className="h-8 w-8 text-muted-foreground/40" />
                         )}
                     </div>
+                    {hideText && (
+                        <div 
+                            onClick={() => setIsMenuOpen(true)}
+                            className="absolute -bottom-1 -right-1 p-1.5 rounded-xl bg-primary text-white shadow-md group-hover:scale-110 transition-transform flex items-center justify-center cursor-pointer"
+                            title="Change image"
+                        >
+                            <Pencil className="h-3 w-3" />
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex flex-col text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{label}</span>
-                    <div className="flex items-center gap-2">
-                        <Button 
-                            type="button"
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 rounded-xl font-bold text-[10px] px-3 bg-muted/50 hover:bg-primary hover:text-white transition-all"
-                            onClick={() => setIsMenuOpen(true)}
-                        >
-                            <Pencil className="h-3 w-3 mr-2" />
-                            Change
-                        </Button>
-                        {value && (
+                {!hideText && (
+                    <div className="flex flex-col text-left">
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">{label}</span>
+                        <div className="flex items-center gap-2">
                             <Button 
                                 type="button"
                                 variant="ghost" 
                                 size="sm" 
-                                className="h-8 w-8 rounded-xl p-0 text-destructive hover:bg-destructive/10"
-                                onClick={() => onSelect('')}
+                                className="h-8 rounded-xl font-bold text-[10px] px-3 bg-muted/50 hover:bg-primary hover:text-white transition-all"
+                                onClick={() => setIsMenuOpen(true)}
                             >
-                                <X className="h-3 w-3" />
+                                <Pencil className="h-3 w-3 mr-2" />
+                                Change
                             </Button>
-                        )}
+                            {value && (
+                                <Button 
+                                    type="button"
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-8 w-8 rounded-xl p-0 text-destructive hover:bg-destructive/10"
+                                    onClick={() => onSelect('')}
+                                >
+                                    <X className="h-3 w-3" />
+                                </Button>
+                            )}
+                        </div>
+                        {subLabel && <p className="text-[10px] font-medium text-muted-foreground mt-2 leading-relaxed max-w-[200px]">{subLabel}</p>}
                     </div>
-                    {subLabel && <p className="text-[10px] font-medium text-muted-foreground mt-2 leading-relaxed max-w-[200px]">{subLabel}</p>}
-                </div>
+                )}
             </div>
 
             {/* Selection Dialog */}

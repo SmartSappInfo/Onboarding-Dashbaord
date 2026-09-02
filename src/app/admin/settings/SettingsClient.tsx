@@ -15,9 +15,10 @@ import WorkspaceIntegrationsTab from './components/WorkspaceIntegrationsTab';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { Building, Globe, Mail, Phone, MapPin, Pencil, Image as ImageIcon, Sparkles, Sliders, Shield, Key, Layers } from 'lucide-react';
+import { Building, Globe, Mail, Phone, MapPin, Pencil, Sparkles, Sliders, Key, Layers } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import * as React from 'react';
 import OrganizationManagementDialog from '../components/OrganizationManagementDialog';
@@ -132,12 +133,19 @@ export default function SettingsClient() {
     }
   };
 
+  const orgInitials = React.useMemo(() => {
+    if (!activeOrganization?.name) return 'ORG';
+    const parts = activeOrganization.name.trim().split(/\s+/);
+    if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+    return (parts[0][0] + parts[1][0]).toUpperCase();
+  }, [activeOrganization?.name]);
+
   return (
     <PageContainer>
       <div className="space-y-8 pb-32 w-full text-left">
         {/* Header Block */}
         <div className="flex flex-col gap-1 px-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
             Settings & Configurations
           </h1>
           <p className="text-sm text-muted-foreground font-medium">
@@ -146,26 +154,36 @@ export default function SettingsClient() {
         </div>
 
         {/* Scope Switcher Block */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-6 rounded-2xl border border-border/80 bg-muted/20 backdrop-blur-sm shadow-sm">
-          <div className="space-y-1 text-left">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-              <Layers className="h-4 w-4 text-primary animate-pulse" /> Configuration Scope
-            </h2>
-            <p className="text-xs font-semibold text-muted-foreground">
-              Select whether you are editing global organization settings or a specific workspace hub.
-            </p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 rounded-2xl border border-border/70 bg-card/60 backdrop-blur-sm shadow-sm">
+          <div className="flex items-center gap-3.5 text-left">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 border border-primary/20">
+              <Layers className="h-5 w-5" />
+            </div>
+            <div className="space-y-0.5">
+              <div className="flex items-center gap-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                  Configuration Scope
+                </h2>
+                <Badge variant="outline" className="text-[9px] uppercase font-extrabold tracking-widest px-2 h-4.5 bg-primary/5 text-primary border-primary/20">
+                  {selectedScope === 'organization' ? 'Global Org' : 'Workspace'}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground/90 font-medium">
+                Switch between global organization-level governance and workspace-specific settings.
+              </p>
+            </div>
           </div>
-          <div className="w-full sm:w-[320px]">
+          <div className="w-full sm:w-[320px] shrink-0">
             <Select value={selectedScope} onValueChange={setSelectedScope}>
-              <SelectTrigger className="h-12 rounded-xl bg-background border-2 border-border/60 hover:border-primary/40 focus:ring-primary font-bold text-sm px-4 shadow-sm transition-all duration-300">
+              <SelectTrigger className="h-11 rounded-xl bg-background border border-border hover:border-primary/40 focus:ring-primary font-semibold text-xs px-3.5 shadow-sm transition-all">
                 <SelectValue placeholder="Select Configuration Scope" />
               </SelectTrigger>
-              <SelectContent className="rounded-2xl border-none shadow-2xl">
-                <SelectItem value="organization" className="font-bold text-xs py-2.5">
+              <SelectContent className="rounded-xl border border-border shadow-xl z-50">
+                <SelectItem value="organization" className="font-bold text-xs py-2.5 cursor-pointer">
                   🏢 {activeOrganization?.name || 'Organization'} (Global)
                 </SelectItem>
                 {workspaces?.map((w) => (
-                  <SelectItem key={w.id} value={w.id} className="font-semibold text-xs py-2.5">
+                  <SelectItem key={w.id} value={w.id} className="font-semibold text-xs py-2.5 cursor-pointer">
                     💼 {w.name} (Workspace)
                   </SelectItem>
                 ))}
@@ -175,18 +193,30 @@ export default function SettingsClient() {
         </div>
 
         <Tabs defaultValue="profile" className="space-y-8">
-          <TabsList className="bg-muted/50 p-1 rounded-2xl border border-border/80 w-full md:w-auto grid grid-cols-2 md:flex md:items-center gap-1 min-h-[52px]">
-            <TabsTrigger value="profile" className="rounded-xl font-bold text-xs h-10 px-6 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Building className="h-4 w-4" /> Profile & Workspaces
+          <TabsList className="bg-muted/60 p-1.5 rounded-2xl border border-border/70 w-full md:w-auto flex flex-wrap md:inline-flex items-center gap-1.5 shadow-sm">
+            <TabsTrigger 
+              value="profile" 
+              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+            >
+              <Building className="h-4 w-4 shrink-0" /> Profile & Workspaces
             </TabsTrigger>
-            <TabsTrigger value="branding" className="rounded-xl font-bold text-xs h-10 px-6 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Sparkles className="h-4 w-4" /> Brand & Styling
+            <TabsTrigger 
+              value="branding" 
+              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+            >
+              <Sparkles className="h-4 w-4 shrink-0" /> Brand & Styling
             </TabsTrigger>
-            <TabsTrigger value="regional" className="rounded-xl font-bold text-xs h-10 px-6 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Sliders className="h-4 w-4" /> Localization Settings
+            <TabsTrigger 
+              value="regional" 
+              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+            >
+              <Sliders className="h-4 w-4 shrink-0" /> Localization Settings
             </TabsTrigger>
-            <TabsTrigger value="integrations" className="rounded-xl font-bold text-xs h-10 px-6 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Key className="h-4 w-4" /> AI & Integrations
+            <TabsTrigger 
+              value="integrations" 
+              className="rounded-xl font-semibold text-xs h-9 px-5 gap-2 text-muted-foreground hover:text-foreground transition-all duration-200 cursor-pointer data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md data-[state=active]:font-bold"
+            >
+              <Key className="h-4 w-4 shrink-0" /> AI & Integrations
             </TabsTrigger>
           </TabsList>
 
@@ -194,101 +224,137 @@ export default function SettingsClient() {
           <TabsContent value="profile" className="space-y-8 outline-none">
             {selectedScope === 'organization' ? (
               <>
-                <Card className="border-none shadow-2xl ring-1 ring-border rounded-[2.5rem] overflow-hidden bg-background/40 backdrop-blur-sm relative group/card">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/5 opacity-50" />
-                  <CardContent className="p-8 md:p-14 relative z-10">
-                    <div className="flex flex-col md:flex-row items-center md:items-start gap-10 md:gap-16">
+                <Card className="border border-border/70 shadow-xl ring-1 ring-border/40 rounded-3xl overflow-hidden bg-card text-left relative group/card transition-all">
+                  <div className="h-1.5 w-full bg-gradient-to-r from-primary via-blue-500 to-indigo-600" />
+                  <CardContent className="p-6 md:p-8 relative z-10">
+                    <div className="flex flex-col md:flex-row items-center md:items-start gap-6 md:gap-8">
                       {/* Logo Section */}
-                      <div className="shrink-0">
+                      <div className="shrink-0 flex flex-col items-center gap-2">
                         <MediaSelectorTrigger 
                             value={activeOrganization?.logoUrl}
                             onSelect={handleLogoChange}
                             label="Organization Logo"
-                            subLabel="Tap to update your institution's brand identity."
+                            subLabel="Tap to update brand identity"
                             workspaceId={activeWorkspaceId || 'global'}
-                            previewClassName="h-32 w-32 md:h-44 md:w-44 shadow-2xl ring-4 ring-background group-hover:ring-primary/20 transition-all duration-500"
+                            fallbackInitials={orgInitials}
+                            hideText={true}
+                            previewClassName="h-28 w-28 md:h-32 md:w-32 rounded-2xl shadow-lg ring-2 ring-border/80 group-hover:ring-primary/40 transition-all duration-300"
                         />
+                        <span className="text-[10px] font-semibold text-muted-foreground tracking-wide">
+                          {activeOrganization?.logoUrl ? 'Click to change' : 'Upload logo'}
+                        </span>
                       </div>
 
                       {/* Info Section */}
-                      <div className="flex-1 space-y-8 text-center md:text-left min-w-0 pt-2">
-                        <div className="space-y-4">
-                          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-                            <div className="space-y-1">
-                              <h1 className="text-2xl font-bold text-foreground tracking-tight">
+                      <div className="flex-1 space-y-5 text-center md:text-left min-w-0">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                          <div className="space-y-1.5">
+                            <div className="flex items-center justify-center md:justify-start gap-3 flex-wrap">
+                              <h2 className="text-2xl font-black text-foreground tracking-tight">
                                 {activeOrganization?.name || 'System Parameters'}
-                              </h1>
-                              <div className="flex items-center justify-center md:justify-start gap-2">
-                                <span className="h-2 w-2 rounded-full bg-primary animate-pulse" />
-                                <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60">Active Institution</span>
+                              </h2>
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase tracking-wider">
+                                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                                Active Institution
                               </div>
                             </div>
-                            {activeOrganization && (
-                              <Button 
-                                variant="outline" 
-                                size="lg" 
-                                onClick={() => setIsOrgDialogOpen(true)} 
-                                className="rounded-2xl font-bold text-xs h-12 px-6 shrink-0 border-2 hover:bg-primary hover:text-white hover:border-primary transition-all duration-300 shadow-lg shadow-primary/5"
-                              >
-                                <Pencil className="w-4 h-4 mr-2" />
-                                Edit Profile Details
-                              </Button>
-                            )}
+                            <p className="text-sm font-normal text-muted-foreground leading-relaxed max-w-2xl">
+                              {activeOrganization?.description || 'Manage your organization\'s workspaces, modules, zones, and security roles from a centralized command center.'}
+                            </p>
                           </div>
-                          <p className="text-base md:text-lg font-medium text-muted-foreground/80 leading-relaxed max-w-3xl">
-                            {activeOrganization?.description || 'Manage your organization\'s workspaces, modules, zones, and security roles from a centralized command center.'}
-                          </p>
+                          {activeOrganization && (
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => setIsOrgDialogOpen(true)} 
+                              className="rounded-xl font-bold text-xs h-10 px-4.5 shrink-0 border-border/80 hover:bg-primary hover:text-white hover:border-primary transition-all duration-200 shadow-sm active:scale-[0.98] self-center md:self-start"
+                            >
+                              <Pencil className="w-3.5 h-3.5 mr-1.5" />
+                              Edit Profile Details
+                            </Button>
+                          )}
                         </div>
 
-                        {/* Metadata Grid */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 pt-8 border-t border-border/50">
-                          {activeOrganization?.website && (
-                            <div className="flex items-center justify-center md:justify-start gap-3 group/link">
-                              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all duration-300">
-                                <Globe className="h-4 w-4" />
+                        {/* Metadata / Contact Chips */}
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-4 border-t border-border/50">
+                          {activeOrganization?.email ? (
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-left min-w-0">
+                              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <Mail className="h-3.5 w-3.5" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Website</span>
-                                <a href={activeOrganization.website} target="_blank" rel="noopener noreferrer" className="text-xs font-bold text-foreground hover:text-primary transition-colors truncate">
-                                  {activeOrganization.website.replace(/^https?:\/\//, '')}
-                                </a>
-                              </div>
-                            </div>
-                          )}
-                          {activeOrganization?.email && (
-                            <div className="flex items-center justify-center md:justify-start gap-3 group/link">
-                              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all duration-300">
-                                <Mail className="h-4 w-4" />
-                              </div>
-                              <div className="flex flex-col min-w-0">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Email</span>
-                                <a href={`mailto:${activeOrganization.email}`} className="text-xs font-bold text-foreground hover:text-primary transition-colors truncate">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Email</span>
+                                <a href={`mailto:${activeOrganization.email}`} className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate">
                                   {activeOrganization.email}
                                 </a>
                               </div>
                             </div>
+                          ) : (
+                            <button onClick={() => setIsOrgDialogOpen(true)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-dashed border-border/70 hover:border-primary/50 text-left min-w-0 group/btn transition-colors">
+                              <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover/btn:bg-primary/10 group-hover/btn:text-primary transition-colors">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground group-hover/btn:text-primary" />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground group-hover/btn:text-foreground truncate">+ Add Email</span>
+                            </button>
                           )}
-                          {activeOrganization?.phone && (
-                            <div className="flex items-center justify-center md:justify-start gap-3 group/link">
-                              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all duration-300">
-                                <Phone className="h-4 w-4" />
+
+                          {activeOrganization?.website ? (
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-left min-w-0">
+                              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <Globe className="h-3.5 w-3.5" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Support</span>
-                                <span className="text-xs font-bold text-foreground truncate">{activeOrganization.phone}</span>
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Website</span>
+                                <a href={activeOrganization.website} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-foreground hover:text-primary transition-colors truncate">
+                                  {activeOrganization.website.replace(/^https?:\/\//, '')}
+                                </a>
                               </div>
                             </div>
+                          ) : (
+                            <button onClick={() => setIsOrgDialogOpen(true)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-dashed border-border/70 hover:border-primary/50 text-left min-w-0 group/btn transition-colors">
+                              <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover/btn:bg-primary/10 group-hover/btn:text-primary transition-colors">
+                                <Globe className="h-3.5 w-3.5 text-muted-foreground group-hover/btn:text-primary" />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground group-hover/btn:text-foreground truncate">+ Add Website</span>
+                            </button>
                           )}
-                          {activeOrganization?.address && (
-                            <div className="flex items-center justify-center md:justify-start gap-3 group/link">
-                              <div className="h-8 w-8 rounded-xl bg-primary/10 flex items-center justify-center group-hover/link:bg-primary group-hover/link:text-white transition-all duration-300">
-                                <MapPin className="h-4 w-4" />
+
+                          {activeOrganization?.phone ? (
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-left min-w-0">
+                              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <Phone className="h-3.5 w-3.5" />
                               </div>
-                              <div className="flex flex-col min-w-0 text-left">
-                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50">Location</span>
-                                <span className="text-xs font-bold text-foreground truncate">{activeOrganization.address}</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Support</span>
+                                <span className="text-xs font-semibold text-foreground truncate">{activeOrganization.phone}</span>
                               </div>
                             </div>
+                          ) : (
+                            <button onClick={() => setIsOrgDialogOpen(true)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-dashed border-border/70 hover:border-primary/50 text-left min-w-0 group/btn transition-colors">
+                              <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover/btn:bg-primary/10 group-hover/btn:text-primary transition-colors">
+                                <Phone className="h-3.5 w-3.5 text-muted-foreground group-hover/btn:text-primary" />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground group-hover/btn:text-foreground truncate">+ Add Phone</span>
+                            </button>
+                          )}
+
+                          {activeOrganization?.address ? (
+                            <div className="flex items-center gap-2.5 p-2.5 rounded-xl bg-muted/40 border border-border/50 text-left min-w-0">
+                              <div className="h-7 w-7 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                <MapPin className="h-3.5 w-3.5" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Location</span>
+                                <span className="text-xs font-semibold text-foreground truncate">{activeOrganization.address}</span>
+                              </div>
+                            </div>
+                          ) : (
+                            <button onClick={() => setIsOrgDialogOpen(true)} className="flex items-center gap-2.5 p-2.5 rounded-xl border border-dashed border-border/70 hover:border-primary/50 text-left min-w-0 group/btn transition-colors">
+                              <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center shrink-0 group-hover/btn:bg-primary/10 group-hover/btn:text-primary transition-colors">
+                                <MapPin className="h-3.5 w-3.5 text-muted-foreground group-hover/btn:text-primary" />
+                              </div>
+                              <span className="text-xs font-medium text-muted-foreground group-hover/btn:text-foreground truncate">+ Add Location</span>
+                            </button>
                           )}
                         </div>
                       </div>

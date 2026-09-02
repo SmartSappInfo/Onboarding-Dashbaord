@@ -420,11 +420,11 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                 <CardContent className="p-8 space-y-6">
                     <Tabs value={footerPreviewMode} onValueChange={(v) => setFooterPreviewMode(v as 'code' | 'preview')} className="space-y-4">
                         <div className="flex items-center justify-between border-b pb-2">
-                            <TabsList className="bg-muted/10 border p-0.5 h-9 rounded-xl shadow-sm">
-                                <TabsTrigger value="preview" className="text-[10px] font-bold px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
+                            <TabsList className="bg-muted/50 border border-border/60 p-0.5 h-9 rounded-xl shadow-sm">
+                                <TabsTrigger value="preview" className="text-[10px] font-bold px-4 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all duration-200">
                                     Preview
                                 </TabsTrigger>
-                                <TabsTrigger value="code" className="text-[10px] font-bold px-4 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-200">
+                                <TabsTrigger value="code" className="text-[10px] font-bold px-4 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm transition-all duration-200">
                                     HTML Source
                                 </TabsTrigger>
                             </TabsList>
