@@ -1554,7 +1554,8 @@ function SurveyStepper({
     onStepClick,
     elementStates,
     variant = 'full',
-    isPageVisible = () => true
+    isPageVisible = () => true,
+    accentColor = '#3B82F6'
 }: {
     pages: SurveyElement[][];
     pageStatuses: { isValid: boolean }[];
@@ -1563,6 +1564,7 @@ function SurveyStepper({
     elementStates: Record<string, ElementState>;
     variant?: SurveyStepperVariant;
     isPageVisible?: (idx: number) => boolean;
+    accentColor?: string;
 }) {
     const { resolvedTheme } = useTheme();
     const isDark = resolvedTheme === 'dark';
@@ -1610,7 +1612,7 @@ function SurveyStepper({
                                 initial={false}
                                 animate={{
                                     width: isActive ? 24 : 8,
-                                    backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
+                                    backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? accentColor : (isDark ? '#334155' : '#e2e8f0'),
                                 }}
                                 transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
                                 className="h-2 rounded-full transition-all group-hover:scale-110"
@@ -1655,7 +1657,7 @@ function SurveyStepper({
                                         initial={false}
                                         animate={{
                                             width: (isCompleted || isActive) ? '100%' : '0%',
-                                            backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
+                                            backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? accentColor : (isDark ? '#334155' : '#e2e8f0'),
                                         }}
                                         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
                                         className="h-full rounded-full"
@@ -1706,8 +1708,8 @@ function SurveyStepper({
                                 <motion.div
                                     initial={false}
                                     animate={{
-                                        backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#0f172a' : '#fff'),
-                                        borderColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? '#3B5FFF' : (isDark ? '#334155' : '#e2e8f0'),
+                                        backgroundColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? accentColor : (isDark ? '#0f172a' : '#fff'),
+                                        borderColor: isCompleted ? (isInvalid ? '#ef4444' : '#22c55e') : isActive ? accentColor : (isDark ? '#334155' : '#e2e8f0'),
                                         scale: isActive ? 1.2 : 1,
                                     }}
                                     transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
@@ -2791,7 +2793,7 @@ export default function SurveyForm({
                                             {interpolateText(survey.description)}
                                         </div>
                                     </div>
-                            <button type="button" className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide" onClick={handleNext}>
+                            <button type="button" style={{ backgroundColor: survey.patternColor || undefined }} className="inline-flex items-center justify-center gap-2 whitespace-nowrap text-base ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:opacity-90 h-14 px-10 font-bold rounded-2xl shadow-2xl transition-all hover:scale-105 active:scale-95 w-full sm:w-auto mt-6 uppercase tracking-wide text-white" onClick={handleNext}>
                                 {survey.startButtonText?.trim() ? interpolateText(survey.startButtonText) : "Let's Start"} <ArrowRight className="ml-2 h-6 w-6" />
                             </button>
                         </div>
@@ -2820,7 +2822,7 @@ export default function SurveyForm({
                                 </div>
 
                             <div ref={stepperRef}>
-                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} elementStates={elementStates} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} />
+                                <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} elementStates={elementStates} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} accentColor={survey.patternColor || '#3B82F6'} />
                             </div>
 
                              {pageSection && (pageSection.showSectionHeader ?? true) && (elementStates[pageSection.id]?.isVisible ?? !pageSection.hidden) && (
@@ -2837,7 +2839,7 @@ export default function SurveyForm({
                                 When embedded (isEmbedded === true), render with transparent background, zero borders, zero top accent bar, and zero extra padding
                                 so the survey content flows directly into the host modal dialog container or page section without nested cards or double borders.
                               */}
-                             <Card className={cn(isEmbedded ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-2xl text-foreground transition-all duration-300")}>
+                             <Card style={{ borderTopColor: isEmbedded ? "transparent" : (survey.patternColor || undefined) }} className={cn(isEmbedded ? "bg-transparent border-0 shadow-none p-0 rounded-none" : "border-t-4 border-t-primary rounded-2xl bg-card shadow-2xl text-foreground transition-all duration-300")}>
                                 <CardContent className={cn("space-y-6 sm:space-y-8 text-left", isEmbedded ? "p-0 sm:p-0" : "p-6 sm:p-8")}>
                                     <div className="space-y-6 sm:space-y-8">
                                         {currentElements.map((el) => {
@@ -2874,7 +2876,7 @@ export default function SurveyForm({
                                     </Button>
                                 )}
                                 {(currentPageIndex === pages.length - 1 || isLastVisiblePage) && (
-                                    <Button type="submit" size="lg" className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
+                                    <Button type="submit" size="lg" style={{ backgroundColor: (isSubmitting || isSubmitDisabled) ? undefined : (survey.patternColor || undefined) }} className={cn("h-14 px-12 rounded-2xl font-bold shadow-2xl transition-all hover:scale-105 w-full sm:w-auto bg-primary text-primary-foreground text-base uppercase tracking-tight text-white", isMultiPage && "sm:ml-auto")} disabled={isSubmitting || isSubmitDisabled}>
                                         {isSubmitting ? (
                                             <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Submitting...</>
                                         ) : isSubmitDisabled ? (

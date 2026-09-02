@@ -1,75 +1,113 @@
 'use client';
 
+/**
+ * @fileOverview SmartSapp Survey Intelligence 2.0 — Memoized SVG Background Pattern
+ * 
+ * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS (Rule 10):
+ * 1. Isolated SVG Pattern Namespaces: Uses `idPrefix` to prevent DOM collision across nested frames/previews.
+ * 2. High-Performance Memoization: Pure functional SVG rendering without layout thrashing.
+ * 3. Supports all 7 archetypes: none, dots, grid, circuit, topography, cubes, gradient.
+ * 4. Strict Zero-Any Invariant.
+ */
+
 import * as React from 'react';
 import type { Survey } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
-export const BackgroundPattern = ({ pattern, color }: { pattern?: Survey['backgroundPattern'], color?: string }) => {
-    if (!pattern || pattern === 'none') return null;
+export interface BackgroundPatternProps {
+  pattern?: Survey['backgroundPattern'] | string;
+  color?: string;
+  idPrefix?: string;
+  className?: string;
+}
 
-    if (pattern === 'gradient') {
-        return (
-            <div className="absolute inset-0 bg-gradient-to-br from-[#6366f1] via-[#a855f7] to-[#ec4899] opacity-90" />
-        );
-    }
+export const BackgroundPattern = React.memo(function BackgroundPattern({
+  pattern = 'none',
+  color = '#3B82F6',
+  idPrefix = 'survey-pat',
+  className,
+}: BackgroundPatternProps) {
+  if (!pattern || pattern === 'none') return null;
 
-    const patterns: Record<string, React.ReactNode> = {
-        dots: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="dots" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                        <circle cx="2" cy="2" r="1" fill={color || "currentColor"} opacity="0.1" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#dots)" />
-            </svg>
-        ),
-        grid: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="grid" x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.05" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#grid)" />
-            </svg>
-        ),
-        circuit: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="circuit" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <path d="M0 10h20v10H0zM30 30h40v10H30zM80 50h20v10H80zM10 70h30v10H10zM60 80h20v10H60z" fill="none" stroke={color || "currentColor"} strokeWidth="0.5" opacity="0.05" />
-                        <circle cx="20" cy="15" r="2" fill={color || "currentColor"} opacity="0.1" />
-                        <circle cx="70" cy="35" r="2" fill={color || "currentColor"} opacity="0.1" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#circuit)" />
-            </svg>
-        ),
-        topography: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="topo" x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
-                        <path d="M0 50c20-10 40-10 60 0s40 10 60 0M0 20c20-10 40-10 60 0s40 10 60 0M0 80c20-10 40-10 60 0s40 10 60 0" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.05" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#topo)" />
-            </svg>
-        ),
-        cubes: (
-            <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <pattern id="cubes" x="0" y="0" width="60" height="60" patternUnits="userSpaceOnUse">
-                        <path d="M30 0l30 15v30L30 60 0 45V15z" fill="none" stroke={color || "currentColor"} strokeWidth="1" opacity="0.05" />
-                    </pattern>
-                </defs>
-                <rect width="100%" height="100%" fill="url(#cubes)" />
-            </svg>
-        )
-    };
-
+  if (pattern === 'gradient') {
     return (
-        <div className="absolute inset-0 pointer-events-none text-foreground/20">
-            {patterns[pattern]}
-        </div>
+      <div
+        className={cn(
+          'absolute inset-0 pointer-events-none opacity-20 transition-opacity duration-500',
+          className
+        )}
+        style={{
+          background: `radial-gradient(circle at 50% 30%, ${color}33 0%, transparent 70%)`,
+        }}
+      />
     );
-};
+  }
+
+  const patternId = `${idPrefix}-${pattern}`;
+
+  return (
+    <div
+      className={cn(
+        'absolute inset-0 pointer-events-none transition-opacity duration-500 overflow-hidden',
+        className || 'opacity-20'
+      )}
+      style={{ color }}
+    >
+      <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg" className="w-full h-full">
+        <defs>
+          {pattern === 'dots' && (
+            <pattern id={patternId} x="0" y="0" width="24" height="24" patternUnits="userSpaceOnUse">
+              <circle cx="2" cy="2" r="1.5" fill="currentColor" opacity="0.4" />
+            </pattern>
+          )}
+
+          {pattern === 'grid' && (
+            <pattern id={patternId} x="0" y="0" width="40" height="40" patternUnits="userSpaceOnUse">
+              <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" opacity="0.3" />
+            </pattern>
+          )}
+
+          {pattern === 'circuit' && (
+            <pattern id={patternId} x="0" y="0" width="80" height="80" patternUnits="userSpaceOnUse">
+              <path
+                d="M 0 40 H 40 V 80 M 40 40 L 80 0"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                opacity="0.3"
+              />
+              <circle cx="40" cy="40" r="3.5" fill="currentColor" opacity="0.4" />
+              <circle cx="0" cy="40" r="2" fill="currentColor" opacity="0.3" />
+            </pattern>
+          )}
+
+          {pattern === 'topography' && (
+            <pattern id={patternId} x="0" y="0" width="100" height="100" patternUnits="userSpaceOnUse">
+              <path
+                d="M 0 50 Q 25 25, 50 50 T 100 50 M 0 75 Q 25 50, 50 75 T 100 75 M 0 25 Q 25 0, 50 25 T 100 25"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                opacity="0.3"
+              />
+            </pattern>
+          )}
+
+          {pattern === 'cubes' && (
+            <pattern id={patternId} x="0" y="0" width="48" height="48" patternUnits="userSpaceOnUse">
+              <path
+                d="M 24 0 L 48 12 L 24 24 L 0 12 Z M 0 12 L 0 36 L 24 48 L 24 24 Z M 48 12 L 48 36 L 24 48"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                opacity="0.3"
+              />
+            </pattern>
+          )}
+        </defs>
+
+        <rect width="100%" height="100%" fill={`url(#${patternId})`} />
+      </svg>
+    </div>
+  );
+});

@@ -335,7 +335,7 @@ export default function SurveyDisplay({
                         </div>
                     </div>
                 )}
-                 {!isEmbedded && <BackgroundPattern pattern={survey.backgroundPattern} color={survey.patternColor} />}
+                 {!isEmbedded && <BackgroundPattern pattern={survey.backgroundPattern || 'none'} color={survey.patternColor || '#3B82F6'} idPrefix="public-thankyou" />}
                  <main className="flex-1 flex items-center justify-center p-4 relative z-10 py-12">
                     <div className="max-w-4xl w-full mx-auto animate-in fade-in zoom-in duration-500">
                         {defaultPage ? (
@@ -412,9 +412,28 @@ export default function SurveyDisplay({
     const hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;
     const showHeader = !!survey.showSurveyTitles;
 
+    const activePatternColor = survey.patternColor || '#3B82F6';
+    const activeBgColor = isDark ? '#090D16' : (survey.backgroundColor || '#F8FAFC');
+
     return (
         <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
-            <div className={cn(isEmbedded ? "min-h-0 h-auto" : "min-h-screen", "flex flex-col relative", isPreviewMode && "pt-16")} style={{ backgroundColor: isEmbedded ? 'transparent' : bgColor }}>
+            <div 
+              className={cn(isEmbedded ? "min-h-0 h-auto" : "min-h-screen", "flex flex-col relative", isPreviewMode && "pt-16")} 
+              style={{ 
+                backgroundColor: isEmbedded ? 'transparent' : activeBgColor,
+                '--primary': activePatternColor,
+                '--survey-accent': activePatternColor,
+                '--survey-bg': activeBgColor,
+                '--ring': activePatternColor,
+              } as React.CSSProperties}
+            >
+            {!isEmbedded && (
+                <BackgroundPattern 
+                    pattern={survey.backgroundPattern || 'none'} 
+                    color={activePatternColor} 
+                    idPrefix="public-survey" 
+                />
+            )}
             {isPreviewMode && (
                 <div className="fixed top-0 left-0 w-full z-50 bg-slate-900 border-b border-slate-800 text-white px-4 py-3 shadow-md flex flex-wrap items-center justify-between gap-4">
                     <div className="flex items-center gap-2">

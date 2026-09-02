@@ -34,6 +34,7 @@ import { stripHtml, cn } from '@/lib/utils';
 import { MacBrowserFrame } from './preview/MacBrowserFrame';
 import { IPhoneFrame } from './preview/IPhoneFrame';
 import { SurveyInteractiveWalkthrough } from './preview/SurveyInteractiveWalkthrough';
+import { BackgroundPattern } from '@/app/surveys/components/survey-background-pattern';
 import type { SimulationDevice, SimulationTheme, SimulationScreen } from './inspector/types';
 
 export default function LivePreviewPane() {
@@ -151,7 +152,7 @@ export default function LivePreviewPane() {
       )}
       style={{ backgroundColor: effectiveBgColor }}
     >
-      <BackgroundPattern />
+      <BackgroundPattern pattern={backgroundPattern} color={patternColor} idPrefix="live-pane" />
 
       <ScrollArea className="h-full w-full">
         <div className="p-6 sm:p-10 space-y-8 text-center relative z-10 max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[500px]">

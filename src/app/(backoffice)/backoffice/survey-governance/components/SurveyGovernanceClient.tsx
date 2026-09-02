@@ -36,6 +36,7 @@ import SystemCrmFieldMappingMatrix from './SystemCrmFieldMappingMatrix';
 import SystemDecisionPlaybookMatrix from './SystemDecisionPlaybookMatrix';
 import { SystemResearchGovernanceMatrix } from './SystemResearchGovernanceMatrix';
 import { SystemPredictiveIntelligenceMatrix } from './SystemPredictiveIntelligenceMatrix';
+import { SystemThemeGovernanceMatrix } from './SystemThemeGovernanceMatrix';
 
 export default function SurveyGovernanceClient() {
   const getToken = useBackofficeToken();
@@ -173,6 +174,9 @@ export default function SurveyGovernanceClient() {
 
       {/* Global System Predictive Intelligence & Churn Forecasting Matrix */}
       <SystemPredictiveIntelligenceMatrix />
+
+      {/* Global System Theme & Brand Governance Matrix */}
+      <SystemThemeGovernanceMatrix />
 
       {/* Drop-off Intelligence Radar Section */}
       <div className="space-y-3">

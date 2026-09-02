@@ -22,6 +22,7 @@ import AddElementModal from './add-element-modal';
 import { MarqueeSelect } from './MarqueeSelect';
 import { BulkActionsBar } from './BulkActionsBar';
 import SurveyForm from '../../../surveys/[slug]/components/survey-form';
+import { BackgroundPattern } from '../../../surveys/components/survey-background-pattern';
 import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -427,8 +428,20 @@ export default function SurveyFormBuilder() {
                     />
                     <div 
                         ref={canvasRef}
-                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth"
+                        className="flex-1 overflow-y-auto no-scrollbar scroll-smooth relative"
+                        style={{
+                            '--primary': watchedForm.patternColor || '#3B82F6',
+                            '--survey-accent': watchedForm.patternColor || '#3B82F6',
+                            '--survey-bg': watchedForm.backgroundColor || '#F8FAFC',
+                        } as React.CSSProperties}
                     >
+                        {/* Ambient Studio Background Pattern */}
+                        <BackgroundPattern 
+                            pattern={watchedForm.backgroundPattern || 'none'} 
+                            color={watchedForm.patternColor || '#3B82F6'} 
+                            idPrefix="studio-canvas"
+                            className="opacity-10 pointer-events-none"
+                        />
                         <MarqueeSelect
                             containerRef={canvasRef}
                             itemSelector="[data-block-id]"
