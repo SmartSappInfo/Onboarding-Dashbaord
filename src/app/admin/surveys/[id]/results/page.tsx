@@ -50,6 +50,7 @@ import { CrossTabsTab } from "./components/CrossTabsTab";
 import { FunnelDropoffTab } from "./components/FunnelDropoffTab";
 import { ResponseQualityTab } from "./components/ResponseQualityTab";
 import { ExportSurveyDataDialog } from "./components/ExportSurveyDataDialog";
+import { getSurveyResponsesListAction } from "@/lib/surveys/survey-analytics-actions";
 import { useSetBreadcrumb } from "@/hooks/use-set-breadcrumb";
 import { useWorkspace } from "@/context/WorkspaceContext";
 import AiModelSelector from "@/components/ai/AiModelSelector";
@@ -75,7 +76,24 @@ function SurveyResultsPageContent() {
   const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
   const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
   const [showExportDialog, setShowExportDialog] = React.useState(false);
-  const activeTab = searchParams.get("view") || "responses";
+  
+  const initialView = searchParams.get("view") || "responses";
+  const [activeTab, setActiveTab] = React.useState<string>(initialView);
+  const [serverResponses, setServerResponses] = React.useState<SurveyResponse[]>([]);
+
+  React.useEffect(() => {
+    const view = searchParams.get("view");
+    if (view && view !== activeTab) {
+      setActiveTab(view);
+    }
+  }, [searchParams, activeTab]);
+
+  const handleTabChange = (value: string) => {
+    setActiveTab(value);
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("view", value);
+    router.replace(`?${params.toString()}`, { scroll: false });
+  };
 
   // Filter states
   const [columnFilters, setColumnFilters] = React.useState<Record<string, string[]>>({});
@@ -106,12 +124,33 @@ function SurveyResultsPageContent() {
     '/admin/surveys/' + surveyId + '/results'
   );
 
+  const fetchResponses = React.useCallback(async () => {
+    if (!surveyId) return;
+    try {
+      const res = await getSurveyResponsesListAction(surveyId, activeWorkspaceId || 'default');
+      if (res.success && res.responses) {
+        setServerResponses(res.responses);
+      }
+    } catch {
+      // Ignored: fallback to Firestore listener
+    }
+  }, [surveyId, activeWorkspaceId]);
+
+  React.useEffect(() => {
+    fetchResponses();
+  }, [fetchResponses]);
+
   const responsesColRef = useMemoFirebase(() => {
     if (!firestore || !surveyId) return null;
     return query(collection(firestore, 'surveys', surveyId, 'responses'), orderBy("submittedAt", "desc"));
   }, [firestore, surveyId]);
 
-  const { data: responses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
+  const { data: rawResponses, isLoading: areResponsesLoading } = useCollection<SurveyResponse>(responsesColRef);
+
+  const responses = React.useMemo(() => {
+    if (rawResponses && rawResponses.length > 0) return rawResponses;
+    return serverResponses;
+  }, [rawResponses, serverResponses]);
 
   const summariesColRef = useMemoFirebase(() => {
     if (!firestore || !surveyId) return null;
@@ -217,7 +256,7 @@ function SurveyResultsPageContent() {
   return (
     <Tabs
       value={activeTab}
-      onValueChange={(value) => router.push('/admin/surveys/' + surveyId + '/results?view=' + value)}
+      onValueChange={handleTabChange}
       className="flex h-full flex-col"
     >
       <div className="shrink-0 border-b border-border/70 bg-card/40 backdrop-blur-md p-4 sm:p-5">

@@ -369,3 +369,30 @@ export async function exportSurveyDataAction(
     };
   }
 }
+
+/**
+ * Retrieves list of survey responses with Server Admin SDK fallback.
+ */
+export async function getSurveyResponsesListAction(
+  surveyId: string,
+  workspaceId: string
+): Promise<{ success: boolean; responses?: SurveyResponse[]; error?: string }> {
+  try {
+    if (!surveyId || !workspaceId) {
+      return { success: false, error: 'Missing surveyId or workspaceId' };
+    }
+    const snap = await adminDb
+      .collection('surveys')
+      .doc(surveyId)
+      .collection('responses')
+      .orderBy('submittedAt', 'desc')
+      .get();
+    const responses = snap.docs.map((d) => ({ id: d.id, ...d.data() })) as SurveyResponse[];
+    return { success: true, responses };
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Failed to fetch responses';
+    console.error('[getSurveyResponsesListAction error]:', message);
+    return { success: false, error: message };
+  }
+}
+

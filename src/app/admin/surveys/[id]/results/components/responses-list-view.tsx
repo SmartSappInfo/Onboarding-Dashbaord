@@ -47,6 +47,10 @@ import { cn, stripHtml } from '@/lib/utils';
 import { BentoPagination } from '@/app/admin/entities/components/BentoPagination';
 import type { UserProfile } from '@/lib/types';
 
+// In-memory client cache for fast tab transitions
+const clientContactCache = new Map<string, ResolvedContact | null>();
+const clientSharedByCache = new Map<string, string | null>();
+
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Component to display entity & contact details for a survey response.
@@ -68,8 +72,12 @@ function EntityInfo({
 }) {
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
-    const [contact, setContact] = React.useState<ResolvedContact | null>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
+    const cacheKey = response.entityId ? `${response.entityId}_${activeWorkspaceId || ''}` : '';
+    const cachedContact = cacheKey ? clientContactCache.get(cacheKey) : null;
+    const hasCached = Boolean(cacheKey && clientContactCache.has(cacheKey));
+
+    const [contact, setContact] = React.useState<ResolvedContact | null>(cachedContact || null);
+    const [isLoading, setIsLoading] = React.useState(Boolean(response.entityId && !hasCached));
     const [copiedField, setCopiedField] = React.useState<'phone' | 'email' | null>(null);
     const copyTimeoutRef = React.useRef<NodeJS.Timeout | null>(null);
 
@@ -87,11 +95,22 @@ function EntityInfo({
                 return;
             }
 
+            if (cacheKey && clientContactCache.has(cacheKey)) {
+                if (active) {
+                    setContact(clientContactCache.get(cacheKey) || null);
+                    setIsLoading(false);
+                }
+                return;
+            }
+
             try {
                 const resolved = await resolveContact(
                     response.entityId || '',
                     activeWorkspaceId
                 );
+                if (cacheKey) {
+                    clientContactCache.set(cacheKey, resolved);
+                }
                 if (active) setContact(resolved);
             } catch (error) {
                 console.error('Failed to resolve contact:', error);
@@ -104,7 +123,7 @@ function EntityInfo({
         return () => {
             active = false;
         };
-    }, [response.entityId, activeWorkspaceId]);
+    }, [response.entityId, activeWorkspaceId, cacheKey]);
 
     const details = React.useMemo(() => {
         return extractResponseContactDetails(response, contact);
@@ -291,8 +310,11 @@ function EntityInfo({
  */
 function SharedByInfo({ userId }: { userId?: string }) {
     const firestore = useFirestore();
-    const [name, setName] = React.useState<string | null>(null);
-    const [isLoading, setIsLoading] = React.useState(true);
+    const cachedName = userId ? clientSharedByCache.get(userId) : null;
+    const hasCached = Boolean(userId && clientSharedByCache.has(userId));
+
+    const [name, setName] = React.useState<string | null>(cachedName || null);
+    const [isLoading, setIsLoading] = React.useState(Boolean(userId && !hasCached));
 
     React.useEffect(() => {
         let active = true;
@@ -300,13 +322,24 @@ function SharedByInfo({ userId }: { userId?: string }) {
             setIsLoading(false);
             return;
         }
+
+        if (clientSharedByCache.has(userId)) {
+            if (active) {
+                setName(clientSharedByCache.get(userId) || null);
+                setIsLoading(false);
+            }
+            return;
+        }
         
         getDoc(doc(firestore, 'users', userId)).then((snap) => {
             if (active) {
+                let resolvedName: string | null = null;
                 if (snap.exists()) {
                     const data = snap.data() as UserProfile;
-                    setName(data.name || data.email);
+                    resolvedName = data.name || data.email || null;
                 }
+                clientSharedByCache.set(userId, resolvedName);
+                setName(resolvedName);
                 setIsLoading(false);
             }
         }).catch((err) => {
