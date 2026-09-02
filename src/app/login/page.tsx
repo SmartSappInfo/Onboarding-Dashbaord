@@ -94,9 +94,12 @@ function LoginContent() {
           } else {
             router.push(returnTo || '/admin');
           }
-        } else if (data.profileCompleted === false || !data.profileCompleted || data.approvalStatus === 'pending') {
-          toast({ title: 'Sign-in Successful' });
-          router.push(returnTo || '/admin');
+        } else if (data.profileCompleted === false || !data.profileCompleted) {
+          toast({ title: 'Sign-in Successful', description: "Let's complete your profile." });
+          router.push(returnTo || '/profile-setup');
+        } else if (data.approvalStatus === 'pending') {
+          toast({ title: 'Sign-in Successful', description: 'Your registration is awaiting approval.' });
+          router.push(returnTo || '/awaiting-approval');
         } else {
           await auth.signOut();
           toast({
@@ -121,10 +124,10 @@ function LoginContent() {
       });
       toast({
         title: 'Welcome to SmartSapp',
-        description: 'Your account has been created. Let\'s set up your profile details.',
+        description: "Your account has been created. Let's set up your profile details.",
         duration: 5000,
       });
-      router.push(returnTo || '/admin');
+      router.push(returnTo || '/profile-setup');
     },
     [auth, firestore, router, toast, returnTo]
   );
@@ -209,9 +212,12 @@ function LoginContent() {
           } else {
             router.push(returnTo || '/admin');
           }
-        } else if (data.profileCompleted === false || !data.profileCompleted || data.approvalStatus === 'pending') {
-          toast({ title: 'Sign-in Successful' });
-          router.push(returnTo || '/admin');
+        } else if (data.profileCompleted === false || !data.profileCompleted) {
+          toast({ title: 'Sign-in Successful', description: "Let's complete your profile." });
+          router.push(returnTo || '/profile-setup');
+        } else if (data.approvalStatus === 'pending') {
+          toast({ title: 'Sign-in Successful', description: 'Your registration is awaiting approval.' });
+          router.push(returnTo || '/awaiting-approval');
         } else {
           await auth.signOut();
           toast({
@@ -233,8 +239,8 @@ function LoginContent() {
           approvalStatus: 'pending',
           createdAt: new Date().toISOString(),
         });
-        toast({ title: 'Welcome to SmartSapp', description: 'Let\'s complete your profile.' });
-        router.push(returnTo || '/admin');
+        toast({ title: 'Welcome to SmartSapp', description: "Let's complete your profile." });
+        router.push(returnTo || '/profile-setup');
       }
     } catch (error: unknown) {
       const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;

@@ -90,10 +90,10 @@ function SignupContent() {
 
         toast({
           title: 'Welcome to SmartSapp',
-          description: 'Your account has been created. Let\'s set up your profile details.',
+          description: "Your account has been created. Let's set up your profile details.",
           duration: 5000,
         });
-        router.push(returnTo || '/admin');
+        router.push(returnTo || '/profile-setup');
 
       })
       .catch((error) => {
@@ -155,10 +155,10 @@ function SignupContent() {
           
           toast({
             title: 'Welcome to SmartSapp',
-            description: 'Your account has been created. Let\'s set up your profile details.',
+            description: "Your account has been created. Let's set up your profile details.",
             duration: 5000,
           });
-          router.push(returnTo || '/admin');
+          router.push(returnTo || '/profile-setup');
         }
       })
       .catch((error) => {
