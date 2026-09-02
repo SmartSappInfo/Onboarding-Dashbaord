@@ -177,7 +177,7 @@ export function RoleBuilderDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-2xl p-0 flex flex-col justify-between bg-card border-l shadow-2xl z-[100]"
+        className="w-full sm:max-w-2xl p-0 flex flex-col justify-between bg-card border-l shadow-2xl"
       >
         <form onSubmit={handleSave} className="flex flex-col flex-1 overflow-y-auto">
           {/* Header */}

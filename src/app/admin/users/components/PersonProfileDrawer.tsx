@@ -292,8 +292,14 @@ export function PersonProfileDrawer({
     <Sheet open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <SheetContent
         side="right"
-        className="w-full sm:max-w-xl p-0 flex flex-col justify-between bg-card border-l shadow-2xl z-[100]"
+        className="w-full sm:max-w-xl p-0 flex flex-col justify-between bg-card border-l shadow-2xl"
       >
+        <SheetHeader className="sr-only">
+          <SheetTitle>{user.name || 'User Profile'}</SheetTitle>
+          <SheetDescription>
+            Inspect and manage team member access, profile attributes, and security permissions for {user.name || 'user'}.
+          </SheetDescription>
+        </SheetHeader>
         <div className="flex flex-col flex-1 overflow-y-auto">
           {/* Header Card */}
           <div className="p-5 pb-4 border-b bg-muted/20 space-y-4">
