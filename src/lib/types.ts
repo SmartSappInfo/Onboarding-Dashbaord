@@ -1588,7 +1588,7 @@ export interface UserSession {
   ipAddress?: string;
   lastActiveAt: string;
   isCurrentSession?: boolean;
-  status: 'active' | 'revoked';
+  status: 'active' | 'revoked' | 'expired';
 }
 
 export type MFAEnforcementLevel = 'disabled' | 'recommended' | 'enforced_all' | 'enforced_admins';
