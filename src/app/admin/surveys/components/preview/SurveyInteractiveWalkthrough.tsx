@@ -13,6 +13,7 @@ import { ArrowRight, ArrowLeft, Check, Sparkles, CornerDownLeft } from 'lucide-r
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import { cn, stripHtml } from '@/lib/utils';
 import VideoHero from '@/components/video-hero';
+import { getContrastButtonStyles } from '../inspector/contrast-utils';
 
 export interface SurveyInteractiveWalkthroughProps {
   elements?: SurveyElement[];

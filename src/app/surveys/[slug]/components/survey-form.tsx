@@ -56,6 +56,7 @@ import VideoHero from '@/components/video-hero';
 import { submitPublicSurveyResponse, triggerSurveyWebhook } from '@/lib/survey-actions';
 import { useTheme } from 'next-themes';
 import { evaluateRuleCondition } from '@/lib/surveys/survey-logic-graph';
+import { getContrastButtonStyles, getContrastTextColor } from '@/app/admin/surveys/components/inspector/contrast-utils';
 
 
 

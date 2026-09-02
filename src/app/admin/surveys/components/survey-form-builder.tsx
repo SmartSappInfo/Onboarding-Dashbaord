@@ -23,6 +23,7 @@ import { MarqueeSelect } from './MarqueeSelect';
 import { BulkActionsBar } from './BulkActionsBar';
 import SurveyForm from '../../../surveys/[slug]/components/survey-form';
 import { BackgroundPattern } from '../../../surveys/components/survey-background-pattern';
+import { hexToHslString, getContrastTextColor } from './inspector/contrast-utils';
 import { Separator } from '@/components/ui/separator';
 import AiChatEditor from './ai-chat-editor';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';

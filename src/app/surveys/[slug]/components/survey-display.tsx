@@ -6,6 +6,7 @@ import type { Survey, OrgBranding, WorkspaceEntity, SurveyResponse, SurveyResult
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { BackgroundPattern } from '../../components/survey-background-pattern';
+import { hexToHslString, getContrastTextColor } from '@/app/admin/surveys/components/inspector/contrast-utils';
 import { Building2, RotateCcw, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { interpolateWithMap } from '@/lib/survey-variable-utils';
