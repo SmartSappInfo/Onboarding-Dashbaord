@@ -175,7 +175,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     ];
 
     return (
- <div className="flex justify-center items-center mb-12 max-w-2xl mx-auto px-4">
+        <div className="flex justify-center items-center mb-3 max-w-xl mx-auto px-2">
             {steps.map((step, index) => {
                 const isActive = currentStep === step.n;
                 const isCompleted = currentStep > step.n;
@@ -186,30 +186,30 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                         <button 
                             type="button"
                             onClick={() => onStepClick(step.n)}
- className="flex flex-col items-center group outline-none"
+                            className="flex flex-col items-center group outline-none active:scale-[0.97] transition-transform"
                         >
                             <div
- className={cn(
-                                    'flex items-center justify-center w-9 h-9 rounded-2xl border-2 transition-all duration-300 shadow-sm',
+                                className={cn(
+                                    'flex items-center justify-center w-8 h-8 rounded-xl border transition-all duration-300 shadow-xs',
                                     isCompleted ? 'bg-primary border-primary text-white' : 
-                                    isActive ? 'bg-primary/10 border-primary text-primary shadow-lg shadow-primary/10' : 'bg-background border-border text-muted-foreground',
+                                    isActive ? 'bg-primary/10 border-primary text-primary ring-2 ring-primary/20 shadow-xs' : 'bg-background border-border text-muted-foreground hover:border-foreground/30',
                                 )}
                             >
- {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-5 h-5" />}
+                                {isCompleted ? <Check className="w-3.5 h-3.5" /> : <Icon className="w-4 h-4" />}
                             </div>
- <p className={cn(
-                                'mt-3 text-[10px] font-semibold uppercase  transition-colors', 
+                            <p className={cn(
+                                'mt-1 text-[9px] font-bold uppercase tracking-wider transition-colors', 
                                 isActive || isCompleted ? 'text-primary' : 'text-muted-foreground opacity-60 group-hover:opacity-100'
                             )}>
                                 {step.label}
                             </p>
                         </button>
                         {index < steps.length - 1 && (
- <div className="flex-1 mx-4 h-[2px] bg-muted rounded-full overflow-hidden relative">
+                            <div className="flex-1 mx-2.5 h-[2px] bg-muted rounded-full overflow-hidden relative">
                                 <motion.div 
                                     initial={false}
                                     animate={{ width: isCompleted ? '100%' : '0%' }}
- className="absolute inset-0 bg-primary"
+                                    className="absolute inset-0 bg-primary"
                                 />
                             </div>
                         )}
@@ -513,9 +513,9 @@ export default function EditSurveyPage() {
 
     return (
         <FormProvider {...form}>
- <div className="h-full flex flex-col">
- <div className="flex-1 overflow-y-auto ">
- <div className="p-8">
+            <div className="h-full flex flex-col">
+                <div className="flex-1 overflow-y-auto">
+                    <div className="p-3 sm:p-4 md:p-5">
                         <Stepper currentStep={step} onStepClick={handleStepChange} />
 
                         <AnimatePresence mode="wait">

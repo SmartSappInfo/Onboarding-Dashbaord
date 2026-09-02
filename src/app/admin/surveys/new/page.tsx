@@ -987,7 +987,7 @@ export default function NewSurveyPage() {
                 </header>
 
  <div className="flex-1 overflow-y-auto ">
- <div className="p-6">
+ <div className="p-3 sm:p-4 md:p-5">
                         <Stepper currentStep={step} onStepClick={handleStepChange} />
 
                         <AnimatePresence mode="wait">

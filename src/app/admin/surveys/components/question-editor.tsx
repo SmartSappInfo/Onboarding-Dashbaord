@@ -2320,7 +2320,7 @@ export default function QuestionEditor({ fields, remove, move, swap, insert, req
       }}>
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
               <SortableContext items={fields.map(f => f.id)} strategy={verticalListSortingStrategy}>
-                  <div className="space-y-6">
+                  <div className={cn("transition-all duration-200", isAccordion ? "space-y-2.5" : "space-y-6")}>
                       {fields.map((field, index) => (
                           <SortableSurveyElement 
                               key={field.id} 

@@ -368,11 +368,11 @@ export default function SurveyFormBuilder() {
 
     return (
         <div className="relative h-full">
-            <div className="flex h-[calc(100vh-8rem)] gap-4 p-4 overflow-hidden xl:overflow-visible bg-transparent">
+            <div className="flex h-[calc(100vh-9.5rem)] min-h-[600px] gap-3 p-1 sm:p-2 overflow-hidden xl:overflow-visible bg-transparent">
 
                 {/* 0. Left Panel - Structure Navigator (Phase 2) */}
                 {!isPreviewMode && isStructureNavigatorOpen && (
-                    <div className="hidden lg:flex w-72 h-full shrink-0 border border-border/70 rounded-2xl overflow-hidden shadow-xs bg-background/95 backdrop-blur-md">
+                    <div className="hidden lg:flex w-72 xl:w-80 h-full shrink-0 border border-border/70 rounded-2xl overflow-hidden shadow-xs bg-background/95 backdrop-blur-md">
                         <StructureNavigator
                             elements={elements}
                             selectedId={selectedBlockIds.length === 1 ? selectedBlockIds[0] : null}
@@ -413,7 +413,7 @@ export default function SurveyFormBuilder() {
                                 if (ids.length > 0) setLastSelectedId(ids[ids.length - 1]);
                             }}
                         >
-                            <div className="max-w-3xl mx-auto space-y-16 p-2 md:p-6 lg:p-10 pb-96">
+                            <div className="w-full max-w-4xl mx-auto space-y-3 px-1 sm:px-3 py-1 pb-48">
                             {isPreviewMode ? (
                                 <div className="animate-in fade-in zoom-in duration-300">
                                     {/* Intro Disabled Banner — visual indicator that the toggle is working */}
