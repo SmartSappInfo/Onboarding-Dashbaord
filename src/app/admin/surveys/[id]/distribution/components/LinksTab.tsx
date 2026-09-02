@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Globe, Copy, Check, ExternalLink, ShieldCheck, RefreshCw } from 'lucide-react';
+import { Globe, Copy, Check, ExternalLink, ShieldCheck, RefreshCw, Link2 } from 'lucide-react';
 import type { Survey } from '@/lib/types';
 import type { SurveyDeployment } from '@/lib/surveys/survey-v2-types';
 
