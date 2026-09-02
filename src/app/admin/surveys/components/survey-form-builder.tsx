@@ -372,7 +372,7 @@ export default function SurveyFormBuilder() {
 
                 {/* 0. Left Panel - Structure Navigator (Phase 2) */}
                 {!isPreviewMode && isStructureNavigatorOpen && (
-                    <div className="hidden lg:flex w-72 xl:w-80 h-full shrink-0 border border-border/70 rounded-2xl overflow-hidden shadow-xs bg-background/95 backdrop-blur-md">
+                    <div className="hidden lg:flex w-80 xl:w-[320px] 2xl:w-[360px] h-full shrink-0 border border-border/70 rounded-2xl overflow-hidden shadow-xs bg-background/95 backdrop-blur-md">
                         <StructureNavigator
                             elements={elements}
                             selectedId={selectedBlockIds.length === 1 ? selectedBlockIds[0] : null}

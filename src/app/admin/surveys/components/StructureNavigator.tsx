@@ -3,13 +3,14 @@
  * 
  * ARCHITECTURAL GUIDANCE & CAUTION FOR MAINTAINERS (Rule 10):
  * 1. Single Source of Truth for Survey Structure Hierarchy & Quick Traversal.
- * 2. Provides:
+ * 2. Anti-Clipping Typography: Supports graceful multi-line wrapping (line-clamp-2) and tooltips.
+ * 3. Provides:
  *    - Linear & section tree navigation with visual hierarchy nesting.
  *    - Search & filter across questions with complete HTML tag stripping.
  *    - Badges for Required (*), Scoring (Points), Logic Branching (Jump), and Hidden states.
  *    - Fast Reordering (Move Up / Move Down), Duplicate, Delete, and Selection syncing.
- * 3. Strict Zero-Any Invariant.
- * 4. Touch-optimized (min-h-[44px], active:scale-[0.97]).
+ * 4. Strict Zero-Any Invariant.
+ * 5. Touch-optimized (min-h-[44px], active:scale-[0.97]).
  */
 
 'use client';
@@ -118,6 +119,31 @@ export function getQuestionIcon(type: string) {
   }
 }
 
+function formatLogicOperator(op: string): string {
+  switch (op) {
+    case 'isEqualTo':
+    case 'equals':
+      return '=';
+    case 'isNotEqualTo':
+    case 'not_equals':
+      return '≠';
+    case 'contains':
+      return 'contains';
+    case 'notContains':
+      return 'excludes';
+    case 'greaterThan':
+      return '>';
+    case 'lessThan':
+      return '<';
+    case 'isAnswered':
+      return 'is answered';
+    case 'isNotAnswered':
+      return 'is empty';
+    default:
+      return op;
+  }
+}
+
 /**
  * Extracts a clean, human-readable summary for a logic block.
  */
@@ -126,14 +152,16 @@ function getLogicSummary(block: SurveyLogicBlock, elementMap: Map<string, string
     return 'Unconfigured Logic Rule';
   }
   const firstRule = block.rules[0];
-  const sourceTitle = stripHtml(elementMap.get(firstRule.sourceQuestionId) || 'Q').slice(0, 14);
+  const sourceTitle = stripHtml(elementMap.get(firstRule.sourceQuestionId) || 'Q').slice(0, 15);
   const targetId = firstRule.action.targetElementId || firstRule.action.targetElementIds?.[0];
-  const targetTitle = targetId ? stripHtml(elementMap.get(targetId) || 'Target').slice(0, 14) : 'Target';
+  const targetTitle = targetId ? stripHtml(elementMap.get(targetId) || 'Target').slice(0, 15) : 'Target';
+  const op = formatLogicOperator(firstRule.operator);
   
   if (block.rules.length === 1) {
-    return `If ${sourceTitle} ${firstRule.operator} ${firstRule.value || ''} → ${targetTitle}`;
+    const val = firstRule.value ? ` "${firstRule.value}"` : '';
+    return `If ${sourceTitle} ${op}${val} → ${targetTitle}`;
   }
-  return `${block.rules.length} Conditional Rules`;
+  return `${block.rules.length} Branch Rules`;
 }
 
 export function StructureNavigator({
@@ -239,21 +267,22 @@ export function StructureNavigator({
               <div
                 key={element.id}
                 onClick={() => onSelect(element.id)}
+                title={cleanTitle}
                 className={cn(
-                  'group relative flex items-center justify-between p-2 rounded-xl text-xs font-medium cursor-pointer transition-all duration-150 min-h-[44px]',
+                  'group relative flex items-start justify-between p-2.5 rounded-xl text-xs font-medium cursor-pointer transition-all duration-150 min-h-[44px]',
                   isSelected
                     ? 'bg-primary/10 text-primary font-semibold shadow-xs border border-primary/20'
                     : 'hover:bg-muted/60 text-muted-foreground hover:text-foreground',
                   isSection && 'bg-muted/50 font-bold border-l-2 border-primary mt-2',
                   isLogic && 'bg-amber-500/5 border border-amber-500/20 text-amber-600 dark:text-amber-400',
-                  insideSection && !isSection && 'ml-2.5 border-l border-border/40 pl-2.5'
+                  insideSection && !isSection && 'ml-2 border-l border-border/40 pl-2'
                 )}
               >
                 {/* Left block info */}
-                <div className="flex items-center gap-2 min-w-0 flex-1 pr-2">
+                <div className="flex items-start gap-2.5 min-w-0 flex-1 pr-1.5">
                   <div
                     className={cn(
-                      'p-1.5 rounded-lg shrink-0',
+                      'p-1.5 rounded-lg shrink-0 mt-0.5',
                       isSelected ? 'bg-primary/20 text-primary' : 'bg-muted/80 text-muted-foreground',
                       isSection && 'bg-primary/10 text-primary'
                     )}
@@ -262,18 +291,18 @@ export function StructureNavigator({
                   </div>
 
                   <div className="flex flex-col min-w-0 flex-1">
-                    <div className="flex items-center gap-1.5">
+                    <div className="flex items-start gap-1.5 min-w-0">
                       {isQuestion && (
-                        <span className="text-[10px] font-mono font-bold text-muted-foreground/70 shrink-0">
+                        <span className="text-[10px] font-mono font-bold text-muted-foreground/70 shrink-0 mt-0.5">
                           Q{originalIndex + 1}
                         </span>
                       )}
-                      <span className="truncate font-semibold text-foreground">
+                      <span className="font-semibold text-foreground text-xs leading-snug line-clamp-2 break-words">
                         {isLogic ? logicSummary : cleanTitle}
                       </span>
                     </div>
                     {isLogic && (
-                      <span className="text-[9px] text-amber-600/80 truncate">
+                      <span className="text-[9px] text-amber-600/90 font-medium line-clamp-1 break-words mt-0.5">
                         {cleanTitle !== 'Untitled logic' ? cleanTitle : 'Conditional branch node'}
                       </span>
                     )}
@@ -281,7 +310,7 @@ export function StructureNavigator({
                 </div>
 
                 {/* Right Badges & Controls */}
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 mt-0.5">
                   {isRequired && (
                     <span className="text-destructive font-bold text-xs" title="Required">
                       *
@@ -293,7 +322,7 @@ export function StructureNavigator({
                     </span>
                   )}
                   {isLogic && (
-                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500/30 text-amber-600">
+                    <Badge variant="outline" className="text-[9px] px-1 py-0 h-4 border-amber-500/30 text-amber-600 font-bold">
                       Rule
                     </Badge>
                   )}
