@@ -187,16 +187,20 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  org: 'smartsapp',
-  project: 'javascript-nextjs',
-  silent: true,
-  widenClientFileUpload: true,
-  // Updated config - removed deprecated options
-  webpack: {
-    automaticVercelMonitors: true,
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
-});
+export default process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(nextConfig, {
+      org: 'smartsapp',
+      project: 'javascript-nextjs',
+      silent: true,
+      widenClientFileUpload: true,
+      sourcemaps: {
+        disable: false,
+      },
+      webpack: {
+        automaticVercelMonitors: true,
+        treeshake: {
+          removeDebugLogging: true,
+        },
+      },
+    })
+  : nextConfig;

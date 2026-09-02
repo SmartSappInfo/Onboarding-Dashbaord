@@ -56,7 +56,7 @@ import {
   resendInvitationAction,
   revokeInvitationAction,
 } from '@/app/actions/workforce-actions';
-import { RoleManagementService } from '@/lib/services/authorization/role-management-service';
+import { listRolesAction } from '@/app/actions/authorization-actions';
 import { PermissionRegistryService } from '@/lib/services/authorization/permission-registry-service';
 import { normalizePermissionsSchema } from '@/lib/permissions-engine';
 import { cn } from '@/lib/utils';
@@ -137,17 +137,20 @@ export function BackofficeIdentityClient() {
 
   // 3. Fetch Tenant Roles
   const loadRoles = React.useCallback(async () => {
-    if (!selectedOrgId) return;
+    if (!authUser || !selectedOrgId) return;
     setIsLoadingRoles(true);
     try {
-      const rolesList = await RoleManagementService.listRolesByOrganization(selectedOrgId);
-      setTenantRoles(rolesList);
+      const idToken = await authUser.getIdToken();
+      const res = await listRolesAction({ idToken, organizationId: selectedOrgId });
+      if (res.success) {
+        setTenantRoles(res.roles);
+      }
     } catch (err: unknown) {
       console.warn('[BackofficeIdentityClient] Failed to load roles:', err);
     } finally {
       setIsLoadingRoles(false);
     }
-  }, [selectedOrgId]);
+  }, [authUser, selectedOrgId]);
 
   // 4. Fetch Tenant Invitations
   const loadInvitations = React.useCallback(async () => {

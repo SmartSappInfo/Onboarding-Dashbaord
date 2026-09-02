@@ -53,6 +53,7 @@ import {
   RotateCcw,
   Copy,
   HelpCircle,
+  ArrowRightLeft,
 } from 'lucide-react';
 import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus, CrmWorkloadSummary, MemberRiskScore } from '@/lib/types';
 import {

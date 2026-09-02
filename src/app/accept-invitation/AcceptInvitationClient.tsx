@@ -35,13 +35,14 @@ import {
   validateInvitationTokenAction,
   acceptInvitationAction,
 } from '@/app/actions/workforce-actions';
-import { auth } from '@/firebase';
+import { useAuth } from '@/firebase';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 
 export function AcceptInvitationClient() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
+  const auth = useAuth();
 
   const token = searchParams.get('token') || '';
 
@@ -117,6 +118,11 @@ export function AcceptInvitationClient() {
     }
     if (password !== confirmPassword) {
       toast({ title: 'Validation Error', description: 'Passwords do not match.', variant: 'destructive' });
+      return;
+    }
+
+    if (!auth) {
+      toast({ title: 'Authentication service not ready. Please refresh and try again.', variant: 'destructive' });
       return;
     }
 

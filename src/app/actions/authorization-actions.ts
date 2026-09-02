@@ -272,3 +272,24 @@ export async function evaluateAccessAction(params: {
     return { success: false, error };
   }
 }
+
+/**
+ * Lists all custom and system roles for an organization.
+ */
+export async function listRolesAction(params: {
+  idToken: string;
+  organizationId: string;
+}): Promise<{
+  success: boolean;
+  roles: Role[];
+  error?: string;
+}> {
+  try {
+    await verifyCallerAuth(params.idToken, params.organizationId);
+    const roles = await RoleManagementService.listRolesByOrganization(params.organizationId);
+    return { success: true, roles };
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : 'Failed to list roles';
+    return { success: false, roles: [], error };
+  }
+}

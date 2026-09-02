@@ -49,7 +49,7 @@ import {
   revokeTemporaryAccessAction,
 } from '@/app/actions/governance-actions';
 import { getPeopleDirectoryAction } from '@/app/actions/identity-actions';
-import { RoleManagementService } from '@/lib/services/authorization/role-management-service';
+import { listRolesAction } from '@/app/actions/authorization-actions';
 
 import { AccessReviewCampaignModal } from './components/AccessReviewCampaignModal';
 import { AccessReviewDecisionsDrawer } from './components/AccessReviewDecisionsDrawer';
@@ -82,17 +82,17 @@ export function GovernanceClient() {
     setIsLoading(true);
     try {
       const idToken = await authUser.getIdToken();
-      const [campRes, grantRes, peopleRes, rolesList] = await Promise.all([
+      const [campRes, grantRes, peopleRes, rolesRes] = await Promise.all([
         listAccessReviewCampaignsAction({ idToken, organizationId: activeOrganizationId }),
         listTemporaryAccessGrantsAction({ idToken, organizationId: activeOrganizationId }),
         getPeopleDirectoryAction({ idToken, organizationId: activeOrganizationId }),
-        RoleManagementService.listRolesByOrganization(activeOrganizationId),
+        listRolesAction({ idToken, organizationId: activeOrganizationId }),
       ]);
 
       if (campRes.success) setCampaigns(campRes.campaigns);
       if (grantRes.success) setGrants(grantRes.grants);
       if (peopleRes.success) setPeople(peopleRes.people);
-      setRoles(rolesList);
+      if (rolesRes.success) setRoles(rolesRes.roles);
     } catch (err: unknown) {
       console.warn('[GovernanceClient] Error loading governance data:', err);
     } finally {
