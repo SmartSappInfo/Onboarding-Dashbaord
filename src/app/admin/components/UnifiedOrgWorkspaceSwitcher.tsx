@@ -42,7 +42,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { ContactScope } from '@/lib/types';
@@ -303,16 +302,16 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
             
             <DropdownMenuContent 
                 align="start" 
- className="w-80 rounded-2xl p-2 border-none shadow-2xl animate-in zoom-in-95 duration-200 z-[10001]"
+                className="w-88 sm:w-96 rounded-2xl p-2.5 border border-border/60 bg-card shadow-2xl animate-in zoom-in-95 duration-200 z-[10001] overflow-hidden"
             >
- <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-2">
+                <DropdownMenuLabel className="text-[10px] font-semibold text-muted-foreground px-3 py-1.5 uppercase tracking-wider">
                     {isSuperAdmin ? 'System Context' : 'Workspace Selection'}
                 </DropdownMenuLabel>
                 
- <DropdownMenuSeparator className="mb-2" />
+                <DropdownMenuSeparator className="mb-2" />
 
- <ScrollArea className="max-h-[400px]">
- <div className="space-y-1">
+                <div className="max-h-[min(440px,calc(100vh-180px))] overflow-y-auto overflow-x-hidden space-y-1 pr-0.5">
+                    <div className="space-y-1">
                         {isSuperAdmin ? (
                             // Super Admin: Show all organizations with workspace sub-menus
                             availableOrganizations.map(org => {
@@ -322,52 +321,52 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                 return (
                                     <DropdownMenuSub key={org.id}>
                                         <DropdownMenuSubTrigger
- className={cn(
-                                                "rounded-xl p-3 gap-3 transition-all",
+                                            className={cn(
+                                                "rounded-xl p-2.5 gap-2.5 transition-all flex items-center w-full min-w-0 overflow-hidden",
                                                 isActiveOrg && "bg-primary/5 text-primary"
                                             )}
                                         >
- <div className={cn(
+                                            <div className={cn(
                                                 "p-2 rounded-lg shrink-0", 
                                                 isActiveOrg ? "bg-primary/10 text-primary" : "bg-muted text-muted-foreground"
                                             )}>
                                                 {org.logoUrl ? (
- <img src={org.logoUrl} alt={org.name} className="h-4 w-4 rounded object-cover" />
+                                                    <img src={org.logoUrl} alt={org.name} className="h-4 w-4 rounded object-cover" />
                                                 ) : (
- <Building className="h-4 w-4" />
+                                                    <Building className="h-4 w-4" />
                                                 )}
                                             </div>
                                             <div 
- className="flex-1 min-w-0 text-left cursor-pointer group/org"
+                                                className="flex-1 min-w-0 text-left cursor-pointer group/org"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleOrganizationSwitch(org.id);
                                                 }}
                                             >
- <div className="flex items-center gap-1">
- <p className="font-semibold text-xs truncate group-hover/org:text-primary transition-colors">{org.name}</p>
- <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/org:opacity-100 text-primary transition-all" />
+                                                <div className="flex items-center gap-1 min-w-0">
+                                                    <p className="font-semibold text-xs truncate group-hover/org:text-primary transition-colors">{org.name}</p>
+                                                    <ExternalLink className="h-2.5 w-2.5 opacity-0 group-hover/org:opacity-100 text-primary transition-all shrink-0" />
                                                 </div>
- <p className="text-[9px] font-medium text-muted-foreground">
+                                                <p className="text-[9px] font-medium text-muted-foreground truncate">
                                                     {orgWorkspaces.length} workspace{orgWorkspaces.length !== 1 ? 's' : ''}
                                                 </p>
                                             </div>
- {isActiveOrg && <Check className="h-4 w-4 ml-auto" />}
+                                            {isActiveOrg && <Check className="h-4 w-4 ml-auto shrink-0" />}
                                         </DropdownMenuSubTrigger>
                                         
- <DropdownMenuSubContent className="w-72 rounded-xl p-2 border-none shadow-xl z-[10002]">
- <div className="px-3 py-2 mb-2 flex items-center justify-between">
- <p className="text-[10px] font-semibold text-muted-foreground">
+                                        <DropdownMenuSubContent className="w-80 sm:w-88 rounded-xl p-2 border border-border/60 shadow-xl z-[10002] overflow-hidden">
+                                            <div className="px-3 py-1.5 mb-1.5 flex items-center justify-between">
+                                                <p className="text-[10px] font-semibold text-muted-foreground truncate uppercase tracking-wider">
                                                     {org.name} Workspaces
                                                 </p>
                                             </div>
                                             
                                             {orgWorkspaces.length === 0 ? (
- <div className="px-3 py-6 text-center">
- <p className="text-xs text-muted-foreground">No workspaces available</p>
+                                                <div className="px-3 py-6 text-center">
+                                                    <p className="text-xs text-muted-foreground">No workspaces available</p>
                                                 </div>
                                             ) : (
-                                                <div className="max-h-[300px] overflow-y-auto overflow-x-hidden no-scrollbar pr-1">
+                                                <div className="max-h-[300px] overflow-y-auto overflow-x-hidden no-scrollbar pr-0.5 space-y-1">
                                                     {orgWorkspaces.map(w => {
                                                         const isActive = activeWorkspaceId === w.id && isActiveOrg;
                                                         const isDefault = org.defaultWorkspaceId === w.id;
@@ -381,7 +380,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                     handleWorkspaceSwitch(w.id, isActiveOrg ? undefined : org.id);
                                                                 }}
                                                                 className={cn(
-                                                                    "rounded-lg p-3 gap-3 mb-1 transition-all",
+                                                                    "rounded-lg p-2.5 gap-2.5 mb-1 transition-all flex items-center w-full min-w-0 overflow-hidden cursor-pointer",
                                                                     isActive && "bg-primary text-white shadow-md"
                                                                 )}
                                                                 style={isActive ? { backgroundColor: w.color } : {}}
@@ -393,9 +392,9 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                     <WScopeIcon className="h-4 w-4" />
                                                                 </div>
                                                                 <div className="flex-1 min-w-0">
-                                                                    <div className="flex items-center gap-2 flex-wrap">
-                                                                        <div className="flex items-center gap-1.5 min-w-0 flex-wrap">
-                                                                            <p className="font-semibold text-xs whitespace-normal break-words">{w.name}</p>
+                                                                    <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                                                        <div className="flex items-center gap-1.5 min-w-0">
+                                                                            <p className="font-semibold text-xs truncate">{w.name}</p>
                                                                             {isDefault && (
                                                                                 <div className="h-1.5 w-1.5 rounded-full bg-orange-500 shadow-[0_0_8px_rgba(249,115,22,0.6)] shrink-0" title="Default Workspace" />
                                                                             )}
@@ -404,7 +403,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                             <Badge 
                                                                                 variant={isActive ? "secondary" : "outline"}
                                                                                 className={cn(
-                                                                                    "text-[8px] font-bold uppercase px-1 h-3.5",
+                                                                                    "text-[8px] font-bold uppercase px-1 h-3.5 shrink-0",
                                                                                     isActive && "bg-card/20 text-white border-white/30"
                                                                                 )}
                                                                             >
@@ -414,21 +413,21 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                                     </div>
                                                                     {w.description && (
                                                                         <p className={cn(
-                                                                            "text-[9px] font-medium whitespace-normal break-words mt-0.5",
-                                                                            isActive ? "text-white/70" : "text-muted-foreground"
+                                                                            "text-[9px] font-medium truncate mt-0.5",
+                                                                            isActive ? "text-white/80" : "text-muted-foreground"
                                                                         )}>
                                                                             {w.description}
                                                                         </p>
                                                                     )}
                                                                 </div>
-                                                                {isActive && <Check className="h-4 w-4 ml-auto" />}
+                                                                {isActive && <Check className="h-4 w-4 ml-auto shrink-0" />}
                                                             </DropdownMenuItem>
                                                         );
                                                     })}
                                                 </div>
                                             )}
 
- <DropdownMenuSeparator className="my-2" />
+                                            <DropdownMenuSeparator className="my-2" />
                                             
                                             <DropdownMenuItem 
                                                 onClick={() => {
@@ -445,12 +444,12 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                         router.push('/admin/settings');
                                                     }
                                                 }}
- className="rounded-lg p-2 gap-3 cursor-pointer text-primary hover:bg-primary/5"
+                                                className="rounded-lg p-2 gap-3 cursor-pointer text-primary hover:bg-primary/5"
                                             >
- <div className="p-1.5 bg-primary/10 rounded-lg">
- <Settings className="h-3.5 w-3.5" />
+                                                <div className="p-1.5 bg-primary/10 rounded-lg shrink-0">
+                                                    <Settings className="h-3.5 w-3.5" />
                                                 </div>
- <span className="font-bold text-[9px] ">Manage Workspaces</span>
+                                                <span className="font-bold text-[9px]">Manage Workspaces</span>
                                             </DropdownMenuItem>
                                         </DropdownMenuSubContent>
                                     </DropdownMenuSub>
@@ -467,26 +466,26 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                     <DropdownMenuItem
                                         key={w.id}
                                         onClick={() => handleWorkspaceSwitch(w.id)}
- className={cn(
-                                            "rounded-xl p-3 gap-3 mb-1 transition-all",
+                                        className={cn(
+                                            "rounded-xl p-2.5 gap-2.5 mb-1 transition-all flex items-center w-full min-w-0 overflow-hidden cursor-pointer",
                                             isActive && "bg-primary text-white shadow-md"
                                         )}
                                         style={isActive ? { backgroundColor: w.color } : {}}
                                     >
- <div className={cn(
+                                        <div className={cn(
                                             "p-2 rounded-lg shrink-0",
                                             isActive ? "bg-card/20 text-white" : "bg-muted text-muted-foreground"
                                         )}>
- <WScopeIcon className="h-4 w-4" />
+                                            <WScopeIcon className="h-4 w-4" />
                                         </div>
- <div className="flex-1 min-w-0">
- <div className="flex items-center gap-2">
- <p className="font-semibold text-xs truncate">{w.name}</p>
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center justify-between gap-1.5 min-w-0">
+                                                <p className="font-semibold text-xs truncate">{w.name}</p>
                                                 {wScopeLabel && (
                                                     <Badge 
                                                         variant={isActive ? "secondary" : "outline"}
- className={cn(
-                                                            "text-[8px] font-bold uppercase px-1.5 h-4",
+                                                        className={cn(
+                                                            "text-[8px] font-bold uppercase px-1.5 h-4 shrink-0",
                                                             isActive && "bg-card/20 text-white border-white/30"
                                                         )}
                                                     >
@@ -495,21 +494,21 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                                                 )}
                                             </div>
                                             {w.description && (
- <p className={cn(
+                                                <p className={cn(
                                                     "text-[9px] font-medium truncate mt-0.5",
-                                                    isActive ? "text-white/70" : "text-muted-foreground"
+                                                    isActive ? "text-white/80" : "text-muted-foreground"
                                                 )}>
                                                     {w.description}
                                                 </p>
                                             )}
                                         </div>
- {isActive && <Check className="h-4 w-4 ml-auto" />}
+                                        {isActive && <Check className="h-4 w-4 ml-auto shrink-0" />}
                                     </DropdownMenuItem>
                                 );
                             })
                         )}
                     </div>
-                </ScrollArea>
+                </div>
 
  <DropdownMenuSeparator className="my-2" />
                 
