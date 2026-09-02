@@ -49,6 +49,7 @@ import {
   Search,
   Check,
   X,
+  UserPlus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Department, Team, PersonDetailView, Workspace } from '@/lib/types';
@@ -65,6 +66,7 @@ interface TeamsDepartmentsManagerProps {
   people: PersonDetailView[];
   workspaces: Workspace[];
   onRefresh: () => void;
+  onOpenInviteModal?: () => void;
 }
 
 export function TeamsDepartmentsManager({
@@ -73,6 +75,7 @@ export function TeamsDepartmentsManager({
   people,
   workspaces,
   onRefresh,
+  onOpenInviteModal,
 }: TeamsDepartmentsManagerProps) {
   const { toast } = useToast();
   const confirm = useConfirm();
@@ -373,7 +376,7 @@ export function TeamsDepartmentsManager({
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
           <div className="relative w-full sm:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input
@@ -384,12 +387,24 @@ export function TeamsDepartmentsManager({
             />
           </div>
 
+          {onOpenInviteModal && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={onOpenInviteModal}
+              className="text-xs h-8.5 px-3 active:scale-[0.97] whitespace-nowrap"
+            >
+              <UserPlus className="w-3.5 h-3.5 mr-1.5 text-primary" /> Invite Member
+            </Button>
+          )}
+
           {activeTab === 'departments' ? (
             <Button
               type="button"
               size="sm"
               onClick={() => handleOpenDeptModal()}
-              className="text-xs h-8.5 px-3 font-semibold active:scale-[0.97]"
+              className="text-xs h-8.5 px-3 font-semibold active:scale-[0.97] whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 mr-1" /> Add Department
             </Button>
@@ -398,7 +413,7 @@ export function TeamsDepartmentsManager({
               type="button"
               size="sm"
               onClick={() => handleOpenTeamModal()}
-              className="text-xs h-8.5 px-3 font-semibold active:scale-[0.97]"
+              className="text-xs h-8.5 px-3 font-semibold active:scale-[0.97] whitespace-nowrap"
             >
               <Plus className="w-3.5 h-3.5 mr-1" /> Add Team
             </Button>
@@ -552,8 +567,31 @@ export function TeamsDepartmentsManager({
               </Card>
             ))
           ) : (
-            <div className="col-span-full p-12 text-center border rounded-xl bg-muted/10 text-xs text-muted-foreground">
-              No departments created yet. Click &quot;Add Department&quot; to establish organizational units.
+            <div className="col-span-full p-12 text-center border rounded-xl bg-muted/10 text-xs text-muted-foreground flex flex-col items-center justify-center gap-3">
+              <Building2 className="w-8 h-8 text-muted-foreground/40" />
+              <div>
+                <p className="font-semibold text-foreground text-sm">No departments created yet</p>
+                <p className="mt-1">Establish organizational units like Sales, Admissions, or Engineering.</p>
+              </div>
+              <div className="flex items-center gap-2 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsInlineAddingDept(true)}
+                  className="text-xs h-8 px-3 active:scale-[0.97] gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Quick Add Inline
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  onClick={() => handleOpenDeptModal()}
+                  className="text-xs h-8 px-3.5 font-semibold active:scale-[0.97] gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> Add Department
+                </Button>
+              </div>
             </div>
           )}
         </div>
@@ -621,8 +659,20 @@ export function TeamsDepartmentsManager({
               </Card>
             ))
           ) : (
-            <div className="col-span-full p-12 text-center border rounded-xl bg-muted/10 text-xs text-muted-foreground">
-              No cross-functional teams created yet. Click &quot;Add Team&quot; to organize workforce squads.
+            <div className="col-span-full p-12 text-center border rounded-xl bg-muted/10 text-xs text-muted-foreground flex flex-col items-center justify-center gap-3">
+              <Users className="w-8 h-8 text-muted-foreground/40" />
+              <div>
+                <p className="font-semibold text-foreground text-sm">No cross-functional teams created yet</p>
+                <p className="mt-1">Assemble squads and assign team leads to organize projects across workspaces.</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleOpenTeamModal()}
+                className="mt-1 text-xs h-8 px-3.5 font-semibold active:scale-[0.97] gap-1"
+              >
+                <Plus className="w-3.5 h-3.5" /> Add Team
+              </Button>
             </div>
           )}
         </div>

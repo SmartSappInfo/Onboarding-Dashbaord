@@ -76,6 +76,7 @@ import { TeamsDepartmentsManager } from './components/TeamsDepartmentsManager';
 import { InvitationsManager } from './components/InvitationsManager';
 import { AccessRequestsManager } from './components/AccessRequestsManager';
 import { SavedViewsPillBar } from './components/SavedViewsPillBar';
+import InviteUserModal from './components/InviteUserModal';
 import type { SavedDirectoryView } from '@/lib/types';
 import { getPeopleDirectoryAction } from '@/app/actions/identity-actions';
 import { listDepartmentsAction, listTeamsAction } from '@/app/actions/workforce-actions';
@@ -113,6 +114,7 @@ export default function UsersClient() {
 
   const [updatingId, setUpdatingId] = React.useState<string | null>(null);
   const [isFilterDrawerOpen, setIsFilterDrawerOpen] = React.useState(false);
+  const [isInviteModalOpen, setIsInviteModalOpen] = React.useState(false);
 
   // Detail & Workspace Sheets State
   const [inspectingUser, setInspectingUser] = React.useState<UserProfile | null>(null);
@@ -358,7 +360,7 @@ export default function UsersClient() {
           <Button
             type="button"
             size="sm"
-            onClick={() => setActiveTab('invitations')}
+            onClick={() => setIsInviteModalOpen(true)}
             className="rounded-lg font-semibold h-9 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-xs"
           >
             <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Invite Members
@@ -369,16 +371,16 @@ export default function UsersClient() {
       {/* Main Top Tab Navigation */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'directory' | 'teams' | 'invitations' | 'requests')}>
         <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="directory" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger value="directory" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
             <Users className="w-3.5 h-3.5 mr-1.5" /> Directory ({users?.length || 0})
           </TabsTrigger>
-          <TabsTrigger value="teams" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger value="teams" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
             <Building2 className="w-3.5 h-3.5 mr-1.5" /> Teams & Departments
           </TabsTrigger>
-          <TabsTrigger value="invitations" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger value="invitations" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
             <Mail className="w-3.5 h-3.5 mr-1.5" /> Invitations
           </TabsTrigger>
-          <TabsTrigger value="requests" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger value="requests" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
             <ShieldAlert className="w-3.5 h-3.5 mr-1.5" /> Access Requests
           </TabsTrigger>
         </TabsList>
@@ -419,6 +421,14 @@ export default function UsersClient() {
                 className="text-xs h-8.5 px-3 active:scale-[0.97]"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" /> Filter Drawer
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setIsInviteModalOpen(true)}
+                className="text-xs h-8.5 px-3.5 font-semibold active:scale-[0.97]"
+              >
+                <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Invite Member
               </Button>
             </div>
           </div>
@@ -575,6 +585,7 @@ export default function UsersClient() {
             people={canonicalPeople}
             workspaces={accessibleWorkspaces}
             onRefresh={loadWorkforceData}
+            onOpenInviteModal={() => setIsInviteModalOpen(true)}
           />
         </TabsContent>
 
@@ -648,6 +659,13 @@ export default function UsersClient() {
         filters={advancedFilters}
         onApplyFilters={setAdvancedFilters}
         onResetFilters={() => setAdvancedFilters({ status: 'all' })}
+      />
+
+      {/* Global Invite User Modal */}
+      <InviteUserModal
+        open={isInviteModalOpen}
+        onOpenChange={setIsInviteModalOpen}
+        roles={allRolesList}
       />
     </div>
   );

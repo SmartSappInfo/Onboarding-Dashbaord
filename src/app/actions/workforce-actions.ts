@@ -80,10 +80,17 @@ async function verifyCallerAuth(idToken: string, targetOrgId: string): Promise<C
     email === 'admin@smartsapp.com' || profile.permissions?.includes('system_admin')
   );
 
+  const permissionsArray = (profile.permissions as unknown as string[]) || [];
+  const rolesArray = profile.roles || [];
   const canManageWorkforce = Boolean(
     isSystemAdmin ||
-    (profile.permissions as unknown as string[])?.includes('users_manage') ||
-    (profile.permissions as unknown as string[])?.includes('management_users') ||
+    profile.isAuthorized ||
+    permissionsArray.includes('users_manage') ||
+    permissionsArray.includes('management_users') ||
+    permissionsArray.includes('management.users.edit') ||
+    permissionsArray.includes('management.users.view') ||
+    permissionsArray.includes('management.users.create') ||
+    rolesArray.some((r) => ['admin', 'administrator', 'org_admin', 'super_admin'].includes(r.toLowerCase())) ||
     profile.permissionsSchema?.management?.features?.users?.edit
   );
 
