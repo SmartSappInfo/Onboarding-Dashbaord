@@ -163,12 +163,12 @@ export class AiRoleAdvisorService {
     if (rec.type === 'sod_conflict_remediate') {
       const roleToRemove = rec.proposedActionPayload.roleToRemove as string;
       if (roleToRemove) {
-        const membership = await OrganizationMembershipService.getMembership(
+        const membership = await OrganizationMembershipService.getMembershipByPersonAndOrg(
           organizationId,
           rec.targetPersonId
         );
         if (membership) {
-          const remainingRoles = (membership.roles || []).filter((r) => r !== roleToRemove);
+          const remainingRoles = (membership.roles || []).filter((r: string) => r !== roleToRemove);
           await OrganizationMembershipService.updateMembershipRoles(
             organizationId,
             rec.targetPersonId,

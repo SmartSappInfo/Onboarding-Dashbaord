@@ -137,7 +137,7 @@ export default function UsersClient() {
       setSelectedStatus('all');
     }
     setAdvancedFilters({
-      department: view.filters.departmentId,
+      departmentId: view.filters.departmentId,
       teamId: view.filters.teamId,
       workspaceId: view.filters.workspaceId,
       roleId: view.filters.roleId,
@@ -236,11 +236,7 @@ export default function UsersClient() {
     const newStatus = !targetUser.isAuthorized;
 
     try {
-      const res = await adminUpdateUserAccessAction({
-        targetUserId: targetUser.id,
-        isAuthorized: newStatus,
-        organizationId: activeOrganizationId,
-      });
+      const res = await adminUpdateUserAccessAction(targetUser.id, newStatus);
 
       if (res.success) {
         toast({
@@ -273,10 +269,7 @@ export default function UsersClient() {
 
     setUpdatingId(targetUser.id);
     try {
-      const res = await removeUserFromOrgAction({
-        targetUserId: targetUser.id,
-        organizationId: activeOrganizationId,
-      });
+      const res = await removeUserFromOrgAction(targetUser.id, currentUser?.uid || '');
 
       if (res.success) {
         toast({ title: 'Member Removed' });
@@ -287,7 +280,7 @@ export default function UsersClient() {
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Error removing member';
-      toast({ title: 'Removal Failed', description: msg, variant: 'destructive' });
+      toast({ title: 'Remove Failed', description: msg, variant: 'destructive' });
     } finally {
       setUpdatingId(null);
     }
@@ -309,7 +302,7 @@ export default function UsersClient() {
       }
 
       // 2. Department Filter
-      if (advancedFilters.department && u.department !== advancedFilters.department) {
+      if (advancedFilters.departmentId && u.department !== advancedFilters.departmentId) {
         return false;
       }
 

@@ -17,29 +17,65 @@ import { Users, UserCheck, Clock, UserX, Building } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import type { MembershipStatus } from '@/lib/types';
+import type { MembershipStatus, UserProfile } from '@/lib/types';
 
 interface PeopleMetricsRibbonProps {
-  total: number;
-  active: number;
-  pending: number;
-  suspended: number;
-  workspacesCount: number;
+  total?: number;
+  active?: number;
+  pending?: number;
+  suspended?: number;
+  workspacesCount?: number;
+  users?: UserProfile[];
   selectedStatus: MembershipStatus | 'all';
   onSelectStatus: (status: MembershipStatus | 'all') => void;
   isLoading?: boolean;
 }
 
 export function PeopleMetricsRibbon({
-  total,
-  active,
-  pending,
-  suspended,
-  workspacesCount,
+  total: explicitTotal,
+  active: explicitActive,
+  pending: explicitPending,
+  suspended: explicitSuspended,
+  workspacesCount: explicitWorkspacesCount,
+  users,
   selectedStatus,
   onSelectStatus,
   isLoading = false,
 }: PeopleMetricsRibbonProps) {
+  const computedMetrics = React.useMemo(() => {
+    if (!users) {
+      return {
+        total: explicitTotal || 0,
+        active: explicitActive || 0,
+        pending: explicitPending || 0,
+        suspended: explicitSuspended || 0,
+        workspacesCount: explicitWorkspacesCount || 0,
+      };
+    }
+    const total = users.length;
+    let active = 0;
+    let pending = 0;
+    let suspended = 0;
+    const wsSet = new Set<string>();
+
+    users.forEach((u) => {
+      const status = u.membershipStatus || (u.isAuthorized ? 'active' : 'suspended');
+      if (status === 'active') active++;
+      else if (status === 'pending' || status === 'invited') pending++;
+      else suspended++;
+      u.workspaceIds?.forEach((w: string) => wsSet.add(w));
+    });
+
+    return {
+      total,
+      active,
+      pending,
+      suspended,
+      workspacesCount: wsSet.size,
+    };
+  }, [users, explicitTotal, explicitActive, explicitPending, explicitSuspended, explicitWorkspacesCount]);
+
+  const { total, active, pending, suspended, workspacesCount } = computedMetrics;
   const metricCards = React.useMemo(
     () => [
       {

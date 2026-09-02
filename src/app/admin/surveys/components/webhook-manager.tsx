@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { AnimatePresence, motion } from 'framer-motion';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { cn } from '@/lib/utils';
 
 export default function WebhookManager() {
@@ -83,19 +84,24 @@ export default function WebhookManager() {
     [webhooks, webhookId]);
 
     return (
- <div className="space-y-4">
- <div className={cn(
+        <div className="space-y-4">
+            <div className={cn(
                 "rounded-2xl border-2 transition-all duration-300",
                 webhookEnabled ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
             )}>
- <div className="flex items-center justify-between p-4">
- <div className="flex items-center gap-3">
- <div className={cn("p-2 rounded-lg transition-colors", webhookEnabled ? "bg-primary text-white shadow-lg shadow-primary/20" : "bg-muted text-muted-foreground")}>
- {webhookEnabled ? <Zap className="h-4 w-4 fill-white" /> : <ZapOff className="h-4 w-4" />}
+                <div className="flex items-center justify-between p-4 sm:p-5">
+                    <div className="flex items-center gap-3.5">
+                        <div className={cn(
+                            "h-9 w-9 rounded-xl flex items-center justify-center transition-colors shrink-0", 
+                            webhookEnabled ? "bg-primary text-white shadow-md shadow-primary/20" : "bg-muted text-muted-foreground"
+                        )}>
+                            {webhookEnabled ? <Zap className="h-4.5 w-4.5 fill-white" /> : <ZapOff className="h-4.5 w-4.5" />}
                         </div>
- <div className="space-y-0.5">
- <Label className="text-sm font-semibold tracking-tight">External Webhook Integration</Label>
- <p className="text-[10px] text-muted-foreground font-medium tracking-tighter">Push data to an external automation endpoint</p>
+                        <div className="flex items-center gap-2">
+                            <Label className="text-sm sm:text-base font-semibold tracking-tight cursor-pointer">
+                                External Webhook Integration
+                            </Label>
+                            <CardInfoTooltip text="Push survey submission payloads to an external HTTP webhook automation endpoint." />
                         </div>
                     </div>
                     <Controller

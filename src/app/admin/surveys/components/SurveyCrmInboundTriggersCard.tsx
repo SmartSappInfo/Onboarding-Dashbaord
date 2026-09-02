@@ -20,6 +20,7 @@ import type {
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -134,28 +135,24 @@ export function SurveyCrmInboundTriggersCard({ workspaceId }: SurveyCrmInboundTr
 
   return (
     <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden">
-      <CardHeader className="pb-4 border-b border-border/60">
+      <CardHeader className="py-4 px-5 sm:px-6 border-b border-border/60">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+              <Zap className="h-4.5 w-4.5" />
+            </div>
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-600">
-                <Zap className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                  Inbound CRM Trigger Automations (CRM &rarr; Survey)
-                  <Badge variant="outline" className="text-[10px] font-mono text-blue-600 border-blue-300">
-                    Phase 6
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Automatically dispatch this survey to entity contacts when CRM lifecycle events occur.
-                </CardDescription>
-              </div>
+              <CardTitle className="text-sm sm:text-base font-bold text-foreground">
+                Inbound CRM Trigger Automations (CRM &rarr; Survey)
+              </CardTitle>
+              <Badge variant="outline" className="text-[10px] font-mono text-blue-600 border-blue-300">
+                Phase 6
+              </Badge>
+              <CardInfoTooltip text="Automatically dispatch this survey to entity contacts when CRM lifecycle events occur." />
             </div>
           </div>
 
-          <div className="flex items-center gap-2 pl-3 border-l border-border">
+          <div className="flex items-center gap-2 pl-3 sm:border-l border-border shrink-0">
             <Label htmlFor="inbound-triggers-master-toggle" className="text-xs font-semibold cursor-pointer">
               {inboundConfig.enabled ? 'Active' : 'Disabled'}
             </Label>

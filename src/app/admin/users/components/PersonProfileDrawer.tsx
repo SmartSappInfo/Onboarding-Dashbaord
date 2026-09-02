@@ -30,6 +30,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
@@ -92,6 +93,7 @@ export function PersonProfileDrawer({
   user,
   roles,
   workspaces,
+  people = [],
   onManageWorkspaces,
   onProfileUpdated,
 }: PersonProfileDrawerProps) {

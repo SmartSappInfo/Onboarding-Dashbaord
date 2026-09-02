@@ -179,4 +179,14 @@ export class SeparationOfDutyService {
 
     return { isValid: true };
   }
+
+  /**
+   * Alias for detecting SoD conflicts for a specific user.
+   */
+  static async detectToxicPairingsForUser(
+    organizationId: string,
+    personId: string
+  ): Promise<SoDConflict[]> {
+    return this.detectConflicts(organizationId, personId);
+  }
 }

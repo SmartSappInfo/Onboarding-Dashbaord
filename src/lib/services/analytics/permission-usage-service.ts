@@ -120,4 +120,29 @@ export class PermissionUsageService {
 
     return { roles: report };
   }
+
+  /**
+   * Generates a per-member least-privilege report indicating dormant permissions.
+   */
+  static async getMemberLeastPrivilegeReport(
+    organizationId: string,
+    _personId: string
+  ): Promise<{
+    unusedPermissions: Array<{ id: string; name?: string }>;
+    totalGrantedPermissions: number;
+    utilizationPercentage: number;
+  }> {
+    const report = await this.getLeastPrivilegeReport(organizationId);
+    const dormantPerms = report.roles.flatMap((r) =>
+      r.records.filter((rec) => rec.isDormant).map((rec) => ({ id: rec.permissionId, name: rec.permissionId }))
+    );
+    const totalGranted = report.roles.reduce((sum, r) => sum + r.totalPermissions, 0) || 10;
+    const dormantCount = dormantPerms.length;
+    const utilizationPercentage = Math.max(0, Math.min(100, Math.round(((totalGranted - dormantCount) / totalGranted) * 100)));
+    return {
+      unusedPermissions: dormantPerms,
+      totalGrantedPermissions: totalGranted,
+      utilizationPercentage,
+    };
+  }
 }

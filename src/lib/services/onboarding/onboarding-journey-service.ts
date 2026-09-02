@@ -51,7 +51,7 @@ export class OnboardingJourneyService {
       audience: OnboardingAudience;
       trigger: OnboardingJourney['trigger'];
       steps: OnboardingStepDefinition[];
-      status?: 'draft' | 'published';
+      status?: 'draft' | 'published' | 'archived';
       isDefault?: boolean;
     }
   ): Promise<OnboardingJourney> {

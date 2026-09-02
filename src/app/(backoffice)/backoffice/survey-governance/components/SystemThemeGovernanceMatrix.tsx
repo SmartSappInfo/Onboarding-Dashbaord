@@ -154,9 +154,9 @@ export function SystemThemeGovernanceMatrix() {
 
                   {/* Contrast & Preview Badge */}
                   <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[10px]">
-                    <span className={cn("font-bold flex items-center gap-1", contrast.isAAA ? "text-emerald-600" : contrast.isAA ? "text-blue-600" : "text-amber-600")}>
+                    <span className={cn("font-bold flex items-center gap-1", contrast.isAaaPassed ? "text-emerald-600" : contrast.isAaPassed ? "text-blue-600" : "text-amber-600")}>
                       <ShieldCheck className="h-3.5 w-3.5" />
-                      {contrast.ratio}:1 {contrast.isAAA ? 'AAA' : 'AA'} Pass
+                      {contrast.ratio}:1 {contrast.isAaaPassed ? 'AAA' : 'AA'} Pass
                     </span>
                     <Button
                       variant="ghost"
@@ -267,8 +267,8 @@ export function SystemThemeGovernanceMatrix() {
 
             <div className="p-3 rounded-xl bg-muted/30 border border-border/60 flex items-center justify-between text-xs">
               <span className="font-semibold text-muted-foreground">WCAG Contrast Readout:</span>
-              <span className={cn("font-bold", draftContrast.isAAA ? "text-emerald-600" : "text-blue-600")}>
-                {draftContrast.ratio}:1 {draftContrast.isAAA ? 'AAA' : 'AA'} Pass
+              <span className={cn("font-bold", draftContrast.isAaaPassed ? "text-emerald-600" : "text-blue-600")}>
+                {draftContrast.ratio}:1 {draftContrast.isAaaPassed ? 'AAA' : 'AA'} Pass
               </span>
             </div>
           </div>

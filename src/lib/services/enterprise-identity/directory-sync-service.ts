@@ -109,7 +109,10 @@ export class DirectorySyncService {
 
     try {
       if (event.eventType === 'user_created') {
+        const personId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const person = await PersonService.createPerson({
+          id: personId,
+          organizationId,
           email: event.email,
           displayName: event.displayName || event.email.split('@')[0],
         });
@@ -117,6 +120,9 @@ export class DirectorySyncService {
         await OrganizationMembershipService.createMembership({
           organizationId,
           personId: person.id,
+          accountId: person.id,
+          memberType: 'employee',
+          source: 'scim',
           roles: ['member'],
           status: 'active',
         });

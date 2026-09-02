@@ -26,6 +26,8 @@ import {
   RotateCcw,
   Layers,
   CheckCircle2,
+  FlaskConical,
+  Eye,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { SmartSappLogo } from '@/components/icons';
@@ -36,9 +38,10 @@ import { IPhoneFrame } from './preview/IPhoneFrame';
 import { SurveyInteractiveWalkthrough } from './preview/SurveyInteractiveWalkthrough';
 import { BackgroundPattern } from '@/app/surveys/components/survey-background-pattern';
 import type { SimulationDevice, SimulationTheme, SimulationScreen } from './inspector/types';
+import type { SurveyExperimentVariant } from '@/lib/types';
 
 export default function LivePreviewPane() {
-  const { watch } = useFormContext();
+  const { watch, setValue } = useFormContext();
   const [device, setDevice] = React.useState<SimulationDevice>('desktop');
   const [themeMode, setThemeMode] = React.useState<SimulationTheme>('sync');
   const [screenMode, setScreenMode] = React.useState<SimulationScreen>('cover');
@@ -59,12 +62,65 @@ export default function LivePreviewPane() {
     backgroundPattern = 'none',
     patternColor = '#3B82F6',
     startButtonText,
+    submitButtonText,
     showCoverPage,
     showBranding,
+    showSurveyTitles = true,
     showIntroAsPage = true,
     stepperVariant = 'full',
     elements = [],
+    experimentConfig,
+    previewVariantId,
   } = watchedValues;
+
+  // A/B Testing Variant Resolver
+  const isExperimentActive = !!experimentConfig?.enabled;
+  const treatmentVariants: SurveyExperimentVariant[] = (experimentConfig?.variants || []).filter(
+    (v: SurveyExperimentVariant) => !v.isControl
+  );
+
+  const availableVariants = React.useMemo(() => {
+    if (!isExperimentActive) return [];
+
+    const control = {
+      id: 'control',
+      label: 'Control A',
+      fullLabel: 'Control A (Baseline)',
+      title: title || 'Survey Title',
+      description: description || '',
+      startButtonText: startButtonText || "Let's Start",
+      submitButtonText: submitButtonText || 'Submit Response',
+      isControl: true,
+    };
+
+    const treatments = treatmentVariants.map((v, idx) => ({
+      id: v.id,
+      label: v.label || `Variant ${String.fromCharCode(66 + idx)}`,
+      fullLabel: v.label || `Variant ${String.fromCharCode(66 + idx)}`,
+      title: v.titleOverride?.trim() ? v.titleOverride : (title || 'Survey Title'),
+      description: v.introProseOverride !== undefined && v.introProseOverride !== '' ? v.introProseOverride : (description || ''),
+      startButtonText: v.startButtonTextOverride?.trim() ? v.startButtonTextOverride : (startButtonText || "Let's Start"),
+      submitButtonText: v.submitButtonTextOverride?.trim() ? v.submitButtonTextOverride : (submitButtonText || 'Submit Response'),
+      isControl: false,
+    }));
+
+    return [control, ...treatments];
+  }, [isExperimentActive, treatmentVariants, title, description, startButtonText, submitButtonText]);
+
+  // Determine active preview variant
+  const activeVariantId = previewVariantId || 'control';
+  const activeVariant = React.useMemo(() => {
+    if (!isExperimentActive || availableVariants.length === 0) return null;
+    return availableVariants.find((v) => v.id === activeVariantId) || availableVariants[0];
+  }, [isExperimentActive, availableVariants, activeVariantId]);
+
+  // Effective copy values based on active preview variant
+  const effectiveTitle = activeVariant ? activeVariant.title : (title || 'Survey Title');
+  const effectiveDescription = activeVariant
+    ? activeVariant.description
+    : (description || 'Share your feedback to help us build a better experience for everyone.');
+  const effectiveStartButtonText = activeVariant ? activeVariant.startButtonText : (startButtonText || "Let's Start");
+  const effectiveSubmitButtonText = activeVariant ? activeVariant.submitButtonText : (submitButtonText || 'Submit Response');
 
   // If inline header presentation is active (showIntroAsPage === false), effective screen mode is questions
   const isInlineHeaderActive = showIntroAsPage === false;
@@ -79,70 +135,6 @@ export default function LivePreviewPane() {
 
   const effectiveBgColor = isSimulatedDark ? '#090D16' : (backgroundColor || '#F8FAFC');
 
-  // Background Pattern Renderer
-  const BackgroundPattern = () => {
-    if (!backgroundPattern || backgroundPattern === 'none') return null;
-
-    return (
-      <div className="absolute inset-0 pointer-events-none opacity-20" style={{ color: patternColor }}>
-        {backgroundPattern === 'dots' && (
-          <svg width="100%" height="100%">
-            <defs>
-              <pattern id="live-dots" width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="2" cy="2" r="1.5" fill="currentColor" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#live-dots)" />
-          </svg>
-        )}
-        {backgroundPattern === 'grid' && (
-          <svg width="100%" height="100%">
-            <defs>
-              <pattern id="live-grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 40 0 L 0 0 0 40" fill="none" stroke="currentColor" strokeWidth="1" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#live-grid)" />
-          </svg>
-        )}
-        {backgroundPattern === 'circuit' && (
-          <svg width="100%" height="100%">
-            <defs>
-              <pattern id="live-circuit" width="60" height="60" patternUnits="userSpaceOnUse">
-                <path d="M 0 30 H 30 V 60 M 30 30 L 60 0" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                <circle cx="30" cy="30" r="3" fill="currentColor" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#live-circuit)" />
-          </svg>
-        )}
-        {backgroundPattern === 'topography' && (
-          <svg width="100%" height="100%">
-            <defs>
-              <pattern id="live-topo" width="80" height="80" patternUnits="userSpaceOnUse">
-                <path d="M 0 40 Q 20 20, 40 40 T 80 40 M 0 60 Q 20 40, 40 60 T 80 60" fill="none" stroke="currentColor" strokeWidth="1.5" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#live-topo)" />
-          </svg>
-        )}
-        {backgroundPattern === 'cubes' && (
-          <svg width="100%" height="100%">
-            <defs>
-              <pattern id="live-cubes" width="40" height="40" patternUnits="userSpaceOnUse">
-                <path d="M 20 0 L 40 10 L 20 20 L 0 10 Z M 0 10 L 0 30 L 20 40 L 20 20 Z M 40 10 L 40 30 L 20 40" fill="none" stroke="currentColor" strokeWidth="1.2" />
-              </pattern>
-            </defs>
-            <rect width="100%" height="100%" fill="url(#live-cubes)" />
-          </svg>
-        )}
-        {backgroundPattern === 'gradient' && (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-primary/5 to-transparent" />
-        )}
-      </div>
-    );
-  };
-
   // Internal Viewport Canvas
   const CanvasContent = (
     <div
@@ -153,6 +145,19 @@ export default function LivePreviewPane() {
       style={{ backgroundColor: effectiveBgColor }}
     >
       <BackgroundPattern pattern={backgroundPattern} color={patternColor} idPrefix="live-pane" />
+
+      {/* A/B Split Test Preview Ribbon */}
+      {activeVariant && !activeVariant.isControl && (
+        <div className="px-4 py-1.5 bg-purple-500/15 border-b border-purple-500/25 text-purple-800 dark:text-purple-200 text-xs font-bold flex items-center justify-between z-20 shrink-0 shadow-xs">
+          <span className="flex items-center gap-1.5">
+            <FlaskConical className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
+            <span>Previewing Variant Copy: <strong>{activeVariant.label}</strong></span>
+          </span>
+          <span className="text-[9px] uppercase tracking-wider font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-700 dark:text-purple-300">
+            A/B Split Test
+          </span>
+        </div>
+      )}
 
       <ScrollArea className="h-full w-full">
         <div className="p-6 sm:p-10 space-y-8 text-center relative z-10 max-w-2xl mx-auto flex flex-col items-center justify-center min-h-[500px]">
@@ -178,7 +183,7 @@ export default function LivePreviewPane() {
                   <VideoHero
                     videoUrl={videoUrl}
                     thumbnailUrl={videoThumbnailUrl}
-                    title={stripHtml(title || '')}
+                    title={stripHtml(effectiveTitle || '')}
                     videoCaption={stripHtml(videoCaption || '')}
                   />
                 </div>
@@ -191,10 +196,10 @@ export default function LivePreviewPane() {
               {/* Title & Prose */}
               <div className="space-y-3">
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight">
-                  {title || 'Survey Title'}
+                  {effectiveTitle || 'Survey Title'}
                 </h1>
                 <p className="text-sm sm:text-base opacity-80 leading-relaxed font-medium max-w-lg mx-auto">
-                  {description || 'Share your feedback to help us build a better experience for everyone.'}
+                  {effectiveDescription || 'Share your feedback to help us build a better experience for everyone.'}
                 </p>
               </div>
 
@@ -207,7 +212,7 @@ export default function LivePreviewPane() {
                   className="h-13 sm:h-14 px-10 sm:px-14 rounded-2xl font-black text-sm sm:text-base shadow-xl gap-3 active:scale-[0.97] transition-all hover:scale-[1.02] text-white"
                   style={{ backgroundColor: patternColor }}
                 >
-                  <span>{startButtonText || "Let's Start"}</span>
+                  <span>{effectiveStartButtonText || "Let's Start"}</span>
                   <ArrowRight className="h-4 w-4 stroke-[2.5]" />
                 </Button>
                 <span className="text-[11px] text-muted-foreground/70 font-medium">Click to preview questions</span>
@@ -223,8 +228,10 @@ export default function LivePreviewPane() {
                 stepperVariant={stepperVariant}
                 accentColor={patternColor}
                 showInlineHeader={isInlineHeaderActive}
-                surveyTitle={title}
-                surveyDescription={description}
+                showSurveyTitles={showSurveyTitles !== false}
+                surveyTitle={effectiveTitle}
+                surveyDescription={effectiveDescription}
+                submitButtonText={effectiveSubmitButtonText}
                 bannerImageUrl={bannerImageUrl}
                 videoUrl={videoUrl}
                 videoThumbnailUrl={videoThumbnailUrl}
@@ -240,7 +247,7 @@ export default function LivePreviewPane() {
   return (
     <div className="h-full flex flex-col bg-slate-100 dark:bg-slate-950/30 rounded-3xl border border-border/80 shadow-inner overflow-hidden animate-in fade-in duration-500">
       {/* Studio Simulation Header Toolbar */}
-      <div className="p-3 px-4 border-b border-border/60 bg-background/95 backdrop-blur-sm flex items-center justify-between shrink-0 gap-3">
+      <div className="p-3 px-4 border-b border-border/60 bg-background/95 backdrop-blur-sm flex items-center justify-between shrink-0 gap-3 flex-wrap">
         {/* Left: Section Title & Screen Mode Switcher */}
         <div className="flex items-center gap-3">
           <div className="p-1.5 bg-primary/10 rounded-xl text-primary shrink-0">
@@ -284,6 +291,40 @@ export default function LivePreviewPane() {
             )}
           </div>
         </div>
+
+        {/* Middle: A/B Variant Preview Switcher (When A/B testing is active) */}
+        {isExperimentActive && availableVariants.length > 0 && (
+          <div className="flex items-center gap-1 p-0.5 rounded-xl bg-purple-500/10 border border-purple-500/20 shadow-xs">
+            <div className="flex items-center gap-1 pl-2 pr-1 text-purple-700 dark:text-purple-300 font-bold text-[10px] uppercase tracking-wider shrink-0">
+              <FlaskConical className="h-3.5 w-3.5 text-purple-600 dark:text-purple-400 animate-pulse" />
+              <span className="hidden md:inline">Variant:</span>
+            </div>
+            <div className="flex items-center gap-0.5">
+              {availableVariants.map((v) => {
+                const isActive = (activeVariant?.id === v.id);
+                return (
+                  <button
+                    key={v.id}
+                    type="button"
+                    onClick={() => setValue('previewVariantId', v.id, { shouldDirty: true })}
+                    className={cn(
+                      'px-2 py-0.5 rounded-lg text-xs font-bold transition-all active:scale-[0.97] flex items-center gap-1',
+                      isActive
+                        ? 'bg-purple-600 text-white shadow-xs'
+                        : 'text-purple-700 dark:text-purple-300 hover:bg-purple-500/20'
+                    )}
+                    title={`Preview ${v.fullLabel}`}
+                  >
+                    <span>{v.label}</span>
+                    {v.isControl && (
+                      <span className="text-[9px] opacity-75">(A)</span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Right: Lighting Engine & Device Viewport Selector */}
         <div className="flex items-center gap-2">

@@ -172,10 +172,10 @@ export class InvitationLifecycleService {
     // 1. Provision or update IdentityAccount
     await IdentityAccountService.upsertAccount(
       {
-        uid: accountUid,
+        id: accountUid,
         email: invitation.email,
-        phone: phone || invitation.phone,
         status: 'active',
+        authProvider: 'firebase',
       },
       batch
     );
@@ -199,9 +199,10 @@ export class InvitationLifecycleService {
       {
         organizationId: invitation.organizationId,
         personId: accountUid,
-        memberType: 'member',
+        accountId: accountUid,
+        memberType: 'employee',
         status: 'active',
-        source: 'invite',
+        source: 'invitation',
       },
       batch
     );

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { cn } from '@/lib/utils';
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -124,14 +125,14 @@ export function MinimalRespondentMessage() {
 
     return (
         <Card className="rounded-2xl border border-border bg-card overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b py-5 px-6">
+            <CardHeader className="bg-muted/10 border-b py-4 px-6">
                 <div className="flex items-center gap-3">
-                    <div className="p-2 bg-blue-500/10 rounded-xl shadow-inner">
+                    <div className="p-2 bg-blue-500/10 rounded-xl shadow-inner shrink-0">
                         <HeartHandshake className="h-5 w-5 text-blue-600" />
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                         <CardTitle className="text-sm font-semibold tracking-tight">Respondent Message</CardTitle>
-                        <CardDescription className="text-xs">Send an automated message to all respondents upon completion.</CardDescription>
+                        <CardInfoTooltip text="Send an automated message to all respondents upon completion." />
                     </div>
                 </div>
             </CardHeader>
@@ -433,15 +434,15 @@ export function MinimalThankYouPage() {
 
     return (
         <Card className="rounded-2xl border border-border bg-card overflow-hidden">
-            <CardHeader className="bg-muted/10 border-b py-5 px-6">
+            <CardHeader className="bg-muted/10 border-b py-4 px-6">
                 <div className="flex items-center justify-between w-full">
                     <div className="flex items-center gap-3">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl shadow-inner">
+                        <div className="p-2 bg-emerald-500/10 rounded-xl shadow-inner shrink-0">
                             <FileText className="h-5 w-5 text-emerald-600" />
                         </div>
-                        <div>
+                        <div className="flex items-center gap-2">
                             <CardTitle className="text-sm font-semibold tracking-tight">Post-Submission Experience</CardTitle>
-                            <CardDescription className="text-xs">Customize what respondents see or where they go after submitting.</CardDescription>
+                            <CardInfoTooltip text="Customize what respondents see or where they go after submitting." />
                         </div>
                     </div>
                     <div className="flex items-center gap-4">

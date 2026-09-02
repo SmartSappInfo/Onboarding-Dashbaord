@@ -46,14 +46,14 @@ export class AiIdentityContextResolver {
   ): Promise<SanitizedPersonAiContext> {
     const [person, membership, usageReport, conflicts, crmWorkload] = await Promise.all([
       PersonService.getPerson(personId),
-      OrganizationMembershipService.getMembership(organizationId, personId),
+      OrganizationMembershipService.getMembershipByPersonAndOrg(organizationId, personId),
       PermissionUsageService.getMemberLeastPrivilegeReport(organizationId, personId),
       SeparationOfDutyService.detectToxicPairingsForUser(organizationId, personId),
       CrmWorkloadService.getPersonCrmWorkload(organizationId, personId),
     ]);
 
     const roleIds = membership?.roles || [];
-    const unusedPermissionIds = usageReport.unusedPermissions.map((p) => p.id);
+    const unusedPermissionIds = usageReport.unusedPermissions.map((p: { id: string }) => p.id);
 
     // Calculate days since last active
     let lastActiveDaysAgo = 999;

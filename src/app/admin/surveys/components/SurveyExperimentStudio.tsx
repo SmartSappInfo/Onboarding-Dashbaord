@@ -25,6 +25,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -44,6 +45,11 @@ import {
   Loader2,
   Crown,
   Shuffle,
+  Type,
+  FileText,
+  MousePointerClick,
+  Send,
+  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -55,6 +61,11 @@ export interface SurveyExperimentStudioProps {
 export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperimentStudioProps) {
   const { watch, setValue } = useFormContext();
   const { toast } = useToast();
+
+  const mainTitle = (watch('title') as string) || '';
+  const mainDescription = (watch('description') as string) || '';
+  const mainStartButtonText = (watch('startButtonText') as string) || '';
+  const mainSubmitButtonText = (watch('submitButtonText') as string) || '';
 
   const expConfig: SurveyExperimentConfig = watch('experimentConfig') || {
     enabled: false,
@@ -181,22 +192,18 @@ export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperime
     <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden">
       <CardHeader className="pb-4 border-b border-border/60">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+              <FlaskConical className="h-5 w-5" />
+            </div>
             <div className="flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600">
-                <FlaskConical className="h-5 w-5" />
-              </div>
-              <div>
-                <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
-                  A/B Testing & Question Experiment Studio
-                  <Badge variant="outline" className="text-[10px] font-mono text-purple-600 border-purple-300">
-                    Phase 8
-                  </Badge>
-                </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Split respondent traffic to test different survey titles, introductory copy, and incentive framing.
-                </CardDescription>
-              </div>
+              <CardTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                A/B Testing &amp; Question Experiment Studio
+              </CardTitle>
+              <Badge variant="outline" className="text-[10px] font-mono text-purple-600 border-purple-300">
+                Phase 8
+              </Badge>
+              <CardInfoTooltip text="Split respondent traffic to test different survey titles, introductory copy, and CTA button phrasing." />
             </div>
           </div>
 
@@ -300,6 +307,8 @@ export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperime
                         'p-5 rounded-2xl border transition-all space-y-4 text-left',
                         isWinner
                           ? 'border-emerald-500/50 bg-emerald-500/5 shadow-sm'
+                          : variant.isControl
+                          ? 'border-primary/30 bg-primary/[0.02] shadow-sm'
                           : 'border-border bg-card shadow-sm'
                       )}
                     >
@@ -308,6 +317,11 @@ export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperime
                           <Badge variant={variant.isControl ? 'secondary' : 'default'} className="text-xs font-bold">
                             {variant.isControl ? 'Control (Baseline)' : 'Variant ' + String.fromCharCode(65 + index)}
                           </Badge>
+                          {variant.isControl && (
+                            <Badge variant="outline" className="text-[9px] font-medium text-primary bg-primary/5 border-primary/20">
+                              <Zap className="h-2.5 w-2.5 mr-1 inline" /> Synced with Details
+                            </Badge>
+                          )}
                           {isWinner && (
                             <Badge className="bg-emerald-500/20 text-emerald-600 border-emerald-300 text-[10px] font-semibold">
                               <Crown className="h-3 w-3 mr-1 inline" /> Statistically Winning
@@ -357,25 +371,133 @@ export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperime
                           />
                         </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold text-muted-foreground">Title Override (Optional)</Label>
-                          <Input
-                            value={variant.titleOverride || ''}
-                            onChange={(e) => handleUpdateVariant(variant.id, { titleOverride: e.target.value })}
-                            placeholder="Defaults to standard survey title"
-                            className="h-8 text-xs rounded-lg"
-                          />
-                        </div>
+                        {variant.isControl ? (
+                          /* ── CONTROL (BASELINE): Automatically Filled & Two-Way Synced ── */
+                          <>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                                  <Type className="h-3 w-3 text-primary" /> Primary Survey Title
+                                </Label>
+                                <span className="text-[10px] text-muted-foreground">Auto-filled</span>
+                              </div>
+                              <Input
+                                value={mainTitle}
+                                onChange={(e) => {
+                                  setValue('title', e.target.value, { shouldDirty: true });
+                                  handleUpdateVariant(variant.id, { titleOverride: e.target.value });
+                                }}
+                                placeholder="e.g. Help Us Improve or {{entity.name}}"
+                                className="h-8 text-xs rounded-lg"
+                              />
+                            </div>
 
-                        <div className="space-y-1">
-                          <Label className="text-[11px] font-semibold text-muted-foreground">Introductory Copy Override</Label>
-                          <Textarea
-                            value={variant.introProseOverride || ''}
-                            onChange={(e) => handleUpdateVariant(variant.id, { introProseOverride: e.target.value })}
-                            placeholder="Defaults to standard survey description"
-                            className="h-16 text-xs rounded-lg resize-none"
-                          />
-                        </div>
+                            <div className="space-y-1">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                                  <FileText className="h-3 w-3 text-primary" /> Introductory Prose
+                                </Label>
+                                <span className="text-[10px] text-muted-foreground">Auto-filled</span>
+                              </div>
+                              <Textarea
+                                value={mainDescription}
+                                onChange={(e) => {
+                                  setValue('description', e.target.value, { shouldDirty: true });
+                                  handleUpdateVariant(variant.id, { introProseOverride: e.target.value });
+                                }}
+                                placeholder="Explain why this survey matters to your community..."
+                                className="h-16 text-xs rounded-lg resize-none"
+                              />
+                            </div>
+
+                            {/* CTA Button Copy */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                                  <MousePointerClick className="h-3 w-3 text-primary" /> Start Button CTA
+                                </Label>
+                                <Input
+                                  value={mainStartButtonText}
+                                  onChange={(e) => {
+                                    setValue('startButtonText', e.target.value, { shouldDirty: true });
+                                    handleUpdateVariant(variant.id, { startButtonTextOverride: e.target.value });
+                                  }}
+                                  placeholder="Let's Start"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-foreground flex items-center gap-1.5">
+                                  <Send className="h-3 w-3 text-primary" /> Submit Button CTA
+                                </Label>
+                                <Input
+                                  value={mainSubmitButtonText}
+                                  onChange={(e) => {
+                                    setValue('submitButtonText', e.target.value, { shouldDirty: true });
+                                    handleUpdateVariant(variant.id, { submitButtonTextOverride: e.target.value });
+                                  }}
+                                  placeholder="Submit Response"
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          /* ── TREATMENT VARIANTS: Phrasing & CTA Overrides ── */
+                          <>
+                            <div className="space-y-1">
+                              <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                <Type className="h-3 w-3 text-muted-foreground" /> Title Override (Optional)
+                              </Label>
+                              <Input
+                                value={variant.titleOverride || ''}
+                                onChange={(e) => handleUpdateVariant(variant.id, { titleOverride: e.target.value })}
+                                placeholder={mainTitle ? `Defaults to: "${mainTitle}"` : "Defaults to primary survey title"}
+                                className="h-8 text-xs rounded-lg"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                <FileText className="h-3 w-3 text-muted-foreground" /> Introductory Copy Override (Optional)
+                              </Label>
+                              <Textarea
+                                value={variant.introProseOverride || ''}
+                                onChange={(e) => handleUpdateVariant(variant.id, { introProseOverride: e.target.value })}
+                                placeholder={mainDescription ? `Defaults to: "${mainDescription.slice(0, 45)}..."` : "Defaults to primary survey description"}
+                                className="h-16 text-xs rounded-lg resize-none"
+                              />
+                            </div>
+
+                            {/* CTA Button Overrides */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                  <MousePointerClick className="h-3 w-3 text-muted-foreground" /> Start Button CTA Override
+                                </Label>
+                                <Input
+                                  value={variant.startButtonTextOverride || ''}
+                                  onChange={(e) => handleUpdateVariant(variant.id, { startButtonTextOverride: e.target.value })}
+                                  placeholder={mainStartButtonText ? `Defaults to: "${mainStartButtonText}"` : "Defaults to 'Let's Start'"}
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+
+                              <div className="space-y-1">
+                                <Label className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                  <Send className="h-3 w-3 text-muted-foreground" /> Submit Button CTA Override
+                                </Label>
+                                <Input
+                                  value={variant.submitButtonTextOverride || ''}
+                                  onChange={(e) => handleUpdateVariant(variant.id, { submitButtonTextOverride: e.target.value })}
+                                  placeholder={mainSubmitButtonText ? `Defaults to: "${mainSubmitButtonText}"` : "Defaults to 'Submit Response'"}
+                                  className="h-8 text-xs rounded-lg"
+                                />
+                              </div>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
                   );

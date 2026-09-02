@@ -11,7 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { RoleIntelligenceSummary, RoleEffectivenessRating } from '@/lib/types';
+import type { RoleIntelligenceSummary, RoleEffectivenessRating, Role } from '@/lib/types';
 import { RoleManagementService } from '@/lib/services/authorization/role-management-service';
 
 export class RoleIntelligenceService {
@@ -55,16 +55,15 @@ export class RoleIntelligenceService {
       ];
     }
 
-    return roles.map((role) => {
-      const activePermissionsCount = role.permissionKeys?.length || 5;
+    return roles.map((role: Role) => {
+      const activePermissionsCount = role.permissions?.length || 5;
       const assignedMembersCount = 3; // Estimated baseline
       const utilizationRate = Math.min(100, Math.max(30, 100 - activePermissionsCount * 1.5));
-      const redundancyScore = role.isCustom ? 25 : 0;
+      const redundancyScore = role.category === 'Custom' ? 25 : 0;
 
       let rating: RoleEffectivenessRating = 'optimal';
       if (utilizationRate < 40) rating = 'trim_permissions';
       else if (redundancyScore > 50) rating = 'merge_role';
-      else if (assignedMembersCount === 0) rating = 'deprecate';
 
       return {
         roleId: role.id,

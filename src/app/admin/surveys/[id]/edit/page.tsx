@@ -40,6 +40,7 @@ import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
 import { pruneUndefined } from '@/lib/firestore-utils';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSidebar } from '@/components/ui/sidebar';
 import { finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
 import { updateWorkspaceVocabularyAction } from '@/lib/vocabulary-map-actions';
 import { surveyToSeoFormFields, migrateSurveyFormSeo } from '@/lib/seo';
@@ -287,6 +288,15 @@ export default function EditSurveyPage() {
 
     const isProgrammaticChange = React.useRef(false);
     const debouncedFields = useDebounce(watch('elements'), 800);
+    const sidebar = useSidebar();
+
+    // Auto-collapse sidebar navigation on studio launch, restore/expand on exit
+    React.useEffect(() => {
+        sidebar.setOpen(false);
+        return () => {
+            sidebar.setOpen(true);
+        };
+    }, [sidebar]);
 
     React.useEffect(() => {
         if (activeWorkspaceId) {

@@ -3,6 +3,7 @@
 import * as React from 'react';
 import type { SeoConfig, OgImageMode } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -109,16 +110,14 @@ export function SeoSettingsCard({
 
   return (
     <Card className={cn('rounded-2xl border border-border bg-card overflow-hidden', className)}>
-      <CardHeader className="bg-muted/10 border-b py-5 px-6">
+      <CardHeader className="bg-muted/10 border-b py-4 px-6">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 rounded-xl">
+          <div className="p-2 bg-primary/10 rounded-xl shrink-0">
             <Globe className="h-5 w-5 text-primary" />
           </div>
-          <div>
+          <div className="flex items-center gap-2">
             <CardTitle className="text-sm font-semibold tracking-tight">SEO &amp; Social Sharing</CardTitle>
-            <CardDescription className="text-[11px] font-medium text-muted-foreground mt-0.5">
-              {description}
-            </CardDescription>
+            <CardInfoTooltip text={description} />
           </div>
         </div>
       </CardHeader>

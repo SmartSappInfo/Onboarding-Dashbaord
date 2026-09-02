@@ -52,15 +52,14 @@ export class AiExecutionEngine {
       switch (proposal.actionType) {
         case 'create_access_review_campaign': {
           const campaign = await AccessReviewService.createCampaign(organizationId, {
-            name: proposal.title,
+            title: proposal.title,
             description: proposal.explanation,
-            scopeType: 'department',
-            departmentId: (proposal.payload.departmentId as string) || 'dept_all',
-            deadlineDays: 14,
+            frequency: 'quarterly',
+            dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
             createdBy: executedBy,
           });
-          itemsModifiedCount = campaign.totalDecisions;
-          executionSummary = `Created Access Review Campaign "${campaign.name}" covering ${itemsModifiedCount} decision items.`;
+          itemsModifiedCount = campaign.totalItems;
+          executionSummary = `Created Access Review Campaign "${campaign.title}" covering ${itemsModifiedCount} decision items.`;
           break;
         }
 

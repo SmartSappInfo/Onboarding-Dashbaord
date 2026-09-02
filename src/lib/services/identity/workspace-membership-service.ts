@@ -138,4 +138,31 @@ export class WorkspaceMembershipService {
 
     return results;
   }
+
+  /**
+   * Upserts a single workspace membership document.
+   */
+  static async upsertWorkspaceMembership(
+    membership: Omit<WorkspaceMembership, 'id' | 'createdAt' | 'updatedAt'>,
+    batchOrTransaction?: FirebaseFirestore.WriteBatch | FirebaseFirestore.Transaction
+  ): Promise<WorkspaceMembership> {
+    const now = new Date().toISOString();
+    const docId = this.getWorkspaceMembershipId(membership.workspaceId, membership.personId);
+    const docRef = adminDb.collection(this.COLLECTION).doc(docId);
+
+    const record: WorkspaceMembership = {
+      id: docId,
+      ...membership,
+      createdAt: now,
+      updatedAt: now,
+    };
+
+    if (batchOrTransaction) {
+      (batchOrTransaction as FirebaseFirestore.WriteBatch).set(docRef, record, { merge: true });
+    } else {
+      await docRef.set(record, { merge: true });
+    }
+
+    return record;
+  }
 }

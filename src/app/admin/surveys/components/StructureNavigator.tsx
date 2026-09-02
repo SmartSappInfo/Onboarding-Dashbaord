@@ -47,6 +47,7 @@ import {
   Sparkles,
   Layers,
   Folder,
+  X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -65,6 +66,7 @@ interface StructureNavigatorProps {
   onDuplicate: (index: number) => void;
   onDelete: (index: number) => void;
   onAddQuestion: (type?: SurveyQuestion['type']) => void;
+  onClose?: () => void;
   className?: string;
 }
 
@@ -158,7 +160,7 @@ function getLogicSummary(block: SurveyLogicBlock, elementMap: Map<string, string
   const op = formatLogicOperator(firstRule.operator);
   
   if (block.rules.length === 1) {
-    const val = firstRule.value ? ` "${firstRule.value}"` : '';
+    const val = firstRule.targetValue ? ` "${firstRule.targetValue}"` : '';
     return `If ${sourceTitle} ${op}${val} → ${targetTitle}`;
   }
   return `${block.rules.length} Branch Rules`;
@@ -173,6 +175,7 @@ export function StructureNavigator({
   onDuplicate,
   onDelete,
   onAddQuestion,
+  onClose,
   className,
 }: StructureNavigatorProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -213,9 +216,23 @@ export function StructureNavigator({
             <FolderTree className="h-4 w-4 text-primary" />
             <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Structure Tree</span>
           </div>
-          <Badge variant="secondary" className="text-[10px] font-mono">
-            {elements.length} blocks
-          </Badge>
+          <div className="flex items-center gap-1.5">
+            <Badge variant="secondary" className="text-[10px] font-mono">
+              {elements.length} blocks
+            </Badge>
+            {onClose && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={onClose}
+                className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground rounded-md active:scale-[0.97]"
+                title="Hide Structure Tree"
+              >
+                <X className="h-3.5 w-3.5" />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Search Input with Clean Query Filter */}

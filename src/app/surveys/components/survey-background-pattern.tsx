@@ -21,12 +21,12 @@ export interface BackgroundPatternProps {
   className?: string;
 }
 
-export const BackgroundPattern = React.memo(function BackgroundPattern({
+export function BackgroundPattern({
   pattern = 'none',
   color = '#3B82F6',
   idPrefix = 'survey-pat',
   className,
-}: BackgroundPatternProps) {
+}: BackgroundPatternProps): React.JSX.Element | null {
   if (!pattern || pattern === 'none') return null;
 
   if (pattern === 'gradient') {
@@ -110,4 +110,4 @@ export const BackgroundPattern = React.memo(function BackgroundPattern({
       </svg>
     </div>
   );
-});
+}

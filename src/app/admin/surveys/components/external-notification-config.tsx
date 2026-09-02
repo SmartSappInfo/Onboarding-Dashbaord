@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import AiSurveyMessagingModal from './ai-survey-messaging-modal';
 import { generateSurveyMessagingTemplatesAction } from '@/lib/survey-ai-messaging-actions';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { GenerateSurveyMessagingOutput } from '@/ai/schemas/survey-messaging-schemas';
 import type { SurveyQuestion, SurveyElement } from '@/lib/types';
 
@@ -142,17 +143,19 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                 "rounded-[2rem] border-2 transition-all duration-500",
                 enabled ? "border-primary/20 bg-primary/5 shadow-xl shadow-primary/5" : "border-border/50 bg-background grayscale opacity-60"
             )}>
-                <div className="flex items-center justify-between p-6">
-                    <div className="flex items-center gap-4 text-left">
+                <div className="flex items-center justify-between p-4 sm:p-5">
+                    <div className="flex items-center gap-3.5 text-left">
                         <div className={cn(
-                            "p-3 rounded-2xl transition-all duration-500", 
-                            enabled ? "bg-primary text-white shadow-lg shadow-primary/20 -rotate-3" : "bg-muted text-muted-foreground"
+                            "h-10 w-10 rounded-2xl flex items-center justify-center transition-all duration-500 shrink-0", 
+                            enabled ? "bg-primary text-white shadow-md shadow-primary/20 -rotate-3" : "bg-muted text-muted-foreground"
                         )}>
-                            <Users className="h-6 w-6" />
+                            <Users className="h-5 w-5" />
                         </div>
-                        <div className="space-y-0.5">
-                            <Label className="text-base font-semibold tracking-tight">External Contact Alerts</Label>
-                            <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Notify stakeholders at the campus level</p>
+                        <div className="flex items-center gap-2">
+                            <Label className="text-sm sm:text-base font-semibold tracking-tight cursor-pointer">
+                                External Contact Alerts
+                            </Label>
+                            <CardInfoTooltip text="Notify external stakeholders or campus contacts automatically upon survey response submission." />
                         </div>
                     </div>
                     <Controller
@@ -162,7 +165,7 @@ export default function ExternalNotificationConfig({ prefix = "externalAlert", c
                             <Switch 
                                 checked={!!field.value} 
                                 onCheckedChange={field.onChange} 
-                                className="scale-125"
+                                className="scale-110"
                             />
                         )}
                     />

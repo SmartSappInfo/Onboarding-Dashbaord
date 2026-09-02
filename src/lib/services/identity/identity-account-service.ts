@@ -112,4 +112,14 @@ export class IdentityAccountService {
       console.warn(`[IdentityAccountService] Failed to record activity for ${uid}:`, err);
     }
   }
+
+  /**
+   * Upserts an identity account record.
+   */
+  static async upsertAccount(
+    account: Omit<IdentityAccount, 'createdAt' | 'updatedAt'>,
+    batchOrTransaction?: FirebaseFirestore.WriteBatch | FirebaseFirestore.Transaction
+  ): Promise<IdentityAccount> {
+    return this.createAccount(account, batchOrTransaction);
+  }
 }

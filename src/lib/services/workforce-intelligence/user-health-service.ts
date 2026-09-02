@@ -27,7 +27,7 @@ export class UserHealthService {
     let openTasksCount = 0;
     try {
       const crmWorkload = await CrmWorkloadService.getPersonCrmWorkload(organizationId, personId);
-      openTasksCount = crmWorkload.openTasksCount;
+      openTasksCount = crmWorkload.openTaskCount;
     } catch {
       // Graceful fallback
     }

@@ -7,10 +7,17 @@ interface UrlDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (url: string) => void;
+  initialValue?: string;
 }
 
-export function UrlDialog({ open, onOpenChange, onConfirm }: UrlDialogProps) {
-  const [url, setUrl] = useState('');
+export function UrlDialog({ open, onOpenChange, onConfirm, initialValue = '' }: UrlDialogProps) {
+  const [url, setUrl] = useState(initialValue);
+
+  React.useEffect(() => {
+    if (open) {
+      setUrl(initialValue || '');
+    }
+  }, [open, initialValue]);
   const handleConfirm = () => {
     if (url.trim()) {
       onConfirm(url.trim());

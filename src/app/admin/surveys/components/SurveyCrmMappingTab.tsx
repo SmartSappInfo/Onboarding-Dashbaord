@@ -35,6 +35,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -167,19 +168,17 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
   };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 lg:space-y-8">
       {/* Overview & Master Toggles */}
       <Card className="rounded-2xl border-border bg-card shadow-sm">
         <CardHeader className="pb-4">
-          <div className="flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-primary/10 text-primary">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary/10 text-primary shrink-0">
               <Database className="h-5 w-5" />
             </div>
-            <div>
-              <CardTitle className="text-base font-bold">CRM Intelligence & Two-Way Sync</CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Map question answers directly to CRM contacts, entity custom fields, and deal attributes upon submission.
-              </CardDescription>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-base font-bold">CRM Intelligence &amp; Two-Way Sync</CardTitle>
+              <CardInfoTooltip text="Map question answers directly to CRM contacts, entity custom fields, and deal attributes upon submission." />
             </div>
           </div>
         </CardHeader>
@@ -226,14 +225,12 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
       <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden">
         <CardHeader className="pb-3 border-b border-border/60">
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
+            <div className="flex items-center gap-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Layers className="h-4 w-4 text-primary" />
                 Dynamic Field Mappings ({crmConfig.fieldMappings?.length || 0})
               </CardTitle>
-              <CardDescription className="text-xs">
-                Select which survey questions should write their answer values directly into CRM contact and entity fields.
-              </CardDescription>
+              <CardInfoTooltip text="Select which survey questions should write their answer values directly into CRM contact and entity fields." />
             </div>
             <Button
               type="button"
@@ -315,14 +312,18 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
                             <SelectValue placeholder="Select Field" />
                           </SelectTrigger>
                           <SelectContent>
-                            {availableCrmFields
-                              .filter((f) => f.targetType === mapping.targetType)
-                              .map((f) => (
-                                <SelectItem key={f.key} value={f.key} className="text-xs">
-                                  <span>{f.label}</span>
-                                  <span className="text-[10px] text-muted-foreground ml-2 font-mono">({f.group})</span>
-                                </SelectItem>
-                              ))}
+                            {Array.from(
+                              new Map(
+                                availableCrmFields
+                                  .filter((f) => f.targetType === mapping.targetType)
+                                  .map((f) => [f.key, f])
+                              ).values()
+                            ).map((f) => (
+                              <SelectItem key={`${mapping.id}-${f.key}`} value={f.key} className="text-xs">
+                                <span>{f.label}</span>
+                                <span className="text-[10px] text-muted-foreground ml-2 font-mono">({f.group})</span>
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </TableCell>
@@ -372,14 +373,12 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
       <Card className="rounded-2xl border-border bg-card shadow-sm">
         <CardHeader className="pb-3 border-b border-border/60">
           <div className="flex items-center justify-between">
-            <div className="space-y-1">
+            <div className="flex items-center gap-2">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
                 Follow-up CRM Tasks ({crmConfig.taskRules?.length || 0})
               </CardTitle>
-              <CardDescription className="text-xs">
-                Automatically generate actionable follow-up tasks in the CRM task manager when respondents trigger specific conditions.
-              </CardDescription>
+              <CardInfoTooltip text="Automatically generate actionable follow-up tasks in the CRM task manager when respondents trigger specific conditions." />
             </div>
             <Button
               type="button"

@@ -378,10 +378,6 @@ export default function SurveysClient() {
     </div>
   );
 
-  if (error) {
- return <div className="text-destructive">Error loading surveys: {error.message}</div>;
-  }
-
   const filteredTemplates = useMemo(() => {
     return (surveys || [])
       .map((raw) => hydrateSurveyDocument(raw))
@@ -396,6 +392,10 @@ export default function SurveysClient() {
         return matchesStatus && matchesProject && matchesType && matchesSearch;
       });
   }, [surveys, categoryFilter, projectFilter, typeFilter, searchTerm]);
+
+  if (error) {
+    return <div className="text-destructive">Error loading surveys: {error.message}</div>;
+  }
 
     return (
         <TooltipProvider>

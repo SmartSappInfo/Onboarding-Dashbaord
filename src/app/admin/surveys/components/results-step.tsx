@@ -10,6 +10,7 @@ import ResultPageBuilder from './result-page-builder';
 import AiChatEditor from './ai-chat-editor';
 import { MinimalRespondentMessage, MinimalThankYouPage } from './minimal-results-config';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -42,49 +43,52 @@ function LogicSimulator() {
  <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
                 <Sparkles size={120} />
             </div>
- <CardHeader className="bg-muted/10 border-b py-5 px-6">
- <CardTitle className="text-sm font-semibold flex items-center gap-2">
- <BrainCircuit className="h-4 w-4 text-primary" /> Outcome Simulator
-                </CardTitle>
-            </CardHeader>
-            <CardContent>
- <div className="flex flex-col sm:flex-row items-center gap-4">
- <div className="w-full sm:w-32">
- <Label className="text-sm font-semibold mb-1 block">Test Score (Points)</Label>
- <Input 
-                             type="number" 
-                             value={testScore} 
-                             onChange={(e) => setTestScore(Number(e.target.value))} 
-                             className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 font-semibold text-xl h-12 text-center rounded-xl"
-                        />
+ <CardHeader className="bg-muted/10 border-b py-4 px-6">
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm font-semibold flex items-center gap-2">
+                <BrainCircuit className="h-4 w-4 text-primary" /> Outcome Simulator
+              </CardTitle>
+              <CardInfoTooltip text="Simulate score-based outcome page routing in real-time." />
+            </div>
+          </CardHeader>
+          <CardContent className="p-6">
+            <div className="flex flex-col sm:flex-row items-center gap-4">
+              <div className="w-full sm:w-32">
+                <Label className="text-sm font-semibold mb-1 block">Test Score (Points)</Label>
+                <Input 
+                  type="number" 
+                  value={testScore} 
+                  onChange={(e) => setTestScore(Number(e.target.value))} 
+                  className="bg-card border border-border/50 shadow-sm focus-visible:ring-1 focus-visible:ring-primary/30 font-semibold text-xl h-12 text-center rounded-xl"
+                />
+              </div>
+              <div className="shrink-0 pt-4 hidden sm:block">
+                <ArrowRight className="h-6 w-6 text-muted-foreground/30" />
+              </div>
+              <div className="flex-grow w-full">
+                <Label className="text-sm font-semibold mb-1 block">Public Perspective ({scoreDisplayMode})</Label>
+                <div className={cn(
+                  "h-12 flex items-center px-4 rounded-md border transition-all",
+                  matchedRule ? "bg-background border-primary shadow-sm" : "bg-background0 border-dashed"
+                )}>
+                  {matchedRule ? (
+                    <div className="flex items-center justify-between w-full">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-4 w-4 text-yellow-500" />
+                        <span className="font-bold text-foreground truncate max-w-[150px]">{matchedRule.label}</span>
+                        <Badge className="ml-2 font-semibold tabular-nums bg-emerald-50 text-emerald-600 border-emerald-100">{formattedValue}</Badge>
+                      </div>
+                      <Badge variant="outline" className="ml-2 font-bold bg-primary/10 text-primary border-primary/20">
+                        → {matchedPage?.name || 'Default Result'}
+                      </Badge>
                     </div>
- <div className="shrink-0 pt-4 hidden sm:block">
- <ArrowRight className="h-6 w-6 text-muted-foreground/30" />
-                    </div>
- <div className="flex-grow w-full">
- <Label className="text-sm font-semibold mb-1 block">Public Perspective ({scoreDisplayMode})</Label>
- <div className={cn(
-                            "h-12 flex items-center px-4 rounded-md border transition-all",
-                            matchedRule ? "bg-background border-primary shadow-sm" : "bg-background0 border-dashed"
-                        )}>
-                            {matchedRule ? (
- <div className="flex items-center justify-between w-full">
- <div className="flex items-center gap-2">
- <Trophy className="h-4 w-4 text-yellow-500" />
- <span className="font-bold text-foreground truncate max-w-[150px]">{matchedRule.label}</span>
-                                        <Badge className="ml-2 font-semibold tabular-nums bg-emerald-50 text-emerald-600 border-emerald-100">{formattedValue}</Badge>
-                                    </div>
-                                    <Badge variant="outline" className="ml-2 font-bold bg-primary/10 text-primary border-primary/20">
-                                        → {matchedPage?.name || 'Default Result'}
-                                    </Badge>
-                                </div>
-                            ) : (
- <span className="text-muted-foreground text-sm italic">No matching rule found. Falling back to default.</span>
-                            )}
-                        </div>
-                    </div>
+                  ) : (
+                    <span className="text-muted-foreground text-sm italic">No matching rule found. Falling back to default.</span>
+                  )}
                 </div>
-            </CardContent>
+              </div>
+            </div>
+          </CardContent>
         </Card>
     );
 }
@@ -95,21 +99,21 @@ export default function ResultsStep() {
     const scoreDisplayMode = watch('scoreDisplayMode') || 'points';
 
     return (
- <div className="space-y-8">
-            <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <div className="flex items-center justify-between p-6">
- <div className="flex items-center gap-4">
- <div className={cn(
-                            "p-3 rounded-2xl transition-all duration-500", 
-                            scoringEnabled ? "bg-yellow-500 text-white shadow-lg shadow-yellow-500/20 rotate-3" : "bg-muted text-muted-foreground"
-                        )}>
- <Trophy className="h-6 w-6" />
-                        </div>
- <div className="space-y-0.5">
- <Label className="text-base font-semibold tracking-tight">Scoring Engine</Label>
- <p className="text-[10px] text-muted-foreground font-semibold tracking-tighter">Enable logic-based survey scoring</p>
-                        </div>
-                    </div>
+      <div className="space-y-8">
+        <Card className="rounded-2xl border border-border bg-card overflow-hidden">
+          <div className="flex items-center justify-between p-6">
+            <div className="flex items-center gap-4">
+              <div className={cn(
+                "p-3 rounded-2xl transition-all duration-500 shrink-0", 
+                scoringEnabled ? "bg-yellow-500 text-white shadow-lg shadow-yellow-500/20 rotate-3" : "bg-muted text-muted-foreground"
+              )}>
+                <Trophy className="h-6 w-6" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-base font-semibold tracking-tight">Scoring Engine</Label>
+                <CardInfoTooltip text="Enable logic-based survey scoring and outcome routing." />
+              </div>
+            </div>
                     <div className="flex items-center gap-4">
                         <AiChatEditor variant="icon" />
                         <Switch 

@@ -8,18 +8,28 @@ import type { ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
 interface ThumbnailDesignerDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaceId: string;
+  workspaceId?: string;
   initialDesign?: ThumbnailDesign;
-  onSave: (imageUrl: string) => void;
+  initialTitle?: string;
+  initialSubtitle?: string;
+  contextName?: string;
+  onSave?: (imageUrl: string) => void;
+  onApply?: (imageUrl: string) => void;
 }
 
 export default function ThumbnailDesignerDialog({
   open,
   onOpenChange,
-  workspaceId,
+  workspaceId = '',
   initialDesign,
+  initialTitle,
+  initialSubtitle,
+  contextName,
   onSave,
+  onApply,
 }: ThumbnailDesignerDialogProps) {
+  const handleSave = onApply || onSave || (() => {});
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-screen h-[100dvh] max-w-none p-0 m-0 border-none rounded-none flex flex-col shadow-2xl overflow-hidden bg-slate-950">
@@ -30,7 +40,7 @@ export default function ThumbnailDesignerDialog({
             workspaceId={workspaceId}
             initialDesign={initialDesign}
             onSave={(url) => {
-              onSave(url);
+              handleSave(url);
               onOpenChange(false);
             }}
             onClose={() => onOpenChange(false)}

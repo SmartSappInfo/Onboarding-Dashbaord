@@ -37,6 +37,7 @@ import { PipelineStageSelector } from './PipelineStageSelector';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -246,23 +247,21 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
 
   return (
     <Card className="rounded-2xl border border-border/80 bg-card overflow-hidden shadow-sm">
-      <CardHeader className="bg-muted/20 border-b border-border/60 pb-4">
+      <CardHeader className="bg-muted/20 border-b border-border/60 py-4 px-5 sm:px-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold">
-                <Workflow className="h-4 w-4" />
-              </div>
-              <CardTitle className="text-base font-bold text-foreground">
-                Autonomous Decisioning & Automation Hub
-              </CardTitle>
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center font-bold shrink-0">
+              <Workflow className="h-4.5 w-4.5" />
             </div>
-            <CardDescription className="text-xs text-muted-foreground">
-              Define multi-condition rules that automatically execute CRM actions, update lead scores, route pipelines, and trigger AI prescriptions upon response submission.
-            </CardDescription>
+            <div className="flex items-center gap-2">
+              <CardTitle className="text-sm sm:text-base font-bold text-foreground">
+                Autonomous Decisioning &amp; Automation Hub
+              </CardTitle>
+              <CardInfoTooltip text="Define multi-condition rules that automatically execute CRM actions, update lead scores, route pipelines, and trigger AI prescriptions upon response submission." />
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex items-center gap-2">
               <Switch
                 id="decision-master-toggle"

@@ -37,6 +37,7 @@ interface WorkspaceMembershipSheetProps {
   roles: Role[];
   workspaces: Workspace[];
   onUpdated?: (updatedProfile: UserProfile) => void;
+  onMembershipUpdated?: (updatedProfile?: UserProfile) => void;
 }
 
 interface WorkspaceAssignmentState {
@@ -55,6 +56,7 @@ export function WorkspaceMembershipSheet({
   roles,
   workspaces,
   onUpdated,
+  onMembershipUpdated,
 }: WorkspaceMembershipSheetProps) {
   const { toast } = useToast();
   const { user: authUser } = useUser();
@@ -186,6 +188,7 @@ export function WorkspaceMembershipSheet({
           description: `Successfully updated workspace memberships for ${user.name}.`,
         });
         if (onUpdated) onUpdated(res.userProfile);
+        if (onMembershipUpdated) onMembershipUpdated(res.userProfile);
         onClose();
       } else {
         throw new Error(res.error || 'Failed to update memberships');

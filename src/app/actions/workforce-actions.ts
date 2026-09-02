@@ -82,8 +82,8 @@ async function verifyCallerAuth(idToken: string, targetOrgId: string): Promise<C
 
   const canManageWorkforce = Boolean(
     isSystemAdmin ||
-    profile.permissions?.includes('users_manage') ||
-    profile.permissions?.includes('management_users') ||
+    (profile.permissions as unknown as string[])?.includes('users_manage') ||
+    (profile.permissions as unknown as string[])?.includes('management_users') ||
     profile.permissionsSchema?.management?.features?.users?.edit
   );
 

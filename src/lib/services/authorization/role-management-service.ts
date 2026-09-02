@@ -63,6 +63,7 @@ export class RoleManagementService {
       category: payload.category || 'Custom',
       permissions: flatPerms,
       permissionsSchema: resolvedSchema,
+      workspaceIds: [],
       version: 1,
       createdAt: now,
       updatedAt: now,
@@ -199,5 +200,12 @@ export class RoleManagementService {
       .get();
 
     return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as Role));
+  }
+
+  /**
+   * Alias for listing roles by organization.
+   */
+  static async listRoles(organizationId: string): Promise<Role[]> {
+    return this.listRolesByOrganization(organizationId);
   }
 }

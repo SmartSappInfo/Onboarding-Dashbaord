@@ -2830,27 +2830,33 @@ export default function SurveyForm({
                         </div>
                     ) : (
                         <>
-                            {/* Survey Title & Description — always visible */}
-                                <div className="flex flex-col items-center text-center space-y-6 sm:space-y-10 mb-8 sm:mb-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
-                                    {survey.videoUrl ? (
-                                        <VideoHero 
-                                            videoUrl={survey.videoUrl} 
-                                            thumbnailUrl={survey.videoThumbnailUrl} 
-                                            title={survey.title} 
-                                            videoCaption={survey.videoCaption}
-                                        />
-                                    ) : survey.bannerImageUrl && (
-                                        <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border-border/50 bg-card">
-                                            <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block object-contain" />
-                                        </div>
+                            {/* Survey Title & Description on Steps (Controlled by showSurveyTitles) */}
+                            {showTitles && (
+                                <div className="flex flex-col items-center text-center space-y-4 sm:space-y-6 mb-6 sm:mb-10 animate-in fade-in slide-in-from-bottom-6 duration-700">
+                                    {survey.showIntroAsPage === false && (
+                                        survey.videoUrl ? (
+                                            <VideoHero 
+                                                videoUrl={survey.videoUrl} 
+                                                thumbnailUrl={survey.videoThumbnailUrl} 
+                                                title={survey.title} 
+                                                videoCaption={survey.videoCaption}
+                                            />
+                                        ) : survey.bannerImageUrl ? (
+                                            <div className="relative w-full rounded-2xl overflow-hidden shadow-2xl border-border/50 bg-card">
+                                                <img src={survey.bannerImageUrl} alt={survey.title || ''} className="w-full h-auto block object-contain" />
+                                            </div>
+                                        ) : null
                                     )}
-                                    <div className="space-y-5 max-w-3xl mx-auto px-4">
-                                        <h1 className="text-[25px] sm:text-[34px] font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{interpolateText(survey.title)}</h1>
-                                        <div className="text-lg sm:text-xl text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap">
-                                            {interpolateText(survey.description)}
-                                        </div>
+                                    <div className="space-y-2 max-w-3xl mx-auto px-4">
+                                        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground leading-tight whitespace-pre-wrap">{interpolateText(survey.title)}</h1>
+                                        {survey.showIntroAsPage === false && survey.description && (
+                                            <div className="text-base sm:text-lg text-muted-foreground leading-relaxed prose prose-slate dark:prose-invert font-medium whitespace-pre-wrap">
+                                                {interpolateText(survey.description)}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
+                            )}
 
                             <div ref={stepperRef}>
                                 <SurveyStepper pages={pages} pageStatuses={pageStatuses} currentIndex={currentPageIndex} onStepClick={handleStepClick} elementStates={elementStates} variant={survey.stepperVariant || 'full'} isPageVisible={isPageVisible} accentColor={survey.patternColor || '#3B82F6'} />

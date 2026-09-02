@@ -531,17 +531,29 @@ export async function getSurveyCrmFieldDefinitionsAction(
       .where('workspaceId', '==', workspaceId)
       .get();
 
-    const entityCustomFields: SurveyCrmFieldDefinition[] = (customFieldsSnap?.docs || []).map((doc) => {
+    const seenFieldKeys = new Set<string>();
+    const entityCustomFields: SurveyCrmFieldDefinition[] = [];
+
+    for (const doc of customFieldsSnap?.docs || []) {
       const data = doc.data();
-      return {
-        key: `customFields.${data.name || doc.id}`,
+      if (data.status === 'archived' || data.status === 'deleted' || data.type === 'hidden') {
+        continue;
+      }
+      const rawIdentifier = data.variableName || data.name || doc.id;
+      const fullKey = `customFields.${rawIdentifier}`;
+
+      if (seenFieldKeys.has(fullKey)) continue;
+      seenFieldKeys.add(fullKey);
+
+      entityCustomFields.push({
+        key: fullKey,
         label: data.label || data.name || doc.id,
         type: data.type === 'number' ? 'number' : data.type === 'boolean' ? 'boolean' : 'string',
         group: 'Entity Custom Fields',
         targetType: 'entity',
         description: data.description,
-      };
-    });
+      });
+    }
 
     return {
       success: true,

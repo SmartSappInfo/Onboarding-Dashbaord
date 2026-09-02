@@ -20,12 +20,14 @@ export interface SurveyInteractiveWalkthroughProps {
   stepperVariant?: 'full' | 'simple' | 'linear' | 'none';
   accentColor?: string;
   showInlineHeader?: boolean;
+  showSurveyTitles?: boolean;
   surveyTitle?: string;
   surveyDescription?: string;
   bannerImageUrl?: string;
   videoUrl?: string;
   videoThumbnailUrl?: string;
   videoCaption?: string;
+  submitButtonText?: string;
 }
 
 export function SurveyInteractiveWalkthrough({
@@ -33,12 +35,14 @@ export function SurveyInteractiveWalkthrough({
   stepperVariant = 'full',
   accentColor = '#3B82F6',
   showInlineHeader = false,
+  showSurveyTitles = true,
   surveyTitle = 'Survey Title',
   surveyDescription,
   bannerImageUrl,
   videoUrl,
   videoThumbnailUrl,
   videoCaption,
+  submitButtonText,
 }: SurveyInteractiveWalkthroughProps) {
   // Extract questions from elements
   const questions = React.useMemo(() => {
@@ -118,6 +122,15 @@ export function SurveyInteractiveWalkthrough({
               </p>
             )}
           </div>
+        </div>
+      )}
+
+      {/* STEP OVERARCHING SURVEY TITLE (Controlled by Show Survey Title on Steps switch) */}
+      {!showInlineHeader && showSurveyTitles !== false && surveyTitle && (
+        <div className="text-center space-y-1 pb-1 animate-in fade-in duration-300">
+          <h1 className="text-base sm:text-lg font-bold tracking-tight text-foreground/90">
+            {stripHtml(surveyTitle)}
+          </h1>
         </div>
       )}
 
@@ -243,7 +256,7 @@ export function SurveyInteractiveWalkthrough({
             className="h-12 px-8 rounded-xl font-bold text-sm shadow-lg gap-2 active:scale-[0.97] transition-all hover:scale-[1.02]"
             style={getContrastButtonStyles(accentColor)}
           >
-            <span>{currentIndex === totalQuestions - 1 ? 'Complete Simulation' : 'Next Step'}</span>
+            <span>{currentIndex === totalQuestions - 1 ? (submitButtonText || 'Complete Simulation') : 'Next Step'}</span>
             <kbd className="hidden sm:inline-flex items-center gap-0.5 text-[9px] font-mono px-1.5 py-0.5 rounded bg-black/20 text-white">
               <CornerDownLeft className="h-2.5 w-2.5" />
             </kbd>

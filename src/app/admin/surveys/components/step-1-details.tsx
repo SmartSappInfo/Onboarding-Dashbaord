@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
+import { useToast } from '@/hooks/use-toast';
 import {
   Sparkles,
   Building,
@@ -36,18 +37,24 @@ import {
   Layers,
   MessageSquareText,
   Type,
+  FlaskConical,
+  Eye,
 } from 'lucide-react';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { getSurveyProjectsAction } from '@/lib/surveys/survey-project-actions';
-import type { SurveyProject, SurveyType, WorkspaceEntity } from '@/lib/types';
+import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import type { SurveyProject, SurveyType, WorkspaceEntity, SurveyExperimentVariant, TemplateVariable } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { ThemePalettePicker } from './inspector/ThemePalettePicker';
 import { PatternSwatchSelector } from './inspector/PatternSwatchSelector';
 import { StepperStyleSelector } from './inspector/StepperStyleSelector';
 import { ImageUploader } from '@/components/shared/image-uploader';
 import { VideoUploader } from '@/components/shared/video-uploader';
+import { IdentityExperimentVariants } from './inspector/IdentityExperimentVariants';
+import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { StudioInspectorTab, SurveyBackgroundPattern, SurveyStepperVariant } from './inspector/types';
 
 interface Step1DetailsProps {}
@@ -233,90 +240,52 @@ function EntityPickerField({
   );
 }
 
-function VariableHelperPopover({ onInsert }: { onInsert: (token: string) => void }) {
-  const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
-  const [open, setOpen] = React.useState(false);
-
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-7 px-2 text-xs font-semibold text-primary hover:text-primary/90 hover:bg-primary/10 gap-1.5 rounded-lg active:scale-[0.97]"
-        >
-          <Sparkles className="h-3.5 w-3.5" />
-          <span>Insert Variable</span>
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="end" className="w-[320px] p-3 rounded-2xl shadow-xl border-border bg-card">
-        <div className="space-y-3">
-          <div className="flex items-center justify-between pb-1.5 border-b border-border/50">
-            <span className="text-xs font-bold text-foreground">Personalization Variables</span>
-            <Badge variant="outline" className="text-[10px] uppercase font-bold text-primary bg-primary/10 border-0">
-              Dynamic
-            </Badge>
-          </div>
-          <p className="text-[11px] text-muted-foreground leading-relaxed">
-            Insert inline variables that personalize dynamically. Add fallbacks via <code className="bg-muted px-1 rounded text-[10px]">{'{{key|fallback}}'}</code>.
-          </p>
-          <div className="space-y-1.5 max-h-[260px] overflow-y-auto pr-1">
-            {[
-              { label: 'Entity / School Name', token: '{{entity.name}}', fallbackToken: '{{entity.name|SmartSapp}}' },
-              { label: 'Recipient Contact Name', token: '{{contact.name}}', fallbackToken: '{{contact.name|Valued Respondent}}' },
-              { label: 'Recipient Contact Email', token: '{{contact.email}}', fallbackToken: '{{contact.email}}' },
-              { label: 'Recipient Contact Phone', token: '{{contact.phone}}', fallbackToken: '{{contact.phone}}' },
-            ].map((v) => (
-              <div key={v.label} className="p-2 rounded-xl bg-muted/30 hover:bg-muted/60 transition-colors flex flex-col gap-1.5">
-                <span className="text-xs font-semibold text-foreground">{v.label}</span>
-                <div className="flex items-center gap-1.5">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-6 text-[10px] font-mono font-medium rounded-md px-2 bg-background hover:bg-primary hover:text-primary-foreground active:scale-[0.97]"
-                    onClick={() => {
-                      onInsert(v.token);
-                      setOpen(false);
-                    }}
-                  >
-                    {v.token}
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 text-[10px] font-mono font-medium rounded-md px-2 text-muted-foreground hover:text-foreground active:scale-[0.97]"
-                    onClick={() => {
-                      onInsert(v.fallbackToken);
-                      setOpen(false);
-                    }}
-                    title="With Fallback"
-                  >
-                    + Fallback
-                  </Button>
-                </div>
-              </div>
-            ))}
-          </div>
-          {activeWorkspaceId && (
-            <div className="pt-2 border-t border-border/50">
-              <span className="text-[10px] text-muted-foreground/70 block">
-                Tip: Type <code className="bg-muted px-1 rounded text-[10px]">{'{{'}</code> in text to trigger inline variables.
-              </span>
-            </div>
-          )}
-        </div>
-      </PopoverContent>
-    </Popover>
-  );
-}
-
 export default function Step1Details(_props: Step1DetailsProps) {
   const { control, setValue, watch } = useFormContext();
   const { activeWorkspaceId } = useWorkspace() as { activeWorkspaceId: string | null };
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = React.useState<StudioInspectorTab>('identity');
+
+  // Load dynamic workspace variables for inline "/" slash command variable insertion
+  const [templateVariables, setTemplateVariables] = React.useState<TemplateVariable[]>([]);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    const fetchVars = async () => {
+      try {
+        const unified = await getVariablesAction({ workspaceId: activeWorkspaceId || '', featureContext: 'all' });
+        if (isMounted && unified && unified.length > 0) {
+          const mapped: TemplateVariable[] = unified.map((u) => ({
+            id: u.key,
+            name: u.key,
+            label: u.label,
+            context: u.category || 'general',
+            description: u.description || u.label,
+            dataType: (u.dataType === 'string' || u.dataType === 'number' || u.dataType === 'date' || u.dataType === 'url' || u.dataType === 'html' ? u.dataType : 'string'),
+            exampleValue: u.exampleValue || '',
+            isDynamic: false,
+            isComputed: false,
+          }));
+          setTemplateVariables(mapped);
+          return;
+        }
+      } catch (err) {
+        console.warn('Failed to load dynamic variables for SlashInput:', err);
+      }
+      if (isMounted) {
+        setTemplateVariables([
+          { id: 'entity_name', name: 'entity.name', label: 'Entity / School Name', context: 'entity', description: 'Name of the entity', dataType: 'string', exampleValue: 'SmartSapp', isDynamic: false, isComputed: false },
+          { id: 'contact_name', name: 'contact.name', label: 'Recipient Contact Name', context: 'contact', description: 'Name of recipient contact', dataType: 'string', exampleValue: 'Jane Doe', isDynamic: false, isComputed: false },
+          { id: 'contact_email', name: 'contact.email', label: 'Recipient Contact Email', context: 'contact', description: 'Email of recipient contact', dataType: 'string', exampleValue: 'jane@example.com', isDynamic: false, isComputed: false },
+          { id: 'contact_phone', name: 'contact.phone', label: 'Recipient Contact Phone', context: 'contact', description: 'Phone of recipient contact', dataType: 'string', exampleValue: '+1234567890', isDynamic: false, isComputed: false },
+        ]);
+      }
+    };
+    fetchVars();
+    return () => {
+      isMounted = false;
+    };
+  }, [activeWorkspaceId]);
 
   // Load Projects for longitudinal study linkage
   const [projects, setProjects] = React.useState<SurveyProject[]>([]);
@@ -329,11 +298,51 @@ export default function Step1Details(_props: Step1DetailsProps) {
     });
   }, [activeWorkspaceId]);
 
+  const isExperimentEnabled = watch('experimentConfig.enabled') === true;
+
+  const handleToggleExperiment = (checked: boolean) => {
+    if (checked) {
+      const currentVariants = (watch('experimentConfig.variants') as SurveyExperimentVariant[]) || [];
+      if (currentVariants.length === 0) {
+        const initialVariants: SurveyExperimentVariant[] = [
+          {
+            id: 'control-a',
+            label: 'Control (Variant A)',
+            weight: 50,
+            isControl: true,
+          },
+          {
+            id: 'var_b',
+            label: 'Variant B',
+            weight: 50,
+            isControl: false,
+          },
+        ];
+        setValue(
+          'experimentConfig',
+          {
+            enabled: true,
+            trafficAllocation: 100,
+            status: 'running',
+            variants: initialVariants,
+          },
+          { shouldDirty: true }
+        );
+      } else {
+        setValue('experimentConfig.enabled', true, { shouldDirty: true });
+        setValue('experimentConfig.status', 'running', { shouldDirty: true });
+      }
+    } else {
+      setValue('experimentConfig.enabled', false, { shouldDirty: true });
+      setValue('experimentConfig.status', 'draft', { shouldDirty: true });
+    }
+  };
+
   return (
     <div className="space-y-5">
       {/* 4-Tab Studio Inspector Navigation */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as StudioInspectorTab)} className="w-full">
-        <TabsList className="w-full grid grid-cols-4 p-1 rounded-2xl bg-muted/50 border border-border/60 h-auto gap-1">
+        <TabsList className="w-full grid grid-cols-2 sm:grid-cols-4 p-1 rounded-2xl bg-muted/50 border border-border/60 h-auto gap-1">
           <TabsTrigger
             value="identity"
             className="rounded-xl py-2 px-2 text-xs font-bold transition-all data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs flex items-center justify-center gap-1.5 active:scale-[0.97]"
@@ -372,14 +381,12 @@ export default function Step1Details(_props: Step1DetailsProps) {
           <Card className="rounded-2xl border border-border bg-card shadow-xs">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
                   <Building className="h-5 w-5" />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <CardTitle className="text-base font-bold text-foreground">Survey Identity & Scope</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Define administrative names, target entity binding, and public title.
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold text-foreground">Survey Identity &amp; Scope</CardTitle>
+                  <CardInfoTooltip text="Define administrative names, target entity binding, and public title." />
                 </div>
               </div>
             </CardHeader>
@@ -475,6 +482,42 @@ export default function Step1Details(_props: Step1DetailsProps) {
 
               <div className="h-px bg-border/50" />
 
+              {/* A/B Headline & Copy Testing Interactive Switch */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-purple-500/[0.04] border border-purple-500/20">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400 flex items-center justify-center shrink-0">
+                    <FlaskConical className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <Label htmlFor="identity-ab-toggle" className="text-xs font-bold text-foreground cursor-pointer">
+                        A/B Headline & Copy Testing
+                      </Label>
+                      {isExperimentEnabled ? (
+                        <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[9px] font-bold uppercase py-0 px-1.5">
+                          Active Split Test
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" className="text-[9px] font-bold text-muted-foreground uppercase py-0 px-1.5">
+                          Off
+                        </Badge>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-muted-foreground block">
+                      {isExperimentEnabled
+                        ? 'Traffic is split between your primary copy (Control A) and custom variants below.'
+                        : 'Enable to create multiple variants and test different headlines, intros, or CTA copy.'}
+                    </span>
+                  </div>
+                </div>
+
+                <Switch
+                  id="identity-ab-toggle"
+                  checked={isExperimentEnabled}
+                  onCheckedChange={handleToggleExperiment}
+                />
+              </div>
+
               {/* Public Header Title & Prose */}
               <div className="space-y-4">
                 <Controller
@@ -483,15 +526,50 @@ export default function Step1Details(_props: Step1DetailsProps) {
                   render={({ field }) => (
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-semibold">Public Header Title</Label>
-                        <VariableHelperPopover
-                          onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)}
-                        />
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-semibold">Public Header Title</Label>
+                          {isExperimentEnabled && (
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[9px] font-bold uppercase py-0 px-1.5 bg-primary/5 text-primary border-primary/20">
+                                Control (Variant A - Baseline)
+                              </Badge>
+                              {(!watch('previewVariantId') || watch('previewVariantId') === 'control') ? (
+                                <Badge className="h-5 px-1.5 text-[9px] font-bold rounded-md bg-primary text-white gap-1 shadow-xs border-none">
+                                  <Eye className="h-2.5 w-2.5" />
+                                  <span>Live in Preview</span>
+                                </Badge>
+                              ) : (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    setValue('previewVariantId', 'control', { shouldDirty: true });
+                                    toast({
+                                      title: 'Previewing Control A',
+                                      description: 'The simulation canvas now displays the baseline copy.',
+                                    });
+                                  }}
+                                  className="h-5 px-1.5 text-[9px] font-bold text-muted-foreground hover:text-primary gap-1 active:scale-[0.97]"
+                                  title="Preview Control A in simulation canvas"
+                                >
+                                  <Eye className="h-2.5 w-2.5" />
+                                  <span>Preview Control A</span>
+                                </Button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          Type <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono border">/</kbd> to insert variables
+                        </span>
                       </div>
-                      <Input
-                        {...field}
-                        placeholder="e.g. Help Us Improve or {{entity.name|SmartSapp}}"
-                        className="h-11 rounded-xl bg-card border border-border/60 focus-visible:ring-1 focus-visible:ring-primary/40"
+                      <SlashInput
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        variables={templateVariables}
+                        placeholder="e.g. Help Us Improve or type / for variables..."
+                        className="h-11 rounded-xl bg-card border border-border/60 focus-visible:ring-1 focus-visible:ring-primary/40 text-sm"
                       />
                     </div>
                   )}
@@ -504,13 +582,15 @@ export default function Step1Details(_props: Step1DetailsProps) {
                     <div className="space-y-2">
                       <div className="flex items-center justify-between">
                         <Label className="text-sm font-semibold">Introductory Prose</Label>
-                        <VariableHelperPopover
-                          onInsert={(token) => field.onChange((field.value ? field.value + ' ' : '') + token)}
-                        />
+                        <span className="text-[11px] text-muted-foreground font-medium">
+                          Type <kbd className="px-1 py-0.5 rounded bg-muted text-[10px] font-mono border">/</kbd> to insert variables
+                        </span>
                       </div>
-                      <Textarea
-                        {...field}
-                        placeholder="Explain why this survey matters to your community..."
+                      <SlashTextarea
+                        value={field.value || ''}
+                        onChange={field.onChange}
+                        variables={templateVariables}
+                        placeholder="Explain why this survey matters to your community... (Type / to insert variables)"
                         className="min-h-[100px] rounded-xl bg-card border border-border/60 focus-visible:ring-1 focus-visible:ring-primary/40 leading-relaxed text-sm"
                       />
                     </div>
@@ -550,23 +630,30 @@ export default function Step1Details(_props: Step1DetailsProps) {
                   )}
                 />
               </div>
+
+              {/* Inline A/B Variant Studio on Identity Page */}
+              {isExperimentEnabled && (
+                <IdentityExperimentVariants
+                  surveyId={watch('id')}
+                  workspaceId={activeWorkspaceId || ''}
+                  templateVariables={templateVariables}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
 
-        {/* TAB 2: MEDIA & HERO */}
+        {/* TAB 3: MEDIA & HERO */}
         <TabsContent value="media" className="mt-4 space-y-6">
           <Card className="rounded-2xl border border-border bg-card shadow-xs">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
                   <Video className="h-5 w-5" />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <CardTitle className="text-base font-bold text-foreground">Immersive Hero & Media Assets</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Embed welcome videos, poster frames, cover artwork, and brand insignia.
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold text-foreground">Immersive Hero &amp; Media Assets</CardTitle>
+                  <CardInfoTooltip text="Embed welcome videos, poster frames, cover artwork, and brand insignia." />
                 </div>
               </div>
             </CardHeader>
@@ -652,14 +739,12 @@ export default function Step1Details(_props: Step1DetailsProps) {
           <Card className="rounded-2xl border border-border bg-card shadow-xs">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
                   <Palette className="h-5 w-5" />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <CardTitle className="text-base font-bold text-foreground">Visual Theme & Aesthetics</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Customize background palettes, contrast ratios, and SVG geometry patterns.
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold text-foreground">Visual Theme &amp; Aesthetics</CardTitle>
+                  <CardInfoTooltip text="Customize background palettes, contrast ratios, and SVG geometry patterns." />
                 </div>
               </div>
             </CardHeader>
@@ -708,14 +793,12 @@ export default function Step1Details(_props: Step1DetailsProps) {
           <Card className="rounded-2xl border border-border bg-card shadow-xs">
             <CardHeader className="pb-4">
               <div className="flex items-center gap-3">
-                <div className="p-2 bg-primary/10 rounded-xl text-primary">
+                <div className="p-2 bg-primary/10 rounded-xl text-primary shrink-0">
                   <Sliders className="h-5 w-5" />
                 </div>
-                <div className="flex flex-col justify-center">
-                  <CardTitle className="text-base font-bold text-foreground">Layout & Progress Dynamics</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Configure question steppers, intro layout presentation, and branding display.
-                  </CardDescription>
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-base font-bold text-foreground">Layout &amp; Progress Dynamics</CardTitle>
+                  <CardInfoTooltip text="Configure question steppers, intro layout presentation, and branding display." />
                 </div>
               </div>
             </CardHeader>

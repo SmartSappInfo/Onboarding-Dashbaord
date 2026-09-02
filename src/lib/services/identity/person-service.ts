@@ -14,7 +14,18 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Person, PeopleDirectoryFilter } from '@/lib/types';
+import type {
+  Person,
+  PeopleDirectoryFilter,
+  PersonDetailView,
+  IdentityAccount,
+  OrganizationMembership,
+  WorkspaceMembership,
+  UserProfile,
+} from '@/lib/types';
+import { IdentityAccountService } from './identity-account-service';
+import { OrganizationMembershipService } from './organization-membership-service';
+import { WorkspaceMembershipService } from './workspace-membership-service';
 
 export class PersonService {
   private static COLLECTION = 'people';
@@ -112,5 +123,93 @@ export class PersonService {
 
     // Stable sort by display name
     return people.sort((a, b) => a.displayName.localeCompare(b.displayName));
+  }
+
+  /**
+   * Retrieves a Person document by their email address.
+   */
+  static async getPersonByEmail(email: string): Promise<Person | null> {
+    if (!email) return null;
+    const snap = await adminDb
+      .collection(this.COLLECTION)
+      .where('email', '==', email.trim().toLowerCase())
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    const doc = snap.docs[0];
+    return { id: doc.id, ...doc.data() } as Person;
+  }
+
+  /**
+   * Directory listing alias for organization people, hydrating full PersonDetailView models.
+   */
+  static async getOrganizationPeopleDirectory(organizationId: string): Promise<PersonDetailView[]> {
+    if (!organizationId) return [];
+    const people = await this.listPeopleByOrganization(organizationId);
+
+    const results = await Promise.all(
+      people.map(async (person) => {
+        const [account, membership, workspaceMemberships, userDoc] = await Promise.all([
+          IdentityAccountService.getAccount(person.id),
+          OrganizationMembershipService.getMembershipByPersonAndOrg(organizationId, person.id),
+          WorkspaceMembershipService.listWorkspaceMembershipsByPerson(organizationId, person.id),
+          adminDb.collection('users').doc(person.id).get(),
+        ]);
+
+        const fallbackAccount: IdentityAccount = account || {
+          id: person.id,
+          email: person.email,
+          status: 'active',
+          authProvider: 'firebase',
+          createdAt: person.createdAt,
+        };
+
+        const fallbackMembership: OrganizationMembership = membership || {
+          id: `mem_${organizationId}_${person.id}`,
+          organizationId,
+          personId: person.id,
+          accountId: person.id,
+          status: 'active',
+          memberType: 'employee',
+          source: 'invitation',
+          createdAt: person.createdAt,
+        };
+
+        const userProfileProjection: UserProfile = userDoc.exists
+          ? ({ id: userDoc.id, ...userDoc.data() } as UserProfile)
+          : {
+              id: person.id,
+              name: person.displayName,
+              displayName: person.displayName,
+              email: person.email,
+              organizationId,
+              workspaceIds: workspaceMemberships.map((w) => w.workspaceId),
+              role: 'user',
+              permissions: [],
+              createdAt: person.createdAt,
+            };
+
+        return {
+          person,
+          account: fallbackAccount,
+          membership: fallbackMembership,
+          workspaceMemberships,
+          userProfileProjection,
+        } as PersonDetailView;
+      })
+    );
+
+    return results;
+  }
+
+  /**
+   * Upserts a person record.
+   */
+  static async upsertPerson(
+    person: Omit<Person, 'createdAt' | 'updatedAt'>,
+    batchOrTransaction?: FirebaseFirestore.WriteBatch | FirebaseFirestore.Transaction
+  ): Promise<Person> {
+    return this.createPerson(person, batchOrTransaction);
   }
 }

@@ -7,10 +7,28 @@ interface UrlDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onConfirm: (url: string) => void;
+  initialValue?: string;
+  title?: string;
+  description?: string;
+  placeholder?: string;
 }
 
-export function UrlDialog({ open, onOpenChange, onConfirm }: UrlDialogProps) {
-  const [url, setUrl] = useState('');
+export function UrlDialog({
+  open,
+  onOpenChange,
+  onConfirm,
+  initialValue = '',
+  title = 'Video Link Source',
+  description = 'Paste a link to YouTube, Vimeo, Loom, or a direct video file URL (.mp4, .mov, etc.).',
+  placeholder = 'https://youtube.com/watch?v=...',
+}: UrlDialogProps) {
+  const [url, setUrl] = useState(initialValue);
+
+  React.useEffect(() => {
+    if (open) {
+      setUrl(initialValue || '');
+    }
+  }, [open, initialValue]);
 
   const handleConfirm = () => {
     if (url.trim()) {
@@ -25,16 +43,16 @@ export function UrlDialog({ open, onOpenChange, onConfirm }: UrlDialogProps) {
       <DialogContent className="rounded-2xl border-border bg-background text-foreground max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-xs font-bold uppercase tracking-wider text-foreground">
-            Video Link Source
+            {title}
           </DialogTitle>
           <DialogDescription className="text-[10px] text-muted-foreground">
-            Paste a link to YouTube, Vimeo, Loom, or a direct video file URL (.mp4, .mov, etc.).
+            {description}
           </DialogDescription>
         </DialogHeader>
         <div className="py-2">
           <Input
             type="url"
-            placeholder="https://youtube.com/watch?v=..."
+            placeholder={placeholder}
             value={url}
             onChange={(e) => setUrl(e.target.value)}
             className="h-10 rounded-xl bg-muted/50 border-input text-xs font-semibold text-foreground focus-visible:ring-emerald-500/30"

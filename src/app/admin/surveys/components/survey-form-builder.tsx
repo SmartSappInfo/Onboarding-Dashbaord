@@ -14,7 +14,7 @@ import { useDebounce } from '@/hooks/use-debounce';
 import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles, Bold, Columns, Library, History, Share2, FolderGit2 } from 'lucide-react';
 import { useUser, useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyVersion, Survey } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveySection, SurveyLayoutBlock, SurveyVersion, Survey } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import Link from 'next/link';
@@ -70,7 +70,7 @@ export default function SurveyFormBuilder() {
     const [lastSelectedId, setLastSelectedId] = React.useState<string | null>(null);
     const [isPreviewMode, setIsPreviewMode] = React.useState(false);
     const [isPropertiesBarVisible, setIsPropertiesBarVisible] = React.useState(true);
-    const [isStructureNavigatorOpen, setIsStructureNavigatorOpen] = React.useState(true);
+    const [isStructureNavigatorOpen, setIsStructureNavigatorOpen] = React.useState(false);
     const [isLogicStudioOpen, setIsLogicStudioOpen] = React.useState(false);
     const [aiRefineQuestion, setAiRefineQuestion] = React.useState<SurveyQuestion | null>(null);
     const canvasRef = React.useRef<HTMLDivElement>(null);
@@ -100,15 +100,15 @@ export default function SurveyFormBuilder() {
         setValue('lifecycleStatus', 'published', { shouldDirty: false });
     };
 
-    const elements = watch('elements') || [];
-    const sections = elements.filter((el: any) => el.type === 'section');
+    const elements = (watch('elements') || []) as SurveyElement[];
+    const sections = elements.filter((el): el is SurveySection => el.type === 'section');
     
-    const allPagesEnabled = sections.length > 0 && sections.every((s: any) => s.renderAsPage);
-    const allValidationEnabled = sections.length > 0 && sections.every((s: any) => s.validateBeforeNext);
+    const allPagesEnabled = sections.length > 0 && sections.every((s: SurveySection) => s.renderAsPage);
+    const allValidationEnabled = sections.length > 0 && sections.every((s: SurveySection) => s.validateBeforeNext);
 
-    const toggleAccordion = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const toggleAccordion = (e?: React.MouseEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
         setIsAccordion(!isAccordion);
         toast({
             title: isAccordion ? "Standard View" : "Accordion Mode",
@@ -116,31 +116,31 @@ export default function SurveyFormBuilder() {
         });
     };
 
-    const toggleAllPageBreaks = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const toggleAllPageBreaks = (e?: React.MouseEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
         const newState = !allPagesEnabled;
-        const updatedElements = getValues('elements').map((el: any) => 
+        const updatedElements = (getValues('elements') as SurveyElement[]).map((el) => 
             el.type === 'section' ? { ...el, renderAsPage: newState } : el
         );
         setValue('elements', updatedElements, { shouldDirty: true });
         toast({ title: newState ? 'All sections updated' : 'Page breaks removed' });
     };
 
-    const toggleAllValidation = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const toggleAllValidation = (e?: React.MouseEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
         const newState = !allValidationEnabled;
-        const updatedElements = getValues('elements').map((el: any) => 
+        const updatedElements = (getValues('elements') as SurveyElement[]).map((el) => 
             el.type === 'section' ? { ...el, validateBeforeNext: newState } : el
         );
         setValue('elements', updatedElements, { shouldDirty: true });
         toast({ title: newState ? 'Strict validation enabled' : 'Validation disabled' });
     };
 
-    const toggleQuestionBolding = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const toggleQuestionBolding = (e?: React.MouseEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
         const currentBold = watch('questionTitleBold') !== false;
         const newState = !currentBold;
         setValue('questionTitleBold', newState, { shouldDirty: true });
@@ -150,9 +150,9 @@ export default function SurveyFormBuilder() {
         });
     };
 
-    const toggleColumns = (e: React.MouseEvent) => {
-        e.preventDefault();
-        e.stopPropagation();
+    const toggleColumns = (e?: React.MouseEvent) => {
+        e?.preventDefault?.();
+        e?.stopPropagation?.();
         const current = watch('optionsColumns') || 1;
         const next = current >= 4 ? 1 : current + 1;
         setValue('optionsColumns', next, { shouldDirty: true });
@@ -394,6 +394,7 @@ export default function SurveyFormBuilder() {
                             }}
                             onDelete={(index) => remove(index)}
                             onAddQuestion={(type) => handleElementSelect(type || 'multiple-choice')}
+                            onClose={() => setIsStructureNavigatorOpen(false)}
                         />
                     </div>
                 )}

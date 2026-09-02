@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Palette, Grid3X3, Image, Frame, Settings2, LayoutTemplate, PenTool, QrCode, Save, Sparkles, Undo2, Redo2, ShieldCheck } from 'lucide-react';
+import { Palette, Grid3X3, Image as ImageIcon, Frame, Settings2, LayoutTemplate, PenTool, QrCode, Save, Sparkles, Undo2, Redo2, ShieldCheck } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -325,7 +325,7 @@ export default function QRDesigner({ data, design, onDesignChange, orgId, wsId, 
               <AccordionItem value="logo" className="border border-border rounded-2xl overflow-hidden bg-card shadow-sm">
                 <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 text-xs font-bold uppercase tracking-wider">
                   <div className="flex items-center gap-2.5">
-                    <Image className="h-4 w-4 text-amber-500" />
+                    <ImageIcon className="h-4 w-4 text-amber-500" />
                     Logo & Watermark
                   </div>
                 </AccordionTrigger>

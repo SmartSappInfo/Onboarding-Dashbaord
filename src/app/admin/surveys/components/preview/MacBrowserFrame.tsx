@@ -12,6 +12,7 @@ export interface MacBrowserFrameProps {
   slug?: string;
   children: React.ReactNode;
   onRefresh?: () => void;
+  isDark?: boolean;
   className?: string;
 }
 

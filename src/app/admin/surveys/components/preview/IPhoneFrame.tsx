@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils';
 
 export interface IPhoneFrameProps {
   children: React.ReactNode;
+  isDark?: boolean;
   className?: string;
 }
 

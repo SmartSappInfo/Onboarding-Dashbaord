@@ -22,7 +22,8 @@ import { Check, ChevronsUpDown, X } from 'lucide-react';
 
 interface MultiSelectProps {
   options: { label: string; value: string }[];
-  value: string[];
+  value?: string[];
+  selected?: string[];
   onChange: (value: string[]) => void;
   placeholder?: string;
   className?: string;
@@ -37,20 +38,22 @@ interface MultiSelectProps {
  */
 export function MultiSelect({
   options,
-  value = [],
+  value,
+  selected,
   onChange,
   placeholder = 'Select options...',
   className,
   maxCount = 2,
   onCreate,
 }: MultiSelectProps) {
+  const currentValues = value ?? selected ?? [];
+  const selectedSet = React.useMemo(() => new Set(currentValues), [currentValues]);
   const [open, setOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
   const [inputValue, setInputValue] = React.useState('');
-  const selectedValues = new Set(value);
 
   const toggleSelection = (val: string) => {
-    const next = new Set(value);
+    const next = new Set(currentValues);
     if (next.has(val)) {
       next.delete(val);
     } else {
@@ -60,11 +63,11 @@ export function MultiSelect({
   };
 
   const handleRemove = (val: string) => {
-    onChange(value.filter((i) => i !== val));
+    onChange(currentValues.filter((i) => i !== val));
   };
 
-  const visibleValues = expanded ? value : value.slice(0, maxCount);
-  const hiddenCount = value.length - visibleValues.length;
+  const visibleValues = expanded ? currentValues : currentValues.slice(0, maxCount);
+  const hiddenCount = currentValues.length - visibleValues.length;
 
   return (
     <Popover open={open} onOpenChange={setOpen} modal={false}>
@@ -79,7 +82,7 @@ export function MultiSelect({
           )}
         >
           <div className="flex gap-1 flex-wrap py-1 pr-2">
-            {value.length > 0 ? (
+            {currentValues.length > 0 ? (
               <>
                 {visibleValues.map((val) => {
                   const option = options.find((o) => o.value === val);
@@ -115,7 +118,7 @@ export function MultiSelect({
                     </Badge>
                   );
                 })}
-                {(hiddenCount > 0 || (expanded && value.length > maxCount)) && (
+                {(hiddenCount > 0 || (expanded && currentValues.length > maxCount)) && (
                   <Badge
                     variant="outline"
                     className="mr-1 mb-1 font-black text-[9px] uppercase tracking-widest rounded-sm cursor-pointer hover:bg-accent transition-colors bg-background border-primary/20 text-primary"
@@ -147,7 +150,7 @@ export function MultiSelect({
             <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">No matches identified.</CommandEmpty>
             <CommandGroup className="p-1.5">
               {options.map((option) => {
-                const isSelected = selectedValues.has(option.value);
+                const isSelected = selectedSet.has(option.value);
                 return (
                   <CommandItem
                     key={option.value}

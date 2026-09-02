@@ -220,7 +220,7 @@ export async function getSurveyExperimentResultsAction(
     let highestLift = 0;
 
     evaluatedVariants.forEach((v) => {
-      if (!v.isControl && controlVariant) {
+      if (!v.isControl && controlVariant && v.metrics && controlVariant.metrics) {
         const test = calculateTwoProportionZTest(
           controlVariant.metrics.completions,
           controlVariant.metrics.impressions,
@@ -303,6 +303,12 @@ export async function promoteWinningVariantAction(
     if (targetVariant.introProseOverride) {
       updates.description = targetVariant.introProseOverride;
     }
+    if (targetVariant.startButtonTextOverride) {
+      updates.startButtonText = targetVariant.startButtonTextOverride;
+    }
+    if (targetVariant.submitButtonTextOverride) {
+      updates.submitButtonText = targetVariant.submitButtonTextOverride;
+    }
 
     await surveyRef.update(updates);
 
@@ -312,6 +318,132 @@ export async function promoteWinningVariantAction(
     return {
       success: false,
       error: err instanceof Error ? err.message : 'Failed to promote winning variant',
+    };
+  }
+}
+
+export interface VariantCopySuggestion {
+  angleName: string;
+  angleDescription: string;
+  titleOverride: string;
+  introProseOverride: string;
+  startButtonTextOverride: string;
+  submitButtonTextOverride: string;
+}
+
+export interface SuggestVariantCopyInput {
+  currentTitle: string;
+  currentDescription: string;
+  currentStartButton?: string;
+  currentSubmitButton?: string;
+  customPrompt?: string;
+}
+
+/**
+ * Generates 3 CRO-optimized alternative copy angles (Title, Intro Prose, Start/Submit CTA Buttons) for A/B testing variants.
+ */
+export async function suggestSurveyVariantCopyAction(
+  input: SuggestVariantCopyInput
+): Promise<{ success: boolean; suggestions?: VariantCopySuggestion[]; error?: string }> {
+  try {
+    const { currentTitle, currentDescription, currentStartButton, currentSubmitButton, customPrompt } = input;
+
+    let suggestions: VariantCopySuggestion[] = [];
+
+    try {
+      const { getModel, ai } = await import('@/ai/genkit');
+      const { modelString } = await getModel({ provider: 'googleai', modelId: 'gemini-2.5-flash' });
+
+      const promptText = `You are an expert Conversion Rate Optimization (CRO) copywriter and psychometric survey design specialist.
+Generate 3 distinct, high-converting alternative copy variants (A/B testing angles) for a survey with baseline copy:
+- Baseline Title: "${currentTitle || 'Survey'}"
+- Baseline Description: "${currentDescription || 'Please take our survey.'}"
+- Baseline Start CTA: "${currentStartButton || "Let's Start"}"
+- Baseline Submit CTA: "${currentSubmitButton || 'Submit Response'}"
+${customPrompt ? `Special User Instruction: ${customPrompt}` : ''}
+
+Generate 3 diverse angles:
+1. "Conversational & Approachable" (Warm, human, empathy-driven tone that lowers respondent resistance)
+2. "Action-Oriented & Fast (60s Pulse)" (Urgent, low-friction, emphasizes quick completion)
+3. "Value & Impact-Focused" (Emphasizes how respondent feedback directly drives decisions or rewards)
+
+For each angle, provide:
+- angleName: string
+- angleDescription: string
+- titleOverride: string
+- introProseOverride: string
+- startButtonTextOverride: string
+- submitButtonTextOverride: string
+
+Respond ONLY with valid JSON matching this exact structure:
+{
+  "suggestions": [
+    {
+      "angleName": "...",
+      "angleDescription": "...",
+      "titleOverride": "...",
+      "introProseOverride": "...",
+      "startButtonTextOverride": "...",
+      "submitButtonTextOverride": "..."
+    }
+  ]
+}`;
+
+      const response = await ai.generate({
+        model: modelString,
+        prompt: promptText,
+        config: { temperature: 0.7 },
+      });
+
+      const responseText = response.text || '';
+      const cleaned = responseText.replace(/```json/gi, '').replace(/```/g, '').trim();
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed?.suggestions) && parsed.suggestions.length > 0) {
+        suggestions = parsed.suggestions;
+      }
+    } catch (aiErr) {
+      console.warn('[survey-experiment-actions] AI generation fallback triggered:', aiErr);
+    }
+
+    // High-quality heuristics fallback if AI inference key is not configured
+    if (!suggestions || suggestions.length === 0) {
+      const baseTitle = currentTitle || 'Customer Feedback';
+      const cleanTitleBase = baseTitle.replace(/survey|audit|form|questionnaire/gi, '').trim() || 'Our Community';
+
+      suggestions = [
+        {
+          angleName: 'Conversational & Approachable',
+          angleDescription: 'Friendly, warm tone designed to lower friction and invite genuine reflections.',
+          titleOverride: `We'd love your thoughts on ${cleanTitleBase}`,
+          introProseOverride: `Your perspective helps us shape a better experience for everyone. Take 60 seconds to share what matters most to you.`,
+          startButtonTextOverride: 'Share My Thoughts',
+          submitButtonTextOverride: 'Send Feedback',
+        },
+        {
+          angleName: 'Action-Oriented & Fast (60s Pulse)',
+          angleDescription: 'Minimalist headline emphasizing speed and zero friction.',
+          titleOverride: `Quick 60-Second Pulse: ${cleanTitleBase}`,
+          introProseOverride: `Answer a few rapid questions to help us improve. No lengthy forms—just quick, direct insights.`,
+          startButtonTextOverride: 'Start Quick 60s Pulse',
+          submitButtonTextOverride: 'Complete & Submit',
+        },
+        {
+          angleName: 'Value & Impact-Focused',
+          angleDescription: 'Highlights the tangible impact and improvements driven by their answers.',
+          titleOverride: `Help Shape Our Next Steps: ${cleanTitleBase}`,
+          introProseOverride: `Your feedback directly guides our priorities and service enhancements. Help us focus on what matters to you.`,
+          startButtonTextOverride: 'Shape the Future',
+          submitButtonTextOverride: 'Submit & Make an Impact',
+        },
+      ];
+    }
+
+    return { success: true, suggestions };
+  } catch (err: unknown) {
+    console.error('[survey-experiment-actions] suggestSurveyVariantCopyAction error:', err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : 'Failed to generate variant suggestions',
     };
   }
 }

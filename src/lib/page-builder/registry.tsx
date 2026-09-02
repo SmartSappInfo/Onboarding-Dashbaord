@@ -277,8 +277,8 @@ export function normalizeBlockType(rawType: string): PageBlockType {
       return 'payment_methods';
 
     default:
-      // Return raw type if it exists in registry, else fallback to 'text'
-      return (clean in blockRegistry ? clean : 'text') as PageBlockType;
+      // Return raw normalized string to allow UnknownBlock degradation on unregistered blocks
+      return clean as PageBlockType;
   }
 }
 

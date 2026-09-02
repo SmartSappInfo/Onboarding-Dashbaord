@@ -106,13 +106,54 @@ describe('Survey A/B Testing & Experiment Engine (Phase 8)', () => {
     expect(res.winningVariantId).toBe('var_b');
   });
 
-  it('promotes winning variant into main survey configuration', async () => {
+  it('promotes winning variant into main survey configuration including button copy', async () => {
+    const mockSurveyWithButtons: Survey = {
+      ...mockSurvey,
+      experimentConfig: {
+        ...mockExperimentConfig,
+        variants: [
+          mockExperimentConfig.variants[0],
+          {
+            ...mockExperimentConfig.variants[1],
+            startButtonTextOverride: 'Begin Feedback',
+            submitButtonTextOverride: 'Send My Answers',
+          },
+        ],
+      },
+    } as unknown as Survey;
+
     mockGet.mockResolvedValueOnce({
       exists: true,
-      data: () => mockSurvey,
+      data: () => mockSurveyWithButtons,
     });
 
     const res = await promoteWinningVariantAction('s_exp_1', 'var_b', 'ws1');
     expect(res.success).toBe(true);
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Quick 2-Minute Feedback',
+        description: 'Help us improve with 3 quick questions.',
+        startButtonText: 'Begin Feedback',
+        submitButtonText: 'Send My Answers',
+      })
+    );
+  });
+
+  it('generates 3 structured CRO variant copy angles with fallback heuristics', async () => {
+    const { suggestSurveyVariantCopyAction } = await import('../survey-experiment-actions');
+    const res = await suggestSurveyVariantCopyAction({
+      currentTitle: 'Parent Engagement Survey',
+      currentDescription: 'Please provide feedback about school activities.',
+      currentStartButton: "Let's Start",
+      currentSubmitButton: 'Submit Response',
+    });
+
+    expect(res.success).toBe(true);
+    expect(res.suggestions).toBeDefined();
+    expect(res.suggestions?.length).toBe(3);
+    expect(res.suggestions?.[0].titleOverride).toBeTruthy();
+    expect(res.suggestions?.[0].introProseOverride).toBeTruthy();
+    expect(res.suggestions?.[0].startButtonTextOverride).toBeTruthy();
+    expect(res.suggestions?.[0].submitButtonTextOverride).toBeTruthy();
   });
 });

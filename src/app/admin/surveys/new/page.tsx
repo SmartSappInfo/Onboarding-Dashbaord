@@ -23,7 +23,8 @@ import {
     Share2,
     Settings2,
     Layout,
-    Eye
+    Eye,
+    BarChart3
 } from 'lucide-react';
 import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School, type WorkspaceEntity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
@@ -36,6 +37,7 @@ import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useSidebar } from '@/components/ui/sidebar';
 import { prepareSurveyForFirestore, applySurveyDefaults } from '@/lib/firestore-utils';
 import { migrateSurveyFormSeo } from '@/lib/seo';
 
@@ -272,6 +274,15 @@ export default function NewSurveyPage() {
 
     const isProgrammaticChange = React.useRef(false);
     const debouncedFields = useDebounce(watch('elements'), 800);
+    const sidebar = useSidebar();
+
+    // Auto-collapse sidebar navigation on studio launch, restore/expand on exit
+    React.useEffect(() => {
+        sidebar.setOpen(false);
+        return () => {
+            sidebar.setOpen(true);
+        };
+    }, [sidebar]);
 
     React.useEffect(() => {
         if (activeWorkspaceId) {

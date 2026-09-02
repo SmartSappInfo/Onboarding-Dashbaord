@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode, Eye, RotateCcw, Code } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
-import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
@@ -20,8 +20,8 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { MultiSelect } from '@/components/ui/multi-select';
 import UnifiedQRSheet from '@/components/qr-studio/unified-qr-sheet';
-import { useUser } from '@/firebase';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
+import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import type { SeoConfig, OgImageMode } from '@/lib/types';
 import { generateKeywordsAction } from '@/app/actions/survey-seo-actions';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
@@ -160,316 +160,324 @@ export default function Step4Publish() {
                     </Button>
                 </div>
             )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
- <Card className="rounded-2xl border border-border bg-card overflow-hidden">
- <CardHeader className="bg-muted/10 border-b py-5 px-6">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-primary/10 rounded-xl">
- <Globe className="h-5 w-5 text-primary" />
-                        </div>
-                        <CardTitle className="text-sm font-semibold tracking-tight">Endpoint Connectivity</CardTitle>
-                    </div>
-                </CardHeader>
- <CardContent className="p-6 space-y-10 text-left">
- <div className="space-y-4">
- <Label className="text-sm font-semibold flex items-center gap-2">
- <Layout className="h-3 w-3" /> Shared Context (Workspaces)
-                        </Label>
-                        <Controller 
-                            name="workspaceIds"
-                            control={control}
-                            render={({ field }) => (
-                                <MultiSelect 
-                                    options={workspaceOptions}
-                                    value={field.value || []}
-                                    onChange={field.onChange}
-                                    placeholder="Share across hubs..."
+                  {/* RESPONSIVE DOUBLE-COLUMN GRID: Connectivity & Settings on Left, SEO on Right */}
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 lg:gap-8 items-start">
+                {/* ─── LEFT COLUMN: Endpoint Connectivity & Publishing Controls ─── */}
+                <div className="space-y-6 lg:space-y-8 min-w-0">
+                    <Card className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+                        <CardHeader className="bg-muted/10 border-b py-4 px-5 sm:px-6">
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-primary/10 rounded-xl shrink-0">
+                                    <Globe className="h-5 w-5 text-primary" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <CardTitle className="text-sm font-semibold tracking-tight">Endpoint Connectivity</CardTitle>
+                                    <CardInfoTooltip text="Manage workspace directory availability, publication status, slug URL, and embed options." />
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="p-5 sm:p-6 space-y-6 text-left">
+                            <div className="space-y-3">
+                                <Label className="text-xs font-semibold flex items-center gap-2">
+                                    <Layout className="h-3.5 w-3.5 text-muted-foreground" /> Shared Context (Workspaces)
+                                </Label>
+                                <Controller 
+                                    name="workspaceIds"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <MultiSelect 
+                                            options={workspaceOptions}
+                                            value={field.value || []}
+                                            onChange={field.onChange}
+                                            placeholder="Share across hubs..."
+                                        />
+                                    )}
                                 />
-                            )}
-                        />
- <p className="text-[9px] font-bold text-muted-foreground tracking-tight leading-relaxed">
-                            Determines which workspace directories this survey blueprint is visible in.
-                        </p>
-                    </div>
+                            </div>
 
- <Separator className="bg-border/50" />
+                            <Separator className="bg-border/50" />
 
- <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <Controller
-                            name="status"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Lifecycle State</Label>
-                                    <Select onValueChange={field.onChange} value={field.value}>
- <SelectTrigger className="h-11 rounded-xl bg-card border border-border/50 shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary/30">
-                                            <SelectValue />
-                                        </SelectTrigger>
- <SelectContent className="rounded-xl">
-                                            <SelectItem value="draft">Draft (Internal)</SelectItem>
-                                            <SelectItem value="published">Published (Live)</SelectItem>
-                                            <SelectItem value="archived">Archived</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            )}
-                        />
-                        <Controller
-                            name="slug"
-                            control={control}
-                            render={({ field }) => (
- <div className="space-y-2">
- <Label className="text-sm font-semibold">Portal URL Backhalf</Label>
- <div className="flex h-11 border border-border rounded-xl overflow-hidden bg-muted/30 transition-all">
- <div className="bg-muted px-3 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">/surveys/</div>
- <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent flex-1" />
-                                        <Button 
-                                            type="button" 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            className="h-full w-11 rounded-none border-l hover:bg-primary/5 hover:text-primary shrink-0"
-                                            onClick={() => copyToClipboard(getFullUrl())}
-                                        >
-                                            <Copy className="h-4 w-4 text-muted-foreground hover:text-primary" />
-                                        </Button>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <Controller
+                                    name="status"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold">Lifecycle State</Label>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <SelectTrigger className="h-10 rounded-xl bg-card border border-border/50 shadow-sm transition-all focus-visible:ring-1 focus-visible:ring-primary/30 text-xs">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent className="rounded-xl">
+                                                    <SelectItem value="draft">Draft (Internal)</SelectItem>
+                                                    <SelectItem value="published">Published (Live)</SelectItem>
+                                                    <SelectItem value="archived">Archived</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    )}
+                                />
+                                <Controller
+                                    name="slug"
+                                    control={control}
+                                    render={({ field }) => (
+                                        <div className="space-y-1.5">
+                                            <Label className="text-xs font-semibold">Portal URL Backhalf</Label>
+                                            <div className="flex h-10 border border-border rounded-xl overflow-hidden bg-muted/30 transition-all">
+                                                <div className="bg-muted px-2.5 flex items-center text-[10px] font-semibold text-muted-foreground/60 border-r">/surveys/</div>
+                                                <Input {...field} className="border-none rounded-none shadow-none focus-visible:ring-0 h-full bg-transparent flex-1 text-xs" />
+                                                <Button 
+                                                    type="button" 
+                                                    variant="ghost" 
+                                                    size="icon" 
+                                                    className="h-full w-10 rounded-none border-l hover:bg-primary/5 hover:text-primary shrink-0"
+                                                    onClick={() => copyToClipboard(getFullUrl())}
+                                                >
+                                                    <Copy className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                                                </Button>
+                                            </div>
+                                        </div>
+                                    )}
+                                />
+                            </div>
+
+                            <div>
+                                <Button 
+                                    type="button"
+                                    variant="outline"
+                                    className="w-full h-10 rounded-xl text-xs font-bold gap-2 active:scale-95 transition-all"
+                                    onClick={() => setIsShareOpen(true)}
+                                >
+                                    <Code className="h-4 w-4" /> Share & Embed Survey
+                                </Button>
+                            </div>
+
+                            <div className="h-px bg-border/50" />
+
+                            <div className={cn(
+                                "rounded-2xl border-2 transition-all duration-300",
+                                watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
+                            )}>
+                                <div className="flex items-center justify-between p-4">
+                                    <div className="flex items-center gap-3 text-left">
+                                        <div className={cn("p-2 rounded-lg transition-colors shrink-0", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-md" : "bg-muted text-muted-foreground")}>
+                                            <AlertCircle className="h-4 w-4" />
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <Label className="text-xs font-semibold tracking-tight cursor-pointer">Technical Diagnostics</Label>
+                                            <CardInfoTooltip text="Surface real-time automation status to the public user." />
+                                        </div>
                                     </div>
+                                    <Controller
+                                        name="showDebugProcessingModal"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Switch 
+                                                checked={field.value}
+                                                onCheckedChange={field.onChange} 
+                                            />
+                                        )}
+                                    />
                                 </div>
-                            )}
-                        />
-                    </div>
-                    <div className="pt-2">
-                        <Button 
-                            type="button"
-                            variant="outline"
-                            className="w-full h-11 rounded-xl font-bold gap-2 active:scale-95 transition-all"
-                            onClick={() => setIsShareOpen(true)}
-                        >
-                            <Code className="h-4 w-4" /> Share & Embed Survey
-                        </Button>
-                    </div>
+                            </div>
+                        </CardContent>
+                    </Card>
 
- <div className="h-px bg-border/50" />
-
- <div className={cn(
+                    {/* Cross-Visibility Toggle */}
+                    <div className={cn(
                         "rounded-2xl border-2 transition-all duration-300",
-                        watch('showDebugProcessingModal') ? "border-primary/20 bg-primary/5" : "border-border/50 bg-background"
+                        watch('allowCrossVisibility') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
                     )}>
- <div className="flex items-center justify-between p-4">
- <div className="flex items-center gap-3 text-left">
- <div className={cn("p-2 rounded-lg transition-colors", watch('showDebugProcessingModal') ? "bg-primary text-white shadow-lg" : "bg-muted text-muted-foreground")}>
- <AlertCircle className="h-4 w-4" />
+                        <div className="flex items-center justify-between p-4 sm:p-5">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className={cn("p-2 rounded-lg transition-colors shrink-0", watch('allowCrossVisibility') ? "bg-blue-500 text-white shadow-md" : "bg-muted text-muted-foreground")}>
+                                    <Eye className="h-4 w-4" />
                                 </div>
- <div className="space-y-0.5">
- <Label className="text-xs font-semibold tracking-tight">Technical Diagnostics</Label>
- <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Surface real-time automation status to the public user</p>
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs font-semibold tracking-tight cursor-pointer">Cross-Visibility</Label>
+                                    <CardInfoTooltip text="Allow assigned users to view all team submissions, not just their own." />
                                 </div>
                             </div>
                             <Controller
-                                name="showDebugProcessingModal"
+                                name="allowCrossVisibility"
                                 control={control}
                                 render={({ field }) => (
                                     <Switch 
-                                        checked={field.value}
+                                        checked={field.value} 
                                         onCheckedChange={field.onChange} 
                                     />
                                 )}
                             />
                         </div>
                     </div>
-                </CardContent>
-            </Card>
 
-            <div className="space-y-8">
-                {/* Cross-Visibility Toggle */}
-                <div className={cn(
-                    "rounded-2xl border-2 transition-all duration-300",
-                    watch('allowCrossVisibility') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
-                )}>
-                    <div className="flex items-center justify-between p-5">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className={cn("p-2 rounded-lg transition-colors", watch('allowCrossVisibility') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                <Eye className="h-4 w-4" />
+                    {/* Show Footer Toggle */}
+                    <div className={cn(
+                        "rounded-2xl border-2 transition-all duration-300",
+                        watch('showFooter') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
+                    )}>
+                        <div className="flex items-center justify-between p-4 sm:p-5">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className={cn("p-2 rounded-lg transition-colors shrink-0", watch('showFooter') ? "bg-blue-500 text-white shadow-md" : "bg-muted text-muted-foreground")}>
+                                    <Layout className="h-4 w-4" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs font-semibold tracking-tight cursor-pointer">Show Footer</Label>
+                                    <CardInfoTooltip text="Display the organization landing page footer at the bottom of the survey." />
+                                </div>
                             </div>
-                            <div className="space-y-0.5">
-                                <Label className="text-xs font-semibold tracking-tight">Cross-Visibility</Label>
-                                <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Allow assigned users to view all team submissions, not just their own</p>
-                            </div>
+                            <Controller
+                                name="showFooter"
+                                control={control}
+                                render={({ field }) => (
+                                    <Switch 
+                                        checked={!!field.value} 
+                                        onCheckedChange={field.onChange} 
+                                    />
+                                )}
+                            />
                         </div>
-                        <Controller
-                            name="allowCrossVisibility"
-                            control={control}
-                            render={({ field }) => (
-                                <Switch 
-                                    checked={field.value} 
-                                    onCheckedChange={field.onChange} 
-                                />
-                            )}
-                        />
                     </div>
-                </div>
 
-                {/* Show Footer Toggle */}
-                <div className={cn(
-                    "rounded-2xl border-2 transition-all duration-300",
-                    watch('showFooter') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
-                )}>
-                    <div className="flex items-center justify-between p-5">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className={cn("p-2 rounded-lg transition-colors", watch('showFooter') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                <Layout className="h-4 w-4" />
+                    {/* Resubmission Toggle */}
+                    <div className={cn(
+                        "rounded-2xl border-2 transition-all duration-300",
+                        watch('allowResubmission') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
+                    )}>
+                        <div className="flex items-center justify-between p-4 sm:p-5">
+                            <div className="flex items-center gap-3 text-left">
+                                <div className={cn("p-2 rounded-lg transition-colors shrink-0", watch('allowResubmission') ? "bg-blue-500 text-white shadow-md" : "bg-muted text-muted-foreground")}>
+                                    <RotateCcw className="h-4 w-4" />
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Label className="text-xs font-semibold tracking-tight cursor-pointer">Allow Resubmission</Label>
+                                    <CardInfoTooltip text="Permit respondents to submit multiple entries to this survey." />
+                                </div>
                             </div>
-                            <div className="space-y-0.5">
-                                <Label className="text-xs font-semibold tracking-tight">Show Footer</Label>
-                                <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Display the organization landing page footer at the bottom of the survey</p>
-                            </div>
+                            <Controller
+                                name="allowResubmission"
+                                control={control}
+                                render={({ field }) => (
+                                    <Switch 
+                                        checked={!!field.value} 
+                                        onCheckedChange={field.onChange} 
+                                    />
+                                )}
+                            />
                         </div>
-                        <Controller
-                            name="showFooter"
-                            control={control}
-                            render={({ field }) => (
-                                <Switch 
-                                    checked={!!field.value} 
-                                    onCheckedChange={field.onChange} 
-                                />
-                            )}
-                        />
                     </div>
-                </div>
 
-                {/* Resubmission Toggle */}
-                <div className={cn(
-                    "rounded-2xl border-2 transition-all duration-300",
-                    watch('allowResubmission') ? "border-blue-500/20 bg-blue-500/5" : "border-border/50 bg-background"
-                )}>
-                    <div className="flex items-center justify-between p-5">
-                        <div className="flex items-center gap-3 text-left">
-                            <div className={cn("p-2 rounded-lg transition-colors", watch('allowResubmission') ? "bg-blue-500 text-white shadow-lg" : "bg-muted text-muted-foreground")}>
-                                <RotateCcw className="h-4 w-4" />
-                            </div>
-                            <div className="space-y-0.5">
-                                <Label className="text-xs font-semibold tracking-tight">Allow Resubmission</Label>
-                                <p className="text-[9px] text-muted-foreground font-medium tracking-tighter">Permit respondents to submit multiple entries to this survey</p>
-                            </div>
-                        </div>
-                        <Controller
-                            name="allowResubmission"
-                            control={control}
-                            render={({ field }) => (
-                                <Switch 
-                                    checked={!!field.value} 
-                                    onCheckedChange={field.onChange} 
-                                />
-                            )}
-                        />
-                    </div>
-                </div>
-
-                <Card className="rounded-2xl border border-border bg-card overflow-hidden">
-                    <CardHeader className="bg-muted/10 border-b py-5 px-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600">
-                                <Link2 className="h-5 w-5" />
-                            </div>
-                            <CardTitle className="text-sm font-semibold tracking-tight">Team Assignment & Attribution Links</CardTitle>
-                        </div>
-                        <Controller
-                            name="assignmentEnabled"
-                            control={control}
-                            render={({ field }) => (
-                                <Switch 
-                                    checked={!!field.value} 
-                                    onCheckedChange={field.onChange} 
-                                    className="scale-110"
-                                />
-                            )}
-                        />
-                    </CardHeader>
-                    {assignmentEnabled && (
-                        <CardContent className="p-6 space-y-6 max-h-[500px] overflow-y-auto no-scrollbar">
-                            <div className="space-y-2">
-                                <Label className="text-sm font-semibold">Assign Team Members</Label>
-                                <Controller 
-                                    name="assignedUsers"
+                    {/* Team Assignment & Attribution Links */}
+                    <Card className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+                        <CardHeader className="bg-muted/10 border-b py-4 px-5 sm:px-6">
+                            <div className="flex items-center justify-between gap-3">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2 bg-blue-500/10 rounded-xl text-blue-600 shrink-0">
+                                        <Link2 className="h-4.5 w-4.5" />
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                        <CardTitle className="text-sm font-semibold tracking-tight">Team Assignment &amp; Attribution Links</CardTitle>
+                                        <CardInfoTooltip text="Generate personalized attribution tracking links for each assigned team representative." />
+                                    </div>
+                                </div>
+                                <Controller
+                                    name="assignmentEnabled"
                                     control={control}
                                     render={({ field }) => (
-                                        <MultiSelect 
-                                            options={userOptions}
-                                            value={field.value || []}
-                                            onChange={field.onChange}
-                                            placeholder="Select representatives..."
+                                        <Switch 
+                                            checked={!!field.value} 
+                                            onCheckedChange={field.onChange} 
+                                            className="scale-110"
                                         />
                                     )}
                                 />
-                                <p className="text-[9px] font-bold text-muted-foreground/60 tracking-tight leading-relaxed italic">
-                                    Links will generate automatically as you select team members.
-                                </p>
                             </div>
-                            
-                            <Separator className="bg-border/50" />
-
-                            {filteredUsers.length === 0 ? (
-                                <div className="p-8 text-center bg-muted/20 rounded-2xl border border-dashed">
-                                    <p className="text-[10px] font-bold text-muted-foreground/50 italic">No representatives selected yet.</p>
+                        </CardHeader>
+                        {assignmentEnabled && (
+                            <CardContent className="p-5 sm:p-6 space-y-5 max-h-[500px] overflow-y-auto no-scrollbar text-left">
+                                <div className="space-y-2">
+                                    <Label className="text-xs font-semibold">Assign Team Members</Label>
+                                    <Controller 
+                                        name="assignedUsers"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <MultiSelect 
+                                                options={userOptions}
+                                                value={field.value || []}
+                                                onChange={field.onChange}
+                                                placeholder="Select representatives..."
+                                            />
+                                        )}
+                                    />
                                 </div>
-                            ) : (
-                                <div className="grid grid-cols-1 gap-3">
-                                    {filteredUsers.map(user => (
-                                        <div key={user.id} className="group p-4 rounded-xl border border-border/50 bg-muted/10 hover:bg-primary/5 hover:border-primary/20 transition-all text-left">
-                                            <div className="flex items-center justify-between mb-2">
-                                                <div className="flex items-center gap-2">
-                                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
-                                                        <span className="text-[10px] font-black text-primary uppercase">{user.name?.[0] || user.email?.[0]}</span>
+                                
+                                <Separator className="bg-border/50" />
+
+                                {filteredUsers.length === 0 ? (
+                                    <div className="p-6 text-center bg-muted/20 rounded-2xl border border-dashed">
+                                        <p className="text-xs font-medium text-muted-foreground/60 italic">No representatives selected yet.</p>
+                                    </div>
+                                ) : (
+                                    <div className="grid grid-cols-1 gap-2.5">
+                                        {filteredUsers.map(user => (
+                                            <div key={user.id} className="group p-3.5 rounded-xl border border-border/50 bg-muted/10 hover:bg-primary/5 hover:border-primary/20 transition-all text-left">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center">
+                                                            <span className="text-[10px] font-black text-primary uppercase">{user.name?.[0] || user.email?.[0]}</span>
+                                                        </div>
+                                                        <span className="text-xs font-bold text-foreground">{user.name || user.email}</span>
                                                     </div>
-                                                    <span className="text-[11px] font-black text-foreground">{user.name || user.email}</span>
+                                                    <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary bg-primary/5">Assigned Link</Badge>
                                                 </div>
-                                                <Badge variant="outline" className="text-[8px] font-black uppercase border-primary/20 text-primary bg-primary/5">Assigned Link</Badge>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 bg-white/50 dark:bg-black/20 px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-mono text-muted-foreground truncate">
-                                                    {getFullUrl(user.id)}
+                                                <div className="flex items-center gap-2">
+                                                    <div className="flex-1 bg-white/50 dark:bg-black/20 px-3 py-1.5 rounded-lg border border-border/50 text-[10px] font-mono text-muted-foreground truncate">
+                                                        {getFullUrl(user.id)}
+                                                    </div>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => copyToClipboard(getFullUrl(user.id))}
+                                                        className="p-1.5 rounded-lg bg-primary text-white shadow-md shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
+                                                    >
+                                                        <Copy className="h-3 w-3" />
+                                                    </button>
+                                                    <button 
+                                                        type="button"
+                                                        onClick={() => setQrSheetUser({ id: user.id, name: user.name || user.email || 'User' })}
+                                                        className="p-1.5 rounded-lg bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary shadow-xs hover:scale-105 active:scale-95 transition-all"
+                                                    >
+                                                        <QrCode className="h-3 w-3" />
+                                                    </button>
                                                 </div>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => copyToClipboard(getFullUrl(user.id))}
-                                                    className="p-1.5 rounded-lg bg-primary text-white shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all"
-                                                >
-                                                    <Copy className="h-3 w-3" />
-                                                </button>
-                                                <button 
-                                                    type="button"
-                                                    onClick={() => setQrSheetUser({ id: user.id, name: user.name || user.email || 'User' })}
-                                                    className="p-1.5 rounded-lg bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary shadow-sm hover:shadow-md hover:scale-105 active:scale-95 transition-all"
-                                                >
-                                                    <QrCode className="h-3 w-3" />
-                                                </button>
                                             </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            )}
-                        </CardContent>
-                    )}
-                </Card>
-            </div>
-            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        )}
+                    </Card>
+                </div>
 
-            <SeoSettingsCard
-                value={seoValue}
-                onChange={handleSeoChange}
-                assetLabel="Survey Banner"
-                assetImageUrl={watch('bannerImageUrl')}
-                entityLogoUrl={watch('logoUrl')}
-                contentTitle={watch('title')}
-                contentDescription={watch('description')}
-                previewUrl={`smartsapp.com/surveys/${slug || ''}`}
-                onGenerateKeywords={handleGenerateKeywords}
-                isGeneratingKeywords={isGeneratingKeywords}
-                description="Configure how this survey appears in search engines and social links."
-                renderImagePicker={(val, onChange) => (
-                    <MediaSelect value={val} onChange={onChange} filterType="image" className="rounded-2xl" />
-                )}
-            />
+                {/* ─── RIGHT COLUMN: SEO & Social Sharing ─── */}
+                <div className="space-y-6 lg:space-y-8 min-w-0">
+                    <SeoSettingsCard
+                        value={seoValue}
+                        onChange={handleSeoChange}
+                        assetLabel="Survey Banner"
+                        assetImageUrl={watch('bannerImageUrl')}
+                        entityLogoUrl={watch('logoUrl')}
+                        contentTitle={watch('title')}
+                        contentDescription={watch('description')}
+                        previewUrl={`smartsapp.com/surveys/${slug || ''}`}
+                        onGenerateKeywords={handleGenerateKeywords}
+                        isGeneratingKeywords={isGeneratingKeywords}
+                        description="Configure how this survey appears in search engines and social links."
+                        renderImagePicker={(val, onChange) => (
+                            <MediaSelect value={val} onChange={onChange} filterType="image" className="rounded-2xl" />
+                        )}
+                    />
+                </div>
+            </div>
 
             {/* Attribution QR Sheet */}
             {qrSheetUser && (

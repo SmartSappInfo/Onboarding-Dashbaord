@@ -15,12 +15,21 @@ import { z } from 'genkit';
 import { normalizeBlockType } from '@/lib/page-builder/registry';
 import type { PageBlockType } from '@/lib/types';
 
-const pageBlockSchema = z.object({
-  id: z.string(),
-  type: z.string(),
-  props: z.record(z.unknown()),
-  blocks: z.array(z.lazy(() => pageBlockSchema)).optional(),
-});
+interface PageBlockOutput {
+  id: string;
+  type: string;
+  props: Record<string, unknown>;
+  blocks?: PageBlockOutput[];
+}
+
+const pageBlockSchema: z.ZodType<PageBlockOutput> = z.lazy(() =>
+  z.object({
+    id: z.string(),
+    type: z.string(),
+    props: z.record(z.unknown()),
+    blocks: z.array(pageBlockSchema).optional(),
+  })
+);
 
 const pageSectionSchema = z.object({
   id: z.string(),

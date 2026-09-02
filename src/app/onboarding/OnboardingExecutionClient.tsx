@@ -28,7 +28,7 @@ export function OnboardingExecutionClient() {
   const instanceIdParam = searchParams.get('instanceId') || undefined;
 
   const { user: authUser, isUserLoading } = useUser();
-  const { activeOrganizationId, isTenantLoading } = useTenant();
+  const { activeOrganizationId, isLoading: isTenantLoading } = useTenant();
 
   const [instance, setInstance] = React.useState<OnboardingInstance | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);

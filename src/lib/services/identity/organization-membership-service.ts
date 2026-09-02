@@ -140,4 +140,36 @@ export class OrganizationMembershipService {
     const snap = await query.get();
     return snap.docs.map((doc) => ({ id: doc.id, ...doc.data() } as OrganizationMembership));
   }
+
+  /**
+   * Upserts an organization membership.
+   */
+  static async upsertOrganizationMembership(
+    membership: Omit<OrganizationMembership, 'id' | 'createdAt' | 'updatedAt'>,
+    batchOrTransaction?: FirebaseFirestore.WriteBatch | FirebaseFirestore.Transaction
+  ): Promise<OrganizationMembership> {
+    return this.createMembership(membership, batchOrTransaction);
+  }
+
+  /**
+   * Updates roles associated with a Person's membership.
+   */
+  static async updateMembershipRoles(
+    organizationId: string,
+    personId: string,
+    roles: string[],
+    batchOrTransaction?: FirebaseFirestore.WriteBatch | FirebaseFirestore.Transaction
+  ): Promise<void> {
+    const docId = this.getMembershipId(organizationId, personId);
+    const docRef = adminDb.collection(this.COLLECTION).doc(docId);
+    const updates = {
+      roles,
+      updatedAt: new Date().toISOString(),
+    };
+    if (batchOrTransaction) {
+      (batchOrTransaction as FirebaseFirestore.WriteBatch).set(docRef, updates, { merge: true });
+    } else {
+      await docRef.set(updates, { merge: true });
+    }
+  }
 }

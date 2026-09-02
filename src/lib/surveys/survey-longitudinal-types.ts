@@ -78,9 +78,11 @@ export interface SurveyExperimentVariant {
   weight: number; // e.g. 50 for 50%
   titleOverride?: string;
   introProseOverride?: string;
+  startButtonTextOverride?: string;
+  submitButtonTextOverride?: string;
   incentiveCopyOverride?: string;
   isControl: boolean;
-  metrics: {
+  metrics?: {
     impressions: number;
     starts: number;
     completions: number;

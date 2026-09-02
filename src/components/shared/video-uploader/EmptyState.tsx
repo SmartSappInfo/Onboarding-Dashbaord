@@ -4,9 +4,12 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
-  onTriggerReplace: () => void;
-  onOpenGallery: () => void;
-  onOpenLink: () => void;
+  onTriggerReplace?: () => void;
+  onTriggerReplaceVideo?: () => void;
+  onOpenGallery?: () => void;
+  onOpenGalleryVideo?: () => void;
+  onOpenLink?: () => void;
+  onOpenLinkVideo?: () => void;
   showGallery: boolean;
   maxSizeMB: number;
   className?: string;
@@ -14,12 +17,18 @@ interface EmptyStateProps {
 
 export function EmptyState({
   onTriggerReplace,
+  onTriggerReplaceVideo,
   onOpenGallery,
+  onOpenGalleryVideo,
   onOpenLink,
+  onOpenLinkVideo,
   showGallery,
   maxSizeMB,
   className
 }: EmptyStateProps) {
+  const triggerReplace = onTriggerReplace || onTriggerReplaceVideo || (() => {});
+  const openGallery = onOpenGallery || onOpenGalleryVideo || (() => {});
+  const openLink = onOpenLink || onOpenLinkVideo || (() => {});
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
@@ -51,7 +60,7 @@ export function EmptyState({
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
-      onClick={onTriggerReplace}
+      onClick={triggerReplace}
     >
       <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground">
         <Film className="w-5 h-5" />
@@ -76,7 +85,7 @@ export function EmptyState({
         <Button
           type="button"
           size="sm"
-          onClick={onTriggerReplace}
+          onClick={triggerReplace}
           className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 shrink-0 active:scale-[0.97] transition-transform duration-150"
         >
           <Upload className="w-3.5 h-3.5" /> Upload Video
@@ -86,7 +95,7 @@ export function EmptyState({
             type="button"
             variant="outline"
             size="sm"
-            onClick={onOpenGallery}
+            onClick={openGallery}
             className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0 active:scale-[0.97] transition-transform duration-150"
           >
             <FolderHeart className="w-3.5 h-3.5" /> Media Gallery
@@ -96,7 +105,7 @@ export function EmptyState({
           type="button"
           variant="outline"
           size="sm"
-          onClick={onOpenLink}
+          onClick={openLink}
           className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0 active:scale-[0.97] transition-transform duration-150"
         >
           <LinkIcon className="w-3.5 h-3.5" /> Link URL

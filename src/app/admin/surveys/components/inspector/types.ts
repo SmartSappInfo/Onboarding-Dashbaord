@@ -38,10 +38,10 @@ export interface ContrastScoreResult {
 export interface SurveyPalettePreset {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   backgroundColor: string;
   patternColor: string;
-  textColor: string;
-  accentColor: string;
-  badge: 'Popular' | 'Corporate' | 'Minimal' | 'Vibrant' | 'Dark' | 'Warm';
+  textColor?: string;
+  accentColor?: string;
+  badge?: 'Popular' | 'Corporate' | 'Minimal' | 'Vibrant' | 'Dark' | 'Warm' | string;
 }

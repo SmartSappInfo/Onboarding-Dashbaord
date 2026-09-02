@@ -922,6 +922,8 @@ export interface Role {
   permissionsSchema?: PermissionsSchema;
   workspaceIds: string[];
   color: string;
+  category?: string;
+  version?: number;
   createdAt: string;
   updatedAt?: string;
 }
@@ -931,14 +933,18 @@ export interface UserProfile {
   organizationId: string; // Users belong to one Org
   workspaceIds: string[]; // Users are assigned to one or more workspaces
   name: string;
+  displayName?: string;
   email: string;
-  phone: string;
+  phone?: string;
   photoURL?: string;
-  isAuthorized: boolean;
+  isAuthorized?: boolean;
   profileCompleted?: boolean;
   department?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
+  membershipStatus?: MembershipStatus;
+  role?: string;
   roles?: string[]; // Legacy global roles
+  roleNames?: string[];
   permissions?: AppPermissionId[]; // Legacy global permissions
   /** Hierarchical permission structure (Permissions Expansion) */
   permissionsSchema?: PermissionsSchema; // Legacy global schema
@@ -1019,13 +1025,14 @@ export type WorkspaceMembershipStatus = 'active' | 'suspended' | 'revoked';
 
 export interface IdentityAccount {
   id: string; // matches Firebase Auth UID
-  authUid: string;
-  authProvider: AuthProviderType;
+  authUid?: string;
+  authProvider?: AuthProviderType;
   email: string;
-  emailVerified: boolean;
-  phoneVerified: boolean;
+  phone?: string;
+  emailVerified?: boolean;
+  phoneVerified?: boolean;
   status: AccountStatus;
-  mfaStatus: MfaStatus;
+  mfaStatus?: MfaStatus;
   lastLoginAt?: string;
   lastSeenAt?: string;
   createdAt: string;
@@ -1035,9 +1042,9 @@ export interface IdentityAccount {
 export interface Person {
   id: string; // matches Account ID / UID
   organizationId: string;
-  firstName: string;
+  firstName?: string;
   middleName?: string;
-  lastName: string;
+  lastName?: string;
   displayName: string;
   email: string;
   phone?: string;
@@ -1045,6 +1052,7 @@ export interface Person {
   jobTitle?: string;
   departmentId?: string;
   departmentName?: string;
+  teamId?: string;
   teamIds?: string[];
   employeeCode?: string;
   externalReference?: string;
@@ -1066,6 +1074,7 @@ export interface OrganizationMembership {
   organizationId: string;
   status: MembershipStatus;
   memberType: MemberType;
+  roles?: string[];
   departmentId?: string;
   departmentName?: string;
   teamIds?: string[];
@@ -1086,11 +1095,11 @@ export interface WorkspaceMembership {
   workspaceId: string;
   workspaceName?: string;
   personId: string;
-  membershipId: string;
+  membershipId?: string;
   status: WorkspaceMembershipStatus;
   roleAssignmentIds: string[];
   roleNames?: string[];
-  isPrimary: boolean;
+  isPrimary?: boolean;
   scopePolicy?: {
     type: 'all' | 'team' | 'department' | 'owner' | 'custom';
     values?: string[];
@@ -1120,6 +1129,8 @@ export interface PeopleDirectoryFilter {
   roleId?: string;
   workspaceId?: string;
   departmentId?: string;
+  department?: string;
+  teamId?: string;
   memberType?: MemberType;
 }
 
@@ -1147,7 +1158,7 @@ export interface PermissionDefinition {
   description: string;
   riskLevel: PermissionRiskLevel;
   dependencies: string[];
-  legacyPermissionId?: AppPermissionId;
+  legacyPermissionId?: AppPermissionId | string;
 }
 
 export type RoleAssignmentScope = 'organization' | 'workspace' | 'department';
@@ -4104,6 +4115,14 @@ export interface SurveyElement {
   };
 }
 
+export interface SurveySection extends SurveyElement {
+  type: 'section';
+  title?: string;
+  description?: string;
+  renderAsPage?: boolean;
+  validateBeforeNext?: boolean;
+}
+
 export interface SurveyQuestion extends SurveyElement {
   type: 'text' | 'long-text' | 'yes-no' | 'multiple-choice' | 'checkboxes' | 'dropdown' | 'rating' | 'date' | 'time' | 'file-upload' | 'email' | 'phone' | 'number' | 'link' | 'matrix' | 'ranking' | 'slider' | 'nps' | 'ces' | 'signature' | 'calculated' | 'consent';
   title: string;
@@ -4118,6 +4137,7 @@ export interface SurveyQuestion extends SurveyElement {
   minSelections?: number;
   maxSelections?: number;
   enableScoring?: boolean;
+  points?: number;
   optionScores?: number[];
   yesScore?: number;
   noScore?: number;
@@ -6929,6 +6949,7 @@ export interface AppField {
   industryOrigin?: IndustryVertical; // Which industry seeded this
   isNative: boolean; // System fields are immutable
   compatibilityScope: ('common' | 'institution' | 'family' | 'person' | 'submission-only' | 'internal-only')[];
+  description?: string;
   helpText?: string;
   placeholder?: string;
   defaultValue?: any;

@@ -78,7 +78,7 @@ export class WorkforceMetricsService {
       const pStats = eventsByPerson[p.person.id] || {
         events7d: 0,
         events30d: 0,
-        lastActive: p.person.lastActiveAt || p.person.createdAt,
+        lastActive: p.person.updatedAt || p.person.createdAt,
       };
 
       const lastActive = pStats.lastActive;
@@ -109,8 +109,8 @@ export class WorkforceMetricsService {
         personId: p.person.id,
         personName: p.person.displayName || p.person.email,
         personEmail: p.person.email,
-        departmentName: p.department?.name,
-        teamName: p.primaryTeam?.name,
+        departmentName: p.person.departmentName || p.membership.departmentName,
+        teamName: p.person.teamId || p.membership.teamIds?.[0],
         engagementStatus: status,
         totalEvents7d: pStats.events7d,
         totalEvents30d: pStats.events30d,
