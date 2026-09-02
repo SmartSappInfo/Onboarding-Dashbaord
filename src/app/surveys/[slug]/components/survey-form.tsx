@@ -2222,6 +2222,9 @@ export default function SurveyForm({
         if (outcome?.smsTemplateId && outcome.smsTemplateId !== 'none') {
             initialTasks.push({ id: 'sms_ack', label: 'SMS Confirmation (Respondent)', status: 'pending', icon: Smartphone });
         }
+        if (outcome?.whatsappTemplateId && outcome.whatsappTemplateId !== 'none') {
+            initialTasks.push({ id: 'whatsapp_ack', label: 'WhatsApp Confirmation (Respondent)', status: 'pending', icon: Smartphone });
+        }
         
         if (survey.adminAlertsEnabled) {
             initialTasks.push({ id: 'admin_alert', label: 'Administrative Alerting', status: 'pending', icon: Bell });
@@ -2515,6 +2518,29 @@ export default function SurveyForm({
                     }
                 };
                 automationPromises.push(smsTask());
+            }
+
+            if (outcome?.whatsappTemplateId && outcome.whatsappTemplateId !== 'none') {
+                const whatsappTask = async () => {
+                    if (!respondentPhone) {
+                        updateAutomationStatus('whatsapp_ack', 'skipped', 'No phone number found.');
+                        return;
+                    }
+                    try {
+                        const res = await sendMessage({ 
+                            templateId: outcome.whatsappTemplateId!, 
+                            senderProfileId: outcome.whatsappSenderProfileId || 'default', 
+                            recipient: String(respondentPhone), 
+                            variables,
+                            entityId: survey.entityId || undefined
+                        });
+                        if (!res.success) throw new Error(res.error);
+                        updateAutomationStatus('whatsapp_ack', 'success');
+                    } catch (e: unknown) {
+                        updateAutomationStatus('whatsapp_ack', 'failed', (e as Error).message);
+                    }
+                };
+                automationPromises.push(whatsappTask());
             }
 
             if (survey.adminAlertsEnabled) {

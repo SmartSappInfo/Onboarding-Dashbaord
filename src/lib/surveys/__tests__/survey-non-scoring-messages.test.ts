@@ -62,9 +62,39 @@ describe('Non-Scoring Automatic Messaging & Outcome Resolution Suite', () => {
     );
 
     const respondentEmail = emailQuestion ? data[emailQuestion.id] : (data.email || null);
-    const respondentPhone = phoneQuestion ? data[phoneQuestion.id] : (data.phone || null);
+    const extractedPhone = phoneQuestion ? data[phoneQuestion.id] : (data.phone || null);
 
     expect(respondentEmail).toBe('user@example.com');
-    expect(respondentPhone).toBe('+1234567890');
+    expect(extractedPhone).toBe('+1234567890');
+  });
+
+  it('supports WhatsApp template in outcome rule and keeps it optional/unconfigured by default', () => {
+    const surveyWithWhatsapp: Partial<Survey> = {
+      id: 'survey_wa_1',
+      title: 'Feedback Survey',
+      scoringEnabled: false,
+      resultRules: [
+        {
+          id: 'rule_1',
+          label: 'Default Outcome',
+          minScore: 0,
+          maxScore: 100,
+          priority: 0,
+          pageId: '',
+          emailTemplateId: 'global_survey_completion_email',
+          smsTemplateId: 'global_survey_completion_sms',
+          whatsappTemplateId: undefined, // left unconfigured by default
+        } as SurveyResultRule,
+      ],
+    };
+
+    const rule = surveyWithWhatsapp.resultRules![0];
+    expect(rule.emailTemplateId).toBe('global_survey_completion_email');
+    expect(rule.smsTemplateId).toBe('global_survey_completion_sms');
+    expect(rule.whatsappTemplateId).toBeUndefined();
+
+    // Configured case
+    rule.whatsappTemplateId = 'tmpl_wa_custom_blueprint';
+    expect(rule.whatsappTemplateId).toBe('tmpl_wa_custom_blueprint');
   });
 });

@@ -24,7 +24,7 @@ export function MinimalRespondentMessage() {
     const { control, watch, setValue } = useFormContext();
     const firestore = useFirestore();
 
-    const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms', templateId?: string } | null>(null);
+    const [activeTemplateConfig, setActiveTemplateConfig] = React.useState<{ channel: 'email' | 'sms' | 'whatsapp', templateId?: string } | null>(null);
 
     // Ensure at least one resultRule exists for minimal messaging
     const rules = watch('resultRules') || [];
@@ -43,7 +43,7 @@ export function MinimalRespondentMessage() {
 
     const { activeWorkspaceId, activeOrganization } = useWorkspace();
 
-    // Auto-link default survey message blueprints without requiring manual user action
+    // Auto-link generic survey response system default blueprints without requiring manual user action
     React.useEffect(() => {
         let isMounted = true;
         async function autoLinkDefaultSurveyMessages() {
@@ -55,31 +55,44 @@ export function MinimalRespondentMessage() {
                 const currentEmailId = currentRules[0]?.emailTemplateId;
                 const currentSmsId = currentRules[0]?.smsTemplateId;
 
-                // Auto-resolve default survey email blueprint if unassigned
+                // Auto-resolve generic survey response system default (not niche quiz/schools)
                 if (!currentEmailId || currentEmailId === 'none') {
-                    const defaultEmail = templates.find(t => 
+                    const genericEmail = templates.find(t => 
                         t.channel === 'email' && 
                         t.isActive !== false &&
-                        (t.category === 'surveys' || t.recipientType === 'respondent' || t.templateType?.includes('survey'))
-                    ) || templates.find(t => t.channel === 'email' && t.category === 'surveys' && t.isActive !== false);
+                        (t.templateType === 'survey_completion' || t.id === 'global_survey_completion_email' || t.name === 'Survey Completion (Email)')
+                    ) || templates.find(t => 
+                        t.channel === 'email' && 
+                        t.isActive !== false && 
+                        t.category === 'surveys' &&
+                        /survey completion|survey response|thank you/i.test(t.name || '') &&
+                        !/quiz|school|parent|assessment/i.test(t.name || '')
+                    );
 
-                    if (defaultEmail && isMounted) {
-                        setValue('resultRules.0.emailTemplateId', defaultEmail.id, { shouldDirty: true });
+                    if (genericEmail && isMounted) {
+                        setValue('resultRules.0.emailTemplateId', genericEmail.id, { shouldDirty: true });
                     }
                 }
 
-                // Auto-resolve default survey SMS blueprint if unassigned
+                // Auto-resolve generic survey response system default for SMS
                 if (!currentSmsId || currentSmsId === 'none') {
-                    const defaultSms = templates.find(t => 
+                    const genericSms = templates.find(t => 
                         t.channel === 'sms' && 
                         t.isActive !== false &&
-                        (t.category === 'surveys' || t.recipientType === 'respondent' || t.templateType?.includes('survey'))
-                    ) || templates.find(t => t.channel === 'sms' && t.category === 'surveys' && t.isActive !== false);
+                        (t.templateType === 'survey_completion' || t.id === 'global_survey_completion_sms' || t.name === 'Survey Completion (SMS)')
+                    ) || templates.find(t => 
+                        t.channel === 'sms' && 
+                        t.isActive !== false && 
+                        t.category === 'surveys' &&
+                        /survey completion|survey response|thank you/i.test(t.name || '') &&
+                        !/quiz|school|parent|assessment/i.test(t.name || '')
+                    );
 
-                    if (defaultSms && isMounted) {
-                        setValue('resultRules.0.smsTemplateId', defaultSms.id, { shouldDirty: true });
+                    if (genericSms && isMounted) {
+                        setValue('resultRules.0.smsTemplateId', genericSms.id, { shouldDirty: true });
                     }
                 }
+                // WhatsApp is left not configured by default as requested
             } catch (err) {
                 console.warn('[MinimalRespondentMessage] Auto-link default survey blueprints:', err);
             }
@@ -103,9 +116,11 @@ export function MinimalRespondentMessage() {
 
     const smsProfiles = profiles?.filter(p => p.channel === 'sms' && p.isActive);
     const emailProfiles = profiles?.filter(p => p.channel === 'email' && p.isActive);
+    const whatsappProfiles = profiles?.filter(p => p.channel === 'whatsapp' && p.isActive);
 
     const selectedEmailId = watch(`resultRules.0.emailTemplateId`);
     const selectedSmsId = watch(`resultRules.0.smsTemplateId`);
+    const selectedWhatsappId = watch(`resultRules.0.whatsappTemplateId`);
 
     return (
         <Card className="rounded-2xl border border-border bg-card overflow-hidden">
@@ -121,7 +136,7 @@ export function MinimalRespondentMessage() {
                 </div>
             </CardHeader>
             <CardContent className="p-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* Email Automation */}
                     <div className="p-4 rounded-xl border bg-blue-50/30 border-blue-100 space-y-4">
                         <div className="flex justify-between items-center">
@@ -250,6 +265,75 @@ export function MinimalRespondentMessage() {
                                             <SelectContent>
                                                 <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
                                                 {smsProfiles?.map(p => (
+                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    )}
+                                />
+                            )}
+                        </div>
+                    </div>
+
+                    {/* WhatsApp Automation */}
+                    <div className="p-4 rounded-xl border bg-emerald-50/30 border-emerald-100 dark:bg-emerald-950/10 dark:border-emerald-900/30 space-y-4">
+                        <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                                <Smartphone className="h-4 w-4" />
+                                <span className="text-[10px] font-semibold">WhatsApp Completion</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                {selectedWhatsappId && selectedWhatsappId !== 'none' && (
+                                    <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 dark:text-emerald-400 gap-1 rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30"
+                                        onClick={() => setActiveTemplateConfig({ channel: 'whatsapp', templateId: selectedWhatsappId })}
+                                    >
+                                        <Pencil className="h-3 w-3" /> Edit
+                                    </Button>
+                                )}
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 px-2 text-[9px] font-semibold tracking-tighter text-emerald-600 dark:text-emerald-400 gap-1 rounded-lg hover:bg-emerald-100/50 dark:hover:bg-emerald-900/30"
+                                    onClick={() => setActiveTemplateConfig({ channel: 'whatsapp' })}
+                                >
+                                    <PlusCircle className="h-3 w-3" /> New
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-3">
+                            <Controller
+                                name={`resultRules.0.whatsappTemplateId`}
+                                control={control}
+                                render={({ field }) => (
+                                    <MessagingTemplateSelector 
+                                        category="surveys"
+                                        recipientType="respondent"
+                                        channel="whatsapp"
+                                        value={field.value}
+                                        onValueChange={field.onChange}
+                                        placeholder="Choose WhatsApp blueprint..."
+                                        compact
+                                    />
+                                )}
+                            />
+                            {selectedWhatsappId && selectedWhatsappId !== 'none' && (
+                                <Controller
+                                    name={`resultRules.0.whatsappSenderProfileId`}
+                                    control={control}
+                                    render={({ field }) => (
+                                        <Select value={field.value || 'none'} onValueChange={field.onChange}>
+                                            <SelectTrigger className="h-9 bg-card border-emerald-200 dark:border-emerald-900/50 text-[10px] font-bold text-emerald-700/60 dark:text-emerald-400/60 flex items-center gap-2">
+                                                <ShieldCheck className="h-3 w-3" />
+                                                <SelectValue placeholder="Resolved From Identity" />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
+                                                {whatsappProfiles?.map(p => (
                                                     <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
                                                 ))}
                                             </SelectContent>

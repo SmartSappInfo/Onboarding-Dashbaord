@@ -541,6 +541,16 @@ export const TEMPLATES: TemplateDef[] = [
     variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'completion_date', 'score', 'result_message', 'org_name'],
   },
   {
+    name: 'Survey Completion (SMS)', category: 'surveys', templateType: 'survey_completion', channel: 'sms',
+    body: 'Hi {{respondent_name}}, thank you for completing {{survey_title}}! We appreciate your valuable feedback. {{org_name}}',
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'org_name'],
+  },
+  {
+    name: 'Survey Completion (WhatsApp)', category: 'surveys', templateType: 'survey_completion', channel: 'whatsapp',
+    body: 'Hi {{respondent_name}}, thank you for completing *{{survey_title}}*! We appreciate your valuable feedback. {{org_name}}',
+    variableContext: 'survey', declaredVariables: ['respondent_name', 'survey_title', 'org_name'],
+  },
+  {
     name: 'Survey Completion Alert (Email) for Team', category: 'surveys', templateType: 'survey_completion_team', channel: 'email',
     recipientType: 'internal_alert',
     subject: 'Survey Completed: {{survey_title}}',
