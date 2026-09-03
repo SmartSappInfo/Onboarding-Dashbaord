@@ -27,19 +27,19 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { inviteUserAction } from '@/lib/user-invite-actions';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
-import { UserPlus, Mail, Phone, MessageSquare, Loader2, Sparkles, Building2, Briefcase, ShieldCheck } from 'lucide-react';
+import { UserPlus, Mail, Phone, MessageSquare, Loader2 } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const inviteSchema = z.object({
-    fullName: z.string().min(2, 'Name is too short'),
-    email: z.string().email('Invalid email address'),
+    fullName: z.string().min(2, 'Please enter a name'),
+    email: z.string().email('Please enter a valid email address'),
     phone: z.string().optional(),
-    department: z.string().min(1, 'Please select a department'),
+    department: z.string().optional(),
     workspaceIds: z.array(z.string()).min(1, 'Select at least one workspace'),
     roles: z.array(z.string()).min(1, 'Select at least one role'),
-    sendMethods: z.array(z.enum(['email', 'sms', 'whatsapp'])).min(1, 'Select at least one delivery method'),
+    sendMethods: z.array(z.enum(['email', 'sms', 'whatsapp'])).min(1, 'Select at least one invite method'),
 });
 
 type InviteFormData = z.infer<typeof inviteSchema>;
@@ -56,14 +56,15 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
     const { toast } = useToast();
     const { activeOrganizationId, activeOrganization, activeWorkspaceId, activeWorkspace, accessibleWorkspaces } = useTenant();
     const [isSubmitting, setIsSubmitting] = React.useState(false);
+    const [isCustomDept, setIsCustomDept] = React.useState(false);
 
-    // Compute available departments from props, organization config, or standard fallback
+    // Compute available departments ONLY from current organization (no sample fallbacks)
     const availableDepartments = React.useMemo(() => {
         if (departments && departments.length > 0) return departments;
         if (activeOrganization?.departments && activeOrganization.departments.length > 0) {
             return activeOrganization.departments;
         }
-        return ['Sales & Marketing', 'Finance & Administration', 'Operations', 'Engineering', 'Customer Success', 'General'];
+        return [];
     }, [departments, activeOrganization?.departments]);
 
     // Compute available workspaces from props, tenant context, or active workspace
@@ -84,7 +85,7 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
             fullName: '',
             email: '',
             phone: '',
-            department: availableDepartments[0] || 'General',
+            department: availableDepartments[0] || '',
             workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : (availableWorkspaces[0]?.id ? [availableWorkspaces[0].id] : []),
             roles: activeOrganization?.defaultRoleId ? [activeOrganization.defaultRoleId] : [],
             sendMethods: ['email'],
@@ -105,7 +106,7 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
         }
     }, [activeWorkspaceId, form]);
 
-    // Sync default department if not set
+    // Sync default department if available
     React.useEffect(() => {
         if (!form.getValues('department') && availableDepartments.length > 0) {
             form.setValue('department', availableDepartments[0]);
@@ -123,10 +124,10 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
             });
 
             const result = await inviteUserAction({
-                fullName: data.fullName,
-                email: data.email,
-                phone: data.phone,
-                department: data.department,
+                fullName: data.fullName.trim(),
+                email: data.email.trim(),
+                phone: data.phone?.trim() || undefined,
+                department: data.department?.trim() || undefined,
                 workspaceIds: data.workspaceIds,
                 workspaceRoles,
                 organizationId: activeOrganizationId,
@@ -137,13 +138,13 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                 if (result.warnings && result.warnings.length > 0) {
                     toast({ 
                         variant: 'destructive', 
-                        title: 'Account Created with Delivery Alerts', 
+                        title: 'User Added with Warning', 
                         description: result.warnings.join('. ') 
                     });
                 } else {
                     toast({ 
-                        title: 'Invitation Dispatched', 
-                        description: `Credentials sent successfully via ${data.sendMethods.join(', ')}.` 
+                        title: 'Invite Sent', 
+                        description: `Invitation sent to ${data.email}.` 
                     });
                 }
                 onOpenChange(false);
@@ -152,8 +153,8 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                 throw new Error(result.error);
             }
         } catch (error: unknown) {
-            const msg = error instanceof Error ? error.message : 'Invitation failed';
-            toast({ variant: 'destructive', title: 'Invitation Failed', description: msg });
+            const msg = error instanceof Error ? error.message : 'Failed to send invite';
+            toast({ variant: 'destructive', title: 'Could Not Send Invite', description: msg });
         } finally {
             setIsSubmitting(false);
         }
@@ -161,33 +162,33 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[600px] rounded-2xl border border-border shadow-xl p-0 overflow-hidden bg-card text-card-foreground">
-                <DialogHeader className="p-6 sm:p-8 pb-5 bg-card border-b border-border">
-                    <div className="flex items-center gap-3.5">
-                        <div className="p-2.5 bg-muted text-foreground rounded-xl border border-border shrink-0">
+            <DialogContent className="sm:max-w-[560px] rounded-2xl border border-border shadow-xl p-0 overflow-hidden bg-card text-card-foreground">
+                <DialogHeader className="p-6 pb-4 bg-card border-b border-border">
+                    <div className="flex items-center gap-3">
+                        <div className="p-2 bg-muted text-foreground rounded-xl border border-border shrink-0">
                             <UserPlus className="h-5 w-5" />
                         </div>
                         <div>
-                            <DialogTitle className="text-xl font-bold tracking-tight text-foreground">Expand the Identity Hub</DialogTitle>
+                            <DialogTitle className="text-lg font-bold tracking-tight text-foreground">Add User</DialogTitle>
                             <DialogDescription className="text-xs text-muted-foreground font-normal mt-0.5">
-                                Invite new institutional members with secure autogenerated credentials.
+                                Send an invite to join your organization.
                             </DialogDescription>
                         </div>
                     </div>
                 </DialogHeader>
 
-                <div className="p-6 sm:p-8 max-h-[70vh] overflow-y-auto space-y-6">
+                <div className="p-6 max-h-[70vh] overflow-y-auto space-y-5">
                     <Form {...form}>
-                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="fullName"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-semibold text-foreground">Full Legal Name</FormLabel>
+                                            <FormLabel className="text-xs font-semibold text-foreground">Full Name</FormLabel>
                                             <FormControl>
-                                                <Input placeholder="e.g. John Doe" className="rounded-xl h-11 bg-background border-border text-foreground placeholder:text-muted-foreground" {...field} />
+                                                <Input placeholder="e.g. John Doe" className="rounded-xl h-10 bg-background border-border text-foreground placeholder:text-muted-foreground text-sm" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -198,9 +199,9 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                     name="email"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="text-xs font-semibold text-foreground">Corporate Email</FormLabel>
+                                            <FormLabel className="text-xs font-semibold text-foreground">Email</FormLabel>
                                             <FormControl>
-                                                <Input type="email" placeholder="john@org.com" className="rounded-xl h-11 bg-background border-border text-foreground placeholder:text-muted-foreground" {...field} />
+                                                <Input type="email" placeholder="name@company.com" className="rounded-xl h-10 bg-background border-border text-foreground placeholder:text-muted-foreground text-sm" {...field} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -213,39 +214,68 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                 name="phone"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="text-xs font-semibold text-foreground">Phone Number (Optional for SMS)</FormLabel>
+                                        <FormLabel className="text-xs font-semibold text-foreground">Phone Number (Optional)</FormLabel>
                                         <FormControl>
-                                            <Input type="tel" placeholder="e.g. 0244123456" className="rounded-xl h-11 bg-background border-border text-foreground placeholder:text-muted-foreground" {...field} />
+                                            <Input type="tel" placeholder="e.g. 024 412 3456" className="rounded-xl h-10 bg-background border-border text-foreground placeholder:text-muted-foreground text-sm" {...field} />
                                         </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
                             />
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <FormField
                                     control={form.control}
                                     name="department"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                                                <Briefcase className="h-3.5 w-3.5 text-muted-foreground" />
-                                                Assigned Department
-                                            </FormLabel>
-                                            <Select value={field.value} onValueChange={field.onChange}>
+                                            <div className="flex items-center justify-between">
+                                                <FormLabel className="text-xs font-semibold text-foreground">
+                                                    Department (Optional)
+                                                </FormLabel>
+                                                {availableDepartments.length > 0 && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setIsCustomDept(!isCustomDept);
+                                                            if (!isCustomDept) {
+                                                                field.onChange('');
+                                                            } else {
+                                                                field.onChange(availableDepartments[0] || '');
+                                                            }
+                                                        }}
+                                                        className="text-[11px] font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
+                                                    >
+                                                        {isCustomDept ? 'Choose from list' : '+ New Department'}
+                                                    </button>
+                                                )}
+                                            </div>
+
+                                            {!isCustomDept && availableDepartments.length > 0 ? (
+                                                <Select value={field.value || undefined} onValueChange={field.onChange}>
+                                                    <FormControl>
+                                                        <SelectTrigger className="rounded-xl h-10 bg-background border-border text-foreground text-sm">
+                                                            <SelectValue placeholder="Select department" />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent className="rounded-xl border-border bg-popover text-popover-foreground">
+                                                        {availableDepartments.map((dept) => (
+                                                            <SelectItem key={dept} value={dept}>
+                                                                {dept}
+                                                            </SelectItem>
+                                                        ))}
+                                                    </SelectContent>
+                                                </Select>
+                                            ) : (
                                                 <FormControl>
-                                                    <SelectTrigger className="rounded-xl h-11 bg-background border-border text-foreground">
-                                                        <SelectValue placeholder="Select Department" />
-                                                    </SelectTrigger>
+                                                    <Input
+                                                        placeholder={availableDepartments.length === 0 ? "e.g. Sales, Operations" : "Enter department name..."}
+                                                        className="rounded-xl h-10 bg-background border-border text-foreground placeholder:text-muted-foreground text-sm"
+                                                        value={field.value || ''}
+                                                        onChange={(e) => field.onChange(e.target.value)}
+                                                    />
                                                 </FormControl>
-                                                <SelectContent className="rounded-xl border-border bg-popover text-popover-foreground">
-                                                    {availableDepartments.map((dept) => (
-                                                        <SelectItem key={dept} value={dept}>
-                                                            {dept}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            )}
                                             <FormMessage />
                                         </FormItem>
                                     )}
@@ -256,16 +286,15 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                     name="workspaceIds"
                                     render={({ field }) => (
                                         <FormItem>
-                                            <FormLabel className="flex items-center gap-1.5 text-xs font-semibold text-foreground">
-                                                <Building2 className="h-3.5 w-3.5 text-muted-foreground" />
-                                                Assigned Workspaces
+                                            <FormLabel className="text-xs font-semibold text-foreground">
+                                                Workspaces
                                             </FormLabel>
                                             <MultiSelect
                                                 options={availableWorkspaces.map((w) => ({ label: w.name, value: w.id }))}
                                                 value={field.value}
                                                 onChange={field.onChange}
                                                 placeholder="Select workspaces..."
-                                                className="rounded-xl border-border bg-background min-h-11 hover:bg-background"
+                                                className="rounded-xl border-border bg-background min-h-10 hover:bg-background text-xs"
                                             />
                                             <FormMessage />
                                         </FormItem>
@@ -278,20 +307,16 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                 name="roles"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel className="flex items-center gap-2 text-xs font-semibold text-foreground">
-                                            <ShieldCheck className="h-3.5 w-3.5 text-secondary" />
-                                            Assigned Role Architecture
+                                        <FormLabel className="text-xs font-semibold text-foreground">
+                                            Roles
                                         </FormLabel>
                                         <MultiSelect
                                             options={roles.map((r) => ({ label: r.name, value: r.id }))}
                                             value={field.value}
                                             onChange={field.onChange}
-                                            placeholder="Select roles for assigned workspace(s)..."
-                                            className="rounded-xl border-border bg-background min-h-11 hover:bg-background"
+                                            placeholder="Select roles..."
+                                            className="rounded-xl border-border bg-background min-h-10 hover:bg-background text-xs"
                                         />
-                                        <p className="text-[11px] text-muted-foreground mt-1.5">
-                                            Roles will be granted across all selected workspaces. You can adjust workspace-specific roles anytime after invitation.
-                                        </p>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -299,11 +324,11 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
 
                             <Separator className="border-border" />
 
-                            <div className="space-y-3">
-                                <FormLabel className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
-                                    <Sparkles className="h-3.5 w-3.5 text-secondary" /> Delivery Channels
+                            <div className="space-y-2.5">
+                                <FormLabel className="text-xs font-semibold text-foreground">
+                                    Send Invite Via
                                 </FormLabel>
-                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div className="grid grid-cols-3 gap-2.5">
                                     <FormField
                                         control={form.control}
                                         name="sendMethods"
@@ -311,7 +336,7 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                             const isChecked = field.value.includes('email');
                                             return (
                                                 <FormItem className={cn(
-                                                    "flex items-center space-x-2.5 space-y-0 p-3.5 rounded-xl border transition-all cursor-pointer",
+                                                    "flex items-center space-x-2 space-y-0 p-3 rounded-xl border transition-all cursor-pointer",
                                                     isChecked 
                                                         ? "border-foreground/40 bg-muted/60 text-foreground font-semibold shadow-xs" 
                                                         : "border-border bg-background text-muted-foreground hover:bg-muted/30 hover:text-foreground"
@@ -325,9 +350,9 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                                             }}
                                                         />
                                                     </FormControl>
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <Mail className="h-4 w-4 shrink-0 text-foreground" />
-                                                        <span className="text-xs font-semibold truncate">Email</span>
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <Mail className="h-3.5 w-3.5 shrink-0 text-foreground" />
+                                                        <span className="text-xs font-medium truncate">Email</span>
                                                     </div>
                                                 </FormItem>
                                             );
@@ -341,7 +366,7 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                             const isDisabled = !form.watch('phone');
                                             return (
                                                 <FormItem className={cn(
-                                                    "flex items-center space-x-2.5 space-y-0 p-3.5 rounded-xl border transition-all",
+                                                    "flex items-center space-x-2 space-y-0 p-3 rounded-xl border transition-all",
                                                     isDisabled 
                                                         ? "opacity-50 cursor-not-allowed border-border bg-muted/10 text-muted-foreground" 
                                                         : isChecked
@@ -358,9 +383,9 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                                             }}
                                                         />
                                                     </FormControl>
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <Phone className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                                        <span className="text-xs font-semibold truncate">SMS</span>
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <Phone className="h-3.5 w-3.5 shrink-0" />
+                                                        <span className="text-xs font-medium truncate">SMS</span>
                                                     </div>
                                                 </FormItem>
                                             );
@@ -374,7 +399,7 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                             const isDisabled = !form.watch('phone');
                                             return (
                                                 <FormItem className={cn(
-                                                    "flex items-center space-x-2.5 space-y-0 p-3.5 rounded-xl border transition-all",
+                                                    "flex items-center space-x-2 space-y-0 p-3 rounded-xl border transition-all",
                                                     isDisabled 
                                                         ? "opacity-50 cursor-not-allowed border-border bg-muted/10 text-muted-foreground" 
                                                         : isChecked
@@ -391,9 +416,9 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                                                             }}
                                                         />
                                                     </FormControl>
-                                                    <div className="flex items-center gap-2 min-w-0">
-                                                        <MessageSquare className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
-                                                        <span className="text-xs font-semibold truncate">WhatsApp</span>
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                        <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                                                        <span className="text-xs font-medium truncate">WhatsApp</span>
                                                     </div>
                                                 </FormItem>
                                             );
@@ -405,11 +430,11 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                     </Form>
                 </div>
 
-                <DialogFooter className="p-6 sm:p-8 py-5 bg-muted/20 border-t border-border gap-3">
+                <DialogFooter className="p-6 py-4 bg-muted/20 border-t border-border gap-2.5">
                     <Button 
                         type="button"
                         variant="outline" 
-                        className="rounded-xl px-5 h-10 text-sm font-medium border-border hover:bg-muted active:scale-[0.97]" 
+                        className="rounded-xl px-4 h-10 text-sm font-medium border-border hover:bg-muted active:scale-[0.97]" 
                         onClick={() => onOpenChange(false)} 
                         disabled={isSubmitting}
                     >
@@ -418,17 +443,15 @@ export default function InviteUserModal({ open, onOpenChange, roles, departments
                     <Button 
                         type="button"
                         onClick={form.handleSubmit(onSubmit)} 
-                        className="rounded-xl px-7 h-10 text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs active:scale-[0.97] transition-all" 
+                        className="rounded-xl px-5 h-10 text-sm font-semibold bg-foreground text-background hover:bg-foreground/90 shadow-xs active:scale-[0.97] transition-all" 
                         disabled={isSubmitting}
                     >
                         {isSubmitting ? (
                             <>
-                                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Dispatching...
+                                <Loader2 className="h-4 w-4 animate-spin mr-2" /> Sending...
                             </>
                         ) : (
-                            <>
-                                <Sparkles className="h-4 w-4 mr-2" /> Launch Invitation
-                            </>
+                            'Send Invite'
                         )}
                     </Button>
                 </DialogFooter>

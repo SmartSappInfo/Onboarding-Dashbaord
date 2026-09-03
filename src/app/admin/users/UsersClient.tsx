@@ -344,17 +344,17 @@ export default function UsersClient() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-foreground flex items-center gap-2">
-            <Users className="w-6 h-6 text-primary" /> People & Workforce Hub
+            <Users className="w-6 h-6 text-primary" /> Users Hub
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Manage organization members, workforce departments, squad teams, and cryptographic invitations
+            Manage team members, departments, and workspace access.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97]">
             <Link href="/admin/users/roles">
-              <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Roles Architecture
+              <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Roles & Permissions
             </Link>
           </Button>
           <Button
@@ -362,7 +362,7 @@ export default function UsersClient() {
             onClick={() => setIsInviteModalOpen(true)}
             className="rounded-xl font-semibold h-10 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-sm"
           >
-            <UserPlus className="w-4 h-4 mr-2" /> Invite Members
+            <UserPlus className="w-4 h-4 mr-2" /> Add User
           </Button>
         </div>
       </div>
@@ -437,7 +437,7 @@ export default function UsersClient() {
                 onClick={() => setIsInviteModalOpen(true)}
                 className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] shadow-sm"
               >
-                <UserPlus className="w-4 h-4 mr-2" /> Invite Member
+                <UserPlus className="w-4 h-4 mr-2" /> Add User
               </Button>
             </div>
           </div>

@@ -17,7 +17,6 @@ import { OnboardingJourneyService } from '@/lib/services/onboarding/onboarding-j
 import { OnboardingInstanceService } from '@/lib/services/onboarding/onboarding-instance-service';
 import { PersonService } from '@/lib/services/identity/person-service';
 import { IdentityMigrationService } from '@/lib/services/identity/identity-migration-service';
-import { DepartmentSeedService } from '@/lib/services/workforce/department-seed-service';
 import type {
   OnboardingJourney,
   OnboardingInstance,
@@ -629,16 +628,6 @@ export async function completeOrganizationOnboardingAction(payload: {
 
       return { success: true, workspaceId: wsRef.id };
     });
-
-    if (result.success) {
-      // Auto-provision industry seed departments for newly configured organization
-      await DepartmentSeedService.seedDepartmentsForOrganization(
-        organizationId,
-        workspace?.industry
-      ).catch((seedErr) => {
-        console.warn(`[completeOrganizationOnboardingAction] Department auto-seed warning for ${organizationId}:`, seedErr);
-      });
-    }
 
     return result;
   } catch (err: unknown) {

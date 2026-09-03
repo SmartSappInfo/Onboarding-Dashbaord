@@ -5,13 +5,26 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallModal } from '@/context/CallModalContext';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
-import { doc, collection, query, where, orderBy, updateDoc, getDoc } from 'firebase/firestore';
+import { doc, collection, query, where, orderBy, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
 import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
 import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Input } from '@/components/ui/input';
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipProvider,
+    TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { 
     ArrowLeft, 
     Calendar, 
@@ -50,12 +63,15 @@ import {
     Save,
     Hash,
     PhoneCall,
+    PhoneForwarded,
     Tag as TagIcon,
     Download,
     BarChart3,
     Handshake,
     ListTodo,
     FileQuestion,
+    Check,
+    ChevronDown,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -207,6 +223,52 @@ export default function EntityDetailPage() {
         return doc(firestore, 'workspace_entities', workspaceEntityId);
     }, [firestore, activeWorkspaceId, entityId]);
     const { data: weData, isLoading: isLoadingWE } = useDoc<WorkspaceEntity>(weDocRef);
+
+    // Inline Entity Name Editing
+    const [isEditingName, setIsEditingName] = React.useState(false);
+    const [nameInput, setNameInput] = React.useState('');
+    const [isSavingName, setIsSavingName] = React.useState(false);
+
+    const handleSaveName = async () => {
+        if (!firestore || !entityId || isSavingName) return;
+        const trimmed = nameInput.trim();
+        const currentName = entityData?.name || weData?.displayName || '';
+        if (!trimmed) {
+            toast({ variant: 'destructive', title: 'Invalid Name', description: 'Entity name cannot be empty.' });
+            return;
+        }
+        if (trimmed === currentName) {
+            setIsEditingName(false);
+            return;
+        }
+
+        setIsSavingName(true);
+        try {
+            const batch = writeBatch(firestore);
+            const entityRef = doc(firestore, 'entities', entityId);
+            batch.update(entityRef, {
+                name: trimmed,
+                updatedAt: new Date().toISOString(),
+            });
+
+            if (activeWorkspaceId) {
+                const weRef = doc(firestore, 'workspace_entities', workspaceEntityId);
+                batch.update(weRef, {
+                    displayName: trimmed,
+                    updatedAt: new Date().toISOString(),
+                });
+            }
+
+            await batch.commit();
+            toast({ title: 'Name Updated', description: `Entity name updated to "${trimmed}".` });
+            setIsEditingName(false);
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'Failed to update entity name.';
+            toast({ variant: 'destructive', title: 'Update Failed', description: msg });
+        } finally {
+            setIsSavingName(false);
+        }
+    };
 
     // Tasks Subscription for this entity
     const tasksQuery = useMemoFirebase(() => {
@@ -390,10 +452,77 @@ export default function EntityDetailPage() {
 
                         <div className="space-y-1.5 flex-1">
                             <div className="flex flex-wrap items-center gap-3">
-                                <h2 className="text-3xl font-bold tracking-tight">{displayName}</h2>
-                                <Badge variant={getStatusBadgeVariant(weData.status)} className="h-6 px-3 text-[10px] font-semibold uppercase">
-                                    {weData.status}
-                                </Badge>
+                                {isEditingName ? (
+                                    <div className="flex items-center gap-1.5 w-full max-w-md">
+                                        <Input
+                                            value={nameInput}
+                                            onChange={(e) => setNameInput(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    e.preventDefault();
+                                                    handleSaveName();
+                                                } else if (e.key === 'Escape') {
+                                                    setIsEditingName(false);
+                                                }
+                                            }}
+                                            autoFocus
+                                            disabled={isSavingName}
+                                            placeholder="Entity name"
+                                            className="h-10 px-3 text-lg md:text-xl font-bold rounded-xl bg-background border-border shadow-2xs text-foreground focus-visible:ring-1 focus-visible:ring-primary"
+                                        />
+                                        <Button
+                                            type="button"
+                                            size="icon"
+                                            disabled={isSavingName || !nameInput.trim()}
+                                            onClick={handleSaveName}
+                                            className="h-10 w-10 shrink-0 rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-2xs active:scale-[0.97]"
+                                            title="Save name (Enter)"
+                                        >
+                                            {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                                        </Button>
+                                        <Button
+                                            type="button"
+                                            variant="ghost"
+                                            size="icon"
+                                            disabled={isSavingName}
+                                            onClick={() => setIsEditingName(false)}
+                                            className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                                            title="Cancel (Esc)"
+                                        >
+                                            <X className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                ) : (
+                                    <div className="flex items-center gap-2.5 flex-wrap">
+                                        <div
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={() => {
+                                                setNameInput(displayName || '');
+                                                setIsEditingName(true);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    setNameInput(displayName || '');
+                                                    setIsEditingName(true);
+                                                }
+                                            }}
+                                            className="group/name flex items-center gap-2 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            title="Click to edit name"
+                                        >
+                                            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground group-hover/name:text-primary transition-colors">
+                                                {displayName}
+                                            </h2>
+                                            <span className="p-1 rounded-md text-muted-foreground/50 group-hover/name:text-foreground group-hover/name:bg-muted/60 transition-all">
+                                                <Pencil className="h-3.5 w-3.5" />
+                                            </span>
+                                        </div>
+                                        <Badge variant={getStatusBadgeVariant(weData.status)} className="h-5 px-2 text-[10px] font-semibold uppercase tracking-wider">
+                                            {weData.status}
+                                        </Badge>
+                                    </div>
+                                )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium">
                                 <span>
@@ -432,32 +561,73 @@ export default function EntityDetailPage() {
                     </div>
 
                     {/* Top Actions */}
-                    <div className="flex items-center gap-3 w-full md:w-auto mt-4 md:mt-0">
-                        {(!weData.isConverted) && (
+                    <TooltipProvider delayDuration={200}>
+                        <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap w-full md:w-auto mt-4 md:mt-0 shrink-0">
+                            {(!weData.isConverted) && (
+                                <Button 
+                                    variant="outline" 
+                                    className="rounded-xl font-semibold h-10 px-4 text-xs md:text-sm bg-primary/10 hover:bg-primary/20 text-primary border-primary/30 shadow-2xs gap-2 active:scale-[0.97]" 
+                                    onClick={() => setConvertModalOpen(true)}
+                                >
+                                    <Zap className="h-4 w-4 text-primary" /> New Deal
+                                </Button>
+                            )}
+
+                            {/* Grouped Call Dropdown */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button 
+                                        variant="outline" 
+                                        className="rounded-xl font-semibold h-10 px-4 text-xs md:text-sm bg-card hover:bg-muted/40 border-border shadow-2xs gap-2 active:scale-[0.97]"
+                                    >
+                                        <PhoneCall className="h-4 w-4 text-indigo-500" />
+                                        <span>Call</span>
+                                        <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl border-border shadow-lg min-w-[175px] p-1">
+                                    <DropdownMenuItem 
+                                        onClick={() => openCallModal({ entityId: params.id as string })}
+                                        className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg py-2"
+                                    >
+                                        <PhoneCall className="h-4 w-4 text-indigo-500" />
+                                        <span>Call Now</span>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                        onClick={() => setIsCampaignDialogOpen(true)}
+                                        className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg py-2"
+                                    >
+                                        <PhoneForwarded className="h-4 w-4 text-indigo-500" />
+                                        <span>Add to Call Campaign</span>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+
+                            {/* Icon-only: Export NTT */}
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Button 
+                                        variant="outline" 
+                                        className="h-10 w-10 p-0 rounded-xl bg-card hover:bg-muted/40 border-border shadow-2xs active:scale-[0.97]" 
+                                        onClick={handleExportNTT}
+                                        aria-label="Export (.ntt)"
+                                    >
+                                        <Download className="h-4 w-4 text-foreground" />
+                                    </Button>
+                                </TooltipTrigger>
+                                <TooltipContent side="bottom" className="text-xs">Export (.ntt)</TooltipContent>
+                            </Tooltip>
+
+                            {/* Primary Action: Edit */}
                             <Button 
-                                variant="outline" 
-                                className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-primary/10 hover:bg-primary/20 text-primary border-primary/30 shadow-sm gap-2" 
-                                onClick={() => setConvertModalOpen(true)}
+                                className="rounded-xl font-semibold h-10 px-4 text-xs md:text-sm shadow-2xs bg-foreground text-background hover:bg-foreground/90 active:scale-[0.97] gap-2" 
+                                onClick={() => router.push(`/admin/entities/${entityId}/edit`)}
                             >
-                                <Zap className="h-4 w-4 text-primary" /> Convert to Deal
+                                <PenSquare className="h-4 w-4" />
+                                <span>Edit</span>
                             </Button>
-                        )}
-                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm" onClick={() => setIsLogModalOpen(true)}>
-                            <MessageSquarePlus className="mr-2 h-4 w-4 text-primary" /> Log
-                        </Button>
-                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={() => setIsCampaignDialogOpen(true)}>
-                            <PhoneCall className="h-4 w-4 text-indigo-500" /> Call Campaign
-                        </Button>
-                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2 text-indigo-700 dark:text-indigo-300 border-indigo-500/30 bg-indigo-500/5 hover:bg-indigo-500/10 transition-colors" onClick={() => openCallModal({ entityId: params.id as string })}>
-                            <PhoneCall className="h-4 w-4 text-indigo-600 dark:text-indigo-400" /> Call Now
-                        </Button>
-                        <Button variant="outline" className="flex-1 md:flex-none rounded-xl font-bold h-11 bg-card/50 backdrop-blur-sm shadow-sm gap-2" onClick={handleExportNTT}>
-                            <Download className="h-4 w-4 text-primary" /> Export (.ntt)
-                        </Button>
-                        <Button className="flex-1 md:flex-none rounded-xl font-bold shadow-md h-11" onClick={() => router.push(`/admin/entities/${entityId}/edit`)}>
-                            <PenSquare className="mr-2 h-4 w-4" /> Edit Profile
-                        </Button>
-                    </div>
+                        </div>
+                    </TooltipProvider>
                 </div>
             </div>
 
@@ -714,8 +884,19 @@ export default function EntityDetailPage() {
 
                  {/* Activity Log */}
                  <Card className="border-none shadow-sm rounded-2xl bg-card overflow-hidden">
-                     <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left">
-                         <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2"><Activity className="h-4 w-4" /> Activity Log</CardTitle>
+                     <CardHeader className="border-b bg-card/20 pb-4 px-6 pt-5 text-left flex flex-row items-center justify-between">
+                         <CardTitle className="text-[10px] font-semibold text-primary flex items-center gap-2">
+                             <Activity className="h-4 w-4" /> Activity Log
+                         </CardTitle>
+                         <Button 
+                             variant="outline" 
+                             size="sm" 
+                             className="h-8 px-3 rounded-xl text-xs font-semibold gap-1.5 border-border active:scale-[0.97]"
+                             onClick={() => setIsLogModalOpen(true)}
+                         >
+                             <MessageSquarePlus className="h-3.5 w-3.5 text-primary" />
+                             <span>Log</span>
+                         </Button>
                      </CardHeader>
                      <CardContent className="p-4 text-left">
                          <ActivityTimeline entityId={entityId} limit={8} />

@@ -28,6 +28,7 @@ import type {
 } from '@/lib/types';
 import { DepartmentService, CreateDepartmentPayload, UpdateDepartmentPayload } from '@/lib/services/workforce/department-service';
 import { DepartmentSeedService, type BackfillSummary } from '@/lib/services/workforce/department-seed-service';
+import { ALL_SEED_DEPARTMENT_NAMES } from '@/lib/constants/seed-departments';
 import { TeamService, CreateTeamPayload, UpdateTeamPayload } from '@/lib/services/workforce/team-service';
 import { InvitationLifecycleService, CreateInvitationPayload } from '@/lib/services/workforce/invitation-lifecycle-service';
 import { InvitationDispatchService } from '@/lib/services/workforce/invitation-dispatch-service';
@@ -180,18 +181,70 @@ export async function listDepartmentsAction(params: {
 }> {
   try {
     await verifyCallerAuth(params.idToken, params.organizationId);
-    let departments = await DepartmentService.listDepartments(params.organizationId);
-    if (departments.length === 0) {
-      // Auto-provision industry seed departments if organization has 0 departments
-      const seedRes = await DepartmentSeedService.seedDepartmentsForOrganization(params.organizationId);
-      if (seedRes.departments && seedRes.departments.length > 0) {
-        departments = seedRes.departments;
-      }
-    }
+    const departments = await DepartmentService.listDepartments(params.organizationId);
     return { success: true, departments };
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : 'Failed to list departments';
     return { success: false, departments: [], error };
+  }
+}
+
+export async function purgeSampleDepartmentsAction(params: {
+  idToken: string;
+  organizationId: string;
+}): Promise<{
+  success: boolean;
+  deletedCount: number;
+  error?: string;
+}> {
+  try {
+    await verifyCallerAuth(params.idToken, params.organizationId);
+
+    const allSeedNames = new Set(
+      ALL_SEED_DEPARTMENT_NAMES.map((name) => name.toLowerCase().trim())
+    );
+
+    const depts = await DepartmentService.listDepartments(params.organizationId);
+    const sampleDeptsToDelete = depts.filter((d) =>
+      allSeedNames.has(d.name.toLowerCase().trim()) && (d.memberCount || 0) === 0
+    );
+
+    let deletedCount = 0;
+    const batch = adminDb.batch();
+
+    for (const dept of sampleDeptsToDelete) {
+      const peopleSnap = await adminDb
+        .collection('people')
+        .where('organizationId', '==', params.organizationId)
+        .where('departmentId', '==', dept.id)
+        .limit(1)
+        .get();
+
+      if (peopleSnap.empty) {
+        batch.delete(adminDb.collection('departments').doc(dept.id));
+        deletedCount++;
+      }
+    }
+
+    // Clean up organization.departments array
+    const remainingDepts = depts.filter(
+      (d) => !sampleDeptsToDelete.some((sd) => sd.id === d.id)
+    );
+    const orgRef = adminDb.collection('organizations').doc(params.organizationId);
+    batch.set(
+      orgRef,
+      {
+        departments: remainingDepts.map((d) => d.name),
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    await batch.commit();
+    return { success: true, deletedCount };
+  } catch (err: unknown) {
+    const error = err instanceof Error ? err.message : 'Failed to purge sample departments';
+    return { success: false, deletedCount: 0, error };
   }
 }
 

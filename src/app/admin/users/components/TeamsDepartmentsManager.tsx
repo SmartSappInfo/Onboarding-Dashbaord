@@ -58,7 +58,9 @@ import {
   deleteDepartmentAction,
   createOrUpdateTeamAction,
   deleteTeamAction,
+  purgeSampleDepartmentsAction,
 } from '@/app/actions/workforce-actions';
+import { ALL_SEED_DEPARTMENT_NAMES } from '@/lib/constants/seed-departments';
 
 interface TeamsDepartmentsManagerProps {
   departments: Department[];
@@ -84,6 +86,45 @@ export function TeamsDepartmentsManager({
 
   const [activeTab, setActiveTab] = React.useState<'departments' | 'teams'>('departments');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [isPurgingSamples, setIsPurgingSamples] = React.useState(false);
+
+  // Detect pre-seeded sample departments
+  const sampleDepartmentIds = React.useMemo(() => {
+    const allSeedNames = new Set(ALL_SEED_DEPARTMENT_NAMES.map((n) => n.toLowerCase().trim()));
+    return departments
+      .filter((d) => allSeedNames.has(d.name.toLowerCase().trim()) && (d.memberCount || 0) === 0)
+      .map((d) => d.id);
+  }, [departments]);
+
+  const handlePurgeSamples = async () => {
+    if (!authUser || !activeOrganizationId) return;
+    const ok = await confirm({
+      title: 'Remove Sample Departments?',
+      description: `This will remove ${sampleDepartmentIds.length} pre-seeded sample department(s) from this organization. Only custom departments will remain.`,
+      confirmText: 'Remove Samples',
+    });
+    if (!ok) return;
+
+    setIsPurgingSamples(true);
+    try {
+      const idToken = await authUser.getIdToken();
+      const res = await purgeSampleDepartmentsAction({ idToken, organizationId: activeOrganizationId });
+      if (res.success) {
+        toast({
+          title: 'Sample Departments Removed',
+          description: `Removed ${res.deletedCount} sample department(s). Only your organization's departments are listed.`,
+        });
+        onRefresh();
+      } else {
+        throw new Error(res.error || 'Failed to purge sample departments');
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Purge failed';
+      toast({ title: 'Operation Failed', description: msg, variant: 'destructive' });
+    } finally {
+      setIsPurgingSamples(false);
+    }
+  };
 
   // Department Modal State
   const [deptModalOpen, setDeptModalOpen] = React.useState(false);
@@ -400,7 +441,7 @@ export function TeamsDepartmentsManager({
               onClick={onOpenInviteModal}
               className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] whitespace-nowrap font-medium"
             >
-              <UserPlus className="w-4 h-4 mr-2 text-primary" /> Invite Member
+              <UserPlus className="w-4 h-4 mr-2 text-primary" /> Add User
             </Button>
           )}
 
@@ -426,7 +467,37 @@ export function TeamsDepartmentsManager({
 
       {/* Tab 1: Departments */}
       {activeTab === 'departments' && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="space-y-4">
+          {sampleDepartmentIds.length > 0 && (
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 bg-muted/40 border border-border rounded-xl text-xs">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Building2 className="w-4 h-4 text-foreground shrink-0" />
+                <span>
+                  {sampleDepartmentIds.length} sample department{sampleDepartmentIds.length > 1 ? 's' : ''} detected in this organization. You can remove them or manage your custom departments.
+                </span>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isPurgingSamples}
+                onClick={handlePurgeSamples}
+                className="h-8 px-3 text-xs font-semibold rounded-lg shrink-0 border-border text-destructive hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+              >
+                {isPurgingSamples ? (
+                  <>
+                    <Loader2 className="w-3 h-3 mr-1.5 animate-spin" /> Removing...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-3 h-3 mr-1.5" /> Remove Sample Departments
+                  </>
+                )}
+              </Button>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Inline Quick Add Card */}
           {!isInlineAddingDept ? (
             <button
@@ -598,7 +669,8 @@ export function TeamsDepartmentsManager({
             </div>
           )}
         </div>
-      )}
+      </div>
+    )}
 
       {/* Tab 2: Teams */}
       {activeTab === 'teams' && (
