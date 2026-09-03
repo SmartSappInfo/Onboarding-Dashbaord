@@ -139,45 +139,48 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
             const data = docSnap.data();
             const isSuperAdminUser = data.permissions?.includes('system_admin') || false;
 
-            // 1. Check if user has completed their profile setup (Bypassed for Superadmins)
-            if (!isSuperAdminUser && (data.profileCompleted === false || !data.profileCompleted)) {
-              setLoaderStatus('success');
-              router.push(profileSetupHref());
-              return;
-            }
-
-            // 1.1 Check if organization is configured (Bypassed for Superadmins)
-            if (!isSuperAdminUser && data.organizationId && data.organizationId !== 'smartsapp-hq') {
-              try {
-                const orgDocRef = doc(firestore, 'organizations', data.organizationId);
-                const orgSnap = await getDoc(orgDocRef);
-                if (orgSnap.exists()) {
-                  const orgData = orgSnap.data();
-                  if (orgData.isConfigured === false) {
-                    setLoaderStatus('success');
-                    router.push('/onboarding/setup');
-                    return;
+            if (!isSuperAdminUser) {
+              // 1. Check if organization is configured (Bypassed for Superadmins)
+              if (data.organizationId && data.organizationId !== 'smartsapp-hq') {
+                try {
+                  const orgDocRef = doc(firestore, 'organizations', data.organizationId);
+                  const orgSnap = await getDoc(orgDocRef);
+                  if (orgSnap.exists()) {
+                    const orgData = orgSnap.data();
+                    if (orgData.isConfigured === false) {
+                      setLoaderStatus('success');
+                      router.push('/onboarding/setup');
+                      return;
+                    }
                   }
+                } catch (orgErr) {
+                  console.error("Error checking organization configuration status:", orgErr);
                 }
-              } catch (orgErr) {
-                console.error("Error checking organization configuration status:", orgErr);
               }
-            }
 
-            // 2. Check authorization (Bypassed for Superadmins)
-            if (!isSuperAdminUser && data.isAuthorized === false) {
-              if (data.approvalStatus === 'pending') {
+              // 2. Profile Setup Guard:
+              // Check if user has completed profile & alerts setup on /profile-setup
+              if (data.profileCompleted === false || !data.profileCompleted) {
                 setLoaderStatus('success');
-                router.push('/awaiting-approval');
+                router.push(profileSetupHref());
                 return;
-              } else {
-                setLoaderStatus('failed');
-                toast({ variant: "destructive", title: 'Authorization Required', description: 'Access restricted to approved personnel.' });
-                setTimeout(() => { 
-                  auth.signOut(); 
-                  router.push('/login'); 
-                }, 1500);
-                return;
+              }
+
+              // 4. Check authorization (Bypassed for Superadmins)
+              if (data.isAuthorized === false) {
+                if (data.approvalStatus === 'pending') {
+                  setLoaderStatus('success');
+                  router.push('/awaiting-approval');
+                  return;
+                } else {
+                  setLoaderStatus('failed');
+                  toast({ variant: "destructive", title: 'Authorization Required', description: 'Access restricted to approved personnel.' });
+                  setTimeout(() => { 
+                    auth.signOut(); 
+                    router.push('/login'); 
+                  }, 1500);
+                  return;
+                }
               }
             }
 

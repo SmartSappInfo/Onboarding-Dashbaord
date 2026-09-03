@@ -88,15 +88,15 @@ export function MultiSelect({
                   const option = options.find((o) => o.value === val);
                   return (
                     <Badge
-                      variant="secondary"
+                      variant="outline"
                       key={val}
-                      className="mr-1 mb-1 font-bold text-[10px] uppercase tracking-tighter rounded-sm animate-in fade-in zoom-in-95"
+                      className="mr-1 mb-1 font-medium text-xs rounded-md bg-muted text-foreground border border-border px-2 py-0.5 inline-flex items-center gap-1 animate-in fade-in zoom-in-95"
                     >
                       {option?.label || val}
                       <span
                         role="button"
                         tabIndex={0}
-                        className="ml-1 rounded-full outline-none ring-offset-background focus:ring-2 focus:ring-ring focus:ring-offset-2 cursor-pointer opacity-60 hover:opacity-100 transition-opacity"
+                        className="ml-1 rounded-sm outline-none ring-offset-background focus:ring-1 focus:ring-ring cursor-pointer opacity-70 hover:opacity-100 transition-opacity"
                         onMouseDown={(e) => {
                           e.preventDefault();
                           e.stopPropagation();
@@ -113,7 +113,7 @@ export function MultiSelect({
                           }
                         }}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-3 w-3 text-muted-foreground hover:text-foreground" />
                       </span>
                     </Badge>
                   );

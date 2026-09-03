@@ -220,22 +220,20 @@ export default function RolesClient() {
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => setIsSimulatorOpen(true)}
-            className="rounded-lg font-semibold h-9 px-3.5 border-border hover:bg-muted/50 text-foreground text-xs active:scale-[0.97]"
+            className="rounded-xl font-medium h-10 px-4 border-border hover:bg-muted text-foreground text-sm active:scale-[0.97]"
           >
-            <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" /> Access Simulator
+            <Sparkles className="h-4 w-4 mr-2 text-primary" /> Access Simulator
           </Button>
           <Button
             type="button"
-            size="sm"
             onClick={() => {
               setEditingRole(null);
               setIsRoleBuilderOpen(true);
             }}
-            className="rounded-lg font-semibold h-9 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-xs"
+            className="rounded-xl font-semibold h-10 px-4 shadow-sm active:scale-[0.97] text-sm"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" /> New Role Blueprint
+            <Plus className="h-4 w-4 mr-1.5" /> New Role Blueprint
           </Button>
         </div>
       </div>
@@ -243,10 +241,16 @@ export default function RolesClient() {
       {/* Main Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'roles' | 'matrix')}>
         <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="roles" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="roles"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Layers className="w-3.5 h-3.5 mr-1.5" /> Roles & Blueprints ({allRolesList.length})
           </TabsTrigger>
-          <TabsTrigger value="matrix" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="matrix"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Grid3X3 className="w-3.5 h-3.5 mr-1.5" /> Permission Matrix Explorer
           </TabsTrigger>
         </TabsList>

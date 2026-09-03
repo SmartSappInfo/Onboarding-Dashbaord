@@ -163,7 +163,7 @@ export function WorkforceAiClient() {
         <div className="flex items-center gap-2.5 flex-wrap">
           <Button asChild variant="outline" size="sm" className="rounded-lg h-9 px-3.5 text-xs font-semibold active:scale-[0.97]">
             <Link href="/admin/users">
-              <Users className="h-3.5 w-3.5 mr-1.5 text-primary" /> People Hub
+              <Users className="h-3.5 w-3.5 mr-1.5 text-primary" /> Users Hub
             </Link>
           </Button>
 

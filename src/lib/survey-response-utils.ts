@@ -11,6 +11,7 @@ import type {
   SurveyQuestion,
   OnlinePresence,
   IndustryVertical,
+  SurveyEntityMapping,
 } from './types';
 import type { ResolvedContact } from './contact-adapter';
 
@@ -126,6 +127,15 @@ export const ONLINE_PRESENCE_MAP: Record<string, keyof OnlinePresence> = {
   gmb: 'googleBusinessProfile',
 };
 
+const GENERIC_CHOICE_SET = new Set([
+  'yes', 'no', 'later', 'maybe', 'agree', 'disagree', 
+  'strongly agree', 'strongly disagree', 'neutral',
+  'true', 'false', 'option 1', 'option 2', 'option 3', 'option 4', 'option 5',
+  'select', 'none', 'n/a', 'na', 'not applicable', 'other', '__other__',
+  'undefined', 'null', '[placeholder]', 'unknown', 'anonymous',
+  'submit', 'continue', 'next', 'back', 'cancel'
+]);
+
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Universal Generic Choice Guard.
@@ -139,15 +149,7 @@ export function isGenericChoiceValue(val: unknown): boolean {
   const trimmed = val.trim().toLowerCase();
   if (!trimmed) return true;
 
-  const genericChoices = new Set([
-    'yes', 'no', 'later', 'maybe', 'agree', 'disagree', 
-    'strongly agree', 'strongly disagree', 'neutral',
-    'true', 'false', 'option 1', 'option 2', 'option 3', 'option 4', 'option 5',
-    'select', 'none', 'n/a', 'na', 'not applicable', 'other', '__other__',
-    'undefined', 'null', '[placeholder]', 'unknown', 'anonymous',
-    'submit', 'continue', 'next', 'back', 'cancel'
-  ]);
-  if (genericChoices.has(trimmed)) return true;
+  if (GENERIC_CHOICE_SET.has(trimmed)) return true;
 
   // Reject standalone numeric scores, small rating scales (e.g. "1", "5", "10", "5/5", "10/10"), or single option letters ("a" to "e")
   if (/^(\d{1,2}(\/\d{1,2})?|[a-e])$/i.test(trimmed)) return true;
@@ -193,6 +195,11 @@ export interface ExtractedContactDetails {
   roleOrTitle?: string;
 }
 
+const CHOICE_QUESTION_TYPES = new Set([
+  'multiple-choice', 'single_choice', 'dropdown', 'checkboxes',
+  'yes-no', 'rating', 'ranking', 'matrix', 'slider', 'nps', 'ces', 'consent'
+]);
+
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * ZERO-GUESSING ENTITY & CONTACT RESOLVER:
@@ -209,10 +216,19 @@ export interface ExtractedContactDetails {
 export function extractResponseContactDetails(
   response: SurveyResponse,
   contact?: ResolvedContact | null,
-  _surveyQuestions?: Array<SurveyElement | SurveyQuestion | { id: string; title?: string; type?: string }>
+  surveyQuestions?: Array<SurveyElement | SurveyQuestion | { id: string; title?: string; type?: string; variableName?: string; fieldKey?: string; key?: string }>,
+  surveyEntityMapping?: SurveyEntityMapping
 ): ExtractedContactDetails {
-  const vars = (response as unknown as { variables?: Record<string, unknown> }).variables || {};
-  const lead = (response as unknown as { leadDetails?: Record<string, unknown> }).leadDetails || {};
+  const vars = response.variables || {};
+  const lead = response.leadDetails || {};
+  const answers = response.answers || [];
+
+  // Helper to get answer value by questionId
+  const getAnswer = (qId?: string): unknown => {
+    if (!qId) return undefined;
+    const found = answers.find((a) => a.questionId === qId);
+    return found ? found.value : undefined;
+  };
 
   // Helper to validate email format
   const isValidEmail = (val: unknown): string => {
@@ -235,11 +251,53 @@ export function extractResponseContactDetails(
     return !isGenericChoiceValue(trimmed) ? trimmed : '';
   };
 
-  // 1. Entity / School Name (Strict Explicit Resolution Only - Zero Guessing)
+  // Helper to find answer from question matching criteria (Zero-guessing: choice questions excluded)
+  const findAnswerByQuestion = (
+    titlePattern: RegExp,
+    variablePattern?: RegExp,
+    typePattern?: RegExp,
+    allowChoiceTypes: boolean = false
+  ): unknown => {
+    if (!surveyQuestions || surveyQuestions.length === 0) return undefined;
+    for (const q of surveyQuestions) {
+      const qType = ('type' in q && typeof q.type === 'string') ? q.type.trim().toLowerCase() : '';
+      if (!allowChoiceTypes && CHOICE_QUESTION_TYPES.has(qType)) {
+        continue;
+      }
+
+      const qTitle = ('title' in q && typeof q.title === 'string') ? q.title.trim() : '';
+      const qVar = (
+        ('variableName' in q && typeof q.variableName === 'string' ? q.variableName : '') ||
+        ('fieldKey' in q && typeof q.fieldKey === 'string' ? q.fieldKey : '') ||
+        ('key' in q && typeof q.key === 'string' ? q.key : '')
+      ).trim();
+
+      const isTypeMatch = typePattern ? typePattern.test(qType) : false;
+      const isVarMatch = variablePattern && qVar ? variablePattern.test(qVar) : false;
+      const isTitleMatch = qTitle ? titlePattern.test(qTitle) : false;
+
+      if (isTypeMatch || isVarMatch || isTitleMatch) {
+        const ans = getAnswer(q.id);
+        if (ans !== undefined && ans !== null && ans !== '') {
+          return ans;
+        }
+      }
+    }
+    return undefined;
+  };
+
+  // 1. Entity / School Name (Linked CRM -> Snapshot -> Lead -> Mapped Field -> Question -> Variables)
   const candidateEntityNames: unknown[] = [
     contact?.name,
     response.entityName,
     lead.company,
+    lead.organization,
+    lead.entityName,
+    getAnswer(surveyEntityMapping?.entityNameFieldId),
+    findAnswerByQuestion(
+      /^(school|institution|company|organization|entity)(\s*[\/\-&]\s*(school|institution|company|organization|entity))?(\s*name)?$/i,
+      /^(entity_name|school_name|company|organization|institution|company_name|entityName|schoolName)$/i
+    ),
     vars.entity_name,
     vars.school_name,
     vars.organization_name,
@@ -256,15 +314,28 @@ export function extractResponseContactDetails(
     }
   }
 
-  // 2. Primary Contact Person Name (Strict Explicit Resolution Only)
+  // 2. Primary Contact Person Name (Linked CRM Primary/First -> Snapshot -> Lead -> Mapped Field -> Question -> Variables)
+  const primaryEntityContact = contact?.entityContacts?.find((c) => c.isPrimary) || contact?.entityContacts?.[0];
+
   const candidateContactNames: unknown[] = [
     contact?.primaryContactName,
+    primaryEntityContact?.name,
     response.respondentName,
     lead.name,
+    lead.contactName,
+    lead.fullName,
+    getAnswer(surveyEntityMapping?.contactNameFieldId),
+    findAnswerByQuestion(
+      /^(your\s*)?(full\s*name|respondent\s*name|contact\s*(person('?s)?\s*)?name|contact\s*person|name)(\s*[\/\-&]\s*(full\s*name|respondent\s*name|contact\s*person|name))?$/i,
+      /^(contact_name|respondent_name|full_name|name|contactName|respondentName|fullName)$/i,
+      /^(contact_name|name)$/i
+    ),
     vars.contact_name,
     vars.respondent_name,
     vars.name,
     vars.fullName,
+    vars.contactName,
+    vars.respondentName,
   ];
 
   let primaryContactName = '';
@@ -276,11 +347,21 @@ export function extractResponseContactDetails(
     }
   }
 
-  // 3. Primary Contact Email
+  // 3. Primary Contact Email (Linked CRM -> Snapshot -> Lead -> Mapped Field -> Question -> Variables)
+  const rawContactEmail = response.contactEmail || response.respondentEmail;
+
   const candidateEmails: unknown[] = [
     contact?.primaryContactEmail,
-    response.contactEmail,
+    primaryEntityContact?.email,
+    rawContactEmail,
     lead.email,
+    lead.contactEmail,
+    getAnswer(surveyEntityMapping?.contactEmailFieldId),
+    findAnswerByQuestion(
+      /^(your\s*)?(contact\s*)?(email(\s*address)?)$/i,
+      /^(email|contact_email|respondent_email|contactEmail|respondentEmail)$/i,
+      /^email$/i
+    ),
     vars.contact_email,
     vars.email,
     vars.respondent_email,
@@ -295,12 +376,22 @@ export function extractResponseContactDetails(
     }
   }
 
-  // 4. Primary Contact Phone
-  const rawContactPhone = (response as unknown as { contactPhone?: string }).contactPhone;
+  // 4. Primary Contact Phone (Linked CRM -> Snapshot -> Lead -> Mapped Field -> Question -> Variables)
+  const rawContactPhone = response.contactPhone || response.respondentPhone;
+
   const candidatePhones: unknown[] = [
     contact?.primaryContactPhone,
+    primaryEntityContact?.phone,
     rawContactPhone,
     lead.phone,
+    lead.contactPhone,
+    lead.phoneNumber,
+    getAnswer(surveyEntityMapping?.contactPhoneFieldId),
+    findAnswerByQuestion(
+      /^(your\s*)?(contact\s*)?(phone(\s*number)?|mobile(\s*number)?|telephone|whatsapp(\s*number)?)$/i,
+      /^(phone|contact_phone|respondent_phone|mobile|contactPhone|respondentPhone)$/i,
+      /^phone$/i
+    ),
     vars.contact_phone,
     vars.phone,
     vars.respondent_phone,
@@ -315,15 +406,42 @@ export function extractResponseContactDetails(
     }
   }
 
-  // 5. Role or Title
-  const primaryEntityContact = contact?.entityContacts?.find((c) => c.isPrimary);
-  const roleOrTitle = primaryEntityContact?.typeLabel || 
-    getNonGenericString(lead.role) ||
-    getNonGenericString(vars.role) || 
-    getNonGenericString(vars.title) || 
-    undefined;
+  // 5. Role or Title (Linked CRM -> Snapshot -> Lead -> Mapped Field -> Question -> Variables)
+  const mappedRoleMapping = surveyEntityMapping?.additionalMappings?.find(
+    (m) => /^(role|title|designation|contacts?\.role|person\.role)$/i.test(m.targetField)
+  );
 
-  const isLiveCrm = Boolean(response.entityId && contact);
+  const candidateRoles: unknown[] = [
+    primaryEntityContact?.typeLabel,
+    primaryEntityContact?.typeKey,
+    response.role,
+    response.roleOrTitle,
+    lead.role,
+    lead.title,
+    lead.position,
+    lead.jobTitle,
+    getAnswer(mappedRoleMapping?.questionId),
+    findAnswerByQuestion(
+      /^(your\s*)?(role|job\s*title|position|designation)(\s*[\/\-&]\s*(role|job\s*title|position|designation))?$/i,
+      /^(role|title|job_title|position|designation|jobTitle)$/i
+    ),
+    vars.role,
+    vars.title,
+    vars.job_title,
+    vars.position,
+    vars.designation,
+  ];
+
+  let roleOrTitle: string | undefined = undefined;
+  for (const cand of candidateRoles) {
+    const clean = getNonGenericString(cand);
+    if (clean) {
+      roleOrTitle = clean;
+      break;
+    }
+  }
+
+  const isLiveCrm = Boolean(response.entityId && (contact || response.entityId));
 
   return {
     entityName,

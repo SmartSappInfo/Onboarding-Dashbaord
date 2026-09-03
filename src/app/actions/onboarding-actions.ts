@@ -365,7 +365,7 @@ export async function submitOnboardingProfileAction(payload: {
     inApp: boolean;
     push: boolean;
   };
-}): Promise<{ success: boolean; error?: string }> {
+}): Promise<{ success: boolean; isAuthorized?: boolean; isConfigured?: boolean; error?: string }> {
   try {
     const { userId, name, phone, department, organizationId, notificationPreferences } = payload;
     if (!userId) throw new Error('User ID is required');
@@ -382,16 +382,37 @@ export async function submitOnboardingProfileAction(payload: {
     const existingUserDoc = await userDocRef.get();
     const existingData = existingUserDoc.exists ? existingUserDoc.data() || {} : {};
 
+    // Check if organization is configured
+    let isConfigured = true;
+    try {
+      const orgCol = adminDb.collection('organizations');
+      if (orgCol && typeof orgCol.doc === 'function') {
+        const orgDoc = await orgCol.doc(organizationId).get();
+        if (orgDoc && orgDoc.exists) {
+          isConfigured = orgDoc.data()?.isConfigured !== false;
+        }
+      }
+    } catch {
+      // Default to isConfigured = true on lookup failure
+    }
+
+    // Invited members are pre-authorized (isAuthorized === true or approvalStatus === 'approved')
+    const isPreAuthorized = existingData.isAuthorized === true || existingData.approvalStatus === 'approved';
+
     const updatePayload = {
       id: userId,
       name: name || existingData.name || '',
       phone: phone || existingData.phone || '',
       department: department || existingData.department || 'General',
       organizationId,
-      workspaceIds: workspaceIds.length > 0 ? workspaceIds : (existingData.workspaceIds || []),
+      workspaceIds: (existingData.workspaceIds && Array.isArray(existingData.workspaceIds) && existingData.workspaceIds.length > 0)
+        ? existingData.workspaceIds
+        : (workspaceIds.length > 0 ? workspaceIds : []),
       profileCompleted: true,
-      isAuthorized: existingData.isAuthorized ?? false,
-      approvalStatus: existingData.approvalStatus || 'pending',
+      onboardingCompleted: true,
+      onboardingStatus: 'completed',
+      isAuthorized: isPreAuthorized ? true : false,
+      approvalStatus: isPreAuthorized ? 'approved' : 'pending',
       notificationPreferences: notificationPreferences || existingData.notificationPreferences || {
         email: true,
         sms: false,
@@ -410,7 +431,7 @@ export async function submitOnboardingProfileAction(payload: {
       console.warn('[submitOnboardingProfileAction] Person sync warning:', syncErr);
     }
 
-    return { success: true };
+    return { success: true, isAuthorized: isPreAuthorized, isConfigured };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to save profile';
     return { success: false, error: msg };

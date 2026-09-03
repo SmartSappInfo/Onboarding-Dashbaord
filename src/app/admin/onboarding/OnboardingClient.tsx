@@ -110,33 +110,41 @@ export function OnboardingClient() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button asChild variant="outline" size="sm" className="rounded-lg h-9 px-3.5 text-xs font-semibold active:scale-[0.97]">
+          <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97]">
             <Link href="/admin/users">
-              <Users className="h-3.5 w-3.5 mr-1.5 text-primary" /> People & Workforce Hub
+              <Users className="h-4 w-4 mr-2 text-primary" /> People & Workforce Hub
             </Link>
           </Button>
 
           <Button
             type="button"
-            size="sm"
             onClick={handleOpenCreate}
-            className="rounded-lg font-semibold h-9 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-xs"
+            className="rounded-xl font-semibold h-10 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-sm"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" /> Create Journey Blueprint
+            <Plus className="h-4 w-4 mr-2" /> Create Journey Blueprint
           </Button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'library' | 'active' | 'analytics')}>
-        <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="library" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
-            <Layers className="w-3.5 h-3.5 mr-1.5" /> Journey Library ({journeys.length})
+        <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
+          <TabsTrigger
+            value="library"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
+            <Layers className="w-3.5 h-3.5 mr-1.5" /> Journey Blueprint Library ({journeys.length})
           </TabsTrigger>
-          <TabsTrigger value="active" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="active"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Users className="w-3.5 h-3.5 mr-1.5" /> Active Onboarding Queue ({instances.length})
           </TabsTrigger>
-          <TabsTrigger value="analytics" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="analytics"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <BarChart3 className="w-3.5 h-3.5 mr-1.5" /> Analytics & SLAs
           </TabsTrigger>
         </TabsList>

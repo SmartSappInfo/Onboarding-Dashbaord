@@ -181,12 +181,11 @@ export function AccessRequestsManager({ onRefreshParent }: AccessRequestsManager
         <Button
           type="button"
           variant="outline"
-          size="sm"
           onClick={loadRequests}
           disabled={isLoading}
-          className="text-xs h-8 px-3 active:scale-[0.97]"
+          className="text-sm h-10 px-4 rounded-xl font-medium active:scale-[0.97]"
         >
-          <RefreshCw className={cn('w-3.5 h-3.5 mr-1.5', isLoading && 'animate-spin')} /> Refresh
+          <RefreshCw className={cn('w-4 h-4 mr-2', isLoading && 'animate-spin')} /> Refresh
         </Button>
       </div>
 

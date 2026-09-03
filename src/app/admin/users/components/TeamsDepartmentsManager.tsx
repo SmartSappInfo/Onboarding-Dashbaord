@@ -366,24 +366,30 @@ export function TeamsDepartmentsManager({
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border">
         <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'departments' | 'teams')}>
-          <TabsList className="h-9 bg-muted/40 p-0.5">
-            <TabsTrigger value="departments" className="text-xs px-3 h-8">
+          <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
+            <TabsTrigger
+              value="departments"
+              className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
               <Building2 className="w-3.5 h-3.5 mr-1.5" /> Departments ({departments.length})
             </TabsTrigger>
-            <TabsTrigger value="teams" className="text-xs px-3 h-8">
+            <TabsTrigger
+              value="teams"
+              className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+            >
               <Users className="w-3.5 h-3.5 mr-1.5" /> Teams ({teams.length})
             </TabsTrigger>
           </TabsList>
         </Tabs>
 
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
-          <div className="relative w-full sm:w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8.5 text-xs bg-muted/20 border-border"
+              className="pl-9.5 pr-4 h-10 text-sm rounded-xl bg-background border-border"
             />
           </div>
 
@@ -391,31 +397,28 @@ export function TeamsDepartmentsManager({
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={onOpenInviteModal}
-              className="text-xs h-8.5 px-3 active:scale-[0.97] whitespace-nowrap"
+              className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] whitespace-nowrap font-medium"
             >
-              <UserPlus className="w-3.5 h-3.5 mr-1.5 text-primary" /> Invite Member
+              <UserPlus className="w-4 h-4 mr-2 text-primary" /> Invite Member
             </Button>
           )}
 
           {activeTab === 'departments' ? (
             <Button
               type="button"
-              size="sm"
               onClick={() => handleOpenDeptModal()}
-              className="text-xs h-8.5 px-3 font-semibold active:scale-[0.97] whitespace-nowrap"
+              className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] whitespace-nowrap shadow-sm"
             >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Department
+              <Plus className="w-4 h-4 mr-1.5" /> Add Department
             </Button>
           ) : (
             <Button
               type="button"
-              size="sm"
               onClick={() => handleOpenTeamModal()}
-              className="text-xs h-8.5 px-3 font-semibold active:scale-[0.97] whitespace-nowrap"
+              className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] whitespace-nowrap shadow-sm"
             >
-              <Plus className="w-3.5 h-3.5 mr-1" /> Add Team
+              <Plus className="w-4 h-4 mr-1.5" /> Add Team
             </Button>
           )}
         </div>

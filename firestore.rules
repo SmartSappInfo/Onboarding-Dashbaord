@@ -189,7 +189,10 @@ service cloud.firestore {
       // onboarding wizard and guards before they are authorized/approved.
       allow get: if isSignedIn() && (request.auth.uid == userId || isSystemAdmin() || isAuthorized());
       allow list: if isSignedIn() && (isSystemAdmin() || isAuthorized());
-      allow update: if isSignedIn() && isSystemAdmin();
+      allow update: if isSignedIn() && (
+        isSystemAdmin() ||
+        (request.auth.uid == userId && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['requiresPasswordReset', 'updatedAt']) && request.resource.data.requiresPasswordReset == false)
+      );
       allow create: if isSignedIn() && request.auth.uid == userId;
     }
 

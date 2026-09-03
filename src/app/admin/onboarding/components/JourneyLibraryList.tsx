@@ -164,27 +164,25 @@ export function JourneyLibraryList({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {journeys.length === 0 && (
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={handleSeedDefaults}
               disabled={isSeeding}
-              className="text-xs h-8.5 px-3 active:scale-[0.97]"
+              className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium"
             >
-              <Sparkles className="w-3.5 h-3.5 mr-1.5 text-amber-500" /> Seed Canonical Presets
+              <Sparkles className="w-4 h-4 mr-2 text-amber-500" /> Seed Canonical Presets
             </Button>
           )}
 
           <Button
             type="button"
-            size="sm"
             onClick={onOpenCreateModal}
-            className="text-xs h-8.5 px-3.5 font-semibold active:scale-[0.97]"
+            className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Create Journey
+            <Plus className="w-4 h-4 mr-1.5" /> Create Journey
           </Button>
         </div>
       </div>

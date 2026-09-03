@@ -30,6 +30,7 @@ import { DepartmentService, CreateDepartmentPayload, UpdateDepartmentPayload } f
 import { DepartmentSeedService, type BackfillSummary } from '@/lib/services/workforce/department-seed-service';
 import { TeamService, CreateTeamPayload, UpdateTeamPayload } from '@/lib/services/workforce/team-service';
 import { InvitationLifecycleService, CreateInvitationPayload } from '@/lib/services/workforce/invitation-lifecycle-service';
+import { InvitationDispatchService } from '@/lib/services/workforce/invitation-dispatch-service';
 import { AccessRequestService, SubmitAccessRequestPayload } from '@/lib/services/workforce/access-request-service';
 import { BulkWorkforceService, BulkActionPayload } from '@/lib/services/workforce/bulk-workforce-service';
 
@@ -301,12 +302,14 @@ export async function listTeamsAction(params: {
 export async function dispatchInvitationsAction(params: {
   idToken: string;
   organizationId: string;
+  baseUrl?: string;
   invites: CreateInvitationPayload[];
 }): Promise<{
   success: boolean;
   dispatchedCount: number;
   results: Array<{ email: string; rawToken: string; invitationId: string }>;
   errors: Array<{ email: string; error: string }>;
+  warnings?: string[];
 }> {
   try {
     const caller = await verifyCallerAuth(params.idToken, params.organizationId);
@@ -316,6 +319,7 @@ export async function dispatchInvitationsAction(params: {
 
     const results: Array<{ email: string; rawToken: string; invitationId: string }> = [];
     const errors: Array<{ email: string; error: string }> = [];
+    const allWarnings: string[] = [];
 
     for (const invitePayload of params.invites) {
       try {
@@ -326,6 +330,25 @@ export async function dispatchInvitationsAction(params: {
             invitedBy: caller.uid,
           }
         );
+
+        // Multi-channel dispatch (Email, SMS, WhatsApp)
+        const dispatchResult = await InvitationDispatchService.dispatch({
+          invitationId: invitation.id,
+          organizationId: params.organizationId,
+          email: invitation.email,
+          invitedPersonName: invitation.invitedPersonName,
+          phone: invitation.phone,
+          rawToken,
+          workspaceName: invitation.workspaceName,
+          roleNames: invitation.roleNames,
+          channels: invitePayload.channels || ['email'],
+          baseUrl: params.baseUrl,
+        });
+
+        if (dispatchResult.warnings.length > 0) {
+          allWarnings.push(...dispatchResult.warnings);
+        }
+
         results.push({ email: invitation.email, rawToken, invitationId: invitation.id });
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Failed to create invite';
@@ -338,6 +361,7 @@ export async function dispatchInvitationsAction(params: {
       dispatchedCount: results.length,
       results,
       errors,
+      warnings: allWarnings.length > 0 ? allWarnings : undefined,
     };
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : 'Failed to dispatch invitations';
@@ -354,10 +378,13 @@ export async function resendInvitationAction(params: {
   idToken: string;
   organizationId: string;
   invitationId: string;
+  channels?: ('email' | 'sms' | 'whatsapp')[];
+  baseUrl?: string;
 }): Promise<{
   success: boolean;
   rawToken?: string;
   expiresAt?: string;
+  warnings?: string[];
   error?: string;
 }> {
   try {
@@ -370,7 +397,37 @@ export async function resendInvitationAction(params: {
       params.organizationId,
       params.invitationId
     );
-    return { success: true, rawToken: res.rawToken, expiresAt: res.expiresAt };
+
+    // Re-dispatch notification over requested or existing channels
+    const invSnap = await adminDb.collection('invitations').doc(params.invitationId).get();
+    let warnings: string[] = [];
+
+    if (invSnap.exists) {
+      const invData = invSnap.data();
+      const channelsToUse = params.channels || (Object.keys(invData?.channels || { email: true }) as ('email' | 'sms' | 'whatsapp')[]);
+
+      const dispatchResult = await InvitationDispatchService.dispatch({
+        invitationId: params.invitationId,
+        organizationId: params.organizationId,
+        email: invData?.email,
+        invitedPersonName: invData?.invitedPersonName,
+        phone: invData?.phone,
+        rawToken: res.rawToken,
+        workspaceName: invData?.workspaceName,
+        roleNames: invData?.roleNames,
+        channels: channelsToUse,
+        baseUrl: params.baseUrl,
+      });
+
+      warnings = dispatchResult.warnings;
+    }
+
+    return {
+      success: true,
+      rawToken: res.rawToken,
+      expiresAt: res.expiresAt,
+      warnings: warnings.length > 0 ? warnings : undefined,
+    };
   } catch (err: unknown) {
     const error = err instanceof Error ? err.message : 'Failed to resend invitation';
     return { success: false, error };

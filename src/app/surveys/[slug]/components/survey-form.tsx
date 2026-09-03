@@ -2341,37 +2341,56 @@ export default function SurveyForm({
                     additionalMappings.some(m => m.questionId === q.id && (m.targetField === 'contacts.email' || m.targetField === 'email'));
                 const isExplicitPhoneMapped = entityMapping.contactPhoneFieldId === q.id ||
                     additionalMappings.some(m => m.questionId === q.id && (m.targetField === 'contacts.phone' || m.targetField === 'phone'));
+                const isExplicitRoleMapped = additionalMappings.some(m => m.questionId === q.id && /^(role|title|designation|contacts?\.role|person\.role)$/i.test(m.targetField));
 
                 const isNonGenericVal = !isGenericChoiceValue(resolvedVal);
                 const qType = (q.type || '').toLowerCase();
                 const qVar = (q.variableName || q.fieldKey || '').toLowerCase();
+                const qTitle = (q.title || '').trim();
 
-                // 1. Explicit Contact Name
-                if ((isExplicitContactNameMapped || qType === 'contact_name' || qVar === 'contact_name' || qVar === 'respondent_name') && isNonGenericVal) {
+                const isNameMatch = isExplicitContactNameMapped || qType === 'contact_name' || qVar === 'contact_name' || qVar === 'respondent_name' ||
+                    /^(full\s*name|respondent\s*name|contact\s*(person('?s)?\s*)?name|your\s*name|contact\s*person|name)$/i.test(qTitle);
+                const isPhoneMatch = isExplicitPhoneMapped || qType === 'phone' || qType === 'contact_phone' || qVar === 'phone' || qVar === 'contact_phone' ||
+                    /^(phone(\s*number)?|mobile(\s*number)?|telephone|whatsapp(\s*number)?|contact\s*phone)$/i.test(qTitle);
+                const isEmailMatch = isExplicitEmailMapped || qType === 'email' || qType === 'contact_email' || qVar === 'email' || qVar === 'contact_email' ||
+                    /^(email(\s*address)?|your\s*email|contact\s*email)$/i.test(qTitle);
+                const isEntityMatch = isExplicitEntityMapped || qType === 'entity_name' || qType === 'school_name' || qVar === 'entity_name' || qVar === 'school_name' ||
+                    /^(school(\s*name)?|institution(\s*name)?|company(\s*name)?|organization(\s*name)?|entity\s*name)$/i.test(qTitle);
+                const isRoleMatch = isExplicitRoleMapped || qVar === 'role' || qVar === 'title' || qVar === 'job_title' ||
+                    /^(role|job\s*title|position|designation|your\s*role|your\s*designation)$/i.test(qTitle);
+
+                // 1. Explicit / Detected Contact Name
+                if (isNameMatch && isNonGenericVal && qType !== 'single_choice' && qType !== 'multiple-choice' && qType !== 'checkboxes') {
                     variables.contact_name = resolvedVal;
                     variables.respondent_name = resolvedVal;
                     variables.respondentName = resolvedVal;
                 }
 
-                // 2. Explicit Phone
-                if ((isExplicitPhoneMapped || qType === 'phone' || qType === 'contact_phone' || qVar === 'phone' || qVar === 'contact_phone') && isNonGenericVal && /\d/.test(resolvedVal)) {
+                // 2. Explicit / Detected Phone
+                if (isPhoneMatch && isNonGenericVal && /\d/.test(resolvedVal)) {
                     variables.contact_phone = resolvedVal;
                     variables.respondent_phone = resolvedVal;
                     variables.phone = resolvedVal;
                 }
 
-                // 3. Explicit Email
-                if ((isExplicitEmailMapped || qType === 'email' || qType === 'contact_email' || qVar === 'email' || qVar === 'contact_email') && isNonGenericVal && resolvedVal.includes('@')) {
+                // 3. Explicit / Detected Email
+                if (isEmailMatch && isNonGenericVal && resolvedVal.includes('@')) {
                     variables.contact_email = resolvedVal;
                     variables.respondent_email = resolvedVal;
                     variables.email = resolvedVal;
                 }
 
-                // 4. Explicit Entity / School Name
-                if ((isExplicitEntityMapped || qType === 'entity_name' || qType === 'school_name' || qVar === 'entity_name' || qVar === 'school_name') && isNonGenericVal) {
+                // 4. Explicit / Detected Entity / School Name
+                if (isEntityMatch && isNonGenericVal && qType !== 'single_choice' && qType !== 'multiple-choice' && qType !== 'checkboxes') {
                     variables.entity_name = resolvedVal;
                     variables.school_name = resolvedVal;
                     variables.q_entity_name_input = resolvedVal;
+                }
+
+                // 5. Explicit / Detected Role / Title
+                if (isRoleMatch && isNonGenericVal) {
+                    variables.role = resolvedVal;
+                    variables.title = resolvedVal;
                 }
             }
         });
@@ -2410,6 +2429,12 @@ export default function SurveyForm({
             trackedContactPhone
         ].find(phone => typeof phone === 'string' && /\d/.test(phone) && !isGenericChoiceValue(phone));
 
+        const candidateRole = [
+            variables.role,
+            variables.title,
+            variables.job_title,
+        ].find(role => typeof role === 'string' && role.trim() && !isGenericChoiceValue(role));
+
         // Build response document with unified entity reference and mapped variables
         const responseData: PublicSurveyResponseInput = { 
             surveyId: survey.id, 
@@ -2419,6 +2444,7 @@ export default function SurveyForm({
             respondentName: candidateContactName ? String(candidateContactName).trim() : null,
             contactPhone: candidateContactPhone ? String(candidateContactPhone).trim() : null,
             contactEmail: candidateContactEmail ? String(candidateContactEmail).trim() : null,
+            role: candidateRole ? String(candidateRole).trim() : null,
             variables,
             sourcePageId: sourcePageId || null,
             entityId: survey.entityId || respondentEntityId || simulatedValues?.entityId || null,

@@ -28,6 +28,14 @@ import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { cn } from '@/lib/utils';
@@ -42,6 +50,7 @@ import {
   Sparkles,
   Mail,
   Phone,
+  MessageSquare,
   Briefcase,
   CheckCircle2,
   Clock,
@@ -105,6 +114,8 @@ export function PersonProfileDrawer({
   const [activeTab, setActiveTab] = React.useState('overview');
   const [isSavingProfile, setIsSavingProfile] = React.useState(false);
   const [isResettingPassword, setIsResettingPassword] = React.useState(false);
+  const [resetModalOpen, setResetModalOpen] = React.useState(false);
+  const [resetChannels, setResetChannels] = React.useState<('email' | 'sms' | 'whatsapp')[]>(['email']);
   const [isExplainerOpen, setIsExplainerOpen] = React.useState(false);
   const [explainingPermission, setExplainingPermission] = React.useState('operations.pipeline.view');
 
@@ -246,26 +257,51 @@ export function PersonProfileDrawer({
     }
   };
 
-  // Handle password reset
-  const handleResetPassword = async () => {
-    const ok = await confirm({
-      title: 'Reset Password',
-      description: `Generate a new temporary password and send credentials to ${user.email}?`,
-      confirmText: 'Reset & Send',
-    });
-    if (!ok) return;
+  // Open Reset Password Multi-Channel Modal
+  const handleResetPassword = () => {
+    const initialChannels: ('email' | 'sms' | 'whatsapp')[] = ['email'];
+    if (user.phone && user.phone.trim().length > 5) {
+      initialChannels.push('sms');
+      initialChannels.push('whatsapp');
+    }
+    setResetChannels(initialChannels);
+    setResetModalOpen(true);
+  };
 
+  // Execute Multi-Channel Password Reset
+  const executePasswordReset = async () => {
+    if (resetChannels.length === 0) return;
     setIsResettingPassword(true);
     try {
-      const res = await adminResetUserPasswordAction(user.id);
+      const res = await adminResetUserPasswordAction({
+        userId: user.id,
+        channels: resetChannels,
+      });
 
       if (res.success) {
-        toast({
-          title: 'Password Reset Dispatched',
-          description: res.message || `Password reset instructions sent to ${user.email}`,
-        });
+        if (res.tempPassword) {
+          try {
+            await navigator.clipboard.writeText(res.tempPassword);
+          } catch {
+            // Non-fatal if clipboard write fails
+          }
+        }
+
+        if (res.warnings && res.warnings.length > 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Password Reset with Delivery Alerts',
+            description: `Password reset successfully and copied to clipboard. Delivery warnings: ${res.warnings.join('. ')}`,
+          });
+        } else {
+          toast({
+            title: 'Password Reset Dispatched',
+            description: `Credentials sent via ${resetChannels.join(', ')} and temporary password copied to clipboard.`,
+          });
+        }
+        setResetModalOpen(false);
       } else {
-        throw new Error(res.error || 'Failed to reset password');
+        throw new Error(res.error || res.message || 'Failed to reset password');
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Failed to reset password';
@@ -608,9 +644,24 @@ export function PersonProfileDrawer({
                     <span className="text-muted-foreground">Password Reset Required</span>
                     <span className="font-medium text-foreground">{user.requiresPasswordReset ? 'Yes (Enforced)' : 'No'}</span>
                   </div>
-                  <div className="flex items-center justify-between py-1.5">
+                  <div className="flex items-center justify-between py-1.5 border-b">
                     <span className="text-muted-foreground">Email Address</span>
                     <span className="font-medium text-foreground">{user.email}</span>
+                  </div>
+                  <div className="pt-2 flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold block text-foreground">Password Credentials</span>
+                      <span className="text-[11px] text-muted-foreground block">Generate temporary password and dispatch notifications</span>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleResetPassword}
+                      className="h-8 px-3 text-xs font-semibold active:scale-[0.97]"
+                    >
+                      <Key className="w-3.5 h-3.5 mr-1 text-amber-500" /> Reset Password
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
@@ -747,6 +798,156 @@ export function PersonProfileDrawer({
           </Tabs>
         </div>
       </SheetContent>
+
+      {/* Reset Password Multi-Channel Dialog */}
+      <Dialog open={resetModalOpen} onOpenChange={setResetModalOpen}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden border-border">
+          <DialogHeader className="p-5 pb-3 border-b bg-muted/10">
+            <div className="flex items-center gap-2 text-primary">
+              <Key className="w-5 h-5 text-amber-500" />
+              <DialogTitle className="text-base font-bold">Reset Password</DialogTitle>
+            </div>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Generate a new temporary password and dispatch credentials for{' '}
+              <strong className="text-foreground">{user.name || user.email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-5 space-y-4">
+            {/* Recipient Information Summary */}
+            <div className="p-3.5 rounded-xl bg-muted/20 border text-xs space-y-1.5">
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-medium">Account Email:</span>
+                <span className="font-semibold text-foreground">{user.email}</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-muted-foreground font-medium">Phone Number:</span>
+                <span className={cn('font-semibold', user.phone ? 'text-foreground' : 'text-muted-foreground italic')}>
+                  {user.phone || 'None configured'}
+                </span>
+              </div>
+            </div>
+
+            {/* Delivery Channels Selector */}
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-primary" /> Delivery Channels
+              </Label>
+              <div className="grid grid-cols-3 gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setResetChannels((prev) =>
+                      prev.includes('email')
+                        ? prev.length > 1
+                          ? prev.filter((c) => c !== 'email')
+                          : prev
+                        : [...prev, 'email']
+                    );
+                  }}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-center transition-all cursor-pointer',
+                    resetChannels.includes('email')
+                      ? 'bg-primary/10 border-primary text-primary font-semibold shadow-xs'
+                      : 'bg-muted/20 border-border text-muted-foreground hover:bg-muted/40'
+                  )}
+                >
+                  <Mail className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-medium">Email</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!user.phone}
+                  onClick={() => {
+                    if (!user.phone) return;
+                    setResetChannels((prev) =>
+                      prev.includes('sms') ? prev.filter((c) => c !== 'sms') : [...prev, 'sms']
+                    );
+                  }}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-center transition-all',
+                    !user.phone ? 'opacity-40 cursor-not-allowed bg-muted/10' : 'cursor-pointer hover:bg-muted/40',
+                    resetChannels.includes('sms')
+                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 font-semibold shadow-xs'
+                      : 'bg-muted/20 border-border text-muted-foreground'
+                  )}
+                  title={!user.phone ? 'Requires phone number on profile' : undefined}
+                >
+                  <Phone className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-medium">SMS</span>
+                </button>
+
+                <button
+                  type="button"
+                  disabled={!user.phone}
+                  onClick={() => {
+                    if (!user.phone) return;
+                    setResetChannels((prev) =>
+                      prev.includes('whatsapp') ? prev.filter((c) => c !== 'whatsapp') : [...prev, 'whatsapp']
+                    );
+                  }}
+                  className={cn(
+                    'flex flex-col items-center justify-center gap-1.5 p-3 rounded-xl border text-center transition-all',
+                    !user.phone ? 'opacity-40 cursor-not-allowed bg-muted/10' : 'cursor-pointer hover:bg-muted/40',
+                    resetChannels.includes('whatsapp')
+                      ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 font-semibold shadow-xs'
+                      : 'bg-muted/20 border-border text-muted-foreground'
+                  )}
+                  title={!user.phone ? 'Requires phone number on profile' : undefined}
+                >
+                  <MessageSquare className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-medium">WhatsApp</span>
+                </button>
+              </div>
+
+              {!user.phone && (
+                <p className="text-[11px] text-muted-foreground italic mt-1">
+                  * Add a phone number in Personal Information to enable SMS and WhatsApp delivery.
+                </p>
+              )}
+            </div>
+
+            {/* Security Warning Notice */}
+            <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs flex items-start gap-2">
+              <Lock className="w-4 h-4 shrink-0 mt-0.5 text-amber-600 dark:text-amber-400" />
+              <span>
+                Resetting password generates a temporary credential and invalidates the previous password. The user will be required to create a new password upon login.
+              </span>
+            </div>
+          </div>
+
+          <DialogFooter className="p-4 border-t bg-muted/10 flex justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setResetModalOpen(false)}
+              disabled={isResettingPassword}
+              className="text-xs h-9 px-4 active:scale-[0.97]"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={executePasswordReset}
+              disabled={isResettingPassword || resetChannels.length === 0}
+              className="text-xs h-9 px-4 font-semibold active:scale-[0.97]"
+            >
+              {isResettingPassword ? (
+                <>
+                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Resetting...
+                </>
+              ) : (
+                <>
+                  <Key className="w-3.5 h-3.5 mr-1.5" /> Reset & Dispatch
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {isExplainerOpen && (
         <AccessExplainerModal

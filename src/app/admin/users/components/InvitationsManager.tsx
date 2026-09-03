@@ -51,6 +51,8 @@ import {
   Check,
   X,
   Building2,
+  Phone,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Invitation, InvitationStatus, Role, Workspace, Department } from '@/lib/types';
@@ -104,6 +106,7 @@ export function InvitationsManager({
   const [inviteRoleIds, setInviteRoleIds] = React.useState<string[]>([]);
   const [inviteDeptId, setInviteDeptId] = React.useState('none');
   const [inviteDays, setInviteDays] = React.useState(7);
+  const [inviteChannels, setInviteChannels] = React.useState<('email' | 'sms' | 'whatsapp')[]>(['email']);
   const [isSendingSingle, setIsSendingSingle] = React.useState(false);
 
   // CSV Bulk Modal State
@@ -204,6 +207,7 @@ export function InvitationsManager({
       const res = await dispatchInvitationsAction({
         idToken,
         organizationId: activeOrganizationId,
+        baseUrl: window.location.origin,
         invites: [
           {
             email: inviteEmail.trim(),
@@ -216,20 +220,30 @@ export function InvitationsManager({
             departmentId: inviteDeptId !== 'none' ? inviteDeptId : undefined,
             expiresInDays: inviteDays,
             invitedBy: authUser.uid,
+            channels: inviteChannels,
           },
         ],
       });
 
       if (res.success && res.results.length > 0) {
-        toast({
-          title: 'Invitation Dispatched',
-          description: `Cryptographic invitation sent to ${inviteEmail}.`,
-        });
+        if (res.warnings && res.warnings.length > 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Invitation Saved with Delivery Warning',
+            description: `Record saved, but delivery failed: ${res.warnings.join('. ')}. You can copy the activation link below.`,
+          });
+        } else {
+          toast({
+            title: 'Invitation Dispatched',
+            description: `Cryptographic invitation sent via ${inviteChannels.join(', ')} to ${inviteEmail}.`,
+          });
+        }
         setSingleModalOpen(false);
         setInviteEmail('');
         setInviteName('');
         setInvitePhone('');
         setInviteRoleIds([]);
+        setInviteChannels(['email']);
         loadInvitations();
       } else {
         throw new Error(res.errors[0]?.error || 'Failed to send invitation');
@@ -243,17 +257,18 @@ export function InvitationsManager({
   };
 
   // Parse CSV Input
-  const handleParseCsv = (text: string) => {
-    setCsvText(text);
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    const rows = lines.map((line) => {
+  const handleParseCsv = (raw: string) => {
+    setCsvText(raw);
+    const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+    const parsed: Array<{ email: string; name?: string; valid: boolean }> = [];
+    for (const line of lines) {
       const parts = line.split(',').map((p) => p.trim());
       const email = parts[0] || '';
       const name = parts[1] || undefined;
-      const valid = Boolean(email.includes('@') && email.includes('.'));
-      return { email, name, valid };
-    });
-    setParsedCsvRows(rows);
+      const valid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+      parsed.push({ email, name, valid });
+    }
+    setParsedCsvRows(parsed);
   };
 
   // Handle CSV Bulk Dispatch
@@ -262,7 +277,7 @@ export function InvitationsManager({
 
     const validRows = parsedCsvRows.filter((r) => r.valid);
     if (validRows.length === 0) {
-      toast({ title: 'Validation Error', description: 'No valid email rows found.', variant: 'destructive' });
+      toast({ title: 'No valid rows to dispatch', variant: 'destructive' });
       return;
     }
     if (inviteRoleIds.length === 0) {
@@ -284,27 +299,39 @@ export function InvitationsManager({
         roleIds: inviteRoleIds,
         roleNames,
         departmentId: inviteDeptId !== 'none' ? inviteDeptId : undefined,
-        expiresInDays: 7,
+        expiresInDays: inviteDays,
         invitedBy: authUser.uid,
+        channels: ['email' as const],
       }));
 
       const res = await dispatchInvitationsAction({
         idToken,
         organizationId: activeOrganizationId,
+        baseUrl: window.location.origin,
         invites,
       });
 
-      toast({
-        title: 'Bulk Dispatch Completed',
-        description: `Dispatched ${res.dispatchedCount} invitations successfully.`,
-      });
+      if (res.warnings && res.warnings.length > 0) {
+        toast({
+          variant: 'destructive',
+          title: 'Bulk Dispatch Completed with Warnings',
+          description: `Processed ${res.dispatchedCount} invites. ${res.warnings.length} delivery warnings logged.`,
+        });
+      } else {
+        toast({
+          title: 'Bulk Dispatch Completed',
+          description: `Dispatched ${res.dispatchedCount} invitations successfully.`,
+        });
+      }
+
       setCsvModalOpen(false);
       setCsvText('');
       setParsedCsvRows([]);
+      setInviteRoleIds([]);
       loadInvitations();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Bulk dispatch failed';
-      toast({ title: 'Bulk Error', description: msg, variant: 'destructive' });
+      toast({ title: 'Bulk Dispatch Failed', description: msg, variant: 'destructive' });
     } finally {
       setIsDispatchingCsv(false);
     }
@@ -320,15 +347,24 @@ export function InvitationsManager({
         idToken,
         organizationId: activeOrganizationId,
         invitationId,
+        baseUrl: window.location.origin,
       });
 
       if (res.success && res.rawToken) {
         const acceptUrl = `${window.location.origin}/accept-invitation?token=${res.rawToken}`;
         await navigator.clipboard.writeText(acceptUrl);
-        toast({
-          title: 'Invitation Refreshed',
-          description: `New activation link copied to clipboard for ${email}.`,
-        });
+        if (res.warnings && res.warnings.length > 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Activation Link Copied with Delivery Alert',
+            description: `Link copied to clipboard, but delivery notification failed: ${res.warnings.join('. ')}.`,
+          });
+        } else {
+          toast({
+            title: 'Invitation Refreshed & Sent',
+            description: `New activation link copied to clipboard and re-sent to ${email}.`,
+          });
+        }
         loadInvitations();
       }
     } catch (err: unknown) {
@@ -382,55 +418,53 @@ export function InvitationsManager({
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Action Header */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-card p-3 rounded-xl border">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5 flex-wrap sm:flex-nowrap">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-[140px] h-8.5 text-xs bg-muted/20">
+            <SelectTrigger className="w-[150px] h-10 text-sm rounded-xl bg-background border-border">
               <SelectValue placeholder="All Statuses" />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all" className="text-xs">All Invitations</SelectItem>
-              <SelectItem value="sent" className="text-xs">Active / Pending</SelectItem>
-              <SelectItem value="accepted" className="text-xs">Accepted</SelectItem>
-              <SelectItem value="expired" className="text-xs">Expired</SelectItem>
-              <SelectItem value="revoked" className="text-xs">Revoked</SelectItem>
+            <SelectContent className="rounded-xl">
+              <SelectItem value="all" className="text-sm">All Invitations</SelectItem>
+              <SelectItem value="sent" className="text-sm">Active / Pending</SelectItem>
+              <SelectItem value="accepted" className="text-sm">Accepted</SelectItem>
+              <SelectItem value="expired" className="text-sm">Expired</SelectItem>
+              <SelectItem value="revoked" className="text-sm">Revoked</SelectItem>
             </SelectContent>
           </Select>
 
-          <div className="relative w-full sm:w-56">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Search invitees..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 h-8.5 text-xs bg-muted/20 border-border"
+              className="pl-9.5 pr-4 h-10 text-sm rounded-xl bg-background border-border"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={() => {
               setInviteWorkspaceId(workspaces[0]?.id || '');
               setCsvModalOpen(true);
             }}
-            className="text-xs h-8.5 px-3 active:scale-[0.97]"
+            className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium"
           >
-            <FileSpreadsheet className="w-3.5 h-3.5 mr-1.5 text-emerald-600" /> CSV Bulk Invite
+            <FileSpreadsheet className="w-4 h-4 mr-2 text-emerald-600" /> CSV Bulk Invite
           </Button>
 
           <Button
             type="button"
-            size="sm"
             onClick={() => {
               setInviteWorkspaceId(workspaces[0]?.id || '');
               setSingleModalOpen(true);
             }}
-            className="text-xs h-8.5 px-3.5 font-semibold active:scale-[0.97]"
+            className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Invite Member
+            <Plus className="w-4 h-4 mr-1.5" /> Invite Member
           </Button>
         </div>
       </div>
@@ -487,24 +521,74 @@ export function InvitationsManager({
                     </TableCell>
 
                     <TableCell>
-                      <Badge
-                        variant={
-                          inv.status === 'accepted'
-                            ? 'default'
-                            : inv.status === 'sent'
-                            ? 'secondary'
-                            : 'outline'
-                        }
-                        className={cn(
-                          'text-[9px] font-bold uppercase tracking-wider',
-                          inv.status === 'accepted' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
-                          inv.status === 'sent' && 'bg-blue-500/10 text-blue-600 border-blue-500/30',
-                          inv.status === 'expired' && 'bg-amber-500/10 text-amber-600 border-amber-500/30',
-                          inv.status === 'revoked' && 'bg-rose-500/10 text-rose-600 border-rose-500/30'
-                        )}
-                      >
-                        {inv.status}
-                      </Badge>
+                      <div className="space-y-1">
+                        <Badge
+                          variant={
+                            inv.status === 'accepted'
+                              ? 'default'
+                              : inv.status === 'sent'
+                              ? 'secondary'
+                              : 'outline'
+                          }
+                          className={cn(
+                            'text-[9px] font-bold uppercase tracking-wider',
+                            inv.status === 'accepted' && 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30',
+                            inv.status === 'sent' && 'bg-blue-500/10 text-blue-600 border-blue-500/30',
+                            inv.status === 'expired' && 'bg-amber-500/10 text-amber-600 border-amber-500/30',
+                            inv.status === 'revoked' && 'bg-rose-500/10 text-rose-600 border-rose-500/30',
+                            inv.status === 'failed' && 'bg-rose-500/15 text-rose-700 border-rose-500/30'
+                          )}
+                        >
+                          {inv.status}
+                        </Badge>
+                        <div className="flex items-center gap-1 flex-wrap">
+                          {inv.channels?.email && (
+                            <span
+                              title={`Email: ${inv.channels.email.status}${inv.channels.email.error ? ` - ${inv.channels.email.error}` : ''}`}
+                              className={cn(
+                                "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-semibold border",
+                                inv.channels.email.status === 'sent'
+                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                  : inv.channels.email.status === 'failed'
+                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                  : "bg-muted text-muted-foreground border-border"
+                              )}
+                            >
+                              <Mail className="h-2.5 w-2.5" /> Email
+                            </span>
+                          )}
+                          {inv.channels?.sms && (
+                            <span
+                              title={`SMS: ${inv.channels.sms.status}${inv.channels.sms.error ? ` - ${inv.channels.sms.error}` : ''}`}
+                              className={cn(
+                                "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-semibold border",
+                                inv.channels.sms.status === 'sent'
+                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                  : inv.channels.sms.status === 'failed'
+                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                  : "bg-muted text-muted-foreground border-border"
+                              )}
+                            >
+                              <Phone className="h-2.5 w-2.5" /> SMS
+                            </span>
+                          )}
+                          {inv.channels?.whatsapp && (
+                            <span
+                              title={`WhatsApp: ${inv.channels.whatsapp.status}${inv.channels.whatsapp.error ? ` - ${inv.channels.whatsapp.error}` : ''}`}
+                              className={cn(
+                                "inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[8px] font-semibold border",
+                                inv.channels.whatsapp.status === 'sent'
+                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                  : inv.channels.whatsapp.status === 'failed'
+                                  ? "bg-rose-500/10 text-rose-600 border-rose-500/20"
+                                  : "bg-muted text-muted-foreground border-border"
+                              )}
+                            >
+                              <MessageSquare className="h-2.5 w-2.5" /> WA
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </TableCell>
 
                     <TableCell>
@@ -727,6 +811,75 @@ export function InvitationsManager({
                   placeholder="Select roles..."
                   className="w-full text-xs"
                 />
+              </div>
+
+              <div className="space-y-1.5 pt-1">
+                <Label className="text-xs font-semibold">Delivery Channels</Label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInviteChannels((prev) =>
+                        prev.includes('email')
+                          ? prev.length > 1
+                            ? prev.filter((c) => c !== 'email')
+                            : prev
+                          : [...prev, 'email']
+                      );
+                    }}
+                    className={cn(
+                      'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all cursor-pointer',
+                      inviteChannels.includes('email')
+                        ? 'bg-primary/10 border-primary text-primary font-semibold shadow-xs'
+                        : 'bg-muted/20 border-border text-muted-foreground hover:bg-muted/40'
+                    )}
+                  >
+                    <Mail className="h-3.5 w-3.5 shrink-0" />
+                    <span className="text-xs">Email</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!invitePhone.trim()}
+                    onClick={() => {
+                      if (!invitePhone.trim()) return;
+                      setInviteChannels((prev) =>
+                        prev.includes('sms') ? prev.filter((c) => c !== 'sms') : [...prev, 'sms']
+                      );
+                    }}
+                    className={cn(
+                      'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all',
+                      !invitePhone.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/40',
+                      inviteChannels.includes('sms')
+                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 font-semibold shadow-xs'
+                        : 'bg-muted/20 border-border text-muted-foreground'
+                    )}
+                    title={!invitePhone.trim() ? 'Requires phone number' : undefined}
+                  >
+                    <Phone className="h-3.5 w-3.5 shrink-0" />
+                    <span className="text-xs">SMS</span>
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!invitePhone.trim()}
+                    onClick={() => {
+                      if (!invitePhone.trim()) return;
+                      setInviteChannels((prev) =>
+                        prev.includes('whatsapp') ? prev.filter((c) => c !== 'whatsapp') : [...prev, 'whatsapp']
+                      );
+                    }}
+                    className={cn(
+                      'flex items-center gap-2 p-2.5 rounded-xl border text-left transition-all',
+                      !invitePhone.trim() ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-muted/40',
+                      inviteChannels.includes('whatsapp')
+                        ? 'bg-emerald-500/10 border-emerald-500 text-emerald-600 font-semibold shadow-xs'
+                        : 'bg-muted/20 border-border text-muted-foreground'
+                    )}
+                    title={!invitePhone.trim() ? 'Requires phone number' : undefined}
+                  >
+                    <MessageSquare className="h-3.5 w-3.5 shrink-0" />
+                    <span className="text-xs">WhatsApp</span>
+                  </button>
+                </div>
               </div>
             </div>
 

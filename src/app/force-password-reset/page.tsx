@@ -6,8 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { updatePassword } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore';
-import { useAuth, useFirestore } from '@/firebase';
+import { useAuth } from '@/firebase';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +22,7 @@ import { useToast } from '@/hooks/use-toast';
 import { SmartSappIcon } from '@/components/icons';
 import { Eye, EyeOff, ShieldCheck, Loader2 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
+import { completeForcePasswordResetAction } from '@/lib/user-invite-actions';
 
 const schema = z.object({
   password: z.string().min(8, { message: 'Password must be at least 8 characters.' }),
@@ -36,7 +36,6 @@ export default function ForcePasswordResetPage() {
   const { toast } = useToast();
   const router = useRouter();
   const auth = useAuth();
-  const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
@@ -46,7 +45,7 @@ export default function ForcePasswordResetPage() {
   });
 
   const onSubmit = async (data: z.infer<typeof schema>) => {
-    if (!auth?.currentUser || !firestore) {
+    if (!auth?.currentUser) {
       toast({ variant: 'destructive', title: 'Session Expired', description: 'Please log in again.' });
       router.push('/login');
       return;
@@ -54,23 +53,34 @@ export default function ForcePasswordResetPage() {
 
     setIsSubmitting(true);
     try {
-      // 1. Update Firebase Auth Password
-      await updatePassword(auth.currentUser, data.password);
+      // 1. Obtain current user's verified token
+      const idToken = await auth.currentUser.getIdToken(true);
 
-      // 2. Update Firestore Flag
-      const userRef = doc(firestore, 'users', auth.currentUser.uid);
-      await updateDoc(userRef, {
-          requiresPasswordReset: false,
-          updatedAt: new Date().toISOString()
+      // 2. Execute secure Server Action to update auth credentials & clear reset flag
+      const result = await completeForcePasswordResetAction({
+        idToken,
+        newPassword: data.password,
       });
 
+      if (!result.success) {
+        throw new Error(result.error || result.message || 'Failed to update security credentials.');
+      }
+
+      // 3. Keep client-side Firebase Auth session synced (non-blocking)
+      try {
+        await updatePassword(auth.currentUser, data.password);
+      } catch (clientErr) {
+        console.warn('Client SDK password update deferred to server result:', clientErr);
+      }
+
       toast({ title: 'Security Updated', description: 'Your new password has been saved successfully.' });
-      router.push('/admin');
-    } catch (error: any) {
+      router.push(result.redirectTo || '/admin');
+    } catch (error: unknown) {
+      const msg = error instanceof Error ? error.message : 'Check your connection and try again.';
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: error.message || 'Check your connection and try again.',
+        description: msg,
       });
     } finally {
       setIsSubmitting(false);

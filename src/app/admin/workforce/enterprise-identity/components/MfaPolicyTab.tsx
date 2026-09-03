@@ -53,7 +53,12 @@ export function MfaPolicyTab({ policy, onSave, isSaving }: MfaPolicyTabProps) {
     setAllowedFactors(policy.allowedFactors);
     setGracePeriodDays(policy.gracePeriodDays);
     setRequirePasskeysForAdmin(policy.requirePasskeysForAdmin);
-  }, [policy]);
+  }, [
+    policy.enforceMfa,
+    policy.allowedFactors,
+    policy.gracePeriodDays,
+    policy.requirePasskeysForAdmin,
+  ]);
 
   const toggleFactor = (factor: MfaFactorType) => {
     if (allowedFactors.includes(factor)) {
@@ -213,17 +218,16 @@ export function MfaPolicyTab({ policy, onSave, isSaving }: MfaPolicyTabProps) {
 
           <Button
             type="submit"
-            size="sm"
             disabled={isSaving}
-            className="text-xs h-9 px-4 font-semibold active:scale-[0.97]"
+            className="text-sm h-10 px-5 font-semibold rounded-xl active:scale-[0.97] shadow-sm"
           >
             {isSaving ? (
               <>
-                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving Policy...
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving Policy...
               </>
             ) : (
               <>
-                <CheckCircle2 className="w-3.5 h-3.5 mr-1.5" /> Save MFA Policy
+                <CheckCircle2 className="w-4 h-4 mr-2" /> Save MFA Policy
               </>
             )}
           </Button>

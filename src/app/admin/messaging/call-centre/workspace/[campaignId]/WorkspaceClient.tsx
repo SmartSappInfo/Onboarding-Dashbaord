@@ -2766,10 +2766,10 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             /* Expanded: Full Tabs UI */
             <Tabs defaultValue="notes" className="flex-grow flex flex-col overflow-hidden">
               <TabsList className="bg-card border-b border-border h-12 p-1 rounded-none shrink-0 flex pl-10">
-                <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Notes</TabsTrigger>
-                <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
-                <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
-                <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
+                <TabsTrigger value="notes" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted data-[state=active]:text-foreground text-xs font-bold">Notes</TabsTrigger>
+                <TabsTrigger value="deals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted data-[state=active]:text-foreground text-xs font-bold">Deals ({contactDeals.length})</TabsTrigger>
+                <TabsTrigger value="history" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted data-[state=active]:text-foreground text-xs font-bold">Timeline ({contactHistory.length})</TabsTrigger>
+                <TabsTrigger value="rebuttals" className="flex-grow rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-muted data-[state=active]:text-foreground text-xs font-bold">Rebuttals ({objectionNodes.length})</TabsTrigger>
               </TabsList>
 
             {/* Notes & Outcomes Tab */}

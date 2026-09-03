@@ -156,7 +156,7 @@ export function MemberOnboardingWizard({ initialInstance }: MemberOnboardingWiza
 
           <Button
             type="button"
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/admin')}
             className="w-full h-11 text-xs font-bold active:scale-[0.97] shadow-md"
           >
             Enter Workspace Dashboard <ArrowRight className="w-4 h-4 ml-1.5" />

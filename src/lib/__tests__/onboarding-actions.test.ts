@@ -208,6 +208,7 @@ describe('submitOnboardingProfileAction', () => {
     });
 
     expect(result.success).toBe(true);
+    expect(result.isAuthorized).toBe(false);
     expect(mockUserDocRef.set).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'user_123',
@@ -219,6 +220,80 @@ describe('submitOnboardingProfileAction', () => {
         profileCompleted: true,
         isAuthorized: false,
         approvalStatus: 'pending'
+      }),
+      { merge: true }
+    );
+  });
+
+  it('should preserve isAuthorized: true and approvalStatus: approved for invited members', async () => {
+    const mockUserDoc = {
+      exists: true,
+      data: () => ({
+        email: 'invited@example.com',
+        isAuthorized: true,
+        approvalStatus: 'approved'
+      })
+    };
+
+    const mockUserDocRef = {
+      get: vi.fn().mockResolvedValue(mockUserDoc),
+      set: vi.fn().mockResolvedValue(undefined)
+    };
+
+    const mockWorkspacesSnapshot = {
+      docs: [{ id: 'workspace_1' }]
+    };
+
+    const mockWorkspacesQuery = {
+      where: vi.fn().mockReturnThis(),
+      get: vi.fn().mockResolvedValue(mockWorkspacesSnapshot)
+    };
+
+    const mockOrgDocRef = {
+      get: vi.fn().mockResolvedValue({
+        exists: true,
+        data: () => ({ name: 'Test Org', isConfigured: true })
+      })
+    };
+
+    (adminDb.collection as any).mockImplementation((name) => {
+      if (name === 'users') {
+        return {
+          doc: vi.fn().mockReturnValue(mockUserDocRef)
+        };
+      }
+      if (name === 'workspaces') {
+        return mockWorkspacesQuery;
+      }
+      if (name === 'organizations') {
+        return {
+          doc: vi.fn().mockReturnValue(mockOrgDocRef)
+        };
+      }
+      return {};
+    });
+
+    const result = await submitOnboardingProfileAction({
+      userId: 'user_invited_456',
+      name: 'Invited Member',
+      phone: '+23312345679',
+      department: 'engineering',
+      organizationId: 'org_1'
+    });
+
+    expect(result.success).toBe(true);
+    expect(result.isAuthorized).toBe(true);
+    expect(mockUserDocRef.set).toHaveBeenCalledWith(
+      expect.objectContaining({
+        id: 'user_invited_456',
+        name: 'Invited Member',
+        phone: '+23312345679',
+        department: 'engineering',
+        organizationId: 'org_1',
+        profileCompleted: true,
+        onboardingCompleted: true,
+        isAuthorized: true,
+        approvalStatus: 'approved'
       }),
       { merge: true }
     );

@@ -35,6 +35,7 @@ import {
   Eye,
 } from 'lucide-react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import type {
   AccessReviewCampaign,
@@ -63,7 +64,21 @@ export function GovernanceClient() {
   const { user: authUser } = useUser();
   const { activeOrganizationId, accessibleWorkspaces } = useTenant();
 
-  const [activeTab, setActiveTab] = React.useState<'reviews' | 'jit' | 'sod' | 'sessions' | 'audit'>('reviews');
+  const searchParams = useSearchParams();
+  const trackParam = searchParams.get('track');
+  const tabParam = searchParams.get('tab');
+
+  const initialTab = React.useMemo<'reviews' | 'jit' | 'sod' | 'sessions' | 'audit'>(() => {
+    if (tabParam && ['reviews', 'jit', 'sod', 'sessions', 'audit'].includes(tabParam)) {
+      return tabParam as 'reviews' | 'jit' | 'sod' | 'sessions' | 'audit';
+    }
+    if (trackParam === 'onboarding') {
+      return 'reviews';
+    }
+    return 'reviews';
+  }, [tabParam, trackParam]);
+
+  const [activeTab, setActiveTab] = React.useState<'reviews' | 'jit' | 'sod' | 'sessions' | 'audit'>(initialTab);
 
   // Governance State
   const [campaigns, setCampaigns] = React.useState<AccessReviewCampaign[]>([]);
@@ -151,36 +166,34 @@ export function GovernanceClient() {
             <ShieldCheck className="w-6 h-6 text-primary" /> Governance & Security Center
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Access certification campaigns, Just-In-Time access grants, Separation of Duties, and session controls
+            Certify workforce permissions, issue time-bounded JIT access, enforce Segregation of Duties, and monitor security telemetry
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button asChild variant="outline" size="sm" className="rounded-lg h-9 px-3.5 text-xs font-semibold active:scale-[0.97]">
+          <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97]">
             <Link href="/admin/users/roles">
-              <Lock className="h-3.5 w-3.5 mr-1.5 text-primary" /> Roles Architecture
+              <Lock className="h-4 w-4 mr-2 text-primary" /> Roles Architecture
             </Link>
           </Button>
 
           {activeTab === 'reviews' && (
             <Button
               type="button"
-              size="sm"
               onClick={() => setCampaignModalOpen(true)}
-              className="rounded-lg font-semibold h-9 px-4 shadow-sm active:scale-[0.97] text-xs"
+              className="rounded-xl font-semibold h-10 px-4 shadow-sm active:scale-[0.97] text-sm"
             >
-              <Play className="w-3.5 h-3.5 mr-1.5" /> Launch Access Review
+              <Play className="w-4 h-4 mr-2" /> Launch Access Review
             </Button>
           )}
 
           {activeTab === 'jit' && (
             <Button
               type="button"
-              size="sm"
               onClick={() => setJitModalOpen(true)}
-              className="rounded-lg font-semibold h-9 px-4 shadow-sm active:scale-[0.97] text-xs"
+              className="rounded-xl font-semibold h-10 px-4 shadow-sm active:scale-[0.97] text-sm"
             >
-              <Clock className="w-3.5 h-3.5 mr-1.5" /> Grant JIT Access
+              <Clock className="w-4 h-4 mr-2" /> Grant JIT Access
             </Button>
           )}
         </div>
@@ -188,20 +201,35 @@ export function GovernanceClient() {
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={(val) => setActiveTab(val as 'reviews' | 'jit' | 'sod' | 'sessions' | 'audit')}>
-        <TabsList className="h-10 bg-card border p-1 rounded-xl">
-          <TabsTrigger value="reviews" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+        <TabsList className="h-10 bg-muted/60 border border-border/60 p-1 rounded-xl gap-1">
+          <TabsTrigger
+            value="reviews"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <ShieldCheck className="w-3.5 h-3.5 mr-1.5" /> Access Reviews ({campaigns.length})
           </TabsTrigger>
-          <TabsTrigger value="jit" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="jit"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Clock className="w-3.5 h-3.5 mr-1.5" /> JIT Temporary Access ({grants.filter((g) => g.status === 'active').length})
           </TabsTrigger>
-          <TabsTrigger value="sod" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="sod"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <ShieldAlert className="w-3.5 h-3.5 mr-1.5" /> Separation of Duties (SoD)
           </TabsTrigger>
-          <TabsTrigger value="sessions" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="sessions"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <Lock className="w-3.5 h-3.5 mr-1.5" /> Sessions & Policies
           </TabsTrigger>
-          <TabsTrigger value="audit" className="text-xs font-semibold px-4 h-8 data-[state=active]:bg-muted/60">
+          <TabsTrigger
+            value="audit"
+            className="text-xs font-semibold px-4 h-8 rounded-lg transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+          >
             <History className="w-3.5 h-3.5 mr-1.5" /> Security Audit Stream
           </TabsTrigger>
         </TabsList>
@@ -303,11 +331,10 @@ export function GovernanceClient() {
             <Button
               type="button"
               variant="outline"
-              size="sm"
               onClick={handleReapGrants}
-              className="text-xs h-8 px-3 active:scale-[0.97]"
+              className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium"
             >
-              <RefreshCw className="w-3.5 h-3.5 mr-1.5" /> Sweep & Revoke Expired JIT Grants
+              <RefreshCw className="w-4 h-4 mr-2" /> Sweep & Revoke Expired JIT Grants
             </Button>
           </div>
 

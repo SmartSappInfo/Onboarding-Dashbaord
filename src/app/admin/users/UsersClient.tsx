@@ -352,18 +352,17 @@ export default function UsersClient() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
-          <Button asChild variant="outline" size="sm" className="rounded-lg h-9 px-3.5 text-xs font-semibold active:scale-[0.97]">
+          <Button asChild variant="outline" className="rounded-xl h-10 px-4 text-sm font-medium active:scale-[0.97]">
             <Link href="/admin/users/roles">
-              <ShieldCheck className="h-3.5 w-3.5 mr-1.5 text-primary" /> Roles Architecture
+              <ShieldCheck className="h-4 w-4 mr-2 text-primary" /> Roles Architecture
             </Link>
           </Button>
           <Button
             type="button"
-            size="sm"
             onClick={() => setIsInviteModalOpen(true)}
-            className="rounded-lg font-semibold h-9 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-xs"
+            className="rounded-xl font-semibold h-10 px-4 shadow-sm transition-all hover:shadow-md active:scale-[0.97] text-sm"
           >
-            <UserPlus className="h-3.5 w-3.5 mr-1.5" /> Invite Members
+            <UserPlus className="w-4 h-4 mr-2" /> Invite Members
           </Button>
         </div>
       </div>
@@ -424,23 +423,21 @@ export default function UsersClient() {
               />
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Button
                 type="button"
                 variant="outline"
-                size="sm"
                 onClick={() => setIsFilterDrawerOpen(true)}
-                className="text-xs h-8.5 px-3 active:scale-[0.97]"
+                className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium"
               >
-                <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" /> Filter Drawer
+                <SlidersHorizontal className="w-4 h-4 mr-2" /> Filter Drawer
               </Button>
               <Button
                 type="button"
-                size="sm"
                 onClick={() => setIsInviteModalOpen(true)}
-                className="text-xs h-8.5 px-3.5 font-semibold active:scale-[0.97]"
+                className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] shadow-sm"
               >
-                <UserPlus className="w-3.5 h-3.5 mr-1.5" /> Invite Member
+                <UserPlus className="w-4 h-4 mr-2" /> Invite Member
               </Button>
             </div>
           </div>
@@ -678,6 +675,8 @@ export default function UsersClient() {
         open={isInviteModalOpen}
         onOpenChange={setIsInviteModalOpen}
         roles={allRolesList}
+        departments={departmentNames}
+        workspaces={accessibleWorkspaces}
       />
     </div>
   );

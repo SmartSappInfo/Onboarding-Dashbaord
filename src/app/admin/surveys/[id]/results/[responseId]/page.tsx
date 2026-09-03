@@ -41,11 +41,12 @@ import SurveyEntityManageDialogs, { type ManagedEntityTarget } from '../componen
  */
 interface ResponseContactCardProps {
     response: SurveyResponse;
+    survey?: Survey;
     onTagEntity?: (entity: ManagedEntityTarget) => void;
     onMoveEntity?: (entity: ManagedEntityTarget) => void;
 }
 
-function ResponseContactCard({ response, onTagEntity, onMoveEntity }: ResponseContactCardProps) {
+function ResponseContactCard({ response, survey, onTagEntity, onMoveEntity }: ResponseContactCardProps) {
     const router = useRouter();
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
@@ -81,8 +82,8 @@ function ResponseContactCard({ response, onTagEntity, onMoveEntity }: ResponseCo
     }, [response.entityId, activeWorkspaceId]);
 
     const details = React.useMemo(() => {
-        return extractResponseContactDetails(response, contact);
-    }, [response, contact]);
+        return extractResponseContactDetails(response, contact, survey?.elements, survey?.entityMapping);
+    }, [response, contact, survey?.elements, survey?.entityMapping]);
 
     const handleCopy = (text: string, type: 'phone' | 'email') => {
         if (!text) return;
@@ -496,6 +497,7 @@ export default function ResponseDetailPage() {
                 {/* Entity & Contact Information Card */}
                 <ResponseContactCard 
                     response={response} 
+                    survey={survey}
                     onTagEntity={(ent) => setTaggingEntity(ent)}
                     onMoveEntity={(ent) => setMovingEntity(ent)}
                 />

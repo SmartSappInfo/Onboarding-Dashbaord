@@ -34,6 +34,7 @@ import { Eye, EyeOff } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import { safeInternalRedirect } from '@/lib/auth/return-to';
 import InviteContextBanner from '@/components/auth/InviteContextBanner';
+import { formatAuthError } from '@/lib/auth/auth-error-messages';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -150,10 +151,11 @@ function LoginContent() {
         });
       } catch (error) {
         console.error('Redirect Sign-In Error:', error);
+        const friendly = formatAuthError(error, 'google-login');
         toast({
           variant: 'destructive',
-          title: 'Google Sign-In Failed',
-          description: 'Unable to complete Google sign-in after redirect. Please try again.',
+          title: friendly.title,
+          description: friendly.description,
         });
       } finally {
         if (!cancelled) setIsHandlingRedirectResult(false);
@@ -209,6 +211,8 @@ function LoginContent() {
 
           if (data.permissions?.includes('system_admin')) {
             router.push(returnTo || '/admin/settings/organizations');
+          } else if (data.profileCompleted === false || !data.profileCompleted) {
+            router.push(returnTo || '/profile-setup');
           } else {
             router.push(returnTo || '/admin');
           }
@@ -243,21 +247,12 @@ function LoginContent() {
         router.push(returnTo || '/profile-setup');
       }
     } catch (error: unknown) {
-      const errorCode = error instanceof Error ? (error as Error & { code?: string }).code : undefined;
-      let errorMessage = 'An unexpected error occurred. Please try again.';
-
-      if (
-        errorCode === 'auth/invalid-credential' ||
-        errorCode === 'auth/user-not-found' ||
-        errorCode === 'auth/wrong-password'
-      ) {
-        errorMessage = 'Invalid email or password. Please try again.';
-      }
-
+      console.error('Login Error:', error);
+      const friendly = formatAuthError(error, 'login');
       toast({
         variant: 'destructive',
-        title: 'Login Failed',
-        description: errorMessage,
+        title: friendly.title,
+        description: friendly.description,
       });
     } finally {
       setIsSubmitting(false);
@@ -301,12 +296,12 @@ function LoginContent() {
           console.error('Google Redirect Sign-In Error:', redirectError);
         }
       }
-      const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred. Please try again.';
       console.error('Google Sign-In Error:', error);
+      const friendly = formatAuthError(error, 'google-login');
       toast({
         variant: 'destructive',
-        title: 'Google Sign-In Failed',
-        description: errorMessage,
+        title: friendly.title,
+        description: friendly.description,
       });
     } finally {
       setIsGoogleSigningIn(false);

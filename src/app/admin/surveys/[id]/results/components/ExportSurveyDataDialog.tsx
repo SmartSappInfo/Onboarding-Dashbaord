@@ -103,7 +103,7 @@ export function ExportSurveyDataDialog({
             <div>
               <DialogTitle className="text-base font-bold">Export Survey Responses</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground">
-                Download raw response data and CRM contact attribution.
+                Download survey responses with entity name, contact person, phone, email, and role.
               </DialogDescription>
             </div>
           </div>
@@ -154,8 +154,8 @@ export function ExportSurveyDataDialog({
 
           <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/30 border border-border/50">
             <div className="space-y-0.5">
-              <Label className="text-xs font-bold">Include CRM Contact Metadata</Label>
-              <p className="text-[11px] text-muted-foreground">Includes matched contact name, email, and phone numbers.</p>
+              <Label className="text-xs font-bold">Include Entity & Contact Details</Label>
+              <p className="text-[11px] text-muted-foreground">Includes entity name, contact person name, phone, email, and role for linked and non-linked respondents.</p>
             </div>
             <Switch checked={includeContactDetails} onCheckedChange={setIncludeContactDetails} />
           </div>

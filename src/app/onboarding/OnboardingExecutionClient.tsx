@@ -12,7 +12,8 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import { useUser } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useTenant } from '@/context/TenantContext';
 import { Card } from '@/components/ui/card';
 import { Loader2, AlertTriangle, Layers } from 'lucide-react';
@@ -28,6 +29,7 @@ export function OnboardingExecutionClient() {
   const instanceIdParam = searchParams.get('instanceId') || undefined;
 
   const { user: authUser, isUserLoading } = useUser();
+  const firestore = useFirestore();
   const { activeOrganizationId, isLoading: isTenantLoading } = useTenant();
 
   const [instance, setInstance] = React.useState<OnboardingInstance | null>(null);
@@ -39,22 +41,42 @@ export function OnboardingExecutionClient() {
 
     async function loadOrCreateInstance() {
       if (isUserLoading || isTenantLoading) return;
-      if (!authUser || !activeOrganizationId) {
+      if (!authUser) {
         if (isMounted) {
           setIsLoading(false);
-          setErrorMsg('Authentication or active organization context required.');
+          setErrorMsg('Authentication required.');
         }
         return;
       }
 
       setIsLoading(true);
       try {
+        let resolvedOrgId = activeOrganizationId;
+        if (!resolvedOrgId && firestore) {
+          try {
+            const uSnap = await getDoc(doc(firestore, 'users', authUser.uid));
+            if (uSnap.exists()) {
+              resolvedOrgId = uSnap.data()?.organizationId || '';
+            }
+          } catch (orgErr) {
+            console.warn('[OnboardingExecutionClient] User org fallback lookup warning:', orgErr);
+          }
+        }
+
+        if (!resolvedOrgId) {
+          if (isMounted) {
+            setIsLoading(false);
+            setErrorMsg('Active organization context required to initialize onboarding journey.');
+          }
+          return;
+        }
+
         const idToken = await authUser.getIdToken();
 
         // 1. Try to fetch existing instance
         const res = await getMemberOnboardingInstanceAction({
           idToken,
-          organizationId: activeOrganizationId,
+          organizationId: resolvedOrgId,
           instanceId: instanceIdParam,
           personId: authUser.uid,
         });
@@ -65,7 +87,7 @@ export function OnboardingExecutionClient() {
           // 2. Start default journey instance
           const startRes = await startOnboardingJourneyAction({
             idToken,
-            organizationId: activeOrganizationId,
+            organizationId: resolvedOrgId,
             personId: authUser.uid,
           });
 
@@ -89,7 +111,7 @@ export function OnboardingExecutionClient() {
     return () => {
       isMounted = false;
     };
-  }, [authUser, activeOrganizationId, isUserLoading, isTenantLoading, instanceIdParam]);
+  }, [authUser, activeOrganizationId, isUserLoading, isTenantLoading, instanceIdParam, firestore]);
 
   if (isLoading || isUserLoading || isTenantLoading) {
     return (

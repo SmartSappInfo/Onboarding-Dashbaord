@@ -23,6 +23,7 @@ import { OnboardingJourneyService } from './onboarding-journey-service';
 import { AdaptiveConditionEvaluator, MemberEvaluationContext } from './adaptive-condition-evaluator';
 import { PersonService } from '@/lib/services/identity/person-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';
+import { IdentityMigrationService } from '@/lib/services/identity/identity-migration-service';
 
 export class OnboardingInstanceService {
   private static collectionName = 'onboarding_instances';
@@ -36,8 +37,11 @@ export class OnboardingInstanceService {
     journeyId?: string,
     context?: MemberEvaluationContext
   ): Promise<OnboardingInstance> {
-    // 1. Fetch Person Details
-    const person = await PersonService.getPerson(personId);
+    // 1. Fetch Person Details (gracefully hydrate from legacy users doc if not yet migrated)
+    let person = await PersonService.getPerson(personId);
+    if (!person) {
+      person = await IdentityMigrationService.getOrMigratePerson(personId, organizationId);
+    }
     if (!person) {
       throw new Error(`Person not found: ${personId}`);
     }
@@ -203,6 +207,18 @@ export class OnboardingInstanceService {
 
       // 2. Synchronize user projection
       await IdentityProjectionService.syncUserProjection(organizationId, personId);
+
+      // 3. Mark onboardingCompleted: true on users/{personId} so guards grant dashboard entry
+      const now = new Date().toISOString();
+      await adminDb.collection('users').doc(personId).set(
+        {
+          onboardingCompleted: true,
+          onboardingStatus: 'completed',
+          profileCompleted: true,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
     } catch (err: unknown) {
       console.warn('[OnboardingInstanceService] Failed to finalize completion:', err);
     }

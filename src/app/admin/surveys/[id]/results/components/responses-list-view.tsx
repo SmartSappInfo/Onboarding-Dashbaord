@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import type { Survey, SurveyResponse, SurveyQuestion, ResolvedContact } from '@/lib/types';
+import type { Survey, SurveyResponse, SurveyQuestion, ResolvedContact, SurveyElement, SurveyEntityMapping } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
@@ -40,7 +40,7 @@ import { Switch } from '@/components/ui/switch';
 import { Settings } from 'lucide-react';
 import { deleteSurveyResponses } from '@/lib/survey-actions';
 import { extractResponseContactDetails } from '@/lib/survey-response-utils';
-import { resolveContact } from '@/lib/contact-adapter';
+import { resolveContact, resolveMultipleContacts } from '@/lib/contact-adapter';
 import { parseDateSafe } from '@/lib/forms-utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn, stripHtml } from '@/lib/utils';
@@ -65,10 +65,14 @@ const clientSharedByCache = new Map<string, string | null>();
  */
 function EntityInfo({ 
     response, 
-    showFullDetails = false 
+    showFullDetails = false,
+    surveyElements,
+    entityMapping
 }: { 
     response: SurveyResponse; 
     showFullDetails?: boolean; 
+    surveyElements?: SurveyElement[];
+    entityMapping?: SurveyEntityMapping;
 }) {
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
@@ -126,8 +130,8 @@ function EntityInfo({
     }, [response.entityId, activeWorkspaceId, cacheKey]);
 
     const details = React.useMemo(() => {
-        return extractResponseContactDetails(response, contact);
-    }, [response, contact]);
+        return extractResponseContactDetails(response, contact, surveyElements, entityMapping);
+    }, [response, contact, surveyElements, entityMapping]);
 
     const handleCopy = (text: string, type: 'phone' | 'email', e: React.MouseEvent) => {
         e.stopPropagation();
@@ -429,6 +433,27 @@ function ResponsesListView({
     const auth = useAuth();
     const { user } = useUser();
     const firestore = useFirestore();
+    const { activeWorkspaceId } = useWorkspace();
+
+    // Batch-prime client contact cache for all visible entity IDs to prevent N+1 request waterfalls
+    React.useEffect(() => {
+        if (!filteredResponses || filteredResponses.length === 0 || !activeWorkspaceId) return;
+        const unprimedIds = filteredResponses
+            .map((r) => r.entityId)
+            .filter((id): id is string => Boolean(id && !clientContactCache.has(`${id}_${activeWorkspaceId}`)));
+
+        if (unprimedIds.length > 0) {
+            resolveMultipleContacts(unprimedIds, activeWorkspaceId)
+                .then((map) => {
+                    Object.entries(map).forEach(([id, contact]) => {
+                        clientContactCache.set(`${id}_${activeWorkspaceId}`, contact);
+                    });
+                })
+                .catch((err) => {
+                    console.error('[responses-list-view] Failed to batch-prime contacts cache:', err);
+                });
+        }
+    }, [filteredResponses, activeWorkspaceId]);
 
     const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
     const [taggingEntity, setTaggingEntity] = React.useState<ManagedEntityTarget | null>(null);
@@ -1165,7 +1190,12 @@ function ResponsesListView({
                                 )}
                                 style={{ left: `${contactLeft}px`, width: `${contactWidth}px`, minWidth: `${contactWidth}px`, maxWidth: `${contactWidth}px` }}
                             >
-                                <EntityInfo response={response} showFullDetails={showFullEntityDetails} />
+                                <EntityInfo 
+                                    response={response} 
+                                    showFullDetails={showFullEntityDetails} 
+                                    surveyElements={survey?.elements}
+                                    entityMapping={survey?.entityMapping}
+                                />
                             </TableCell>
                         )}
                         {isSharedByVisible && (

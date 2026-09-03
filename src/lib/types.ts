@@ -939,6 +939,8 @@ export interface UserProfile {
   photoURL?: string;
   isAuthorized?: boolean;
   profileCompleted?: boolean;
+  onboardingCompleted?: boolean;
+  onboardingStatus?: 'pending' | 'in_progress' | 'completed' | 'exempt';
   department?: string;
   approvalStatus?: 'pending' | 'approved' | 'rejected';
   membershipStatus?: MembershipStatus;
@@ -1308,6 +1310,7 @@ export type InvitationDeliveryChannel = 'email' | 'sms' | 'whatsapp';
 
 export type InvitationStatus =
   | 'draft'
+  | 'pending'
   | 'sent'
   | 'delivered'
   | 'accepted'
@@ -1316,7 +1319,7 @@ export type InvitationStatus =
   | 'failed';
 
 export interface InvitationChannelState {
-  status: 'pending' | 'sent' | 'delivered' | 'failed';
+  status: 'pending' | 'sent' | 'delivered' | 'failed' | 'skipped';
   dispatchedAt?: string;
   deliveredAt?: string;
   error?: string;
@@ -4300,6 +4303,8 @@ export interface SurveyResponse {
   contactPhone?: string | null;
   respondentEmail?: string | null;
   respondentPhone?: string | null;
+  role?: string | null;
+  roleOrTitle?: string | null;
   sentimentPolarity?: 'positive' | 'mostly_positive' | 'neutral' | 'mostly_negative' | 'negative' | 'mixed' | string | null;
   sentimentScore?: number | null;
   variantId?: string | null;

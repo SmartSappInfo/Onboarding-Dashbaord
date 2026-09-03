@@ -217,8 +217,8 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
   ], [wrapHref, isFeatureEnabled, can]);
 
   const workforceNavItems = React.useMemo(() => [
-    { href: wrapHref('/admin/workforce/intelligence'), icon: BrainCircuit, label: 'Workforce Intelligence', visible: can('management', 'users', 'view') },
-    { href: wrapHref('/admin/users'), icon: Users, label: 'People Hub', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/workforce/intelligence'), icon: BrainCircuit, label: 'User Intelligence', visible: can('management', 'users', 'view') },
+    { href: wrapHref('/admin/users'), icon: Users, label: 'Users Hub', visible: can('management', 'users', 'view') },
     { href: wrapHref('/admin/workforce/onboarding'), icon: Compass, label: 'Onboarding Journeys', visible: can('management', 'users', 'view') },
     { href: wrapHref('/admin/workforce/command-center'), icon: Terminal, label: 'AI Command Center', visible: isSystemAdmin },
     { href: wrapHref('/admin/workforce/ai'), icon: Sparkles, label: 'AI Workforce Advisor', visible: isSystemAdmin },
@@ -481,10 +481,10 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         
         <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">
           {renderNavGroup("Operations", coreNavItems, true)}
-          {renderNavGroup("Workforce & Identity", workforceNavItems, true)}
           {renderNavGroup("Studios", studioNavItems, false)}
           {renderNavGroup("Finance Hub", financeNavItems, false)}
           {renderNavGroup("Social Hub", socialNavItems, false)}
+          {renderNavGroup("Workspace and Users", workforceNavItems, true)}
           <div className="mt-auto pt-4 mb-2">
               {renderNavGroup("Management", systemNavItems, false)}
           </div>
@@ -551,10 +551,10 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
 
           <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none">
             {renderNavGroup("Operations", coreNavItems, true)}
-            {renderNavGroup("Workforce & Identity", workforceNavItems, true)}
             {renderNavGroup("Studios", studioNavItems, false)}
             {renderNavGroup("Finance Hub", financeNavItems, false)}
             {renderNavGroup("Social Hub", socialNavItems, false)}
+            {renderNavGroup("Workspace and Users", workforceNavItems, true)}
             <div className="mt-auto pt-4 mb-2">
                 {renderNavGroup("Management", systemNavItems, false)}
             </div>

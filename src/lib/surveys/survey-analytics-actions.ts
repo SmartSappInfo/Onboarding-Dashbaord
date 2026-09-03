@@ -31,6 +31,7 @@ import {
   type ResponseQualityMetrics,
 } from './survey-analytics-engine';
 import { extractResponseContactDetails, sanitizeForCsv } from '@/lib/survey-response-utils';
+import { resolveMultipleContacts } from '@/lib/contact-adapter';
 import { format } from 'date-fns';
 import { parseDateSafe } from '@/lib/forms-utils';
 
@@ -66,6 +67,7 @@ export interface ExportSurveyDataResult {
  * Multi-tenant authorization validator.
  */
 function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean {
+  if (!workspaceId) return false;
   if (survey.workspaceIds && survey.workspaceIds.length > 0) {
     return survey.workspaceIds.includes(workspaceId);
   }
@@ -73,7 +75,7 @@ function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean 
   if (legacyWsId) {
     return legacyWsId === workspaceId;
   }
-  return true;
+  return false;
 }
 
 /**
@@ -274,8 +276,11 @@ export async function exportSurveyDataAction(
       return { success: false, filename: '', content: '', mimeType: '', recordCount: 0, error: 'Unauthorized: Survey does not belong to this workspace' };
     }
 
+    const NON_QUESTION_TYPES = new Set([
+      'section', 'divider', 'spacer', 'page-break', 'image-block', 'video-block', 'html-block'
+    ]);
     const questions = (survey.elements || []).filter(
-      (e): e is SurveyQuestion => 'isRequired' in e && 'type' in e
+      (e): e is SurveyQuestion => Boolean(e && e.id && e.type && !NON_QUESTION_TYPES.has(e.type))
     );
 
     let queryRef = adminDb.collection('surveys').doc(surveyId).collection('responses')
@@ -302,8 +307,44 @@ export async function exportSurveyDataAction(
     const filenameBase = (survey.slug || 'survey').replace(/[^a-z0-9_-]/gi, '_');
     const timestamp = format(new Date(), 'yyyyMMdd_HHmmss');
 
+    // 3. Batch resolve linked CRM contacts
+    const entityIds = responses
+      .map((r) => r.entityId || r.respondentEntityId)
+      .filter((id): id is string => Boolean(id && typeof id === 'string'));
+
+    const contactsMap = entityIds.length > 0
+      ? await resolveMultipleContacts(entityIds, workspaceId)
+      : {};
+
     if (exportFormat === 'json') {
-      const jsonContent = JSON.stringify(responses, null, 2);
+      const enrichedResponses = responses.map((res) => {
+        const entityId = res.entityId || res.respondentEntityId || '';
+        const linkedContact = entityId ? contactsMap[entityId] || null : null;
+        const contact = extractResponseContactDetails(
+          res,
+          linkedContact,
+          survey.elements,
+          survey.entityMapping
+        );
+
+        return {
+          ...res,
+          entityDetails: includeContactDetails !== false ? {
+            isLinked: Boolean(contact.isLiveCrm || contact.entityId),
+            contactStatus: (contact.isLiveCrm || contact.entityId) ? 'Linked' : 'Non-Linked',
+            entityId: contact.entityId || null,
+            entityName: contact.entityName || '',
+            contactPersonName: contact.primaryContactName || '',
+            phone: contact.primaryContactPhone || '',
+            email: contact.primaryContactEmail || '',
+            role: contact.roleOrTitle || '',
+            locationString: contact.locationString || '',
+            zoneName: contact.zoneName || '',
+          } : undefined,
+        };
+      });
+
+      const jsonContent = JSON.stringify(enrichedResponses, null, 2);
       return {
         success: true,
         filename: `${filenameBase}_responses_${timestamp}.json`,
@@ -318,9 +359,17 @@ export async function exportSurveyDataAction(
       'Response ID',
       'Submitted At',
       'Channel',
-      'Respondent Name',
-      'Respondent Email',
-      'Respondent Phone',
+      ...(includeContactDetails !== false
+        ? [
+            'Contact Status',
+            'Entity ID',
+            'Entity Name',
+            'Contact Person Name',
+            'Contact Phone',
+            'Contact Email',
+            'Role',
+          ]
+        : []),
       'Score',
       'Outcome',
       ...questions.map((q) => q.title || q.id),
@@ -329,18 +378,43 @@ export async function exportSurveyDataAction(
     const csvRows: string[] = [headers.map(sanitizeForCsv).join(',')];
 
     responses.forEach((res) => {
-      const contact = extractResponseContactDetails(res, null, survey.elements);
+      const entityId = res.entityId || res.respondentEntityId || '';
+      const linkedContact = entityId ? contactsMap[entityId] || null : null;
+      const contact = extractResponseContactDetails(
+        res,
+        linkedContact,
+        survey.elements,
+        survey.entityMapping
+      );
+
+      const isLinked = Boolean(contact.isLiveCrm || contact.entityId);
+
+      // Safe date formatting with fallback
+      const submittedDate = parseDateSafe(res.submittedAt);
+      const formattedDate = submittedDate ? format(submittedDate, 'yyyy-MM-dd HH:mm:ss') : '';
+
+      // O(1) Answer lookup map
+      const answerMap = new Map((res.answers || []).map((a) => [a.questionId, a.value]));
+
       const rowData: string[] = [
         res.id,
-        res.submittedAt ? format(new Date(res.submittedAt), 'yyyy-MM-dd HH:mm:ss') : '',
+        formattedDate,
         res.channel || 'direct',
-        includeContactDetails !== false ? (contact.primaryContactName || '') : '',
-        includeContactDetails !== false ? (contact.primaryContactEmail || '') : '',
-        includeContactDetails !== false ? (contact.primaryContactPhone || '') : '',
+        ...(includeContactDetails !== false
+          ? [
+              isLinked ? 'Linked' : 'Non-Linked',
+              contact.entityId || '',
+              contact.entityName || '',
+              contact.primaryContactName || '',
+              contact.primaryContactPhone || '',
+              contact.primaryContactEmail || '',
+              contact.roleOrTitle || '',
+            ]
+          : []),
         res.score !== undefined ? String(res.score) : '',
         res.outcome || res.outcomeId || '',
         ...questions.map((q) => {
-          const ans = getResponseAnswer(res, q.id);
+          const ans = answerMap.get(q.id);
           return formatAnswerValue(ans);
         }),
       ];
@@ -348,7 +422,8 @@ export async function exportSurveyDataAction(
       csvRows.push(rowData.map(sanitizeForCsv).join(','));
     });
 
-    const csvContent = csvRows.join('\n');
+    // Prepend UTF-8 BOM (\uFEFF) to ensure Microsoft Excel and international spreadsheet viewers render characters properly
+    const csvContent = '\uFEFF' + csvRows.join('\n');
 
     return {
       success: true,

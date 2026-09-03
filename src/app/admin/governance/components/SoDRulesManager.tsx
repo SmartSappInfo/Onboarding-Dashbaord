@@ -214,25 +214,23 @@ export function SoDRulesManager({ roles }: SoDRulesManagerProps) {
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             type="button"
             variant="outline"
-            size="sm"
             onClick={handleScanConflicts}
             disabled={isScanning}
-            className="text-xs h-8.5 px-3 active:scale-[0.97]"
+            className="text-sm h-10 px-4 rounded-xl active:scale-[0.97] font-medium"
           >
-            <Scan className={cn('w-3.5 h-3.5 mr-1.5', isScanning && 'animate-spin')} /> Run Conflict Scan
+            <Scan className={cn('w-4 h-4 mr-2', isScanning && 'animate-spin')} /> Run Conflict Scan
           </Button>
 
           <Button
             type="button"
-            size="sm"
             onClick={() => setModalOpen(true)}
-            className="text-xs h-8.5 px-3.5 font-semibold active:scale-[0.97]"
+            className="text-sm h-10 px-4 rounded-xl font-semibold active:scale-[0.97] shadow-sm"
           >
-            <Plus className="w-3.5 h-3.5 mr-1.5" /> Add SoD Rule
+            <Plus className="w-4 h-4 mr-1.5" /> Add SoD Rule
           </Button>
         </div>
       </div>

@@ -35,10 +35,12 @@ import { extractResponseContactDetails } from '@/lib/survey-response-utils';
  */
 function SummaryRespondentCell({ 
     response, 
-    surveyElements 
+    surveyElements,
+    entityMapping,
 }: { 
     response: SurveyResponse; 
     surveyElements?: Survey['elements'];
+    entityMapping?: Survey['entityMapping'];
 }) {
     const { activeWorkspaceId } = useWorkspace();
     const { toast } = useToast();
@@ -74,8 +76,8 @@ function SummaryRespondentCell({
     }, [response.entityId, activeWorkspaceId]);
 
     const details = React.useMemo(() => {
-        return extractResponseContactDetails(response, contact, surveyElements);
-    }, [response, contact, surveyElements]);
+        return extractResponseContactDetails(response, contact, surveyElements, entityMapping);
+    }, [response, contact, surveyElements, entityMapping]);
 
     const handleCopy = (text: string, type: 'phone' | 'email', e: React.MouseEvent) => {
         e.stopPropagation();
@@ -475,7 +477,7 @@ export default function SurveySummaryClient({ id }: { id: string }) {
                                             recentResponses.map((res) => (
                                                 <TableRow key={res.id} className="border-border hover:bg-muted/30 transition-colors">
                                                     <TableCell className="pl-6 font-medium text-sm">
-                                                        <SummaryRespondentCell response={res} surveyElements={survey.elements} />
+                                                        <SummaryRespondentCell response={res} surveyElements={survey.elements} entityMapping={survey.entityMapping} />
                                                     </TableCell>
                                                     <TableCell className="text-sm text-muted-foreground truncate max-w-[200px] md:max-w-md">
                                                         {extractFirstMeaningfulAnswer(res.answers)}

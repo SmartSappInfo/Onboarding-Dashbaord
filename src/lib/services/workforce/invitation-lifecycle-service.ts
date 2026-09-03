@@ -41,6 +41,7 @@ export interface CreateInvitationPayload {
   departmentId?: string;
   expiresInDays?: number;
   invitedBy: string;
+  channels?: ('email' | 'sms' | 'whatsapp')[];
 }
 
 export class InvitationLifecycleService {
@@ -79,6 +80,16 @@ export class InvitationLifecycleService {
     const expiresAt = new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString();
     const now = new Date().toISOString();
 
+    const requestedChannels = payload.channels && payload.channels.length > 0 ? payload.channels : ['email'];
+    const channelMap: Invitation['channels'] = {
+      email: {
+        status: requestedChannels.includes('email') ? 'pending' : 'skipped',
+        dispatchedAt: now,
+      },
+      ...(requestedChannels.includes('sms') ? { sms: { status: 'pending' as const, dispatchedAt: now } } : {}),
+      ...(requestedChannels.includes('whatsapp') ? { whatsapp: { status: 'pending' as const, dispatchedAt: now } } : {}),
+    };
+
     const inviteRef = adminDb.collection('invitations').doc();
     const newInvitation: Invitation = {
       id: inviteRef.id,
@@ -94,13 +105,8 @@ export class InvitationLifecycleService {
       departmentId: payload.departmentId || undefined,
       tokenHash,
       expiresAt,
-      status: 'sent',
-      channels: {
-        email: {
-          status: 'sent',
-          dispatchedAt: now,
-        },
-      },
+      status: 'pending',
+      channels: channelMap,
       invitedBy: payload.invitedBy,
       createdAt: now,
       updatedAt: now,

@@ -27,6 +27,7 @@ import { GoogleIcon, SmartSappIcon } from '@/components/icons';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Eye, EyeOff } from 'lucide-react';
 import LightRays from '@/components/LightRays';
+import { formatAuthError } from '@/lib/auth/auth-error-messages';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: "Name must be at least 2 characters." }),
@@ -96,20 +97,13 @@ function SignupContent() {
         router.push(returnTo || '/profile-setup');
 
       })
-      .catch((error) => {
-        const errorCode = error.code;
-        let errorMessage = "An unexpected error occurred during sign up.";
-
-        if (errorCode === 'auth/email-already-in-use') {
-            errorMessage = 'This email address is already in use.';
-        } else if (errorCode === 'auth/weak-password') {
-            errorMessage = 'The password is too weak.';
-        }
-
+      .catch((error: unknown) => {
+        console.error("Sign-Up Error:", error);
+        const friendly = formatAuthError(error, 'signup');
         toast({
           variant: 'destructive',
-          title: 'Sign-up Failed',
-          description: errorMessage,
+          title: friendly.title,
+          description: friendly.description,
         });
       }).finally(() => {
         setIsSubmitting(false);
@@ -161,12 +155,13 @@ function SignupContent() {
           router.push(returnTo || '/profile-setup');
         }
       })
-      .catch((error) => {
+      .catch((error: unknown) => {
         console.error("Google Sign-Up Error:", error);
+        const friendly = formatAuthError(error, 'google-signup');
         toast({
           variant: 'destructive',
-          title: 'Google Sign-Up Failed',
-          description: error.message || 'An unexpected error occurred. Please try again.',
+          title: friendly.title,
+          description: friendly.description,
         });
       });
   };

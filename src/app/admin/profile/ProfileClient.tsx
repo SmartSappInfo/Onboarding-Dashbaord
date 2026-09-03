@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useRouter } from 'next/navigation';
 import { useUser, useFirestore, useAuth } from '@/firebase';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 import { updateProfile } from 'firebase/auth';
@@ -12,8 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Loader2, User as UserIcon, Settings2, Bell } from 'lucide-react';
+import { Loader2, Settings2, Bell, CheckCircle2 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import type { UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -37,6 +37,7 @@ const profileFormSchema = z.object({
 type ProfileFormData = z.infer<typeof profileFormSchema>;
 
 export default function ProfileClient() {
+  const router = useRouter();
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
@@ -105,7 +106,7 @@ export default function ProfileClient() {
       });
 
       toast({ title: 'Profile Updated', description: 'Your changes have been saved.' });
-      window.location.reload();
+      router.refresh();
 
     } catch (error) {
       console.error(error);
@@ -113,216 +114,246 @@ export default function ProfileClient() {
     }
   };
 
-    if (isUserLoading || isLoadingProfile) {
-        return (
-            <div className="h-full overflow-y-auto">
-                <div className="max-w-2xl mx-auto space-y-8 pb-32">
-                    <div className="flex flex-col items-start pt-8">
-                        <Skeleton className="h-10 w-64 mb-2" />
-                        <Skeleton className="h-6 w-48" />
-                    </div>
-                </div>
-            </div>
-        )
-    }
-
+  if (isUserLoading || isLoadingProfile) {
     return (
-        <div className="h-full overflow-y-auto w-full">
-            <div className="space-y-8 pb-32 w-full max-w-3xl">
-                <div className="flex flex-col items-start pt-8">
-                    <h1 className="text-3xl font-bold text-foreground">
-                        Account Profile
-                    </h1>
-                    <p className="text-muted-foreground text-sm mt-1">
-                        Manage your identity and communication preferences
-                    </p>
+      <div className="w-full max-w-4xl mx-auto p-6 md:p-8 space-y-8">
+        <div className="flex flex-col gap-2">
+          <Skeleton className="h-8 w-48 rounded-xl" />
+          <Skeleton className="h-4 w-72 rounded-lg" />
+        </div>
+        <div className="bg-card border border-border rounded-2xl p-6 space-y-6">
+          <Skeleton className="h-28 w-28 rounded-2xl" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+          <Skeleton className="h-10 w-full rounded-xl" />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-full max-w-4xl mx-auto p-6 md:p-8 space-y-8">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground">
+          Account Profile
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Manage your personal identity, contact details, and communication preferences.
+        </p>
+      </div>
+
+      <Card className="bg-card text-card-foreground border border-border shadow-xs rounded-2xl overflow-hidden">
+        <CardHeader className="bg-card border-b border-border px-6 py-5">
+          <div className="flex items-center gap-3">
+            <div className="p-2.5 bg-muted text-foreground rounded-xl border border-border">
+              <Settings2 className="h-5 w-5 text-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-base font-semibold tracking-tight text-foreground">Identity Settings</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">Core account details and workspace association.</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="p-6 md:p-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="photoURL"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col gap-2">
+                    <FormLabel className="text-xs font-semibold text-foreground">Avatar Image</FormLabel>
+                    <FormControl>
+                      <ImageUploader
+                        value={field.value || ''}
+                        onChange={(url) => {
+                          field.onChange(url);
+                        }}
+                        workspaceId={activeWorkspaceId}
+                        category="Avatars"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormItem className="space-y-1.5">
+                <FormLabel className="text-xs font-semibold text-foreground">Secure Email Identity</FormLabel>
+                <Input
+                  value={user?.email || ''}
+                  disabled
+                  className="h-10 rounded-xl bg-muted/50 border border-border text-muted-foreground text-sm font-medium cursor-not-allowed"
+                />
+                <FormDescription className="text-xs text-muted-foreground">
+                  Authentication email is tied to your login provider and cannot be changed here.
+                </FormDescription>
+              </FormItem>
+
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs font-semibold text-foreground">Full Legal Name</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="Your full name"
+                        {...field}
+                        className="h-10 rounded-xl bg-background border border-border text-foreground text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="phone"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs font-semibold text-foreground">Mobile Contact</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="tel"
+                        placeholder="Your phone number"
+                        {...field}
+                        value={field.value ?? ''}
+                        className="h-10 rounded-xl bg-background border border-border text-foreground text-sm font-medium focus-visible:ring-1 focus-visible:ring-ring focus-visible:border-ring"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="defaultWorkspaceId"
+                render={({ field }) => (
+                  <FormItem className="space-y-1.5">
+                    <FormLabel className="text-xs font-semibold text-foreground">Default / Primary Workspace</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value || undefined}>
+                      <FormControl>
+                        <SelectTrigger className="h-10 rounded-xl bg-background border border-border text-foreground text-sm font-medium px-3 focus:ring-1 focus:ring-ring">
+                          <SelectValue placeholder="Select primary workspace" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="rounded-xl border border-border shadow-xl">
+                        {accessibleWorkspaces.map((ws) => (
+                          <SelectItem key={ws.id} value={ws.id} className="rounded-lg text-xs font-medium">
+                            {ws.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription className="text-xs text-muted-foreground">
+                      This workspace will load automatically when you log in or refresh your session.
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {/* Notification Preferences */}
+              <div className="pt-6 border-t border-border space-y-4">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-muted text-foreground rounded-xl border border-border">
+                    <Bell className="h-5 w-5 text-foreground" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold tracking-tight text-foreground">Notification Preferences</h3>
+                    <p className="text-xs text-muted-foreground">Configure how and where you receive automated platform alerts.</p>
+                  </div>
                 </div>
 
-                <Card className="border-none shadow-sm ring-1 ring-border rounded-[2rem] overflow-hidden bg-transparent">
-                    <CardHeader className="bg-muted/30 border-b pb-6">
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-primary/10 rounded-xl">
-                                <Settings2 className="h-5 w-5 text-primary" />
-                            </div>
-                            <div>
-                                <CardTitle className="text-lg font-semibold tracking-tight text-foreground">Identity Settings</CardTitle>
-                                <CardDescription className="text-xs font-medium">Core account and contact information.</CardDescription>
-                            </div>
-                        </div>
-                    </CardHeader>
- <CardContent className="p-8">
-                <Form {...form}>
- <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                    <FormField
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
+                  <FormField
                     control={form.control}
-                    name="photoURL"
+                    name="notificationPreferences.email"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col gap-2">
-                        <FormLabel className="text-[10px] font-bold text-muted-foreground uppercase ml-1">Avatar Image</FormLabel>
+                      <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-card hover:bg-muted/20 transition-colors shadow-2xs">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium text-foreground cursor-pointer">Email</FormLabel>
+                          <FormDescription className="text-xs text-muted-foreground">Receive digest & security notices</FormDescription>
+                        </div>
                         <FormControl>
-                          <ImageUploader
-                            value={field.value || ''}
-                            onChange={(url) => {
-                              field.onChange(url);
-                            }}
-                            workspaceId={activeWorkspaceId}
-                            category="Avatars"
-                          />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
-                        <FormMessage />
                       </FormItem>
                     )}
-                    />
-
-                    <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Secure Email Identity</FormLabel>
- <Input value={user?.email || ''} disabled className="h-11 rounded-xl bg-muted/20 border-none font-bold" />
- <FormDescription className="text-[10px] font-bold tracking-tighter opacity-60">Authentication email cannot be changed.</FormDescription>
-                    </FormItem>
-
-                    <FormField
+                  />
+                  <FormField
                     control={form.control}
-                    name="name"
+                    name="notificationPreferences.sms"
                     render={({ field }) => (
-                        <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Full Legal Name</FormLabel>
+                      <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-card hover:bg-muted/20 transition-colors shadow-2xs">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium text-foreground cursor-pointer">SMS</FormLabel>
+                          <FormDescription className="text-xs text-muted-foreground">Urgent text message alerts</FormDescription>
+                        </div>
                         <FormControl>
- <Input placeholder="Your full name" {...field} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
-
-                    <FormField
+                  />
+                  <FormField
                     control={form.control}
-                    name="phone"
+                    name="notificationPreferences.inApp"
                     render={({ field }) => (
-                        <FormItem>
- <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Mobile Contact</FormLabel>
+                      <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-card hover:bg-muted/20 transition-colors shadow-2xs">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium text-foreground cursor-pointer">In-App</FormLabel>
+                          <FormDescription className="text-xs text-muted-foreground">Workspace bell notification feed</FormDescription>
+                        </div>
                         <FormControl>
- <Input type="tel" placeholder="Your phone number" {...field} value={field.value ?? ''} className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold" />
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
                         </FormControl>
-                        <FormMessage />
-                        </FormItem>
+                      </FormItem>
                     )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="defaultWorkspaceId"
-                      render={({ field }) => (
-                        <FormItem className="space-y-1">
-                          <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Default/Primary Workspace</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value || undefined}>
-                            <FormControl>
-                              <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-bold text-left">
-                                <SelectValue placeholder="Select primary workspace" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent className="rounded-xl border border-border shadow-xl">
-                              {accessibleWorkspaces.map((ws) => (
-                                <SelectItem key={ws.id} value={ws.id} className="rounded-lg text-xs font-semibold">
-                                  {ws.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription className="text-[10px] font-bold tracking-tighter opacity-60">
-                            This workspace will load by default when you log in or refresh your screen.
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    {/* Notification Preferences */}
-                    <div className="pt-6 border-t border-border/50">
-                      <div className="flex items-center gap-3 mb-6">
-                        <div className="p-2 bg-emerald-500/10 rounded-xl">
-                            <Bell className="h-5 w-5 text-emerald-500" />
+                  />
+                  <FormField
+                    control={form.control}
+                    name="notificationPreferences.push"
+                    render={({ field }) => (
+                      <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-card hover:bg-muted/20 transition-colors shadow-2xs">
+                        <div className="space-y-0.5">
+                          <FormLabel className="text-sm font-medium text-foreground cursor-pointer">Device Push</FormLabel>
+                          <FormDescription className="text-xs text-muted-foreground">Direct desktop & mobile notifications</FormDescription>
                         </div>
-                        <div>
-                            <h3 className="text-lg font-semibold tracking-tight text-foreground">Notification Preferences</h3>
-                            <p className="text-xs text-muted-foreground">Choose how you want to receive alerts and messages.</p>
-                        </div>
-                      </div>
+                        <FormControl>
+                          <Switch checked={field.value} onCheckedChange={field.onChange} />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="notificationPreferences.email"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-semibold">Email</FormLabel>
-                                <FormDescription className="text-[10px]">Receive emails</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="notificationPreferences.sms"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-semibold">SMS</FormLabel>
-                                <FormDescription className="text-[10px]">Receive text messages</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="notificationPreferences.inApp"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-semibold">In-App</FormLabel>
-                                <FormDescription className="text-[10px]">Notifications in the app</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="notificationPreferences.push"
-                          render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-xl border border-border p-4 bg-muted/10">
-                              <div className="space-y-0.5">
-                                <FormLabel className="text-sm font-semibold">Push</FormLabel>
-                                <FormDescription className="text-[10px]">Device push notifications</FormDescription>
-                              </div>
-                              <FormControl>
-                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                              </FormControl>
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    </div>
-                    
- <div className="flex justify-end pt-4">
- <Button type="submit" disabled={form.formState.isSubmitting} className="rounded-xl font-bold h-11 px-10 shadow-lg">
- {form.formState.isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                        Save Changes
-                    </Button>
-                    </div>
-                </form>
-                </Form>
-            </CardContent>
-        </Card>
-     </div>
+              <div className="flex items-center justify-end pt-4 border-t border-border">
+                <Button
+                  type="submit"
+                  disabled={form.formState.isSubmitting}
+                  className="h-10 px-6 text-sm font-semibold rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-xs active:scale-[0.97] transition-all"
+                >
+                  {form.formState.isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Changes...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle2 className="mr-2 h-4 w-4" /> Save Changes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
-  )
+  );
 }

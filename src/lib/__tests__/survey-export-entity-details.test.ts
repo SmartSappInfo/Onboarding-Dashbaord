@@ -367,6 +367,98 @@ describe('Survey Entity & Contact Export / Resolution', () => {
       expect(details.primaryContactPhone).toBe('');
       expect(details.isLiveCrm).toBe(false);
     });
+
+    it('resolves contact person name, email, phone, role, and entity name from non-linked survey questions', () => {
+      const mockQuestions = [
+        { id: 'q_name', title: 'Your Full Name', type: 'text' },
+        { id: 'q_phone', title: 'Phone Number', type: 'phone' },
+        { id: 'q_email', title: 'Email Address', type: 'email' },
+        { id: 'q_role', title: 'Your Role / Designation', type: 'text' },
+        { id: 'q_org', title: 'School / Institution Name', type: 'text' },
+      ];
+
+      const mockResponse = {
+        id: 'resp_unlinked_complete',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'q_name', value: 'Kofi Mensah' },
+          { questionId: 'q_phone', value: '+233241234567' },
+          { questionId: 'q_email', value: 'kofi@example.edu.gh' },
+          { questionId: 'q_role', value: 'Headmaster' },
+          { questionId: 'q_org', value: 'Achimota Basic School' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const details = extractResponseContactDetails(mockResponse, null, mockQuestions);
+
+      expect(details.entityName).toBe('Achimota Basic School');
+      expect(details.primaryContactName).toBe('Kofi Mensah');
+      expect(details.primaryContactPhone).toBe('+233241234567');
+      expect(details.primaryContactEmail).toBe('kofi@example.edu.gh');
+      expect(details.roleOrTitle).toBe('Headmaster');
+      expect(details.isLiveCrm).toBe(false);
+    });
+
+    it('resolves details using surveyEntityMapping when question IDs are explicitly mapped', () => {
+      const mockEntityMapping = {
+        entityNameFieldId: 'custom_field_institution',
+        contactNameFieldId: 'custom_field_rep',
+        contactPhoneFieldId: 'custom_field_contact_num',
+        contactEmailFieldId: 'custom_field_inbox',
+        additionalMappings: [
+          { questionId: 'custom_field_job', targetField: 'role' },
+        ],
+      };
+
+      const mockResponse = {
+        id: 'resp_mapped_fields',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'custom_field_institution', value: 'Beacon International School' },
+          { questionId: 'custom_field_rep', value: 'Mrs. Sarah Owusu' },
+          { questionId: 'custom_field_contact_num', value: '+233209876543' },
+          { questionId: 'custom_field_inbox', value: 'sarah.owusu@beacon.edu' },
+          { questionId: 'custom_field_job', value: 'Academic Director' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const details = extractResponseContactDetails(mockResponse, null, [], mockEntityMapping);
+
+      expect(details.entityName).toBe('Beacon International School');
+      expect(details.primaryContactName).toBe('Mrs. Sarah Owusu');
+      expect(details.primaryContactPhone).toBe('+233209876543');
+      expect(details.primaryContactEmail).toBe('sarah.owusu@beacon.edu');
+      expect(details.roleOrTitle).toBe('Academic Director');
+      expect(details.isLiveCrm).toBe(false);
+    });
+
+    it('strictly rejects choice/dropdown questions titled "School" or "Company" from being extracted as entity names', () => {
+      const mockQuestions = [
+        { id: 'q_school_category', title: 'School Category', type: 'dropdown' },
+        { id: 'q_institution_type', title: 'Institution Type', type: 'single_choice' },
+        { id: 'q_agree', title: 'I agree to the School Terms', type: 'checkboxes' },
+      ];
+
+      const mockResponse = {
+        id: 'resp_choice_collision',
+        surveyId: 'survey_100',
+        submittedAt: '2026-08-20T10:00:00Z',
+        answers: [
+          { questionId: 'q_school_category', value: 'Private' },
+          { questionId: 'q_institution_type', value: 'Tertiary' },
+          { questionId: 'q_agree', value: 'true' },
+        ],
+      } as unknown as SurveyResponse;
+
+      const details = extractResponseContactDetails(mockResponse, null, mockQuestions);
+
+      // Invariant: Choice/dropdown option values like "Private" or "Tertiary" must NEVER become entityName
+      expect(details.entityName).toBe('');
+      expect(details.primaryContactName).toBe('');
+      expect(details.isLiveCrm).toBe(false);
+    });
   });
 
   describe('resolveMultipleContacts', () => {

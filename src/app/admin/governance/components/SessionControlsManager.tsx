@@ -165,40 +165,40 @@ export function SessionControlsManager() {
 
         <CardContent className="p-4 space-y-4 text-xs">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">MFA Enforcement Level</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">MFA Enforcement Level</Label>
               <Select value={mfaLevel} onValueChange={(v) => setMfaLevel(v as MFAEnforcementLevel)}>
-                <SelectTrigger className="h-9 text-xs">
+                <SelectTrigger className="h-10 text-sm rounded-xl bg-background border-border">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="disabled" className="text-xs">Disabled / Optional</SelectItem>
-                  <SelectItem value="recommended" className="text-xs">Recommended (In-app prompt)</SelectItem>
-                  <SelectItem value="enforced_admins" className="text-xs">Enforce for Administrators Only</SelectItem>
-                  <SelectItem value="enforced_all" className="text-xs">Enforce for All Members</SelectItem>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="disabled" className="text-sm">Disabled / Optional</SelectItem>
+                  <SelectItem value="recommended" className="text-sm">Recommended (In-app prompt)</SelectItem>
+                  <SelectItem value="enforced_admins" className="text-sm">Enforce for Administrators Only</SelectItem>
+                  <SelectItem value="enforced_all" className="text-sm">Enforce for All Members</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Idle Timeout (Minutes)</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Idle Timeout (Minutes)</Label>
               <Input
                 type="number"
                 value={idleTimeout}
                 onChange={(e) => setIdleTimeout(Number(e.target.value))}
-                className="h-9 text-xs"
+                className="h-10 text-sm rounded-xl bg-background border-border"
                 min={15}
                 max={1440}
               />
             </div>
 
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Max Concurrent Sessions</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold text-foreground">Max Concurrent Sessions</Label>
               <Input
                 type="number"
                 value={maxSessions}
                 onChange={(e) => setMaxSessions(Number(e.target.value))}
-                className="h-9 text-xs"
+                className="h-10 text-sm rounded-xl bg-background border-border"
                 min={1}
                 max={20}
               />
@@ -208,18 +208,17 @@ export function SessionControlsManager() {
           <div className="flex justify-end pt-2 border-t">
             <Button
               type="button"
-              size="sm"
               onClick={handleSavePolicy}
               disabled={isSavingPolicy}
-              className="text-xs h-8.5 px-4 font-semibold active:scale-[0.97]"
+              className="text-sm h-10 px-5 font-semibold rounded-xl active:scale-[0.97] shadow-sm"
             >
               {isSavingPolicy ? (
                 <>
-                  <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Saving...
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...
                 </>
               ) : (
                 <>
-                  <Save className="w-3.5 h-3.5 mr-1.5" /> Save Security Policies
+                  <Save className="w-4 h-4 mr-2" /> Save Security Policies
                 </>
               )}
             </Button>
