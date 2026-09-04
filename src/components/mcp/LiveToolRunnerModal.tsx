@@ -92,7 +92,7 @@ export function LiveToolRunnerModal({
 
     let parsedArgs: Record<string, McpPayloadValue>;
     try {
-      const parsed = JSON.parse(jsonInput) as unknown;
+      const parsed: McpPayloadValue = JSON.parse(jsonInput);
       if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
         throw new Error('Arguments must be a valid JSON object.');
       }

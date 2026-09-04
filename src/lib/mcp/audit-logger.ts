@@ -37,15 +37,19 @@ function isSensitiveKey(key: string): boolean {
 }
 
 /**
- * Recursively redacts sensitive keys from payload structures.
+ * Recursively redacts sensitive keys from payload structures with max depth guard.
  */
-function sanitizePayload(val: McpPayloadValue): McpPayloadValue {
+function sanitizePayload(val: McpPayloadValue, depth: number = 0): McpPayloadValue {
+  if (depth > 5) {
+    return '[DEPTH_EXCEEDED]';
+  }
+
   if (val === null || typeof val === 'string' || typeof val === 'number' || typeof val === 'boolean') {
     return val;
   }
 
   if (Array.isArray(val)) {
-    return val.map((item) => sanitizePayload(item));
+    return val.map((item) => sanitizePayload(item, depth + 1));
   }
 
   const sanitizedRecord: Record<string, McpPayloadValue> = {};
@@ -53,7 +57,7 @@ function sanitizePayload(val: McpPayloadValue): McpPayloadValue {
     if (isSensitiveKey(k)) {
       sanitizedRecord[k] = '[REDACTED]';
     } else {
-      sanitizedRecord[k] = sanitizePayload(v);
+      sanitizedRecord[k] = sanitizePayload(v, depth + 1);
     }
   }
   return sanitizedRecord;

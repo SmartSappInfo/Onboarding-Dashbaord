@@ -133,7 +133,7 @@ export class McpGateway {
           };
         }
       }
-    } catch (err: unknown) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Internal gateway failure.';
       return {
         jsonrpc: '2.0',
@@ -290,7 +290,7 @@ export class McpGateway {
           structured: output,
         },
       };
-    } catch (err: unknown) {
+    } catch (err) {
       const durationMs = Date.now() - startTime;
       const errorMessage = err instanceof Error ? err.message : 'Unknown tool handler execution failure.';
 

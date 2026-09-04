@@ -53,6 +53,20 @@ export type McpPayloadValue =
   | { [key: string]: McpPayloadValue };
 
 /**
+ * Recursive Zod validator for McpPayloadValue with zero any/unknown.
+ */
+export const zMcpPayloadValue: z.ZodType<McpPayloadValue> = z.lazy(() =>
+  z.union([
+    z.string(),
+    z.number(),
+    z.boolean(),
+    z.null(),
+    z.array(zMcpPayloadValue),
+    z.record(zMcpPayloadValue),
+  ])
+);
+
+/**
  * Execution context provided to every tool handler.
  */
 export interface McpExecutionContext {
@@ -85,7 +99,7 @@ export interface McpToolDefinition<
 }
 
 /**
- * Public metadata representation of a tool exposed to clients in tools/list.
+ * Serialized public descriptor returned via JSON-RPC `tools/list`.
  */
 export interface McpToolDescriptor {
   name: string;
@@ -96,6 +110,16 @@ export interface McpToolDescriptor {
   requiresApproval: boolean;
   inputSchema: Record<string, McpPayloadValue>;
 }
+
+/**
+ * Zod schema validating incoming JSON-RPC 2.0 requests.
+ */
+export const zMcpJsonRpcRequest = z.object({
+  jsonrpc: z.literal('2.0'),
+  id: z.union([z.string(), z.number()]),
+  method: z.string().min(1),
+  params: z.record(zMcpPayloadValue).optional(),
+});
 
 /**
  * JSON-RPC 2.0 Request format for MCP Gateway over HTTP POST.
@@ -199,6 +223,8 @@ export interface McpPendingApproval {
   adjudicatedAt?: string;
   adjudicatedBy?: string;
   adjudicationNotes?: string;
+  executionResult?: Record<string, McpPayloadValue>;
+  executionError?: string;
 }
 
 /**

@@ -38,10 +38,11 @@ export class McpApiKeyService {
   private static readonly COLLECTION = 'mcp_keys';
 
   /**
-   * Hashes an MCP plaintext key with SHA-256.
+   * Hashes an MCP plaintext key with HMAC-SHA-256 and server-side pepper.
    */
   public static hashKey(plaintextKey: string): string {
-    return crypto.createHash('sha256').update(plaintextKey.trim()).digest('hex');
+    const pepper = process.env.MCP_KEY_PEPPER || 'smartsapp-mcp-v2-salt-pepper';
+    return crypto.createHmac('sha256', pepper).update(plaintextKey.trim()).digest('hex');
   }
 
   /**

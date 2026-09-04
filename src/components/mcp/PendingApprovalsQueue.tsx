@@ -242,6 +242,24 @@ export function PendingApprovalsQueue({
                         </div>
                       )}
 
+                      {approval.executionResult && (
+                        <div>
+                          <span className="text-[11px] font-semibold uppercase text-emerald-600 block mb-1">
+                            Execution Output (Completed Post-Approval)
+                          </span>
+                          <pre className="p-3 bg-slate-900 text-emerald-400 font-mono text-xs rounded-lg overflow-x-auto max-h-48">
+                            {JSON.stringify(approval.executionResult, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+
+                      {approval.executionError && (
+                        <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-lg text-xs text-rose-800">
+                          <span className="font-semibold block mb-0.5">Execution Failure:</span>
+                          <p className="font-mono">{approval.executionError}</p>
+                        </div>
+                      )}
+
                       {approval.adjudicationNotes && (
                         <div className="p-2.5 bg-slate-100 rounded-lg text-xs text-slate-700">
                           <span className="font-semibold block mb-0.5">Adjudicator Rationale:</span>

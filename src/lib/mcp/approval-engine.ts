@@ -25,6 +25,8 @@ import type {
   McpRiskLevel,
 } from './types';
 import type { RegisteredMcpTool } from './registry';
+import { globalMcpRegistry } from './registry';
+import { McpAuditLogger } from './audit-logger';
 
 export interface EvaluationResult {
   allowedToExecute: boolean;
@@ -38,35 +40,38 @@ export class McpApprovalEngine {
   private static readonly POLICIES_COLLECTION = 'mcp_approval_policies';
 
   /**
-   * Evaluates if a tool invocation can proceed automatically or requires human approval.
+   * Evaluates whether a tool invocation is allowed to execute or must be gated for human approval.
    */
   public static async evaluateToolExecution(
     tool: RegisteredMcpTool,
     params: Record<string, McpPayloadValue>,
     context: McpExecutionContext
   ): Promise<EvaluationResult> {
-    // 1. Fetch any workspace-level policy override
-    const policy = await this.getApprovalPolicy(context.workspaceId, tool.name);
+    // 1. Fetch workspace custom approval policy override if configured
+    const customPolicy = await this.getApprovalPolicy(context.workspaceId, tool.name);
 
-    if (policy && !policy.enabled) {
-      return {
-        allowedToExecute: false,
-        requiresApproval: false,
-        rejectionReason: `Tool "${tool.name}" is disabled by workspace security policy.`,
-      };
+    let effectiveRequiresApproval = tool.requiresApproval;
+    if (customPolicy) {
+      if (!customPolicy.enabled) {
+        throw new Error(`Tool "${tool.name}" is disabled by workspace administrator policy.`);
+      }
+      effectiveRequiresApproval = customPolicy.requiresApproval;
     }
 
-    // Determine effective risk and approval requirements
-    const effectiveRequiresApproval =
-      policy?.requiresApproval ??
-      (tool.requiresApproval || tool.riskLevel === 'high_risk' || tool.riskLevel === 'critical');
+    // 2. High-risk and Critical tools require approval by default unless policy explicitly overrides
+    if (tool.riskLevel === 'high_risk' || tool.riskLevel === 'critical') {
+      if (!customPolicy || customPolicy.requiresApproval) {
+        effectiveRequiresApproval = true;
+      }
+    }
 
+    // If no approval is required, execution proceeds automatically
     if (!effectiveRequiresApproval) {
       return { allowedToExecute: true, requiresApproval: false };
     }
 
-    // High-risk or policy-flagged execution: queue for human approval
-    const id = `mcpappr_${crypto.randomUUID()}`;
+    // 3. Queue pending approval record in Firestore
+    const id = `appr_${crypto.randomUUID()}`;
     const timestamp = new Date().toISOString();
 
     const pendingApproval: McpPendingApproval = {
@@ -93,6 +98,7 @@ export class McpApprovalEngine {
 
   /**
    * Adjudicates a pending tool execution approval.
+   * If approved, immediately triggers the tool execution and records the result.
    */
   public static async adjudicate(params: {
     approvalId: string;
@@ -111,14 +117,74 @@ export class McpApprovalEngine {
       throw new Error(`Approval "${params.approvalId}" has already been adjudicated (${current.status}).`);
     }
 
+    let executionResult: Record<string, McpPayloadValue> | undefined = undefined;
+    let executionError: string | undefined = undefined;
+
+    if (params.decision === 'approved') {
+      const tool = globalMcpRegistry.getTool(current.toolName);
+      if (!tool) {
+        executionError = `Tool "${current.toolName}" is not registered in the tool registry.`;
+      } else {
+        const execContext: McpExecutionContext = {
+          workspaceId: current.workspaceId,
+          organizationId: current.organizationId,
+          callerId: params.adjudicatedBy,
+          callerType: 'user',
+          callDepth: 0,
+          timestamp: new Date().toISOString(),
+          requestId: `approval_exec_${params.approvalId}`,
+        };
+
+        const startTime = Date.now();
+        try {
+          const validatedParams = tool.parameters.parse(current.inputPayload);
+          executionResult = await tool.handler(validatedParams, execContext);
+
+          await McpAuditLogger.logExecution({
+            toolName: current.toolName,
+            version: tool.version,
+            workspaceId: current.workspaceId,
+            organizationId: current.organizationId,
+            callerId: params.adjudicatedBy,
+            callerType: 'user',
+            durationMs: Date.now() - startTime,
+            status: 'success',
+            inputPayload: current.inputPayload,
+            outputSummary: `Approved and executed by human administrator (${params.adjudicatedBy}).`,
+          });
+        } catch (err) {
+          executionError = err instanceof Error ? err.message : 'Execution failed during approval adjudication.';
+          await McpAuditLogger.logExecution({
+            toolName: current.toolName,
+            version: tool.version,
+            workspaceId: current.workspaceId,
+            organizationId: current.organizationId,
+            callerId: params.adjudicatedBy,
+            callerType: 'user',
+            durationMs: Date.now() - startTime,
+            status: 'error',
+            inputPayload: current.inputPayload,
+            outputSummary: 'Execution failed after human approval.',
+            errorMessage: executionError,
+          });
+        }
+      }
+    }
+
     const updates: Partial<McpPendingApproval> = {
       status: params.decision,
       adjudicatedAt: new Date().toISOString(),
       adjudicatedBy: params.adjudicatedBy,
       adjudicationNotes: params.notes || '',
+      ...(executionResult ? { executionResult } : {}),
+      ...(executionError ? { executionError } : {}),
     };
 
     await ref.update(updates);
+
+    if (executionError && params.decision === 'approved') {
+      throw new Error(`Tool approved, but execution failed: ${executionError}`);
+    }
 
     return {
       ...current,
