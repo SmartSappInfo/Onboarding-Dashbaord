@@ -495,6 +495,68 @@ export async function getMyDayOverviewAction(params: {
       }
     });
 
+    // 7c. Ingest Churn Radar Early-Warning Interventions (Phase 10 -> Phase 2 Closed Loop Bridge)
+    dealsSnap.forEach((doc) => {
+      const d = doc.data();
+      const assigned = d.assignedTo ? String(d.assignedTo) : '';
+      const isStatusOpen = d.status === 'open' || (d.status !== 'won' && d.status !== 'lost' && d.status !== 'cancelled');
+      const dealVal = Number(d.value || d.amount || 0);
+
+      // Inspect open high-value deals assigned to rep not already manager-elevated
+      if (assigned === repId && isStatusOpen && !d.isManagerElevated && dealVal >= 10000) {
+        let touchDecayDays = 0;
+        let isDecayed = false;
+        let reason = '';
+        let action = '';
+
+        if (d.lastActivityAt) {
+          const parsedTime = new Date(d.lastActivityAt).getTime();
+          if (!isNaN(parsedTime)) {
+            touchDecayDays = Math.round(Math.max(0, (now.getTime() - parsedTime) / (1000 * 60 * 60 * 24)));
+            if (touchDecayDays > 21) {
+              isDecayed = true;
+              reason = `Severe interaction silence (${touchDecayDays}d without touch)`;
+              action = 'Execute Executive Re-engagement Outreach to revive momentum.';
+            } else if (touchDecayDays > 14) {
+              isDecayed = true;
+              reason = `Interaction cadence slowing (${touchDecayDays}d since last touch)`;
+              action = 'Schedule Account Review touchpoint to defend velocity.';
+            }
+          }
+        }
+
+        const stakeholders = Array.isArray(d.stakeholders) ? d.stakeholders.length : (Number(d.stakeholderCount) || 1);
+        if (!isDecayed && stakeholders <= 1 && dealVal >= 25000) {
+          isDecayed = true;
+          reason = 'Single-threaded deal: vulnerable to champion departure';
+          action = 'Mandate Multi-Threading Play: Map Economic Buyer and technical stakeholders.';
+        }
+
+        if (isDecayed) {
+          candidates.push({
+            id: `churn_radar_${doc.id}`,
+            type: 'deal_action',
+            title: `Churn Radar: ${d.name || d.title || 'Opportunity'}`,
+            description: `${reason}. Recommended action: ${action}`,
+            dealId: doc.id,
+            dealName: d.name || d.title,
+            dealValue: dealVal,
+            dealStage: d.stage || 'Pipeline',
+            contactName: d.contactName,
+            contactEmail: d.contactEmail,
+            contactPhone: d.contactPhone,
+            dueDate: now.toISOString(),
+            assignedTo: repId,
+            workspaceId,
+            organizationId,
+            suggestedAction: action,
+            confidence: 92,
+            createdAt: now.toISOString(),
+          });
+        }
+      }
+    });
+
     // 8. Coalesce and Rank Queue using Priority Engine (R2 Deduplication)
     const rankedQueue = coalesceAndRankQueue(candidates, {
       repLaggingMetric,

@@ -727,6 +727,19 @@ export async function generateRepCoachingBriefAction(params: {
       }
     }
 
+    // Pipeline Hygiene & Churn Risk Enrichment (Phase 10 & 7 Synergy)
+    const silentDeals = rawDeals.filter((d) => {
+      if (d.status !== 'open' || !d.lastActivityAt) return false;
+      const parsedTime = new Date(d.lastActivityAt).getTime();
+      return !isNaN(parsedTime) && (Date.now() - parsedTime) > 14 * 24 * 60 * 60 * 1000;
+    });
+
+    if (silentDeals.length > 0) {
+      brief.discussionPoints.push(
+        `Pipeline Hygiene: ${silentDeals.length} active deal(s) have not had logged activity in >14 days. Review re-engagement strategy.`
+      );
+    }
+
     return { success: true, data: brief };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

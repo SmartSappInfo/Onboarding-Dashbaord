@@ -33,7 +33,8 @@ import {
   ListPlus, 
   Plus,
   Compass,
-  Workflow
+  Workflow,
+  LayoutDashboard
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
@@ -166,6 +167,18 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
             >
               <Workflow className="h-3.5 w-3.5 text-indigo-500" />
               <span>Sales Plays</span>
+            </Button>
+          </Link>
+
+          <Link href="/admin/revenue-operating-system">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl font-bold text-xs gap-1.5"
+            >
+              <LayoutDashboard className="h-3.5 w-3.5 text-amber-500" />
+              <span>Revenue OS</span>
             </Button>
           </Link>
 
