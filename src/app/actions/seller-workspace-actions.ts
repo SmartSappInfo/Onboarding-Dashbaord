@@ -288,6 +288,46 @@ export async function getMyDayOverviewAction(params: {
       console.warn('Non-blocking buyer signal candidate resolution failure:', sigErr);
     }
 
+    // 6.3 Build Candidates from Uncategorized or Slipped Forecast Deals (Phase 7)
+    try {
+      const forecastDealsSnap = await adminDb
+        .collection('forecastDeals')
+        .where('workspaceId', '==', workspaceId)
+        .where('ownerId', '==', repId)
+        .limit(10)
+        .get();
+
+      forecastDealsSnap.forEach((dealDoc) => {
+        const d = dealDoc.data();
+        const slipCount = Number(d.slipCount) || 0;
+        const isSlipped = slipCount >= 2;
+        const isUncategorized = !d.forecastCategory || d.forecastCategory === 'omitted';
+
+        if (isSlipped || isUncategorized) {
+          candidates.push({
+            id: `forecast_${dealDoc.id}`,
+            type: 'deal_action',
+            title: isSlipped
+              ? `Forecast Alert: Slipped Deal (${d.name || 'Opportunity'})`
+              : `Forecast Review: Lock Category for ${d.name || 'Opportunity'}`,
+            description: isSlipped
+              ? `Close date has slipped ${slipCount} times. Reassess timeline to defend quarterly revenue pace.`
+              : `Review deal qualification to assign Committed or Likely forecast category.`,
+            entityId: dealDoc.id,
+            entityName: d.name || 'Opportunity',
+            entityType: 'Deal',
+            dueDate: now.toISOString(),
+            assignedTo: repId,
+            workspaceId,
+            organizationId,
+            createdAt: d.updatedAt || now.toISOString(),
+          });
+        }
+      });
+    } catch (forecastErr) {
+      console.warn('Non-blocking forecast candidate resolution failure:', forecastErr);
+    }
+
     // 7. Resolve Today's Meetings
     const upcomingMeetings: UpcomingMeetingBrief[] = [];
     meetingsSnap.forEach((doc) => {

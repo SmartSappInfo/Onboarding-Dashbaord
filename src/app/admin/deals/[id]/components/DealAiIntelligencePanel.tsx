@@ -132,6 +132,18 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
         </div>
 
         <div className="flex items-center gap-2 shrink-0">
+          <Link href="/admin/revenue-forecasting">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl font-bold text-xs gap-1.5"
+            >
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Forecast Cockpit</span>
+            </Button>
+          </Link>
+
           <Link href="/admin/deal-intelligence">
             <Button
               type="button"
@@ -140,7 +152,7 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
               className="h-9 rounded-xl font-bold text-xs gap-1.5"
             >
               <Compass className="h-3.5 w-3.5 text-primary" />
-              <span>Full Intelligence</span>
+              <span>Deal Intelligence</span>
             </Button>
           </Link>
 

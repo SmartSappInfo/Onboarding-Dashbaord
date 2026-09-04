@@ -154,7 +154,11 @@ export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'o
 
   // Buyer & Deal Intelligence (Phase 6)
   { eventType: 'buyer_signal_actioned', entityType: 'BuyerSignal', points: 10, enabled: true, description: 'Points awarded when a seller actions or converts a high-intent buyer signal.' },
-  { eventType: 'meeting_completed_with_brief', entityType: 'Meeting', points: 20, enabled: true, description: 'Points awarded when a meeting is conducted with pre-brief prep and post-meeting CRM intelligence sync.' }
+  { eventType: 'meeting_completed_with_brief', entityType: 'Meeting', points: 20, enabled: true, description: 'Points awarded when a meeting is conducted with pre-brief prep and post-meeting CRM intelligence sync.' },
+
+  // Revenue Attribution & Predictive Forecasting (Phase 7)
+  { eventType: 'forecast_category_committed', entityType: 'Deal', points: 15, enabled: true, description: 'Points awarded when an opportunity is rigorously inspected and promoted to Committed forecast category.' },
+  { eventType: 'revenue_attribution_confirmed', entityType: 'Deal', points: 10, enabled: true, description: 'Points awarded when multi-touch revenue credit splits are confirmed and closed on a won deal.' }
 ];
 
 /**
@@ -487,7 +491,7 @@ export async function evaluateEffortEvent(event: ScoringEvent): Promise<{ points
     const isMeeting = eventType.includes('meeting') || eventType.includes('appointment');
     const isCall = eventType.includes('call') || eventType.includes('phone');
     const isTask = eventType.includes('task') || eventType.includes('checklist');
-    const isDeal = eventType.includes('deal');
+    const isDeal = eventType.includes('deal') || eventType.includes('forecast') || eventType.includes('attribution');
     const isCampaign = eventType.includes('campaign');
 
     const workspaceSummaryRef = adminDb.collection('userEffortSummary').doc(`${workspaceId}_${actorId}`);

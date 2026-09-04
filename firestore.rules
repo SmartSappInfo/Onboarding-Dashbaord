@@ -1991,6 +1991,41 @@ service cloud.firestore {
       allow delete: if isSystemAdmin();
     }
 
+    // --- Revenue Attribution & Predictive Forecasting (Phase 7) ---
+    match /revenueAttribution/{attrId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /attributionTouchpoints/{touchId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /forecastDeals/{dealId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /quarterlyTargets/{targetId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /forecastGovernance/{workspaceId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow create, update: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow delete: if isSystemAdmin();
+    }
+
     match /webhooks/{webhookId} {
       allow get: if isAuthorized() && (
         isSystemAdmin() || 
@@ -2621,8 +2656,10 @@ service cloud.firestore {
       allow update: if isAuthorized() && (
         isSystemAdmin() ||
         (hasWorkspaceAccess(resource.data.workspaceId) &&
-         request.resource.data.workspaceId == resource.data.workspaceId &&
-         request.auth.uid == resource.data.createdBy)
+         request.resource.data.workspaceId == resource.data.workspaceId && (
+           request.auth.uid == resource.data.createdBy ||
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPinned', 'pinnedAt', 'pinnedBy', 'replyCount', 'updatedAt'])
+         ))
       );
       allow delete: if isAuthorized() && (
         isSystemAdmin() ||
@@ -2647,8 +2684,10 @@ service cloud.firestore {
       allow update: if isAuthorized() && (
         isSystemAdmin() ||
         (hasWorkspaceAccess(resource.data.workspaceId) &&
-         request.resource.data.workspaceId == resource.data.workspaceId &&
-         request.auth.uid == resource.data.createdBy)
+         request.resource.data.workspaceId == resource.data.workspaceId && (
+           request.auth.uid == resource.data.createdBy ||
+           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isPinned', 'pinnedAt', 'updatedAt'])
+         ))
       );
       allow delete: if isAuthorized() && (
         isSystemAdmin() ||

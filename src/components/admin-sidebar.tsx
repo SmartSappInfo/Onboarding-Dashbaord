@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Building, Settings, Calendar, Flame, Trophy, ShieldCheck, GraduationCap, Compass } from 'lucide-react';
+import { LayoutDashboard, Building, Settings, Calendar, Flame, Trophy, ShieldCheck, GraduationCap, Compass, TrendingUp } from 'lucide-react';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +10,7 @@ const navItems = [
   { href: '/admin/my-day', icon: Flame, label: 'My Day' },
   { href: '/admin/sales-command', icon: ShieldCheck, label: 'Command Center' },
   { href: '/admin/deal-intelligence', icon: Compass, label: 'Deal Intelligence' },
+  { href: '/admin/revenue-forecasting', icon: TrendingUp, label: 'Revenue & Forecast' },
   { href: '/admin/coaching', icon: GraduationCap, label: 'Coaching & Practice' },
   { href: '/admin/entities', icon: Building, label: 'Entities' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
