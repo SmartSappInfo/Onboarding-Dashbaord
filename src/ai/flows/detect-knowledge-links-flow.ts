@@ -126,9 +126,27 @@ CRITICAL RULES:
         };
       }
 
-      // Filter and sanitize suggestions
+      // Filter and sanitize suggestions with mandatory verbatim quote validation (PRD Principle 5)
+      const targetContentLower = (targetObject.content || '').toLowerCase();
+      const candidateMap = new Map(
+        candidateObjects.map((c) => [c.id, (c.content || '').toLowerCase()])
+      );
+
       const validatedSuggestions = (output.suggestions || [])
-        .filter((s) => s.confidenceScore >= minConfidence)
+        .filter((s) => {
+          if (s.confidenceScore < minConfidence) return false;
+          // Must contain at least one non-empty evidence quote
+          if (!s.evidenceQuotes || s.evidenceQuotes.length === 0) return false;
+
+          const candidateContentLower = candidateMap.get(s.toObjectId) || '';
+
+          // Discard ungrounded suggestions: at least one quote must appear verbatim in source or target
+          return s.evidenceQuotes.some((quote) => {
+            const clean = quote.toLowerCase().trim();
+            // Minimum 8 characters to prevent trivial matches (e.g. single words or articles)
+            return clean.length >= 8 && (targetContentLower.includes(clean) || candidateContentLower.includes(clean));
+          });
+        })
         .map((s) => ({
           ...s,
           fromObjectId: s.fromObjectId || targetObject.id,

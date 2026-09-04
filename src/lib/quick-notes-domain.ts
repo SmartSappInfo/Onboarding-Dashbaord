@@ -1541,9 +1541,9 @@ export function findShortestGraphPath(
 
   for (const edge of edges) {
     adj.get(edge.source)?.push({ target: edge.target, edge });
-    if (edge.bidirectional) {
-      adj.get(edge.target)?.push({ target: edge.source, edge });
-    }
+    // In knowledge graph semantic traversal, allow bidirectional exploration
+    // so users querying connections discover how two concepts relate regardless of selection order
+    adj.get(edge.target)?.push({ target: edge.source, edge });
   }
 
   const queue: Array<{ id: string; path: string[]; edges: GraphEdge[] }> = [

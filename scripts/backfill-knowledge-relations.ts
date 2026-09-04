@@ -1,4 +1,3 @@
-// @ts-nocheck
 /**
  * Backfill Knowledge Relations & Bi-directional Links (Company Brain Phase 5).
  *
@@ -12,6 +11,16 @@
 
 import { QuickNoteRepository } from '../src/lib/quick-notes-repository';
 import { KnowledgeRelationRepository } from '../src/lib/knowledge-relation-repository';
+import type {
+  KnowledgeRelation,
+  KnowledgeRelationType,
+} from '../src/lib/quick-notes-types';
+
+interface LinkCandidate {
+  targetId: string | undefined;
+  relType: KnowledgeRelationType;
+  targetType: KnowledgeRelation['toObjectType'];
+}
 
 async function main() {
   const args = process.argv.slice(2);
@@ -32,28 +41,17 @@ async function main() {
   const existingSet = new Set(existingRelations.map((r) => `${r.fromObjectId}->${r.toObjectId}:${r.relationType}`));
   console.log(`Found ${existingRelations.length} existing relations.`);
 
-  const toCreate: Array<{
-    workspaceId: string;
-    fromObjectId: string;
-    fromObjectType: string;
-    toObjectId: string;
-    toObjectType: string;
-    relationType: string;
-    confidence: number;
-    source: 'system';
-    createdByName: string;
-    metadata: Record<string, unknown>;
-  }> = [];
+  const toCreate: Array<Omit<KnowledgeRelation, 'id' | 'createdAt'>> = [];
 
   for (const note of notes) {
     if (!note.links) continue;
 
-    const candidates = [
+    const candidates: LinkCandidate[] = [
       { targetId: note.links.entityId, relType: 'about_school', targetType: 'school' },
       { targetId: note.links.contactId, relType: 'about_contact', targetType: 'contact' },
       { targetId: note.links.dealId, relType: 'about_deal', targetType: 'deal' },
-      { targetId: note.links.taskId, relType: 'depends_on', targetType: 'task' },
-      { targetId: note.links.campaignId, relType: 'about_campaign', targetType: 'campaign' },
+      { targetId: note.links.taskId, relType: 'depends_on', targetType: 'note' },
+      { targetId: note.links.campaignId, relType: 'about_campaign', targetType: 'note' },
     ];
 
     for (const cand of candidates) {

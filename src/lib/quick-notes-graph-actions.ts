@@ -123,6 +123,37 @@ export async function createKnowledgeRelationAction(
 
     const validated = parseRes.data;
 
+    // Self-link prevention
+    if (validated.fromObjectId === validated.toObjectId) {
+      return {
+        success: false,
+        error: 'Cannot create a relationship between a knowledge object and itself.',
+        code: 'validation_error',
+      };
+    }
+
+    // Cross-tenant boundary verification
+    if (validated.fromObjectType === 'note') {
+      const fromNote = await QuickNoteRepository.getById(validated.fromObjectId);
+      if (!fromNote || fromNote.workspaceId !== workspaceId) {
+        return {
+          success: false,
+          error: 'The source note does not exist in the active workspace.',
+          code: 'validation_error',
+        };
+      }
+    }
+    if (validated.toObjectType === 'note') {
+      const toNote = await QuickNoteRepository.getById(validated.toObjectId);
+      if (!toNote || toNote.workspaceId !== workspaceId) {
+        return {
+          success: false,
+          error: 'The target note does not exist in the active workspace.',
+          code: 'validation_error',
+        };
+      }
+    }
+
     const relation = await KnowledgeRelationRepository.createRelation({
       workspaceId,
       fromObjectId: validated.fromObjectId,

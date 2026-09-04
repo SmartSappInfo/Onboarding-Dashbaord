@@ -215,6 +215,16 @@ describe('Company Brain Phase 5: Knowledge Graph Domain Logic', () => {
       expect(res.distance).toBe(0);
       expect(res.path).toEqual(['note-1']);
     });
+
+    it('finds symmetric reverse path regardless of selection order', () => {
+      const graph = buildAdjacencyGraph(mockRelations, mockNotes);
+      // Querying backwards from note-3 to note-2 still finds the 2-hop connection
+      const res = findShortestGraphPath(graph.nodes, graph.edges, 'note-3', 'note-2');
+
+      expect(res.found).toBe(true);
+      expect(res.distance).toBe(2);
+      expect(res.path).toEqual(['note-3', 'note-1', 'note-2']);
+    });
   });
 
   describe('extractSubGraph (Focus Mode)', () => {

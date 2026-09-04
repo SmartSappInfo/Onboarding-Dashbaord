@@ -81,22 +81,22 @@ const RELATION_CATEGORIES: RelationTypeCategory[] = [
   {
     title: 'Causal & Structural',
     description: 'Direct hierarchical or logical dependencies between notes and concepts',
-    types: ['depends_on', 'derived_from', 'supersedes', 'implements', 'blocks', 'resolves'],
+    types: ['depends_on', 'derived_from', 'supersedes', 'implements', 'blocks', 'solves', 'causes', 'affects', 'requires'],
   },
   {
     title: 'Evidence & Validation',
     description: 'Empirical citations, customer observations, and hypothesis validation',
-    types: ['supports', 'contradicts', 'evidences', 'validates', 'challenges', 'solves'],
+    types: ['supports', 'contradicts', 'evidences', 'validates', 'invalidates', 'expands', 'summarizes', 'responds_to'],
   },
   {
     title: 'CRM & Stakeholders',
     description: 'Direct connections to accounts, pipeline opportunities, contacts, and schools',
-    types: ['about_contact', 'about_school', 'about_deal', 'about_lead', 'stakeholder_of'],
+    types: ['about_contact', 'about_school', 'about_deal', 'about_campaign', 'about_product', 'about_segment', 'mentioned_by_contact', 'targets', 'addresses'],
   },
   {
     title: 'Associative & Semantic',
     description: 'General contextual mentions, citations, and semantic cross-references',
-    types: ['references', 'inspired_by', 'relates_to', 'complements', 'replaces', 'duplicates'],
+    types: ['related_to', 'inspired_by', 'duplicates', 'references', 'belongs_to'],
   },
 ];
 
@@ -126,7 +126,7 @@ export default function BackofficeKnowledgeGraphClient() {
         getKnowledgeGraphMetricsAction(workspaceId.trim(), user.uid),
       ]);
 
-      if (govRes.success && govRes.data) {
+      if (govRes.success) {
         setGovernanceConfig(govRes.data);
       } else {
         toast({
@@ -136,7 +136,7 @@ export default function BackofficeKnowledgeGraphClient() {
         });
       }
 
-      if (metricsRes.success && metricsRes.data) {
+      if (metricsRes.success) {
         setMetrics(metricsRes.data.metrics);
         setTotalRelations(metricsRes.data.totalRelations);
       }
@@ -176,7 +176,7 @@ export default function BackofficeKnowledgeGraphClient() {
     if (!governanceConfig) return;
     setGovernanceConfig({
       ...governanceConfig,
-      enabledRelationTypes: enable ? ([...KNOWLEDGE_RELATION_TYPES] as KnowledgeRelationType[]) : ['relates_to'],
+      enabledRelationTypes: enable ? ([...KNOWLEDGE_RELATION_TYPES] as KnowledgeRelationType[]) : ['related_to'],
     });
   };
 
@@ -193,7 +193,7 @@ export default function BackofficeKnowledgeGraphClient() {
         config: governanceConfig,
       });
 
-      if (res.success && res.data) {
+      if (res.success) {
         setGovernanceConfig(res.data);
         toast({
           title: 'Configuration Saved',
@@ -231,7 +231,7 @@ export default function BackofficeKnowledgeGraphClient() {
         user.displayName || 'System Admin'
       );
 
-      if (res.success && res.data) {
+      if (res.success) {
         setMigrationResult(res.data);
         toast({
           title: 'FER Migration Complete ✓',
@@ -270,7 +270,7 @@ export default function BackofficeKnowledgeGraphClient() {
         user.displayName || 'System Admin'
       );
 
-      if (res.success && res.data) {
+      if (res.success) {
         setGovernanceConfig(res.data);
         toast({
           title: 'Governance Reset',

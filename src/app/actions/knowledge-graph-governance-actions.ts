@@ -31,7 +31,6 @@ import {
 import { getAggregatedNotes } from '@/lib/quick-notes-aggregator';
 import {
   buildAdjacencyGraph,
-  computeGraphMetrics,
   quickNoteToUnified,
 } from '@/lib/quick-notes-domain';
 import {
@@ -236,7 +235,7 @@ export async function getKnowledgeGraphMetricsAction(
     ]);
 
     const baseGraph = buildAdjacencyGraph(relations, notes);
-    const metrics = computeGraphMetrics(baseGraph);
+    const metrics = baseGraph.metrics;
 
     return {
       success: true,
@@ -265,20 +264,26 @@ export async function triggerBackfillCrmRelationsAction(
   try {
     const result = await backfillCrmRelationsAction(workspaceId, actorId, actorName);
 
-    if (result.success) {
-      await logActivity({
-        organizationId: 'org_default',
-        workspaceId,
-        userId: actorId,
-        displayName: actorName,
-        type: 'knowledge_fer_migration_executed',
-        source: 'backoffice_migration',
-        description: `Executed FER migration: backfilled ${result.data.backfilledCount} explicit knowledge relationships.`,
-        metadata: { backfilledCount: result.data.backfilledCount },
-      }).catch((e) => console.warn('[triggerBackfillCrmRelationsAction] Activity log failed:', e));
+    if (!result.success) {
+      return {
+        success: false,
+        error: result.error,
+        actionConfig: { path: '/backoffice/knowledge-graph', label: 'Return to Migration Runner' },
+      };
     }
 
-    return result;
+    await logActivity({
+      organizationId: 'org_default',
+      workspaceId,
+      userId: actorId,
+      displayName: actorName,
+      type: 'knowledge_fer_migration_executed',
+      source: 'backoffice_migration',
+      description: `Executed FER migration: backfilled ${result.data.backfilledCount} explicit knowledge relationships.`,
+      metadata: { backfilledCount: result.data.backfilledCount },
+    }).catch((e) => console.warn('[triggerBackfillCrmRelationsAction] Activity log failed:', e));
+
+    return { success: true, data: result.data };
   } catch (err) {
     console.error('[triggerBackfillCrmRelationsAction] Error:', err);
     return {

@@ -88,6 +88,7 @@ export function KnowledgeGraphView({
           variant: 'destructive',
           title: 'Failed to load Knowledge Graph',
           description: res.error,
+          actionConfig: { path: '/admin/quick-notes', label: 'Return to Notes' },
         });
       }
     } catch (err) {
@@ -215,6 +216,7 @@ export function KnowledgeGraphView({
           variant: 'destructive',
           title: 'Delete failed',
           description: res.error,
+          actionConfig: { path: '/admin/quick-notes/graph', label: 'Refresh Graph' },
         });
       }
     } catch (err) {

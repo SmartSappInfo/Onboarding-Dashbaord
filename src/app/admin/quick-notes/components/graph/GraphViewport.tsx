@@ -220,7 +220,7 @@ export function GraphViewport({
         cancelAnimationFrame(animFrameRef.current);
       }
     };
-  }, [physicsEnabled, edges, dimensions.width, dimensions.height, draggedNodeId]);
+  }, [physicsEnabled, edges, edges.length, nodes.length, dimensions.width, dimensions.height, draggedNodeId]);
 
   // Wheel Zoom handler
   const handleWheel = (e: React.WheelEvent) => {

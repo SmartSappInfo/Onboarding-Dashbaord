@@ -2,9 +2,6 @@
 
 import * as React from 'react';
 import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
   Play,
   Pause,
   Layers,
@@ -45,7 +42,7 @@ export function GraphControls({
         variant="ghost"
         size="icon"
         onClick={onTogglePhysics}
-        className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground"
+        className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] sm:w-9 sm:h-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all"
         title={physicsEnabled ? 'Pause physics layout' : 'Resume dynamic physics'}
       >
         {physicsEnabled ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 text-emerald-500" />}
@@ -57,7 +54,7 @@ export function GraphControls({
         variant={clustersVisible ? 'secondary' : 'ghost'}
         size="icon"
         onClick={onToggleClusters}
-        className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground"
+        className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] sm:w-9 sm:h-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all"
         title="Toggle cluster grouping"
       >
         <Layers className="w-4 h-4" />
@@ -69,7 +66,7 @@ export function GraphControls({
         variant="ghost"
         size="icon"
         onClick={onResetLayout}
-        className="w-8 h-8 rounded-lg text-muted-foreground hover:text-foreground"
+        className="min-h-[44px] min-w-[44px] sm:min-h-[36px] sm:min-w-[36px] sm:w-9 sm:h-9 rounded-lg text-muted-foreground hover:text-foreground active:scale-[0.97] transition-all"
         title="Reset graph layout"
       >
         <RotateCcw className="w-4 h-4" />
@@ -83,7 +80,7 @@ export function GraphControls({
         variant={isListView ? 'default' : 'ghost'}
         size="sm"
         onClick={onToggleListView}
-        className="min-h-[32px] px-2.5 gap-1.5 text-xs font-medium rounded-lg"
+        className="min-h-[44px] sm:min-h-[36px] px-3 gap-1.5 text-xs font-medium rounded-lg active:scale-[0.97] transition-all"
         title={isListView ? 'Show Visual Network Graph' : 'Show Accessible Structured Relationship List'}
       >
         {isListView ? (
