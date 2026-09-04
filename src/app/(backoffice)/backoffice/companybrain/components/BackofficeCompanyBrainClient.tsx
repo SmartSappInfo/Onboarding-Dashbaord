@@ -58,7 +58,9 @@ import {
 } from '@/lib/memory/actions/backoffice-companybrain-actions';
 import { semanticSearchMemoriesAction } from '@/lib/memory/actions/semantic-search-actions';
 import { scanMemoryConflictsBatchAction } from '@/lib/memory/actions/orchestrator-actions';
+import { buildContextAction } from '@/lib/memory/actions/context-builder-actions';
 import type { SemanticSearchResult } from '@/lib/memory/semantic-types';
+import type { ContextPackage, ContextSubjectType } from '@/lib/memory/context-types';
 
 export default function BackofficeCompanyBrainClient() {
   const { user } = useUser();
@@ -85,6 +87,64 @@ export default function BackofficeCompanyBrainClient() {
     scannedPairs: number;
     conflictsDetected: number;
   } | null>(null);
+
+  // Context Simulator state (Phase 5)
+  const [simWorkspaceId, setSimWorkspaceId] = React.useState('');
+  const [simSubjectType, setSimSubjectType] = React.useState<ContextSubjectType>('entity');
+  const [simSubjectId, setSimSubjectId] = React.useState('');
+  const [simObjective, setSimObjective] = React.useState('Prepare comprehensive account briefing');
+  const [simMaxTokens, setSimMaxTokens] = React.useState('4000');
+  const [isSimulatingContext, setIsSimulatingContext] = React.useState(false);
+  const [simulatedPackage, setSimulatedPackage] = React.useState<ContextPackage | null>(null);
+
+  const handleRunContextSimulation = async () => {
+    if (!user?.uid) return;
+    if (!simWorkspaceId.trim()) {
+      toast({
+        title: 'Workspace ID Required',
+        description: 'Please specify a target workspace ID for context simulation.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSimulatingContext(true);
+    try {
+      const res = await buildContextAction({
+        workspaceId: simWorkspaceId.trim(),
+        organizationId: 'org_default',
+        userId: user.uid,
+        objective: simObjective.trim() || 'General context assembly',
+        subject: simSubjectId.trim()
+          ? { type: simSubjectType, id: simSubjectId.trim() }
+          : undefined,
+        maxTokens: parseInt(simMaxTokens, 10) || 4000,
+        depth: 'standard',
+      });
+
+      if (res.success && res.data) {
+        setSimulatedPackage(res.data);
+        toast({
+          title: 'Context Assembled',
+          description: `Built package with ${res.data.tokenBudget.totalTokens} tokens in ${res.data.executionTimeMs}ms.`,
+        });
+      } else {
+        toast({
+          title: 'Assembly Error',
+          description: res.error || 'Failed to assemble context package.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Assembly Failed',
+        description: err instanceof Error ? err.message : 'Unknown simulation error',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSimulatingContext(false);
+    }
+  };
 
   // Fetch health telemetry
   const fetchHealth = React.useCallback(async () => {
@@ -476,6 +536,10 @@ export default function BackofficeCompanyBrainClient() {
             <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
             <span>Orchestrator & Conflicts</span>
           </TabsTrigger>
+          <TabsTrigger value="context-simulator" className="gap-1.5 text-xs">
+            <Brain className="h-3.5 w-3.5 text-indigo-500" />
+            <span>Context Simulator</span>
+          </TabsTrigger>
         </TabsList>
 
         {/* Tab 1: Index Synchronization & FER Reconciliation */}
@@ -734,6 +798,175 @@ export default function BackofficeCompanyBrainClient() {
                       <span className="text-muted-foreground">Contradictions Flagged</span>
                       <p className="text-lg font-bold text-rose-600 mt-0.5">{auditResult.conflictsDetected}</p>
                     </div>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 5: Context Simulator & Workbench (Phase 5) */}
+        <TabsContent value="context-simulator" className="space-y-4">
+          <Card className="border border-border shadow-sm">
+            <CardHeader>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="h-4 w-4 text-indigo-600" />
+                <span>Context Builder Simulator & Workbench</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Simulate prompt context assembly, 4-tier token budget allocation, and multi-store aggregation across any tenant or entity without modifying code.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Target Workspace ID <span className="text-rose-500">*</span>:
+                  </label>
+                  <Input
+                    value={simWorkspaceId}
+                    onChange={(e) => setSimWorkspaceId(e.target.value)}
+                    placeholder="e.g. ws_test_tenant or your workspace ID"
+                    className="text-xs min-h-[44px] font-mono bg-background"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Subject Type:
+                  </label>
+                  <select
+                    value={simSubjectType}
+                    onChange={(e) => setSimSubjectType(e.target.value as ContextSubjectType)}
+                    aria-label="Subject Type"
+                    className="w-full text-xs min-h-[44px] px-3 py-2 rounded-md border border-input bg-background text-foreground"
+                  >
+                    <option value="entity">Entity / Account</option>
+                    <option value="deal">Commercial Deal</option>
+                    <option value="meeting">Meeting Event</option>
+                    <option value="campaign">Marketing Campaign</option>
+                    <option value="user">User / Rep</option>
+                  </select>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Subject Record ID (optional):
+                  </label>
+                  <Input
+                    value={simSubjectId}
+                    onChange={(e) => setSimSubjectId(e.target.value)}
+                    placeholder="e.g. ent_123 or deal_456"
+                    className="text-xs min-h-[44px] font-mono bg-background"
+                  />
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Max Token Budget:
+                  </label>
+                  <Input
+                    type="number"
+                    value={simMaxTokens}
+                    onChange={(e) => setSimMaxTokens(e.target.value)}
+                    placeholder="4000"
+                    className="text-xs min-h-[44px] font-mono bg-background"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-foreground">
+                  User or Agent Objective:
+                </label>
+                <Input
+                  value={simObjective}
+                  onChange={(e) => setSimObjective(e.target.value)}
+                  placeholder="e.g. Prepare for upcoming contract renewal negotiation"
+                  className="text-xs min-h-[44px] bg-background"
+                />
+              </div>
+
+              <div className="pt-2">
+                <Button
+                  onClick={handleRunContextSimulation}
+                  disabled={isSimulatingContext}
+                  className="min-h-[44px] bg-indigo-600 hover:bg-indigo-700 text-white text-xs gap-2 active:scale-[0.97]"
+                >
+                  <Brain className={cn('h-4 w-4', isSimulatingContext && 'animate-spin')} />
+                  <span>{isSimulatingContext ? 'Assembling Context...' : 'Assemble Context Package'}</span>
+                </Button>
+              </div>
+
+              {/* Simulation Results Dashboard */}
+              {simulatedPackage && (
+                <div className="pt-4 border-t space-y-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-foreground">Simulation Telemetry</span>
+                    <Badge variant="outline" className="text-[10px] font-mono">
+                      Latency: {simulatedPackage.executionTimeMs}ms
+                    </Badge>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                      <span className="text-muted-foreground block text-[11px]">Tokens Used</span>
+                      <span className="text-base font-bold text-foreground">
+                        {simulatedPackage.tokenBudget.totalTokens} / {simulatedPackage.tokenBudget.maxBudget}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                      <span className="text-muted-foreground block text-[11px]">Utilization</span>
+                      <span className="text-base font-bold text-indigo-600">
+                        {simulatedPackage.tokenBudget.utilizationPercentage}%
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                      <span className="text-muted-foreground block text-[11px]">Verified Memories</span>
+                      <span className="text-base font-bold text-foreground">
+                        {simulatedPackage.memories.length}
+                      </span>
+                    </div>
+                    <div className="p-3 rounded-lg border bg-muted/20">
+                      <span className="text-muted-foreground block text-[11px]">Contradictions</span>
+                      <span className={cn('text-base font-bold', simulatedPackage.conflicts.length > 0 ? 'text-rose-600' : 'text-emerald-600')}>
+                        {simulatedPackage.conflicts.length}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Tier Breakdown */}
+                  <div className="p-3 rounded-lg border bg-background space-y-1 text-xs">
+                    <span className="font-semibold block text-[11px] text-muted-foreground">
+                      Stratified Budget Allocation:
+                    </span>
+                    <div className="flex flex-wrap gap-2 text-[11px] font-mono">
+                      <Badge variant="secondary">Tier 1 Critical: {simulatedPackage.tokenBudget.tierBreakdown.tier1Critical}t</Badge>
+                      <Badge variant="secondary">Tier 2 Relevant: {simulatedPackage.tokenBudget.tierBreakdown.tier2Relevant}t</Badge>
+                      <Badge variant="secondary">Tier 3 Supporting: {simulatedPackage.tokenBudget.tierBreakdown.tier3Supporting}t</Badge>
+                      <Badge variant="secondary">Tier 4 Discoverable: {simulatedPackage.tokenBudget.tierBreakdown.tier4Discoverable}t</Badge>
+                    </div>
+                  </div>
+
+                  {/* Raw JSON View */}
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">Context Package Payload (JSON)</span>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          navigator.clipboard.writeText(JSON.stringify(simulatedPackage, null, 2));
+                          toast({ title: 'JSON Copied', description: 'Package payload copied to clipboard.' });
+                        }}
+                        className="h-8 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                      >
+                        Copy JSON
+                      </Button>
+                    </div>
+                    <pre className="p-4 rounded-xl bg-muted/50 border text-[11px] font-mono max-h-72 overflow-auto text-foreground/90">
+                      {JSON.stringify(simulatedPackage, null, 2)}
+                    </pre>
                   </div>
                 </div>
               )}

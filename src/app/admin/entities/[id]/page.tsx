@@ -76,6 +76,7 @@ import {
     FileText,
     Check,
     ChevronDown,
+    Brain,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -119,6 +120,7 @@ import EntityCustomFieldGroups from './components/EntityCustomFieldGroups';
 import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import EntitySurveysTab from '../components/EntitySurveysTab';
 import EntityGraphTab from '../components/EntityGraphTab';
+import EntityContextTab from '../components/EntityContextTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
 import { createTaskAction } from '@/lib/task-server-actions';
@@ -796,6 +798,10 @@ export default function EntityDetailPage() {
                         <TabsTrigger value="graph" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Network className="h-3 w-3" /> Relationships
                         </TabsTrigger>
+
+                        <TabsTrigger value="ai-context" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <Brain className="h-3 w-3 text-primary" /> AI Context
+                        </TabsTrigger>
                     </TabsList>
 
   <TabsContent value="overview" className="m-0 p-6 space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
@@ -968,6 +974,18 @@ export default function EntityDetailPage() {
                                 workspaceId={activeWorkspaceId}
                                 entityId={entityId}
                                 entityName={entityData.name || 'Account'}
+                            />
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="ai-context" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        {activeWorkspaceId && entityData && (
+                            <EntityContextTab
+                                workspaceId={activeWorkspaceId}
+                                organizationId={entityData.organizationId || activeOrganizationId || ''}
+                                entityId={entityId}
+                                entityName={entityData.name || 'Account'}
+                                userId={currentUser?.uid || ''}
                             />
                         )}
                     </TabsContent>

@@ -1249,8 +1249,33 @@ service cloud.firestore {
       allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
+    match /media_transcripts/{transcriptId} {
+      allow get: if true; // Public access for rendering transcripts on shared pages
+      allow list, create, update, delete: if isAuthorized();
+    }
+
+    match /media_chapters/{chapterId} {
+      allow get: if true; // Public access for rendering chapter timelines on shared pages
+      allow list, create, update, delete: if isAuthorized();
+    }
+
+    match /media_intelligence/{intelligenceId} {
+      allow get: if true; // Public access for reading AI summaries
+      allow list, create, update, delete: if isAuthorized();
+    }
+
     match /media_processing_jobs/{jobId} {
       allow get, list, create, update: if isAuthorized();
+    }
+
+    match /media_events/{eventId} {
+      allow create, get, list: if true; // Public view/play events recording and client queries
+      allow update, delete: if isAuthorized();
+    }
+
+    match /media_sessions/{sessionId} {
+      allow create, get, list: if true; // Public session tracking
+      allow update, delete: if isAuthorized();
     }
 
     match /thumbnail_designs/{designId} {
@@ -2973,6 +2998,16 @@ service cloud.firestore {
         hasWorkspaceAccess(resource.data.workspaceId)
       );
       // Writes strictly gated to Server Actions / Admin SDK to maintain audit integrity
+      allow write: if false;
+    }
+
+    // --- CompanyBrain 2.0 Context Builder & Snapshots (Phase 5) ---
+    match /context_snapshots/{snapshotId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; generated via Server Actions / Admin SDK
       allow write: if false;
     }
 

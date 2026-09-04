@@ -1,20 +1,21 @@
 # CompanyBrain: Operations & Maintenance Runbook
 **File:** `docs/CompanyBrain/companybrain_manual.md`  
-**Current Milestone:** Phases 1–4 Deployed & Active (Notes, Semantic Search, Knowledge Graph, Conflict Engine & Freshness Governance)  
+**Current Milestone:** Phases 1–5 Deployed & Active (Notes, Semantic Search, Knowledge Graph, Conflict Engine, and Unified Context Builder)  
 **Status:** Operational (Low-Noise Runbook)
 
 ---
 
 ## 1. System Status & Infrastructure Health
 
-All foundational infrastructure for Phases 1, 2, 3, and 4 is deployed, indexed, and active:
+All foundational infrastructure for Phases 1, 2, 3, 4, and 5 is deployed, indexed, and active:
 
 | Subsystem | Deployed Component | Status | Location / Cluster |
 | :--- | :--- | :--- | :--- |
-| **Firestore Security Rules** | `/memory_objects`, `/companybrain_governance`, `/graph_nodes`, `/graph_edges`, `/memory_conflicts` | **LIVE** | Project `studio-9220106300-f74cb` |
-| **Firestore Compound Indexes** | 6 memory indexes + 9 graph composite indexes + 4 conflict composite indexes | **LIVE** | Compiled & active |
+| **Firestore Security Rules** | `/memory_objects`, `/graph_nodes`, `/graph_edges`, `/memory_conflicts`, `/context_snapshots` | **LIVE** | Project `studio-9220106300-f74cb` |
+| **Firestore Compound Indexes** | 6 memory indexes + 9 graph composite indexes + 4 conflict composite indexes + 2 snapshot indexes | **LIVE** | Compiled & active |
 | **Qdrant Vector Engine** | Collection `smartsapp_memory` (768d Cosine) | **HEALTHY** | Qdrant Cloud (GCP `australia-southeast1-0`) |
-| **Circuit Breakers** | Deterministic embeddings, graph traversal fallbacks & contradiction heuristics | **ACTIVE** | Auto-engages on network or API failures |
+| **Context Builder Engine** | 4-Tier Stratified Budgeting, Relevance Scorer & Grounded Citations | **ACTIVE** | Server Actions & Context Panel UI |
+| **Circuit Breakers** | Deterministic embeddings, graph traversal, contradiction detection, and dossier fallbacks | **ACTIVE** | Auto-engages on network or API failures |
 
 ---
 
@@ -111,6 +112,16 @@ npx tsx scripts/fer-scan-memory-conflicts.ts
 TARGET_WORKSPACE_ID=<workspace_id> npx tsx scripts/fer-scan-memory-conflicts.ts
 ```
 
+### 3.5. Simulate & Test Unified Context Assembly
+Simulates multi-store context package assembly, token budget enforcement, conflict detection, and Genkit AI dossier synthesis:
+```bash
+# Full Simulation Test with Mock Data
+npx tsx scripts/fer-test-context-builder.ts
+
+# Target a specific workspace and real subject
+TARGET_WORKSPACE_ID=<workspace_id> SUBJECT_ID=<entity_id> npx tsx scripts/fer-test-context-builder.ts
+```
+
 ---
 
 ## 4. UI Surfaces & Backoffice Governance
@@ -123,7 +134,9 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 | **Knowledge Conflict Center** | `/admin/quick-notes/conflicts` | Full-page contradiction review, side-by-side claim comparison, 1-click supersede adjudication, custom audit notes. |
 | **Global Semantic Search** | `/admin/quick-notes/search` | Natural language vector search, cosine scores, "Why this matched" attribution, verbatim evidence drawer. |
 | **Entity Knowledge Graph** | `/admin/entities/[id]` *(Knowledge Graph tab)* | Contextual relationship topology, 1-click AI connection explanation, connected memory timeline. |
+| **Entity AI Context & Dossier** | `/admin/entities/[id]` *(AI Context & Dossier tab)* | Real-time commercial outlook, known risks, key stakeholders, open commitments, citations, and 1-click brief synthesis. |
 | **Vector & Governance Control Plane** | `/backoffice/companybrain` | Qdrant cluster latency/health, live search playground, LRU cache purge, on-demand re-index, and batch contradiction audits. |
+| **Context Simulator & Workbench** | `/backoffice/companybrain` *(Context Simulator tab)* | Live multi-tier token budgeting playground, latency telemetry, raw context JSON inspection, and live prompt simulation. |
 | **Knowledge Graph Console** | `/backoffice/knowledge-graph` | Node/edge distribution metrics, cycle-safe 3-hop shortest path simulator, in-browser tenant mesh sync. |
 
 ---
@@ -136,15 +149,16 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 | **Graph empty for a workspace** | Relations have not yet been projected into the graph collections. | Run `TARGET_WORKSPACE_ID=<ws_id> npx tsx scripts/fer-sync-graph-relations.ts` or click "Sync Graph Mesh" in `/backoffice/knowledge-graph`. |
 | **Unresolved contradiction alerts** | Mutually opposing claims detected between two notes or meetings. | Navigate to `/admin/quick-notes/conflicts` to adjudicate which claim is authoritative. |
 | **Memories showing as "Stale"** | Memory age has exceeded category TTL (e.g. 90d pricing, 180d stakeholder). | Open the "Decaying / Stale" tab in `/admin/quick-notes` and click "Reconfirm Truth" (1-click refresh). |
+| **Context token budget truncation** | Retrieved facts and memories exceed specified max token ceiling. | Review the 4-tier token budget allocation in `/backoffice/companybrain`. Lower priority Tier 4 items are safely omitted first. |
 | **"API Key Leaked" or AI Explanation Fallback** | `GEMINI_API_KEY` was revoked or quota exceeded. | Replace with a fresh key from Google AI Studio. Fallback engine automatically produces deterministic explanations in the interim. |
 | **Qdrant Cluster degraded/offline** | Network connectivity issue or Qdrant Cloud maintenance. | The application automatically routes queries through the in-memory fallback store with zero downtime. |
 | **Permission Denied on graph or conflict writes** | Direct client SDK mutation attempt. | Collections are server-side write protected (`allow write: if false;`). Mutations must flow through Server Actions. |
 
 ---
 
-## 6. Forward Look: Phase 5 Preparation
+## 6. Forward Look: Phase 6 Preparation
 
-Upcoming milestone: **Multi-Tenant Knowledge Federation & Dynamic Synthesis**:
-1. Cross-workspace federated knowledge querying and consensus policies.
-2. Federated memory deduplication and access control redaction filters.
-3. Automated scheduled graph optimization and orphan node pruning.
+Upcoming milestone: **MCP Platform & Governed Tool Registry**:
+1. Expose CompanyBrain retrieval tools as Model Context Protocol (MCP) endpoints for external AI agents.
+2. RBAC and policy-governed memory query authorization for tool execution.
+3. Automated tool execution telemetry, audit logs, and rate-limiting safeguards.
