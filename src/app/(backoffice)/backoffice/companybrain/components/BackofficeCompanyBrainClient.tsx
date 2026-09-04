@@ -56,6 +56,7 @@ import {
   Workflow,
   CheckCircle2,
   Activity,
+  Users,
 } from 'lucide-react';
 import {
   getCompanyBrainHealthAction,
@@ -82,6 +83,18 @@ import type { SemanticSearchResult } from '@/lib/memory/semantic-types';
 import type { ContextPackage, ContextSubjectType } from '@/lib/memory/context-types';
 import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
 import type { AgentDescriptor, AgentRun } from '@/lib/supervisor/types';
+import type {
+  SpecialistDescriptor,
+  SpecialistWorkspaceConfig,
+  SpecialistAutonomyLevel,
+  DomainSpecialistId,
+  SwarmRun,
+} from '@/lib/agents/domain-types';
+import {
+  listSpecialistsAction,
+  updateSpecialistConfigAction,
+  startSwarmMissionAction,
+} from '@/lib/agents/actions/domain-agent-actions';
 
 export default function BackofficeCompanyBrainClient() {
   const { user } = useUser();
@@ -293,6 +306,128 @@ export default function BackofficeCompanyBrainClient() {
   React.useEffect(() => {
     fetchAgentsAndRuns();
   }, [fetchAgentsAndRuns]);
+
+  // Domain Specialists & Swarm Governance State (Phase 8)
+  const [specialistsList, setSpecialistsList] = React.useState<SpecialistDescriptor[]>([]);
+  const [isLoadingSpecialists, setIsLoadingSpecialists] = React.useState(false);
+  const [selectedSpecialistId, setSelectedSpecialistId] = React.useState<DomainSpecialistId>('revenue_specialist');
+  const [policyWorkspaceId, setPolicyWorkspaceId] = React.useState('');
+  const [policyAutonomy, setPolicyAutonomy] = React.useState<SpecialistAutonomyLevel>('supervised');
+  const [policyDirective, setPolicyDirective] = React.useState('');
+  const [isSavingSpecialistPolicy, setIsSavingSpecialistPolicy] = React.useState(false);
+  const [swarmSimObjective, setSwarmSimObjective] = React.useState('Conduct strategic expansion and compliance audit for high-value client');
+  const [isSimulatingSwarm, setIsSimulatingSwarm] = React.useState(false);
+  const [simulatedSwarmRun, setSimulatedSwarmRun] = React.useState<SwarmRun | null>(null);
+
+  const fetchSpecialists = React.useCallback(async () => {
+    if (!user?.uid) return;
+    setIsLoadingSpecialists(true);
+    try {
+      const res = await listSpecialistsAction(policyWorkspaceId || 'default');
+      if (res.success && res.data) {
+        setSpecialistsList(res.data);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setIsLoadingSpecialists(false);
+    }
+  }, [user?.uid, policyWorkspaceId]);
+
+  React.useEffect(() => {
+    fetchSpecialists();
+  }, [fetchSpecialists]);
+
+  const handleSaveSpecialistPolicy = async () => {
+    if (!user?.uid) return;
+    if (!policyWorkspaceId.trim()) {
+      toast({
+        title: 'Workspace ID Required',
+        description: 'Please enter a valid workspace ID to apply this policy.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingSpecialistPolicy(true);
+    try {
+      const res = await updateSpecialistConfigAction({
+        workspaceId: policyWorkspaceId.trim(),
+        specialistId: selectedSpecialistId,
+        autonomyLevel: policyAutonomy,
+        disabledTools: [],
+        customDirective: policyDirective.trim() || undefined,
+        updatedBy: user.uid,
+        updatedAt: new Date().toISOString(),
+      });
+
+      if (res.success) {
+        toast({
+          title: 'Specialist Policy Applied',
+          description: `Configured ${selectedSpecialistId} as ${policyAutonomy} for workspace ${policyWorkspaceId}.`,
+          actionConfig: {
+            path: '/backoffice/companybrain',
+            label: 'Review',
+          },
+        });
+      } else {
+        toast({
+          title: 'Policy Update Failed',
+          description: res.error || 'Failed to update specialist policy.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Unknown error saving policy.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingSpecialistPolicy(false);
+    }
+  };
+
+  const handleRunSwarmSimulation = async () => {
+    if (!user?.uid) return;
+    setIsSimulatingSwarm(true);
+    try {
+      const res = await startSwarmMissionAction({
+        workspaceId: policyWorkspaceId.trim() || 'default_ws',
+        organizationId: 'default_org',
+        actor: { type: 'user', id: user.uid },
+        objective: swarmSimObjective.trim(),
+        specialistIds: ['knowledge_specialist', 'revenue_specialist', 'governance_specialist'],
+        mode: 'parallel_consensus',
+      });
+
+      if (res.success && res.data) {
+        setSimulatedSwarmRun(res.data);
+        toast({
+          title: 'Swarm Simulation Finished',
+          description: `Executed swarm with 3 specialists in ${res.data.metrics.durationMs}ms.`,
+          actionConfig: {
+            path: '/backoffice/companybrain',
+            label: 'Inspect',
+          },
+        });
+      } else {
+        toast({
+          title: 'Simulation Error',
+          description: res.error || 'Failed to simulate swarm run.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Simulation Error',
+        description: err instanceof Error ? err.message : 'Unknown simulation exception.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSimulatingSwarm(false);
+    }
+  };
 
   // Fetch health telemetry
   const fetchHealth = React.useCallback(async () => {
@@ -695,6 +830,10 @@ export default function BackofficeCompanyBrainClient() {
           <TabsTrigger value="supervisor-orchestration" className="gap-1.5 text-xs">
             <Bot className="h-3.5 w-3.5 text-purple-600" />
             <span>Supervisor & Agents</span>
+          </TabsTrigger>
+          <TabsTrigger value="domain-agents" className="gap-1.5 text-xs">
+            <Users className="h-3.5 w-3.5 text-purple-600" />
+            <span>Domain Specialists & Swarms</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1458,6 +1597,227 @@ export default function BackofficeCompanyBrainClient() {
                     </table>
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 8: Domain Specialists & Swarm Collaboration Governance */}
+        <TabsContent value="domain-agents" className="space-y-4">
+          <Card className="border border-border shadow-sm">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Users className="h-4 w-4 text-purple-600" />
+                    <span>Domain Specialists Roster & Policy Management</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Inspect domain specialists, configure code-free workspace autonomy policies, and simulate multi-agent swarms.
+                  </CardDescription>
+                </div>
+                <Link href="/admin/companybrain/agents">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs gap-1.5 border-purple-200 text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-950/50 active:scale-[0.97]"
+                  >
+                    <span>Open Agent Center</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Specialist Cards Grid */}
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-foreground">
+                  Registered Specialist Personas ({specialistsList.length})
+                </span>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {specialistsList.map((spec) => (
+                    <div
+                      key={spec.id}
+                      className="p-3.5 rounded-xl border border-border bg-card hover:bg-muted/40 transition-colors space-y-2"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-bold text-foreground">
+                          {spec.name}
+                        </span>
+                        <Badge variant="outline" className="text-[10px] uppercase">
+                          {spec.category}
+                        </Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground line-clamp-2">
+                        {spec.personaDescription}
+                      </p>
+                      <div className="flex items-center justify-between text-[11px] pt-1 text-muted-foreground">
+                        <span>{spec.allowedTools.length} Tools</span>
+                        <span className="capitalize font-medium text-foreground">
+                          {spec.defaultAutonomy.replace('_', ' ')}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Code-Free Policy Editor */}
+              <div className="p-4 rounded-xl border border-purple-200 dark:border-purple-900/50 bg-purple-50/30 dark:bg-purple-950/20 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold uppercase tracking-wider text-purple-900 dark:text-purple-300 flex items-center gap-1.5">
+                    <Sliders className="h-3.5 w-3.5 text-purple-600" />
+                    Code-Free Policy & Autonomy Control Plane
+                  </span>
+                  <Badge variant="secondary" className="text-[10px] bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300">
+                    Zero-Code Governance
+                  </Badge>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Target Workspace ID
+                    </label>
+                    <Input
+                      placeholder="e.g. ws_acme_corp"
+                      value={policyWorkspaceId}
+                      onChange={(e) => setPolicyWorkspaceId(e.target.value)}
+                      className="h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Specialist Persona
+                    </label>
+                    <select
+                      value={selectedSpecialistId}
+                      onChange={(e) => setSelectedSpecialistId(e.target.value as DomainSpecialistId)}
+                      className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="knowledge_specialist">Knowledge & Lore Specialist</option>
+                      <option value="revenue_specialist">Revenue & Pipeline Specialist</option>
+                      <option value="meeting_specialist">Meeting & Briefing Specialist</option>
+                      <option value="sdr_specialist">SDR & Prospecting Specialist</option>
+                      <option value="operations_specialist">Operations & Workflow Specialist</option>
+                      <option value="governance_specialist">Governance & Compliance Specialist</option>
+                    </select>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">
+                      Autonomy Tier
+                    </label>
+                    <select
+                      value={policyAutonomy}
+                      onChange={(e) => setPolicyAutonomy(e.target.value as SpecialistAutonomyLevel)}
+                      className="w-full h-9 px-3 rounded-lg border border-input bg-background text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-purple-500"
+                    >
+                      <option value="read_only">Read-Only (Queries Only, Mutations Blocked)</option>
+                      <option value="supervised">Supervised (Mutations Require Approval)</option>
+                      <option value="autonomous">Autonomous (Auto-run Low-Risk Mutations)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Custom Workspace Directive / Prompt Injection
+                  </label>
+                  <Input
+                    placeholder="e.g. Always enforce HIPAA medical privacy standards and NHS clinical code validation..."
+                    value={policyDirective}
+                    onChange={(e) => setPolicyDirective(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+
+                <Button
+                  size="sm"
+                  disabled={isSavingSpecialistPolicy}
+                  onClick={handleSaveSpecialistPolicy}
+                  className="min-h-[44px] text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-sm transition-all active:scale-[0.97]"
+                >
+                  {isSavingSpecialistPolicy ? 'Saving Policy...' : 'Save Specialist Policy Override'}
+                </Button>
+              </div>
+
+              {/* Swarm Simulation Sandbox */}
+              <div className="p-4 rounded-xl border border-border bg-card space-y-4">
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-3.5 w-3.5 text-purple-600" />
+                  Swarm Consensus Simulation & Telemetry
+                </span>
+
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">
+                    Simulation Objective
+                  </label>
+                  <Input
+                    value={swarmSimObjective}
+                    onChange={(e) => setSwarmSimObjective(e.target.value)}
+                    className="h-9 text-xs"
+                    placeholder="Describe mission objective for 3-agent swarm..."
+                  />
+                </div>
+
+                <Button
+                  size="sm"
+                  disabled={isSimulatingSwarm}
+                  onClick={handleRunSwarmSimulation}
+                  className="min-h-[44px] text-xs font-semibold bg-slate-900 hover:bg-slate-800 text-white dark:bg-slate-100 dark:text-slate-900 rounded-xl transition-all active:scale-[0.97] flex items-center gap-1.5"
+                >
+                  {isSimulatingSwarm ? (
+                    <>
+                      <RotateCw className="h-3.5 w-3.5 animate-spin" />
+                      <span>Simulating Swarm...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-3.5 w-3.5 fill-current" />
+                      <span>Simulate Swarm Consensus</span>
+                    </>
+                  )}
+                </Button>
+
+                {simulatedSwarmRun && simulatedSwarmRun.consensus && (
+                  <div className="p-4 rounded-xl border border-purple-200 dark:border-purple-800 bg-purple-50/20 dark:bg-purple-950/20 space-y-3 mt-3">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-foreground">
+                        Simulated Swarm Run ID: {simulatedSwarmRun.id}
+                      </span>
+                      <span className="text-muted-foreground flex items-center gap-1">
+                        <Clock className="h-3.5 w-3.5" />
+                        {simulatedSwarmRun.metrics.durationMs}ms
+                      </span>
+                    </div>
+
+                    <div className="text-xs text-muted-foreground leading-relaxed whitespace-pre-line bg-background p-3 rounded-lg border border-border">
+                      {simulatedSwarmRun.consensus.executiveSummary}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-xs">
+                      <div className="p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-300 space-y-1">
+                        <span className="font-bold block">Consensus Points ({simulatedSwarmRun.consensus.consensusPoints.length})</span>
+                        {simulatedSwarmRun.consensus.consensusPoints.map((pt, i) => (
+                          <div key={i} className="text-[11px] leading-relaxed">&bull; {pt}</div>
+                        ))}
+                      </div>
+
+                      <div className="p-3 rounded-lg bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 text-rose-900 dark:text-rose-300 space-y-1">
+                        <span className="font-bold block">Divergence Points ({simulatedSwarmRun.consensus.divergencePoints.length})</span>
+                        {simulatedSwarmRun.consensus.divergencePoints.length === 0 ? (
+                          <div className="text-[11px] italic">Zero divergence detected.</div>
+                        ) : (
+                          simulatedSwarmRun.consensus.divergencePoints.map((dp, i) => (
+                            <div key={i} className="text-[11px] leading-relaxed">&bull; {dp.topic}: {dp.tensionSummary}</div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

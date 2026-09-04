@@ -122,62 +122,56 @@ globalAgentRegistry.registerAgent({
   },
 });
 
+import { KnowledgeSpecialist } from '@/lib/agents/specialists/knowledge-specialist';
+import { RevenueSpecialist } from '@/lib/agents/specialists/revenue-specialist';
+import { MeetingSpecialist } from '@/lib/agents/specialists/meeting-specialist';
+import { SdrSpecialist } from '@/lib/agents/specialists/sdr-specialist';
+import { OperationsSpecialist } from '@/lib/agents/specialists/operations-specialist';
+import { GovernanceSpecialist } from '@/lib/agents/specialists/governance-specialist';
+
+// Register Phase 8 Domain Specialists
+export const globalKnowledgeSpecialist = new KnowledgeSpecialist();
+export const globalRevenueSpecialist = new RevenueSpecialist();
+export const globalMeetingSpecialist = new MeetingSpecialist();
+export const globalSdrSpecialist = new SdrSpecialist();
+export const globalOperationsSpecialist = new OperationsSpecialist();
+export const globalGovernanceSpecialist = new GovernanceSpecialist();
+
+globalAgentRegistry.registerAgent(globalKnowledgeSpecialist);
+globalAgentRegistry.registerAgent(globalRevenueSpecialist);
+globalAgentRegistry.registerAgent(globalMeetingSpecialist);
+globalAgentRegistry.registerAgent(globalSdrSpecialist);
+globalAgentRegistry.registerAgent(globalOperationsSpecialist);
+globalAgentRegistry.registerAgent(globalGovernanceSpecialist);
+
+// Backwards-compatibility aliases for Phase 7 stubs
 globalAgentRegistry.registerAgent({
   id: 'research-specialist',
-  name: 'Knowledge & Research Specialist',
+  name: 'Knowledge & Research Specialist (Alias)',
   version: '1.0.0',
   category: 'domain',
-  description: 'Domain agent dedicated to deep semantic recall, cross-entity fact retrieval, and contextual evidence aggregation.',
-  capabilities: ['memory_recall', 'context_assembly', 'synthesis'],
-  execute: async (request: AgentRequest): Promise<AgentResult> => {
-    return {
-      runId: `res_${Date.now()}`,
-      status: 'completed',
-      answer: `Research specialist evaluated objective: "${request.objective}". Domain specialization is active.`,
-      findings: [],
-      actions: [],
-      toolCalls: [],
-      sources: [],
-    };
-  },
+  description: globalKnowledgeSpecialist.description,
+  capabilities: globalKnowledgeSpecialist.capabilities,
+  execute: (req) => globalKnowledgeSpecialist.execute(req),
 });
 
 globalAgentRegistry.registerAgent({
   id: 'crm-specialist',
-  name: 'CRM & Pipeline Specialist',
+  name: 'CRM & Pipeline Specialist (Alias)',
   version: '1.0.0',
   category: 'domain',
-  description: 'Domain agent focused on customer profile inspection, pipeline deal progression, and stakeholder task routing.',
-  capabilities: ['crm_read', 'crm_write', 'deal_management'],
-  execute: async (request: AgentRequest): Promise<AgentResult> => {
-    return {
-      runId: `crm_${Date.now()}`,
-      status: 'completed',
-      answer: `CRM specialist evaluated objective: "${request.objective}". Entity and deal synchronization active.`,
-      findings: [],
-      actions: [],
-      toolCalls: [],
-      sources: [],
-    };
-  },
+  description: globalRevenueSpecialist.description,
+  capabilities: globalRevenueSpecialist.capabilities,
+  execute: (req) => globalRevenueSpecialist.execute(req),
 });
 
 globalAgentRegistry.registerAgent({
   id: 'memory-governance-agent',
-  name: 'Institutional Memory Governance Agent',
+  name: 'Memory Governance Agent (Alias)',
   version: '1.0.0',
   category: 'utility',
-  description: 'Utility agent managing memory freshness, contradiction auditing, and vector index consistency.',
-  capabilities: ['memory_write', 'memory_recall'],
-  execute: async (request: AgentRequest): Promise<AgentResult> => {
-    return {
-      runId: `gov_${Date.now()}`,
-      status: 'completed',
-      answer: `Memory governance agent verified workspace consistency for: "${request.workspaceId}".`,
-      findings: [],
-      actions: [],
-      toolCalls: [],
-      sources: [],
-    };
-  },
+  description: globalGovernanceSpecialist.description,
+  capabilities: globalGovernanceSpecialist.capabilities,
+  execute: (req) => globalGovernanceSpecialist.execute(req),
 });
+

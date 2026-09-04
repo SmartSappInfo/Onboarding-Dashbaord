@@ -35,6 +35,8 @@ export const ADMIN_ROUTE_TITLES: RouteTitleMap = {
   '/admin/companybrain/tools': 'MCP Tool Registry & Governance',
   '/admin/quick-notes/supervisor': 'Supervisor Agent Mission Control',
   '/admin/companybrain/supervisor': 'Supervisor Agent Mission Control',
+  '/admin/quick-notes/agents': 'Domain Specialists & Swarm Collaboration',
+  '/admin/companybrain/agents': 'Domain Specialists & Swarm Collaboration',
   '/admin/finance/contracts': 'Agreements',
   '/admin/finance/invoices': 'Invoices',
   '/admin/finance/packages': 'Packages',

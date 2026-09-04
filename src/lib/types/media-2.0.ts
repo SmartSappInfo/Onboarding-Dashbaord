@@ -855,3 +855,134 @@ export interface EnterprisePlatformGovernanceConfig {
   retentionPurgeSchedule: 'DAILY' | 'WEEKLY' | 'MANUAL';
   updatedAt: string;
 }
+
+// --- Phase 10: Strategic Content Planning (Idea Canvas), Omnichannel & Knowledge Bridge ---
+
+export type IdeaCanvasNodeType =
+  | 'idea'
+  | 'question'
+  | 'audience'
+  | 'topic'
+  | 'hook'
+  | 'asset'
+  | 'reference'
+  | 'campaign'
+  | 'cta'
+  | 'persona'
+  | 'insight';
+
+export interface IdeaCanvasNode {
+  id: string;
+  workspaceId: string;
+  canvasId: string;
+  type: IdeaCanvasNodeType;
+  title: string;
+  description?: string;
+  position: { x: number; y: number };
+  color?: string;
+  data?: Record<string, string | number | boolean | null | string[]>;
+  connectedNodeIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaIdeaCanvas {
+  id: string;
+  workspaceId: string;
+  title: string;
+  description?: string;
+  targetAudience?: string;
+  primaryGoal?: string;
+  nodes: IdeaCanvasNode[];
+  status: 'draft' | 'active' | 'archived';
+  convertedAssetId?: string;
+  convertedExperienceId?: string;
+  convertedCampaignId?: string;
+  convertedPackageId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaReference {
+  assetId: string;
+  experienceId?: string;
+  linkTemplate: string;
+  title: string;
+  thumbnailUrl?: string;
+  durationSeconds?: number;
+  formattedDuration?: string;
+  url: string;
+  trackingMode: 'identified' | 'anonymous' | 'tokenized';
+  channel?: 'email' | 'sms' | 'whatsapp' | 'web';
+}
+
+export interface DealMediaPackage {
+  id: string;
+  workspaceId: string;
+  dealId: string;
+  contactId: string;
+  title: string;
+  assetIds: string[];
+  trackedShareId: string;
+  trackedUrl: string;
+  recipientName: string;
+  personalizedNote?: string;
+  status: 'created' | 'sent' | 'viewed' | 'completed';
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PreMeetingIntelligence {
+  dealId: string;
+  contactId: string;
+  contactName: string;
+  viewedAssets: Array<{
+    assetId: string;
+    title: string;
+    completionRate: number;
+    totalSeconds: number;
+    lastViewedAt: string;
+  }>;
+  likelyInterests: string[];
+  suggestedNextContent: Array<{
+    assetId: string;
+    title: string;
+    rationale: string;
+    format: string;
+  }>;
+  calculatedAt: string;
+}
+
+export interface GlobalMediaSearchFilter {
+  query: string;
+  types?: Array<'asset' | 'experience' | 'package' | 'campaign' | 'contact'>;
+  format?: string;
+  hasTranscript?: boolean;
+  dateRange?: { from?: string; to?: string };
+  limit?: number;
+}
+
+export interface GlobalMediaSearchResult {
+  id: string;
+  type: 'asset' | 'experience' | 'package' | 'campaign' | 'contact';
+  title: string;
+  subtitle?: string;
+  thumbnailUrl?: string;
+  format?: string;
+  summary?: string;
+  campaignCount?: number;
+  score: number;
+  matchedField: 'title' | 'transcript' | 'tag' | 'vector' | 'campaign';
+  url: string;
+}
+
+export interface MediaPlatformHealthMetric {
+  workspaceId: string;
+  streamStartupAvgMs: number;
+  eventLossRate: number;
+  processingFailureRate: number;
+  aiInferenceAvgMs: number;
+  activeStreamsCount: number;
+  timestamp: string;
+}
+

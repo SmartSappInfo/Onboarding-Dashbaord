@@ -25,6 +25,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { globalMcpRegistry } from '@/lib/mcp/registry';
 import { McpGateway } from '@/lib/mcp/gateway';
 import { McpApprovalEngine } from '@/lib/mcp/approval-engine';
+import { globalAgentRegistry } from '../agent-registry';
 import { ContextBuilderService } from '@/lib/memory/services/context-builder-service';
 import { decomposeSupervisorGoalFlow } from '@/ai/flows/decompose-supervisor-goal-flow';
 import { synthesizeSupervisorResultFlow } from '@/ai/flows/synthesize-supervisor-result-flow';
@@ -278,6 +279,81 @@ export class SupervisorEngine {
         run.steps.slice(0, run.currentStepIndex)
       );
       step.arguments = resolvedArguments;
+
+      // Check if assigned target is a registered domain specialist agent (Phase 8)
+      const targetAgentId = step.assignedAgentOrTool.startsWith('agent:')
+        ? step.assignedAgentOrTool.slice(6)
+        : step.assignedAgentOrTool;
+
+      const registeredAgent = globalAgentRegistry.hasAgent(targetAgentId)
+        ? globalAgentRegistry.getAgent(targetAgentId)
+        : undefined;
+
+      if (registeredAgent && targetAgentId !== 'supervisor-prime') {
+        try {
+          const specialistResult = await registeredAgent.execute({
+            workspaceId: run.workspaceId,
+            organizationId: run.organizationId,
+            actor: run.actor,
+            objective: step.intent || step.title,
+            subject: run.subject,
+          });
+
+          const stepDuration = Date.now() - stepStart;
+          step.durationMs = stepDuration;
+
+          if (specialistResult.status === 'needs_approval') {
+            step.status = 'needs_approval';
+            run.status = 'needs_approval';
+            run.updatedAt = new Date().toISOString();
+            await runRef.set(run);
+            return run;
+          }
+
+          step.status = 'completed';
+          step.result = {
+            answer: specialistResult.answer || 'Domain analysis complete',
+            findingsCount: specialistResult.findings.length,
+            actionsCount: specialistResult.actions.length,
+          };
+          step.completedAt = new Date().toISOString();
+          run.metrics.completedSteps += 1;
+
+          run.toolCalls.push(
+            ...specialistResult.toolCalls.map((tc) => ({
+              id: `call_${step.stepNumber}_${Date.now().toString(36)}`,
+              stepNumber: step.stepNumber,
+              toolName: tc.toolName,
+              parameters: tc.arguments,
+              durationMs: tc.durationMs,
+              status: (tc.status === 'success' ? 'success' : 'error') as 'success' | 'error',
+              result: tc.result,
+              error: tc.error,
+              timestamp: tc.timestamp,
+            }))
+          );
+
+          if (run.result) {
+            run.result.findings.push(...specialistResult.findings);
+            run.result.actions.push(...specialistResult.actions);
+          }
+
+          run.currentStepIndex += 1;
+          run.updatedAt = new Date().toISOString();
+          await runRef.set(run);
+          continue;
+        } catch (specErr) {
+          const stepDuration = Date.now() - stepStart;
+          step.durationMs = stepDuration;
+          step.status = 'failed';
+          step.error = specErr instanceof Error ? specErr.message : 'Specialist execution failed';
+          run.status = 'failed';
+          run.errorMessage = step.error;
+          run.updatedAt = new Date().toISOString();
+          await runRef.set(run);
+          return run;
+        }
+      }
 
       // Construct JSON-RPC 2.0 tool call request
       const rpcRequest: McpJsonRpcRequest = {

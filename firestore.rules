@@ -3145,6 +3145,25 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- CompanyBrain 2.0 Domain Specialists & Swarm Runs (Phase 8) ---
+    match /swarm_runs/{swarmRunId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; state managed exclusively via Server Actions & Admin SDK
+      allow write: if false;
+    }
+
+    match /agent_specialists/{docId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; policies updated via Server Actions & Admin SDK
+      allow write: if false;
+    }
+
     // --- Ideas & Idea Intelligence (Company Brain 2.0 Phase 6) ---
     match /ideas/{ideaId} {
       allow read: if isAuthorized() && (
