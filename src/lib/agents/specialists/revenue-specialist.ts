@@ -23,6 +23,7 @@ import type {
 } from '@/lib/supervisor/types';
 import type { ContextSourceCitation } from '@/lib/memory/context-types';
 import type { SpecialistWorkspaceConfig } from '../domain-types';
+import type { McpPayloadValue } from '@/lib/mcp/types';
 
 export const REVENUE_SPECIALIST_DESCRIPTOR: SpecialistDescriptor = {
   id: 'revenue_specialist',
@@ -80,7 +81,7 @@ export class RevenueSpecialist extends BaseDomainSpecialist {
       if (searchRes.success && searchRes.result) {
         const deals = searchRes.result.deals;
         if (Array.isArray(deals) && deals.length > 0) {
-          dealIdToInspect = (deals[0] as Record<string, unknown>)?.id as string | undefined;
+          dealIdToInspect = (deals[0] as Record<string, McpPayloadValue>)?.id as string | undefined;
           findings.push({
             title: `Pipeline Deals Identified (${deals.length} active deals)`,
             category: 'insight',
@@ -106,7 +107,7 @@ export class RevenueSpecialist extends BaseDomainSpecialist {
       });
 
       if (dealRes.success && dealRes.result) {
-        const deal = dealRes.result.deal as Record<string, unknown> | undefined;
+        const deal = dealRes.result.deal as Record<string, McpPayloadValue> | undefined;
         const stage = (deal?.stage as string) || 'unknown';
         const value = (deal?.value as number) || 0;
         const title = (deal?.title as string) || `Deal ${dealIdToInspect}`;

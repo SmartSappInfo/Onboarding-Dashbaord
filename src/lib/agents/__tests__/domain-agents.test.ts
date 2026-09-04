@@ -21,7 +21,8 @@ import { OperationsSpecialist } from '../specialists/operations-specialist';
 import { GovernanceSpecialist } from '../specialists/governance-specialist';
 import { SwarmOrchestrator } from '../services/swarm-orchestrator';
 import { McpGateway } from '@/lib/mcp/gateway';
-import type { AgentRequest, AgentResult } from '@/lib/supervisor/types';
+import type { AgentRequest, AgentResult, AgentToolCall } from '@/lib/supervisor/types';
+import type { ContextSourceCitation } from '@/lib/memory/context-types';
 import type { SwarmMissionRequest } from '../domain-types';
 
 // Mock Firebase Admin
@@ -137,8 +138,14 @@ describe('CompanyBrain Phase 8: Domain Specialists & Agent Swarm Collaboration',
   });
 
   describe('2. Tool Permission Sandbox & Security', () => {
+    class TestableKnowledgeSpecialist extends KnowledgeSpecialist {
+      public testCall(params: Parameters<KnowledgeSpecialist['callGovernedTool']>[0]) {
+        return this.callGovernedTool(params);
+      }
+    }
+
     it('blocks unauthorized tool execution with AgentSecurityViolationError', async () => {
-      const specialist = new KnowledgeSpecialist();
+      const specialist = new TestableKnowledgeSpecialist();
 
       const request: AgentRequest = {
         workspaceId: 'ws_test',
@@ -149,7 +156,7 @@ describe('CompanyBrain Phase 8: Domain Specialists & Agent Swarm Collaboration',
 
       // Knowledge specialist is NOT allowed to invoke crm.deal.update
       await expect(
-        (specialist as any).callGovernedTool({
+        specialist.testCall({
           toolName: 'crm.deal.update',
           arguments: { dealId: 'deal_1' },
           request,
@@ -160,7 +167,7 @@ describe('CompanyBrain Phase 8: Domain Specialists & Agent Swarm Collaboration',
     });
 
     it('allows whitelisted tool execution through McpGateway', async () => {
-      const specialist = new KnowledgeSpecialist();
+      const specialist = new TestableKnowledgeSpecialist();
 
       const request: AgentRequest = {
         workspaceId: 'ws_test',
@@ -169,10 +176,10 @@ describe('CompanyBrain Phase 8: Domain Specialists & Agent Swarm Collaboration',
         objective: 'Find pricing agreements',
       };
 
-      const toolCallsCollector: any[] = [];
-      const sourcesCollector: any[] = [];
+      const toolCallsCollector: AgentToolCall[] = [];
+      const sourcesCollector: ContextSourceCitation[] = [];
 
-      const res = await (specialist as any).callGovernedTool({
+      const res = await specialist.testCall({
         toolName: 'memory.search',
         arguments: { query: 'pricing agreements' },
         request,

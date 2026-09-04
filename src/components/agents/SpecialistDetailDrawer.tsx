@@ -303,7 +303,7 @@ export function SpecialistDetailDrawer({
                       <button
                         type="button"
                         onClick={() => handleToggleTool(tool)}
-                        className={`text-xs px-2.5 py-1 rounded font-medium transition-all min-h-[36px] active:scale-[0.97] ${
+                        className={`text-xs px-2.5 py-1 rounded font-medium transition-all min-h-[44px] sm:min-h-[36px] flex items-center justify-center active:scale-[0.97] ${
                           isDisabled
                             ? 'bg-rose-50 text-rose-700 border border-rose-200'
                             : 'bg-emerald-50 text-emerald-700 border border-emerald-200'

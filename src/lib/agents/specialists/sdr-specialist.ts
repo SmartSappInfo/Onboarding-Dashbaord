@@ -23,6 +23,7 @@ import type {
 } from '@/lib/supervisor/types';
 import type { ContextSourceCitation } from '@/lib/memory/context-types';
 import type { SpecialistWorkspaceConfig } from '../domain-types';
+import type { McpPayloadValue } from '@/lib/mcp/types';
 
 export const SDR_SPECIALIST_DESCRIPTOR: SpecialistDescriptor = {
   id: 'sdr_specialist',
@@ -77,7 +78,7 @@ export class SdrSpecialist extends BaseDomainSpecialist {
     if (searchRes.success && searchRes.result) {
       const entities = searchRes.result.entities;
       if (Array.isArray(entities) && entities.length > 0) {
-        const first = entities[0] as Record<string, unknown>;
+        const first = entities[0] as Record<string, McpPayloadValue>;
         entityName = (first?.name as string) || entityName;
         findings.push({
           title: `ICP Fit Scorecard: ${entityName} (Score: 88/100)`,

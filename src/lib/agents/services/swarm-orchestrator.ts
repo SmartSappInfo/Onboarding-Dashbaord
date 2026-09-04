@@ -74,21 +74,34 @@ export class SwarmOrchestrator {
 
     await this.persistSwarmRun(swarmRun);
 
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      const timer = setTimeout(() => {
+        reject(new Error(`Swarm mission exceeded maximum timeout ceiling of ${this.HARD_TIMEOUT_MS / 1000}s`));
+      }, this.HARD_TIMEOUT_MS);
+      if (typeof timer.unref === 'function') {
+        timer.unref();
+      }
+    });
+
     try {
-      if (request.mode === 'sequential_pipeline') {
-        await this.executeSequentialPipeline(swarmRun, request);
-      } else {
-        // Default to parallel consensus
-        await this.executeParallelConsensus(swarmRun, request);
-      }
+      const executionPromise = (async () => {
+        if (request.mode === 'sequential_pipeline') {
+          await this.executeSequentialPipeline(swarmRun, request);
+        } else {
+          // Default to parallel consensus
+          await this.executeParallelConsensus(swarmRun, request);
+        }
 
-      swarmRun.metrics.durationMs = Date.now() - startTime;
-      swarmRun.updatedAt = new Date().toISOString();
+        swarmRun.metrics.durationMs = Date.now() - startTime;
+        swarmRun.updatedAt = new Date().toISOString();
 
-      // If the mission did not pause for human approval, synthesize final consensus
-      if (swarmRun.status === 'running') {
-        await this.synthesizeAndCompleteSwarm(swarmRun, request);
-      }
+        // If the mission did not pause for human approval, synthesize final consensus
+        if (swarmRun.status === 'running') {
+          await this.synthesizeAndCompleteSwarm(swarmRun, request);
+        }
+      })();
+
+      await Promise.race([executionPromise, timeoutPromise]);
 
       await this.persistSwarmRun(swarmRun);
       return swarmRun;
@@ -205,13 +218,22 @@ export class SwarmOrchestrator {
             const pausedCall = result.toolCalls.find((tc) => tc.status === 'needs_approval');
             swarmRun.status = 'needs_approval';
             swarmRun.pausedSpecialistId = specId;
-            // Extract approvalId if present
-            if (pausedCall && typeof pausedCall.error === 'string') {
-              swarmRun.pendingApprovalId = `appr_${Date.now()}`;
-            }
+            swarmRun.pendingApprovalId = pausedCall?.approvalId || `appr_${Date.now()}`;
           }
         } else {
           console.error('[SwarmOrchestrator] Specialist execution rejected:', res.reason);
+          const failedSpecId = chunk[settled.indexOf(res)];
+          if (failedSpecId) {
+            swarmRun.specialistRuns[failedSpecId] = {
+              runId: `failed_${failedSpecId}_${Date.now()}`,
+              status: 'failed',
+              answer: `Specialist execution failed: ${res.reason instanceof Error ? res.reason.message : String(res.reason)}`,
+              findings: [],
+              actions: [],
+              toolCalls: [],
+              sources: [],
+            };
+          }
         }
       }
 
@@ -258,9 +280,10 @@ export class SwarmOrchestrator {
       accumulatedLore += `\n* ${agent.name}: ${result.answer}`;
 
       if (result.status === 'needs_approval') {
+        const pausedCall = result.toolCalls.find((tc) => tc.status === 'needs_approval');
         swarmRun.status = 'needs_approval';
         swarmRun.pausedSpecialistId = specId;
-        swarmRun.pendingApprovalId = `appr_${Date.now()}`;
+        swarmRun.pendingApprovalId = pausedCall?.approvalId || `appr_${Date.now()}`;
         break;
       }
     }

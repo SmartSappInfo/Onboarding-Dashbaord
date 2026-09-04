@@ -130,7 +130,10 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
     if (!this.descriptor.allowedTools.includes(toolName)) {
       const err = `Tool "${toolName}" is not permitted for specialist "${this.specialistId}". Allowed tools: [${this.descriptor.allowedTools.join(', ')}].`;
       toolCallsCollector.push({
+        id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        stepNumber: toolCallsCollector.length + 1,
         toolName,
+        parameters: args,
         arguments: args,
         status: 'error',
         error: err,
@@ -144,7 +147,10 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
     if (config?.disabledTools?.includes(toolName)) {
       const err = `Tool "${toolName}" has been explicitly disabled for "${this.specialistId}" in workspace "${request.workspaceId}".`;
       toolCallsCollector.push({
+        id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        stepNumber: toolCallsCollector.length + 1,
         toolName,
+        parameters: args,
         arguments: args,
         status: 'error',
         error: err,
@@ -181,13 +187,17 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
         // Special case: -32003 (Approval Required)
         if (response.error.code === -32003) {
           const errData = response.error.data as Record<string, McpPayloadValue> | undefined;
-          const approvalId = (errData?.approvalId as string) || (errData?.pendingApprovalId as string);
+          const approvalId = (errData?.approvalId as string) || (errData?.pendingApprovalId as string) || undefined;
 
           toolCallsCollector.push({
+            id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+            stepNumber: toolCallsCollector.length + 1,
             toolName,
+            parameters: args,
             arguments: args,
             status: 'needs_approval',
             error: response.error.message,
+            approvalId,
             durationMs,
             timestamp: new Date().toISOString(),
           });
@@ -201,7 +211,10 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
         }
 
         toolCallsCollector.push({
+          id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+          stepNumber: toolCallsCollector.length + 1,
           toolName,
+          parameters: args,
           arguments: args,
           status: 'error',
           error: response.error.message,
@@ -218,7 +231,10 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
       // Success
       const resObj = (response.result as Record<string, McpPayloadValue>) || {};
       toolCallsCollector.push({
+        id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        stepNumber: toolCallsCollector.length + 1,
         toolName,
+        parameters: args,
         arguments: args,
         status: 'success',
         result: resObj,
@@ -229,8 +245,22 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
       // Extract Context Citations if returned
       if (Array.isArray(resObj.citations)) {
         for (const cit of resObj.citations) {
-          if (cit && typeof cit === 'object') {
-            sourcesCollector.push(cit as unknown as ContextSourceCitation);
+          if (
+            typeof cit === 'object' &&
+            cit !== null &&
+            !Array.isArray(cit) &&
+            'sourceId' in cit &&
+            'sourceTitle' in cit
+          ) {
+            const rawCit = cit as Record<string, McpPayloadValue>;
+            sourcesCollector.push({
+              sourceId: String(rawCit.sourceId || ''),
+              sourceType: (rawCit.sourceType as ContextSourceCitation['sourceType']) || 'note',
+              sourceTitle: String(rawCit.sourceTitle || 'Knowledge Citation'),
+              excerpt: String(rawCit.excerpt || ''),
+              score: typeof rawCit.score === 'number' ? rawCit.score : 0.8,
+              uri: typeof rawCit.uri === 'string' ? rawCit.uri : undefined,
+            });
           }
         }
       }
@@ -244,7 +274,10 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
       const errorMsg = err instanceof Error ? err.message : 'Unknown tool dispatch exception';
 
       toolCallsCollector.push({
+        id: `call_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        stepNumber: toolCallsCollector.length + 1,
         toolName,
+        parameters: args,
         arguments: args,
         status: 'error',
         error: errorMsg,

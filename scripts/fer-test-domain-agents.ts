@@ -154,9 +154,14 @@ async function main() {
   console.log('\n--- 6. Testing Tool Permission Sandboxing ---');
   let blocked = false;
   try {
-    const restrictedKnowledge = new KnowledgeSpecialist();
+    class TestableKnowledgeSpecialist extends KnowledgeSpecialist {
+      public testCall(params: Parameters<KnowledgeSpecialist['callGovernedTool']>[0]) {
+        return this.callGovernedTool(params);
+      }
+    }
+    const restrictedKnowledge = new TestableKnowledgeSpecialist();
     // Intentionally attempt calling crm.deal.update which is not allowed for knowledge specialist
-    await (restrictedKnowledge as any).callGovernedTool({
+    await restrictedKnowledge.testCall({
       toolName: 'crm.deal.update',
       arguments: { dealId: 'deal_999' },
       request: kReq,

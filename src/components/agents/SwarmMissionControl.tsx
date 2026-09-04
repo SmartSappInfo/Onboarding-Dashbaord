@@ -212,7 +212,7 @@ export function SwarmMissionControl({
               key={idx}
               type="button"
               onClick={() => handleApplyPreset(p)}
-              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition-all active:scale-[0.97] min-h-[36px] flex items-center gap-1"
+              className="px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-purple-50 dark:hover:bg-purple-950/40 text-[11px] font-medium text-slate-700 dark:text-slate-300 transition-all active:scale-[0.97] min-h-[44px] sm:min-h-[36px] flex items-center gap-1"
             >
               <Sparkles className="w-3 h-3 text-purple-500" />
               <span>{p.title}</span>
