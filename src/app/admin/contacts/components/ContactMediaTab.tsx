@@ -146,6 +146,7 @@ export function ContactMediaTab({
               <Sparkles className="h-3 w-3" /> {profile.highIntentSignalsCount} High-Intent Signals
             </Badge>
           )}
+        </div>
         <div className="flex items-center gap-2">
           <Button
             size="sm"

@@ -52,6 +52,10 @@ import {
   Clock,
   Cpu,
   ExternalLink,
+  Bot,
+  Workflow,
+  CheckCircle2,
+  Activity,
 } from 'lucide-react';
 import {
   getCompanyBrainHealthAction,
@@ -68,11 +72,16 @@ import {
   upsertMcpApprovalPolicyAction,
   type GovernedToolInfo,
 } from '@/lib/mcp/actions/mcp-governance-actions';
+import {
+  listAgentDescriptorsAction,
+  listSupervisorRunsAction,
+} from '@/lib/supervisor/actions/supervisor-actions';
 import { ToolCatalogTable } from '@/components/mcp/ToolCatalogTable';
 import { LiveToolRunnerModal } from '@/components/mcp/LiveToolRunnerModal';
 import type { SemanticSearchResult } from '@/lib/memory/semantic-types';
 import type { ContextPackage, ContextSubjectType } from '@/lib/memory/context-types';
 import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
+import type { AgentDescriptor, AgentRun } from '@/lib/supervisor/types';
 
 export default function BackofficeCompanyBrainClient() {
   const { user } = useUser();
@@ -246,6 +255,44 @@ export default function BackofficeCompanyBrainClient() {
       });
     }
   };
+
+  // Supervisor Governance State (Phase 7)
+  const [registeredAgents, setRegisteredAgents] = React.useState<AgentDescriptor[]>([]);
+  const [isLoadingAgents, setIsLoadingAgents] = React.useState(false);
+  const [supervisorRuns, setSupervisorRuns] = React.useState<AgentRun[]>([]);
+  const [isLoadingSupervisorRuns, setIsLoadingSupervisorRuns] = React.useState(false);
+  const [supervisorWorkspaceFilter, setSupervisorWorkspaceFilter] = React.useState('');
+
+  const fetchAgentsAndRuns = React.useCallback(async () => {
+    if (!user?.uid) return;
+    setIsLoadingAgents(true);
+    setIsLoadingSupervisorRuns(true);
+    try {
+      const [agentsRes, runsRes] = await Promise.all([
+        listAgentDescriptorsAction({ userId: user.uid }),
+        listSupervisorRunsAction({
+          workspaceId: supervisorWorkspaceFilter.trim() || 'all',
+          userId: user.uid,
+          limit: 15,
+        }),
+      ]);
+      if (agentsRes.success && agentsRes.data) {
+        setRegisteredAgents(agentsRes.data);
+      }
+      if (runsRes.success && runsRes.data) {
+        setSupervisorRuns(runsRes.data);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setIsLoadingAgents(false);
+      setIsLoadingSupervisorRuns(false);
+    }
+  }, [user?.uid, supervisorWorkspaceFilter]);
+
+  React.useEffect(() => {
+    fetchAgentsAndRuns();
+  }, [fetchAgentsAndRuns]);
 
   // Fetch health telemetry
   const fetchHealth = React.useCallback(async () => {
@@ -644,6 +691,10 @@ export default function BackofficeCompanyBrainClient() {
           <TabsTrigger value="mcp-governance" className="gap-1.5 text-xs">
             <Cpu className="h-3.5 w-3.5 text-blue-500" />
             <span>MCP & Governed Tools</span>
+          </TabsTrigger>
+          <TabsTrigger value="supervisor-orchestration" className="gap-1.5 text-xs">
+            <Bot className="h-3.5 w-3.5 text-purple-600" />
+            <span>Supervisor & Agents</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1113,6 +1164,301 @@ export default function BackofficeCompanyBrainClient() {
                 onToggleApprovalRequired={handleBackofficeToggleApproval}
                 isLoading={isLoadingMcp}
               />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 7: Supervisor & Agent Orchestration */}
+        <TabsContent value="supervisor-orchestration" className="space-y-4">
+          {/* Header Card */}
+          <Card className="border border-border shadow-sm">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Bot className="h-4 w-4 text-purple-600" />
+                    <span>Supervisor Agent & Dynamic Tool Orchestration</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Platform control plane for inspecting registered autonomous agents, cross-workspace active missions, and platform execution boundaries.
+                  </CardDescription>
+                </div>
+                <Link href="/admin/companybrain/supervisor">
+                  <Button
+                    size="sm"
+                    className="min-h-[44px] bg-purple-600 hover:bg-purple-700 text-white text-xs gap-1.5 active:scale-[0.97] transition-transform"
+                  >
+                    <Bot className="h-3.5 w-3.5" />
+                    <span>Open Mission Control</span>
+                    <ExternalLink className="h-3 w-3 opacity-70" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Platform Limits & Safety Invariants */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                <div className="p-3.5 rounded-xl border border-purple-500/20 bg-purple-500/5 space-y-1">
+                  <div className="text-[11px] font-medium text-purple-700 dark:text-purple-300 flex items-center gap-1.5">
+                    <Workflow className="h-3.5 w-3.5" />
+                    <span>Loop Ceiling</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground">10 Steps Max</div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Guarantees plan termination and prevents runaway AI token loops.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-blue-500/20 bg-blue-500/5 space-y-1">
+                  <div className="text-[11px] font-medium text-blue-700 dark:text-blue-300 flex items-center gap-1.5">
+                    <Clock className="h-3.5 w-3.5" />
+                    <span>Mission Timeout</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground">60 Seconds</div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Hard ceiling per mission loop before returning partial findings.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-amber-500/20 bg-amber-500/5 space-y-1">
+                  <div className="text-[11px] font-medium text-amber-700 dark:text-amber-300 flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5" />
+                    <span>HITL Interception</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground">Error -32003</div>
+                  <p className="text-[11px] text-muted-foreground">
+                    High-risk actions pause execution cleanly for supervisor approval.
+                  </p>
+                </div>
+
+                <div className="p-3.5 rounded-xl border border-emerald-500/20 bg-emerald-500/5 space-y-1">
+                  <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300 flex items-center gap-1.5">
+                    <Activity className="h-3.5 w-3.5" />
+                    <span>Durable Resumption</span>
+                  </div>
+                  <div className="text-lg font-bold text-foreground">Firestore Runs</div>
+                  <p className="text-[11px] text-muted-foreground">
+                    State persisted at each step; resumes without re-executing steps.
+                  </p>
+                </div>
+              </div>
+
+              {/* Registered Agents Registry */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                      Registered Agent Registry
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Active autonomous agents and domain specialists available for dynamic goal delegation.
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="text-xs font-mono">
+                    {registeredAgents.length} Agents
+                  </Badge>
+                </div>
+
+                <div className="rounded-xl border border-border overflow-hidden bg-background">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-muted/40 text-muted-foreground border-b border-border text-[11px] font-medium">
+                        <tr>
+                          <th className="px-4 py-3">Agent</th>
+                          <th className="px-4 py-3">Category</th>
+                          <th className="px-4 py-3">Capabilities</th>
+                          <th className="px-4 py-3">Version</th>
+                          <th className="px-4 py-3">Description</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {isLoadingAgents ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                              Loading registered agents...
+                            </td>
+                          </tr>
+                        ) : registeredAgents.length === 0 ? (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                              No agents registered in registry.
+                            </td>
+                          </tr>
+                        ) : (
+                          registeredAgents.map((agent) => (
+                            <tr key={agent.id} className="hover:bg-muted/20 transition-colors">
+                              <td className="px-4 py-3 font-medium text-foreground whitespace-nowrap">
+                                <div>{agent.name}</div>
+                                <span className="font-mono text-[10px] text-muted-foreground">
+                                  {agent.id}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-[10px] capitalize',
+                                    agent.category === 'supervisor' &&
+                                      'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300',
+                                    agent.category === 'domain' &&
+                                      'bg-blue-100 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300',
+                                    agent.category === 'utility' &&
+                                      'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                  )}
+                                >
+                                  {agent.category}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3">
+                                <div className="flex flex-wrap gap-1 max-w-xs">
+                                  {agent.capabilities.map((cap) => (
+                                    <Badge
+                                      key={cap}
+                                      variant="outline"
+                                      className="text-[10px] px-1.5 py-0 font-mono text-muted-foreground"
+                                    >
+                                      {cap}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </td>
+                              <td className="px-4 py-3 font-mono text-[11px] text-muted-foreground">
+                                v{agent.version}
+                              </td>
+                              <td className="px-4 py-3 text-muted-foreground max-w-sm text-[11px]">
+                                {agent.description}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Cross-Workspace Mission Runs Monitor */}
+              <div className="space-y-3 pt-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-foreground">
+                      Recent Mission Runs
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      Live execution status across workspaces stored in Firestore /agent_runs.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      value={supervisorWorkspaceFilter}
+                      onChange={(e) => setSupervisorWorkspaceFilter(e.target.value)}
+                      placeholder="Filter workspace (default: all)"
+                      className="text-xs min-h-[44px] sm:min-h-[38px] w-48 font-mono bg-background"
+                    />
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={fetchAgentsAndRuns}
+                      disabled={isLoadingSupervisorRuns}
+                      className="min-h-[44px] sm:min-h-[38px] text-xs gap-1.5 active:scale-[0.97]"
+                    >
+                      <RefreshCw
+                        className={cn('h-3.5 w-3.5', isLoadingSupervisorRuns && 'animate-spin')}
+                      />
+                      <span>Refresh</span>
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-border overflow-hidden bg-background">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-muted/40 text-muted-foreground border-b border-border text-[11px] font-medium">
+                        <tr>
+                          <th className="px-4 py-3">Mission ID</th>
+                          <th className="px-4 py-3">Objective</th>
+                          <th className="px-4 py-3">Status</th>
+                          <th className="px-4 py-3">Steps</th>
+                          <th className="px-4 py-3">Duration</th>
+                          <th className="px-4 py-3">Created</th>
+                          <th className="px-4 py-3 text-right">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-border/60">
+                        {isLoadingSupervisorRuns ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
+                              Loading mission runs...
+                            </td>
+                          </tr>
+                        ) : supervisorRuns.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="px-4 py-6 text-center text-muted-foreground">
+                              No mission runs found.
+                            </td>
+                          </tr>
+                        ) : (
+                          supervisorRuns.map((run) => (
+                            <tr key={run.id} className="hover:bg-muted/20 transition-colors">
+                              <td className="px-4 py-3 font-mono text-[11px] font-medium text-foreground whitespace-nowrap">
+                                {run.id.slice(0, 18)}...
+                              </td>
+                              <td className="px-4 py-3 max-w-xs truncate text-foreground font-medium">
+                                {run.objective}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap">
+                                <Badge
+                                  variant="secondary"
+                                  className={cn(
+                                    'text-[10px] capitalize',
+                                    run.status === 'completed' &&
+                                      'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300',
+                                    run.status === 'executing' &&
+                                      'bg-purple-100 text-purple-700 dark:bg-purple-950/60 dark:text-purple-300 animate-pulse',
+                                    run.status === 'needs_approval' &&
+                                      'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-300',
+                                    run.status === 'failed' &&
+                                      'bg-rose-100 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300'
+                                  )}
+                                >
+                                  {run.status.replace('_', ' ')}
+                                </Badge>
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-muted-foreground font-mono text-[11px]">
+                                {run.metrics.completedSteps} / {run.steps.length || run.metrics.totalSteps}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-muted-foreground font-mono text-[11px]">
+                                {run.metrics.durationMs ? `${run.metrics.durationMs}ms` : '—'}
+                              </td>
+                              <td className="px-4 py-3 whitespace-nowrap text-muted-foreground text-[11px]">
+                                {new Date(run.createdAt).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </td>
+                              <td className="px-4 py-3 text-right whitespace-nowrap">
+                                <Link
+                                  href={`/admin/companybrain/supervisor?runId=${run.id}`}
+                                  className="inline-block"
+                                >
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-8 text-xs text-purple-600 dark:text-purple-400 hover:text-purple-700 active:scale-[0.97]"
+                                  >
+                                    Inspect
+                                    <ExternalLink className="h-3 w-3 ml-1" />
+                                  </Button>
+                                </Link>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

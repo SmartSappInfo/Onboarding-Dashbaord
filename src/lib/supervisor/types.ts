@@ -1,0 +1,224 @@
+/**
+ * @fileOverview CompanyBrain 2.0 Phase 7: Supervisor Agent Domain Models & Protocol Contracts
+ *
+ * ARCHITECTURAL GUIDELINES & CAUTION FOR MAINTAINERS (Rule 10):
+ * 1. Strict Zero-`any` & Zero-`unknown` Invariant (Rule 1):
+ *    - All agent inputs, outputs, plan steps, and results are strongly typed.
+ *    - Arbitrary JSON payloads are typed using bounded recursive `McpPayloadValue`.
+ * 2. Model Context Protocol (MCP) Grounding:
+ *    - All tool calls dispatched by the Supervisor route strictly through `McpGateway` (Phase 6).
+ * 3. Execution Safety Invariants:
+ *    - Maximum loop steps ceiling of 10 steps to eliminate infinite reasoning loops.
+ *    - 60-second execution timeout guard.
+ *    - Durable execution state persisted in Firestore `/agent_runs/{runId}` for pause/resumption.
+ * 4. Grounded Attribution & Context Traceability:
+ *    - Conclusions and findings link to `ContextSourceCitation` from Phase 5.
+ *
+ * @testability Covered in `src/lib/supervisor/__tests__/supervisor-engine.test.ts`.
+ */
+
+import { z } from 'zod';
+import type { McpPayloadValue } from '@/lib/mcp/types';
+import { zMcpPayloadValue } from '@/lib/mcp/types';
+import type { ContextSourceCitation } from '@/lib/memory/context-types';
+
+/**
+ * Standardized capabilities that an agent or tool can provide.
+ */
+export type AgentCapability =
+  | 'planning'
+  | 'context_assembly'
+  | 'memory_recall'
+  | 'memory_write'
+  | 'crm_read'
+  | 'crm_write'
+  | 'deal_management'
+  | 'task_orchestration'
+  | 'approval_routing'
+  | 'synthesis';
+
+/**
+ * High-level agent classification across SmartSapp.
+ */
+export type AgentCategory = 'supervisor' | 'domain' | 'workflow' | 'utility';
+
+/**
+ * Standard agent runtime interface conforming to PRD Section 54.
+ */
+export interface SmartSappAgent {
+  id: string;
+  name: string;
+  version: string;
+  category: AgentCategory;
+  description: string;
+  capabilities: AgentCapability[];
+  execute: (request: AgentRequest) => Promise<AgentResult>;
+}
+
+/**
+ * Execution constraint passed in an agent request to bound execution.
+ */
+export interface AgentConstraint {
+  type: 'max_steps' | 'max_tokens' | 'read_only' | 'require_human_review' | 'exclude_categories';
+  value: McpPayloadValue;
+}
+
+/**
+ * Standardized agent request envelope conforming to PRD Section 55.
+ */
+export interface AgentRequest {
+  workspaceId: string;
+  organizationId: string;
+  actor: {
+    type: 'user' | 'agent' | 'system';
+    id: string;
+  };
+  objective: string;
+  subject?: {
+    type: 'entity' | 'deal' | 'task' | 'meeting' | 'ticket';
+    id: string;
+  };
+  constraints?: AgentConstraint[];
+  maxSteps?: number;
+  executionMode?: 'autonomous' | 'step_by_step';
+}
+
+/**
+ * A single atomic step in a decomposed supervisor execution plan.
+ */
+export interface SupervisorPlanStep {
+  stepNumber: number;
+  title: string;
+  intent: string;
+  assignedAgentOrTool: string; // e.g. "context.build", "memory.recall", "crm.get_entity", "deal.update_stage", "task.create"
+  arguments: Record<string, McpPayloadValue>;
+  status: 'pending' | 'running' | 'completed' | 'needs_approval' | 'skipped' | 'failed';
+  result?: Record<string, McpPayloadValue>;
+  error?: string;
+  whyThisStep: string;
+  durationMs?: number;
+  completedAt?: string;
+}
+
+/**
+ * Decomposed hierarchical execution plan synthesized by the supervisor.
+ */
+export interface SupervisorPlan {
+  goal: string;
+  summary: string;
+  totalSteps: number;
+  steps: SupervisorPlanStep[];
+}
+
+/**
+ * Categorized finding surfaced during agent execution.
+ */
+export interface AgentFinding {
+  id: string;
+  title: string;
+  description: string;
+  confidence: number;
+  category: 'risk' | 'opportunity' | 'contradiction' | 'insight' | 'trend';
+  sourceIds: string[];
+}
+
+/**
+ * Action proposed by the agent for human operator review or scheduling.
+ */
+export interface AgentActionProposal {
+  id: string;
+  toolName: string;
+  title: string;
+  description: string;
+  parameters: Record<string, McpPayloadValue>;
+  riskLevel: 'read_only' | 'low_risk' | 'high_risk' | 'critical';
+  requiresApproval: boolean;
+  status: 'suggested' | 'approved' | 'executed' | 'dismissed';
+}
+
+/**
+ * Telemetry record of an individual tool call made during an agent run.
+ */
+export interface AgentToolCall {
+  id: string;
+  stepNumber: number;
+  toolName: string;
+  parameters: Record<string, McpPayloadValue>;
+  result?: Record<string, McpPayloadValue>;
+  error?: string;
+  durationMs: number;
+  status: 'success' | 'error' | 'pending_approval';
+  timestamp: string;
+}
+
+/**
+ * Standardized final output conforming to PRD Section 56.
+ */
+export interface AgentResult {
+  runId: string;
+  status: 'completed' | 'needs_approval' | 'waiting' | 'failed' | 'cancelled';
+  answer?: string;
+  findings: AgentFinding[];
+  actions: AgentActionProposal[];
+  toolCalls: AgentToolCall[];
+  memoriesCreated?: string[];
+  sources: ContextSourceCitation[];
+}
+
+/**
+ * Complete mission execution record stored in Firestore collection `/agent_runs/{runId}`.
+ */
+export interface AgentRun {
+  id: string;
+  workspaceId: string;
+  organizationId: string;
+  actor: {
+    type: 'user' | 'agent' | 'system';
+    id: string;
+  };
+  objective: string;
+  subject?: {
+    type: 'entity' | 'deal' | 'task' | 'meeting' | 'ticket';
+    id: string;
+  };
+  status: 'planning' | 'executing' | 'needs_approval' | 'completed' | 'failed' | 'cancelled';
+  plan: SupervisorPlan;
+  steps: SupervisorPlanStep[];
+  currentStepIndex: number;
+  toolCalls: AgentToolCall[];
+  pendingApprovalId?: string;
+  result?: AgentResult;
+  metrics: {
+    totalSteps: number;
+    completedSteps: number;
+    durationMs: number;
+    totalToolCalls: number;
+  };
+  errorMessage?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Public descriptor for discovery in the Agent Registry.
+ */
+export interface AgentDescriptor {
+  id: string;
+  name: string;
+  version: string;
+  category: AgentCategory;
+  description: string;
+  capabilities: AgentCapability[];
+}
+
+/**
+ * Zod schema for validating a decomposed plan step structure.
+ */
+export const zSupervisorPlanStep = z.object({
+  stepNumber: z.number().int().min(1),
+  title: z.string().min(1),
+  intent: z.string().min(1),
+  assignedAgentOrTool: z.string().min(1),
+  arguments: z.record(zMcpPayloadValue).optional(),
+  whyThisStep: z.string(),
+});

@@ -1,22 +1,23 @@
 # CompanyBrain: Operations & Maintenance Runbook
 **File:** `docs/CompanyBrain/companybrain_manual.md`  
-**Current Milestone:** Phases 1–6 Deployed & Active (Notes, Semantic Search, Knowledge Graph, Conflict Engine, Unified Context Builder, and MCP Platform & Tool Registry)  
+**Current Milestone:** Phases 1–7 Deployed & Active (Notes, Semantic Search, Knowledge Graph, Conflict Engine, Unified Context Builder, MCP Platform & Tool Registry, and Supervisor Agent & Dynamic Tool Orchestration)  
 **Status:** Operational (Low-Noise Runbook)
 
 ---
 
 ## 1. System Status & Infrastructure Health
 
-All foundational infrastructure for Phases 1, 2, 3, 4, 5, and 6 is deployed, indexed, and active:
+All foundational infrastructure for Phases 1, 2, 3, 4, 5, 6, and 7 is deployed, indexed, and active:
 
 | Subsystem | Deployed Component | Status | Location / Cluster |
 | :--- | :--- | :--- | :--- |
-| **Firestore Security Rules** | `/memory_objects`, `/graph_nodes`, `/graph_edges`, `/memory_conflicts`, `/context_snapshots`, `/mcp_keys`, `/mcp_audit_logs`, `/mcp_pending_approvals`, `/mcp_approval_policies` | **LIVE** | Project `studio-9220106300-f74cb` |
-| **Firestore Compound Indexes** | 6 memory + 9 graph + 4 conflict + 2 snapshot + 4 MCP composite indexes | **LIVE** | Compiled & active in cloud |
+| **Firestore Security Rules** | `/memory_objects`, `/graph_nodes`, `/graph_edges`, `/memory_conflicts`, `/context_snapshots`, `/mcp_keys`, `/mcp_audit_logs`, `/mcp_pending_approvals`, `/mcp_approval_policies`, `/agent_runs` | **LIVE** | Project `studio-9220106300-f74cb` |
+| **Firestore Compound Indexes** | 6 memory + 9 graph + 4 conflict + 2 snapshot + 4 MCP + 2 agent_runs composite indexes | **LIVE** | Compiled & active in cloud |
 | **Qdrant Vector Engine** | Collection `smartsapp_memory` (768d Cosine) | **HEALTHY** | Qdrant Cloud (GCP `australia-southeast1-0`) |
 | **Context Builder Engine** | 4-Tier Stratified Budgeting, Relevance Scorer & Grounded Citations | **ACTIVE** | Server Actions & Context Panel UI |
 | **MCP Platform & Registry** | 12 Governed Tools (Memory, Context, CRM, Deal, Task) | **ACTIVE** | JSON-RPC 2.0 (`/api/mcp`) & SSE (`/api/mcp/sse`) |
 | **Approval Engine & RBAC** | Risk Tiers (`read_only`, `low_risk`, `high_risk`), SHA-256 API Keys & Queue | **ACTIVE** | Human-in-the-Loop Control Plane |
+| **Supervisor Agent & Registry** | `SupervisorEngine`, `AgentRegistry`, Plan Graph, Step Inspector & Briefing Synthesis | **ACTIVE** | Mission Control (`/admin/companybrain/supervisor`) |
 | **Circuit Breakers** | Deterministic embeddings, graph traversal, contradiction detection, and in-memory sort fallbacks | **ACTIVE** | Auto-engages on network, API, or building index states |
 
 ---
@@ -51,6 +52,10 @@ To ensure legal compliance, financial safety, and institutional integrity, the f
 | **9. High-Risk Tool Execution Adjudication** | Approving or rejecting gated tool mutations (e.g. `memory.resolve_conflict`, `deal.update_stage`, or custom high-risk actions). | Automated agents cannot self-authorize high-impact commercial or truth-altering operations. Gating requires human administrator audit. | Review and adjudicate in `/admin/companybrain/tools?tab=approvals`. |
 | **10. MCP API Key Cryptographic Issuance & Rotation** | Generating, sharing, and revoking `sk_mcp_...` keys for external IDEs (Cursor, Windsurf, Claude Desktop) and autonomous agents. | Plaintext keys are generated once and never stored. Human operators must securely copy and distribute keys to trusted tools. | Generate and revoke keys via `/admin/companybrain/tools?tab=keys`. |
 | **11. Workspace Tool Governance Policy Customization** | Toggling tool permissions, setting mandatory human approval requirements, or overriding tool risk classifications. | Enterprise security compliance policies, external integrations, and delegation boundaries require human organizational authority. | Configure policies in `/admin/companybrain/tools?tab=catalog`. |
+| **12. Mission Autonomy & Delegation Scope Authorization** | Authorizing autonomous vs step-by-step mission execution modes and restricting high-risk tool dispatch per workspace. | Autonomous multi-step operations carry compounding risk. Human operators must choose the level of supervision before launching missions. | Select execution mode in `/admin/companybrain/supervisor`. |
+| **13. Intercepted Mission Adjudication & Resumption** | Reviewing missions halted at status `needs_approval` (-32003) and authorizing paused tool parameters before resuming execution. | High-risk actions (e.g. deal pipeline transitions, contradictory memory resolutions) cannot self-execute without human sign-off. | Adjudicate via `<SupervisorApprovalBanner>` in Mission Control or `/admin/companybrain/tools?tab=approvals`. |
+| **14. Runaway Mission Abort & Force-Cancellation** | Halting, canceling, and documenting reasons for misdirected or obsolete agent runs. | Fiduciary and operational control requires human ability to terminate agent reasoning when business conditions shift mid-flight. | Click "Cancel Mission" in Mission Control (`/admin/companybrain/supervisor`). |
+| **15. Proposed Action Execution Sign-Off** | Validating and triggering actionable proposals produced by the supervisor (e.g. creating follow-up onboarding tasks or scheduling meetings). | AI synthesizes recommendations based on evidence, but final authorization to create CRM work items or reach out to customers remains with human managers. | Click "Execute Proposed Action" in `<SupervisorResultCard>`. |
 
 ### 2.5.1. Compliance Data Purges and Hard-Deletion Protocol (GDPR)
 
@@ -140,6 +145,19 @@ npx tsx scripts/fer-test-mcp-gateway.ts
 npx tsx scripts/fer-test-mcp-gateway.ts --workspace-id=<workspace_id>
 ```
 
+### 3.7. Verify Supervisor Agent & Dynamic Tool Orchestration
+Verifies the autonomous agent registry, goal decomposition into bounded plan steps, step-by-step tool routing, human approval interception, state persistence, and executive briefing synthesis:
+```bash
+# Run automated unit tests
+npx vitest run src/lib/supervisor/__tests__/supervisor-engine.test.ts
+
+# Full Supervisor Agent Verification & End-to-End Mission Execution
+npx tsx scripts/fer-test-supervisor-agent.ts
+
+# Target specific workspace
+npx tsx scripts/fer-test-supervisor-agent.ts --workspace-id=<workspace_id>
+```
+
 ---
 
 ## 4. UI Surfaces & Backoffice Governance
@@ -148,6 +166,7 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 | Surface | URL Path | Capabilities |
 | :--- | :--- | :--- |
+| **Supervisor Agent Mission Control** | `/admin/companybrain/supervisor` | Autonomous multi-step goal execution, interactive plan timeline graph, live step inspector drawer, approval alerts, findings, and executable action proposals. |
 | **Quick Notes & Memory Extractor** | `/admin/quick-notes` | Dual-view notes/memories, human-in-the-loop candidate confirmation, semantic badges. |
 | **Knowledge Conflict Center** | `/admin/quick-notes/conflicts` | Full-page contradiction review, side-by-side claim comparison, 1-click supersede adjudication, custom audit notes. |
 | **Global Semantic Search** | `/admin/quick-notes/search` | Natural language vector search, cosine scores, "Why this matched" attribution, verbatim evidence drawer. |
@@ -155,6 +174,7 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 | **Entity Knowledge Graph** | `/admin/entities/[id]` *(Knowledge Graph tab)* | Contextual relationship topology, 1-click AI connection explanation, connected memory timeline. |
 | **Entity AI Context & Dossier** | `/admin/entities/[id]` *(AI Context & Dossier tab)* | Real-time commercial outlook, known risks, key stakeholders, open commitments, citations, and 1-click brief synthesis. |
 | **Vector & Governance Control Plane** | `/backoffice/companybrain` | Qdrant cluster latency/health, live search playground, LRU cache purge, on-demand re-index, batch contradiction audits, and MCP tools overview. |
+| **Supervisor & Agents Console** | `/backoffice/companybrain` *(Supervisor & Agents tab)* | Platform agent registry inspector, cross-workspace live mission monitor, loop bounds (10 steps), and execution boundaries. |
 | **Context Simulator & Workbench** | `/backoffice/companybrain` *(Context Simulator tab)* | Live multi-tier token budgeting playground, latency telemetry, raw context JSON inspection, and live prompt simulation. |
 | **Knowledge Graph Console** | `/backoffice/knowledge-graph` | Node/edge distribution metrics, cycle-safe 3-hop shortest path simulator, in-browser tenant mesh sync. |
 
@@ -168,7 +188,10 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 | **Graph empty for a workspace** | Relations have not yet been projected into the graph collections. | Run `TARGET_WORKSPACE_ID=<ws_id> npx tsx scripts/fer-sync-graph-relations.ts` or click "Sync Graph Mesh" in `/backoffice/knowledge-graph`. |
 | **Unresolved contradiction alerts** | Mutually opposing claims detected between two notes or meetings. | Navigate to `/admin/quick-notes/conflicts` to adjudicate which claim is authoritative. |
 | **Memories showing as "Stale"** | Memory age has exceeded category TTL (e.g. 90d pricing, 180d stakeholder). | Open the "Decaying / Stale" tab in `/admin/quick-notes` and click "Reconfirm Truth" (1-click refresh). |
-| **Tool execution blocked (-32003)** | Tool carries `high_risk` or workspace policy requires human review. | Navigate to `/admin/companybrain/tools?tab=approvals` and click **"Approve & Execute"** or **"Reject"**. |
+| **Tool execution blocked (-32003)** | Tool carries `high_risk` or workspace policy requires human review. | Navigate to `/admin/companybrain/tools?tab=approvals` or click "Approve & Resume" on the Mission Control banner. |
+| **Mission paused at `needs_approval`** | Supervisor plan stepped into a gated tool requiring operator authorization. | Open `/admin/companybrain/supervisor?runId=<id>`, review the intercepted step in `<SupervisorApprovalBanner>`, and click **"Approve & Resume Mission"**. |
+| **Mission cancelled mid-flight** | Human operator aborted the mission due to changed requirements. | Review cancellation reason in the mission history table. Re-launch with revised goal if necessary. |
+| **Loop ceiling reached (10 steps)** | Goal was overly broad or tool calls failed to converge on the objective. | Hard safety ceiling prevented infinite loop. Review intermediate step outputs in Step Inspector Drawer and refine the mission goal. |
 | **MCP Unauthorized (-32001)** | Missing, invalid, or revoked `sk_mcp_...` key in `Authorization: Bearer` header. | Verify key status or generate a new API key in `/admin/companybrain/tools?tab=keys`. |
 | **Max Depth Exceeded (-32006)** | Recursive tool calling chain exceeded depth limit of 5. | Inspect agent plan loop and reduce recursive dependencies. |
 | **Context token budget truncation** | Retrieved facts and memories exceed specified max token ceiling. | Review the 4-tier token budget allocation in `/backoffice/companybrain`. Lower priority Tier 4 items are safely omitted first. |
@@ -178,9 +201,9 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 ---
 
-## 6. Forward Look: Phase 7 Preparation
+## 6. Forward Look: Phase 8 Preparation
 
-Upcoming milestone: **Phase 7: Supervisor Agent & Dynamic Tool Orchestration**:
-1. Multi-step reasoning agent with dynamic plan synthesis, tool selection, and retry policies.
-2. Direct invocation of Phase 6 MCP tools via structured tool calling loops.
-3. Budget-capped loop execution and real-time execution state streaming.
+Upcoming milestone: **Phase 8: Domain Specialists & Agent Swarm Collaboration**:
+1. Domain-specialized subagents: Research Specialist, CRM Specialist, Pipeline Specialist, and Governance Auditor.
+2. Inter-agent communication protocols and hierarchical delegation from the Supervisor Agent.
+3. Collective intelligence workflows and multi-agent debate/consensus mechanisms.
