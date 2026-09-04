@@ -125,6 +125,18 @@ vi.mock('@/lib/memory/services/context-builder-service', () => ({
   },
 }));
 
+// Mock McpApprovalEngine
+vi.mock('@/lib/mcp/approval-engine', () => ({
+  McpApprovalEngine: {
+    adjudicateApproval: vi.fn(async (params: { approvalId: string; decision: string; adjudicatedBy: string }) => ({
+      id: params.approvalId,
+      status: params.decision,
+      executionResult: { executed: true, approvalId: params.approvalId },
+      adjudicatedBy: params.adjudicatedBy,
+    })),
+  },
+}));
+
 vi.mock('@/ai/flows/synthesize-supervisor-result-flow', () => ({
   synthesizeSupervisorResultFlow: vi.fn(async (input: { objective: string }) => ({
     executiveSummary: `Executive summary for: ${input.objective}`,
@@ -361,5 +373,39 @@ describe('CompanyBrain Phase 7: Supervisor Orchestration Engine', () => {
     );
     expect(cancelledRun.status).toBe('cancelled');
     expect(cancelledRun.errorMessage).toContain('Operator aborted mission');
+  });
+
+  it('resumes a paused mission and executes approved tool capturing executionResult', async () => {
+    vi.spyOn(McpGateway, 'handleRequest')
+      .mockResolvedValueOnce({
+        jsonrpc: '2.0',
+        id: 'step_pause',
+        error: {
+          code: -32003,
+          message: 'Approval required',
+          data: { approvalId: 'appr_resume' },
+        },
+      })
+      .mockResolvedValue({
+        jsonrpc: '2.0',
+        id: 'step_2',
+        result: { entity: 'ok' },
+      });
+
+    const request: AgentRequest = {
+      workspaceId: 'ws_test_1',
+      organizationId: 'org_test_1',
+      actor: { type: 'user', id: 'user_123' },
+      objective: 'Mission needing approval',
+    };
+
+    const run = await SupervisorEngine.startMission(request);
+    expect(run.status).toBe('needs_approval');
+
+    const resumedRun = await SupervisorEngine.resumeMission(run.id, 'appr_resume', 'user_123');
+    expect(resumedRun.status).toBe('completed');
+    expect(resumedRun.steps[0].status).toBe('completed');
+    expect(resumedRun.steps[0].result).toEqual({ executed: true, approvalId: 'appr_resume' });
+    expect(resumedRun.metrics.completedSteps).toBe(2);
   });
 });

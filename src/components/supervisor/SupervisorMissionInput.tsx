@@ -122,7 +122,7 @@ export function SupervisorMissionInput({
                 key={preset.title}
                 type="button"
                 onClick={() => handlePresetClick(preset)}
-                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 text-xs text-slate-700 font-medium transition-all active:scale-[0.97] min-h-[38px] text-left"
+                className="px-3 py-1.5 rounded-lg border border-slate-200 bg-white hover:bg-indigo-50 hover:border-indigo-200 text-xs text-slate-700 font-medium transition-all active:scale-[0.97] min-h-[44px] sm:min-h-[38px] text-left"
               >
                 <Sparkles className="w-3 h-3 text-indigo-500 inline mr-1.5" />
                 {preset.title}
@@ -195,7 +195,7 @@ export function SupervisorMissionInput({
             <button
               type="button"
               onClick={() => setShowAdvanced(!showAdvanced)}
-              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 min-h-[36px]"
+              className="text-xs text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 min-h-[44px] sm:min-h-[36px]"
             >
               <Sliders className="w-3.5 h-3.5" />
               {showAdvanced ? 'Hide Advanced Options' : 'Show Advanced Execution Limits'}
@@ -227,7 +227,7 @@ export function SupervisorMissionInput({
                     id="exec-mode"
                     value={executionMode}
                     onChange={(e) => setExecutionMode(e.target.value as 'autonomous' | 'step_by_step')}
-                    className="w-full min-h-[40px] border border-slate-200 rounded-lg px-2.5 text-xs bg-white text-slate-800"
+                    className="w-full min-h-[44px] border border-slate-200 rounded-lg px-2.5 text-xs bg-white text-slate-800"
                   >
                     <option value="autonomous">Autonomous (Auto-run read-only tools)</option>
                     <option value="step_by_step">Step-by-Step (Plan only, wait for click)</option>

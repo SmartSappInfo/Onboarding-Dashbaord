@@ -24,6 +24,7 @@ import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import { globalMcpRegistry } from '@/lib/mcp/registry';
 import { McpGateway } from '@/lib/mcp/gateway';
+import { McpApprovalEngine } from '@/lib/mcp/approval-engine';
 import { ContextBuilderService } from '@/lib/memory/services/context-builder-service';
 import { decomposeSupervisorGoalFlow } from '@/ai/flows/decompose-supervisor-goal-flow';
 import { synthesizeSupervisorResultFlow } from '@/ai/flows/synthesize-supervisor-result-flow';
@@ -179,6 +180,20 @@ export class SupervisorEngine {
 
     const currentStep = run.steps[run.currentStepIndex];
     if (currentStep && currentStep.status === 'needs_approval') {
+      if (approvalId) {
+        try {
+          const adjudication = await McpApprovalEngine.adjudicateApproval({
+            approvalId,
+            decision: 'approved',
+            adjudicatedBy: resumedBy,
+            notes: 'Approved and resumed via Supervisor Mission Control',
+          });
+          currentStep.result = adjudication.executionResult;
+        } catch (adjErr) {
+          // Log notice if approval was already adjudicated externally
+          console.warn('[SupervisorEngine] Approval adjudication notice:', adjErr);
+        }
+      }
       currentStep.status = 'completed';
       currentStep.completedAt = new Date().toISOString();
       run.metrics.completedSteps += 1;
@@ -257,6 +272,13 @@ export class SupervisorEngine {
         timestamp: new Date().toISOString(),
       };
 
+      // Interpolate any dynamic step output references from previously completed steps
+      const resolvedArguments = this.interpolateArguments(
+        step.arguments,
+        run.steps.slice(0, run.currentStepIndex)
+      );
+      step.arguments = resolvedArguments;
+
       // Construct JSON-RPC 2.0 tool call request
       const rpcRequest: McpJsonRpcRequest = {
         jsonrpc: '2.0',
@@ -264,7 +286,7 @@ export class SupervisorEngine {
         method: 'tools/call',
         params: {
           name: step.assignedAgentOrTool,
-          arguments: step.arguments,
+          arguments: resolvedArguments,
         },
       };
 
@@ -279,7 +301,7 @@ export class SupervisorEngine {
           step.status = 'needs_approval';
           step.error = response.error.message;
 
-          const errorData = response.error.data as Record<string, unknown> | undefined;
+          const errorData = response.error.data as Record<string, McpPayloadValue> | undefined;
           const pendingApprovalId =
             (errorData?.pendingApprovalId as string) ||
             (errorData?.approvalId as string) ||
@@ -448,5 +470,32 @@ export class SupervisorEngine {
         .sort((a, b) => (b.createdAt > a.createdAt ? 1 : -1))
         .slice(0, limitCount);
     }
+  }
+
+  /**
+   * Resolves dynamic template variables referencing results from previous steps.
+   * e.g. {{step.1.id}} or {{step.1.entityId}}
+   */
+  private static interpolateArguments(
+    args: Record<string, McpPayloadValue>,
+    previousSteps: SupervisorPlanStep[]
+  ): Record<string, McpPayloadValue> {
+    const resolved: Record<string, McpPayloadValue> = {};
+    for (const [key, val] of Object.entries(args)) {
+      if (typeof val === 'string' && val.includes('{{step.')) {
+        const match = val.match(/\{\{step\.(\d+)\.(.*?)\}\}/);
+        if (match) {
+          const stepNum = parseInt(match[1], 10);
+          const field = match[2];
+          const prevStep = previousSteps.find((s) => s.stepNumber === stepNum);
+          if (prevStep?.result && field in prevStep.result) {
+            resolved[key] = prevStep.result[field];
+            continue;
+          }
+        }
+      }
+      resolved[key] = val;
+    }
+    return resolved;
   }
 }
