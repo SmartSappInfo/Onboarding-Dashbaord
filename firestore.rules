@@ -1237,6 +1237,18 @@ service cloud.firestore {
       allow list, create, update, delete: if isAuthorized();
     }
 
+    match /media_experiences/{experienceId} {
+      allow get: if true; // Public access for rendering presentation layouts on shared pages
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /media_links/{linkId} {
+      allow get: if true; // Public access for resolving short tracking links
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
     match /media_processing_jobs/{jobId} {
       allow get, list, create, update: if isAuthorized();
     }

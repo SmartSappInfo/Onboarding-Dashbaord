@@ -107,7 +107,7 @@ export async function listDistributionLinksAction(
 }
 
 /**
- * Generates a clean, responsive HTML `<iframe>` embed code snippet.
+ * Generates a clean, responsive HTML `<iframe>` embed code snippet with postMessage auto-height adjustment and sandbox security.
  */
 export function generateEmbedCode(
   baseUrl: string,
@@ -118,15 +118,25 @@ export function generateEmbedCode(
   const width = config.width || '100%';
   const height = config.height || '500px';
   const fullscreen = config.allowFullscreen !== false ? 'allowfullscreen' : '';
+  const containerId = `smartsapp-embed-${Math.random().toString(36).substring(2, 9)}`;
 
-  return `<div style="position: relative; width: ${width}; padding-bottom: ${config.responsiveRatio === '16:9' ? '56.25%' : 'auto'}; height: ${height}; max-width: 100%; border-radius: 1rem; overflow: hidden; shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
+  return `<div id="${containerId}" style="position: relative; width: ${width}; height: ${height}; max-width: 100%; border-radius: 1rem; overflow: hidden; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);">
   <iframe
     src="${embedUrl}"
     width="100%"
     height="100%"
     style="position: absolute; top:0; left:0; width:100%; height:100%; border:0;"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
     ${fullscreen}
     loading="lazy"
   ></iframe>
+  <script>
+    window.addEventListener('message', function(e) {
+      if (e.data && e.data.type === 'smartsapp_resize' && e.data.height) {
+        var el = document.getElementById('${containerId}');
+        if (el) { el.style.height = e.data.height + 'px'; }
+      }
+    });
+  </script>
 </div>`;
 }
