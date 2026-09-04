@@ -8,6 +8,10 @@
  *    - `MediaPackage`: Grouping related assets into a cohesive experience (e.g., Sales Kits).
  *    - `MediaExperience`: Presentation layer decoupling content from branding, themes, and controls.
  *    - `MediaLink`: First-class distribution object (dynamic short links, expiration, tracking policies).
+ *    - `MediaTranscript`: Timestamped Speech-to-Text cue lines and speaker labels.
+ *    - `MediaChapter`: Segmented video/audio timeline chapters and summaries.
+ *    - `MediaContentIntelligence`: AI-extracted summaries, key takeaways, topics, entities, and Qdrant vector point IDs.
+ *    - `SemanticSearchHit`: Ranked search hit with exact matching transcript excerpt and jump timestamp.
  *    - `MediaProcessingJob`: Ingestion, thumbnail generation, OCR, and STT job tracking.
  *    - `MediaGovernanceConfig`: Backoffice governance rules for storage quotas and retention policies.
  * 2. Strict Typing Standard:
@@ -104,6 +108,86 @@ export interface PlayerControlsConfig {
   showCaptions: boolean;
 }
 
+export type RuleConditionOperator = 'gte' | 'lte' | 'eq' | 'neq' | 'contains' | 'in';
+
+export type RuleConditionType = 'watch_progress' | 'contact_score' | 'deal_stage' | 'chapter_viewed' | 'contact_tag';
+
+export interface RuleCondition {
+  id: string;
+  type: RuleConditionType;
+  operator: RuleConditionOperator;
+  value: string | number;
+}
+
+export interface RuleAction {
+  ctaTitle: string;
+  ctaButtonText: string;
+  targetUrl: string;
+  ctaType: 'survey' | 'form' | 'pdf' | 'meeting' | 'external';
+  ctaMode: 'modal' | 'redirect' | 'replace';
+  unlockGate: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+}
+
+export interface DynamicCtaRule {
+  id: string;
+  name: string;
+  priority: number;
+  conditions: RuleCondition[];
+  action: RuleAction;
+  isActive: boolean;
+}
+
+export interface PersonalizationConfig {
+  enabled: boolean;
+  headlineTemplate: string;
+  descriptionTemplate: string;
+  fallbackHeadline: string;
+  fallbackDescription: string;
+}
+
+export interface ContentRecommendation {
+  enabled: boolean;
+  strategy: 'collection' | 'package' | 'format_preference' | 'ai_curated';
+  targetCollectionId?: string;
+  targetPackageId?: string;
+  maxRecommendations: number;
+}
+
+export interface ABExperimentMetrics {
+  variantAViews: number;
+  variantAClicks: number;
+  variantBViews: number;
+  variantBClicks: number;
+}
+
+export interface ABExperimentVariantOverrides {
+  headline?: string;
+  buttonText?: string;
+  targetUrl?: string;
+  gating?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+}
+
+export interface ABExperimentConfig {
+  id: string;
+  name: string;
+  enabled: boolean;
+  trafficSplitPercent: number; // 0 to 100 (% directed to Variant A, remainder to Variant B)
+  variantA: ABExperimentVariantOverrides;
+  variantB: ABExperimentVariantOverrides;
+  metrics: ABExperimentMetrics;
+}
+
+export interface PersonaPreviewContext {
+  personaType: 'anonymous' | 'decision_maker' | 'high_intent_lead' | 'customer';
+  contactName: string;
+  contactEmail: string;
+  companyName: string;
+  engagementScore: number;
+  dealStage: string;
+  watchedChapterIds: string[];
+  contactTagIds: string[];
+}
+
 export interface MediaExperience {
   id: string;
   workspaceId: string;
@@ -120,6 +204,10 @@ export interface MediaExperience {
   socialSharingDescription?: string;
   socialSharingImageUrl?: string;
   isDefault?: boolean;
+  dynamicCtaRules?: DynamicCtaRule[];
+  personalization?: PersonalizationConfig;
+  recommendations?: ContentRecommendation;
+  abExperiment?: ABExperimentConfig;
   createdById: string;
   createdAt: string;
   updatedAt: string;
@@ -152,6 +240,71 @@ export interface EmbedConfig {
   themeColor?: string;
 }
 
+export interface TranscriptCue {
+  id: string;
+  startTime: number;
+  endTime: number;
+  text: string;
+  speaker?: string;
+}
+
+export interface MediaTranscript {
+  id: string;
+  assetId: string;
+  versionId?: string;
+  language: string;
+  cues: TranscriptCue[];
+  fullText: string;
+  confidenceScore?: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaChapter {
+  id: string;
+  assetId: string;
+  title: string;
+  startTime: number;
+  endTime: number;
+  summary?: string;
+  thumbnailUrl?: string;
+  order: number;
+}
+
+export interface MediaContentIntelligence {
+  id: string;
+  workspaceId: string;
+  assetId: string;
+  summary: string;
+  keyTakeaways: string[];
+  topics: string[];
+  entities: string[];
+  sentiment: 'positive' | 'neutral' | 'negative';
+  vectorIndexed: boolean;
+  qdrantPointId?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SemanticSearchHit {
+  assetId: string;
+  assetName: string;
+  mediaType: MediaAsset['type'];
+  cueText: string;
+  startTime: number;
+  relevanceScore: number;
+  jumpUrl: string;
+}
+
+export interface IntelligenceGovernanceConfig {
+  sttProvider: 'gemini' | 'whisper' | 'local';
+  autoTranscribeUploads: boolean;
+  minConfidenceThreshold: number;
+  autoExtractChapters: boolean;
+  autoVectorIndex: boolean;
+  qdrantCollectionName: string;
+}
+
 export interface MediaProcessingJob {
   id: string;
   workspaceId: string;
@@ -175,6 +328,7 @@ export interface MediaGovernanceConfig {
   defaultCollectionTemplates: string[];
   allowedEmbedDomains: string[];
   defaultExperienceTemplate: ExperienceTemplate;
+  intelligenceConfig?: IntelligenceGovernanceConfig;
 }
 
 export interface MediaAsset2 extends MediaAsset {
@@ -195,5 +349,261 @@ export interface MediaAsset2 extends MediaAsset {
     keywords?: string[];
     topics?: string[];
     transcriptUrl?: string;
+    transcriptId?: string;
+    hasChapters?: boolean;
+    vectorPointId?: string;
   };
 }
+
+export interface MediaActivitySummary {
+  shareId: string;
+  assetId: string;
+  assetTitle: string;
+  mediaType: MediaAsset['type'];
+  viewCount: number;
+  totalDurationSeconds: number;
+  watchedDurationSeconds: number;
+  maxCompletionPercent: number;
+  ctaClickedCount: number;
+  downloadCount: number;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
+export interface MediaEngagementMetrics {
+  totalViews: number;
+  totalSessions: number;
+  totalTimeSeconds: number;
+  avgCompletionPercent: number;
+  totalCtaClicks: number;
+  totalDownloads: number;
+  overallScore: number; // 0 - 100 engagement score
+}
+
+export interface ContactMediaProfile {
+  contactId: string;
+  workspaceId: string;
+  metrics: MediaEngagementMetrics;
+  activities: MediaActivitySummary[];
+  preferredFormat: MediaAsset['type'] | 'balanced';
+  highIntentSignalsCount: number;
+  lastActiveAt?: string;
+}
+
+export interface DealMediaSignals {
+  dealId: string;
+  workspaceId: string;
+  combinedEngagementScore: number;
+  associatedContactsCount: number;
+  stakeholdersWithActivityCount: number;
+  topEngagedAssetTitle?: string;
+  hasHighIntentProposalViews: boolean;
+  hasCompletedVideoViews: boolean;
+  hasCtaInteractions: boolean;
+  suggestedHealthMultiplier: number; // e.g. 1.25 multiplier for deal score
+  lastActivityAt?: string;
+}
+
+// ==========================================
+// PHASE 6: ANALYTICS & ATTRIBUTION DOMAIN MODELS
+// ==========================================
+
+export type AttributionType = 
+  | 'TOUCHED'
+  | 'ENGAGED'
+  | 'ASSISTED'
+  | 'INFLUENCED'
+  | 'CONVERTED_AFTER_EXPOSURE';
+
+export type AttributionModelType = 
+  | 'FIRST_TOUCH'
+  | 'LAST_TOUCH'
+  | 'LINEAR'
+  | 'TIME_DECAY'
+  | 'POSITION_BASED';
+
+export interface EvidenceReference {
+  eventId?: string;
+  sessionId?: string;
+  timestamp: string;
+  type: string;
+  progressPercent?: number;
+  metadata?: Record<string, string | number | boolean>;
+}
+
+export interface MediaAttribution {
+  id: string;
+  workspaceId: string;
+  assetId: string;
+  assetTitle?: string;
+  assetType?: MediaAsset['type'];
+  experienceId?: string;
+  linkId?: string;
+  contactId?: string;
+  contactName?: string;
+  dealId?: string;
+  dealTitle?: string;
+  dealAmount?: number;
+  dealCurrency?: string;
+  dealStage?: string;
+  isClosedWon?: boolean;
+  campaignId?: string;
+  attributionType: AttributionType;
+  model: AttributionModelType;
+  weight: number; // 0.0 to 1.0 (Sum of weights for a deal strictly = 1.0)
+  attributedRevenue: number; // weight * dealAmount
+  evidence: EvidenceReference[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TopInfluencingAsset {
+  assetId: string;
+  title: string;
+  type: MediaAsset['type'];
+  viewsCount: number;
+  completionRate: number;
+  influencedDealsCount: number;
+  attributedRevenue: number;
+  topAttributionType: AttributionType;
+}
+
+export interface MediaFunnelMetrics {
+  views: number;
+  plays: number;
+  halfway: number;
+  completions: number;
+  ctaClicks: number;
+  dealsCreated: number;
+  dealsWon: number;
+}
+
+export interface MediaInfluenceSummary {
+  workspaceId: string;
+  totalAssetsCount: number;
+  totalExperiencesCount: number;
+  totalViewsCount: number;
+  totalUniqueContactsCount: number;
+  avgEngagementRate: number; // e.g. 67.4%
+  avgCtaConversionRate: number; // e.g. 14.2%
+  totalPipelineInfluenced: number; // sum of open deals touched
+  totalInfluencedRevenue: number; // sum of closed won deals touched
+  influencedDealsCount: number;
+  totalDealsCount: number;
+  avgDealAccelerationDays: number; // days saved compared to deals without media
+  attributionModel: AttributionModelType;
+  lookbackDays: number;
+  currencySymbol: string;
+  funnel: MediaFunnelMetrics;
+  topInfluencingAssets: TopInfluencingAsset[];
+}
+
+export interface DealAttributionAssetItem {
+  assetId: string;
+  title: string;
+  type: MediaAsset['type'];
+  weight: number; // e.g. 0.31 (31%)
+  attributedAmount: number;
+  attributionType: AttributionType;
+  firstTouchAt: string;
+  lastTouchAt: string;
+}
+
+export interface DealAttributionBreakdown {
+  dealId: string;
+  dealTitle: string;
+  dealAmount: number;
+  currencySymbol: string;
+  isClosedWon: boolean;
+  totalInfluencedAssetsCount: number;
+  items: DealAttributionAssetItem[];
+}
+
+export interface AttributionGovernanceConfig {
+  workspaceId: string;
+  defaultModel: AttributionModelType;
+  defaultLookbackDays: number; // 14, 30, 60, 90, 180
+  minEngagementProgressPercent: number; // default 50%
+  enableDealAccelerationMetrics: boolean;
+  currencySymbol: string; // e.g. "GH₵" or "$"
+  updatedAt: string;
+}
+
+// ==========================================
+// PHASE 7: MEDIA COPILOT & AI REPURPOSING DOMAIN MODELS
+// ==========================================
+
+export type CopilotPersonaType = 
+  | 'LIBRARIAN'
+  | 'ANALYST'
+  | 'STRATEGIST'
+  | 'REPURPOSER'
+  | 'CRM_INTELLIGENCE'
+  | 'OPTIMIZER';
+
+export type DerivativeType = 
+  | 'SUMMARY'
+  | 'FAQ'
+  | 'EMAIL_OUTREACH'
+  | 'SOCIAL_SNIPPETS'
+  | 'SHORT_CLIPS'
+  | 'QUOTE_CARDS'
+  | 'SALES_BRIEF';
+
+export interface MediaDerivative {
+  id: string;
+  workspaceId: string;
+  sourceAssetId: string;
+  sourceVersionId?: string;
+  sourceTitle: string;
+  sourceType: MediaAsset['type'];
+  type: DerivativeType;
+  title: string;
+  content: string; // Markdown or formatted text
+  structuredPayload?: Record<string, string | number | boolean | string[] | Array<{ question: string; answer: string }> | Array<{ startSeconds: number; endSeconds: number; hook: string }>>;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CopilotSuggestedAction {
+  label: string;
+  action: string;
+  payload?: Record<string, string | number>;
+}
+
+export interface CopilotMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  persona: CopilotPersonaType;
+  content: string;
+  timestamp: string;
+  suggestedActions?: CopilotSuggestedAction[];
+  referencedAssetIds?: string[];
+  referencedDealIds?: string[];
+  referencedContactIds?: string[];
+}
+
+export interface CopilotSession {
+  id: string;
+  workspaceId: string;
+  contextType: 'global' | 'asset' | 'deal' | 'contact' | 'analytics';
+  contextId?: string;
+  activePersona: CopilotPersonaType;
+  messages: CopilotMessage[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CopilotGovernanceConfig {
+  workspaceId: string;
+  enabledPersonas: CopilotPersonaType[];
+  maxTokensPerPrompt: number;
+  defaultPersona: CopilotPersonaType;
+  repurposingEnabled: boolean;
+  temperature: number;
+  allowedDerivativeTypes: DerivativeType[];
+  updatedAt: string;
+}
+
+

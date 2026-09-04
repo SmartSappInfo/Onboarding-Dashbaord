@@ -17,13 +17,15 @@
 import { useState, useEffect } from 'react';
 import { useFirestore } from '@/firebase';
 import type { MediaAsset } from '@/lib/types';
-import type { MediaVersion, MediaCollection } from '@/lib/types/media-2.0';
+import type { MediaVersion, MediaCollection, MediaDerivative } from '@/lib/types/media-2.0';
 import { 
   listMediaVersionsAction, 
   setActiveMediaVersionAction, 
   createMediaVersionAction 
 } from '@/lib/media/media-version-service';
 import { listCollectionsAction, addAssetToCollectionAction } from '@/lib/media/media-collection-service';
+import { listAssetDerivativesAction } from '@/lib/media/repurposing-service';
+import { AssetRepurposerModal } from './AssetRepurposerModal';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -32,7 +34,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { 
   FileText, History, FolderPlus, Info, Check, Upload, 
-  ExternalLink, Download, Loader2, Sparkles, Layers 
+  ExternalLink, Download, Loader2, Sparkles, Layers, Copy, CheckCircle2 
 } from 'lucide-react';
 import { formatBytes } from '@/lib/utils';
 
@@ -52,11 +54,14 @@ export function MediaAssetInspectorDrawer({
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  const [activeTab, setActiveTab] = useState<'overview' | 'versions' | 'collections' | 'metadata'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'versions' | 'collections' | 'metadata' | 'derivatives'>('overview');
   const [versions, setVersions] = useState<MediaVersion[]>([]);
   const [collections, setCollections] = useState<MediaCollection[]>([]);
+  const [derivatives, setDerivatives] = useState<MediaDerivative[]>([]);
   const [isLoadingVersions, setIsLoadingVersions] = useState(false);
   const [isUpdatingVersion, setIsUpdatingVersion] = useState(false);
+  const [isRepurposerOpen, setIsRepurposerOpen] = useState(false);
+  const [copiedDerivId, setCopiedDerivId] = useState<string | null>(null);
   const [newVersionUrl, setNewVersionUrl] = useState('');
   const [newVersionFileName, setNewVersionFileName] = useState('');
   const [changeLog, setChangeLog] = useState('');
@@ -73,10 +78,12 @@ export function MediaAssetInspectorDrawer({
       try {
         const fetchedVersions = await listMediaVersionsAction(firestore, asset.id);
         const fetchedCollections = await listCollectionsAction(firestore, asset.workspaceIds?.[0] || 'global');
+        const fetchedDerivatives = await listAssetDerivativesAction(firestore, asset.workspaceIds?.[0] || 'global', asset.id);
 
         if (isMounted) {
           setVersions(fetchedVersions);
           setCollections(fetchedCollections);
+          setDerivatives(fetchedDerivatives);
           setIsLoadingVersions(false);
         }
       } catch (err: unknown) {
@@ -207,7 +214,7 @@ export function MediaAssetInspectorDrawer({
         {/* Drawer Tabs Header */}
         <div className="px-6 pt-3 border-b border-border bg-background shrink-0">
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as typeof activeTab)} className="w-full">
-            <TabsList className="bg-muted/40 border border-border h-11 p-1 rounded-xl w-full grid grid-cols-4">
+            <TabsList className="bg-muted/40 border border-border h-11 p-1 rounded-xl w-full grid grid-cols-5">
               <TabsTrigger value="overview" className="rounded-lg font-bold text-xs gap-1.5 min-h-[44px]">
                 <Info className="h-3.5 w-3.5" /> Overview
               </TabsTrigger>
@@ -216,6 +223,9 @@ export function MediaAssetInspectorDrawer({
               </TabsTrigger>
               <TabsTrigger value="collections" className="rounded-lg font-bold text-xs gap-1.5 min-h-[44px]">
                 <FolderPlus className="h-3.5 w-3.5" /> Folders
+              </TabsTrigger>
+              <TabsTrigger value="derivatives" className="rounded-lg font-bold text-xs gap-1.5 min-h-[44px]">
+                <Sparkles className="h-3.5 w-3.5" /> AI Content
               </TabsTrigger>
               <TabsTrigger value="metadata" className="rounded-lg font-bold text-xs gap-1.5 min-h-[44px]">
                 <FileText className="h-3.5 w-3.5" /> Details
@@ -243,12 +253,19 @@ export function MediaAssetInspectorDrawer({
               </div>
 
               {/* Quick Action Triggers */}
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Button
                   onClick={() => window.open(asset.url, '_blank', 'noopener,noreferrer')}
-                  className="flex-1 rounded-xl font-extrabold text-xs gap-2 h-11 min-h-[44px] shadow-md active:scale-[0.97]"
+                  className="w-full sm:flex-1 rounded-xl font-extrabold text-xs gap-2 h-11 min-h-[44px] shadow-md active:scale-[0.97]"
                 >
                   Open Original <ExternalLink className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsRepurposerOpen(true)}
+                  className="w-full sm:flex-1 rounded-xl font-extrabold text-xs gap-2 h-11 min-h-[44px] border-primary/20 hover:border-primary active:scale-[0.97]"
+                >
+                  <Sparkles className="h-4 w-4 text-primary" /> Repurpose with AI
                 </Button>
               </div>
             </div>
@@ -428,7 +445,94 @@ export function MediaAssetInspectorDrawer({
               </div>
             </div>
           )}
+
+          {/* Tab 5: AI Derivatives (Phase 7) */}
+          {activeTab === 'derivatives' && (
+            <div className="space-y-4 text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h4 className="text-sm font-extrabold text-foreground">AI Repurposed Content</h4>
+                  <p className="text-xs text-muted-foreground">Omnichannel marketing assets generated from this media.</p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={() => setIsRepurposerOpen(true)}
+                  className="rounded-xl text-xs font-bold h-9 px-3 min-h-[36px] gap-1.5 active:scale-[0.97]"
+                >
+                  <Sparkles className="h-3.5 w-3.5" /> Repurpose Now
+                </Button>
+              </div>
+
+              {derivatives.length > 0 ? (
+                <div className="space-y-3">
+                  {derivatives.map((deriv) => (
+                    <div key={deriv.id} className="p-3.5 rounded-2xl border border-border bg-card space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Badge variant="outline" className="text-[9px] font-black uppercase">
+                          {deriv.type.replace('_', ' ')}
+                        </Badge>
+                        <div className="flex items-center gap-1">
+                          <button
+                            onClick={() => {
+                              navigator.clipboard.writeText(deriv.content);
+                              setCopiedDerivId(deriv.id);
+                              toast({ title: 'Copied to Clipboard' });
+                              setTimeout(() => setCopiedDerivId(null), 2000);
+                            }}
+                            className="p-1 rounded text-muted-foreground hover:text-foreground text-[10px] font-bold flex items-center gap-1"
+                          >
+                            {copiedDerivId === deriv.id ? (
+                              <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                            ) : (
+                              <Copy className="h-3 w-3" />
+                            )}
+                            Copy
+                          </button>
+                        </div>
+                      </div>
+                      <p className="text-xs font-extrabold text-foreground">{deriv.title}</p>
+                      <div className="p-2.5 rounded-xl bg-muted/20 border border-border text-[11px] font-mono whitespace-pre-wrap max-h-36 overflow-y-auto">
+                        {deriv.content}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-12 border border-dashed rounded-2xl bg-muted/10 text-center space-y-3">
+                  <Sparkles className="h-6 w-6 text-muted-foreground/40 mx-auto" />
+                  <p className="text-xs font-extrabold text-foreground">No Repurposed Assets Yet</p>
+                  <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                    Click &apos;Repurpose Now&apos; to automatically generate FAQs, outreach emails, social posts, and short-form clips.
+                  </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setIsRepurposerOpen(true)}
+                    className="rounded-xl text-xs font-bold h-9 px-3 min-h-[44px] gap-1.5 active:scale-[0.97]"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-primary" /> Start AI Repurposing
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
+
+        {/* Modal Integration */}
+        <AssetRepurposerModal
+          isOpen={isRepurposerOpen}
+          onClose={async () => {
+            setIsRepurposerOpen(false);
+            if (firestore && asset) {
+              const updated = await listAssetDerivativesAction(firestore, asset.workspaceIds?.[0] || 'global', asset.id);
+              setDerivatives(updated);
+            }
+          }}
+          assetId={asset.id}
+          assetTitle={asset.name}
+          assetType={asset.type}
+          durationSeconds={asset.durationSeconds}
+        />
       </SheetContent>
     </Sheet>
   );

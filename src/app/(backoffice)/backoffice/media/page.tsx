@@ -24,9 +24,11 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 import { 
   ShieldCheck, HardDrive, Layers, RefreshCw, 
-  CheckCircle2, AlertCircle, Loader2, Sparkles 
+  CheckCircle2, AlertCircle, Loader2, Sparkles,
+  Bot, TrendingUp, Cpu, ArrowUpRight
 } from 'lucide-react';
 
 export default function BackofficeMediaGovernancePage() {
@@ -208,6 +210,84 @@ export default function BackofficeMediaGovernancePage() {
             </Button>
           </CardContent>
         </Card>
+      </div>
+
+      {/* Sub-Consoles Quick Navigation */}
+      <div className="pt-6 border-t border-border space-y-4">
+        <div>
+          <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground">
+            Specialized Media 2.0 Governance Consoles
+          </h3>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Configure delivery experiences, speech-to-text intelligence, revenue attribution models, and multi-persona AI copilot.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link
+            href="/backoffice/media/experiences"
+            className="p-4 rounded-2xl border border-border bg-card hover:bg-muted/10 transition-all flex flex-col justify-between gap-3 group min-h-[44px]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500">
+                <Layers className="h-4 w-4" />
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-foreground">Experiences Studio</h4>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Delivery embeds & layout themes</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/backoffice/media/intelligence"
+            className="p-4 rounded-2xl border border-border bg-card hover:bg-muted/10 transition-all flex flex-col justify-between gap-3 group min-h-[44px]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-purple-500/10 text-purple-500">
+                <Cpu className="h-4 w-4" />
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-foreground">Content Intelligence</h4>
+              <p className="text-[10px] text-muted-foreground mt-0.5">STT transcripts & vector search</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/backoffice/media/attribution"
+            className="p-4 rounded-2xl border border-border bg-card hover:bg-muted/10 transition-all flex flex-col justify-between gap-3 group min-h-[44px]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-foreground">Attribution & ROI</h4>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Revenue models & FER batch runner</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/backoffice/media/copilot"
+            className="p-4 rounded-2xl border border-border bg-card hover:bg-muted/10 transition-all flex flex-col justify-between gap-3 group min-h-[44px]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-amber-500/10 text-amber-500">
+                <Bot className="h-4 w-4" />
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-foreground">Copilot & AI Studio</h4>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Personas, tokens & repurposing</p>
+            </div>
+          </Link>
+        </div>
       </div>
     </div>
   );

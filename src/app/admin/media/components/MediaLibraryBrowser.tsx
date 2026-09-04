@@ -12,8 +12,9 @@ import MediaAssetCard from './media-asset-card';
 import UploadButton from './upload-button';
 import AddLinkButton from './add-link-button';
 import MediaAssetInspectorDrawer from './MediaAssetInspectorDrawer';
-import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown, Tag } from 'lucide-react';
+import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown, Tag, Bot, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { MediaCopilotDrawer } from './MediaCopilotDrawer';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -61,6 +62,7 @@ export default function MediaLibraryBrowser({
   const [sourceFilter, setSourceFilter] = useState<SourceFilterType>('ALL');
   const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
   const [inspectingAsset, setInspectingAsset] = useState<MediaAsset | null>(null);
+  const [isCopilotOpen, setIsCopilotOpen] = useState(false);
 
   // Automatically trigger document CTA backfill protocol on mount
   useEffect(() => {
@@ -343,6 +345,16 @@ export default function MediaLibraryBrowser({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsCopilotOpen(true)}
+            className="h-10 px-3 rounded-xl border border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary font-bold text-xs gap-1.5 shrink-0 transition-all min-h-[44px] active:scale-[0.97]"
+          >
+            <Sparkles className="h-3.5 w-3.5 text-primary" />
+            <span className="hidden sm:inline">Ask Copilot</span>
+          </Button>
+
           <div className="flex items-center gap-2 shrink-0">
             <AddLinkButton />
             <UploadButton workspaceId={effectiveWorkspaceId} />
@@ -398,6 +410,12 @@ export default function MediaLibraryBrowser({
         asset={inspectingAsset}
         isOpen={!!inspectingAsset}
         onClose={() => setInspectingAsset(null)}
+      />
+
+      <MediaCopilotDrawer
+        isOpen={isCopilotOpen}
+        onClose={() => setIsCopilotOpen(false)}
+        contextType="global"
       />
     </div>
   );
