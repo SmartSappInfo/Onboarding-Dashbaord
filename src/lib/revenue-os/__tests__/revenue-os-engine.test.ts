@@ -240,16 +240,52 @@ describe('Revenue Operating System Engine (Phase 10)', () => {
 
       const res = computePredictiveAttainment(repsData);
 
-      // Alice: 150,000 + 40,000 + 18,000 = 208,000 (104% of 200k)
+      // Alice: 150,000 + 40,000 + 18,000 = 208,000 (104% of 200k) -> on_track (90-104%)
       expect(res[0].predictedAttainmentDollars).toBe(208000);
       expect(res[0].predictedAttainmentPercent).toBe(104);
       expect(res[0].category).toBe('on_track');
       expect(res[0].pacingTrend).toBe('accelerating');
 
-      // Bob: 60,000 + 3,600 = 63,600 (25% of 250k)
+      // Bob: 60,000 + 3,600 = 63,600 (25% of 250k) -> critical (<75%)
       expect(res[1].predictedAttainmentPercent).toBe(25);
       expect(res[1].category).toBe('critical');
       expect(res[1].primaryRiskFactor).toBeDefined();
+    });
+
+    it('correctly maps boundary conditions: exceeding (>=105%), at_risk (75-89%), and critical (<75%)', () => {
+      const boundaryReps = [
+        {
+          repId: 'rep_exceeding',
+          repName: 'Exceeding Rep',
+          quota: 100000,
+          closedRevenue: 105000, // exactly 105%
+          pipelineDeals: [],
+        },
+        {
+          repId: 'rep_at_risk',
+          repName: 'At Risk Rep',
+          quota: 100000,
+          closedRevenue: 75000, // exactly 75%
+          pipelineDeals: [],
+        },
+        {
+          repId: 'rep_critical',
+          repName: 'Critical Rep',
+          quota: 100000,
+          closedRevenue: 74000, // exactly 74%
+          pipelineDeals: [],
+        },
+      ];
+
+      const res = computePredictiveAttainment(boundaryReps);
+      expect(res[0].predictedAttainmentPercent).toBe(105);
+      expect(res[0].category).toBe('exceeding');
+
+      expect(res[1].predictedAttainmentPercent).toBe(75);
+      expect(res[1].category).toBe('at_risk');
+
+      expect(res[2].predictedAttainmentPercent).toBe(74);
+      expect(res[2].category).toBe('critical');
     });
   });
 

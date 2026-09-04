@@ -147,6 +147,7 @@ export default function RevenueOperatingSystemClient() {
           title: 'Failed to load Revenue OS data',
           description: res.error || 'Check permissions or workspace setup.',
           variant: 'destructive',
+          actionConfig: { path: '/admin', label: 'Admin Hub' },
         });
       }
     } catch (err) {
@@ -154,6 +155,7 @@ export default function RevenueOperatingSystemClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Unknown load error',
         variant: 'destructive',
+        actionConfig: { path: '/admin', label: 'Admin Hub' },
       });
     } finally {
       setIsLoading(false);
@@ -188,6 +190,7 @@ export default function RevenueOperatingSystemClient() {
           title: 'Save Failed',
           description: res.error || 'Could not save scenario model.',
           variant: 'destructive',
+          actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
         });
       }
     } catch (err) {
@@ -195,6 +198,7 @@ export default function RevenueOperatingSystemClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Failed to save scenario',
         variant: 'destructive',
+        actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
       });
     } finally {
       setIsSavingScenario(false);
@@ -222,6 +226,7 @@ export default function RevenueOperatingSystemClient() {
           title: 'Delete Failed',
           description: res.error || 'Could not delete scenario.',
           variant: 'destructive',
+          actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
         });
       }
     } catch (err) {
@@ -229,6 +234,7 @@ export default function RevenueOperatingSystemClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Delete failed',
         variant: 'destructive',
+        actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
       });
     }
   };
@@ -256,6 +262,7 @@ export default function RevenueOperatingSystemClient() {
           title: 'Enact Failed',
           description: res.error || 'Could not apply recommendation.',
           variant: 'destructive',
+          actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
         });
       }
     } catch (err) {
@@ -263,6 +270,7 @@ export default function RevenueOperatingSystemClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Failed to apply recommendation',
         variant: 'destructive',
+        actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
       });
     } finally {
       setIsApplyingStrategy(false);
@@ -290,6 +298,7 @@ export default function RevenueOperatingSystemClient() {
           title: 'Reseed Failed',
           description: res.error || 'Could not reseed defaults.',
           variant: 'destructive',
+          actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
         });
       }
     } catch (err) {
@@ -297,6 +306,7 @@ export default function RevenueOperatingSystemClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Reseed error',
         variant: 'destructive',
+        actionConfig: { path: '/admin/revenue-operating-system', label: 'Revenue OS' },
       });
     } finally {
       setIsRefreshing(false);

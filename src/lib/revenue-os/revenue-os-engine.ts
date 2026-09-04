@@ -254,11 +254,11 @@ export function computePredictiveAttainment(repsData: Array<{
     );
 
     let category: AttainmentCategory = 'on_track';
-    if (predictedAttainmentPercent >= 110) {
+    if (predictedAttainmentPercent >= 105) {
       category = 'exceeding';
     } else if (predictedAttainmentPercent >= 90) {
       category = 'on_track';
-    } else if (predictedAttainmentPercent >= 70) {
+    } else if (predictedAttainmentPercent >= 75) {
       category = 'at_risk';
     } else {
       category = 'critical';

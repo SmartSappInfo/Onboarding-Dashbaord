@@ -135,6 +135,8 @@ export async function getExecutiveBoardroomDataAction(params: {
         stakeholderCount: Array.isArray(data.contactIds) ? data.contactIds.length : 1,
         stage: data.stage || 'Discovery',
         status: data.status || 'open',
+        ownerId: data.ownerId || data.assignedTo || data.repId || data.userId || '',
+        healthScore: typeof data.healthScore === 'number' ? data.healthScore : 75,
       };
     });
 
@@ -147,10 +149,26 @@ export async function getExecutiveBoardroomDataAction(params: {
 
     const reps = usersSnap.docs.map((u, idx) => {
       const data = u.data();
-      const tenure = idx === 0 ? 20 : idx === 1 ? 14 : idx === 2 ? 6 : 2;
+      let tenure = 12;
+      if (data.createdAt) {
+        const createdTime = new Date(data.createdAt).getTime();
+        if (!isNaN(createdTime)) {
+          tenure = Math.max(1, Math.round((Date.now() - createdTime) / (30.44 * 24 * 60 * 60 * 1000)));
+        }
+      } else {
+        tenure = idx === 0 ? 20 : idx === 1 ? 14 : idx === 2 ? 6 : 2;
+      }
+
       const rampTier = tenure > 12 ? 'ramped' : tenure > 3 ? 'ramping' : 'onboarding';
       const rampFactor = rampTier === 'ramped' ? 1.0 : rampTier === 'ramping' ? 0.7 : 0.35;
       const assignedQuota = rampTier === 'ramped' ? 300000 : rampTier === 'ramping' ? 250000 : 200000;
+
+      const repDeals = deals.filter((d) => d.ownerId === u.id);
+      const repActiveDeals = repDeals.filter((d) => d.status === 'open');
+      const repWonDeals = repDeals.filter((d) => d.status === 'won');
+      const realClosedRev = repWonDeals.reduce((acc, d) => acc + d.value, 0);
+      const closedRevenue = realClosedRev > 0 ? realClosedRev : Math.round(assignedQuota * (0.4 + (idx % 3) * 0.25));
+      const activeDealsCount = repActiveDeals.length > 0 ? repActiveDeals.length : Math.min(25, 8 + idx * 3);
 
       return {
         repId: u.id,
@@ -161,10 +179,10 @@ export async function getExecutiveBoardroomDataAction(params: {
         rampFactor,
         assignedQuota,
         effectiveCapacityQuota: Math.round(assignedQuota * rampFactor),
-        activeDealsCount: Math.min(25, 8 + idx * 3),
+        activeDealsCount,
         dealCapacityLimit: 25,
-        utilizationPercent: Math.min(100, Math.round(((8 + idx * 3) / 25) * 100)),
-        closedRevenue: Math.round(assignedQuota * (0.4 + (idx % 3) * 0.25)),
+        utilizationPercent: Math.min(100, Math.round((activeDealsCount / 25) * 100)),
+        closedRevenue,
       };
     });
 
@@ -216,18 +234,23 @@ export async function getExecutiveBoardroomDataAction(params: {
     });
 
     // 8. Compute Predictive Attainment
-    const repsForAttainment = reps.map((r) => ({
-      repId: r.repId,
-      repName: r.repName,
-      teamId: r.teamId,
-      quota: r.assignedQuota,
-      closedRevenue: r.closedRevenue,
-      pipelineDeals: deals.slice(0, 5).map((d) => ({
-        value: d.value,
-        healthScore: 75,
-        stageProbability: d.stage === 'Negotiation' ? 80 : d.stage === 'Proposal' ? 50 : 25,
-      })),
-    }));
+    const repsForAttainment = reps.map((r) => {
+      const repDeals = deals.filter((d) => d.ownerId === r.repId && d.status === 'open');
+      const repPipelineDeals = repDeals.length > 0 ? repDeals : deals.slice(0, 5);
+
+      return {
+        repId: r.repId,
+        repName: r.repName,
+        teamId: r.teamId,
+        quota: r.assignedQuota,
+        closedRevenue: r.closedRevenue,
+        pipelineDeals: repPipelineDeals.map((d) => ({
+          value: d.value,
+          healthScore: d.healthScore,
+          stageProbability: d.stage === 'Negotiation' ? 80 : d.stage === 'Proposal' ? 50 : 25,
+        })),
+      };
+    });
 
     const predictiveAttainments = computePredictiveAttainment(repsForAttainment);
 
@@ -259,9 +282,16 @@ export async function getExecutiveBoardroomDataAction(params: {
       safeDivide(weightedForecastDollars, targetQuarterlyRevenue) * 100
     );
 
+    // Dynamically calculate day of the quarter (1-90)
+    const now = new Date();
+    const quarterMonthStart = Math.floor(now.getMonth() / 3) * 3;
+    const quarterStartDate = new Date(now.getFullYear(), quarterMonthStart, 1);
+    const diffMs = now.getTime() - quarterStartDate.getTime();
+    const currentQuarterDay = Math.min(90, Math.max(1, Math.floor(diffMs / (24 * 60 * 60 * 1000)) + 1));
+
     const pacingTrajectory = generatePacingTrajectory({
       targetRevenue: targetQuarterlyRevenue,
-      currentQuarterDay: 52, // Current pacing day in Q4
+      currentQuarterDay,
       currentClosedRevenue: totalClosedRevenue,
       projectedEndRevenue: weightedForecastDollars,
     });
@@ -380,24 +410,37 @@ export async function saveRevenueScenarioAction(params: {
     const docRef = adminDb.collection('revenueScenarios').doc(scenario.id);
     await docRef.set(scenarioDoc, { merge: true });
 
-    // Award +20 Effort Points for calibrating an executive revenue model
-    let pointsAwarded = 20;
+    // Anti-gaming rate limit: award points at most once per user per 24 hours
+    let pointsAwarded = 0;
     try {
-      await evaluateEffortEvent({
-        organizationId,
-        workspaceId,
-        eventType: 'revenue_scenario_calibrated',
-        entityType: 'RevenueScenario',
-        entityId: scenario.id,
-        actorType: 'User',
-        actorId,
-        metadata: {
-          scenarioName: scenario.name,
-          simulatedRevenue: scenario.simulatedQuarterlyRevenue,
-          deltaVsTargetPercent: scenario.deltaVsTargetPercent,
-          calibratedBy: actorName,
-        },
-      });
+      const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const recentEventsSnap = await adminDb
+        .collection('activityEvents')
+        .where('workspaceId', '==', workspaceId)
+        .where('actorId', '==', actorId)
+        .where('eventType', '==', 'revenue_scenario_calibrated')
+        .where('createdAt', '>=', oneDayAgo)
+        .limit(1)
+        .get();
+
+      if (recentEventsSnap.empty) {
+        const effortRes = await evaluateEffortEvent({
+          organizationId,
+          workspaceId,
+          eventType: 'revenue_scenario_calibrated',
+          entityType: 'RevenueScenario',
+          entityId: scenario.id,
+          actorType: 'User',
+          actorId,
+          metadata: {
+            scenarioName: scenario.name,
+            simulatedRevenue: scenario.simulatedQuarterlyRevenue,
+            deltaVsTargetPercent: scenario.deltaVsTargetPercent,
+            calibratedBy: actorName,
+          },
+        });
+        pointsAwarded = effortRes.pointsAwarded ?? 20;
+      }
     } catch (scoringErr) {
       console.warn('Non-blocking effort scoring error:', scoringErr);
     }
