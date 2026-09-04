@@ -328,6 +328,39 @@ export async function getMyDayOverviewAction(params: {
       console.warn('Non-blocking forecast candidate resolution failure:', forecastErr);
     }
 
+    // 6.4 Build Candidates from Active Sales Play Actions (Phase 8)
+    try {
+      const activeExecsSnap = await adminDb
+        .collection('salesOrchestrationExecutions')
+        .where('workspaceId', '==', workspaceId)
+        .where('status', '==', 'active')
+        .limit(15)
+        .get();
+
+      activeExecsSnap.forEach((execDoc) => {
+        const ex = execDoc.data();
+        if (ex.assignedTo && ex.assignedTo !== repId) {
+          return;
+        }
+        candidates.push({
+          id: `play_${execDoc.id}`,
+          type: 'deal_action',
+          title: `Sales Play: ${ex.playTitle || 'Governed Play Action'}`,
+          description: `Action step on ${ex.entityName || 'account'}: Execute governed stage task.`,
+          entityId: ex.entityId || execDoc.id,
+          entityName: ex.entityName || 'Sales Play Target',
+          entityType: ex.entityType === 'deal' ? 'Deal' : 'Lead',
+          dueDate: ex.nextStepDueAt || now.toISOString(),
+          assignedTo: repId,
+          workspaceId,
+          organizationId,
+          createdAt: ex.startedAt || now.toISOString(),
+        });
+      });
+    } catch (playErr) {
+      console.warn('Non-blocking sales play candidate resolution failure:', playErr);
+    }
+
     // 7. Resolve Today's Meetings
     const upcomingMeetings: UpcomingMeetingBrief[] = [];
     meetingsSnap.forEach((doc) => {

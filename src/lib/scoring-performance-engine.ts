@@ -158,7 +158,12 @@ export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'o
 
   // Revenue Attribution & Predictive Forecasting (Phase 7)
   { eventType: 'forecast_category_committed', entityType: 'Deal', points: 15, enabled: true, description: 'Points awarded when an opportunity is rigorously inspected and promoted to Committed forecast category.' },
-  { eventType: 'revenue_attribution_confirmed', entityType: 'Deal', points: 10, enabled: true, description: 'Points awarded when multi-touch revenue credit splits are confirmed and closed on a won deal.' }
+  { eventType: 'revenue_attribution_confirmed', entityType: 'Deal', points: 10, enabled: true, description: 'Points awarded when multi-touch revenue credit splits are confirmed and closed on a won deal.' },
+
+  // Sales Orchestration & Governance (Phase 8)
+  { eventType: 'sales_play_step_completed', entityType: 'SalesPlay', points: 10, enabled: true, description: 'Points awarded when a seller executes a governed Sales Play action step.' },
+  { eventType: 'play_approval_resolved', entityType: 'SalesPlay', points: 15, enabled: true, description: 'Points awarded when a manager or admin resolves a human-in-the-loop approval gate.' },
+  { eventType: 'escalated_sla_breach_remediated', entityType: 'SalesPlay', points: 20, enabled: true, description: 'Points awarded when an SLA breach incident is remediated within target window.' }
 ];
 
 /**

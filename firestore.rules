@@ -2026,6 +2026,46 @@ service cloud.firestore {
       allow delete: if isSystemAdmin();
     }
 
+    // --- Phase 8: Sales Orchestration Collections ---
+    match /salesOrchestrationPlays/{playId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /salesOrchestrationExecutions/{executionId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /salesOrchestrationRoutingRules/{ruleId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /salesOrchestrationEscalations/{escalationId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /salesOrchestrationApprovals/{approvalId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update: if isAuthorized() && (isSystemAdmin() || (hasWorkspaceAccess(resource.data.workspaceId) && request.resource.data.workspaceId == resource.data.workspaceId));
+      allow delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /salesOrchestrationGovernance/{workspaceId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow create, update: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow delete: if isSystemAdmin();
+    }
+
     match /webhooks/{webhookId} {
       allow get: if isAuthorized() && (
         isSystemAdmin() || 
@@ -2792,6 +2832,55 @@ service cloud.firestore {
     // avoid exposing cross-workspace denormalized note text.
     match /note_index/{rowId} {
       allow read, write: if false;
+    }
+
+    // --- Knowledge Relations & Graph (Company Brain 2.0 Phase 5) ---
+    match /knowledge_relations/{relationId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         request.resource.data.createdBy == request.auth.uid)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId &&
+         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
+      );
+    }
+
+    // --- Ideas & Idea Intelligence (Company Brain 2.0 Phase 6) ---
+    match /ideas/{ideaId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
+         request.resource.data.createdBy == request.auth.uid)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId &&
+         request.resource.data.createdBy == resource.data.createdBy &&
+         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
+      );
     }
 
     match /workspace_entities/{workspaceEntityId} {
