@@ -55,6 +55,11 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  Route,
+  Brain,
+  ArrowRight,
+  CornerDownRight,
+  Search,
 } from 'lucide-react';
 import {
   getKnowledgeGraphGovernanceAction,
@@ -63,6 +68,19 @@ import {
   triggerBackfillCrmRelationsAction,
   resetKnowledgeGraphGovernanceAction,
 } from '@/app/actions/knowledge-graph-governance-actions';
+import {
+  getGraphTopologyMetricsAction,
+  findGraphPathAction,
+  explainGraphConnectionAction,
+  syncWorkspaceGraphMeshAction,
+} from '@/lib/memory/actions/graph-actions';
+import {
+  type GraphTopologyMetrics,
+  type GraphPath,
+  type GraphNodeType,
+  NODE_TYPE_DISPLAY_CONFIG,
+  RELATIONSHIP_TYPE_DISPLAY_CONFIG,
+} from '@/lib/memory/graph-types';
 import {
   KNOWLEDGE_RELATION_TYPES,
   type KnowledgeRelationType,
@@ -108,6 +126,7 @@ export default function BackofficeKnowledgeGraphClient() {
   const [governanceConfig, setGovernanceConfig] = React.useState<KnowledgeGraphGovernanceConfig | null>(null);
   const [metrics, setMetrics] = React.useState<GraphMetrics | null>(null);
   const [totalRelations, setTotalRelations] = React.useState<number>(0);
+  const [cbTopology, setCbTopology] = React.useState<GraphTopologyMetrics | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
@@ -115,15 +134,29 @@ export default function BackofficeKnowledgeGraphClient() {
   const [migrationResult, setMigrationResult] = React.useState<{ backfilledCount: number } | null>(null);
   const [showResetDialog, setShowResetDialog] = React.useState(false);
 
+  // CompanyBrain 2.0 Mesh Sync State
+  const [isSyncingMesh, setIsSyncingMesh] = React.useState(false);
+  const [meshSyncResult, setMeshSyncResult] = React.useState<{ nodesUpserted: number; edgesUpserted: number } | null>(null);
+
+  // Pathfinding & AI Explainability Sandbox State
+  const [simStartNodeId, setSimStartNodeId] = React.useState('');
+  const [simEndNodeId, setSimEndNodeId] = React.useState('');
+  const [isSimulatingPath, setIsSimulatingPath] = React.useState(false);
+  const [simPath, setSimPath] = React.useState<GraphPath | null>(null);
+  const [simPathError, setSimPathError] = React.useState<string | null>(null);
+  const [isExplainingPath, setIsExplainingPath] = React.useState(false);
+  const [simExplanation, setSimExplanation] = React.useState<string | null>(null);
+
   // Load governance settings and metrics
   const loadData = React.useCallback(async () => {
     if (!user || !workspaceId.trim()) return;
     setIsLoading(true);
 
     try {
-      const [govRes, metricsRes] = await Promise.all([
+      const [govRes, metricsRes, cbTopologyRes] = await Promise.all([
         getKnowledgeGraphGovernanceAction(workspaceId.trim(), user.uid),
         getKnowledgeGraphMetricsAction(workspaceId.trim(), user.uid),
+        getGraphTopologyMetricsAction({ workspaceId: workspaceId.trim(), userId: user.uid }),
       ]);
 
       if (govRes.success) {
@@ -139,6 +172,10 @@ export default function BackofficeKnowledgeGraphClient() {
       if (metricsRes.success) {
         setMetrics(metricsRes.data.metrics);
         setTotalRelations(metricsRes.data.totalRelations);
+      }
+
+      if (cbTopologyRes.success) {
+        setCbTopology(cbTopologyRes.data);
       }
     } catch (err) {
       console.error('[BackofficeKnowledgeGraphClient] Load error:', err);
@@ -290,6 +327,112 @@ export default function BackofficeKnowledgeGraphClient() {
     }
   };
 
+  // Run CompanyBrain 2.0 Mesh Sync
+  const handleRunMeshSync = async () => {
+    if (!user) return;
+    setIsSyncingMesh(true);
+    setMeshSyncResult(null);
+
+    try {
+      const res = await syncWorkspaceGraphMeshAction({
+        workspaceId: workspaceId.trim(),
+        userId: user.uid,
+      });
+
+      if (res.success) {
+        setMeshSyncResult(res.data);
+        toast({
+          title: 'CompanyBrain Mesh Synchronized ✓',
+          description: `Successfully upserted ${res.data.nodesUpserted} nodes and ${res.data.edgesUpserted} edges.`,
+        });
+        loadData();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Sync Warning',
+          description: res.error,
+          ...(res.actionConfig && { actionConfig: res.actionConfig }),
+        });
+      }
+    } catch (err) {
+      console.error('[handleRunMeshSync] Error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Sync Error',
+        description: err instanceof Error ? err.message : 'Network error',
+      });
+    } finally {
+      setIsSyncingMesh(false);
+    }
+  };
+
+  // Trace BFS Shortest Path
+  const handleSimulatePath = async () => {
+    if (!user || !simStartNodeId.trim() || !simEndNodeId.trim()) return;
+    setIsSimulatingPath(true);
+    setSimPath(null);
+    setSimPathError(null);
+    setSimExplanation(null);
+
+    try {
+      const res = await findGraphPathAction({
+        workspaceId: workspaceId.trim(),
+        userId: user.uid,
+        startNodeId: simStartNodeId.trim(),
+        endNodeId: simEndNodeId.trim(),
+        maxHops: 3,
+      });
+
+      if (res.success) {
+        if (res.data) {
+          setSimPath(res.data);
+        } else {
+          setSimPathError('No path exists between the specified nodes within 3 hops.');
+        }
+      } else {
+        setSimPathError(res.error);
+      }
+    } catch (err) {
+      console.error('[handleSimulatePath] Error:', err);
+      setSimPathError(err instanceof Error ? err.message : 'Pathfinding failed.');
+    } finally {
+      setIsSimulatingPath(false);
+    }
+  };
+
+  // Grounded AI Explanation for Simulated Path
+  const handleExplainPath = async () => {
+    if (!user || !simPath) return;
+    setIsExplainingPath(true);
+
+    try {
+      const res = await explainGraphConnectionAction({
+        workspaceId: workspaceId.trim(),
+        userId: user.uid,
+        path: simPath,
+      });
+
+      if (res.success) {
+        setSimExplanation(res.data.synthesis);
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Explanation Failed',
+          description: res.error,
+        });
+      }
+    } catch (err) {
+      console.error('[handleExplainPath] Error:', err);
+      toast({
+        variant: 'destructive',
+        title: 'Explanation Error',
+        description: err instanceof Error ? err.message : 'Network error',
+      });
+    } finally {
+      setIsExplainingPath(false);
+    }
+  };
+
   return (
     <div className="flex-1 space-y-6 p-4 md:p-8 pt-6 max-w-7xl mx-auto font-figtree">
       {/* Header Bar */}
@@ -432,22 +575,28 @@ export default function BackofficeKnowledgeGraphClient() {
 
       {/* Main Governance Tabs */}
       <Tabs defaultValue="registry" className="w-full space-y-4">
-        <TabsList className="grid grid-cols-3 w-full max-w-xl h-10 p-1 bg-muted/50 rounded-xl">
+        <TabsList className="grid grid-cols-2 sm:grid-cols-4 w-full max-w-2xl h-auto p-1 bg-muted/50 rounded-xl gap-1">
           <TabsTrigger
             value="registry"
-            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all"
+            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all min-h-[36px]"
           >
             Relation Types ({governanceConfig?.enabledRelationTypes.length || 0}/{KNOWLEDGE_RELATION_TYPES.length})
           </TabsTrigger>
           <TabsTrigger
             value="ai-tuning"
-            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all"
+            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all min-h-[36px]"
           >
             AI Agent Tuning
           </TabsTrigger>
           <TabsTrigger
+            value="mesh"
+            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all min-h-[36px]"
+          >
+            CompanyBrain Mesh
+          </TabsTrigger>
+          <TabsTrigger
             value="migration"
-            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all"
+            className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all min-h-[36px]"
           >
             FER CRM Migration
           </TabsTrigger>
@@ -735,6 +884,217 @@ export default function BackofficeKnowledgeGraphClient() {
                   <span>{isMigrating ? 'Executing FER Backfill…' : 'Execute FER CRM Migration'}</span>
                 </Button>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 4: CompanyBrain 2.0 Mesh & Path Simulator */}
+        <TabsContent value="mesh" className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-4 rounded-xl border border-border bg-card">
+            <div className="space-y-0.5">
+              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Brain className="w-4 h-4 text-primary" />
+                CompanyBrain Multi-Workspace Relationship Mesh
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                High-performance graph persistence (`graph_nodes` & `graph_edges`), bounded traversal engine, and grounded multi-hop reasoning.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                type="button"
+                variant="default"
+                size="sm"
+                onClick={handleRunMeshSync}
+                disabled={isSyncingMesh}
+                className="min-h-[44px] sm:min-h-[36px] px-3.5 text-xs font-semibold gap-1.5 active:scale-[0.97] transition-transform bg-primary hover:bg-primary/90 text-primary-foreground"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isSyncingMesh ? 'animate-spin' : ''}`} />
+                <span>{isSyncingMesh ? 'Syncing Mesh…' : 'Sync Graph Mesh'}</span>
+              </Button>
+            </div>
+          </div>
+
+          {meshSyncResult && (
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-300 flex items-center gap-2.5 animate-in fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+              <span>
+                Mesh sync completed: Upserted <strong>{meshSyncResult.nodesUpserted}</strong> nodes and <strong>{meshSyncResult.edgesUpserted}</strong> explicit edges.
+              </span>
+            </div>
+          )}
+
+          {/* Node Distribution Breakdown */}
+          {cbTopology && (
+            <Card className="border-border/70 shadow-none">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Layers className="w-3.5 h-3.5 text-primary" />
+                  Node Type Distribution ({cbTopology.totalNodes} total)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-4 pt-1">
+                <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2.5">
+                  {(Object.keys(cbTopology.nodeCountsByType) as GraphNodeType[]).map((type) => {
+                    const count = cbTopology.nodeCountsByType[type] || 0;
+                    const config = NODE_TYPE_DISPLAY_CONFIG[type];
+                    return (
+                      <div
+                        key={type}
+                        className="rounded-lg border border-border/60 bg-muted/20 p-2.5 space-y-1"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-bold uppercase text-muted-foreground truncate">
+                            {config?.label || type}
+                          </span>
+                          <span
+                            className="w-2 h-2 rounded-full"
+                            style={{ backgroundColor: config?.nodeColor || '#64748b' }}
+                          />
+                        </div>
+                        <div className="text-base font-bold text-foreground font-mono">
+                          {count.toLocaleString()}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Interactive Multi-Hop Path Simulator & AI Grounding */}
+          <Card className="border-border/70 shadow-none">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <Route className="w-4 h-4 text-indigo-500" />
+                <span>Multi-Hop Traversal Simulator & AI Grounded Explanation</span>
+              </CardTitle>
+              <CardDescription className="text-xs text-muted-foreground">
+                Simulate cycle-safe BFS traversal (max 3 hops) between any two entities or memories and inspect intermediate evidence.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-4 pt-2 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label htmlFor="sim-start" className="text-xs font-semibold text-foreground">
+                    Source Node ID
+                  </Label>
+                  <Input
+                    id="sim-start"
+                    value={simStartNodeId}
+                    onChange={(e) => setSimStartNodeId(e.target.value)}
+                    placeholder="e.g. ent_123 or mem_456"
+                    className="text-xs font-mono bg-background min-h-[44px] sm:min-h-[36px]"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="sim-end" className="text-xs font-semibold text-foreground">
+                    Target Node ID
+                  </Label>
+                  <Input
+                    id="sim-end"
+                    value={simEndNodeId}
+                    onChange={(e) => setSimEndNodeId(e.target.value)}
+                    placeholder="e.g. deal_789 or mem_101"
+                    className="text-xs font-mono bg-background min-h-[44px] sm:min-h-[36px]"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSimulatePath}
+                  disabled={isSimulatingPath || !simStartNodeId.trim() || !simEndNodeId.trim()}
+                  className="min-h-[44px] sm:min-h-[36px] px-4 text-xs font-semibold gap-1.5 active:scale-[0.97] transition-transform"
+                >
+                  <Search className={`w-3.5 h-3.5 ${isSimulatingPath ? 'animate-spin' : ''}`} />
+                  <span>{isSimulatingPath ? 'Tracing Shortest Path…' : 'Trace Shortest Path'}</span>
+                </Button>
+              </div>
+
+              {simPathError && (
+                <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-800 dark:text-amber-300 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 shrink-0" />
+                  <span>{simPathError}</span>
+                </div>
+              )}
+
+              {/* Path Result */}
+              {simPath && (
+                <div className="space-y-3 rounded-xl border border-border bg-muted/20 p-4 animate-in fade-in">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs font-semibold bg-primary/10 text-primary border-primary/20">
+                        {simPath.totalHops} Hop{simPath.totalHops === 1 ? '' : 's'}
+                      </Badge>
+                      <span className="text-xs text-muted-foreground font-mono">
+                        Weight: {simPath.totalWeight.toFixed(2)}
+                      </span>
+                    </div>
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={handleExplainPath}
+                      disabled={isExplainingPath}
+                      className="h-8 text-xs font-semibold gap-1.5 active:scale-[0.97] bg-primary text-primary-foreground min-h-[44px] sm:min-h-[32px]"
+                    >
+                      <Sparkles className={`w-3.5 h-3.5 ${isExplainingPath ? 'animate-spin' : ''}`} />
+                      <span>{isExplainingPath ? 'Synthesizing…' : 'Explain Connection with AI'}</span>
+                    </Button>
+                  </div>
+
+                  {/* Chain of Nodes and Edges */}
+                  <div className="flex flex-wrap items-center gap-2 pt-2">
+                    {simPath.nodes.map((node, idx) => {
+                      const edge = simPath.edges[idx];
+                      const nodeConfig = NODE_TYPE_DISPLAY_CONFIG[node.nodeType];
+                      return (
+                        <React.Fragment key={node.id}>
+                          <div className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-2.5 py-1 text-xs">
+                            <span
+                              className="w-2 h-2 rounded-full shrink-0"
+                              style={{ backgroundColor: nodeConfig?.nodeColor || '#64748b' }}
+                            />
+                            <span className="font-semibold text-foreground truncate max-w-[140px]" title={node.label}>
+                              {node.label}
+                            </span>
+                            <Badge variant="outline" className="text-[9px] uppercase px-1 py-0">
+                              {node.nodeType}
+                            </Badge>
+                          </div>
+
+                          {edge && (
+                            <div className="flex items-center gap-1 text-muted-foreground">
+                              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+                              <Badge variant="secondary" className="text-[9px] font-mono px-1 py-0">
+                                {edge.relationshipType}
+                              </Badge>
+                              <ArrowRight className="w-3.5 h-3.5 text-muted-foreground" />
+                            </div>
+                          )}
+                        </React.Fragment>
+                      );
+                    })}
+                  </div>
+
+                  {/* Grounded AI Explanation output */}
+                  {simExplanation && (
+                    <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3.5 space-y-1.5 animate-in fade-in">
+                      <div className="text-xs font-bold text-primary flex items-center gap-1.5">
+                        <Brain className="w-3.5 h-3.5" />
+                        Grounded Institutional Synthesis
+                      </div>
+                      <p className="text-xs text-foreground leading-relaxed">
+                        {simExplanation}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

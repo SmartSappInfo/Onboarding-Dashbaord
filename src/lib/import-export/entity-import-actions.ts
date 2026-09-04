@@ -516,8 +516,8 @@ function buildEntityPayload(
         countryCode: parsedPhone?.countryCode,
         callingCode: parsedPhone?.callingCode,
         email: mapped.email || '',
-        typeKey: 'primary',
-        typeLabel: 'Primary',
+        typeKey: 'administrator',
+        typeLabel: 'Administrator',
         isPrimary: true,
         isSignatory: true,
       });

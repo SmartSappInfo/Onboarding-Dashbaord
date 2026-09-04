@@ -33,7 +33,7 @@ export function categorySwatch(color?: string): CategorySwatch {
   return (color && CATEGORY_SWATCHES[color]) || CATEGORY_SWATCHES.slate;
 }
 
-export type KnowledgeViewMode = 'grid' | 'list' | 'table' | 'graph' | 'ideas';
+export type KnowledgeViewMode = 'grid' | 'list' | 'table' | 'graph' | 'ideas' | 'memories';
 
 /** Compact relative-ish date for cards (stable, locale-independent). */
 export function formatNoteDate(iso?: string): string {

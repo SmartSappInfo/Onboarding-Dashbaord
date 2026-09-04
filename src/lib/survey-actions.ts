@@ -693,7 +693,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
             currency: 'GHS',
             subscriptionPackageName: 'Standard',
             subscriptionRate: 0,
-            contactTypeKey: 'primary',
+            contactTypeKey: 'administrator',
           };
           
           let orgDefaults: Record<string, unknown> = {};
@@ -1246,7 +1246,7 @@ export async function submitPublicSurveyLead(
       currency: 'GHS',
       subscriptionPackageName: 'Standard',
       subscriptionRate: 0,
-      contactTypeKey: 'primary',
+      contactTypeKey: 'administrator',
     };
     
     let orgDefaults: Record<string, string | number> = {};
@@ -1366,8 +1366,8 @@ export async function submitPublicSurveyLead(
           phone: cPhone,
           isPrimary: mergedContacts.length === 0,
           isSignatory: false,
-          typeKey: resolvedDefaults.contactTypeKey,
-          typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Primary' : 'Other',
+          typeKey: resolvedDefaults.contactTypeKey === 'primary' ? 'administrator' : (resolvedDefaults.contactTypeKey as string),
+          typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Administrator' : 'Other',
           order: mergedContacts.length,
           updatedAt: new Date().toISOString()
         });
@@ -1438,8 +1438,8 @@ export async function submitPublicSurveyLead(
             phone: cPhone,
             isPrimary: false,
             isSignatory: false,
-            typeKey: resolvedDefaults.contactTypeKey,
-            typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Primary' : 'Other',
+            typeKey: resolvedDefaults.contactTypeKey === 'primary' ? 'administrator' : (resolvedDefaults.contactTypeKey as string),
+            typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Administrator' : 'Other',
             order: mergedContacts.length,
             updatedAt: new Date().toISOString()
           });

@@ -16,8 +16,17 @@ import {
   buildAiInput,
   isAllowedAttachmentMime,
   normalizeKnowledgeType,
+  buildTimelineStream,
+  filterTimelineStream,
+  extractActionItemsFromText,
+  groupTimelineByPeriod,
+  chunkNoteContent,
+  calculateRecencyScore,
+  calculateHybridScore,
+  extractSearchHighlights,
+  fuseSearchResults,
 } from '../quick-notes-domain';
-import type { QuickNoteAttachment } from '../quick-notes-types';
+import type { QuickNoteAttachment, CRMKnowledgeTimelineItem, NoteIndexRow } from '../quick-notes-types';
 import {
   quickNoteCreateInputSchema,
   type NoteDocument,
@@ -394,3 +403,335 @@ describe('normalizeKnowledgeType', () => {
     expect(normalizeKnowledgeType('escalation')).toBe('feedback');
   });
 });
+
+describe('extractActionItemsFromText', () => {
+  it('extracts Markdown checkbox items and TODO lines', () => {
+    const text = `
+Meeting with St. Patrick High School.
+- [ ] Send invoice proposal by Friday
+- [x] Completed curriculum alignment
+TODO: Follow up with finance officer
+Action: Prepare customized onboarding deck
+Random observation text.
+`;
+    const actions = extractActionItemsFromText(text);
+    expect(actions).toEqual([
+      'Send invoice proposal by Friday',
+      'Completed curriculum alignment',
+      'Follow up with finance officer',
+      'Prepare customized onboarding deck',
+    ]);
+  });
+
+  it('handles empty or null text safely', () => {
+    expect(extractActionItemsFromText(null)).toEqual([]);
+    expect(extractActionItemsFromText('')).toEqual([]);
+  });
+});
+
+describe('buildTimelineStream', () => {
+  it('aggregates and sorts native notes, entity notes, activities, and tasks chronologically', () => {
+    const mockQuickNotes: QuickNote[] = [
+      {
+        id: 'qn-1',
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        title: 'Strategy Meeting Note',
+        plainText: 'Key strategic discussion.',
+        content: { type: 'doc' },
+        contentVersion: 1,
+        knowledgeType: 'strategy',
+        isPinned: false,
+        tags: ['strategy'],
+        attachments: [],
+        links: { entityId: 'school-123' },
+        createdBy: 'user-1',
+        createdAt: '2026-09-02T10:00:00Z',
+        updatedAt: '2026-09-02T10:00:00Z',
+      },
+      {
+        id: 'qn-2',
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        title: 'Pinned Executive Resolution',
+        plainText: 'Crucial board decision.',
+        content: { type: 'doc' },
+        contentVersion: 1,
+        knowledgeType: 'decision',
+        isPinned: true,
+        pinnedAt: '2026-09-01T10:00:00Z',
+        tags: ['board'],
+        attachments: [],
+        links: { entityId: 'school-123' },
+        createdBy: 'user-2',
+        createdAt: '2026-09-01T10:00:00Z',
+        updatedAt: '2026-09-01T10:00:00Z',
+      },
+    ];
+
+    const mockEntityNotes = [
+      {
+        id: 'en-1',
+        workspaceId: 'ws-1',
+        entityId: 'school-123',
+        content: 'Call with bursar regarding late fees.',
+        noteType: 'call',
+        isPinned: false,
+        createdAt: '2026-09-03T09:00:00Z',
+      },
+    ];
+
+    const mockActivities = [
+      {
+        id: 'act-1',
+        organizationId: 'org-1',
+        workspaceId: 'ws-1',
+        entityId: 'school-123',
+        type: 'meeting',
+        source: 'calendar',
+        timestamp: '2026-09-04T08:00:00Z',
+        description: 'Demonstrated CRM portal to administrators',
+      },
+    ];
+
+    const timeline = buildTimelineStream({
+      quickNotes: mockQuickNotes,
+      entityNotes: mockEntityNotes,
+      activities: mockActivities,
+    });
+
+    // Pinned items float to the top
+    expect(timeline[0].id).toBe('quick_note:qn-2');
+    expect(timeline[0].isPinned).toBe(true);
+
+    // Remaining items sorted by newest timestamp first
+    expect(timeline[1].id).toBe('activity:act-1');
+    expect(timeline[2].id).toBe('entity_note:en-1');
+    expect(timeline[3].id).toBe('quick_note:qn-1');
+  });
+});
+
+describe('filterTimelineStream', () => {
+  const sampleItems: CRMKnowledgeTimelineItem[] = [
+    {
+      id: 'quick_note:1',
+      source: 'quick_note',
+      sourceId: '1',
+      workspaceId: 'ws-1',
+      title: 'Pricing Objection',
+      content: 'Customer mentioned competitors are 20% cheaper.',
+      knowledgeType: 'feedback',
+      timestamp: '2026-09-01T10:00:00Z',
+      sentiment: 'negative',
+      isPinned: false,
+      links: { entityName: 'St. Mary' },
+      tags: ['objection', 'pricing'],
+      originHref: null,
+      editable: true,
+    },
+    {
+      id: 'quick_note:2',
+      source: 'quick_note',
+      sourceId: '2',
+      workspaceId: 'ws-1',
+      title: 'Payment Portal Idea',
+      content: 'Allow parents to pay via Mobile Money.',
+      knowledgeType: 'idea',
+      timestamp: '2026-09-02T10:00:00Z',
+      sentiment: 'positive',
+      isPinned: true,
+      links: { entityName: 'St. Mary' },
+      tags: ['feature'],
+      originHref: null,
+      editable: true,
+    },
+  ];
+
+  it('filters by semantic knowledge type', () => {
+    const result = filterTimelineStream(sampleItems, {
+      type: 'feedback',
+      searchQuery: '',
+    });
+    expect(result.length).toBe(1);
+    expect(result[0].id).toBe('quick_note:1');
+  });
+
+  it('filters by search query', () => {
+    const result = filterTimelineStream(sampleItems, {
+      type: 'all',
+      searchQuery: 'Mobile Money',
+    });
+    expect(result.length).toBe(1);
+    expect(result[0].id).toBe('quick_note:2');
+  });
+
+  it('filters by onlyPinned', () => {
+    const result = filterTimelineStream(sampleItems, {
+      type: 'all',
+      searchQuery: '',
+      onlyPinned: true,
+    });
+    expect(result.length).toBe(1);
+    expect(result[0].id).toBe('quick_note:2');
+  });
+});
+
+describe('groupTimelineByPeriod', () => {
+  it('groups items into readable month and year categories', () => {
+    const sampleItems: CRMKnowledgeTimelineItem[] = [
+      {
+        id: 'quick_note:1',
+        source: 'quick_note',
+        sourceId: '1',
+        workspaceId: 'ws-1',
+        title: 'Note 1',
+        content: 'Content',
+        knowledgeType: 'note',
+        timestamp: '2026-09-01T10:00:00Z',
+        isPinned: false,
+        links: {},
+        tags: [],
+        originHref: null,
+        editable: true,
+      },
+      {
+        id: 'quick_note:2',
+        source: 'quick_note',
+        sourceId: '2',
+        workspaceId: 'ws-1',
+        title: 'Note 2',
+        content: 'Content 2',
+        knowledgeType: 'note',
+        timestamp: '2026-08-15T10:00:00Z',
+        isPinned: false,
+        links: {},
+        tags: [],
+        originHref: null,
+        editable: true,
+      },
+    ];
+
+    const groups = groupTimelineByPeriod(sampleItems);
+    expect(groups.length).toBe(2);
+    expect(groups[0].period).toBe('September 2026');
+    expect(groups[1].period).toBe('August 2026');
+  });
+});
+
+describe('chunkNoteContent (Phase 4)', () => {
+  it('splits long notes into semantic chunks bounded by maxChunkChars', () => {
+    const longText = 'Paragraph one about admissions.\n\nParagraph two with detailed fee structures.\n\nParagraph three with bus schedules.';
+    const note: UnifiedNote = {
+      id: 'quick_note:1',
+      source: 'quick_note',
+      workspaceId: 'ws-1',
+      title: 'School Guide',
+      content: { type: 'doc' },
+      plainText: longText,
+      createdAt: '2026-09-01T10:00:00Z',
+      isPinned: false,
+      tags: ['admissions'],
+      links: {},
+      originHref: null,
+      editable: true,
+      knowledgeType: 'note',
+    };
+
+    const chunks = chunkNoteContent(note, 60);
+    expect(chunks.length).toBeGreaterThan(1);
+    expect(chunks[0].objectId).toBe('quick_note:1');
+    expect(chunks[0].chunkId).toContain('chunk_');
+  });
+
+  it('returns empty array when plainText is empty', () => {
+    const note: UnifiedNote = {
+      id: 'quick_note:2',
+      source: 'quick_note',
+      workspaceId: 'ws-1',
+      title: '',
+      content: { type: 'doc' },
+      plainText: '',
+      createdAt: '2026-09-01T10:00:00Z',
+      isPinned: false,
+      tags: [],
+      links: {},
+      originHref: null,
+      editable: true,
+    };
+
+    expect(chunkNoteContent(note)).toEqual([]);
+  });
+});
+
+describe('calculateRecencyScore (Phase 4)', () => {
+  it('returns close to 1.0 for timestamps from today', () => {
+    const today = new Date().toISOString();
+    const score = calculateRecencyScore(today);
+    expect(score).toBeGreaterThan(0.95);
+  });
+
+  it('decays exponentially over time', () => {
+    const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const score = calculateRecencyScore(thirtyDaysAgo, 30);
+    expect(score).toBeCloseTo(0.5, 1);
+  });
+});
+
+describe('calculateHybridScore (Phase 4)', () => {
+  it('balances lexical and semantic scores according to alpha', () => {
+    const { totalScore, breakdown } = calculateHybridScore(0.8, 0.4, 1.0, 0, 0.5);
+    expect(totalScore).toBeGreaterThan(0);
+    expect(breakdown.lexicalScore).toBe(0.8);
+    expect(breakdown.semanticScore).toBe(0.4);
+    expect(breakdown.recencyScore).toBe(1.0);
+  });
+});
+
+describe('extractSearchHighlights (Phase 4)', () => {
+  it('extracts relevant snippet around search terms without HTML leakage', () => {
+    const text = 'The administrative staff met today to discuss tuition discount structures for K-12 students.';
+    const highlights = extractSearchHighlights(text, 'tuition discount');
+    expect(highlights.length).toBeGreaterThan(0);
+    expect(highlights[0]).toContain('tuition discount');
+    expect(highlights[0]).not.toContain('<');
+    expect(highlights[0]).not.toContain('>');
+  });
+});
+
+describe('fuseSearchResults (Phase 4)', () => {
+  it('merges, deduplicates, and ranks candidate rows by combined score', () => {
+    const lexicalRows: NoteIndexRow[] = [
+      {
+        id: 'quick_note:1',
+        source: 'quick_note',
+        title: 'Tuition Policy',
+        plainText: 'Tuition and fees schedule',
+        knowledgeType: 'note',
+        createdAt: '2026-09-01T10:00:00Z',
+        workspaceId: 'ws-1',
+        isPinned: false,
+        tags: ['tuition'],
+      },
+    ];
+
+    const vectorRows: NoteIndexRow[] = [
+      {
+        id: 'call_note:2',
+        source: 'call_note',
+        title: 'Call on Pricing',
+        plainText: 'Discussed discounts with parent',
+        knowledgeType: 'feedback',
+        createdAt: '2026-09-02T10:00:00Z',
+        workspaceId: 'ws-1',
+        isPinned: false,
+        tags: ['pricing'],
+      },
+    ];
+
+    const results = fuseSearchResults(lexicalRows, vectorRows, 'tuition pricing');
+    expect(results.length).toBe(2);
+    expect(results[0].score).toBeGreaterThan(0);
+    expect(results[0].scoreBreakdown).toBeDefined();
+  });
+});
+

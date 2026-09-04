@@ -1221,6 +1221,26 @@ service cloud.firestore {
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
+    match /media_versions/{versionId} {
+      allow get: if true; // Public access for viewing shared versioned media pages
+      allow list: if isAuthorized();
+      allow create, update, delete: if isAuthorized();
+    }
+
+    match /media_collections/{collectionId} {
+      allow get, list: if isAuthorized();
+      allow create, update, delete: if isAuthorized();
+    }
+
+    match /media_packages/{packageId} {
+      allow get: if true; // Public access for viewing package links
+      allow list, create, update, delete: if isAuthorized();
+    }
+
+    match /media_processing_jobs/{jobId} {
+      allow get, list, create, update: if isAuthorized();
+    }
+
     match /thumbnail_designs/{designId} {
       allow get: if true; // Public access for rendering thumbnail designs on shared media
       allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
@@ -2818,30 +2838,7 @@ service cloud.firestore {
       );
     }
 
-    // --- Knowledge Spaces & Collections (Company Brain 2.0) ---
-    match /knowledge_spaces/{spaceId} {
-      allow read: if isAuthorized() && (
-        isSystemAdmin() ||
-        hasWorkspaceAccess(resource.data.workspaceId)
-      );
-      allow create: if isAuthorized() && (
-        isSystemAdmin() ||
-        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
-         request.resource.data.createdBy == request.auth.uid)
-      );
-      allow update: if isAuthorized() && (
-        isSystemAdmin() ||
-        (hasWorkspaceAccess(resource.data.workspaceId) &&
-         request.resource.data.workspaceId == resource.data.workspaceId &&
-         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
-      );
-      allow delete: if isAuthorized() && (
-        isSystemAdmin() ||
-        (hasWorkspaceAccess(resource.data.workspaceId) &&
-         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
-      );
-    }
-
+    // --- Knowledge Collections (Company Brain 2.0) ---
     match /knowledge_collections/{collectionId} {
       allow read: if isAuthorized() && (
         isSystemAdmin() ||
@@ -2896,6 +2893,27 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    // --- Organization Memory (Company Brain 2.0 Organization Memory) ---
+    match /memory_objects/{memoryId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
     // --- Knowledge Relations & Graph (Company Brain 2.0 Phase 5) ---
     match /knowledge_relations/{relationId} {
       allow read: if isAuthorized() && (
@@ -2910,6 +2928,39 @@ service cloud.firestore {
         isSystemAdmin() ||
         hasWorkspaceAccess(workspaceId)
       );
+      allow write: if false;
+    }
+
+    // --- CompanyBrain 2.0 Graph Memory Layer & Relationship Mesh (Phase 3) ---
+    match /graph_nodes/{nodeId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; all mutations route through Server Actions / Admin SDK
+      allow write: if false;
+    }
+
+    match /graph_edges/{edgeId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; all mutations route through Server Actions / Admin SDK
+      allow write: if false;
+    }
+
+    match /companybrain_governance/{docId} {
+      allow read, write: if isAuthorized() && isSystemAdmin();
+    }
+
+    // --- CompanyBrain 2.0 Conflict Engine & Freshness Governance (Phase 4) ---
+    match /memory_conflicts/{conflictId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Writes strictly gated to Server Actions / Admin SDK to maintain audit integrity
       allow write: if false;
     }
 
@@ -3019,6 +3070,29 @@ service cloud.firestore {
       allow delete: if isAuthorized() && (
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    // --- Federated Knowledge Spaces (Company Brain 2.0 Phase 9) ---
+    match /knowledge_spaces/{spaceId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        isOrgMatch(resource.data.organizationId) ||
+        hasWorkspaceAccess(resource.data.ownerWorkspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        (isOrgMatch(request.resource.data.organizationId) &&
+         hasWorkspaceAccess(request.resource.data.ownerWorkspaceId))
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.ownerWorkspaceId) &&
+         request.resource.data.organizationId == resource.data.organizationId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.ownerWorkspaceId)
       );
     }
 

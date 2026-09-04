@@ -52,7 +52,7 @@ const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: str
     { id: 'pipeline', label: 'Pipeline & Deals' },
     { id: 'tasks', label: 'Daily Tasks' },
     { id: 'meetings', label: 'Meetings & Zoom' },
-    { id: 'quickNotes', label: 'Quick Notes' },
+    { id: 'quickNotes', label: 'Company Brain' },
     { id: 'automations', label: 'Automations' },
     { id: 'intelligence', label: 'Intelligence Reports' },
   ],

@@ -6,6 +6,7 @@ import {
   Loader2,
   RefreshCw,
   Route,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,7 @@ import type {
   KnowledgeGraphFilterOptions,
   GraphMode,
   PathFindingResult,
+  GraphNode,
 } from '@/lib/quick-notes-types';
 
 import { GraphViewport } from './GraphViewport';
@@ -33,6 +35,8 @@ import { GraphControls } from './GraphControls';
 import { GraphFilters } from './GraphFilters';
 import { GraphNodeDrawer } from './GraphNodeDrawer';
 import { GraphAccessibilityList } from './GraphAccessibilityList';
+import { GraphMobileHierarchy } from './GraphMobileHierarchy';
+import { ExplainConnectionDialog } from './ExplainConnectionDialog';
 import { CreateRelationDialog } from './CreateRelationDialog';
 import { AiLinkSuggestionsDialog } from './AiLinkSuggestionsDialog';
 
@@ -66,6 +70,7 @@ export function KnowledgeGraphView({
   const [physicsEnabled, setPhysicsEnabled] = React.useState(true);
   const [clustersVisible, setClustersVisible] = React.useState(true);
   const [isListView, setIsListView] = React.useState(false);
+  const [isMobile, setIsMobile] = React.useState(false);
 
   // Filters State
   const [filters, setFilters] = React.useState<KnowledgeGraphFilterOptions>({});
@@ -73,6 +78,7 @@ export function KnowledgeGraphView({
   // Dialog State
   const [createRelationNodeId, setCreateRelationNodeId] = React.useState<string | null>(null);
   const [aiSuggestionsNodeId, setAiSuggestionsNodeId] = React.useState<string | null>(null);
+  const [explainPair, setExplainPair] = React.useState<{ start: GraphNode; target: GraphNode } | null>(null);
 
   // Fetch Graph Data
   const loadGraph = React.useCallback(async () => {
@@ -107,11 +113,11 @@ export function KnowledgeGraphView({
     loadGraph();
   }, [loadGraph]);
 
-  // PRD Section 101 Spec Compliance: Auto-switch to accessible list on mobile viewports (< 768px)
+  // PRD Section 101 & UI Section 50/94: Detect mobile viewport (< 768px)
   React.useEffect(() => {
     const checkMobileViewport = () => {
-      if (typeof window !== 'undefined' && window.innerWidth < 768) {
-        setIsListView(true);
+      if (typeof window !== 'undefined') {
+        setIsMobile(window.innerWidth < 768);
       }
     };
     checkMobileViewport();
@@ -303,20 +309,39 @@ export function KnowledgeGraphView({
 
       {/* Pathfinding Explanation Badge */}
       {pathResult?.found && (
-        <div className="p-3 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-200 flex items-center justify-between gap-2 shrink-0 animate-in slide-in-from-top-2">
+        <div className="p-3 bg-indigo-50/90 dark:bg-indigo-950/40 border border-indigo-200 dark:border-indigo-800 rounded-xl text-xs text-indigo-900 dark:text-indigo-200 flex flex-wrap items-center justify-between gap-2 shrink-0 animate-in slide-in-from-top-2">
           <div className="flex items-center gap-2">
             <Route className="w-4 h-4 text-indigo-500 shrink-0" />
             <span className="font-medium">{pathResult.explanation}</span>
           </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={handleResetPath}
-            className="h-7 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100"
-          >
-            Dismiss
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                if (pathStartNodeId && selectedNodeId && nodesMap) {
+                  const start = nodesMap.get(pathStartNodeId);
+                  const target = nodesMap.get(selectedNodeId);
+                  if (start && target) {
+                    setExplainPair({ start, target });
+                  }
+                }
+              }}
+              className="h-7 px-2.5 text-xs gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg active:scale-[0.97]"
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              <span>Explain with AI</span>
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleResetPath}
+              className="h-7 text-xs text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-900/50"
+            >
+              Dismiss
+            </Button>
+          </div>
         </div>
       )}
 
@@ -326,6 +351,23 @@ export function KnowledgeGraphView({
           <div className="w-full h-full flex flex-col items-center justify-center gap-3 bg-muted/20 border border-border rounded-2xl text-xs text-muted-foreground">
             <Loader2 className="w-6 h-6 animate-spin text-primary" />
             <span>Building Knowledge Graph & Adjacency Matrix…</span>
+          </div>
+        ) : isMobile && !isListView ? (
+          <div className="w-full h-full overflow-y-auto p-1">
+            <GraphMobileHierarchy
+              nodes={activeGraph?.nodes || []}
+              edges={activeGraph?.edges || []}
+              onSelectNode={(id) => {
+                setSelectedNodeId(id);
+              }}
+              onExplainConnection={(startId, targetId) => {
+                const start = nodesMap.get(startId);
+                const target = nodesMap.get(targetId);
+                if (start && target) {
+                  setExplainPair({ start, target });
+                }
+              }}
+            />
           </div>
         ) : isListView ? (
           <div className="w-full h-full overflow-y-auto">
@@ -350,7 +392,7 @@ export function KnowledgeGraphView({
         )}
 
         {/* Slide-over Inspector Drawer */}
-        {!isListView && selectedNode && (
+        {!isListView && !isMobile && selectedNode && (
           <GraphNodeDrawer
             node={selectedNode}
             edges={graphData?.edges || []}
@@ -366,6 +408,14 @@ export function KnowledgeGraphView({
           />
         )}
       </div>
+
+      {/* AI Connection Explanation Dialog */}
+      <ExplainConnectionDialog
+        open={Boolean(explainPair)}
+        onOpenChange={(open) => !open && setExplainPair(null)}
+        startNode={explainPair?.start || null}
+        targetNode={explainPair?.target || null}
+      />
 
       {/* Create Typed Relation Dialog */}
       <CreateRelationDialog

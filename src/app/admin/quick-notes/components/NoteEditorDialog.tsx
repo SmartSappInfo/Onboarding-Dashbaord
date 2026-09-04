@@ -42,7 +42,11 @@ import { VoiceCaptureButton } from '@/components/shared/VoiceCaptureButton';
 import NoteAttachmentList, { type PendingUpload } from './NoteAttachmentList';
 import LinkRecordPicker from './LinkRecordPicker';
 import AiInsightsPanel from './AiInsightsPanel';
+import { OfflineStorageService } from '@/lib/offline/offline-storage-service';
+import { OfflineDraftRecoveryBanner } from './offline/OfflineDraftRecoveryBanner';
+import type { OfflineLocalDraft } from '@/lib/quick-notes-types';
 import { Wand2 } from 'lucide-react';
+import { NoteMemorySidebar } from '@/components/memory/NoteMemorySidebar';
 
 // Heavy TipTap editor is split out of the board bundle (design spec R11).
 const NoteBlockEditor = dynamic(() => import('./editor/NoteBlockEditor'), {
@@ -90,8 +94,26 @@ export default function NoteEditorDialog({
   const [isAddingLink, setIsAddingLink] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isClassifying, setIsClassifying] = React.useState(false);
+  const [detectedDraft, setDetectedDraft] = React.useState<OfflineLocalDraft | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const sessionUploadsRef = React.useRef<Set<string>>(new Set());
+
+  const draftKey = note?.id || 'new_draft';
+
+  // Check for unsaved local draft in IndexedDB on open
+  React.useEffect(() => {
+    if (!open) return;
+    OfflineStorageService.getLocalDraft(draftKey).then((draft) => {
+      if (draft && (draft.title || extractPlainText(draft.document))) {
+        // If editing note and draft timestamp is newer, show banner
+        if (note && new Date(draft.updatedAt).getTime() > new Date(note.updatedAt).getTime()) {
+          setDetectedDraft(draft);
+        } else if (!note && draft.title) {
+          setDetectedDraft(draft);
+        }
+      }
+    });
+  }, [open, draftKey, note]);
 
   // Re-seed local state whenever the dialog opens for a (different) note.
   React.useEffect(() => {
@@ -106,6 +128,34 @@ export default function NoteEditorDialog({
     setPending([]);
     sessionUploadsRef.current = new Set();
   }, [open, note, initialType]);
+
+  // Auto-save scratchpad draft to IndexedDB on edits (debounced)
+  React.useEffect(() => {
+    if (!open) return;
+    const timer = setTimeout(() => {
+      if (title.trim() || content) {
+        OfflineStorageService.saveLocalDraft({
+          id: draftKey,
+          workspaceId,
+          title: title.trim(),
+          document: content ?? { type: 'doc', content: [{ type: 'paragraph' }] },
+          tags,
+          categoryId,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+    }, 800);
+    return () => clearTimeout(timer);
+  }, [open, title, content, tags, categoryId, draftKey, workspaceId]);
+
+  const handleRestoreDraft = (draft: OfflineLocalDraft) => {
+    if (draft.title) setTitle(draft.title);
+    if (draft.document) setContent(draft.document);
+    if (draft.tags) setTags(draft.tags);
+    if (draft.categoryId) setCategoryId(draft.categoryId);
+    setDetectedDraft(null);
+    toast({ title: 'Local draft restored' });
+  };
 
   const handleVoiceTranscript = (text: string) => {
     setTitle((prev) => (prev ? prev : text.slice(0, 60)));
@@ -237,6 +287,8 @@ export default function NoteEditorDialog({
         });
         toast({ title: 'Captured in Company Brain' });
       }
+      // Clean up saved local scratchpad draft
+      void OfflineStorageService.deleteLocalDraft(draftKey);
       // Persisted — these uploads are now owned by the note; don't clean them up.
       sessionUploadsRef.current.clear();
       onOpenChange(false);
@@ -313,6 +365,17 @@ export default function NoteEditorDialog({
         </DialogHeader>
 
         <div className="space-y-4">
+          {detectedDraft && (
+            <OfflineDraftRecoveryBanner
+              draft={detectedDraft}
+              onRestore={handleRestoreDraft}
+              onDismiss={() => {
+                setDetectedDraft(null);
+                void OfflineStorageService.deleteLocalDraft(draftKey);
+              }}
+            />
+          )}
+
           <Input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -417,6 +480,17 @@ export default function NoteEditorDialog({
               links={links}
               cached={note.ai}
               onApplyTags={(suggested) => setTags((prev) => Array.from(new Set([...prev, ...suggested])))}
+            />
+          )}
+
+          {isEdit && note && (
+            <NoteMemorySidebar
+              noteId={note.id}
+              workspaceId={workspaceId}
+              organizationId={organizationId}
+              userId={userId}
+              title={title}
+              plainText={extractPlainText(content)}
             />
           )}
 

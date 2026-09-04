@@ -50,7 +50,7 @@ import {
     MoreVertical, Copy, Trash2, Video, AudioWaveform, FileText, 
     Link as LinkIcon, Eye, TextCursorInput, Share2, Layout, 
     Check, CheckCircle2, ShieldCheck, Loader2, Building2,
-    Youtube, HardDrive, Link2, Tag, Clock
+    Youtube, HardDrive, Link2, Tag, Clock, History
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import MediaPreviewDialog from './media-preview-dialog';
@@ -99,10 +99,11 @@ const getLoomThumbnail = (url: string) => {
 interface MediaAssetCardProps {
   asset: MediaAsset;
   onCardClick?: (asset: MediaAsset) => void;
+  onInspect?: (asset: MediaAsset) => void;
   isConfigured?: boolean;
 }
 
-export default function MediaAssetCard({ asset, onCardClick, isConfigured = false }: MediaAssetCardProps) {
+export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfigured = false }: MediaAssetCardProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
   const { allowedWorkspaces } = useWorkspace();
@@ -408,6 +409,13 @@ export default function MediaAssetCard({ asset, onCardClick, isConfigured = fals
  <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Full Preview</span>
                 </DropdownMenuItem>
+
+                {onInspect && (
+                  <DropdownMenuItem onClick={() => onInspect(asset)} className="rounded-xl p-2.5 gap-3">
+                    <div className="p-1.5 bg-amber-50 dark:bg-amber-950/40 rounded-lg text-amber-600 dark:text-amber-400"><History className="h-4 w-4" /></div>
+                    <span className="font-bold text-sm">Inspect & Versions</span>
+                  </DropdownMenuItem>
+                )}
 
  <DropdownMenuItem onClick={() => setIsShareOpen(true)} className="rounded-xl p-2.5 gap-3">
  <div className="p-1.5 bg-blue-50 dark:bg-blue-950/40 rounded-lg text-blue-600 dark:text-blue-400"><Share2 className="h-4 w-4" /></div>

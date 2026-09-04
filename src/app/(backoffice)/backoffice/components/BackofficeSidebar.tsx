@@ -47,6 +47,7 @@ import {
   Bot,
   Cpu,
   Network,
+  Brain,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -100,6 +101,7 @@ const controlNavItems: NavItem[] = [
   { href: '/backoffice/ai-sales-workforce', icon: Bot, label: 'AI Workforce Governance', module: 'operations' },
   { href: '/backoffice/revenue-os', icon: Cpu, label: 'Revenue OS & Simulator', module: 'operations' },
   { href: '/backoffice/knowledge-graph', icon: Network, label: 'Knowledge Graph Governance', module: 'operations' },
+  { href: '/backoffice/companybrain', icon: Brain, label: 'CompanyBrain Governance', module: 'operations' },
   { href: '/backoffice/integrations', icon: MessageSquare, label: 'WhatsApp Registry', module: 'templates' },
   { href: '/backoffice/fields', icon: Database, label: 'Fields & Variables', module: 'fields' },
   { href: '/backoffice/assets', icon: Image, label: 'Assets', module: 'assets' },

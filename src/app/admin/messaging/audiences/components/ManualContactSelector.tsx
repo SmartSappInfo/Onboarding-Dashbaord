@@ -204,8 +204,8 @@ export function ManualContactSelector({
                         contactVal,
                         isPrimary: true,
                         isSignatory: false,
-                        typeKey: 'primary',
-                        typeLabel: 'Primary',
+                        typeKey: 'administrator',
+                        typeLabel: 'Administrator',
                     });
                 }
             }

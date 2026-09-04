@@ -425,19 +425,45 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
                 <div className="text-left">
                     <p className="font-semibold text-base">{contact.name}</p>
                     <div className="flex flex-wrap items-center gap-2 mt-1">
-                        <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter h-5">
-                            {contact.typeLabel || contact.typeKey}
-                        </Badge>
+                        {/* Functional Role Badge (e.g. Administrator, Principal, Accountant) */}
+                        {(() => {
+                            const rawRole = (contact.typeLabel || contact.typeKey || '').trim();
+                            const isRoleDuplicate = rawRole.toLowerCase() === 'primary' || rawRole.toLowerCase() === 'signatory';
+                            
+                            if (rawRole && !isRoleDuplicate) {
+                                return (
+                                    <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter h-5">
+                                        {rawRole}
+                                    </Badge>
+                                );
+                            }
+                            
+                            // If contact has neither a distinct role nor primary/signatory status, display a gentle 'Contact' badge
+                            if (!contact.isPrimary && !contact.isSignatory) {
+                                return (
+                                    <Badge variant="outline" className="text-[8px] font-semibold uppercase tracking-tighter h-5 text-muted-foreground">
+                                        Contact
+                                    </Badge>
+                                );
+                            }
+                            
+                            return null;
+                        })()}
+
+                        {/* Primary Badge: isPrimary boolean is the single source of truth */}
                         {contact.isPrimary && (
                             <Badge variant="secondary" className="text-[7px] font-semibold uppercase bg-blue-50 text-blue-700 border-blue-200 py-0.5 px-2">
                                 Primary
                             </Badge>
                         )}
+
+                        {/* Signatory Badge: isSignatory boolean is the single source of truth */}
                         {contact.isSignatory && (
                             <Badge className="text-[7px] font-semibold uppercase bg-amber-500 text-white border-none py-0.5 px-2">
                                 Signatory
                             </Badge>
                         )}
+
                         {contact.score !== undefined && (
                             <Badge variant="outline" className="text-[7px] font-black uppercase bg-primary/5 text-primary border-primary/20 py-0.5 px-2">
                                 Score: {contact.score}
@@ -565,8 +591,23 @@ function ContactEditor({
     onCancel: () => void,
     isSaving: boolean
 }) {
-    const [form, setForm] = React.useState<EntityContact>(initialValues);
-    const [isCustomRole, setIsCustomRole] = React.useState(!availableRoles.some(r => r.key === form.typeKey) && !!form.typeKey);
+    const isLegacyPrimary = initialValues.typeKey?.toLowerCase() === 'primary' || initialValues.typeLabel?.trim().toLowerCase() === 'primary';
+    const defaultRole = availableRoles[0];
+
+    const [form, setForm] = React.useState<EntityContact>(() => {
+        if (isLegacyPrimary) {
+            return {
+                ...initialValues,
+                typeKey: defaultRole?.key || 'administrator',
+                typeLabel: defaultRole?.label || 'Administrator',
+                isPrimary: initialValues.isPrimary ?? true,
+            };
+        }
+        return initialValues;
+    });
+    const [isCustomRole, setIsCustomRole] = React.useState(
+        !availableRoles.some(r => r.key === form.typeKey) && !!form.typeKey && form.typeKey.toLowerCase() !== 'primary'
+    );
 
     const handleRoleChange = (val: string) => {
         if (val === 'CUSTOM') {

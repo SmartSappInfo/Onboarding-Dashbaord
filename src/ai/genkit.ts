@@ -9,7 +9,7 @@ import { logBackofficeAction } from '@/lib/backoffice/audit-logger';
 // System default instance using environment variables
 export const ai = genkit({
   plugins: [
-    googleAI(),
+    googleAI({ apiKey: process.env.GEMINI_API_KEY }),
     anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'placeholder-key-to-prevent-load-time-error' }), // System default Anthropic
   ],
   model: 'anthropic/claude-3-5-sonnet-20241022',

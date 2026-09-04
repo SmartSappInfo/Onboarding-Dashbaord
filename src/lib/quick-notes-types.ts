@@ -417,6 +417,10 @@ export interface QuickNote {
   isPinned: boolean;
   pinnedAt?: string;
   ai?: QuickNoteAiMeta;
+  /** Linked Organization Memory Objects extracted from this note (CompanyBrain Phase 1). */
+  memoryObjectIds?: string[];
+  /** Content hash for idempotent extraction and change detection. */
+  sourceHash?: string;
   /** Bumped when `plainText` changes; drives re-embedding (Phase 7). */
   embeddingVersion?: number;
   createdBy: string;
@@ -642,6 +646,8 @@ export type GraphNodeType =
   | 'task'
   | 'meeting'
   | 'call'
+  | 'memory'
+  | 'entity'
   | 'document';
 
 /**
@@ -1141,7 +1147,8 @@ export type KnowledgeInboxType =
   | 'contradiction_detection'
   | 'ai_insight'
   | 'action_suggestion'
-  | 'idea_suggestion';
+  | 'idea_suggestion'
+  | 'memory_review';
 
 /**
  * Review status of an item in the Knowledge Inbox.
@@ -1465,6 +1472,275 @@ export interface CampaignIntelligenceGovernanceSettings {
   autoSyncCampaignLearnings: boolean;
 }
 
+// ---------------------------------------------------------------------------
+// Phase 9: Multi-Workspace Knowledge Federation & Cross-Platform Ingestion
+// ---------------------------------------------------------------------------
 
+/**
+ * Access policy governing how knowledge is federated across workspaces in an organization.
+ */
+export type KnowledgeFederationPolicy =
+  | 'isolated'             // Single workspace only; no sharing
+  | 'organization_shared' // Open to all sibling workspaces in the organization
+  | 'selective_peers';    // Shared explicitly with designated workspace IDs
 
+/**
+ * Permission level granted to subscriber workspaces.
+ */
+export type KnowledgeSpaceAccessLevel = 'viewer' | 'contributor' | 'admin';
 
+/**
+ * Third-party inbound ingestion sources.
+ */
+export type KnowledgeIngestionSource =
+  | 'slack'
+  | 'discord'
+  | 'email_forwarder'
+  | 'whatsapp_bot'
+  | 'chrome_extension'
+  | 'webhook_rest'
+  | 'csv_import'
+  | 'json_import'
+  | 'markdown_archive';
+
+/**
+ * Model representing a shared cross-workspace knowledge container (/knowledge_spaces/{spaceId}).
+ */
+export interface FederatedKnowledgeSpace {
+  id: string;
+  name: string;
+  description: string;
+  icon?: string;
+  color?: string;
+  organizationId: string;
+  ownerWorkspaceId: string;
+  subscriberWorkspaceIds: string[];
+  accessLevel: KnowledgeSpaceAccessLevel;
+  federationPolicy: KnowledgeFederationPolicy;
+  publishedCollectionIds: string[];
+  tags: string[];
+  isArchived: boolean;
+  notesCount?: number;
+  subscribersCount?: number;
+  createdBy: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+/**
+ * Standardized schema for inbound captures via REST webhooks and external connectors.
+ */
+export interface KnowledgeIngestionPayload {
+  title: string;
+  content: string; // Markdown or plain text
+  source: KnowledgeIngestionSource;
+  sourceUrl?: string;
+  sourceAuthor?: string;
+  sourceChannel?: string;
+  tags?: string[];
+  categoryName?: string;
+  targetSpaceId?: string;
+  entityId?: string;
+  contactId?: string;
+  dealId?: string;
+  priority?: 'low' | 'medium' | 'high' | 'urgent';
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Conflict resolution strategy for federated notes updated concurrently across workspaces.
+ */
+export type FederationConflictResolution =
+  | 'last_write_wins'     // Most recent updatedAt timestamp overwrites
+  | 'fork_as_variant'      // Duplicates local copy as a separate variant note
+  | 'manual_inbox_review'; // Converts clash into Phase 7 KnowledgeInbox contradiction item
+
+/**
+ * Standardized whole-workspace / collection export package schema.
+ */
+export interface KnowledgeExportPackage {
+  version: '2.0';
+  exportedAt: string;
+  exportedBy: string;
+  workspaceId: string;
+  workspaceName?: string;
+  organizationId: string;
+  stats: {
+    totalNotes: number;
+    totalCategories: number;
+    totalIdeas: number;
+    totalBattlecards: number;
+    totalInsights: number;
+    totalSpaces: number;
+    totalRelations: number;
+  };
+  notes: QuickNote[];
+  categories: QuickNoteCategory[];
+  ideas: Idea[];
+  battlecards: ObjectionBattlecard[];
+  insights: KnowledgeInsight[];
+  spaces: FederatedKnowledgeSpace[];
+  relations: KnowledgeRelation[];
+}
+
+/**
+ * Federated knowledge item projected for the cross-workspace feed.
+ */
+export interface FederatedKnowledgeItem {
+  id: string;
+  title: string;
+  snippet: string;
+  sourceWorkspaceId: string;
+  sourceWorkspaceName?: string;
+  sourceSpaceId: string;
+  sourceSpaceName: string;
+  sourceAuthorName?: string;
+  categoryName?: string;
+  tags: string[];
+  accessLevel: KnowledgeSpaceAccessLevel;
+  updatedAt: string;
+  isLocalCopy: boolean;
+}
+
+/**
+ * Filtering options for the Federation Hub and global feed.
+ */
+export interface FederationFilterOptions {
+  searchQuery?: string;
+  sourceWorkspaceId?: string | 'all';
+  spaceId?: string | 'all';
+  accessLevel?: KnowledgeSpaceAccessLevel | 'all';
+  source?: KnowledgeIngestionSource | 'all';
+  tags?: string[];
+  sortBy?: 'updatedAt' | 'title' | 'subscribersCount';
+  sortOrder?: 'asc' | 'desc';
+}
+
+/**
+ * Section 10 Governance settings for Federation & Integrations.
+ */
+export interface FederationGovernanceSettings {
+  enableCrossWorkspaceSharing: boolean;
+  defaultFederationPolicy: KnowledgeFederationPolicy;
+  maxInboundWebhooksPerMinute: number;
+  allowMarkdownImport: boolean;
+  federationConflictStrategy: FederationConflictResolution;
+  requireAdminApprovalForSpaces: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Phase 10: Enterprise Offline Sync & Zero-Data-Loss PWA
+// ---------------------------------------------------------------------------
+
+/**
+ * Mutation operations supported by the offline mutation queue.
+ */
+export type OfflineMutationType =
+  | 'create_note'
+  | 'update_note'
+  | 'delete_note'
+  | 'pin_note'
+  | 'archive_note'
+  | 'tag_note'
+  | 'create_idea'
+  | 'transition_idea'
+  | 'batch_tag';
+
+/**
+ * Lifecycle status of an offline queued mutation job.
+ */
+export type OfflineMutationStatus =
+  | 'pending'
+  | 'syncing'
+  | 'synced'
+  | 'conflict'
+  | 'failed';
+
+/**
+ * Discrete mutation task queued in browser IndexedDB while offline.
+ */
+export interface OfflineMutationJob {
+  id: string; // Client mutation UUID (idempotency key)
+  workspaceId: string;
+  entityId: string; // Target note or idea ID
+  type: OfflineMutationType;
+  payload: Record<string, unknown>;
+  baseServerUpdatedAt?: string; // Monotonic server timestamp when client started editing
+  clientTimestamp: string; // ISO string of local execution
+  retryCount: number;
+  lastError?: string;
+  status: OfflineMutationStatus;
+}
+
+/**
+ * Global reactive network and sync engine status.
+ */
+export type OfflineSyncStatus =
+  | 'online_synced'
+  | 'offline'
+  | 'syncing'
+  | 'conflict_detected'
+  | 'error';
+
+/**
+ * Detailed conflict payload when a client offline edit clashes with a concurrent cloud update.
+ */
+export interface OfflineConflictDetails {
+  jobId: string;
+  entityId: string;
+  entityTitle: string;
+  localJob: OfflineMutationJob;
+  serverSnapshot: QuickNote;
+  clientTimestamp: string;
+  serverUpdatedAt: string;
+  diffSummary: {
+    localChanges: string[];
+    serverChanges: string[];
+  };
+}
+
+/**
+ * Available resolution strategies for a clashing offline mutation.
+ */
+export type OfflineConflictResolutionAction =
+  | 'keep_local'
+  | 'keep_server'
+  | 'smart_merge'
+  | 'send_to_inbox';
+
+/**
+ * Diagnostic metrics for browser IndexedDB cache and queue.
+ */
+export interface OfflineStorageStats {
+  cachedNotesCount: number;
+  pendingMutationsCount: number;
+  localDraftsCount: number;
+  storageBytesEstimated: number;
+  lastSyncTimestamp?: string;
+  isIndexedDbSupported: boolean;
+}
+
+/**
+ * Uncommitted local draft stored in IndexedDB for instant crash recovery.
+ */
+export interface OfflineLocalDraft {
+  id: string;
+  workspaceId: string;
+  title: string;
+  document: NoteDocument;
+  tags: string[];
+  categoryId?: string;
+  updatedAt: string;
+}
+
+/**
+ * Section 11 Governance settings for Offline & PWA Sync.
+ */
+export interface OfflineGovernanceSettings {
+  enableOfflinePersistence: boolean;
+  maxOfflineCacheItems: number;
+  autoSyncIntervalSeconds: number;
+  defaultConflictStrategy: 'prompt_user_diff' | 'last_write_wins' | 'fork_local_variant';
+  precacheScope: 'whole_workspace' | 'recent_100' | 'pinned_and_active';
+}

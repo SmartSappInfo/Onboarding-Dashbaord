@@ -11,6 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import MediaAssetCard from './media-asset-card';
 import UploadButton from './upload-button';
 import AddLinkButton from './add-link-button';
+import MediaAssetInspectorDrawer from './MediaAssetInspectorDrawer';
 import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -59,6 +60,7 @@ export default function MediaLibraryBrowser({
   const [categoryFilter, setCategoryFilter] = useState<string>('ALL');
   const [sourceFilter, setSourceFilter] = useState<SourceFilterType>('ALL');
   const [setupFilter, setSetupFilter] = useState<SetupFilterType>('ALL');
+  const [inspectingAsset, setInspectingAsset] = useState<MediaAsset | null>(null);
 
   // Automatically trigger document CTA backfill protocol on mount
   useEffect(() => {
@@ -372,6 +374,7 @@ export default function MediaLibraryBrowser({
                     asset={asset} 
                     isConfigured={configuredAssetIds.has(asset.id)}
                     onCardClick={onSelectAsset} 
+                    onInspect={(a) => setInspectingAsset(a)}
                   />
                 ))
               ) : (
@@ -390,6 +393,12 @@ export default function MediaLibraryBrowser({
           </div>
         </ScrollArea>
       </div>
+
+      <MediaAssetInspectorDrawer
+        asset={inspectingAsset}
+        isOpen={!!inspectingAsset}
+        onClose={() => setInspectingAsset(null)}
+      />
     </div>
   );
 }

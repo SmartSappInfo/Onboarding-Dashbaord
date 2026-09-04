@@ -16,8 +16,16 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
 import { logNoteActivity, getEntityAiSummary } from '@/lib/note-actions';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { Sparkles, BrainCircuit, ListChecks, TrendingUp, TrendingDown, Info, Settings2 } from 'lucide-react';
+import { Sparkles, BrainCircuit, ListChecks, TrendingUp, TrendingDown, Info, Settings2, History, LayoutList } from 'lucide-react';
 import PromptSettingsSheet from '@/app/admin/components/PromptSettingsSheet';
+import KnowledgeTimeline from '@/app/admin/quick-notes/components/timeline/KnowledgeTimeline';
+
+export interface EntitySummaryResult {
+  executiveSummary: string;
+  keyThemes: string[];
+  actionItems: string[];
+  recentSentiment: 'positive' | 'negative' | 'urgent' | 'neutral';
+}
 
 interface EntityNotesTabProps {
     entityId: string;
@@ -39,6 +47,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
     const { toast } = useToast();
     const confirm = useConfirm();
 
+    const [viewMode, setViewMode] = React.useState<'timeline' | 'classic'>('timeline');
     const [newNote, setNewNote] = React.useState('');
     const [noteType, setNoteType] = React.useState<EntityNote['noteType']>('general');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -54,7 +63,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
     const [filterDropdownOpen, setFilterDropdownOpen] = React.useState(false);
     
     const [isGeneratingSummary, setIsGeneratingSummary] = React.useState(false);
-    const [aiSummary, setAiSummary] = React.useState<any>(null);
+    const [aiSummary, setAiSummary] = React.useState<EntitySummaryResult | null>(null);
     const [promptSettingsOpen, setPromptSettingsOpen] = React.useState(false);
 
     const noteTypes = [
@@ -107,7 +116,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
 
         setIsSubmitting(true);
         try {
-            const noteData: any = {
+            const noteData: Record<string, unknown> = {
                 entityId,
                 workspaceId: activeWorkspaceId,
                 content: sanitizedContent,
@@ -145,12 +154,13 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             }
 
             // Log to activity feed (non-blocking server action)
-            logNoteActivity(noteData, activeOrganizationId);
+            logNoteActivity(noteData as unknown as EntityNote, activeOrganizationId);
             
             toast({ title: parentId ? 'Reply added' : 'Note added successfully' });
-        } catch (error: any) {
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to add note';
             console.error('Error adding note:', error);
-            toast({ title: 'Failed to add note', description: error.message, variant: 'destructive' });
+            toast({ title: 'Failed to add note', description: msg, variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }
@@ -167,9 +177,10 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             setEditingNoteId(null);
             setEditContent('');
             toast({ title: 'Note updated successfully' });
-        } catch (error: any) {
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to update note';
             console.error('Error updating note:', error);
-            toast({ title: 'Failed to update note', description: error.message, variant: 'destructive' });
+            toast({ title: 'Failed to update note', description: msg, variant: 'destructive' });
         }
     };
 
@@ -180,9 +191,10 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
         try {
             await deleteDoc(doc(firestore, 'entity_notes', noteId));
             toast({ title: 'Note deleted' });
-        } catch (error: any) {
+        } catch (error) {
+            const msg = error instanceof Error ? error.message : 'Failed to delete note';
             console.error('Error deleting note:', error);
-            toast({ title: 'Failed to delete note', description: error.message, variant: 'destructive' });
+            toast({ title: 'Failed to delete note', description: msg, variant: 'destructive' });
         }
     };
 
@@ -195,7 +207,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                 pinnedBy: !note.isPinned ? user?.uid : null
             });
             toast({ title: note.isPinned ? 'Note unpinned' : 'Note pinned' });
-        } catch (error: any) {
+        } catch (error) {
             console.error('Error pinning note:', error);
             toast({ title: 'Failed to update pin', variant: 'destructive' });
         }
@@ -217,7 +229,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             } else {
                 toast({ title: 'AI Generation failed', description: result.error, variant: 'destructive' });
             }
-        } catch (error: any) {
+        } catch (error) {
             toast({ title: 'Error generating brief', variant: 'destructive' });
         } finally {
             setIsGeneratingSummary(false);
@@ -260,18 +272,66 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
 
     return (
         <div className="space-y-6 text-left">
-            {/* Search & Filter Toolbar */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border/40 bg-card/30 backdrop-blur-md p-3 rounded-2xl relative overflow-visible">
-                <div className="relative flex-1 min-w-[200px]">
-                    <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
-                    <input
-                        type="text"
-                        placeholder="Search notes history..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-background border border-border/40 text-foreground placeholder:text-muted-foreground/60 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/30"
-                    />
+            {/* View Mode Switcher */}
+            <div className="flex items-center justify-between border-b border-border/40 pb-3">
+                <div className="flex items-center gap-2">
+                    <BrainCircuit className="h-4 w-4 text-primary" />
+                    <h3 className="text-sm font-bold text-foreground">
+                        {dealName ? `Deal Knowledge: ${dealName}` : 'Knowledge & Interaction Timeline'}
+                    </h3>
                 </div>
+                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/40">
+                    <button
+                        onClick={() => setViewMode('timeline')}
+                        className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all",
+                            viewMode === 'timeline'
+                                ? "bg-background text-primary shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <History className="h-3.5 w-3.5" />
+                        <span>Unified Timeline</span>
+                    </button>
+                    <button
+                        onClick={() => setViewMode('classic')}
+                        className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold transition-all",
+                            viewMode === 'classic'
+                                ? "bg-background text-primary shadow-xs"
+                                : "text-muted-foreground hover:text-foreground"
+                        )}
+                    >
+                        <LayoutList className="h-3.5 w-3.5" />
+                        <span>Classic Notes</span>
+                    </button>
+                </div>
+            </div>
+
+            {viewMode === 'timeline' ? (
+                <KnowledgeTimeline
+                    workspaceId={activeWorkspaceId}
+                    organizationId={activeOrganizationId}
+                    by={dealId ? 'deal' : 'entity'}
+                    recordId={dealId || entityId}
+                    recordName={dealName}
+                    entityId={entityId}
+                    compact={compact}
+                />
+            ) : (
+                <>
+                {/* Search & Filter Toolbar */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-border/40 bg-card/30 backdrop-blur-md p-3 rounded-2xl relative overflow-visible">
+                    <div className="relative flex-1 min-w-[200px]">
+                        <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60" />
+                        <input
+                            type="text"
+                            placeholder="Search notes history..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            className="w-full bg-background border border-border/40 text-foreground placeholder:text-muted-foreground/60 rounded-xl pl-9 pr-4 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary/20 focus:border-primary/30"
+                        />
+                    </div>
                 <div className="flex items-center gap-2 relative overflow-visible">
                     {/* Dropdown Select menu for filtering */}
                     <div className="relative">
@@ -702,6 +762,8 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                     </div>
                 )}
             </div>
+            </>
+            )}
 
             {activeOrganizationId && (
                 <PromptSettingsSheet

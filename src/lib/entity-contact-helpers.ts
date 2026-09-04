@@ -45,7 +45,51 @@ export function resolveEntityContacts(
 ): EntityContact[] {
   // Prefer canonical entityContacts
   if (entity.entityContacts && entity.entityContacts.length > 0) {
-    return entity.entityContacts;
+    return entity.entityContacts.map((contact, index) => {
+      const isRolePrimary = contact.typeKey?.toLowerCase() === 'primary' || contact.typeLabel?.trim().toLowerCase() === 'primary';
+      const isPrimary = contact.isPrimary !== undefined ? contact.isPrimary : (isRolePrimary || index === 0);
+
+      // If role was stored as 'primary', sanitize the role title so 'primary' isn't treated as a job title
+      if (isRolePrimary) {
+        const defaultRoleKey = entity.entityType === 'institution' ? 'administrator' : 'contact';
+        const defaultRoleLabel = entity.entityType === 'institution' ? 'Administrator' : 'Contact';
+        return {
+          ...contact,
+          typeKey: defaultRoleKey,
+          typeLabel: defaultRoleLabel,
+          isPrimary,
+        };
+      }
+
+      return {
+        ...contact,
+        isPrimary,
+      };
+    });
+  }
+
+  // Fallback to legacy contacts array if present
+  if (entity.contacts && Array.isArray(entity.contacts) && entity.contacts.length > 0) {
+    return entity.contacts.map((c: any, index: number) => {
+      const isRolePrimary = c.typeKey?.toLowerCase() === 'primary' || c.typeLabel?.trim().toLowerCase() === 'primary' || c.role?.toLowerCase() === 'primary';
+      const isPrimary = c.isPrimary !== undefined ? c.isPrimary : (isRolePrimary || index === 0);
+      const defaultRoleKey = entity.entityType === 'institution' ? 'administrator' : 'contact';
+      const defaultRoleLabel = entity.entityType === 'institution' ? 'Administrator' : 'Contact';
+      const roleKey = isRolePrimary ? defaultRoleKey : (c.typeKey || normalizeContactType(c.role || defaultRoleKey));
+      const roleLabel = isRolePrimary ? defaultRoleLabel : (c.typeLabel || c.role || defaultRoleLabel);
+
+      return {
+        id: c.id || `contact_${index}`,
+        name: c.name || '',
+        email: c.email || '',
+        phone: c.phone || '',
+        typeKey: roleKey,
+        typeLabel: roleLabel,
+        isPrimary,
+        isSignatory: c.isSignatory !== undefined ? c.isSignatory : (index === 0),
+        order: c.order !== undefined ? c.order : index,
+      };
+    });
   }
 
   return [];
@@ -92,8 +136,14 @@ export function getContactByType(
   entity: Partial<Entity> & { entityContacts?: EntityContact[] },
   typeKey: string
 ): EntityContact | undefined {
-  const contacts = resolveEntityContacts(entity);
   const normalizedKey = normalizeContactType(typeKey);
+  if (normalizedKey === 'primary') {
+    return getPrimaryContact(entity);
+  }
+  if (normalizedKey === 'signatory' || normalizedKey === 'signatories') {
+    return getSignatoryContact(entity);
+  }
+  const contacts = resolveEntityContacts(entity);
   const matching = contacts.filter((c) => c.typeKey === normalizedKey);
   if (matching.length === 0) return undefined;
   return [...matching].sort((a, b) => a.order - b.order)[0];
@@ -106,8 +156,16 @@ export function getAllContactsByType(
   entity: Partial<Entity> & { entityContacts?: EntityContact[] },
   typeKey: string
 ): EntityContact[] {
-  const contacts = resolveEntityContacts(entity);
   const normalizedKey = normalizeContactType(typeKey);
+  if (normalizedKey === 'primary') {
+    const p = getPrimaryContact(entity);
+    return p ? [p] : [];
+  }
+  if (normalizedKey === 'signatory' || normalizedKey === 'signatories') {
+    const s = getSignatoryContact(entity);
+    return s ? [s] : [];
+  }
+  const contacts = resolveEntityContacts(entity);
   return contacts
     .filter((c) => c.typeKey === normalizedKey)
     .sort((a, b) => a.order - b.order);
@@ -288,10 +346,23 @@ export function ensureSingleSignatory(contacts: EntityContact[]): EntityContact[
 }
 
 /**
- * Applies both primary and signatory enforcement in sequence.
+ * Applies both primary and signatory enforcement in sequence,
+ * and sanitizes legacy role keys so 'primary' is never stored as an organizational role.
  */
 export function enforceContactConstraints(contacts: EntityContact[]): EntityContact[] {
-  return ensureSingleSignatory(ensureSinglePrimary(contacts));
+  const sanitized = contacts.map((c) => {
+    const isRolePrimary = c.typeKey?.toLowerCase() === 'primary' || c.typeLabel?.trim().toLowerCase() === 'primary';
+    if (isRolePrimary) {
+      return {
+        ...c,
+        typeKey: 'administrator',
+        typeLabel: 'Administrator',
+        isPrimary: true,
+      };
+    }
+    return c;
+  });
+  return ensureSingleSignatory(ensureSinglePrimary(sanitized));
 }
 
 /**

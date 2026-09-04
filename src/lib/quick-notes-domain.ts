@@ -8,7 +8,6 @@ import type {
   CRMKnowledgeTimelineItem,
   TimelineFilterState,
   TimelineItemSource,
-  QuickNoteLinks,
   KnowledgeChunk,
   HybridSearchResult,
   SearchScoreBreakdown,
@@ -25,31 +24,20 @@ import type {
   KnowledgeGraphFilterOptions,
   KnowledgeInboxItem,
   KnowledgeInboxType,
-  KnowledgeInboxStatus,
-  ContradictionDetails,
-  DuplicateDetails,
-  SuggestedPatch,
   KnowledgeInsight,
   KnowledgeInsightType,
   KnowledgeInsightSeverity,
-  KnowledgeInsightStatus,
   InboxFilterOptions,
   InsightFilterOptions,
   MergeStrategy,
-  GovernanceAuditResult,
   CampaignChannel,
   CampaignConceptStatus,
   ObjectionCategory,
-  ObjectionRebuttal,
   CampaignConcept,
   ObjectionBattlecard,
   ObjectionCluster,
   CampaignConceptFilterOptions,
   Idea,
-  IdeaAssumption,
-  IdeaHypothesis,
-  IdeaExperiment,
-  IdeaDecision,
   IdeaCanvasNode,
   IdeaCanvasEdge,
   IdeaCanvasLayout,
@@ -60,7 +48,22 @@ import type {
   IdeaValidationStatus,
   IdeaAssumptionRiskLevel,
   PrioritizationFormula,
+  KnowledgeFederationPolicy,
+  KnowledgeSpaceAccessLevel,
+  FederatedKnowledgeSpace,
+  KnowledgeIngestionSource,
+  KnowledgeIngestionPayload,
+  FederationConflictResolution,
+  FederatedKnowledgeItem,
+  FederationFilterOptions,
+  OfflineMutationType,
+  OfflineMutationJob,
+  OfflineMutationStatus,
+  OfflineSyncStatus,
+  OfflineConflictDetails,
+  OfflineConflictResolutionAction,
 } from './quick-notes-types';
+import { KNOWLEDGE_TYPES } from './quick-notes-types';
 
 /**
  * Quick Notes / Company Brain — pure domain logic.
@@ -225,6 +228,9 @@ export function extractPlainText(doc?: NoteDocument | null): string {
 
   return render(doc, 0).replace(/\n{3,}/g, '\n\n').trim();
 }
+
+/** Alias for extractPlainText targeting TipTap JSON nodes. */
+export const extractPlainTextFromTipTap = extractPlainText;
 
 /**
  * Normalises free-form tags (design decision D1):
@@ -2047,6 +2053,31 @@ export function projectIdeaToCanvas(
     });
   });
 
+  // 7. Related Knowledge Note Nodes (Far Right Fan)
+  relatedNotes.slice(0, 3).forEach((note, index) => {
+    const noteNodeId = `node-note-${note.id}`;
+    nodes.push({
+      id: noteNodeId,
+      type: 'solution',
+      title: note.title || 'Related Note',
+      description: note.plainText?.slice(0, 50) || 'Knowledge reference',
+      x: centerX + 340 + index * 40,
+      y: centerY + 60 + index * 60,
+      width: 160,
+      height: 60,
+      color: '#0ea5e9',
+    });
+
+    edges.push({
+      id: `edge-${coreNodeId}-${noteNodeId}`,
+      fromNodeId: coreNodeId,
+      toNodeId: noteNodeId,
+      label: 'references',
+      type: 'dashed',
+      color: '#0ea5e9',
+    });
+  });
+
   return {
     nodes,
     edges,
@@ -2760,6 +2791,925 @@ export function getObjectionCategoryMeta(category: ObjectionCategory): {
       return { label: 'General Hesitation', badgeClass: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300/40' };
   }
 }
+
+// ---------------------------------------------------------------------------
+// Phase 9: Multi-Workspace Knowledge Federation & Cross-Platform Ingestion
+// ---------------------------------------------------------------------------
+
+/**
+ * Validates and sanitizes an inbound webhook ingestion payload.
+ * Converts raw markdown or plain text into a sanitized TipTap NoteDocument AST.
+ * Enforces SSRF URL validation and bounds maximum string sizes.
+ */
+export function validateIngestionPayload(payload: unknown): {
+  valid: boolean;
+  error?: string;
+  sanitizedPayload?: KnowledgeIngestionPayload;
+  document?: NoteDocument;
+} {
+  if (!payload || typeof payload !== 'object') {
+    return { valid: false, error: 'Ingestion payload must be a non-null JSON object.' };
+  }
+
+  const p = payload as Record<string, unknown>;
+
+  // Title validation
+  const rawTitle = typeof p.title === 'string' ? p.title.trim() : '';
+  if (!rawTitle) {
+    return { valid: false, error: 'Title is required for incoming knowledge ingestion.' };
+  }
+  const sanitizedTitle = rawTitle.slice(0, 250);
+
+  // Content validation
+  const rawContent = typeof p.content === 'string' ? p.content.trim() : '';
+  if (!rawContent) {
+    return { valid: false, error: 'Content is required for incoming knowledge ingestion.' };
+  }
+  if (rawContent.length > 25000) {
+    return { valid: false, error: 'Content exceeds maximum allowable size of 25,000 characters.' };
+  }
+
+  // Source validation
+  const validSources: KnowledgeIngestionSource[] = [
+    'slack',
+    'discord',
+    'email_forwarder',
+    'whatsapp_bot',
+    'chrome_extension',
+    'webhook_rest',
+    'csv_import',
+    'json_import',
+    'markdown_archive',
+  ];
+  const source = typeof p.source === 'string' && validSources.includes(p.source as KnowledgeIngestionSource)
+    ? (p.source as KnowledgeIngestionSource)
+    : 'webhook_rest';
+
+  // SSRF URL Validation
+  let sourceUrl: string | undefined;
+  if (typeof p.sourceUrl === 'string' && p.sourceUrl.trim()) {
+    const trimmedUrl = p.sourceUrl.trim();
+    if (!isSafeHttpUrl(trimmedUrl)) {
+      return { valid: false, error: 'sourceUrl failed security verification (disallowed protocol or private network address).' };
+    }
+    sourceUrl = trimmedUrl;
+  }
+
+  // Sanitize tags
+  const tags: string[] = [];
+  if (Array.isArray(p.tags)) {
+    for (const tag of p.tags) {
+      if (typeof tag === 'string' && tag.trim()) {
+        const clean = tag.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 50);
+        if (clean && !tags.includes(clean)) {
+          tags.push(clean);
+        }
+      }
+    }
+  }
+
+  // Strip dangerous HTML tags from content text
+  const cleanContentText = rawContent
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/javascript:/gi, '');
+
+  // Convert content to TipTap NoteDocument AST
+  const paragraphs = cleanContentText.split(/\n\n+/).filter(Boolean);
+  const docContent = paragraphs.map((para) => ({
+    type: 'paragraph',
+    content: [{ type: 'text', text: para.trim() }],
+  }));
+
+  const document: NoteDocument = {
+    type: 'doc',
+    content: docContent.length > 0 ? docContent : [{ type: 'paragraph', content: [{ type: 'text', text: cleanContentText }] }],
+  };
+
+  const sanitizedPayload: KnowledgeIngestionPayload = {
+    title: sanitizedTitle,
+    content: cleanContentText,
+    source,
+    sourceUrl,
+    sourceAuthor: typeof p.sourceAuthor === 'string' ? p.sourceAuthor.slice(0, 100) : undefined,
+    sourceChannel: typeof p.sourceChannel === 'string' ? p.sourceChannel.slice(0, 100) : undefined,
+    tags,
+    categoryName: typeof p.categoryName === 'string' ? p.categoryName.slice(0, 100) : undefined,
+    targetSpaceId: typeof p.targetSpaceId === 'string' ? p.targetSpaceId : undefined,
+    entityId: typeof p.entityId === 'string' ? p.entityId : undefined,
+    contactId: typeof p.contactId === 'string' ? p.contactId : undefined,
+    dealId: typeof p.dealId === 'string' ? p.dealId : undefined,
+    priority: (['low', 'medium', 'high', 'urgent'].includes(p.priority as string) ? p.priority : 'medium') as 'low' | 'medium' | 'high' | 'urgent',
+    metadata: typeof p.metadata === 'object' && p.metadata !== null ? (p.metadata as Record<string, unknown>) : undefined,
+  };
+
+  return { valid: true, sanitizedPayload, document };
+}
+
+/**
+ * Serializes workspace knowledge objects (notes, ideas, battlecards, insights) into standardized Markdown archives with YAML frontmatter.
+ */
+export function serializeKnowledgeToMarkdownArchive(params: {
+  notes: QuickNote[];
+  ideas?: Idea[];
+  battlecards?: ObjectionBattlecard[];
+  insights?: KnowledgeInsight[];
+  spaces?: FederatedKnowledgeSpace[];
+}): {
+  files: Array<{ filename: string; content: string; type: string }>;
+  compiledBundle: string;
+} {
+  const files: Array<{ filename: string; content: string; type: string }> = [];
+
+  // 1. Serialize Notes
+  for (const note of params.notes) {
+    const plainContent = extractPlainTextFromTipTap(note.document);
+    const frontmatter = [
+      '---',
+      `id: "${note.id}"`,
+      `title: "${note.title.replace(/"/g, '\\"')}"`,
+      `type: "${note.knowledgeType || 'note'}"`,
+      `category: "${note.categoryName || 'General'}"`,
+      `tags: [${(note.tags || []).map((t) => `"${t}"`).join(', ')}]`,
+      `sentiment: "${note.sentiment || 'neutral'}"`,
+      `author: "${note.authorName || 'User'}"`,
+      `createdAt: "${note.createdAt}"`,
+      `updatedAt: "${note.updatedAt}"`,
+      ...(note.links?.entityId ? [`entityId: "${note.links.entityId}"`] : []),
+      ...(note.links?.contactId ? [`contactId: "${note.links.contactId}"`] : []),
+      '---',
+    ].join('\n');
+
+    const markdownBody = `${frontmatter}\n\n# ${note.title}\n\n${plainContent}\n`;
+    const safeSlug = note.title.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 50) || note.id;
+    files.push({
+      filename: `notes/${safeSlug}.md`,
+      content: markdownBody,
+      type: 'note',
+    });
+  }
+
+  // 2. Serialize Ideas
+  if (params.ideas) {
+    for (const idea of params.ideas) {
+      const frontmatter = [
+        '---',
+        `id: "${idea.id}"`,
+        `title: "${idea.title.replace(/"/g, '\\"')}"`,
+        `type: "idea"`,
+        `stage: "${idea.stage}"`,
+        `iceScore: ${idea.iceScore}`,
+        `impact: ${idea.impact}`,
+        `confidence: ${idea.confidence}`,
+        `ease: ${idea.ease}`,
+        `tags: [${(idea.tags || []).map((t) => `"${t}"`).join(', ')}]`,
+        `createdAt: "${idea.createdAt}"`,
+        '---',
+      ].join('\n');
+
+      const markdownBody = `${frontmatter}\n\n# ${idea.title}\n\n## Description\n${idea.description}\n\n## Problem Statement\n${idea.problemStatement || 'N/A'}\n\n## Target Audience\n${idea.targetAudience || 'N/A'}\n`;
+      const safeSlug = idea.title.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 50) || idea.id;
+      files.push({
+        filename: `ideas/${safeSlug}.md`,
+        content: markdownBody,
+        type: 'idea',
+      });
+    }
+  }
+
+  // 3. Serialize Battlecards
+  if (params.battlecards) {
+    for (const card of params.battlecards) {
+      const frontmatter = [
+        '---',
+        `id: "${card.id}"`,
+        `topic: "${card.topic.replace(/"/g, '\\"')}"`,
+        `type: "battlecard"`,
+        `category: "${card.category}"`,
+        `frequencyScore: ${card.frequencyScore}`,
+        `createdAt: "${card.createdAt}"`,
+        '---',
+      ].join('\n');
+
+      const markdownBody = `${frontmatter}\n\n# Objection: ${card.topic}\n\n## Customer Hesitation\n> "${card.objection}"\n\n## Tactical Rebuttal Script\n${card.rebuttalScript}\n\n## Killer Discovery Question\n${card.killerQuestion}\n\n## Proof Points\n${(card.proofPoints || []).map((p) => `- ${p}`).join('\n')}\n`;
+      const safeSlug = card.topic.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 50) || card.id;
+      files.push({
+        filename: `battlecards/${safeSlug}.md`,
+        content: markdownBody,
+        type: 'battlecard',
+      });
+    }
+  }
+
+  // 4. Serialize Insights
+  if (params.insights) {
+    for (const insight of params.insights) {
+      const frontmatter = [
+        '---',
+        `id: "${insight.id}"`,
+        `title: "${insight.title.replace(/"/g, '\\"')}"`,
+        `type: "insight"`,
+        `insightType: "${insight.insightType}"`,
+        `severity: "${insight.severity}"`,
+        `status: "${insight.status}"`,
+        `createdAt: "${insight.createdAt}"`,
+        '---',
+      ].join('\n');
+
+      const markdownBody = `${frontmatter}\n\n# Strategic Insight: ${insight.title}\n\n## Executive Summary\n${insight.summary}\n\n## Core Findings\n${(insight.findings || []).map((f) => `- ${f}`).join('\n')}\n`;
+      const safeSlug = insight.title.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 50) || insight.id;
+      files.push({
+        filename: `insights/${safeSlug}.md`,
+        content: markdownBody,
+        type: 'insight',
+      });
+    }
+  }
+
+  const compiledBundle = files.map((f) => `<!-- FILE: ${f.filename} -->\n${f.content}`).join('\n\n---\n\n');
+
+  return { files, compiledBundle };
+}
+
+/**
+ * Deserializes raw Markdown files with YAML frontmatter into structured note creation inputs.
+ */
+export function deserializeMarkdownArchive(markdownContent: string): Array<{
+  title: string;
+  document: NoteDocument;
+  tags: string[];
+  categoryName: string;
+  knowledgeType: KnowledgeType;
+  metadata: Record<string, string>;
+}> {
+  const items: Array<{
+    title: string;
+    document: NoteDocument;
+    tags: string[];
+    categoryName: string;
+    knowledgeType: KnowledgeType;
+    metadata: Record<string, string>;
+  }> = [];
+
+  // Split multi-file archives if delimited by FILE comments or process single markdown document
+  const rawSections = markdownContent.split(/<!-- FILE: .*? -->\n/).filter(Boolean);
+
+  for (const section of rawSections) {
+    const text = section.trim();
+    if (!text) continue;
+
+    let frontmatterRaw = '';
+    let bodyRaw = text;
+
+    // Parse YAML frontmatter --- ... ---
+    const match = text.match(/^---\n([\s\S]*?)\n---\n([\s\S]*)$/);
+    if (match) {
+      frontmatterRaw = match[1];
+      bodyRaw = match[2];
+    }
+
+    const metadata: Record<string, string> = {};
+    const tags: string[] = [];
+
+    if (frontmatterRaw) {
+      const lines = frontmatterRaw.split('\n');
+      for (const line of lines) {
+        const colonIdx = line.indexOf(':');
+        if (colonIdx > 0) {
+          const key = line.slice(0, colonIdx).trim();
+          const val = line.slice(colonIdx + 1).trim().replace(/^["']|["']$/g, '');
+          if (key === 'tags' && val.startsWith('[') && val.endsWith(']')) {
+            const rawTags = val.slice(1, -1).split(',');
+            for (const t of rawTags) {
+              const clean = t.trim().replace(/^["']|["']$/g, '');
+              if (clean && !tags.includes(clean)) tags.push(clean);
+            }
+          } else {
+            metadata[key] = val;
+          }
+        }
+      }
+    }
+
+    // Extract title from metadata or first # Heading or first line
+    let title = metadata.title || '';
+    if (!title) {
+      const headingMatch = bodyRaw.match(/^#\s+(.+)$/m);
+      if (headingMatch) {
+        title = headingMatch[1].trim();
+      } else {
+        const firstLine = bodyRaw.split('\n')[0]?.trim();
+        title = firstLine ? firstLine.slice(0, 80) : 'Imported Document';
+      }
+    }
+
+    const categoryName = metadata.category || 'Imported';
+    const rawType = metadata.type as KnowledgeType;
+    const knowledgeType: KnowledgeType = (
+      (KNOWLEDGE_TYPES as readonly string[]).includes(rawType)
+        ? rawType
+        : 'note'
+    );
+
+    // Convert body text to TipTap NoteDocument AST
+    const cleanBody = bodyRaw.replace(/^#\s+.+$/m, '').trim();
+    const paragraphs = cleanBody.split(/\n\n+/).filter(Boolean);
+    const docContent = paragraphs.map((para) => ({
+      type: 'paragraph',
+      content: [{ type: 'text', text: para.trim() }],
+    }));
+
+    const document: NoteDocument = {
+      type: 'doc',
+      content: docContent.length > 0 ? docContent : [{ type: 'paragraph', content: [{ type: 'text', text: cleanBody || title }] }],
+    };
+
+    items.push({
+      title,
+      document,
+      tags,
+      categoryName,
+      knowledgeType,
+      metadata,
+    });
+  }
+
+  return items;
+}
+
+/**
+ * Pure authorization resolver determining if a user/workspace can access a federated knowledge space.
+ */
+export function resolveFederatedVisibility(params: {
+  space: FederatedKnowledgeSpace;
+  requestingWorkspaceId: string;
+  userOrgId: string;
+  isOrgAdmin?: boolean;
+}): {
+  allowed: boolean;
+  effectiveAccessLevel: KnowledgeSpaceAccessLevel | null;
+  reason: string;
+} {
+  const { space, requestingWorkspaceId, userOrgId, isOrgAdmin } = params;
+
+  // 1. Organization boundary guard
+  if (space.organizationId !== userOrgId && !isOrgAdmin) {
+    return {
+      allowed: false,
+      effectiveAccessLevel: null,
+      reason: 'Cross-organization access denied: Target knowledge space belongs to another organization.',
+    };
+  }
+
+  // 2. Owner Workspace has full administrative access
+  if (space.ownerWorkspaceId === requestingWorkspaceId || isOrgAdmin) {
+    return {
+      allowed: true,
+      effectiveAccessLevel: 'admin',
+      reason: 'User belongs to owner workspace or possesses organization administrative privileges.',
+    };
+  }
+
+  // 3. Evaluate Federation Policy
+  switch (space.federationPolicy) {
+    case 'isolated':
+      return {
+        allowed: false,
+        effectiveAccessLevel: null,
+        reason: 'This knowledge space is set to isolated mode and cannot be shared across workspaces.',
+      };
+
+    case 'organization_shared':
+      return {
+        allowed: true,
+        effectiveAccessLevel: space.accessLevel,
+        reason: 'This knowledge space is published to all sibling workspaces in the organization.',
+      };
+
+    case 'selective_peers':
+      if (space.subscriberWorkspaceIds.includes(requestingWorkspaceId)) {
+        return {
+          allowed: true,
+          effectiveAccessLevel: space.accessLevel,
+          reason: 'This workspace is explicitly authorized as a subscribed peer.',
+        };
+      }
+      return {
+        allowed: false,
+        effectiveAccessLevel: null,
+        reason: 'This workspace is not in the authorized subscriber list for this peer-shared space.',
+      };
+
+    default:
+      return {
+        allowed: false,
+        effectiveAccessLevel: null,
+        reason: 'Unknown federation policy.',
+      };
+  }
+}
+
+/**
+ * Pure conflict resolution algorithm for concurrent updates to federated notes.
+ */
+export function resolveFederationConflict(params: {
+  localNote: QuickNote;
+  remoteNote: QuickNote;
+  strategy: FederationConflictResolution;
+}): {
+  action: 'overwrite' | 'create_variant' | 'flag_for_inbox';
+  resolvedNote?: QuickNote;
+  inboxPayload?: Partial<KnowledgeInboxItem>;
+} {
+  const { localNote, remoteNote, strategy } = params;
+
+  switch (strategy) {
+    case 'last_write_wins': {
+      const localTime = new Date(localNote.updatedAt || localNote.createdAt).getTime();
+      const remoteTime = new Date(remoteNote.updatedAt || remoteNote.createdAt).getTime();
+      return {
+        action: 'overwrite',
+        resolvedNote: remoteTime >= localTime ? remoteNote : localNote,
+      };
+    }
+
+    case 'fork_as_variant': {
+      const variantNote: QuickNote = {
+        ...remoteNote,
+        id: `note_variant_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+        title: `${remoteNote.title} [Federated Variant]`,
+        workspaceId: localNote.workspaceId,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      return {
+        action: 'create_variant',
+        resolvedNote: variantNote,
+      };
+    }
+
+    case 'manual_inbox_review':
+    default: {
+      const localText = extractPlainTextFromTipTap(localNote.document);
+      const remoteText = extractPlainTextFromTipTap(remoteNote.document);
+      const inboxPayload: Partial<KnowledgeInboxItem> = {
+        workspaceId: localNote.workspaceId,
+        type: 'contradiction',
+        status: 'pending',
+        title: `Federation Conflict: "${localNote.title}"`,
+        summary: `Conflicting updates detected between local workspace copy and upstream federated space.`,
+        sourceNoteIds: [localNote.id, remoteNote.id],
+        contradictionDetails: {
+          thesisNoteId: localNote.id,
+          thesisQuote: localText.slice(0, 300),
+          antithesisNoteId: remoteNote.id,
+          antithesisQuote: remoteText.slice(0, 300),
+          conflictTopic: localNote.title,
+          suggestedResolution: 'Review local and upstream edits, then accept the upstream update or retain local branch.',
+        },
+        confidence: 0.95,
+      };
+      return {
+        action: 'flag_for_inbox',
+        inboxPayload,
+      };
+    }
+  }
+}
+
+/**
+ * Multi-criteria filter and sort for federated knowledge items.
+ */
+export function filterFederatedKnowledge(
+  items: FederatedKnowledgeItem[],
+  options: FederationFilterOptions
+): FederatedKnowledgeItem[] {
+  return items.filter((item) => {
+    if (options.searchQuery) {
+      const q = options.searchQuery.toLowerCase().trim();
+      const matches =
+        item.title.toLowerCase().includes(q) ||
+        item.snippet.toLowerCase().includes(q) ||
+        item.sourceSpaceName.toLowerCase().includes(q) ||
+        item.tags.some((t) => t.toLowerCase().includes(q));
+      if (!matches) return false;
+    }
+
+    if (options.sourceWorkspaceId && options.sourceWorkspaceId !== 'all') {
+      if (item.sourceWorkspaceId !== options.sourceWorkspaceId) return false;
+    }
+
+    if (options.spaceId && options.spaceId !== 'all') {
+      if (item.sourceSpaceId !== options.spaceId) return false;
+    }
+
+    if (options.accessLevel && options.accessLevel !== 'all') {
+      if (item.accessLevel !== options.accessLevel) return false;
+    }
+
+    if (options.tags && options.tags.length > 0) {
+      const hasTag = options.tags.some((t) => item.tags.includes(t));
+      if (!hasTag) return false;
+    }
+
+    return true;
+  }).sort((a, b) => {
+    const order = options.sortOrder === 'asc' ? 1 : -1;
+    if (options.sortBy === 'title') {
+      return a.title.localeCompare(b.title) * order;
+    }
+    // Default to updatedAt desc
+    return (new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()) * order;
+  });
+}
+
+/**
+ * Display metadata for Inbound Ingestion Sources.
+ */
+export function getKnowledgeIngestionSourceMeta(source: KnowledgeIngestionSource): {
+  label: string;
+  iconName: string;
+  badgeClass: string;
+} {
+  switch (source) {
+    case 'slack':
+      return { label: 'Slack Webhook', iconName: 'Hash', badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' };
+    case 'discord':
+      return { label: 'Discord Bot', iconName: 'MessageSquare', badgeClass: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30' };
+    case 'email_forwarder':
+      return { label: 'Email Forwarder', iconName: 'Mail', badgeClass: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30' };
+    case 'whatsapp_bot':
+      return { label: 'WhatsApp Capture', iconName: 'Phone', badgeClass: 'bg-green-500/10 text-green-700 dark:text-green-300 border-green-500/30' };
+    case 'chrome_extension':
+      return { label: 'Chrome Extension', iconName: 'Globe', badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30' };
+    case 'webhook_rest':
+      return { label: 'Custom REST API', iconName: 'Webhook', badgeClass: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30' };
+    case 'markdown_archive':
+      return { label: 'Markdown Archive', iconName: 'FileText', badgeClass: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300/40' };
+    case 'json_import':
+      return { label: 'JSON Backup', iconName: 'Code', badgeClass: 'bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 border-cyan-500/30' };
+    case 'csv_import':
+    default:
+      return { label: 'CSV Import', iconName: 'Table', badgeClass: 'bg-orange-500/10 text-orange-700 dark:text-orange-300 border-orange-500/30' };
+  }
+}
+
+/**
+ * Display metadata for Space Access Levels.
+ */
+export function getKnowledgeSpaceAccessLevelMeta(level: KnowledgeSpaceAccessLevel): {
+  label: string;
+  badgeClass: string;
+} {
+  switch (level) {
+    case 'admin':
+      return { label: 'Full Admin', badgeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30' };
+    case 'contributor':
+      return { label: 'Read & Write', badgeClass: 'bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 border-indigo-500/30' };
+    case 'viewer':
+    default:
+      return { label: 'Read Only', badgeClass: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300/40' };
+  }
+}
+
+/**
+ * Display metadata for Federation Policies.
+ */
+export function getFederationPolicyMeta(policy: KnowledgeFederationPolicy): {
+  label: string;
+  description: string;
+  badgeClass: string;
+} {
+  switch (policy) {
+    case 'organization_shared':
+      return {
+        label: 'Organization-Wide',
+        description: 'Published to all sibling campus workspaces in the organization.',
+        badgeClass: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30',
+      };
+    case 'selective_peers':
+      return {
+        label: 'Selective Peers',
+        description: 'Shared explicitly with designated subscriber workspaces.',
+        badgeClass: 'bg-purple-500/10 text-purple-700 dark:text-purple-300 border-purple-500/30',
+      };
+    case 'isolated':
+    default:
+      return {
+        label: 'Isolated',
+        description: 'Restricted strictly to the owning workspace.',
+        badgeClass: 'bg-slate-500/10 text-slate-700 dark:text-slate-300 border-slate-300/40',
+      };
+  }
+}
+
+// ============================================================================
+// Phase 10: Enterprise Offline Sync & Zero-Data-Loss PWA Domain Logic
+// ============================================================================
+
+/**
+ * Pure factory creating a validated OfflineMutationJob.
+ * Automatically injects monotonic client timestamps and defaults.
+ */
+export function createOfflineMutationJob(params: {
+  id?: string;
+  workspaceId: string;
+  entityId: string;
+  type: OfflineMutationType;
+  payload: Record<string, unknown>;
+  baseServerUpdatedAt?: string;
+  clientTimestamp?: string;
+}): OfflineMutationJob {
+  return {
+    id: params.id || `mut_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+    workspaceId: params.workspaceId,
+    entityId: params.entityId,
+    type: params.type,
+    payload: params.payload || {},
+    baseServerUpdatedAt: params.baseServerUpdatedAt,
+    clientTimestamp: params.clientTimestamp || new Date().toISOString(),
+    retryCount: 0,
+    status: 'pending',
+  };
+}
+
+/**
+ * Computes deterministic exponential backoff delay with jitter.
+ * Formula: min(maxDelayMs, baseDelayMs * (1.5 ^ retryCount))
+ */
+export function computeOfflineBackoffDelay(
+  retryCount: number,
+  baseDelayMs = 1000,
+  maxDelayMs = 30000
+): number {
+  if (retryCount <= 0) return 0;
+  const backoff = baseDelayMs * Math.pow(1.5, Math.min(retryCount, 10));
+  // Add deterministic pseudo-jitter based on retry count
+  const jitter = (retryCount % 3) * 100;
+  return Math.min(Math.round(backoff + jitter), maxDelayMs);
+}
+
+/**
+ * Extracts line-by-line differences between local and server TipTap documents.
+ * Produces structured human-readable change summaries.
+ */
+export function generateDocumentDiffSummary(
+  localDoc?: NoteDocument | null,
+  serverDoc?: NoteDocument | null
+): {
+  localChanges: string[];
+  serverChanges: string[];
+} {
+  const localText = extractPlainText(localDoc);
+  const serverText = extractPlainText(serverDoc);
+
+  const localLines = localText.split('\n').map((l) => l.trim()).filter(Boolean);
+  const serverLines = serverText.split('\n').map((l) => l.trim()).filter(Boolean);
+
+  const localSet = new Set(localLines);
+  const serverSet = new Set(serverLines);
+
+  const localAdditions = localLines.filter((l) => !serverSet.has(l));
+  const serverAdditions = serverLines.filter((l) => !localSet.has(l));
+
+  return {
+    localChanges: localAdditions.slice(0, 10),
+    serverChanges: serverAdditions.slice(0, 10),
+  };
+}
+
+/**
+ * Pure deterministic offline conflict detector and resolver.
+ *
+ * Compares client base snapshot timestamp against real-time server timestamp.
+ * If server was modified after client opened document, flags a conflict.
+ */
+export function resolveOfflineConflict(params: {
+  localJob: OfflineMutationJob;
+  serverSnapshot: QuickNote | null;
+  action?: OfflineConflictResolutionAction;
+}): {
+  isConflict: boolean;
+  resolvedPayload?: Record<string, unknown>;
+  conflictDetails?: OfflineConflictDetails;
+  inboxContradictionPayload?: Partial<KnowledgeInboxItem>;
+} {
+  const { localJob, serverSnapshot, action = 'keep_local' } = params;
+
+  if (!serverSnapshot) {
+    // Entity doesn't exist on server -> safe to create/update
+    return {
+      isConflict: false,
+      resolvedPayload: localJob.payload,
+    };
+  }
+
+  const serverMs = new Date(serverSnapshot.updatedAt || serverSnapshot.createdAt).getTime();
+  const baseMs = localJob.baseServerUpdatedAt
+    ? new Date(localJob.baseServerUpdatedAt).getTime()
+    : 0;
+
+  // Conflict if server was updated strictly after the base snapshot client had
+  const isServerNewer = baseMs > 0 && serverMs > baseMs;
+
+  if (!isServerNewer) {
+    return {
+      isConflict: false,
+      resolvedPayload: localJob.payload,
+    };
+  }
+
+  // Conflict detected
+  const localDoc = (localJob.payload.document as NoteDocument | undefined) || undefined;
+  const diffSummary = generateDocumentDiffSummary(localDoc, serverSnapshot.document);
+
+  const conflictDetails: OfflineConflictDetails = {
+    jobId: localJob.id,
+    entityId: localJob.entityId,
+    entityTitle: (localJob.payload.title as string) || serverSnapshot.title,
+    localJob,
+    serverSnapshot,
+    clientTimestamp: localJob.clientTimestamp,
+    serverUpdatedAt: serverSnapshot.updatedAt,
+    diffSummary,
+  };
+
+  switch (action) {
+    case 'keep_server': {
+      // Accept server state, discard local changes
+      return {
+        isConflict: true,
+        conflictDetails,
+        resolvedPayload: {
+          title: serverSnapshot.title,
+          document: serverSnapshot.document,
+          tags: serverSnapshot.tags,
+          categoryId: serverSnapshot.categoryId,
+        },
+      };
+    }
+
+    case 'smart_merge': {
+      // Non-destructive 3-way merge: combine documents with a horizontal separator
+      const mergedDoc = mergeKnowledgeObjects(
+        localDoc,
+        serverSnapshot.document,
+        'concatenate'
+      );
+      const mergedTags = dedupeTags([
+        ...(serverSnapshot.tags || []),
+        ...((localJob.payload.tags as string[]) || []),
+      ]);
+      return {
+        isConflict: true,
+        conflictDetails,
+        resolvedPayload: {
+          ...localJob.payload,
+          document: mergedDoc,
+          tags: mergedTags,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }
+
+    case 'send_to_inbox': {
+      // Escalate to Phase 7 Knowledge Inbox
+      const localText = extractPlainText(localDoc);
+      const serverText = extractPlainText(serverSnapshot.document);
+      const inboxPayload: Partial<KnowledgeInboxItem> = {
+        workspaceId: localJob.workspaceId,
+        type: 'contradiction',
+        status: 'pending',
+        title: `Offline Sync Conflict: ${serverSnapshot.title}`,
+        summary: `Concurrent offline modifications detected on note "${serverSnapshot.title}".`,
+        sourceKnowledgeId: serverSnapshot.id,
+        confidence: 0.95,
+        contradictionDetails: {
+          thesisClaim: `Local Client Edits: ${localText.slice(0, 200)}`,
+          antithesisClaim: `Server Cloud Version (by ${serverSnapshot.authorName}): ${serverText.slice(0, 200)}`,
+          conflictingField: 'document',
+          sourceQuotes: [localText.slice(0, 150), serverText.slice(0, 150)],
+        },
+        suggestedPatches: [
+          {
+            field: 'document',
+            currentValue: serverText.slice(0, 100),
+            suggestedValue: localText.slice(0, 100),
+            rationale: 'Review offline edits against cloud updates.',
+          },
+        ],
+      };
+      return {
+        isConflict: true,
+        conflictDetails,
+        inboxContradictionPayload: inboxPayload,
+      };
+    }
+
+    case 'keep_local':
+    default: {
+      return {
+        isConflict: true,
+        conflictDetails,
+        resolvedPayload: {
+          ...localJob.payload,
+          updatedAt: new Date().toISOString(),
+        },
+      };
+    }
+  }
+}
+
+/**
+ * Pure byte estimation helper for client-side offline storage.
+ * Averages: ~4KB per cached note, ~1KB per mutation, ~2KB per draft.
+ */
+export function calculateCacheStorageEstimate(
+  notesCount: number,
+  draftsCount = 0,
+  queueCount = 0
+): number {
+  const noteBytes = Math.max(0, notesCount) * 4096;
+  const draftBytes = Math.max(0, draftsCount) * 2048;
+  const queueBytes = Math.max(0, queueCount) * 1024;
+  return noteBytes + draftBytes + queueBytes;
+}
+
+/**
+ * Pure filtering for offline mutation queues.
+ */
+export function filterOfflineMutations(
+  jobs: OfflineMutationJob[],
+  options: {
+    status?: OfflineMutationStatus | 'all';
+    type?: OfflineMutationType | 'all';
+    searchQuery?: string;
+  }
+): OfflineMutationJob[] {
+  const { status, type, searchQuery } = options;
+  return jobs.filter((job) => {
+    if (status && status !== 'all' && job.status !== status) return false;
+    if (type && type !== 'all' && job.type !== type) return false;
+    if (searchQuery && searchQuery.trim().length > 0) {
+      const q = searchQuery.toLowerCase().trim();
+      const matchId = job.id.toLowerCase().includes(q);
+      const matchEntity = job.entityId.toLowerCase().includes(q);
+      const matchType = job.type.toLowerCase().includes(q);
+      if (!matchId && !matchEntity && !matchType) return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * Display metadata and styling for Offline Sync Status.
+ */
+export function getOfflineSyncStatusMeta(status: OfflineSyncStatus): {
+  label: string;
+  description: string;
+  badgeClass: string;
+  dotClass: string;
+} {
+  switch (status) {
+    case 'online_synced':
+      return {
+        label: 'Online & Synced',
+        description: 'All local changes are synced to Cloud Firestore.',
+        badgeClass: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30',
+        dotClass: 'bg-emerald-500',
+      };
+    case 'syncing':
+      return {
+        label: 'Syncing Changes...',
+        description: 'Draining offline queue to server.',
+        badgeClass: 'bg-blue-500/10 text-blue-700 dark:text-blue-300 border-blue-500/30',
+        dotClass: 'bg-blue-500 animate-pulse',
+      };
+    case 'offline':
+      return {
+        label: 'Working Offline',
+        description: 'Changes are saved securely in browser IndexedDB.',
+        badgeClass: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30',
+        dotClass: 'bg-amber-500',
+      };
+    case 'conflict_detected':
+      return {
+        label: 'Conflict Detected',
+        description: 'Concurrent cloud update clashed with offline edit.',
+        badgeClass: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30',
+        dotClass: 'bg-rose-500 animate-ping',
+      };
+    case 'error':
+    default:
+      return {
+        label: 'Sync Error',
+        description: 'Failed to synchronize with server.',
+        badgeClass: 'bg-red-500/10 text-red-700 dark:text-red-300 border-red-500/30',
+        dotClass: 'bg-red-500',
+      };
+  }
+}
+
 
 
 

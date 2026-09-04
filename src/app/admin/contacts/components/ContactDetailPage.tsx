@@ -8,11 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
   Building, Users, User, Mail, Phone, MapPin, Calendar, 
-  Banknote, Briefcase, Baby, UserPlus, PenSquare, MessageSquarePlus 
+  Banknote, Briefcase, Baby, UserPlus, PenSquare, MessageSquarePlus, Brain 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import NotesSection from '@/app/admin/components/NotesSection';
 import ActivityTimeline from '@/app/admin/components/ActivityTimeline';
+import KnowledgeTimeline from '@/app/admin/quick-notes/components/timeline/KnowledgeTimeline';
+import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface ContactDetailPageProps {
   entity: Entity;
@@ -84,28 +86,51 @@ export function ContactDetailPage({
       )}
 
       {/* Common sections */}
- <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Notes Section */}
-        <Card>
+      <div className="space-y-6">
+        {/* CRM Knowledge Timeline */}
+        <Card className="rounded-2xl border-border/60">
           <CardHeader>
-            <CardTitle>Notes</CardTitle>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Brain className="h-4 w-4 text-primary" />
+              Contact Knowledge & Interaction Timeline
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Chronological intelligence stream of notes, customer statements, buying signals, and calls for this contact.
+            </CardDescription>
           </CardHeader>
           <CardContent>
-            <NotesSection entityId={entity.id} />
-          </CardContent>
-        </Card>
-
-        {/* Activity Timeline */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Activity Timeline</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ActivityTimeline 
-              entityId={entity.id} 
+            <KnowledgeTimeline
+              workspaceId={workspaceEntity.workspaceId}
+              by="contact"
+              recordId={entity.id}
+              recordName={entity.name}
             />
           </CardContent>
         </Card>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Legacy Notes Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Internal Quick Log</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <NotesSection entityId={entity.id} />
+            </CardContent>
+          </Card>
+
+          {/* Activity Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle>System Activity</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ActivityTimeline 
+                entityId={entity.id} 
+              />
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </div>
   );

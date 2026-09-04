@@ -32,10 +32,14 @@ interface FloatingNotesContextType {
    * saved quick note carries the entity name for display in the board.
    */
   openForEntity: (entityId: string, entityName: string) => void;
+  /** Open the HUD preloaded with text and optional context */
+  openWithDraft: (text: string, options?: { title?: string; entityId?: string; entityName?: string }) => void;
   close: () => void;
   minimize: () => void;
   restore: () => void;
   setDraftText: (text: string) => void;
+  clearDraft: () => void;
+  setEntityContext: (entityId: string | null, entityName: string | null) => void;
 }
 
 const FloatingNotesContext = React.createContext<FloatingNotesContextType | undefined>(undefined);
@@ -117,6 +121,29 @@ export function FloatingNotesProvider({ children }: { children: React.ReactNode 
     setIsMinimized(false);
   }, []);
 
+  const openWithDraft = React.useCallback(
+    (text: string, options?: { title?: string; entityId?: string; entityName?: string }) => {
+      setDraftText(text);
+      if (options?.entityId) setActiveEntityId(options.entityId);
+      if (options?.entityName) setActiveEntityName(options.entityName);
+      setIsOpen(true);
+      setIsMinimized(false);
+    },
+    [setDraftText]
+  );
+
+  const clearDraft = React.useCallback(() => {
+    setDraftText('');
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(storageKey);
+    }
+  }, [setDraftText, storageKey]);
+
+  const setEntityContext = React.useCallback((entityId: string | null, entityName: string | null) => {
+    setActiveEntityId(entityId);
+    setActiveEntityName(entityName);
+  }, []);
+
   const close = React.useCallback(() => {
     setIsOpen(false);
     setIsMinimized(false);
@@ -140,10 +167,13 @@ export function FloatingNotesProvider({ children }: { children: React.ReactNode 
         activeEntityName,
         open,
         openForEntity,
+        openWithDraft,
         close,
         minimize,
         restore,
         setDraftText,
+        clearDraft,
+        setEntityContext,
       }}
     >
       {children}

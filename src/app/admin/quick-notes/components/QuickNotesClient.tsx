@@ -60,6 +60,11 @@ import { KnowledgeListView } from './KnowledgeListView';
 import { KnowledgeTableView } from './KnowledgeTableView';
 import { KnowledgeGraphView } from './graph/KnowledgeGraphView';
 import { IdeaStudioView } from './ideas/IdeaStudioView';
+import { OrganizationMemoryView } from '@/components/memory/OrganizationMemoryView';
+import { OfflineSyncProvider } from '@/context/OfflineSyncContext';
+import { NetworkStatusPill } from './offline/NetworkStatusPill';
+import { OfflineSyncDrawer } from './offline/OfflineSyncDrawer';
+import { OfflineStorageService } from '@/lib/offline/offline-storage-service';
 import type { KnowledgeViewMode } from './quick-notes-ui';
 import type { UnifiedNoteSource } from '@/lib/quick-notes-types';
 
@@ -88,6 +93,14 @@ export default function QuickNotesClient() {
 
   const [editorOpen, setEditorOpen] = React.useState(false);
   const [editingNote, setEditingNote] = React.useState<QuickNote | null>(null);
+  const [syncDrawerOpen, setSyncDrawerOpen] = React.useState(false);
+
+  // Pre-cache notes into IndexedDB for offline mirror whenever server notes update
+  React.useEffect(() => {
+    if (activeWorkspaceId && notes && notes.length > 0) {
+      OfflineStorageService.putCachedNotes(activeWorkspaceId, notes).catch(() => {});
+    }
+  }, [activeWorkspaceId, notes]);
 
   // Lazily-fetched read-only legacy notes (entity / task / call). Only loaded
   // when the unified "All sources" view is active.
@@ -269,7 +282,8 @@ export default function QuickNotesClient() {
   );
 
   return (
-    <PageContainerFluid>
+    <OfflineSyncProvider workspaceId={activeWorkspaceId || ''}>
+      <PageContainerFluid>
       {/* Header */}
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
@@ -308,6 +322,18 @@ export default function QuickNotesClient() {
               <span>Campaigns</span>
             </Button>
           </Link>
+          <Link href="/admin/quick-notes/federation">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-indigo-600 border-indigo-300 dark:border-indigo-800 dark:text-indigo-400">
+              <Network className="h-4 w-4" />
+              <span>Federation</span>
+            </Button>
+          </Link>
+          <Link href="/admin/quick-notes/search">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-blue-600 border-blue-200 dark:border-blue-900/50 dark:text-blue-400">
+              <Search className="h-4 w-4" />
+              <span className="hidden sm:inline">Semantic Search</span>
+            </Button>
+          </Link>
           <Link href="/admin/quick-notes/ask">
             <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-violet-600 border-violet-300 dark:border-violet-800 dark:text-violet-400">
               <Sparkles className="h-4 w-4" />
@@ -326,6 +352,7 @@ export default function QuickNotesClient() {
               <span className="hidden sm:inline">Settings</span>
             </Button>
           </Link>
+          <NetworkStatusPill onOpenDrawer={() => setSyncDrawerOpen(true)} />
           <AskNotesDialog
             workspaceId={activeWorkspaceId}
             userId={user?.uid}
@@ -439,11 +466,30 @@ export default function QuickNotesClient() {
                 <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
                 <span className="hidden sm:inline">Idea Studio</span>
               </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('memories')}
+                className={cn(
+                  'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
+                  viewMode === 'memories' && 'bg-background shadow-sm text-foreground'
+                )}
+                aria-label="Organization Memory"
+              >
+                <Brain className="h-3.5 w-3.5 text-indigo-500" />
+                <span className="hidden sm:inline">Memories</span>
+              </Button>
             </div>
           </div>
 
           {/* Body content based on active view mode */}
-          {viewMode === 'ideas' ? (
+          {viewMode === 'memories' ? (
+            <OrganizationMemoryView
+              workspaceId={activeWorkspaceId || ''}
+              userId={user?.uid || 'user'}
+              organizationId={activeOrganizationId}
+            />
+          ) : viewMode === 'ideas' ? (
             <IdeaStudioView
               workspaceId={activeWorkspaceId || ''}
               userId={user?.uid || 'user'}
@@ -539,7 +585,17 @@ export default function QuickNotesClient() {
           initialType={selectedType !== 'all' ? selectedType : 'note'}
         />
       )}
-    </PageContainerFluid>
+
+      {/* Offline Sync Drawer */}
+      {activeWorkspaceId && (
+        <OfflineSyncDrawer
+          isOpen={syncDrawerOpen}
+          onClose={() => setSyncDrawerOpen(false)}
+          workspaceId={activeWorkspaceId}
+        />
+      )}
+      </PageContainerFluid>
+    </OfflineSyncProvider>
   );
 }
 

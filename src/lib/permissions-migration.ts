@@ -179,12 +179,12 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
   forms: { section: 'studios', feature: 'forms' },
   qr_studio: { section: 'studios', feature: 'qrStudio' },
   verify_studio: { section: 'studios', feature: 'verifyStudio' },
+  social_intelligence: { section: 'studios', feature: 'socialIntelligence' },
   agreements: { section: 'finance', feature: 'agreements' },
   invoices: { section: 'finance', feature: 'invoices' },
   packages: { section: 'finance', feature: 'packages' },
   billing_periods: { section: 'finance', feature: 'cycles' },
   billing_setup: { section: 'finance', feature: 'billingSetup' },
-  social_intelligence: { section: 'studios', feature: 'socialIntelligence' },
 };
 
 /**

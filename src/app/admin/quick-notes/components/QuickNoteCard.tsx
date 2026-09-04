@@ -1,12 +1,14 @@
 'use client';
 
 import * as React from 'react';
-import { Pin, PinOff, Pencil, Trash2, Link2, CheckSquare, Paperclip } from 'lucide-react';
+import Link from 'next/link';
+import { Pin, PinOff, Pencil, Trash2, Link2, CheckSquare, Paperclip, Network, Lightbulb, Clock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { QuickNote, QuickNoteCategory } from '@/lib/quick-notes-types';
 import { categorySwatch, formatNoteDate } from './quick-notes-ui';
+import { KNOWLEDGE_TYPE_META, normalizeKnowledgeType } from '@/lib/quick-notes-domain';
 
 export interface QuickNoteCardProps {
   note: QuickNote;
@@ -21,6 +23,7 @@ function QuickNoteCardImpl({ note, category, onEdit, onTogglePin, onDelete }: Qu
   const preview = (note.plainText || '').trim();
   const hasLinks = !!(note.links?.entityId || note.links?.taskId || note.links?.dealId);
   const attachmentCount = note.attachments?.length ?? 0;
+  const typeMeta = KNOWLEDGE_TYPE_META[normalizeKnowledgeType(note.knowledgeType)];
 
   return (
     <article
@@ -39,6 +42,28 @@ function QuickNoteCardImpl({ note, category, onEdit, onTogglePin, onDelete }: Qu
           className="pointer-events-none absolute right-0 top-0 h-0 w-0 border-l-[18px] border-t-[18px] border-l-transparent border-t-primary/40 rounded-tr-xl"
         />
       )}
+
+      {/* Semantic Knowledge Type Tag */}
+      <div className="flex items-center gap-1.5 mb-2">
+        <span
+          className={cn(
+            'inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-semibold border',
+            typeMeta.badgeColor
+          )}
+        >
+          <span className={cn('h-1.5 w-1.5 rounded-full', typeMeta.dotColor)} />
+          {typeMeta.label}
+        </span>
+        {(note.id.startsWith('off_') || note.status === 'draft') && (
+          <Badge
+            variant="outline"
+            className="h-4 px-1.5 text-[9px] text-amber-700 dark:text-amber-300 border-amber-500/40 bg-amber-500/10 flex items-center gap-1"
+          >
+            <Clock className="w-2.5 h-2.5" />
+            <span>Pending Sync</span>
+          </Badge>
+        )}
+      </div>
 
       <button
         type="button"
@@ -89,23 +114,47 @@ function QuickNoteCardImpl({ note, category, onEdit, onTogglePin, onDelete }: Qu
           )}
         </div>
 
-        <div className="flex items-center gap-0.5 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 focus-within:opacity-100">
+        <div className="flex items-center gap-1 md:gap-0.5 md:opacity-0 md:transition-opacity md:group-hover:opacity-100 focus-within:opacity-100">
+          {note.knowledgeType === 'idea' && (
+            <Link
+              href={`/admin/quick-notes/ideas`}
+              className="inline-flex items-center justify-center h-8 w-8 md:h-7 md:w-7 min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px] rounded-md text-amber-600 dark:text-amber-400 hover:bg-amber-500/10 transition-colors"
+              title="Open in Idea Studio"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Lightbulb className="h-3.5 w-3.5" />
+            </Link>
+          )}
+          <Link
+            href={`/admin/quick-notes/graph?focus=${encodeURIComponent(note.id)}`}
+            className="inline-flex items-center justify-center h-8 w-8 md:h-7 md:w-7 min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px] rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
+            title="Explore in Knowledge Graph"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <Network className="h-3.5 w-3.5 text-blue-500" />
+          </Link>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7"
+            className="h-8 w-8 md:h-7 md:w-7 min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px]"
             title={note.isPinned ? 'Unpin' : 'Pin'}
             onClick={() => onTogglePin(note)}
           >
             {note.isPinned ? <PinOff className="h-3.5 w-3.5" /> : <Pin className="h-3.5 w-3.5" />}
           </Button>
-          <Button variant="ghost" size="icon" className="h-7 w-7" title="Edit" onClick={() => onEdit(note)}>
+          <Button 
+            variant="ghost" 
+            size="icon" 
+            className="h-8 w-8 md:h-7 md:w-7 min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px]" 
+            title="Edit" 
+            onClick={() => onEdit(note)}
+          >
             <Pencil className="h-3.5 w-3.5" />
           </Button>
           <Button
             variant="ghost"
             size="icon"
-            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+            className="h-8 w-8 md:h-7 md:w-7 min-h-[36px] min-w-[36px] md:min-h-[28px] md:min-w-[28px] text-muted-foreground hover:text-destructive"
             title="Delete"
             onClick={() => onDelete(note)}
           >

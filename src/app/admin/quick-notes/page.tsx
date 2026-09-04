@@ -4,8 +4,8 @@ import QuickNotesClient from './components/QuickNotesClient';
 import Loading from './loading';
 
 export const metadata: Metadata = {
-  title: 'Quick Notes',
-  description: 'A consolidated, AI-assisted workspace for all your notes — rich text, categories, linking, and search.',
+  title: 'Company Brain',
+  description: 'Organizational knowledge, ideas, decisions, feedback, and AI intelligence.',
 };
 
 export default function QuickNotesPage() {

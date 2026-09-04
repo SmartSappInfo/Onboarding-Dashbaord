@@ -5,8 +5,10 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallModal } from '@/context/CallModalContext';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
-import { doc, collection, query, where, orderBy, updateDoc, getDoc, writeBatch } from 'firebase/firestore';
-import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence } from '@/lib/types';
+import { doc, collection, query, where, orderBy, updateDoc, getDoc, getDocs, limit, writeBatch } from 'firebase/firestore';
+import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence, EntityContact, Deal, EntityNote } from '@/lib/types';
+import { generateEntityDossierSummaryAction } from '@/app/actions/entity-dossier-actions';
+import { generateEntityDossierPdf } from '@/lib/services/entity-dossier-pdf-service';
 import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { TagBadges } from '@/components/tags/TagBadges';
@@ -70,6 +72,8 @@ import {
     Handshake,
     ListTodo,
     FileQuestion,
+    FileCode,
+    FileText,
     Check,
     ChevronDown,
 } from 'lucide-react';
@@ -89,7 +93,7 @@ import EntityBillingTab from '../components/EntityBillingTab';
 import EntityDealsTab from '../components/EntityDealsTab';
 import EntityMeetingsTab from '../components/EntityMeetingsTab';
 import EntityLeadIntelTab from '../components/EntityLeadIntelTab';
-import { MediaSelect } from '../components/media-select';
+import { ImageUploader } from '@/components/shared/image-uploader';
 import {
   Dialog,
   DialogContent,
@@ -101,12 +105,11 @@ import {
 
 import ConvertLeadModal from '../components/ConvertLeadModal';
 import ManageWorkspacesModal from '../components/ManageWorkspacesModal';
-import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
-import { getIndustryErrorMessage, getIndustrySuccessMessage } from '@/lib/industry-monitoring';
+import { getIndustryErrorMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
 import EntityNotesTab from '../components/EntityNotesTab';
 import LinkedQuickNotesPanel from '@/app/admin/quick-notes/components/LinkedQuickNotesPanel';
@@ -115,6 +118,7 @@ import EntityContactDirectory from '../components/EntityContactDirectory';
 import EntityCustomFieldGroups from './components/EntityCustomFieldGroups';
 import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import EntitySurveysTab from '../components/EntitySurveysTab';
+import EntityGraphTab from '../components/EntityGraphTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
 import { createTaskAction } from '@/lib/task-server-actions';
@@ -149,8 +153,7 @@ export default function EntityDetailPage() {
     const entityId = params.id as string;
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
-    const { activeWorkspaceId } = useWorkspace();
-    const { accessibleWorkspaces } = useTenant();
+    const { activeWorkspaceId, activeOrganization, activeOrganizationId, accessibleWorkspaces } = useTenant();
     const { industry } = useIndustry();
     const { canViewEntity } = useWorkspaceVisibility();
 
@@ -161,6 +164,7 @@ export default function EntityDetailPage() {
     );
     const { singular } = useTerminology();
     
+    const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
     const [isLogModalOpen, setIsLogModalOpen] = React.useState(false);
     const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
     const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
@@ -375,18 +379,17 @@ export default function EntityDetailPage() {
                 updatedAt: new Date().toISOString()
             });
             
-            const successMessage = getIndustrySuccessMessage('update', industry, displayName);
-            toast({ title: 'Branding Synchronized', description: successMessage });
+            toast({ title: 'Image Updated', description: `${singular} brand image has been updated.` });
             setIsLogoDialogOpen(false);
-        } catch (e: any) {
-            const errorMessage = getIndustryErrorMessage('entity_update_failed', industry, { entityName: displayName, details: e.message });
+        } catch (e: unknown) {
+            const errorMessage = e instanceof Error ? e.message : 'Failed to update image.';
             toast({ variant: 'destructive', title: 'Update Failed', description: errorMessage });
         } finally {
             setIsUpdatingLogo(false);
         }
     };
 
-    const handleExportNTT = () => {
+    const handleExportJSON = () => {
         if (!entityData) return;
         
         try {
@@ -397,17 +400,121 @@ export default function EntityDetailPage() {
             const url = URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
-            const formattedName = (displayName || 'entity').replace(/\s+/g, '_');
-            link.setAttribute('download', `${formattedName}_export_${new Date().toISOString().slice(0, 10)}.ntt`);
+            const formattedName = (displayName || 'entity').replace(/[^a-zA-Z0-9_-]/g, '_');
+            link.setAttribute('download', `${formattedName}_data_${new Date().toISOString().slice(0, 10)}.json`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(url);
             
-            toast({ title: 'Export Complete', description: `${displayName} has been exported to .ntt format.` });
+            toast({ title: 'Export Complete', description: `${displayName} has been exported to JSON format.` });
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : 'Unknown error';
             toast({ variant: 'destructive', title: 'Export Failed', description: message });
+        }
+    };
+
+    const handleExportPDF = async () => {
+        if (!entityData || !firestore || isGeneratingPdf) return;
+        
+        setIsGeneratingPdf(true);
+        toast({ 
+            title: 'Generating Executive Dossier', 
+            description: 'Synthesizing AI intelligence & compiling PDF report...' 
+        });
+
+        try {
+            // 1. Fetch recent notes
+            let notesList: EntityNote[] = [];
+            try {
+                const notesSnap = await getDocs(
+                    query(
+                        collection(firestore, 'entity_notes'),
+                        where('entityId', '==', entityId),
+                        ...(activeWorkspaceId ? [where('workspaceId', '==', activeWorkspaceId)] : []),
+                        orderBy('createdAt', 'desc'),
+                        limit(25)
+                    )
+                );
+                notesList = notesSnap.docs.map(d => ({ id: d.id, ...d.data() } as EntityNote));
+            } catch (err) {
+                console.warn('Could not fetch notes for PDF export:', err);
+            }
+
+            // 2. Fetch deals
+            let dealsList: Deal[] = [];
+            try {
+                const dealsSnap = await getDocs(
+                    query(
+                        collection(firestore, 'deals'),
+                        where('entityId', '==', entityId),
+                        ...(activeWorkspaceId ? [where('workspaceId', '==', activeWorkspaceId)] : []),
+                        orderBy('createdAt', 'desc'),
+                        limit(20)
+                    )
+                );
+                dealsList = dealsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Deal));
+            } catch (err) {
+                console.warn('Could not fetch deals for PDF export:', err);
+            }
+
+            // 3. Resolve contacts via Single Source of Truth helper
+            const contactsList: EntityContact[] = resolveEntityContacts(entityData);
+
+            // 4. Generate AI summary
+            const stageName = (weData as unknown as Record<string, unknown>).currentStageName as string | undefined || weData.track;
+            const dossierSummaryRes = await generateEntityDossierSummaryAction({
+                entityName: displayName,
+                entityType: entityData.entityType,
+                stageName,
+                leadScore: weData?.leadScore,
+                notes: notesList.map(n => ({
+                    content: n.content,
+                    noteType: n.noteType,
+                    createdByName: n.createdByName,
+                    createdAt: n.createdAt,
+                })),
+                deals: dealsList.map(d => ({
+                    name: d.name,
+                    stageName: d.stageName,
+                    amount: d.value,
+                })),
+                tasks: (tasks || []).map(t => ({
+                    title: t.title,
+                    status: t.status,
+                    priority: t.priority,
+                    dueDate: t.dueDate,
+                })),
+                workspaceId: activeWorkspaceId || undefined,
+                organizationId: activeOrganizationId || undefined,
+            });
+
+            // 5. Generate and download PDF
+            await generateEntityDossierPdf({
+                entity: entityData,
+                workspaceEntity: weData,
+                summary: dossierSummaryRes.summary,
+                contacts: contactsList,
+                tasks: tasks || [],
+                deals: dealsList,
+                organization: activeOrganization ? {
+                    name: activeOrganization.name,
+                    logoUrl: activeOrganization.logoUrl,
+                } : null,
+                generatedByName: currentUser?.displayName || currentUser?.email || 'CRM Member',
+                terminologySingular: singular,
+            });
+
+            toast({ 
+                title: 'Executive Dossier Exported', 
+                description: `PDF briefing report for ${displayName} has been downloaded.` 
+            });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Failed to generate PDF';
+            console.error('PDF Export Error:', e);
+            toast({ variant: 'destructive', title: 'Export Failed', description: message });
+        } finally {
+            setIsGeneratingPdf(false);
         }
     };
 
@@ -603,20 +710,47 @@ export default function EntityDetailPage() {
                                 </DropdownMenuContent>
                             </DropdownMenu>
 
-                            {/* Icon-only: Export NTT */}
-                            <Tooltip>
-                                <TooltipTrigger asChild>
+                            {/* Export Dropdown Menu */}
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
                                     <Button 
                                         variant="outline" 
-                                        className="h-10 w-10 p-0 rounded-xl bg-card hover:bg-muted/40 border-border shadow-2xs active:scale-[0.97]" 
-                                        onClick={handleExportNTT}
-                                        aria-label="Export (.ntt)"
+                                        disabled={isGeneratingPdf}
+                                        className="rounded-xl font-semibold h-10 px-3.5 text-xs md:text-sm bg-card hover:bg-muted/40 border-border shadow-2xs gap-1.5 active:scale-[0.97]"
                                     >
-                                        <Download className="h-4 w-4 text-foreground" />
+                                        {isGeneratingPdf ? (
+                                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                        ) : (
+                                            <Download className="h-4 w-4 text-foreground" />
+                                        )}
+                                        <span>Export</span>
+                                        <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
                                     </Button>
-                                </TooltipTrigger>
-                                <TooltipContent side="bottom" className="text-xs">Export (.ntt)</TooltipContent>
-                            </Tooltip>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="rounded-xl border-border shadow-lg min-w-[220px] p-1.5">
+                                    <DropdownMenuItem 
+                                        onClick={handleExportJSON}
+                                        className="gap-3 text-xs font-medium cursor-pointer rounded-lg py-2"
+                                    >
+                                        <FileCode className="h-4 w-4 text-emerald-500 shrink-0" />
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-semibold text-foreground">Export JSON (.json)</span>
+                                            <span className="text-[10px] text-muted-foreground">Raw data & metadata backup</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem 
+                                        onClick={handleExportPDF}
+                                        disabled={isGeneratingPdf}
+                                        className="gap-3 text-xs font-medium cursor-pointer rounded-lg py-2"
+                                    >
+                                        <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
+                                        <div className="flex flex-col text-left">
+                                            <span className="font-semibold text-foreground">Executive Dossier (.pdf)</span>
+                                            <span className="text-[10px] text-muted-foreground">Full report & AI strategic briefing</span>
+                                        </div>
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
 
                             {/* Primary Action: Edit */}
                             <Button 
@@ -657,6 +791,10 @@ export default function EntityDetailPage() {
 
                         <TabsTrigger value="automations" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
                             <Zap className="h-3 w-3" /> Automations
+                        </TabsTrigger>
+
+                        <TabsTrigger value="graph" className="text-muted-foreground rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:text-primary data-[state=active]:bg-transparent h-12 px-5 text-xs font-bold uppercase tracking-wider gap-2 shrink-0">
+                            <Network className="h-3 w-3" /> Relationships
                         </TabsTrigger>
                     </TabsList>
 
@@ -824,6 +962,16 @@ export default function EntityDetailPage() {
                         <EntityAutomationsTab entityId={entityId} />
                     </TabsContent>
 
+                    <TabsContent value="graph" className="m-0 p-6 animate-in fade-in slide-in-from-bottom-2 duration-500 text-left">
+                        {activeWorkspaceId && entityData && (
+                            <EntityGraphTab
+                                workspaceId={activeWorkspaceId}
+                                entityId={entityId}
+                                entityName={entityData.name || 'Account'}
+                            />
+                        )}
+                    </TabsContent>
+
                 </Tabs>
               </Card>
              </div>
@@ -909,34 +1057,47 @@ export default function EntityDetailPage() {
          </div>
             </div>
 
-            <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
- <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border shadow-2xl bg-card">
- <DialogHeader className="p-8 bg-card/20 border-b shrink-0 text-left">
- <div className="flex items-center gap-4 text-left">
- <div className="p-3 bg-primary text-white rounded-2xl shadow-xl">
- <Camera className="h-6 w-6" />
+                 <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
+                <DialogContent className="sm:max-w-md rounded-2xl overflow-hidden p-0 border border-border shadow-2xl bg-card">
+                    <DialogHeader className="p-6 bg-muted/20 border-b border-border shrink-0 text-left">
+                        <div className="flex items-center gap-3 text-left">
+                            <div className="p-2.5 bg-primary/10 text-primary rounded-xl">
+                                <Camera className="h-5 w-5" />
                             </div>
- <div className="text-left">
- <DialogTitle className="text-xl font-semibold tracking-tight">Identity Branding</DialogTitle>
- <DialogDescription className="text-xs font-bold text-muted-foreground">Select or upload a new primary photo.</DialogDescription>
+                            <div className="text-left">
+                                <DialogTitle className="text-lg font-bold tracking-tight text-foreground">
+                                    {singular} Brand Image
+                                </DialogTitle>
+                                <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                                    Upload or choose a brand image for this {singular.toLowerCase()}.
+                                </DialogDescription>
                             </div>
                         </div>
                     </DialogHeader>
- <div className="p-8 text-left">
-                        <MediaSelect 
-                            value={logoUrl} 
-                            onValueChange={handleLogoUpdate} 
- className="rounded-2xl" 
+                    <div className="p-6 text-left space-y-4">
+                        <ImageUploader 
+                            value={logoUrl || ''} 
+                            onChange={handleLogoUpdate} 
+                            workspaceId={activeWorkspaceId || undefined}
+                            category="Logos"
+                            aspectRatio="square"
                         />
                         {isUpdatingLogo && (
- <div className="mt-4 flex items-center justify-center gap-2 text-primary font-semibold text-[10px] animate-pulse">
- <Loader2 className="h-3 w-3 animate-spin" />
-                                Synchronizing Branding...
+                            <div className="flex items-center justify-center gap-2 text-primary font-medium text-xs animate-pulse">
+                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                Saving brand image...
                             </div>
                         )}
                     </div>
- <DialogFooter className="p-4 bg-card/50 border-t flex justify-end">
- <Button variant="ghost" onClick={() => setIsLogoDialogOpen(false)} className="rounded-xl font-bold h-11 px-8">Discard</Button>
+                    <DialogFooter className="p-4 bg-muted/20 border-t border-border flex justify-end">
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setIsLogoDialogOpen(false)} 
+                            className="rounded-xl h-9 px-4 text-xs font-semibold"
+                        >
+                            Close
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
