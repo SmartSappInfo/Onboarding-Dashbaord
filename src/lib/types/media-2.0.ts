@@ -6,6 +6,8 @@
  *    - `MediaVersion`: Versioning model preserving full asset upload history.
  *    - `MediaCollection`: Flexible grouping model supporting Folders, Campaigns, Topics, and Smart Collections.
  *    - `MediaPackage`: Grouping related assets into a cohesive experience (e.g., Sales Kits).
+ *    - `MediaExperience`: Presentation layer decoupling content from branding, themes, and controls.
+ *    - `MediaLink`: First-class distribution object (dynamic short links, expiration, tracking policies).
  *    - `MediaProcessingJob`: Ingestion, thumbnail generation, OCR, and STT job tracking.
  *    - `MediaGovernanceConfig`: Backoffice governance rules for storage quotas and retention policies.
  * 2. Strict Typing Standard:
@@ -17,6 +19,8 @@ import type { MediaAsset } from '../types';
 export type MediaLifecycleState = 'draft' | 'active' | 'archived' | 'deprecated';
 
 export type CollectionType = 'folder' | 'campaign' | 'topic' | 'smart';
+
+export type ExperienceTemplate = 'minimal' | 'showcase' | 'conversion' | 'package';
 
 export type ProcessingJobType = 'thumbnail' | 'transcode' | 'ocr' | 'stt' | 'compression';
 
@@ -82,6 +86,72 @@ export interface MediaPackage {
   updatedAt: string;
 }
 
+export interface ExperienceTheme {
+  primaryColorHex: string;
+  backgroundColorHex: string;
+  textColorHex: string;
+  logoUrl?: string;
+  fontFamily?: string;
+  customCss?: string;
+}
+
+export interface PlayerControlsConfig {
+  autoplay: boolean;
+  showPlaybackSpeed: boolean;
+  showQualitySelector: boolean;
+  allowDownload: boolean;
+  loop: boolean;
+  showCaptions: boolean;
+}
+
+export interface MediaExperience {
+  id: string;
+  workspaceId: string;
+  assetId: string;
+  title: string;
+  description?: string;
+  template: ExperienceTemplate;
+  theme: ExperienceTheme;
+  playerControls: PlayerControlsConfig;
+  ctaGateId?: string;
+  customHeaderTitle?: string;
+  customHeaderSubtitle?: string;
+  socialSharingTitle?: string;
+  socialSharingDescription?: string;
+  socialSharingImageUrl?: string;
+  isDefault?: boolean;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MediaLink {
+  id: string;
+  workspaceId: string;
+  assetId: string;
+  experienceId?: string;
+  packageId?: string;
+  shortSlug: string;
+  contactId?: string;
+  dealId?: string;
+  campaignId?: string;
+  expiresAt?: string;
+  passwordHash?: string;
+  clickCount: number;
+  lastClickedAt?: string;
+  createdById: string;
+  createdAt: string;
+}
+
+export interface EmbedConfig {
+  experienceId: string;
+  width: string;
+  height: string;
+  allowFullscreen: boolean;
+  responsiveRatio: '16:9' | '4:3' | '1:1' | 'auto';
+  themeColor?: string;
+}
+
 export interface MediaProcessingJob {
   id: string;
   workspaceId: string;
@@ -103,6 +173,8 @@ export interface MediaGovernanceConfig {
   autoArchivingDays: number;
   requireApprovalForPublishing: boolean;
   defaultCollectionTemplates: string[];
+  allowedEmbedDomains: string[];
+  defaultExperienceTemplate: ExperienceTemplate;
 }
 
 export interface MediaAsset2 extends MediaAsset {
@@ -111,6 +183,7 @@ export interface MediaAsset2 extends MediaAsset {
   collectionIds?: string[];
   packageIds?: string[];
   lifecycleState?: MediaLifecycleState;
+  defaultExperienceId?: string;
   technicalMetadata?: {
     codec?: string;
     bitrateKbps?: number;

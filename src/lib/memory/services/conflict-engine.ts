@@ -140,6 +140,149 @@ export class ConflictEngine {
   }
 
   /**
+   * Generates candidate pairs of memories for conflict inspection based on entity or topic overlap.
+   */
+  public static findCandidatePairs(
+    memories: MemoryObject[],
+    maxPairs: number = 50
+  ): { memoryA: MemoryObject; memoryB: MemoryObject }[] {
+    const activeMemories = memories.filter((m) => m.lifecycle.status !== 'archived');
+    const pairs: { memoryA: MemoryObject; memoryB: MemoryObject }[] = [];
+
+    for (let i = 0; i < activeMemories.length; i++) {
+      for (let j = i + 1; j < activeMemories.length; j++) {
+        if (pairs.length >= maxPairs) return pairs;
+
+        const memA = activeMemories[i];
+        const memB = activeMemories[j];
+
+        const sharedEntities =
+          memA.subjectRefs?.entityIds?.some((id) =>
+            memB.subjectRefs?.entityIds?.includes(id)
+          ) || false;
+
+        const sharedTopics =
+          memA.topics?.some((t) =>
+            memB.topics?.some((bt) => bt.toLowerCase() === t.toLowerCase())
+          ) || false;
+
+        if (sharedEntities || sharedTopics || memA.type === memB.type) {
+          pairs.push({ memoryA: memA, memoryB: memB });
+        }
+      }
+    }
+
+    return pairs;
+  }
+
+  /**
+   * Evaluates an array of candidate memory pairs and formats conflict detection records.
+   */
+  public static async evaluatePairs(
+    pairs: { memoryA: MemoryObject; memoryB: MemoryObject }[]
+  ): Promise<
+    {
+      hasConflict: boolean;
+      conflict?: {
+        workspaceId: string;
+        organizationId: string;
+        memoryIdA: string;
+        memoryIdB: string;
+        summary: string;
+        conflictType: ConflictType;
+        confidenceScore: number;
+        evidenceA: {
+          memoryId: string;
+          title: string;
+          quote: string;
+          sourceType: MemoryObject['source']['type'];
+          sourceId: string;
+          createdAt: string;
+        };
+        evidenceB: {
+          memoryId: string;
+          title: string;
+          quote: string;
+          sourceType: MemoryObject['source']['type'];
+          sourceId: string;
+          createdAt: string;
+        };
+        opposingAspects: string[];
+      };
+    }[]
+  > {
+    const results: {
+      hasConflict: boolean;
+      conflict?: {
+        workspaceId: string;
+        organizationId: string;
+        memoryIdA: string;
+        memoryIdB: string;
+        summary: string;
+        conflictType: ConflictType;
+        confidenceScore: number;
+        evidenceA: {
+          memoryId: string;
+          title: string;
+          quote: string;
+          sourceType: MemoryObject['source']['type'];
+          sourceId: string;
+          createdAt: string;
+        };
+        evidenceB: {
+          memoryId: string;
+          title: string;
+          quote: string;
+          sourceType: MemoryObject['source']['type'];
+          sourceId: string;
+          createdAt: string;
+        };
+        opposingAspects: string[];
+      };
+    }[] = [];
+
+    for (const pair of pairs) {
+      const evaluation = await this.evaluateMemoryPair(pair.memoryA, pair.memoryB);
+
+      if (evaluation.isContradiction && evaluation.confidenceScore >= 0.75) {
+        results.push({
+          hasConflict: true,
+          conflict: {
+            workspaceId: pair.memoryA.workspaceId,
+            organizationId: pair.memoryA.organizationId,
+            memoryIdA: pair.memoryA.id,
+            memoryIdB: pair.memoryB.id,
+            summary: evaluation.summary,
+            conflictType: evaluation.conflictType,
+            confidenceScore: evaluation.confidenceScore,
+            evidenceA: {
+              memoryId: pair.memoryA.id,
+              title: pair.memoryA.title || `${pair.memoryA.type} Knowledge`,
+              quote: pair.memoryA.evidence || pair.memoryA.content,
+              sourceType: pair.memoryA.source.type,
+              sourceId: pair.memoryA.source.sourceId,
+              createdAt: pair.memoryA.createdAt,
+            },
+            evidenceB: {
+              memoryId: pair.memoryB.id,
+              title: pair.memoryB.title || `${pair.memoryB.type} Knowledge`,
+              quote: pair.memoryB.evidence || pair.memoryB.content,
+              sourceType: pair.memoryB.source.type,
+              sourceId: pair.memoryB.source.sourceId,
+              createdAt: pair.memoryB.createdAt,
+            },
+            opposingAspects: evaluation.opposingAspects,
+          },
+        });
+      } else {
+        results.push({ hasConflict: false });
+      }
+    }
+
+    return results;
+  }
+
+  /**
    * Scans a set of memories within a workspace and records any newly detected conflicts.
    */
   public static async detectAndRecordConflicts(params: {
@@ -149,78 +292,51 @@ export class ConflictEngine {
     maxPairsToEvaluate?: number;
   }): Promise<MemoryConflict[]> {
     const { workspaceId, organizationId, memories, maxPairsToEvaluate = 50 } = params;
-    const activeMemories = memories.filter((m) => m.lifecycle.status !== 'archived');
+    const pairs = this.findCandidatePairs(memories, maxPairsToEvaluate);
     const recordedConflicts: MemoryConflict[] = [];
 
-    let pairsEvaluated = 0;
+    for (const pair of pairs) {
+      const existingConflict = await ConflictRepository.findConflictByPair(
+        workspaceId,
+        pair.memoryA.id,
+        pair.memoryB.id
+      );
 
-    for (let i = 0; i < activeMemories.length; i++) {
-      for (let j = i + 1; j < activeMemories.length; j++) {
-        if (pairsEvaluated >= maxPairsToEvaluate) break;
+      if (existingConflict) continue;
 
-        const memA = activeMemories[i];
-        const memB = activeMemories[j];
+      const evaluation = await this.evaluateMemoryPair(pair.memoryA, pair.memoryB);
 
-        // Skip evaluation if both have no shared entity or topical overlap unless general
-        const sharedEntities =
-          memA.subjectRefs?.entityIds?.some((id) =>
-            memB.subjectRefs?.entityIds?.includes(id)
-          ) || false;
-        const sharedTopics =
-          memA.topics?.some((t) => memB.topics?.includes(t)) || false;
-
-        // If they share no entities and no topics, skip unless they share the same memory type
-        if (!sharedEntities && !sharedTopics && memA.type !== memB.type) {
-          continue;
-        }
-
-        pairsEvaluated++;
-
-        // Check if conflict is already recorded in the database
-        const existingConflict = await ConflictRepository.findConflictByPair(
+      if (evaluation.isContradiction && evaluation.confidenceScore >= 0.75) {
+        const conflict = await ConflictRepository.createConflict({
           workspaceId,
-          memA.id,
-          memB.id
-        );
+          organizationId,
+          memoryIdA: pair.memoryA.id,
+          memoryIdB: pair.memoryB.id,
+          summary: evaluation.summary,
+          status: 'unresolved',
+          conflictType: evaluation.conflictType,
+          confidenceScore: evaluation.confidenceScore,
+          detectedBy: 'ai',
+          evidenceA: {
+            memoryId: pair.memoryA.id,
+            title: pair.memoryA.title || `${pair.memoryA.type} Knowledge`,
+            quote: pair.memoryA.evidence || pair.memoryA.content,
+            sourceType: pair.memoryA.source.type,
+            sourceId: pair.memoryA.source.sourceId,
+            createdAt: pair.memoryA.createdAt,
+          },
+          evidenceB: {
+            memoryId: pair.memoryB.id,
+            title: pair.memoryB.title || `${pair.memoryB.type} Knowledge`,
+            quote: pair.memoryB.evidence || pair.memoryB.content,
+            sourceType: pair.memoryB.source.type,
+            sourceId: pair.memoryB.source.sourceId,
+            createdAt: pair.memoryB.createdAt,
+          },
+          opposingAspects: evaluation.opposingAspects,
+        });
 
-        if (existingConflict) {
-          continue;
-        }
-
-        const evaluation = await this.evaluateMemoryPair(memA, memB);
-
-        if (evaluation.isContradiction && evaluation.confidenceScore >= 0.75) {
-          const conflict = await ConflictRepository.createConflict({
-            workspaceId,
-            organizationId,
-            memoryIdA: memA.id,
-            memoryIdB: memB.id,
-            summary: evaluation.summary,
-            status: 'unresolved',
-            conflictType: evaluation.conflictType,
-            confidenceScore: evaluation.confidenceScore,
-            detectedBy: 'ai',
-            evidenceA: {
-              memoryId: memA.id,
-              title: memA.title,
-              quote: memA.evidence || memA.content,
-              sourceType: memA.source.type,
-              sourceId: memA.source.sourceId,
-              createdAt: memA.createdAt,
-            },
-            evidenceB: {
-              memoryId: memB.id,
-              title: memB.title,
-              quote: memB.evidence || memB.content,
-              sourceType: memB.source.type,
-              sourceId: memB.source.sourceId,
-              createdAt: memB.createdAt,
-            },
-            opposingAspects: evaluation.opposingAspects,
-          });
-
-          recordedConflicts.push(conflict);
-        }
+        recordedConflicts.push(conflict);
       }
     }
 

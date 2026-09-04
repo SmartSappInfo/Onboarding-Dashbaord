@@ -586,7 +586,7 @@ export function OrganizationMemoryView({
       {/* Memory Inspector Drawer */}
       <MemoryInspectorDrawer
         memory={inspectTarget}
-        isOpen={Boolean(inspectTarget)}
+        open={Boolean(inspectTarget)}
         onClose={() => setInspectTarget(null)}
         onConfirm={handleConfirm}
         onInvalidate={handleInvalidate}

@@ -127,7 +127,7 @@ export async function listMemoryConflictsAction(params: {
   }
 
   try {
-    const conflicts = await ConflictRepository.listConflictsByWorkspace(workspaceId, status);
+    const conflicts = await ConflictRepository.listConflictsByWorkspace({ workspaceId, status });
     return { success: true, data: conflicts };
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Failed to list memory conflicts.';
@@ -201,12 +201,17 @@ export async function resolveMemoryConflictAction(params: {
       await MemoryRepository.confirmMemory(conflict.memoryIdB, userId);
     }
 
-    const updated = await ConflictRepository.resolveConflict(
+    await ConflictRepository.resolveConflict({
       conflictId,
       resolution,
-      userId,
-      resolutionNotes
-    );
+      resolvedByUserId: userId,
+      resolutionNotes,
+    });
+
+    const updated = await ConflictRepository.getConflictById(conflictId);
+    if (!updated) {
+      throw new Error('Failed to retrieve updated conflict.');
+    }
 
     return { success: true, data: updated };
   } catch (err) {

@@ -231,11 +231,13 @@ export class OrganizationMemoryService {
     // 1. Relational Graph Pathway
     if (effectiveStrategy === 'relational' && routingDecision.extractedEntities.length > 0) {
       try {
+        const { nodes } = await GraphRepository.queryWorkspaceGraph(workspaceId, { limit: 100 });
+
         for (const entityName of routingDecision.extractedEntities) {
-          const matchingNodes = await GraphRepository.listNodes(workspaceId, {
-            searchQuery: entityName,
-            limit: 5,
-          });
+          const lowerEntity = entityName.toLowerCase();
+          const matchingNodes = nodes.filter((n) =>
+            n.label.toLowerCase().includes(lowerEntity)
+          ).slice(0, 5);
 
           for (const node of matchingNodes) {
             const neighbors = await KnowledgeGraphService.getNeighbors(node.id, { limit: 20 });
@@ -276,18 +278,23 @@ export class OrganizationMemoryService {
       (effectiveStrategy === 'relational' && hitsMap.size === 0)
     ) {
       try {
+        const semanticFilters = filters.verification
+          ? { verification: [filters.verification] }
+          : undefined;
+
         const semanticResults = await SemanticSearchService.search({
           workspaceId,
           organizationId,
           query,
-          filters,
+          filters: semanticFilters,
           limit,
+          userId: 'system',
         });
 
         for (const sem of semanticResults) {
           if (!hitsMap.has(sem.memory.id)) {
             const freshness = calculateFreshnessScore(sem.memory);
-            const baseScore = sem.similarityScore;
+            const baseScore = sem.score;
             hitsMap.set(sem.memory.id, {
               memory: sem.memory,
               score: baseScore,
@@ -369,21 +376,21 @@ export class OrganizationMemoryService {
 
     // 3. Resolve any open conflicts referencing this memory
     try {
-      const openConflicts = await ConflictRepository.listConflictsByWorkspace(
+      const openConflicts = await ConflictRepository.listConflictsByWorkspace({
         workspaceId,
-        'unresolved'
-      );
+        status: 'unresolved',
+      });
       const relevantConflicts = openConflicts.filter(
         (c) => c.memoryIdA === memoryId || c.memoryIdB === memoryId
       );
 
       for (const c of relevantConflicts) {
-        await ConflictRepository.resolveConflict(
-          c.id,
-          'dismiss',
-          userId,
-          `Auto-dismissed: referenced memory ${memoryId} was forgotten/archived.`
-        );
+        await ConflictRepository.resolveConflict({
+          conflictId: c.id,
+          resolution: 'dismiss',
+          resolvedByUserId: userId,
+          resolutionNotes: `Auto-dismissed: referenced memory ${memoryId} was forgotten/archived.`,
+        });
       }
     } catch (err) {
       console.warn(`[OrganizationMemoryService] Conflict cleanup skipped for ${memoryId}:`, err);
@@ -403,10 +410,10 @@ export class OrganizationMemoryService {
     const activeMemories = allMemories.filter((m) => m.lifecycle.status !== 'archived');
 
     const freshnessMetrics = getMemoryFreshnessHealthMetrics(activeMemories);
-    const openConflicts = await ConflictRepository.listConflictsByWorkspace(
+    const openConflicts = await ConflictRepository.listConflictsByWorkspace({
       workspaceId,
-      'unresolved'
-    );
+      status: 'unresolved',
+    });
 
     const verifiedTruthCount = activeMemories.filter(
       (m) => m.verification === 'user_confirmed' || m.verification === 'source_verified'

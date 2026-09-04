@@ -22,6 +22,7 @@ import { OrganizationMemoryService } from './organization-memory-service';
 import {
   consolidateMemoriesFlow,
   consolidateMemoriesDeterministic,
+  type ConsolidateMemoriesOutput,
 } from '@/ai/flows/consolidate-memories-flow';
 import type { MemoryObject, MemoryType } from '../types';
 import type { ConsolidationCandidate } from '../orchestrator-types';
