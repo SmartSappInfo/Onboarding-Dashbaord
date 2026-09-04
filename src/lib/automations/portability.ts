@@ -1,4 +1,5 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal automation blueprint serialization
+// & import engine invoked via Server Actions in src/lib/automation-actions.ts.
 
 import { adminDb } from '../firebase-admin';
 import { validateAutomationBlueprint } from '../automation-validation';

@@ -22,7 +22,7 @@ import type {
   PolicyVersionRecord,
   TieredDailyCap,
 } from './types';
-import { DEFAULT_EFFORT_RULES, type EffortRuleDoc } from '@/lib/scoring-performance-engine';
+import { DEFAULT_EFFORT_RULES, type EffortRuleDoc } from '@/lib/scoring-constants';
 
 export interface PolicyMigrationResult {
   success: boolean;
