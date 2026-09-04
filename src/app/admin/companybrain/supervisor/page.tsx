@@ -18,7 +18,7 @@ import { useSearchParams } from 'next/navigation';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/firebase';
 import { SupervisorMissionControl } from '@/components/supervisor/SupervisorMissionControl';
 
 function SupervisorMissionPageContent() {

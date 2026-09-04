@@ -17,7 +17,7 @@ import * as React from 'react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/firebase';
 import { DomainAgentsHub } from '@/components/agents/DomainAgentsHub';
 
 function DomainAgentsPageContent() {

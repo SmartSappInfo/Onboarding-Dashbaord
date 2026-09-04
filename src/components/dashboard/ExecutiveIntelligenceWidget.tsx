@@ -39,7 +39,7 @@ import {
   getExecutiveIntelligenceAction,
   listRecommendationsAction,
 } from '@/lib/intelligence/actions/intelligence-actions';
-import { useUser } from '@/context/UserContext';
+import { useUser } from '@/firebase';
 
 export interface ExecutiveIntelligenceWidgetProps {
   workspaceId: string;
