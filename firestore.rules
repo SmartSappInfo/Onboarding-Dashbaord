@@ -2097,6 +2097,37 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Advanced Revenue Operating System (Phase 10)
+    match /revenueScenarios/{scenarioId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false;
+    }
+
+    match /capacityPlans/{planId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false;
+    }
+
+    match /predictiveAttainments/{attainmentId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false;
+    }
+
+    match /predictiveChurnRisks/{riskId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false;
+    }
+
+    match /aiStrategicRecommendations/{recId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false;
+    }
+
+    match /revenueOsGovernance/{workspaceId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow write: if false;
+    }
+
     match /webhooks/{webhookId} {
       allow get: if isAuthorized() && (
         isSystemAdmin() || 

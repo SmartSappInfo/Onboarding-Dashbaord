@@ -168,7 +168,11 @@ export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'o
   // AI Sales Workforce (Phase 9)
   { eventType: 'ai_recommendation_accepted', entityType: 'AiRecommendation', points: 10, enabled: true, description: 'Points awarded when a seller executes an AI-recommended next best action.' },
   { eventType: 'ai_crm_hygiene_resolved', entityType: 'Deal', points: 15, enabled: true, description: 'Points awarded when a seller or manager reviews and resolves a CRM data hygiene anomaly.' },
-  { eventType: 'ai_autonomous_action_approved', entityType: 'AiApproval', points: 10, enabled: true, description: 'Points awarded when a manager reviews and approves a sensitive AI action.' }
+  { eventType: 'ai_autonomous_action_approved', entityType: 'AiApproval', points: 10, enabled: true, description: 'Points awarded when a manager reviews and approves a sensitive AI action.' },
+
+  // Advanced Revenue Operating System (Phase 10)
+  { eventType: 'revenue_scenario_calibrated', entityType: 'RevenueScenario', points: 20, enabled: true, description: 'Points awarded when an executive or manager calibrates and saves a strategic revenue simulation.' },
+  { eventType: 'strategic_capacity_plan_executed', entityType: 'CapacityPlan', points: 25, enabled: true, description: 'Points awarded when an executive enacts an AI capacity plan or strategic recommendation.' }
 ];
 
 /**
