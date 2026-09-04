@@ -28,7 +28,7 @@ import Link from 'next/link';
 import { 
   ShieldCheck, HardDrive, Layers, RefreshCw, 
   CheckCircle2, AlertCircle, Loader2, Sparkles,
-  Bot, TrendingUp, Cpu, ArrowUpRight, Zap, Shield
+  Bot, TrendingUp, Cpu, ArrowUpRight, Zap, Shield, Activity
 } from 'lucide-react';
 
 export default function BackofficeMediaGovernancePage() {
@@ -317,6 +317,22 @@ export default function BackofficeMediaGovernancePage() {
             <div>
               <h4 className="text-xs font-black text-foreground">Enterprise & Platform</h4>
               <p className="text-[10px] text-muted-foreground mt-0.5">API keys, webhooks & governance</p>
+            </div>
+          </Link>
+
+          <Link
+            href="/backoffice/media/health"
+            className="p-4 rounded-2xl border border-border bg-card hover:bg-muted/10 transition-all flex flex-col justify-between gap-3 group min-h-[44px]"
+          >
+            <div className="flex items-start justify-between">
+              <div className="p-2 rounded-xl bg-rose-500/10 text-rose-500">
+                <Activity className="h-4 w-4" />
+              </div>
+              <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
+            </div>
+            <div>
+              <h4 className="text-xs font-black text-foreground">Platform Quality & Health</h4>
+              <p className="text-[10px] text-muted-foreground mt-0.5">Stream latency, error rates & queues</p>
             </div>
           </Link>
         </div>

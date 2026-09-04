@@ -1369,6 +1369,26 @@ service cloud.firestore {
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
 
+    // --- Strategic Content Planning & Sales Enablement (Phase 10) ---
+    match /media_idea_canvases/{canvasId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /media_deal_packages/{packageId} {
+      // Public access for prospects viewing personalized packages via tracked share links
+      allow get: if true;
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /media_platform_health/{metricId} {
+      allow get, list: if isAuthorized() && isSystemAdmin();
+      allow create, update, delete: if isSystemAdmin();
+    }
+
     match /thumbnail_designs/{designId} {
       allow get: if true; // Public access for rendering thumbnail designs on shared media
       allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());

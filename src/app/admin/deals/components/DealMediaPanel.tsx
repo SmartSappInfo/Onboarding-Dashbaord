@@ -28,6 +28,8 @@ import { getDealMediaSignalsAction } from '@/lib/media/crm-media-service';
 import { getDealAttributionBreakdownAction } from '@/lib/media/attribution-service';
 import { predictDealCloseVelocityAction } from '@/lib/media/predictive-service';
 import { getNextBestContentAction } from '@/lib/media/recommendation-service';
+import { getPreMeetingIntelligenceAction } from '@/lib/media/sales-enablement-service';
+import { CreateSalesPackageModal } from './CreateSalesPackageModal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,10 +43,11 @@ import {
 import { 
   TrendingUp, Users, FileText, MousePointerClick, 
   Sparkles, CheckCircle2, Share2, Video, Music, 
-  Image as ImageIcon, PieChart, ChevronDown, ChevronUp, Bot, Zap
+  Image as ImageIcon, PieChart, ChevronDown, ChevronUp, Bot, Zap, Package
 } from 'lucide-react';
 import { MediaCopilotDrawer } from '@/app/admin/media/components/MediaCopilotDrawer';
 import { cn } from '@/lib/utils';
+import type { PreMeetingIntelligence } from '@/lib/types/media-2.0';
 
 export interface DealMediaPanelProps {
   dealId: string;
@@ -64,25 +67,30 @@ export function DealMediaPanel({
   const [breakdown, setBreakdown] = useState<DealAttributionBreakdown | null>(null);
   const [forecast, setForecast] = useState<PredictiveDealForecast | null>(null);
   const [recommendations, setRecommendations] = useState<ContentRecommendationItem[]>([]);
+  const [preMeeting, setPreMeeting] = useState<PreMeetingIntelligence | null>(null);
   const [model, setModel] = useState<AttributionModelType>('LINEAR');
   const [showAttribution, setShowAttribution] = useState(true);
+  const [showPreMeeting, setShowPreMeeting] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const [isCopilotOpen, setIsCopilotOpen] = useState(false);
+  const [isPackageModalOpen, setIsPackageModalOpen] = useState(false);
 
   const loadData = useCallback(async () => {
     if (!firestore || !dealId) return;
     setIsLoading(true);
     try {
-      const [signalData, breakdownData, forecastData, recData] = await Promise.all([
+      const [signalData, breakdownData, forecastData, recData, preMeetingData] = await Promise.all([
         getDealMediaSignalsAction(firestore, workspaceId, dealId, associatedContactIds),
         getDealAttributionBreakdownAction(firestore, workspaceId, dealId, model),
         predictDealCloseVelocityAction(firestore, workspaceId, dealId, associatedContactIds),
         getNextBestContentAction(firestore, workspaceId, { dealStage: 'Proposal', limitCount: 2 }),
+        getPreMeetingIntelligenceAction(firestore, workspaceId, dealId, associatedContactIds[0]),
       ]);
       setSignals(signalData);
       setBreakdown(breakdownData);
       setForecast(forecastData);
       setRecommendations(recData);
+      setPreMeeting(preMeetingData);
     } catch (err) {
       console.error('[DealMediaPanel] Error loading signals, breakdown, or forecast:', err);
     } finally {
@@ -423,8 +431,100 @@ export function DealMediaPanel({
         </Card>
       )}
 
+      {/* Phase 10: Pre-Meeting Intelligence Card (PRD Sec 110) */}
+      {preMeeting && preMeeting.viewedAssets.length > 0 && (
+        <Card className="rounded-2xl border-border bg-card shadow-sm overflow-hidden">
+          <div className="p-4 flex items-center justify-between border-b border-border bg-muted/10">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <div>
+                <h4 className="text-xs font-black text-foreground uppercase tracking-wider">
+                  Pre-Meeting Intelligence
+                </h4>
+                <p className="text-[10px] text-muted-foreground">
+                  Prospect viewing patterns before sales call
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setShowPreMeeting((prev) => !prev)}
+              className="p-1.5 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+              aria-label="Toggle Pre-Meeting Details"
+            >
+              {showPreMeeting ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          </div>
+
+          {showPreMeeting && (
+            <CardContent className="p-4 space-y-3">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase text-muted-foreground">
+                  Prospect Watch Completion
+                </p>
+                <div className="space-y-2">
+                  {preMeeting.viewedAssets.map((asset) => (
+                    <div key={asset.assetId} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-semibold text-foreground truncate max-w-[200px]">
+                          {asset.title}
+                        </span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            'text-[10px] font-bold',
+                            asset.completionRate >= 90
+                              ? 'text-emerald-600 border-emerald-300'
+                              : 'text-blue-600 border-blue-300'
+                          )}
+                        >
+                          {asset.completionRate}% Watched
+                        </Badge>
+                      </div>
+                      <div className="h-1.5 w-full bg-muted/50 rounded-full overflow-hidden">
+                        <div
+                          className={cn(
+                            'h-full rounded-full transition-all duration-500',
+                            asset.completionRate >= 90 ? 'bg-emerald-500' : 'bg-blue-500'
+                          )}
+                          style={{ width: `${asset.completionRate}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Likely Interests */}
+              {preMeeting.likelyInterests.length > 0 && (
+                <div className="space-y-1 pt-1 border-t border-border/60">
+                  <p className="text-[10px] font-black uppercase text-muted-foreground">
+                    Likely Interests
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {preMeeting.likelyInterests.map((interest) => (
+                      <Badge key={interest} variant="secondary" className="text-[10px] font-medium">
+                        {interest}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          )}
+        </Card>
+      )}
+
       {/* Quick Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
+        <Button
+          size="sm"
+          onClick={() => setIsPackageModalOpen(true)}
+          className="w-full rounded-xl text-xs font-bold h-9 px-3 min-h-[44px] gap-1.5 bg-blue-600 hover:bg-blue-700 text-white active:scale-[0.97]"
+        >
+          <Package className="h-3.5 w-3.5" />
+          <span>Send Tracked Package</span>
+        </Button>
+
         <Button
           size="sm"
           variant="outline"
@@ -432,7 +532,7 @@ export function DealMediaPanel({
           className="w-full rounded-xl text-xs font-bold h-9 px-3 min-h-[44px] gap-1.5 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary active:scale-[0.97]"
         >
           <Sparkles className="h-3.5 w-3.5 text-primary" />
-          <span>Consult Copilot Strategist</span>
+          <span>Consult Copilot</span>
         </Button>
 
         {onOpenDistributionModal && (
@@ -442,10 +542,19 @@ export function DealMediaPanel({
             onClick={onOpenDistributionModal}
             className="w-full rounded-xl text-xs font-bold h-9 px-3 min-h-[44px] gap-1.5 active:scale-[0.97]"
           >
-            <Share2 className="h-3.5 w-3.5" /> Share Content Link
+            <Share2 className="h-3.5 w-3.5" /> Link
           </Button>
         )}
       </div>
+
+      <CreateSalesPackageModal
+        open={isPackageModalOpen}
+        onOpenChange={setIsPackageModalOpen}
+        dealId={dealId}
+        workspaceId={workspaceId}
+        contactId={associatedContactIds[0]}
+        contactName={preMeeting?.contactName || 'Valued Prospect'}
+      />
 
       <MediaCopilotDrawer
         isOpen={isCopilotOpen}
