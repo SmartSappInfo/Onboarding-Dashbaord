@@ -192,7 +192,8 @@ export async function getRevenueForecastOverviewAction(params: {
       }
     }
 
-    const quarterTargetVal = 500000;
+    const targetDoc = !targetSnap.empty ? (targetSnap.docs[0].data() as TargetAttainmentPacing) : null;
+    const quarterTargetVal = targetDoc?.targetQuota && targetDoc.targetQuota > 0 ? targetDoc.targetQuota : 500000;
     const makeCategorySummary = (
       cat: ForecastCategory,
       label: string,
@@ -466,7 +467,11 @@ export async function recalculateDealAttributionAction(params: {
     };
 
     if (dealSnap.exists) {
-      const d = dealSnap.data() as ForecastDealItem & { currency?: string; closedAt?: string };
+      const d = dealSnap.data() as ForecastDealItem & { workspaceId: string; currency?: string; closedAt?: string };
+      // Tenant Isolation Guard (Anti-IDOR)
+      if (d.workspaceId && d.workspaceId !== workspaceId) {
+        return { success: false, error: 'Forbidden: Deal does not belong to active workspace.' };
+      }
       dealInfo = {
         id: d.id,
         name: d.name,

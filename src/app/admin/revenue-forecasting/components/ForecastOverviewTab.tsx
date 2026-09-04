@@ -221,7 +221,7 @@ export function ForecastOverviewTab({
                   <div
                     key={idx}
                     className="flex-1 bg-primary/20 hover:bg-primary/40 rounded-t transition-all group relative flex flex-col justify-end"
-                    style={{ height: `${Math.max(8, b.percentage * 3)}%` }}
+                    style={{ height: `${Math.min(100, Math.max(8, b.percentage * 3))}%` }}
                     title={`GHS ${b.rangeStart.toLocaleString()}-${b.rangeEnd.toLocaleString()}: ${b.percentage}%`}
                   >
                     <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-foreground text-background text-[10px] font-bold px-1.5 py-0.5 rounded shadow whitespace-nowrap z-10 pointer-events-none transition-opacity">

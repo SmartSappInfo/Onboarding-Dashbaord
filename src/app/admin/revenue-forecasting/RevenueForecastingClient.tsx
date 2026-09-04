@@ -19,6 +19,7 @@
  */
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
@@ -80,6 +81,10 @@ export default function RevenueForecastingClient() {
           title: 'Forecasting Sync Notice',
           description: res.error,
           variant: 'destructive',
+          actionConfig: {
+            path: '/backoffice/revenue-attribution',
+            label: 'Configure Governance',
+          },
         });
       }
     } catch {
@@ -87,6 +92,10 @@ export default function RevenueForecastingClient() {
         title: 'Network Error',
         description: 'Failed to communicate with forecasting engine.',
         variant: 'destructive',
+        actionConfig: {
+          path: '/backoffice/revenue-attribution',
+          label: 'Check Settings',
+        },
       });
     } finally {
       setIsLoading(false);
@@ -124,11 +133,18 @@ export default function RevenueForecastingClient() {
         <AlertTriangle className="w-12 h-12 text-amber-500" />
         <h2 className="text-lg font-bold text-foreground">Forecast Overview Unavailable</h2>
         <p className="text-xs text-muted-foreground max-w-md">
-          Unable to retrieve predictive forecasting records. Please ensure your workspace has initialized deal records.
+          Unable to retrieve predictive forecasting records. Please ensure your workspace has initialized deal records and governance rules.
         </p>
-        <Button onClick={handleRefresh} className="rounded-xl font-bold text-xs min-h-[44px]">
-          Retry Connection
-        </Button>
+        <div className="flex items-center gap-3 pt-2">
+          <Button onClick={handleRefresh} className="rounded-xl font-bold text-xs min-h-[44px]">
+            Retry Connection
+          </Button>
+          <Link href="/backoffice/revenue-attribution">
+            <Button variant="outline" className="rounded-xl font-bold text-xs min-h-[44px]">
+              Configure Governance & Run FER
+            </Button>
+          </Link>
+        </div>
       </div>
     );
   }

@@ -92,16 +92,27 @@ export function autoBalanceAttributionWeights(
     };
   }
 
-  const normLead = Number((clampedLead / rawSum).toFixed(4));
-  const normDiscovery = Number((clampedDiscovery / rawSum).toFixed(4));
-  const normDemo = Number((clampedDemo / rawSum).toFixed(4));
-  const normProposal = Number((clampedProposal / rawSum).toFixed(4));
+  let normLead = Number((clampedLead / rawSum).toFixed(4));
+  let normDiscovery = Number((clampedDiscovery / rawSum).toFixed(4));
+  let normDemo = Number((clampedDemo / rawSum).toFixed(4));
+  let normProposal = Number((clampedProposal / rawSum).toFixed(4));
 
   // The closing stage absorbs rounding variance to guarantee exact 1.00 sum
   const initialClosing = Number(
     (1.0 - (normLead + normDiscovery + normDemo + normProposal)).toFixed(4)
   );
-  const normClosing = Math.max(0, initialClosing);
+  let normClosing = Math.max(0, initialClosing);
+  if (initialClosing < 0) {
+    const excess = Number(Math.abs(initialClosing).toFixed(4));
+    if (normProposal >= excess) {
+      normProposal = Number((normProposal - excess).toFixed(4));
+    } else if (normDemo >= excess) {
+      normDemo = Number((normDemo - excess).toFixed(4));
+    } else if (normDiscovery >= excess) {
+      normDiscovery = Number((normDiscovery - excess).toFixed(4));
+    }
+    normClosing = 0;
+  }
 
   return {
     lead: normLead,
@@ -338,7 +349,7 @@ export function calculateMultiTouchAttribution({
   }
 
   const repSplits: RepRevenueSplit[] = Array.from(repMap.entries())
-    .filter(([_, data]) => data.cents > 0)
+    .filter(([_, data]) => data.cents > 0 || (totalCents === 0 && data.touchCount > 0))
     .map(([actorId, data]) => ({
       actorId,
       actorName: data.actorName,
@@ -347,6 +358,8 @@ export function calculateMultiTouchAttribution({
       percentageCredit:
         totalCents > 0
           ? Number(((data.cents / totalCents) * 100).toFixed(2))
+          : data.touchCount > 0
+          ? Number(((data.touchCount / count) * 100).toFixed(2))
           : 0,
       attributedAmount: data.cents / 100,
     }));
@@ -374,13 +387,15 @@ export function calculateMultiTouchAttribution({
   const channelSplits: ChannelRevenueSplit[] = Array.from(
     channelMap.entries()
   )
-    .filter(([_, data]) => data.cents > 0)
+    .filter(([_, data]) => data.cents > 0 || (totalCents === 0 && data.touchCount > 0))
     .map(([channel, data]) => ({
       channel,
       touchCount: data.touchCount,
       percentageCredit:
         totalCents > 0
           ? Number(((data.cents / totalCents) * 100).toFixed(2))
+          : data.touchCount > 0
+          ? Number(((data.touchCount / count) * 100).toFixed(2))
           : 0,
       attributedAmount: data.cents / 100,
     }));
@@ -592,9 +607,14 @@ export function detectDealSlippage({
   deal,
   quarterEndDate,
 }: DetectSlippageParams): DealSlippageModel {
-  const origTime = new Date(deal.originalCloseDate).getTime();
-  const currTime = new Date(deal.currentCloseDate).getTime();
-  const qEndTime = new Date(quarterEndDate).getTime();
+  const nowMs = Date.now();
+  const origParsed = new Date(deal.originalCloseDate).getTime();
+  const currParsed = new Date(deal.currentCloseDate).getTime();
+  const qEndParsed = new Date(quarterEndDate).getTime();
+
+  const origTime = Number.isNaN(origParsed) ? nowMs : origParsed;
+  const currTime = Number.isNaN(currParsed) ? nowMs : currParsed;
+  const qEndTime = Number.isNaN(qEndParsed) ? nowMs : qEndParsed;
 
   const daysSlipped = Math.max(
     0,
