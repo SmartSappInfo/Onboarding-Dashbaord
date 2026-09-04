@@ -3,6 +3,8 @@
 import { adminDb, FieldValue } from './firebase-admin';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import type { EntityContact, WorkspaceEntity, Entity } from './types';
+import type { PerformancePolicy } from '@/lib/policy-studio/types';
+import { evaluateEventUnderPolicy } from '@/lib/policy-studio/policy-engine';
 
 // Types definition (strict TypeScript, no 'any')
 export interface LeadScoreDoc {
@@ -37,19 +39,25 @@ export interface EffortRuleDoc {
 
 export interface EffortEventDoc {
   id: string;          
+  workspaceId?: string;
+  organizationId?: string;
   eventType: string;   
   entityType: string;  
   entityId: string;    
   actorType: 'User' | 'Automation' | 'API' | 'System';
   actorId: string;     
   points: number;      
+  isMachine?: boolean;
   metadata: Record<string, string | number | boolean>;
+  idempotencyKey?: string;
   createdAt: string;   
 }
 
 export interface UserEffortSummaryDoc {
-  id: string;          // Maps to userId
+  id: string;          // Maps to userId or `${workspaceId}_${userId}`
   userId: string;
+  workspaceId?: string;
+  organizationId?: string;
   totalPoints: number;
   meetings: number;    
   calls: number;       
@@ -74,11 +82,12 @@ export interface ScoringEvent {
   contactId?: string;  
   actorType: 'User' | 'Automation' | 'API' | 'System';
   actorId: string;     
+  durationSeconds?: number;
   metadata?: Record<string, string | number | boolean>;
 }
 
 // Defaults list
-const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'organizationId'>[] = [
+export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'organizationId'>[] = [
   // CRM
   { eventType: 'lead_created', entityType: 'Lead', points: 5, enabled: true, description: 'Points awarded when a new lead/prospect is created.' },
   { eventType: 'lead_assigned', entityType: 'Lead', points: 2, enabled: true, description: 'Points awarded when a lead is assigned to a user.' },
@@ -137,7 +146,11 @@ const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'organiza
 
   // System
   { eventType: 'automation_executed', entityType: 'Contact', points: 1, enabled: true, description: 'Points awarded when an automation workflow is executed.' },
-  { eventType: 'webhook_triggered', entityType: 'Contact', points: 1, enabled: true, description: 'Points awarded when an external webhook is received.' }
+  { eventType: 'webhook_triggered', entityType: 'Contact', points: 1, enabled: true, description: 'Points awarded when an external webhook is received.' },
+
+  // Coaching & Practice Lab (Phase 5)
+  { eventType: 'roleplay_completed', entityType: 'Coaching', points: 25, enabled: true, description: 'Points awarded when a seller completes an AI buyer practice lab simulation.' },
+  { eventType: 'call_reviewed', entityType: 'Coaching', points: 15, enabled: true, description: 'Points awarded when a Gong-style call scorecard review is conducted.' }
 ];
 
 /**
@@ -241,7 +254,7 @@ export async function adjustLeadScoreAction(params: {
 }): Promise<{ success: boolean; error?: string; change?: number }> {
   try {
     const {
-      organizationId,
+      organizationId: _organizationId,
       workspaceId,
       entityId,
       contactEmailOrId,
@@ -277,7 +290,7 @@ export async function adjustLeadScoreAction(params: {
 
       const entityContacts = entityData.entityContacts || [];
 
-      const { contacts: updatedContacts, contactId, contactName, oldScore, newScore, change } =
+      const { contacts: updatedContacts, contactId, contactName: _contactName, oldScore, newScore, change } =
         adjustContactScoreInArray(entityContacts, contactEmailOrId, value, operation);
 
       if (!contactId) {
@@ -342,50 +355,113 @@ export async function adjustLeadScoreAction(params: {
 /**
  * Evaluates effort events and adds salesperson stats.
  */
-export async function evaluateEffortEvent(event: ScoringEvent): Promise<void> {
+export async function evaluateEffortEvent(event: ScoringEvent): Promise<{ pointsAwarded: number }> {
   try {
-    const { organizationId, workspaceId, eventType, entityType, entityId, actorType, actorId, metadata } = event;
-    if (!workspaceId || !actorId || actorId === 'system-scoring-engine') return;
+    const { organizationId, workspaceId, eventType, entityType, entityId, actorType, actorId, metadata, durationSeconds } = event;
+    if (!workspaceId || !actorId || actorId === 'system-scoring-engine') return { pointsAwarded: 0 };
 
     // Seeding trigger check
     await seedDefaultRules(organizationId, workspaceId);
 
-    const ruleRef = adminDb.collection('effortRules').doc(`${workspaceId}_${eventType}`);
-    const ruleSnap = await ruleRef.get();
-
     let points = 0;
     let enabled = false;
 
-    if (ruleSnap.exists) {
-      const data = ruleSnap.data() as EffortRuleDoc;
-      points = data.points;
-      enabled = data.enabled;
-    } else {
-      const defaultRule = DEFAULT_EFFORT_RULES.find(r => r.eventType === eventType);
-      if (defaultRule) {
-        points = defaultRule.points;
-        enabled = defaultRule.enabled;
+    // Check if workspace has an active PerformancePolicy (Phase 4 Policy Studio)
+    const todayDate = new Date().toISOString().split('T')[0];
+    const [policySnap, dailySnap, recentEventsSnap] = await Promise.all([
+      adminDb.collection('performancePolicies').doc(workspaceId).get(),
+      adminDb.collection('salesPerformanceDaily').doc(`${workspaceId}_${actorId}_${todayDate}`).get(),
+      entityId
+        ? adminDb
+            .collection('effortEvents')
+            .where('actorId', '==', actorId)
+            .orderBy('createdAt', 'desc')
+            .limit(20)
+            .get()
+        : Promise.resolve(null),
+    ]);
+
+    let dailyEventCount = 0;
+    if (dailySnap && dailySnap.exists) {
+      dailyEventCount = dailySnap.data()?.activityCount || 0;
+    }
+
+    let lastEventTimeForSameEntity: string | undefined;
+    if (recentEventsSnap && !recentEventsSnap.empty) {
+      const match = recentEventsSnap.docs.find((d) => d.data().entityId === entityId);
+      if (match) {
+        lastEventTimeForSameEntity = match.data().createdAt;
       }
     }
 
-    if (!enabled || points === 0) return;
+    if (policySnap.exists) {
+      const policy = policySnap.data() as PerformancePolicy;
+      const evalRes = evaluateEventUnderPolicy({
+        event: {
+          eventType,
+          entityId,
+          actorId,
+          durationSeconds,
+          isMachine: actorType !== 'User',
+          occurredAt: new Date().toISOString(),
+          metadata: metadata as Record<string, string | number | boolean>,
+        },
+        policy,
+        dailyEventCountForActor: dailyEventCount,
+        lastEventTimeForSameEntity,
+      });
+      points = evalRes.pointsAwarded;
+      enabled = points > 0;
+    } else {
+      // Baseline fallback to effortRules
+      const ruleRef = adminDb.collection('effortRules').doc(`${workspaceId}_${eventType}`);
+      const ruleSnap = await ruleRef.get();
+
+      if (ruleSnap.exists) {
+        const data = ruleSnap.data() as EffortRuleDoc;
+        points = data.points;
+        enabled = data.enabled;
+      } else {
+        const defaultRule = DEFAULT_EFFORT_RULES.find(r => r.eventType === eventType);
+        if (defaultRule) {
+          points = defaultRule.points;
+          enabled = defaultRule.enabled;
+        }
+      }
+    }
+
+    if (!enabled || points === 0) return { pointsAwarded: 0 };
 
     const now = new Date().toISOString();
+    const today = now.split('T')[0];
+    const isMachine = actorType !== 'User';
 
-    // ledger document
+    // 1. Ledger Document: canonical write to 'effortEvents' with workspace partitioning
     const ledgerRef = adminDb.collection('effortEvents').doc();
     const ledgerDoc: EffortEventDoc = {
       id: ledgerRef.id,
+      workspaceId,
+      organizationId,
       eventType,
       entityType,
       entityId,
       actorType,
       actorId,
       points,
-      metadata: metadata || {},
+      isMachine,
+      metadata: { ...(metadata || {}), ...(durationSeconds ? { durationSeconds } : {}) },
+      idempotencyKey: metadata?.idempotencyKey ? String(metadata.idempotencyKey) : undefined,
       createdAt: now
     };
     await ledgerRef.set(ledgerDoc);
+
+    // Dual-write to 'effortScoringLedger' for backward compatibility with existing indexes/clients
+    try {
+      const legacyLedgerRef = adminDb.collection('effortScoringLedger').doc(ledgerRef.id);
+      await legacyLedgerRef.set(ledgerDoc);
+    } catch (dualWriteErr) {
+      console.warn('[scoring-engine] Dual-write to legacy effortScoringLedger failed:', dualWriteErr);
+    }
 
     if (metadata?.activityId) {
       try {
@@ -398,27 +474,60 @@ export async function evaluateEffortEvent(event: ScoringEvent): Promise<void> {
       }
     }
 
-    // Update userEffortSummary
-    const summaryRef = adminDb.collection('userEffortSummary').doc(actorId);
+    // 2. Machine Activity Guard: Only award human sales representative points if actor is a User
+    if (isMachine) {
+      return { pointsAwarded: 0 };
+    }
+
+    // 3. Update workspace-partitioned userEffortSummary (${workspaceId}_${actorId}) AND legacy (${actorId})
+    const isMeeting = eventType.includes('meeting') || eventType.includes('appointment');
+    const isCall = eventType.includes('call') || eventType.includes('phone');
+    const isTask = eventType.includes('task') || eventType.includes('checklist');
+    const isDeal = eventType.includes('deal');
+    const isCampaign = eventType.includes('campaign');
+
+    const workspaceSummaryRef = adminDb.collection('userEffortSummary').doc(`${workspaceId}_${actorId}`);
+    const legacySummaryRef = adminDb.collection('userEffortSummary').doc(actorId);
+
     await adminDb.runTransaction(async (transaction) => {
-      const summarySnap = await transaction.get(summaryRef);
+      const [wsSnap, legSnap] = await Promise.all([
+        transaction.get(workspaceSummaryRef),
+        transaction.get(legacySummaryRef)
+      ]);
 
-      const isMeeting = eventType.includes('meeting') || eventType.includes('appointment');
-      const isCall = eventType.includes('call') || eventType.includes('phone');
-      const isTask = eventType.includes('task') || eventType.includes('checklist');
-      const isDeal = eventType.includes('deal');
-      const isCampaign = eventType.includes('campaign');
+      const incrementFields = {
+        totalPoints: FieldValue.increment(points),
+        meetings: FieldValue.increment(isMeeting ? 1 : 0),
+        calls: FieldValue.increment(isCall ? 1 : 0),
+        tasks: FieldValue.increment(isTask ? 1 : 0),
+        deals: FieldValue.increment(isDeal ? 1 : 0),
+        campaigns: FieldValue.increment(isCampaign ? 1 : 0),
+        lastUpdated: now
+      };
 
-      if (summarySnap.exists) {
-        transaction.update(summaryRef, {
-          totalPoints: FieldValue.increment(points),
-          meetings: FieldValue.increment(isMeeting ? 1 : 0),
-          calls: FieldValue.increment(isCall ? 1 : 0),
-          tasks: FieldValue.increment(isTask ? 1 : 0),
-          deals: FieldValue.increment(isDeal ? 1 : 0),
-          campaigns: FieldValue.increment(isCampaign ? 1 : 0),
+      // Workspace-scoped document
+      if (wsSnap.exists) {
+        transaction.update(workspaceSummaryRef, incrementFields);
+      } else {
+        const initialDoc: UserEffortSummaryDoc = {
+          id: `${workspaceId}_${actorId}`,
+          userId: actorId,
+          workspaceId,
+          organizationId,
+          totalPoints: points,
+          meetings: isMeeting ? 1 : 0,
+          calls: isCall ? 1 : 0,
+          tasks: isTask ? 1 : 0,
+          deals: isDeal ? 1 : 0,
+          campaigns: isCampaign ? 1 : 0,
           lastUpdated: now
-        });
+        };
+        transaction.set(workspaceSummaryRef, initialDoc);
+      }
+
+      // Legacy global document (ensures backward compatibility)
+      if (legSnap.exists) {
+        transaction.update(legacySummaryRef, incrementFields);
       } else {
         const initialDoc: UserEffortSummaryDoc = {
           id: actorId,
@@ -431,12 +540,38 @@ export async function evaluateEffortEvent(event: ScoringEvent): Promise<void> {
           campaigns: isCampaign ? 1 : 0,
           lastUpdated: now
         };
-        transaction.set(summaryRef, initialDoc);
+        transaction.set(legacySummaryRef, initialDoc);
       }
     });
+
+    // 4. Ingest into daily bucket: salesPerformanceDaily/${workspaceId}_${actorId}_${today}
+    try {
+      const dailyRef = adminDb.collection('salesPerformanceDaily').doc(`${workspaceId}_${actorId}_${today}`);
+      await dailyRef.set({
+        id: `${workspaceId}_${actorId}_${today}`,
+        organizationId,
+        workspaceId,
+        userId: actorId,
+        date: today,
+        activityCount: FieldValue.increment(1),
+        points: FieldValue.increment(points),
+        calls: FieldValue.increment(isCall ? 1 : 0),
+        meetings: FieldValue.increment(isMeeting ? 1 : 0),
+        tasks: FieldValue.increment(isTask ? 1 : 0),
+        deals: FieldValue.increment(isDeal ? 1 : 0),
+        campaigns: FieldValue.increment(isCampaign ? 1 : 0),
+        emails: FieldValue.increment(eventType.includes('email') ? 1 : 0),
+        updatedAt: now
+      }, { merge: true });
+    } catch (dailyErr) {
+      console.warn('[scoring-engine] Daily aggregate bucketing failed:', dailyErr);
+    }
+
+    return { pointsAwarded: points };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown evaluation error';
     console.error('[scoring-engine] evaluateEffortEvent failed:', errorMsg);
+    return { pointsAwarded: 0 };
   }
 }
 
@@ -547,15 +682,14 @@ export async function emitScoringEvent(event: ScoringEvent): Promise<void> {
 /**
  * Fetch leaderboard performance details.
  */
-export async function getLeaderboardAction(organizationId: string): Promise<UserProfileEffort[]> {
+export async function getLeaderboardAction(organizationId: string, workspaceId?: string): Promise<UserProfileEffort[]> {
   try {
-    const summarySnap = await adminDb.collection('userEffortSummary').get();
-    if (summarySnap.empty) return [];
-
     const usersSnap = await adminDb
       .collection('users')
       .where('organizationId', '==', organizationId)
       .get();
+
+    if (usersSnap.empty) return [];
 
     const usersMap = new Map<string, { name: string; email: string; photoURL?: string }>();
     usersSnap.forEach(d => {
@@ -567,13 +701,31 @@ export async function getLeaderboardAction(organizationId: string): Promise<User
       });
     });
 
-    const leaderboard: UserProfileEffort[] = [];
+    // Query userEffortSummary
+    const summarySnap = await adminDb.collection('userEffortSummary').get();
+    if (summarySnap.empty) return [];
+
+    const summariesByUserId = new Map<string, UserEffortSummaryDoc>();
+
     summarySnap.docs.forEach(doc => {
       const data = doc.data() as UserEffortSummaryDoc;
-      const userMeta = usersMap.get(doc.id);
-      if (userMeta) {
+      const docId = doc.id;
+
+      if (workspaceId && docId.startsWith(`${workspaceId}_`)) {
+        const rawUserId = docId.replace(`${workspaceId}_`, '');
+        summariesByUserId.set(rawUserId, data);
+      } else if (!summariesByUserId.has(docId)) {
+        summariesByUserId.set(docId, data);
+      }
+    });
+
+    const leaderboard: UserProfileEffort[] = [];
+    usersMap.forEach((userMeta, userId) => {
+      const summary = summariesByUserId.get(userId);
+      if (summary) {
         leaderboard.push({
-          ...data,
+          ...summary,
+          userId,
           userName: userMeta.name,
           userEmail: userMeta.email,
           photoURL: userMeta.photoURL
@@ -582,8 +734,9 @@ export async function getLeaderboardAction(organizationId: string): Promise<User
     });
 
     return leaderboard.sort((a, b) => b.totalPoints - a.totalPoints);
-  } catch (err) {
-    console.error('[scoring-engine] getLeaderboardAction failed:', err);
+  } catch (err: unknown) {
+    const errorMsg = err instanceof Error ? err.message : String(err);
+    console.error('[scoring-engine] getLeaderboardAction failed:', errorMsg);
     return [];
   }
 }
@@ -685,7 +838,7 @@ export async function bulkAdjustScoresAction(params: {
   actorType: 'User' | 'Automation' | 'API' | 'System';
 }): Promise<{ success: boolean; error?: string }> {
   try {
-    const { organizationId, workspaceId, contactRefs, value, operation, actorId, actorType } = params;
+    const { organizationId: _organizationId, workspaceId, contactRefs, value, operation, actorId, actorType } = params;
 
     const entityGroupMap = new Map<string, string[]>();
     contactRefs.forEach(ref => {

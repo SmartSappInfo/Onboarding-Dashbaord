@@ -39,6 +39,8 @@ import {
   BarChart3,
   Plug2,
   Users,
+  Sliders,
+  GraduationCap,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -83,6 +85,9 @@ const controlNavItems: NavItem[] = [
   { href: '/backoffice/messaging/blueprints', icon: MessageSquare, label: 'System Blueprints', module: 'templates' },
   { href: '/backoffice/messaging/styles', icon: Palette, label: 'Global Styles', module: 'templates' },
   { href: '/backoffice/survey-governance', icon: BarChart3, label: 'Survey Governance', module: 'survey_governance' },
+  { href: '/backoffice/sales-teams', icon: Users, label: 'Sales Teams & Capacity', module: 'operations' },
+  { href: '/backoffice/sales-performance', icon: Sliders, label: 'Performance Policies', module: 'operations' },
+  { href: '/backoffice/coaching-intelligence', icon: GraduationCap, label: 'Coaching Intelligence', module: 'operations' },
   { href: '/backoffice/integrations', icon: MessageSquare, label: 'WhatsApp Registry', module: 'templates' },
   { href: '/backoffice/fields', icon: Database, label: 'Fields & Variables', module: 'fields' },
   { href: '/backoffice/assets', icon: Image, label: 'Assets', module: 'assets' },

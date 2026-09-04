@@ -1,20 +1,19 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Building, Settings, Calendar } from 'lucide-react';
+import { LayoutDashboard, Building, Settings, Calendar, Flame, Trophy, ShieldCheck, GraduationCap } from 'lucide-react';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { href: '/admin/my-day', icon: Flame, label: 'My Day' },
+  { href: '/admin/sales-command', icon: ShieldCheck, label: 'Command Center' },
+  { href: '/admin/coaching', icon: GraduationCap, label: 'Coaching & Practice' },
   { href: '/admin/entities', icon: Building, label: 'Entities' },
   { href: '/admin/meetings', icon: Calendar, label: 'Meetings' },
+  { href: '/admin/analytics/sales-effort', icon: Trophy, label: 'Sales Performance' },
 ];
-
-const bottomNavItems = [
-    { href: '/admin/settings', icon: Settings, label: 'Settings'},
-    { href: '/', icon: null, label: 'Go to website'}
-]
 
 export default function AdminSidebar() {
   const pathname = usePathname();

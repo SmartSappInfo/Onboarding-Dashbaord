@@ -1853,6 +1853,90 @@ service cloud.firestore {
       allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
       allow write: if false; // Server-side writes only
     }
+
+    match /effortEvents/{eventId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /salesPerformanceDaily/{dailyId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /salesTargets/{targetId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /salesAgents/{agentId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /sellerWorkQueues/{itemId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side writes only
+    }
+
+    match /slaPolicies/{policyId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    // --- Phase 3: Manager Command Center & Team Governance ---
+    match /salesTeams/{teamId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /managerInterventions/{interventionId} {
+      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow write: if false; // Server-side atomic actions only via adminDb
+    }
+
+    // --- Phase 4: Performance Policy Studio & Customization Engine ---
+    match /performancePolicies/{workspaceId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /performancePolicyVersions/{versionId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if false; // Server-side immutable audit snapshots only via adminDb
+    }
+
+    // --- Phase 5: Conversation Intelligence & Coaching ---
+    match /callConversations/{callId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /scorecardTemplates/{templateId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /callScorecards/{scorecardId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /practiceLabScenarios/{scenarioId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /practiceLabSessions/{sessionId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
+    match /coachingProfiles/{profileId} {
+      allow read: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
+    }
+
     match /webhooks/{webhookId} {
       allow get: if isAuthorized() && (
         isSystemAdmin() || 
@@ -2520,6 +2604,47 @@ service cloud.firestore {
     }
 
     match /quick_note_categories/{categoryId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    // --- Knowledge Spaces & Collections (Company Brain 2.0) ---
+    match /knowledge_spaces/{spaceId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow create: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(request.resource.data.workspaceId)
+      );
+      allow update: if isAuthorized() && (
+        isSystemAdmin() ||
+        (hasWorkspaceAccess(resource.data.workspaceId) &&
+         request.resource.data.workspaceId == resource.data.workspaceId)
+      );
+      allow delete: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+    }
+
+    match /knowledge_collections/{collectionId} {
       allow read: if isAuthorized() && (
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)

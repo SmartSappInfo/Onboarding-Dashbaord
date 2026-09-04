@@ -15,6 +15,7 @@ import {
   hasRenderableThumbnail,
   buildAiInput,
   isAllowedAttachmentMime,
+  normalizeKnowledgeType,
 } from '../quick-notes-domain';
 import type { QuickNoteAttachment } from '../quick-notes-types';
 import {
@@ -354,5 +355,42 @@ describe('quickNoteCreateInputSchema', () => {
       },
     });
     expect(result.success).toBe(true);
+  });
+
+  it('accepts Knowledge 2.0 fields with defaults', () => {
+    const parsed = quickNoteCreateInputSchema.parse({
+      title: 'Strategic Idea',
+      content: validContent,
+      knowledgeType: 'idea',
+      status: 'active',
+      visibility: 'workspace',
+    });
+    expect(parsed.knowledgeType).toBe('idea');
+    expect(parsed.status).toBe('active');
+    expect(parsed.visibility).toBe('workspace');
+  });
+});
+
+describe('normalizeKnowledgeType', () => {
+  it('defaults undefined or empty to "note"', () => {
+    expect(normalizeKnowledgeType(undefined)).toBe('note');
+    expect(normalizeKnowledgeType('')).toBe('note');
+  });
+
+  it('preserves valid Knowledge 2.0 types', () => {
+    expect(normalizeKnowledgeType('idea')).toBe('idea');
+    expect(normalizeKnowledgeType('insight')).toBe('insight');
+    expect(normalizeKnowledgeType('decision')).toBe('decision');
+    expect(normalizeKnowledgeType('feedback')).toBe('feedback');
+    expect(normalizeKnowledgeType('action')).toBe('action');
+    expect(normalizeKnowledgeType('research')).toBe('research');
+    expect(normalizeKnowledgeType('strategy')).toBe('strategy');
+  });
+
+  it('maps legacy note types gracefully', () => {
+    expect(normalizeKnowledgeType('call')).toBe('observation');
+    expect(normalizeKnowledgeType('meeting')).toBe('observation');
+    expect(normalizeKnowledgeType('followup')).toBe('action');
+    expect(normalizeKnowledgeType('escalation')).toBe('feedback');
   });
 });
