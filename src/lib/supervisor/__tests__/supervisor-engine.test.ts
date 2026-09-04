@@ -128,6 +128,12 @@ vi.mock('@/lib/memory/services/context-builder-service', () => ({
 // Mock McpApprovalEngine
 vi.mock('@/lib/mcp/approval-engine', () => ({
   McpApprovalEngine: {
+    adjudicate: vi.fn(async (params: { approvalId: string; decision: string; adjudicatedBy: string }) => ({
+      id: params.approvalId,
+      status: params.decision,
+      executionResult: { executed: true, approvalId: params.approvalId },
+      adjudicatedBy: params.adjudicatedBy,
+    })),
     adjudicateApproval: vi.fn(async (params: { approvalId: string; decision: string; adjudicatedBy: string }) => ({
       id: params.approvalId,
       status: params.decision,

@@ -39,6 +39,8 @@ export const ADMIN_ROUTE_TITLES: RouteTitleMap = {
   '/admin/companybrain/agents': 'Domain Specialists & Swarm Collaboration',
   '/admin/quick-notes/workflows': 'Autonomous Workflows & Event Triggers',
   '/admin/companybrain/workflows': 'Autonomous Workflows & Event Triggers',
+  '/admin/quick-notes/intelligence': 'Continuous Organizational Intelligence',
+  '/admin/companybrain/intelligence': 'Continuous Organizational Intelligence',
   '/admin/finance/contracts': 'Agreements',
   '/admin/finance/invoices': 'Invoices',
   '/admin/finance/packages': 'Packages',

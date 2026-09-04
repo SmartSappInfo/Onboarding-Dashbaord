@@ -13,8 +13,6 @@
 import type {
   Entity,
   EntityContact,
-  WorkspaceEntity,
-  School,
 } from './types';
 
 // ─── Key Normalization ────────────────────────────────────────────────

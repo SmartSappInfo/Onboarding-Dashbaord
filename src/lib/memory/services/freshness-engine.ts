@@ -254,3 +254,15 @@ export function getMemoryFreshnessHealthMetrics(
     averageFreshness,
   };
 }
+
+/**
+ * Unified FreshnessEngine service object for ergonomic namespaced access.
+ */
+export const FreshnessEngine = {
+  getTtlDays: getMemoryTtlDays,
+  calculateFreshness: calculateFreshnessScore,
+  calculateFreshnessScore,
+  evaluateFreshness: evaluateMemoriesFreshness,
+  filterStale: filterStaleMemories,
+  getHealthMetrics: getMemoryFreshnessHealthMetrics,
+};

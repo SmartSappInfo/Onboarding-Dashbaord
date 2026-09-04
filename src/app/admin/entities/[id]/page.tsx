@@ -5,13 +5,12 @@ import dynamic from 'next/dynamic';
 import { useParams, useRouter } from 'next/navigation';
 import { useCallModal } from '@/context/CallModalContext';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser as useFirebaseUser } from '@/firebase';
-import { doc, collection, query, where, orderBy, updateDoc, getDoc, getDocs, limit, writeBatch } from 'firebase/firestore';
-import type { WorkspaceEntity, Entity, Task, Tag, TagAuditLog, OnlinePresence, EntityContact, Deal, EntityNote } from '@/lib/types';
+import { doc, collection, query, where, orderBy, updateDoc, getDocs, limit, writeBatch } from 'firebase/firestore';
+import type { WorkspaceEntity, Entity, Task, OnlinePresence, EntityContact, Deal, EntityNote } from '@/lib/types';
 import { generateEntityDossierSummaryAction } from '@/app/actions/entity-dossier-actions';
 import { generateEntityDossierPdf } from '@/lib/services/entity-dossier-pdf-service';
 import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { TagSelector } from '@/components/tags/TagSelector';
-import { TagBadges } from '@/components/tags/TagBadges';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
@@ -22,27 +21,16 @@ import {
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-    Tooltip,
-    TooltipContent,
     TooltipProvider,
-    TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { 
-    ArrowLeft, 
-    Calendar, 
     Globe, 
-    Mail, 
     MapPin, 
     Phone, 
     Users, 
     PenSquare, 
-    User, 
-    Send,
-    ShieldCheck,
     MessageSquarePlus,
     Activity,
-    UserCheck,
-    Contact,
     CheckCircle2,
     Clock,
     Plus,
@@ -51,11 +39,8 @@ import {
     Camera,
     Loader2,
     Video,
-    RefreshCw,
     Zap,
     Sparkles,
-    Target,
-    Info,
     Share2,
     Network,
     Building2,
@@ -73,7 +58,6 @@ import {
     ListTodo,
     FileQuestion,
     FileCode,
-    FileText,
     Check,
     ChevronDown,
     Brain,
@@ -81,10 +65,9 @@ import {
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Image from 'next/image';
-import Link from 'next/link';
-import { cn, toTitleCase } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
@@ -112,8 +95,6 @@ import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
 import { getIndustryErrorMessage } from '@/lib/industry-monitoring';
 import { useIndustry } from '@/context/IndustryContext';
-import EntityNotesTab from '../components/EntityNotesTab';
-import LinkedQuickNotesPanel from '@/app/admin/quick-notes/components/LinkedQuickNotesPanel';
 import EntityNotesWidget from '../components/EntityNotesWidget';
 import EntityContactDirectory from '../components/EntityContactDirectory';
 import EntityCustomFieldGroups from './components/EntityCustomFieldGroups';
@@ -290,28 +271,6 @@ export default function EntityDetailPage() {
     }, [firestore, entityId, activeWorkspaceId]);
     const { data: tasks, isLoading: isLoadingTasks } = useCollection<Task>(tasksQuery);
 
-    // Tags subscription for this workspace
-    const tagsQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
-        return query(
-            collection(firestore, 'tags'),
-            where('workspaceId', '==', activeWorkspaceId),
-            orderBy('name', 'asc')
-        );
-    }, [firestore, activeWorkspaceId]);
-    const { data: allTags } = useCollection<Tag>(tagsQuery);
-
-    // Tag audit log for this entity
-    const tagAuditQuery = useMemoFirebase(() => {
-        if (!firestore || !entityId) return null;
-        return query(
-            collection(firestore, 'tag_audit_logs'),
-            where('contactId', '==', entityId),
-            orderBy('timestamp', 'desc')
-        );
-    }, [firestore, entityId]);
-    const { data: tagAuditLogs } = useCollection<TagAuditLog>(tagAuditQuery);
-
     // Cross-workspace memberships for this entity (all workspaces)
     const allMembershipsQuery = useMemoFirebase(() => {
         if (!firestore || !entityId) return null;
@@ -321,7 +280,6 @@ export default function EntityDetailPage() {
         );
     }, [firestore, entityId]);
     const { data: allMemberships } = useCollection<WorkspaceEntity>(allMembershipsQuery);
-    const activeMembershipsCount = (allMemberships || []).filter(m => m.status === 'active').length;
 
     // Navigation Entity Resolution
     useSetBreadcrumb(entityData?.name || weData?.displayName);
@@ -427,35 +385,40 @@ export default function EntityDetailPage() {
 
         try {
             // 1. Fetch recent notes
+            // 1. Fetch recent notes (single-field query with in-memory filter and sort)
             let notesList: EntityNote[] = [];
             try {
                 const notesSnap = await getDocs(
                     query(
                         collection(firestore, 'entity_notes'),
                         where('entityId', '==', entityId),
-                        ...(activeWorkspaceId ? [where('workspaceId', '==', activeWorkspaceId)] : []),
-                        orderBy('createdAt', 'desc'),
-                        limit(25)
+                        limit(50)
                     )
                 );
-                notesList = notesSnap.docs.map(d => ({ id: d.id, ...d.data() } as EntityNote));
+                notesList = notesSnap.docs
+                    .map(d => ({ id: d.id, ...d.data() } as EntityNote))
+                    .filter(n => !activeWorkspaceId || !n.workspaceId || n.workspaceId === activeWorkspaceId)
+                    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                    .slice(0, 25);
             } catch (err) {
                 console.warn('Could not fetch notes for PDF export:', err);
             }
 
-            // 2. Fetch deals
+            // 2. Fetch deals (single-field query with in-memory filter and sort)
             let dealsList: Deal[] = [];
             try {
                 const dealsSnap = await getDocs(
                     query(
                         collection(firestore, 'deals'),
                         where('entityId', '==', entityId),
-                        ...(activeWorkspaceId ? [where('workspaceId', '==', activeWorkspaceId)] : []),
-                        orderBy('createdAt', 'desc'),
-                        limit(20)
+                        limit(50)
                     )
                 );
-                dealsList = dealsSnap.docs.map(d => ({ id: d.id, ...d.data() } as Deal));
+                dealsList = dealsSnap.docs
+                    .map(d => ({ id: d.id, ...d.data() } as Deal))
+                    .filter(d => !activeWorkspaceId || !d.workspaceId || d.workspaceId === activeWorkspaceId)
+                    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+                    .slice(0, 20);
             } catch (err) {
                 console.warn('Could not fetch deals for PDF export:', err);
             }
@@ -535,7 +498,6 @@ export default function EntityDetailPage() {
     const locationZone = entityData.location?.zone?.name;
     const displayLocation = hierachyString || locationZone || UNASSIGNED_ZONE.name;
 
-    const personData = entityData.personData;
     const displayName = entityData.name || weData.displayName;
 
     return (

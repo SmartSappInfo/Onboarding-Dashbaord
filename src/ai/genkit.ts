@@ -100,12 +100,29 @@ async function getGlobalBackofficeKeys(): Promise<Keys> {
  * Resolves a model instance with the correct API key for an organization.
  * Hierarchy: Organization Custom Key -> Backoffice DB Key -> Environment Variable -> System Default
  */
-export async function getModel(params: {
-  organizationId?: string;
-  provider: string; // 'googleai', 'anthropic', 'openrouter'
-  modelId: string;
-}) {
-  let { organizationId, provider, modelId } = params;
+export async function getModel(
+  params?:
+    | {
+        organizationId?: string;
+        provider?: string; // 'googleai', 'anthropic', 'openrouter'
+        modelId?: string;
+      }
+    | string
+) {
+  let organizationId: string | undefined;
+  let provider = 'googleai';
+  let modelId = 'gemini-2.5-flash';
+
+  if (typeof params === 'string') {
+    modelId = params;
+    if (params.startsWith('claude')) {
+      provider = 'anthropic';
+    }
+  } else if (params) {
+    organizationId = params.organizationId;
+    provider = params.provider || 'googleai';
+    modelId = params.modelId || 'gemini-2.5-flash';
+  }
 
   // Map legacy 'openai' provider to 'anthropic' and update modelId
   if (provider === 'openai') {

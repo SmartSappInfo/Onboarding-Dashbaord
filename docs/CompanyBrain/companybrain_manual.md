@@ -1,24 +1,26 @@
 # CompanyBrain: Operations & Maintenance Runbook
 **File:** `docs/CompanyBrain/companybrain_manual.md`  
-**Current Milestone:** Phases 1–8 Deployed & Active (Notes, Semantic Search, Knowledge Graph, Conflict Engine, Unified Context Builder, MCP Platform & Tool Registry, Supervisor Agent, and Domain Specialists & Agent Swarm Collaboration)  
-**Status:** Operational (Low-Noise Runbook)
+**Current Milestone:** Phases 1–10 Deployed & Active (Notes, Semantic Search, Knowledge Graph, Conflict Engine, Unified Context Builder, MCP Platform & Tool Registry, Supervisor Agent, Domain Specialists, Autonomous Workflows, and Multi-Tenant Enterprise Security & Continuous Intelligence)  
+**Status:** Operational (Complete 10-Phase Platform)
 
 ---
 
 ## 1. System Status & Infrastructure Health
 
-All foundational infrastructure for Phases 1, 2, 3, 4, 5, 6, 7, and 8 is deployed, indexed, and active:
+All foundational infrastructure for Phases 1 through 10 is deployed, indexed, and active:
 
 | Subsystem | Deployed Component | Status | Location / Cluster |
 | :--- | :--- | :--- | :--- |
-| **Firestore Security Rules** | `/memory_objects`, `/graph_nodes`, `/graph_edges`, `/memory_conflicts`, `/context_snapshots`, `/mcp_keys`, `/mcp_audit_logs`, `/mcp_pending_approvals`, `/mcp_approval_policies`, `/agent_runs`, `/swarm_runs`, `/agent_specialists` | **LIVE** | Project `studio-9220106300-f74cb` |
-| **Firestore Compound Indexes** | 6 memory + 9 graph + 4 conflict + 2 snapshot + 4 MCP + 2 agent_runs + 2 swarm_runs composite indexes | **LIVE** | Compiled & active in cloud |
+| **Firestore Security Rules** | `/memory_objects`, `/graph_nodes`, `/graph_edges`, `/memory_conflicts`, `/context_snapshots`, `/mcp_keys`, `/mcp_audit_logs`, `/mcp_pending_approvals`, `/mcp_approval_policies`, `/agent_runs`, `/swarm_runs`, `/agent_specialists`, `/brain_workflows`, `/workflow_runs`, `/brain_recommendations`, `/brain_health_audits`, `/compliance_audit_certificates` | **LIVE** | Project `studio-9220106300-f74cb` |
+| **Firestore Compound Indexes** | 6 memory + 9 graph + 4 conflict + 2 snapshot + 4 MCP + 2 agent_runs + 2 swarm_runs + 2 workflows + 3 intelligence composite indexes | **LIVE** | Compiled & active in cloud |
 | **Qdrant Vector Engine** | Collection `smartsapp_memory` (768d Cosine) | **HEALTHY** | Qdrant Cloud (GCP `australia-southeast1-0`) |
 | **Context Builder Engine** | 4-Tier Stratified Budgeting, Relevance Scorer & Grounded Citations | **ACTIVE** | Server Actions & Context Panel UI |
 | **MCP Platform & Registry** | 12 Governed Tools (Memory, Context, CRM, Deal, Task) | **ACTIVE** | JSON-RPC 2.0 (`/api/mcp`) & SSE (`/api/mcp/sse`) |
 | **Approval Engine & RBAC** | Risk Tiers (`read_only`, `low_risk`, `high_risk`), SHA-256 API Keys & Queue | **ACTIVE** | Human-in-the-Loop Control Plane |
 | **Supervisor Agent & Registry** | `SupervisorEngine`, `AgentRegistry`, Plan Graph, Step Inspector & Briefing Synthesis | **ACTIVE** | Mission Control (`/admin/companybrain/supervisor`) |
 | **Domain Specialists & Swarms** | 6 Domain Specialists (Knowledge, Revenue, Meeting, SDR, Operations, Governance), `SwarmOrchestrator`, Consensus Flow | **ACTIVE** | Agent Center (`/admin/companybrain/agents`) & Backoffice Tab 8 |
+| **Agentic Workflows Engine** | 3 Turnkey Blueprints, Event Trigger Router, DAG Cycle Detector, 90s Ceiling | **ACTIVE** | Workflows Console (`/admin/companybrain/workflows`) & Backoffice Tab 9 |
+| **Autonomous Intelligence Hub** | Pattern Observation Engine, Self-Healing Knowledge Health, Cryptographic Compliance, Federated Benchmarks | **ACTIVE** | Intelligence Hub (`/admin/companybrain/intelligence`), Backoffice Tab 10 & Home Pulse Widget |
 | **Circuit Breakers** | Deterministic embeddings, graph traversal, contradiction detection, and in-memory sort fallbacks | **ACTIVE** | Auto-engages on network, API, or building index states |
 
 ---
@@ -65,6 +67,10 @@ To ensure legal compliance, financial safety, and institutional integrity, the f
 | **21. Human Approval Gate Sign-Off** | Adjudicating and releasing paused workflows held at status `waiting_approval` before external emails or deal stage mutations occur. | High-risk commercial actions and customer-facing communications cannot execute without human operational sign-off. | Adjudicate via `<WorkflowApprovalGateBanner>` or Backoffice Approvals Queue. |
 | **22. Dry-Run Simulation Certification** | Reviewing and certifying synthetic test runs in the Simulator before enabling automated background event listening. | Ensuring that newly created or customized pipelines do not cause accidental mutations or unintended loops requires human verification. | Test and certify in `<WorkflowSimulatorModal>` via `/admin/companybrain/workflows`. |
 | **23. Emergency Workflow Kill-Switch** | Engaging the workspace or platform-wide kill-switch to immediately halt all background trigger execution and cron events. | Incident response, external API outages, or policy audits require immediate executive power to halt all background autonomous agents. | Toggle emergency switch in `/backoffice/companybrain` *(Agentic Workflows tab)*. |
+| **24. Opportunity & Risk Recommendation Adjudication** | Reviewing and approving proactive recommendations before dispatching autonomous deal rescue or lead activation workflows. | Autonomous pattern detection flags commercial anomalies, but business judgment and client relationship decisions remain the exclusive responsibility of human leaders. | Adjudicate via `<EmergingInsightsFeed>` in `/admin/companybrain/intelligence`. |
+| **25. Self-Healing Memory Pruning Authorization** | Approving batch soft-archivals, knowledge graph orphan pruning, and vector reconciliation sweeps. | Even though self-healing operations are non-destructive, human administrators must retain authority over changes to institutional memory lifecycles. | Execute via `<SelfHealingHealthCenter>` in `/admin/companybrain/intelligence` or Backoffice Tab 10. |
+| **26. Compliance Deletion & GDPR Erasure Certification** | Legally authorizing and executing permanent cascading erasures under GDPR Article 17 / CCPA. | Irreversible eradication across Firestore, Qdrant vectors, and graph edges requires legal authority from the Data Protection Officer (DPO). | Execute via `<ComplianceSecurityPanel>` in `/admin/companybrain/intelligence` *(generates signed SHA-256 certificate)*. |
+| **27. Cross-Tenant Federated Benchmark Consent** | Authorizing participation in privacy-preserving, $k$-anonymous ($k \ge 5$) industry performance benchmarks. | Enterprise data sovereignty requires explicit corporate consent before sharing anonymized telemetry across federated tenant clusters. | Configure in `/backoffice/companybrain` *(Intelligence & Security tab)*. |
 
 ### 2.5.1. Compliance Data Purges and Hard-Deletion Protocol (GDPR)
 
@@ -186,11 +192,17 @@ Verifies the 3 turnkey production blueprints (Deal Rescue, Lead Activation, Meet
 # Run automated unit tests
 npx vitest run src/lib/workflows/__tests__/workflow-engine.test.ts
 
-# Full Agentic Workflows & Event Triggers Verification Script
-npx tsx scripts/fer-test-agentic-workflows.ts
+### 3.10. Verify Autonomous Organizational Intelligence & Continuous Self-Healing
+Verifies autonomous pattern detection, risk/opportunity recommendation generation, 4-pillar self-healing audits, non-destructive soft-archival, mathematical tenant boundary isolation, cryptographic GDPR deletion certification (SHA-256), and privacy-preserving federated benchmarks ($k \ge 5$):
+```bash
+# Run automated unit tests
+npx vitest run src/lib/intelligence/__tests__/autonomous-intelligence.test.ts
+
+# Full Autonomous Intelligence & Continuous Self-Healing Verification Script
+npx tsx scripts/fer-test-autonomous-intelligence.ts
 
 # Target specific workspace
-npx tsx scripts/fer-test-agentic-workflows.ts --workspace-id=<workspace_id>
+npx tsx scripts/fer-test-autonomous-intelligence.ts --workspace-id=<workspace_id>
 ```
 
 ---
@@ -201,6 +213,9 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 | Surface | URL Path | Capabilities |
 | :--- | :--- | :--- |
+| **Continuous Intelligence Hub** | `/admin/companybrain/intelligence` | Full executive command center: top KPI summary ribbon, filterable emerging risks & opportunities feed, 4-dial self-healing center, macro trends, federated benchmarks, and cryptographic compliance panel. |
+| **Home Dashboard Executive Pulse** | `/admin` *(Top Intelligence Card)* | Real-time executive pulse widget rendering live health score (0–100), active risks badge, strategic opportunities, and 1-click navigation to the Intelligence Hub. |
+| **Continuous Intelligence Control Plane**| `/backoffice/companybrain` *(Intelligence & Security tab)* | Observation sensitivity tuning, background sweep cadence, auto-workflow confidence thresholds, self-healing archival horizons, tenant boundary verification probe, and signed compliance export generator. |
 | **Autonomous Workflows Hub** | `/admin/companybrain/workflows` | Visual workflow builder, turnkey blueprint gallery, step execution monitor, dry-run simulator, and prominent approval gate banner. |
 | **Workflows Control Plane** | `/backoffice/companybrain` *(Agentic Workflows tab)* | Global execution guardrails, emergency kill-switch, 1-click turnkey blueprint installer, active workflow toggles, and synthetic event simulator. |
 | **Domain Agents & Swarm Hub** | `/admin/companybrain/agents` | Specialist roster cards, persona inspection drawer, code-free autonomy/directive editor, interactive swarm mission launcher, and multi-perspective consensus view. |
@@ -223,6 +238,10 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 | Symptom | Root Cause | Resolution |
 | :--- | :--- | :--- |
+| **Scan results not refreshing immediately** | In-memory 1-hour scan debounce cache (`SCAN_DEBOUNCE_MS`) is active to protect LLM quota and avoid Firestore read storms. | Click **"Run Observation Scan"** in the Intelligence Hub or **"Trigger Immediate Sweep"** in Backoffice Tab 10, which automatically forces a live refresh (`forceRefresh: true`). |
+| **Tenant isolation probe alert** | A query filter in a test script or external tool omitted the mandatory `workspaceId` equality clause. | Ensure all Firestore queries include `.where('workspaceId', '==', workspaceId)` and all Qdrant vector filters contain the mandatory tenant `must` clause. |
+| **Cryptographic certificate digest mismatch** | Audit record payload or timestamp was altered after creation. | The SHA-256 digest is cryptographically bound to the audit payload. Re-generate a fresh compliance export via `/admin/companybrain/intelligence` *(Enterprise Security tab)*. |
+| **Federated benchmarks show "Insufficient Sample"** | Fewer than 5 workspaces exist in the cohort, triggering privacy-preserving $k$-anonymity suppression ($k \ge 5$). | System guarantees differential privacy. Metrics remain hidden until at least 5 enterprise tenants contribute to the federated cohort. |
 | **Workflow halted at `waiting_approval`** | Pipeline node stepped into an `approval_gate` requiring human sign-off before executing commercial mutations. | Review proposed step in `<WorkflowApprovalGateBanner>` at `/admin/companybrain/workflows` and click **"Approve & Continue Pipeline"** or reject to terminate. |
 | **Workflow failed: `Max step execution ceiling exceeded`** | Graph contained a cyclic loop or compound branch exceeding the 12-step ceiling. | Hard recursion ceiling stopped token drain. Edit the workflow in `/admin/companybrain/workflows` and verify all branch edges form a clean DAG. |
 | **Workflow execution timeout (90s ceiling)** | An external API or domain specialist hung during execution. | `Promise.race` safety ceiling aborted the run cleanly. Check specialist prompt directives and ensure external dependencies are reachable. |
@@ -247,10 +266,18 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 ---
 
-## 6. Forward Look: Phase 10 Preparation
+## 6. Full 10-Phase Milestone Completion & Continuous Governance
 
-Upcoming apex milestone: **Phase 10: Multi-Tenant Enterprise Security, Autonomous Intelligence & Continuous Self-Healing**:
-1. Autonomous Intelligence Engine running scheduled multi-agent deliberation and background health audits.
-2. Continuous self-healing knowledge mesh: Auto-detecting knowledge drift, scheduling reconciliation swarms, and generating proactive executive briefs.
-3. Multi-tenant zero-trust policy federation across enterprise organizational units.
+CompanyBrain 2.0 has achieved full implementation across all 10 architectural phases:
+
+1. **Phase 1 (Atomic Memories & Note Pipeline)**: Transactional extraction and multi-entity association.
+2. **Phase 2 (Qdrant Dense Vector Space)**: 768-dimensional semantic retrieval and explainability.
+3. **Phase 3 (Relational Knowledge Graph)**: Node-edge topology mesh, semantic traversal, and CRM links.
+4. **Phase 4 (Conflict Engine & Freshness Governance)**: Contradiction detection, TTL decay, and non-destructive resolutions.
+5. **Phase 5 (Unified Context Builder & Subject Dossiers)**: 4-tier token budgeting and multi-source synthesis.
+6. **Phase 6 (MCP Platform & Governed Tool Registry)**: JSON-RPC 2.0 standard, risk tiers, and approval interception.
+7. **Phase 7 (Supervisor Agent & Dynamic Tool Orchestration)**: Goal decomposition, step graphs, and briefing generation.
+8. **Phase 8 (Domain Specialists & Swarm Collaboration)**: 6 specialist personas, consensus synthesis, and divergence resolution.
+9. **Phase 9 (Agentic Autonomous Workflows & Background Triggers)**: 3 turnkey blueprints, event trigger routing, and human approval gates.
+10. **Phase 10 (Autonomous Organizational Intelligence & Continuous Self-Healing)**: Proactive pattern observation, continuous self-healing memory maintenance, cryptographic GDPR eradication certificates, and privacy-preserving federated benchmarks.
 

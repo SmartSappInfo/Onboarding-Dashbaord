@@ -41,6 +41,22 @@ async function getBase64ImageFromUrl(imageUrl: string): Promise<string | null> {
 }
 
 /**
+ * Safely formats date values without throwing RangeError on malformed dates.
+ */
+function safeFormatDate(dateVal: unknown, formatStr: string, fallback = '—'): string {
+  if (!dateVal) return fallback;
+  try {
+    const d = typeof dateVal === 'string' || typeof dateVal === 'number' 
+      ? new Date(dateVal) 
+      : (dateVal instanceof Date ? dateVal : null);
+    if (!d || isNaN(d.getTime())) return fallback;
+    return format(d, formatStr);
+  } catch {
+    return fallback;
+  }
+}
+
+/**
  * Generates and downloads a presentation-grade executive PDF dossier report.
  */
 export async function generateEntityDossierPdf(options: EntityDossierPdfOptions): Promise<void> {
@@ -296,7 +312,7 @@ export async function generateEntityDossierPdf(options: EntityDossierPdfOptions)
     { label: 'Pipeline Stage', val: stageName },
     { label: 'Lead Score', val: `${leadScore} / 100` },
     { label: 'Assigned Owner', val: assignedOwner },
-    { label: 'Created Date', val: entity.createdAt ? format(new Date(entity.createdAt), 'PP') : 'N/A' },
+    { label: 'Created Date', val: safeFormatDate(entity.createdAt, 'PP', 'N/A') },
   ];
 
   const cellW = contentWidth / 4;
@@ -417,7 +433,7 @@ export async function generateEntityDossierPdf(options: EntityDossierPdfOptions)
           : (deal as unknown as { amount?: number }).amount
           ? `$${Number((deal as unknown as { amount?: number }).amount).toLocaleString()}`
           : '—';
-      const closeDate = deal.expectedCloseDate ? format(new Date(deal.expectedCloseDate), 'PP') : '—';
+      const closeDate = safeFormatDate(deal.expectedCloseDate, 'PP', '—');
 
       doc.text(deal.name.slice(0, 36), margin + 3, y + 4.2);
       doc.text((deal.stageName || 'Open').slice(0, 32), margin + 65, y + 4.2);
@@ -467,7 +483,7 @@ export async function generateEntityDossierPdf(options: EntityDossierPdfOptions)
       doc.setFontSize(7.5);
       doc.setTextColor(...slate900);
 
-      const dueDateText = task.dueDate ? format(new Date(task.dueDate), 'PP') : '—';
+      const dueDateText = safeFormatDate(task.dueDate, 'PP', '—');
       doc.text(task.title.slice(0, 48), margin + 3, y + 4.2);
       doc.text((task.priority || 'Medium').toUpperCase(), margin + 95, y + 4.2);
       doc.text((task.status || 'Pending').toUpperCase(), margin + 125, y + 4.2);

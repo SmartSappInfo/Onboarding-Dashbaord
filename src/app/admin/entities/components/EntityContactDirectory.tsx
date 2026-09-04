@@ -1,19 +1,19 @@
 'use client';
 
 import * as React from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
 import { EmailHygieneHoverCard } from '../../components/EmailHygieneHoverCard';
 import { PhoneHygieneHoverCard } from '../../components/PhoneHygieneHoverCard';
 import { logActivity } from '@/lib/activity-logger';
 import { 
-    Plus, User, Mail, Phone, ShieldCheck, BadgeCheck, X, AlertCircle, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video, PhoneCall
+    Plus, User, Mail, Phone, ShieldCheck, X, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video, PhoneCall
 } from 'lucide-react';
 import BulkMeetingInviteModal from './BulkMeetingInviteModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -49,7 +49,23 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { AddToCampaignDialog } from './AddToCampaignDialog';
-import dynamic from 'next/dynamic';
+
+interface EmailVerificationCacheDoc {
+    status?: string;
+    score?: number;
+    lastVerifiedAt?: string;
+    checks?: Record<string, unknown>;
+}
+
+interface PhoneVerificationCacheDoc {
+    status?: string;
+    score?: number;
+    lastVerifiedAt?: string;
+    country?: string;
+    callingCode?: string;
+    lineType?: string;
+    checks?: Record<string, unknown>;
+}
 
 interface EntityContactDirectoryProps {
     entityId: string;
@@ -80,16 +96,16 @@ export default function EntityContactDirectory({
     
     // Role selection state
     const [availableRoles, setAvailableRoles] = React.useState<ContactTypeEntry[]>(getSystemContactTypes(entityData.entityType));
-    const [isLoadingRoles, setIsLoadingRoles] = React.useState(false);
+    const [_isLoadingRoles, _setIsLoadingRoles] = React.useState(false);
 
     // Initial load of roles
     React.useEffect(() => {
         let cancelled = false;
-        setIsLoadingRoles(true);
+        _setIsLoadingRoles(true);
         getEffectiveContactTypes(entityData.entityType, organizationId, workspaceId)
             .then(roles => { if (!cancelled) setAvailableRoles(roles); })
             .catch(() => { if (!cancelled) setAvailableRoles(getSystemContactTypes(entityData.entityType)); })
-            .finally(() => { if (!cancelled) setIsLoadingRoles(false); });
+            .finally(() => { if (!cancelled) _setIsLoadingRoles(false); });
         return () => { cancelled = true; };
     }, [entityData.entityType, organizationId, workspaceId]);
 
@@ -145,8 +161,9 @@ export default function EntityContactDirectory({
 
             setIsAdding(false);
             setEditingId(null);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Failed to save contact';
+            toast({ variant: 'destructive', title: 'Save Failed', description: message });
         } finally {
             setIsSaving(false);
         }
@@ -191,8 +208,9 @@ export default function EntityContactDirectory({
             });
 
             setContactToDelete(null);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Failed to delete contact';
+            toast({ variant: 'destructive', title: 'Delete Failed', description: message });
         } finally {
             setIsSaving(false);
             setContactToDelete(null);
@@ -278,7 +296,7 @@ export default function EntityContactDirectory({
                             </div>
                             <h3 className="font-bold text-base text-foreground tracking-tight mb-1.5">No Contacts Registered</h3>
                             <p className="text-xs text-muted-foreground font-medium max-w-sm leading-relaxed mb-6">
-                                Add your institution's administrators or stakeholders to initiate operations, trigger automated workflows, and launch communication templates.
+                                Add your {singular.toLowerCase()}&apos;s administrators or stakeholders to initiate operations, trigger automated workflows, and launch communication templates.
                             </p>
                             <Button 
                                 onClick={() => setIsAdding(true)} 
@@ -349,7 +367,7 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
     const firestore = useFirestore();
     const hashed = React.useMemo(() => contact.email ? btoa(contact.email.toLowerCase()) : '', [contact.email]);
     const docRef = useMemoFirebase(() => (firestore && hashed) ? doc(firestore, 'verification_cache', hashed) : null, [firestore, hashed]);
-    const { data: cache } = useDoc<any>(docRef);
+    const { data: cache } = useDoc<EmailVerificationCacheDoc>(docRef);
 
     const hygieneData = React.useMemo(() => cache ? {
         verificationStatus: cache.status,
@@ -361,7 +379,7 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
     // Phone hygiene — subscribe to the phone cache doc (null ref when no phone, so no dead listener)
     const phoneHashed = React.useMemo(() => contact.phone ? btoa(contact.phone.trim()) : '', [contact.phone]);
     const phoneDocRef = useMemoFirebase(() => (firestore && phoneHashed) ? doc(firestore, 'phone_verification_cache', phoneHashed) : null, [firestore, phoneHashed]);
-    const { data: phoneCache } = useDoc<any>(phoneDocRef);
+    const { data: phoneCache } = useDoc<PhoneVerificationCacheDoc>(phoneDocRef);
 
     const phoneHygieneData = React.useMemo(() => (contact.phone ? {
         // Prefer the contact's lifecycle status (otp/active/failed) over the cache's offline status
@@ -391,8 +409,9 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
             });
             if (!res.ok) throw new Error('Verification trigger failed');
             toast({ title: 'Verification Queued', description: `${email} is being verified in the background.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Verification trigger failed';
+            toast({ variant: 'destructive', title: 'Recheck Failed', description: message });
         } finally {
             setIsRechecking(false);
         }
@@ -409,8 +428,9 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
             });
             if (!res.ok) throw new Error('Verification trigger failed');
             toast({ title: 'Verification Queued', description: `${phone} is being verified in the background.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : 'Verification trigger failed';
+            toast({ variant: 'destructive', title: 'Recheck Failed', description: message });
         } finally {
             setIsPhoneRechecking(false);
         }

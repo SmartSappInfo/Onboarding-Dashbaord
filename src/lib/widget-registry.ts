@@ -13,6 +13,15 @@ import type { AppFeatureId, WidgetDefinition } from './types';
  */
 export const STATIC_WIDGETS: WidgetDefinition[] = [
   {
+    id: 'executiveIntelligence',
+    type: 'static',
+    label: 'CompanyBrain Executive Pulse',
+    description: 'Autonomous risk detection, strategic opportunities, and knowledge health.',
+    icon: 'Cpu',
+    category: 'Intelligence',
+    gridClass: 'md:col-span-4 lg:col-span-4',
+  },
+  {
     id: 'userAssignments',
     type: 'static',
     label: 'Team Workload',

@@ -23,6 +23,7 @@ import { ModuleChartWidgetServer } from "./components/widgets/ModuleChartWidgetS
 import { ZoneChartWidgetServer } from "./components/widgets/ZoneChartWidgetServer";
 import { UserAssignmentsWidgetServer } from "./components/widgets/UserAssignmentsWidgetServer";
 import { MessagingWidgetServer } from "./components/widgets/MessagingWidgetServer";
+import { ExecutiveIntelligenceWidgetServer } from "./components/widgets/ExecutiveIntelligenceWidgetServer";
 
 interface AdminDashboardPageProps {
     searchParams: Promise<{ track?: string }>;
@@ -82,6 +83,11 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
 
     // Construct the widget map
     const widgets: Record<string, React.ReactNode> = {
+        executiveIntelligence: (
+            <Suspense key="executiveIntelligence" fallback={<WidgetSkeleton />}>
+                <ExecutiveIntelligenceWidgetServer workspaceId={activeWorkspaceId} />
+            </Suspense>
+        ),
         metricsRow: (
             <Suspense key="metricsRow" fallback={<div className="lg:col-span-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"><WidgetSkeleton key="sk1" /><WidgetSkeleton key="sk2" /><WidgetSkeleton key="sk3" /><WidgetSkeleton key="sk4" /></div>}>
                 <MetricsWidgetServer workspaceId={activeWorkspaceId} />

@@ -25,6 +25,7 @@ import { ZoneDistribution } from "@/components/dashboard/ZoneDistribution";
 import { MessagingWidget } from "@/components/dashboard/MessagingWidget";
 import { TaskWidget } from "@/components/dashboard/TaskWidget";
 import { PipelineWidget } from "@/components/dashboard/PipelineWidget";
+import { ExecutiveIntelligenceWidget } from "@/components/dashboard/ExecutiveIntelligenceWidget";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout, Pipeline } from '@/lib/types';
 import { DashboardSkeleton } from './DashboardSkeleton';
@@ -38,6 +39,7 @@ import { LayoutGrid, Plus } from 'lucide-react';
 
 
 const staticComponentMap: Record<string, React.FC<any>> = {
+  executiveIntelligence: ExecutiveIntelligenceWidget,
   taskWidget: TaskWidget,
   pipelinePieChart: PipelinePieChart,
   latestSurveys: LatestSurveys,

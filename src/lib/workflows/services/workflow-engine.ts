@@ -49,6 +49,18 @@ export class WorkflowEngine {
   public static readonly MAX_CONCURRENT_RUNS = 5;
 
   /**
+   * Dispatches and executes an automated or manual workflow run via parameter object.
+   */
+  public static async startWorkflowRun(params: {
+    workflowId: string;
+    workspaceId?: string;
+    actorId: string;
+    initialPayload?: Record<string, McpPayloadValue>;
+  }): Promise<WorkflowRun> {
+    return this.startWorkflow(params.workflowId, params.initialPayload || {}, params.actorId);
+  }
+
+  /**
    * Dispatches and executes an automated or manual workflow run.
    */
   public static async startWorkflow(
