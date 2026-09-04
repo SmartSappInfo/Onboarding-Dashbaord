@@ -712,5 +712,146 @@ export interface OptimizationGovernanceConfig {
   updatedAt: string;
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Phase 9: Enterprise Platform, Developer Ecosystem, Webhooks & Governance
+// ─────────────────────────────────────────────────────────────────────────────
 
+export type MediaApiKeyScope =
+  | 'media:read'
+  | 'media:write'
+  | 'media:publish'
+  | 'media:analytics'
+  | 'media:webhooks'
+  | 'media:admin';
 
+export interface MediaApiKey {
+  id: string;
+  name: string;
+  keyPrefix: string;
+  keyHash: string;
+  workspaceId: string;
+  organizationId?: string;
+  scopes: MediaApiKeyScope[];
+  createdAt: string;
+  expiresAt: string | null;
+  lastUsedAt: string | null;
+  status: 'ACTIVE' | 'REVOKED' | 'EXPIRED';
+  createdBy: string;
+}
+
+export type MediaWebhookEventType =
+  | 'media.asset.created'
+  | 'media.asset.published'
+  | 'media.session.completed'
+  | 'media.cta.clicked'
+  | 'media.contact.identified'
+  | 'media.intent.high'
+  | 'media.deal.influenced'
+  | 'media.experiment.winner_promoted'
+  | 'media.decay.detected'
+  | 'media.test.ping';
+
+export interface MediaWebhookEndpoint {
+  id: string;
+  workspaceId: string;
+  name: string;
+  url: string;
+  secret: string; // HMAC-SHA256 signing secret
+  subscribedEvents: MediaWebhookEventType[];
+  status: 'ACTIVE' | 'PAUSED' | 'FAILING';
+  createdAt: string;
+  updatedAt: string;
+  totalDeliveries: number;
+  successfulDeliveries: number;
+  failedDeliveries: number;
+  lastDeliveryAt?: string;
+}
+
+export interface MediaWebhookDeliveryLog {
+  id: string;
+  webhookId: string;
+  workspaceId: string;
+  event: MediaWebhookEventType;
+  payload: Record<string, unknown>;
+  attempt: number;
+  maxAttempts: number;
+  status: 'SUCCESS' | 'FAILED' | 'PENDING' | 'DEAD_LETTER';
+  statusCode?: number;
+  responseBody?: string;
+  durationMs?: number;
+  timestamp: string;
+  errorMessage?: string;
+}
+
+export type MediaAuditResourceType =
+  | 'ASSET'
+  | 'EXPERIENCE'
+  | 'PACKAGE'
+  | 'COLLECTION'
+  | 'EXPERIMENT'
+  | 'WEBHOOK'
+  | 'API_KEY'
+  | 'GOVERNANCE'
+  | 'RETENTION';
+
+export interface MediaAuditLog {
+  id: string;
+  workspaceId: string;
+  actorId: string;
+  actorEmail: string;
+  actorName: string;
+  action: string;
+  resourceType: MediaAuditResourceType;
+  resourceId: string;
+  resourceTitle: string;
+  beforeState?: Record<string, unknown>;
+  afterState?: Record<string, unknown>;
+  reason?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  requestId?: string;
+  timestamp: string;
+}
+
+export interface MediaRetentionPolicy {
+  workspaceId: string;
+  rawEventsRetentionDays: number; // e.g. 30, 90, 180, 365
+  sessionRetentionDays: number; // e.g. 365, 730
+  anonymizeIpImmediately: boolean;
+  maskGeolocation: boolean;
+  auditLogRetentionDays: number; // e.g. 365, 1095
+  autoPurgeEnabled: boolean;
+  lastPurgedAt?: string;
+  updatedAt: string;
+}
+
+export type MediaResourceRole =
+  | 'VIEWER'
+  | 'CONTRIBUTOR'
+  | 'EDITOR'
+  | 'PUBLISHER'
+  | 'ANALYST'
+  | 'MANAGER'
+  | 'ADMIN';
+
+export interface MediaResourcePermission {
+  id: string;
+  workspaceId: string;
+  resourceType: 'COLLECTION' | 'PACKAGE' | 'EXPERIENCE' | 'ASSET';
+  resourceId: string;
+  principalType: 'USER' | 'ROLE';
+  principalId: string;
+  role: MediaResourceRole;
+  grantedBy: string;
+  createdAt: string;
+}
+
+export interface EnterprisePlatformGovernanceConfig {
+  workspaceId: string;
+  enforceStrictRbac: boolean;
+  requireApprovalForPublish: boolean;
+  allowedWebhookProtocols: ('http:' | 'https:')[];
+  globalRateLimitPerMin: number;
+  retentionPurgeSchedule: 'DAILY' | 'WEEKLY' | 'MANUAL';
+  updatedAt: string;
+}

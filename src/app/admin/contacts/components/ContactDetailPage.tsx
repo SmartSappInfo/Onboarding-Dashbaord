@@ -8,12 +8,13 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { 
   Building, Users, User, Mail, Phone, MapPin, Calendar, 
-  Banknote, Briefcase, Baby, UserPlus, PenSquare, MessageSquarePlus, Brain 
+  Banknote, Briefcase, Baby, UserPlus, PenSquare, MessageSquarePlus, Brain, Film 
 } from 'lucide-react';
 import { format } from 'date-fns';
 import NotesSection from '@/app/admin/components/NotesSection';
 import ActivityTimeline from '@/app/admin/components/ActivityTimeline';
 import KnowledgeTimeline from '@/app/admin/quick-notes/components/timeline/KnowledgeTimeline';
+import { ContactMediaTab } from './ContactMediaTab';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface ContactDetailPageProps {
@@ -35,6 +36,8 @@ export function ContactDetailPage({
   onMessage, 
   onLogActivity 
 }: ContactDetailPageProps) {
+  const [contactTagIds, setContactTagIds] = React.useState<string[]>(workspaceEntity.tagIds || []);
+
   // Display entity type badge prominently (Requirement 25)
   const entityTypeBadge = (
     <Badge variant="secondary" className="text-xs font-bold uppercase">
@@ -84,9 +87,29 @@ export function ContactDetailPage({
       {entity.entityType === 'person' && (
         <PersonDetailView entity={entity} workspaceEntity={workspaceEntity} />
       )}
-
       {/* Common sections */}
       <div className="space-y-6">
+        {/* Media Engagement Profile */}
+        <Card className="rounded-2xl border-border/60">
+          <CardHeader>
+            <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Film className="h-4 w-4 text-primary" />
+              Media Engagement & Content Intelligence Profile
+            </CardTitle>
+            <CardDescription className="text-xs">
+              Real-time media consumption metrics, video watch heatmaps, and content format preferences for this contact.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ContactMediaTab
+              contactId={entity.id}
+              workspaceId={workspaceEntity.workspaceId}
+              contactTagIds={contactTagIds}
+              onTagsChange={setContactTagIds}
+            />
+          </CardContent>
+        </Card>
+
         {/* CRM Knowledge Timeline */}
         <Card className="rounded-2xl border-border/60">
           <CardHeader>

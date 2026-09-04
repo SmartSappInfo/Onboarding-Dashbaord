@@ -17,10 +17,12 @@ import {
 import { 
   BarChart3, Film, Music, Eye, PlayCircle, CheckCircle, 
   MousePointerClick, Download, Search, ChevronRight,
-  Loader2, ArrowUpDown, X, Filter
+  Loader2, ArrowUpDown, X, Filter, TrendingUp
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
+import { MediaCommandCenter } from './components/MediaCommandCenter';
+import { AttributionExplorer } from './components/AttributionExplorer';
 
 export type MetricFilterKey = 'views' | 'plays' | 'completions' | 'cta' | 'downloads' | 'engagement' | null;
 
@@ -53,6 +55,7 @@ export default function MediaAnalyticsClient() {
   const [searchTerm, setSearchTerm] = React.useState('');
   
   // Interactive KPI metric filter & sort states
+  const [analyticsTab, setAnalyticsTab] = React.useState<'command_center' | 'assets' | 'explorer'>('command_center');
   const [activeMetric, setActiveMetric] = React.useState<MetricFilterKey>(null);
   const [sortOption, setSortOption] = React.useState<SortOption>('updated_desc');
 
@@ -212,19 +215,73 @@ export default function MediaAnalyticsClient() {
   return (
     <PageContainerFluid>
       <div className="space-y-6 pb-20 w-full text-left">
-        {/* Top Title & Header */}
+        {/* Top Title & Header with Tab Switcher */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-extrabold text-foreground tracking-tight flex items-center gap-2">
-              <BarChart3 className="h-6 w-6 text-primary" /> Media Link Analytics
+              <BarChart3 className="h-6 w-6 text-primary" /> Media Intelligence & Attribution
             </h1>
             <p className="text-xs text-muted-foreground font-medium mt-1">
-              Track engagement, views, completion rates, and automated CRM conversion metrics across all shared media.
+              Executive pipeline attribution, full-funnel conversion rates, and per-link engagement metrics.
             </p>
+          </div>
+
+          <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-2xl border border-border self-start md:self-auto overflow-x-auto">
+            <button
+              onClick={() => setAnalyticsTab('command_center')}
+              className={cn(
+                'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all min-h-[44px] active:scale-[0.97] whitespace-nowrap',
+                analyticsTab === 'command_center'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <TrendingUp className="h-4 w-4" />
+              Command Center
+            </button>
+
+            <button
+              onClick={() => setAnalyticsTab('assets')}
+              className={cn(
+                'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all min-h-[44px] active:scale-[0.97] whitespace-nowrap',
+                analyticsTab === 'assets'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Asset Analytics
+            </button>
+
+            <button
+              onClick={() => setAnalyticsTab('explorer')}
+              className={cn(
+                'flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all min-h-[44px] active:scale-[0.97] whitespace-nowrap',
+                analyticsTab === 'explorer'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/60'
+              )}
+            >
+              <Filter className="h-4 w-4" />
+              Attribution Explorer
+            </button>
           </div>
         </div>
 
-        {/* Aggregate KPI Grid - Interactive Tap-to-Filter & Sort */}
+        {analyticsTab === 'command_center' && (
+          <MediaCommandCenter
+            workspaceId={activeWorkspaceId || ''}
+            onOpenExplorerTab={() => setAnalyticsTab('explorer')}
+          />
+        )}
+
+        {analyticsTab === 'explorer' && (
+          <AttributionExplorer workspaceId={activeWorkspaceId || ''} />
+        )}
+
+        {analyticsTab === 'assets' && (
+          <>
+            {/* Aggregate KPI Grid - Interactive Tap-to-Filter & Sort */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <Card 
             onClick={() => handleToggleMetricFilter('views')}
@@ -570,6 +627,8 @@ export default function MediaAnalyticsClient() {
             </div>
           )}
         </div>
+        </>
+      )}
       </div>
     </PageContainerFluid>
   );
