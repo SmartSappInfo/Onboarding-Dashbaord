@@ -150,7 +150,11 @@ export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'o
 
   // Coaching & Practice Lab (Phase 5)
   { eventType: 'roleplay_completed', entityType: 'Coaching', points: 25, enabled: true, description: 'Points awarded when a seller completes an AI buyer practice lab simulation.' },
-  { eventType: 'call_reviewed', entityType: 'Coaching', points: 15, enabled: true, description: 'Points awarded when a Gong-style call scorecard review is conducted.' }
+  { eventType: 'call_reviewed', entityType: 'Coaching', points: 15, enabled: true, description: 'Points awarded when a Gong-style call scorecard review is conducted.' },
+
+  // Buyer & Deal Intelligence (Phase 6)
+  { eventType: 'buyer_signal_actioned', entityType: 'BuyerSignal', points: 10, enabled: true, description: 'Points awarded when a seller actions or converts a high-intent buyer signal.' },
+  { eventType: 'meeting_completed_with_brief', entityType: 'Meeting', points: 20, enabled: true, description: 'Points awarded when a meeting is conducted with pre-brief prep and post-meeting CRM intelligence sync.' }
 ];
 
 /**

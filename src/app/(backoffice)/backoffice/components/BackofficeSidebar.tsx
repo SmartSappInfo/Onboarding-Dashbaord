@@ -41,6 +41,7 @@ import {
   Users,
   Sliders,
   GraduationCap,
+  Compass,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -88,6 +89,7 @@ const controlNavItems: NavItem[] = [
   { href: '/backoffice/sales-teams', icon: Users, label: 'Sales Teams & Capacity', module: 'operations' },
   { href: '/backoffice/sales-performance', icon: Sliders, label: 'Performance Policies', module: 'operations' },
   { href: '/backoffice/coaching-intelligence', icon: GraduationCap, label: 'Coaching Intelligence', module: 'operations' },
+  { href: '/backoffice/deal-intelligence', icon: Compass, label: 'Deal Intelligence', module: 'operations' },
   { href: '/backoffice/integrations', icon: MessageSquare, label: 'WhatsApp Registry', module: 'templates' },
   { href: '/backoffice/fields', icon: Database, label: 'Fields & Variables', module: 'fields' },
   { href: '/backoffice/assets', icon: Image, label: 'Assets', module: 'assets' },

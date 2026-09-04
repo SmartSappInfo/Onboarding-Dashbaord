@@ -19,6 +19,7 @@
  */
 
 import * as React from 'react';
+import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,7 +31,8 @@ import {
   Loader2, 
   Bot, 
   ListPlus, 
-  Plus 
+  Plus,
+  Compass 
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
@@ -129,24 +131,38 @@ export default function DealAiIntelligencePanel({ deal, onTaskCreated }: DealAiI
           </p>
         </div>
 
-        <Button
-          type="button"
-          onClick={handleGenerateInsights}
-          disabled={isLoading}
-          className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 shrink-0"
-        >
-          {isLoading ? (
-            <>
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              <span>Analyzing Deal...</span>
-            </>
-          ) : (
-            <>
-              <Sparkles className="h-3.5 w-3.5" />
-              <span>{insights ? 'Refresh Insights' : 'Analyze Deal'}</span>
-            </>
-          )}
-        </Button>
+        <div className="flex items-center gap-2 shrink-0">
+          <Link href="/admin/deal-intelligence">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-9 rounded-xl font-bold text-xs gap-1.5"
+            >
+              <Compass className="h-3.5 w-3.5 text-primary" />
+              <span>Full Intelligence</span>
+            </Button>
+          </Link>
+
+          <Button
+            type="button"
+            onClick={handleGenerateInsights}
+            disabled={isLoading}
+            className="h-9 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-sm gap-1.5 shrink-0"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                <span>Analyzing Deal...</span>
+              </>
+            ) : (
+              <>
+                <Sparkles className="h-3.5 w-3.5" />
+                <span>{insights ? 'Refresh Insights' : 'Analyze Deal'}</span>
+              </>
+            )}
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent className="p-6">

@@ -250,6 +250,44 @@ export async function getMyDayOverviewAction(params: {
       }
     }
 
+    // 6.2 Build Candidates from Active High-Intent Buyer Signals (Phase 6)
+    try {
+      const activeSignalsSnap = await adminDb
+        .collection('buyerSignals')
+        .where('workspaceId', '==', workspaceId)
+        .where('status', '==', 'active')
+        .where('actionRequired', '==', true)
+        .orderBy('createdAt', 'desc')
+        .limit(10)
+        .get();
+
+      activeSignalsSnap.forEach((sigDoc) => {
+        const sig = sigDoc.data();
+        // Ownership guard: only include if targeted to this rep or unassigned at workspace level
+        const targetOwnerId = sig.suggestedAction?.recommendedOwnerId || sig.ownerId;
+        if (targetOwnerId && targetOwnerId !== repId) {
+          return;
+        }
+
+        candidates.push({
+          id: `signal_${sigDoc.id}`,
+          type: 'buyer_signal',
+          title: `Buyer Signal: ${sig.title || 'High Intent Action'}`,
+          description: `${sig.entityName}: ${sig.description || 'Customer intent spike detected.'}`,
+          entityId: sig.entityId || sigDoc.id,
+          entityName: sig.entityName || 'Prospective Buyer',
+          entityType: 'BuyerSignal',
+          dueDate: now.toISOString(),
+          assignedTo: repId,
+          workspaceId,
+          organizationId,
+          createdAt: sig.createdAt || now.toISOString(),
+        });
+      });
+    } catch (sigErr) {
+      console.warn('Non-blocking buyer signal candidate resolution failure:', sigErr);
+    }
+
     // 7. Resolve Today's Meetings
     const upcomingMeetings: UpcomingMeetingBrief[] = [];
     meetingsSnap.forEach((doc) => {
