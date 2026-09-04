@@ -2902,22 +2902,15 @@ service cloud.firestore {
         isSystemAdmin() ||
         hasWorkspaceAccess(resource.data.workspaceId)
       );
-      allow create: if isAuthorized() && (
+      allow write: if false;
+    }
+
+    match /knowledge_graph_governance/{workspaceId} {
+      allow read: if isAuthorized() && (
         isSystemAdmin() ||
-        (hasWorkspaceAccess(request.resource.data.workspaceId) &&
-         request.resource.data.createdBy == request.auth.uid)
+        hasWorkspaceAccess(workspaceId)
       );
-      allow update: if isAuthorized() && (
-        isSystemAdmin() ||
-        (hasWorkspaceAccess(resource.data.workspaceId) &&
-         request.resource.data.workspaceId == resource.data.workspaceId &&
-         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
-      );
-      allow delete: if isAuthorized() && (
-        isSystemAdmin() ||
-        (hasWorkspaceAccess(resource.data.workspaceId) &&
-         (resource.data.createdBy == request.auth.uid || isSystemAdmin()))
-      );
+      allow write: if false;
     }
 
     // --- Ideas & Idea Intelligence (Company Brain 2.0 Phase 6) ---

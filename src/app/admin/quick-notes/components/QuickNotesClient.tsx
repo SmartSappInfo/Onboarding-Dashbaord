@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { 
   Plus, 
@@ -9,6 +10,7 @@ import {
   LayoutGrid, 
   List, 
   Table, 
+  LayoutTemplate,
   Lightbulb, 
   Sparkles, 
   CheckCircle2, 
@@ -17,7 +19,12 @@ import {
   Compass,
   BookOpen,
   Eye,
-  CheckSquare
+  CheckSquare,
+  Settings,
+  Network,
+  Inbox,
+  TrendingUp,
+  Rocket,
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
@@ -48,9 +55,13 @@ import CategoryRail, { type BoardFilter } from './CategoryRail';
 import NoteEditorDialog from './NoteEditorDialog';
 import DigestButton from './DigestButton';
 import AskNotesDialog from './AskNotesDialog';
+import { KnowledgeSearchRibbon } from './KnowledgeSearchRibbon';
 import { KnowledgeListView } from './KnowledgeListView';
 import { KnowledgeTableView } from './KnowledgeTableView';
+import { KnowledgeGraphView } from './graph/KnowledgeGraphView';
+import { IdeaStudioView } from './ideas/IdeaStudioView';
 import type { KnowledgeViewMode } from './quick-notes-ui';
+import type { UnifiedNoteSource } from '@/lib/quick-notes-types';
 
 export default function QuickNotesClient() {
   const firestore = useFirestore();
@@ -69,8 +80,10 @@ export default function QuickNotesClient() {
     initialCategory ? { kind: 'category', categoryId: initialCategory } : { kind: 'all' }
   );
   const [selectedType, setSelectedType] = React.useState<KnowledgeType | 'all'>('all');
+  const [selectedSource, setSelectedSource] = React.useState<'all' | UnifiedNoteSource>('all');
   const [viewMode, setViewMode] = React.useState<KnowledgeViewMode>('grid');
   const [search, setSearch] = React.useState('');
+  const [askModalOpen, setAskModalOpen] = React.useState(false);
   const deferredSearch = React.useDeferredValue(search);
 
   const [editorOpen, setEditorOpen] = React.useState(false);
@@ -277,9 +290,51 @@ export default function QuickNotesClient() {
         </div>
 
         <div className="flex items-center gap-2">
-          <AskNotesDialog workspaceId={activeWorkspaceId} userId={user?.uid} />
+          <Link href="/admin/quick-notes/inbox">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-purple-600 border-purple-300 dark:border-purple-800 dark:text-purple-400">
+              <Inbox className="h-4 w-4" />
+              <span>Inbox</span>
+            </Button>
+          </Link>
+          <Link href="/admin/quick-notes/insights">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-emerald-600 border-emerald-300 dark:border-emerald-800 dark:text-emerald-400">
+              <TrendingUp className="h-4 w-4" />
+              <span>Insights</span>
+            </Button>
+          </Link>
+          <Link href="/admin/quick-notes/campaigns">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-blue-600 border-blue-300 dark:border-blue-800 dark:text-blue-400">
+              <Rocket className="h-4 w-4" />
+              <span>Campaigns</span>
+            </Button>
+          </Link>
+          <Link href="/admin/quick-notes/ask">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px] text-violet-600 border-violet-300 dark:border-violet-800 dark:text-violet-400">
+              <Sparkles className="h-4 w-4" />
+              <span>Ask Brain AI</span>
+            </Button>
+          </Link>
+          <Link href="/admin/quick-notes/templates">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px]">
+              <LayoutTemplate className="h-4 w-4 text-muted-foreground" />
+              <span className="hidden sm:inline">Templates</span>
+            </Button>
+          </Link>
+          <Link href="/admin/quick-notes/settings">
+            <Button variant="outline" className="gap-2 shadow-sm font-semibold min-h-[36px]">
+              <Settings className="h-4 w-4 text-muted-foreground" />
+              <span className="hidden sm:inline">Settings</span>
+            </Button>
+          </Link>
+          <AskNotesDialog
+            workspaceId={activeWorkspaceId}
+            userId={user?.uid}
+            open={askModalOpen}
+            onOpenChange={setAskModalOpen}
+            showTriggerButton={false}
+          />
           <DigestButton notes={digestNotes} scopeLabel={scopeLabel} workspaceId={activeWorkspaceId} userId={user?.uid} />
-          <Button onClick={handleNew} className="gap-2 shadow-sm font-semibold">
+          <Button onClick={handleNew} className="gap-2 shadow-sm font-semibold min-h-[36px]">
             <Plus className="h-4 w-4" />
             Capture Knowledge
           </Button>
@@ -298,106 +353,105 @@ export default function QuickNotesClient() {
           onDeleteCategory={handleDeleteCategory}
         />
 
-        <div className="min-w-0 flex-1">
-          {/* Controls Bar: Search + Type Filter Pills + View Switcher */}
-          <div className="mb-5 flex flex-col gap-3">
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-              <div className="relative flex-1 max-w-md">
-                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search knowledge by title, text, or tags…"
-                  aria-label="Search knowledge"
-                  className="pl-9 h-9 text-sm"
-                />
-              </div>
+        <div className="min-w-0 flex-1 space-y-4">
+          {/* Omnibar Search Ribbon */}
+          <KnowledgeSearchRibbon
+            searchQuery={search}
+            onSearchChange={setSearch}
+            selectedSource={selectedSource}
+            onSourceChange={(src) => {
+              setSelectedSource(src);
+              if (src !== 'all' && src !== 'quick_note') {
+                setFilter({ kind: 'sources' });
+              }
+            }}
+            selectedType={selectedType}
+            onTypeChange={setSelectedType}
+            onOpenAskModal={() => setAskModalOpen(true)}
+            totalResultsCount={filter.kind === 'sources' ? unifiedItems.length : visibleNotes.length}
+          />
 
-              {/* View Switcher: Grid / List / Table */}
-              <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5 self-end sm:self-auto">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className={cn(
-                    'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
-                    viewMode === 'grid' && 'bg-background shadow-sm text-foreground'
-                  )}
-                  aria-label="Card Grid View"
-                >
-                  <LayoutGrid className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Cards</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className={cn(
-                    'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
-                    viewMode === 'list' && 'bg-background shadow-sm text-foreground'
-                  )}
-                  aria-label="List View"
-                >
-                  <List className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">List</span>
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setViewMode('table')}
-                  className={cn(
-                    'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
-                    viewMode === 'table' && 'bg-background shadow-sm text-foreground'
-                  )}
-                  aria-label="Table View"
-                >
-                  <Table className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Table</span>
-                </Button>
-              </div>
-            </div>
-
-            {/* Semantic Knowledge Type Filter Pills */}
-            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 text-xs">
-              <button
-                type="button"
-                onClick={() => setSelectedType('all')}
+          {/* View Switcher: Grid / List / Table */}
+          <div className="flex items-center justify-end gap-1">
+            <div className="flex items-center gap-1 rounded-lg border border-border bg-muted/40 p-0.5">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('grid')}
                 className={cn(
-                  'px-2.5 py-1 rounded-full font-medium transition-all cursor-pointer whitespace-nowrap',
-                  selectedType === 'all'
-                    ? 'bg-primary text-primary-foreground shadow-sm'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
+                  'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
+                  viewMode === 'grid' && 'bg-background shadow-sm text-foreground'
                 )}
+                aria-label="Card Grid View"
               >
-                All Types
-              </button>
-              {(Object.keys(KNOWLEDGE_TYPE_META) as KnowledgeType[]).map((tKey) => {
-                const meta = KNOWLEDGE_TYPE_META[tKey];
-                const count = counts.byType[tKey] ?? 0;
-                if (count === 0 && selectedType !== tKey) return null; // Only show active or populated types
-                return (
-                  <button
-                    key={tKey}
-                    type="button"
-                    onClick={() => setSelectedType(tKey)}
-                    className={cn(
-                      'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-medium border transition-all cursor-pointer whitespace-nowrap',
-                      selectedType === tKey
-                        ? cn(meta.badgeColor, 'border-current font-bold')
-                        : 'border-transparent bg-muted/60 text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    <span className={cn('h-1.5 w-1.5 rounded-full', meta.dotColor)} />
-                    <span>{meta.label}</span>
-                    <span className="text-[10px] opacity-70">({count})</span>
-                  </button>
-                );
-              })}
+                <LayoutGrid className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Cards</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className={cn(
+                  'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
+                  viewMode === 'list' && 'bg-background shadow-sm text-foreground'
+                )}
+                aria-label="List View"
+              >
+                <List className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">List</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('table')}
+                className={cn(
+                  'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
+                  viewMode === 'table' && 'bg-background shadow-sm text-foreground'
+                )}
+                aria-label="Table View"
+              >
+                <Table className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">Table</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('graph')}
+                className={cn(
+                  'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
+                  viewMode === 'graph' && 'bg-background shadow-sm text-foreground'
+                )}
+                aria-label="Knowledge Graph View"
+              >
+                <Network className="h-3.5 w-3.5 text-blue-500" />
+                <span className="hidden sm:inline">Graph</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setViewMode('ideas')}
+                className={cn(
+                  'h-7 px-2.5 text-xs font-medium gap-1.5 rounded-md',
+                  viewMode === 'ideas' && 'bg-background shadow-sm text-foreground'
+                )}
+                aria-label="Idea Intelligence Studio"
+              >
+                <Lightbulb className="h-3.5 w-3.5 text-amber-500" />
+                <span className="hidden sm:inline">Idea Studio</span>
+              </Button>
             </div>
           </div>
 
           {/* Body content based on active view mode */}
-          {filter.kind === 'sources' ? (
+          {viewMode === 'ideas' ? (
+            <IdeaStudioView
+              workspaceId={activeWorkspaceId || ''}
+              userId={user?.uid || 'user'}
+              userName={user?.displayName || 'User'}
+            />
+          ) : viewMode === 'graph' ? (
+            <KnowledgeGraphView />
+          ) : filter.kind === 'sources' ? (
             (isLoading || aggLoading) && aggregated === null ? (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
                 {Array.from({ length: 6 }).map((_, i) => (

@@ -74,6 +74,11 @@ export class QuickNoteRepository {
       content: input.content,
       plainText,
       contentVersion: CONTENT_SCHEMA_VERSION,
+      knowledgeType: input.knowledgeType ?? 'note',
+      spaceId: input.spaceId,
+      collectionId: input.collectionId,
+      status: input.status ?? 'active',
+      visibility: input.visibility ?? 'workspace',
       categoryId: input.categoryId,
       tags: dedupeTags(input.tags),
       attachments: input.attachments ?? [],
@@ -118,6 +123,11 @@ export class QuickNoteRepository {
       const patch: Record<string, unknown> = { updatedAt: now };
 
       if (input.title !== undefined) patch.title = input.title.trim();
+      if (input.knowledgeType !== undefined) patch.knowledgeType = input.knowledgeType;
+      if (input.spaceId !== undefined) patch.spaceId = input.spaceId;
+      if (input.collectionId !== undefined) patch.collectionId = input.collectionId;
+      if (input.status !== undefined) patch.status = input.status;
+      if (input.visibility !== undefined) patch.visibility = input.visibility;
       if (input.categoryId !== undefined) patch.categoryId = input.categoryId;
       if (input.tags !== undefined) patch.tags = dedupeTags(input.tags);
       if (input.attachments !== undefined) patch.attachments = input.attachments;
@@ -172,4 +182,17 @@ export class QuickNoteRepository {
     const snap = await query.get();
     return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<QuickNote, 'id'>) }));
   }
+
+  /**
+   * Convenience alias for listByWorkspace (used by graph and cross-module actions).
+   */
+  static async listActive(
+    workspaceId: string,
+    options: ListByWorkspaceOptions = {}
+  ): Promise<QuickNote[]> {
+    return this.listByWorkspace(workspaceId, options);
+  }
 }
+
+/** Re-export with plural spelling for callers using QuickNotesRepository */
+export const QuickNotesRepository = QuickNoteRepository;

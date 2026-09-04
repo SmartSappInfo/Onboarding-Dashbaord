@@ -41,6 +41,8 @@ import {
     CheckSquare,
     Zap,
     BarChart3,
+    Brain,
+    Network,
     NotebookPen,
     Receipt,
     Package,
@@ -181,7 +183,8 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/automations'), icon: Zap, label: 'Automations', visible: isFeatureEnabled('automations'), disabled: !can('operations', 'automations', 'view') },
     { href: wrapHref('/admin/reports'), icon: BarChart3, label: 'Intelligence', visible: isFeatureEnabled('reports'), disabled: !can('operations', 'intelligence', 'view') },
     { href: wrapHref('/admin/analytics/sales-effort'), icon: BarChart3, label: 'Sales Effort', visible: isFeatureEnabled('reports'), disabled: !can('operations', 'intelligence', 'view') },
-    { href: wrapHref('/admin/quick-notes'), icon: NotebookPen, label: 'Quick Notes', visible: isFeatureEnabled('quick_notes'), disabled: !can('operations', 'quickNotes', 'view') },
+    { href: wrapHref('/admin/quick-notes'), icon: Brain, label: 'Company Brain', visible: isFeatureEnabled('quick_notes'), disabled: !can('operations', 'quickNotes', 'view') },
+    { href: wrapHref('/admin/quick-notes/graph'), icon: Network, label: 'Knowledge Graph', visible: isFeatureEnabled('quick_notes'), disabled: !can('operations', 'quickNotes', 'view') },
   ], [wrapHref, isFeatureEnabled, can, plural, dealPlural]);
 
   const financeNavItems = React.useMemo(() => [
