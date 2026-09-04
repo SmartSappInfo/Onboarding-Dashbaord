@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via AutonomousObservationEngine on server.
 
 /**
  * @fileOverview CompanyBrain 2.0 Phase 10: Organizational Pattern Detection Flow

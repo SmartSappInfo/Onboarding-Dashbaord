@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via KnowledgeGraphService on server.
 
 /**
  * @fileOverview CompanyBrain 2.0: AI Graph Connection Explanation Flow

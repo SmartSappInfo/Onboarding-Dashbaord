@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via MemoryConsolidationEngine on server.
 
 /**
  * @fileOverview CompanyBrain 2.0 Phase 4: Memory Consolidation Genkit Flow

@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via ContextBuilderService on server.
 
 /**
  * @fileOverview CompanyBrain 2.0 Phase 5: Grounded Context Dossier Synthesis Flow

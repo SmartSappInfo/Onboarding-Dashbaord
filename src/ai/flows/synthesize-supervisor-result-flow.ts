@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via SupervisorEngine on server.
 
 /**
  * @fileOverview CompanyBrain 2.0 Phase 7: Supervisor Result Synthesis Flow

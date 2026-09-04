@@ -1,4 +1,4 @@
-'use server';
+// NOTE: Intentionally NOT 'use server' — internal Genkit flow invoked via SwarmOrchestrator on server.
 
 /**
  * @fileOverview CompanyBrain 2.0 Phase 8: Swarm Consensus & Multi-Perspective Synthesis Flow
