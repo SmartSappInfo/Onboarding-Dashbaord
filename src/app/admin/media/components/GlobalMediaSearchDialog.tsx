@@ -224,7 +224,8 @@ export function GlobalMediaSearchDialog({
                   </div>
                 </CardContent>
               </Card>
-            ))
+            );
+          })
           ) : queryText.trim().length > 0 ? (
             <div className="text-center py-10 space-y-2">
               <Search className="h-8 w-8 text-slate-300 dark:text-slate-700 mx-auto" />

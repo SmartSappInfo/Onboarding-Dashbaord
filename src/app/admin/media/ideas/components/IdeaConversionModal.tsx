@@ -99,6 +99,10 @@ export function IdeaConversionModal({
         toast({
           title: 'Asset Created Successfully',
           description: `Created draft asset "${result.title}" in your Media Library.`,
+          actionConfig: {
+            path: `/admin/media?assetId=${result.id}`,
+            label: 'View in Library',
+          },
         });
         onOpenChange(false);
       } catch (err) {
@@ -129,6 +133,10 @@ export function IdeaConversionModal({
         toast({
           title: 'Experience Scaffolded',
           description: `Created new experience "${result.title}". Ready for sharing.`,
+          actionConfig: {
+            path: '/admin/media/experiences',
+            label: 'View Experiences',
+          },
         });
         onOpenChange(false);
       } catch (err) {
@@ -165,6 +173,10 @@ export function IdeaConversionModal({
         toast({
           title: 'Package Created',
           description: `Bundled assets into package "${result.title}".`,
+          actionConfig: {
+            path: '/admin/media?tab=packages',
+            label: 'View Packages',
+          },
         });
         onOpenChange(false);
       } catch (err) {
@@ -192,6 +204,10 @@ export function IdeaConversionModal({
         toast({
           title: 'Ready for Campaign Intelligence',
           description: `Prepared "${campaignTitle}" for messaging broadcast.`,
+          actionConfig: {
+            path: '/admin/messaging/campaigns',
+            label: 'Go to Campaigns',
+          },
         });
         onOpenChange(false);
       } catch (err) {

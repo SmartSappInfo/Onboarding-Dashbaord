@@ -7,6 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
+import type { ImageEditingState } from './image-editor-dialog';
 
 export interface FileState {
   id: string;
@@ -16,7 +17,7 @@ export interface FileState {
   dimensions?: { width: number; height: number };
   duration?: string;
   dataUrl?: string;
-  editingState?: Record<string, any>;
+  editingState?: ImageEditingState;
 }
 
 interface StagedFileItemProps {

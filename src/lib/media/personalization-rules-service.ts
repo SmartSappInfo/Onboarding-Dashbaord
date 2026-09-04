@@ -16,6 +16,7 @@ import type {
   ABExperimentConfig, ContentRecommendation, PersonaPreviewContext 
 } from '../types/media-2.0';
 import type { MediaAsset } from '../types';
+import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 
 export interface RuleEvaluationContext {
   watchProgressPercent: number;
@@ -124,31 +125,30 @@ export function resolvePersonalizedContent(
     return fallbackText;
   }
 
-  let resolved = templateText;
-
-  // Contact name substitution
+  const valuesMap = new Map<string, unknown>();
   if (context.contactName) {
-    resolved = resolved.replace(/\{\{\s*(contact\.name|contact\.first_name|name)\s*\}\}/gi, context.contactName);
+    valuesMap.set('contact.name', context.contactName);
+    valuesMap.set('contact_name', context.contactName);
+    valuesMap.set('name', context.contactName);
   }
-
-  // Company / Institution name substitution
   if (context.companyName) {
-    resolved = resolved.replace(/\{\{\s*(company\.name|organization\.name|institution\.name)\s*\}\}/gi, context.companyName);
+    valuesMap.set('company.name', context.companyName);
+    valuesMap.set('company_name', context.companyName);
+    valuesMap.set('organization_name', context.companyName);
+    valuesMap.set('entity_name', context.companyName);
   }
-
-  // Contact email substitution
   if (context.contactEmail) {
-    resolved = resolved.replace(/\{\{\s*(contact\.email|email)\s*\}\}/gi, context.contactEmail);
+    valuesMap.set('contact.email', context.contactEmail);
+    valuesMap.set('contact_email', context.contactEmail);
+    valuesMap.set('email', context.contactEmail);
   }
-
-  // Deal stage substitution
   if (context.dealStage) {
-    resolved = resolved.replace(/\{\{\s*(deal\.stage|stage)\s*\}\}/gi, context.dealStage);
+    valuesMap.set('deal.stage', context.dealStage);
+    valuesMap.set('deal_stage', context.dealStage);
+    valuesMap.set('stage', context.dealStage);
   }
 
-  // Clean up any remaining unpopulated {{...}} tokens to prevent raw markup leakage
-  resolved = resolved.replace(/\{\{\s*[\w.]+\s*\}\}/g, '').replace(/\s{2,}/g, ' ').trim();
-
+  const resolved = resolveTextWithMap(templateText, valuesMap, false);
   return resolved || fallbackText;
 }
 

@@ -20,6 +20,21 @@ import { processImage } from '@/lib/image-processing';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
+export interface ImageEditingState {
+  crop?: Area;
+  zoom?: number;
+  rotation?: number;
+  aspectRatio?: number | null;
+  aspect?: number;
+  targetWidth?: number;
+  name?: string;
+  quality?: number;
+  croppedAreaPixels?: Area;
+  resize?: { width?: number; height?: number };
+  filename?: string;
+  format?: string;
+}
+
 interface StagedFile {
   id: string;
   file: File;
@@ -34,7 +49,7 @@ interface StagedFile {
     size: number;
     type: string;
   };
-  editingState?: any;
+  editingState?: ImageEditingState;
   edits?: {
     crop?: Area;
     zoom?: number;

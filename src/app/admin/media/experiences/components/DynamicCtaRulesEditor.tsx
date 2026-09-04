@@ -228,18 +228,20 @@ export function DynamicCtaRulesEditor({
                       variant="ghost"
                       disabled={idx === 0}
                       onClick={() => handleMovePriority(idx, 'up')}
-                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                      className="min-h-[44px] min-w-[44px] rounded-lg text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-[0.97]"
+                      aria-label="Increase rule priority"
                     >
-                      <ArrowUp className="h-3.5 w-3.5" />
+                      <ArrowUp className="h-4 w-4" />
                     </Button>
                     <Button
                       size="icon"
                       variant="ghost"
                       disabled={idx === rules.length - 1}
                       onClick={() => handleMovePriority(idx, 'down')}
-                      className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                      className="min-h-[44px] min-w-[44px] rounded-lg text-muted-foreground hover:text-foreground flex items-center justify-center active:scale-[0.97]"
+                      aria-label="Decrease rule priority"
                     >
-                      <ArrowDown className="h-3.5 w-3.5" />
+                      <ArrowDown className="h-4 w-4" />
                     </Button>
                   </div>
                 </div>
@@ -295,9 +297,9 @@ export function DynamicCtaRulesEditor({
                     size="sm"
                     variant="outline"
                     onClick={() => handleAddCondition(activeRule.id)}
-                    className="h-8 text-xs font-bold rounded-xl gap-1"
+                    className="min-h-[44px] px-3 text-xs font-bold rounded-xl gap-1.5 flex items-center justify-center active:scale-[0.97]"
                   >
-                    <Plus className="h-3 w-3" /> Add Condition
+                    <Plus className="h-3.5 w-3.5" /> Add Condition
                   </Button>
                 </div>
 
@@ -361,9 +363,10 @@ export function DynamicCtaRulesEditor({
                         size="icon"
                         variant="ghost"
                         onClick={() => handleRemoveCondition(activeRule.id, cond.id)}
-                        className="h-8 w-8 text-muted-foreground hover:text-rose-500 rounded-lg shrink-0"
+                        className="min-h-[44px] min-w-[44px] text-muted-foreground hover:text-rose-500 rounded-lg shrink-0 flex items-center justify-center active:scale-[0.97]"
+                        aria-label="Remove condition"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   ))}
