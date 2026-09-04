@@ -245,6 +245,7 @@ export class ContextBudgetManager {
         tier4Discoverable: tier4Tokens,
       },
       truncatedItemCount: truncatedCount,
+      isTruncated: truncatedCount > 0,
     };
 
     return {

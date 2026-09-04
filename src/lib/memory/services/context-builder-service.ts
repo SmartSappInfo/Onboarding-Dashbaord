@@ -221,8 +221,10 @@ export class ContextBuilderService {
       subjectEntityResult.value.exists
     ) {
       const data = subjectEntityResult.value.data() as Record<string, unknown>;
-      const entityName = String(data.name || data.title || 'Unknown Entity');
-      const category = String(data.entityType || data.category || 'General');
+      // Defense-in-depth tenant isolation check
+      if (!data.workspaceId || data.workspaceId === workspaceId) {
+        const entityName = String(data.name || data.title || 'Unknown Entity');
+        const category = String(data.entityType || data.category || 'General');
 
       resolvedSubject = {
         id: subject!.id,
@@ -266,6 +268,7 @@ export class ContextBuilderService {
           tier: 'tier1_critical',
           sourceCitationId: citId,
         });
+      }
       }
     }
 

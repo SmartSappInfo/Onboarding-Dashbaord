@@ -25,6 +25,7 @@ import {
   calculateFreshnessScore,
   reconfirmFreshness,
 } from '../services/freshness-engine';
+import { ContextBuilderService } from '../services/context-builder-service';
 import { MemoryConsolidationEngine } from '../services/memory-consolidation-engine';
 import type { MemoryObject } from '../types';
 import type {
@@ -207,6 +208,9 @@ export async function resolveMemoryConflictAction(params: {
       resolvedByUserId: userId,
       resolutionNotes,
     });
+
+    // Invalidate cached context packages so subsequent context assemblies reflect the resolution
+    ContextBuilderService.clearCache();
 
     const updated = await ConflictRepository.getConflictById(conflictId);
     if (!updated) {

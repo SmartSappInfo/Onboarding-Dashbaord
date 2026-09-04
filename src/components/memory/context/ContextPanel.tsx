@@ -131,7 +131,7 @@ export function ContextPanel({
                   variant="outline"
                   size="sm"
                   onClick={handleCopyPrompt}
-                  className="h-9 px-2.5 text-xs gap-1.5 active:scale-[0.97] transition-all"
+                  className="h-9 min-h-[44px] px-3 text-xs gap-1.5 active:scale-[0.97] transition-all"
                   title="Copy formatted AI prompt context"
                 >
                   {copiedPrompt ? (

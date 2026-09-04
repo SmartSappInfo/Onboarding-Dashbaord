@@ -59,12 +59,20 @@ const SOURCE_TYPE_CONFIG: Record<
   { label: string; icon: React.ComponentType<{ className?: string }>; color: string }
 > = {
   crm: { label: 'CRM Profile', icon: Building2, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
+  crm_entity: { label: 'CRM Entity', icon: Building2, color: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' },
   note: { label: 'Quick Note', icon: FileText, color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  user_note: { label: 'User Note', icon: FileText, color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300' },
+  memory: { label: 'Memory Object', icon: FileText, color: 'bg-teal-100 text-teal-800 dark:bg-teal-900/30 dark:text-teal-300' },
   deal: { label: 'Deal Record', icon: Briefcase, color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
   meeting: { label: 'Meeting', icon: Calendar, color: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300' },
   task: { label: 'Task Item', icon: CheckSquare, color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
   graph: { label: 'Knowledge Graph', icon: Network, color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300' },
   conflict: { label: 'Contradiction Audit', icon: ShieldAlert, color: 'bg-rose-100 text-rose-800 dark:bg-rose-900/30 dark:text-rose-300' },
+  call: { label: 'Phone Call', icon: Calendar, color: 'bg-violet-100 text-violet-800 dark:bg-violet-900/30 dark:text-violet-300' },
+  email: { label: 'Email Thread', icon: FileText, color: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300' },
+  whatsapp: { label: 'WhatsApp', icon: FileText, color: 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' },
+  ai_flow: { label: 'AI Synthesis', icon: Network, color: 'bg-fuchsia-100 text-fuchsia-800 dark:bg-fuchsia-900/30 dark:text-fuchsia-300' },
+  agent: { label: 'Agent Insight', icon: Network, color: 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300' },
 };
 
 function getSourceConfig(type: string) {
@@ -160,7 +168,7 @@ export function ContextCitationDrawer({
                           variant="ghost"
                           size="sm"
                           onClick={() => handleCopy(citation)}
-                          className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform"
+                          className="h-9 min-h-[44px] min-w-[44px] px-2 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform flex items-center justify-center"
                           title="Copy quote and citation"
                         >
                           {copiedId === citation.id ? (
@@ -175,7 +183,7 @@ export function ContextCitationDrawer({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-8 px-2 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform"
+                              className="h-9 min-h-[44px] min-w-[44px] px-2 text-xs text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform flex items-center justify-center"
                               title="Open source record"
                             >
                               <ExternalLink className="w-3.5 h-3.5" />
