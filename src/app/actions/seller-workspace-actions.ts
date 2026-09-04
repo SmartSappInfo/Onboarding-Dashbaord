@@ -363,19 +363,44 @@ export async function getMyDayOverviewAction(params: {
 
     // 6.5 Build Candidates from Active AI Next-Best-Action Recommendations (Phase 9)
     try {
-      const activeAiRecsSnap = await adminDb
+      // Query rep-assigned recommendations directly to prevent cross-rep queue starvation
+      const repAiRecsPromise = adminDb
         .collection('aiSalesRecommendations')
         .where('workspaceId', '==', workspaceId)
         .where('status', '==', 'pending')
+        .where('assignedRepId', '==', repId)
         .limit(10)
         .get();
 
-      activeAiRecsSnap.forEach((recDoc) => {
-        const rec = recDoc.data();
-        if (rec.assignedRepId && rec.assignedRepId !== repId) {
-          return;
-        }
+      // Query broadcast / general recommendations
+      const generalAiRecsPromise = adminDb
+        .collection('aiSalesRecommendations')
+        .where('workspaceId', '==', workspaceId)
+        .where('status', '==', 'pending')
+        .limit(20)
+        .get();
 
+      const [repRecsSnap, generalRecsSnap] = await Promise.all([
+        repAiRecsPromise,
+        generalAiRecsPromise,
+      ]);
+
+      const seenRecIds = new Set<string>();
+      const combinedDocs = [...repRecsSnap.docs];
+      repRecsSnap.docs.forEach((d) => seenRecIds.add(d.id));
+
+      generalRecsSnap.docs.forEach((d) => {
+        if (!seenRecIds.has(d.id)) {
+          const rec = d.data();
+          if (!rec.assignedRepId || rec.assignedRepId === repId) {
+            seenRecIds.add(d.id);
+            combinedDocs.push(d);
+          }
+        }
+      });
+
+      combinedDocs.forEach((recDoc) => {
+        const rec = recDoc.data();
         candidates.push({
           id: `ai_rec_${recDoc.id}`,
           type: 'deal_action',

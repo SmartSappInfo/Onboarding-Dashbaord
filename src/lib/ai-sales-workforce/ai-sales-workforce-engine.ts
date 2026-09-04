@@ -75,8 +75,9 @@ export function evaluateAgentAutonomyDecision(params: {
     isSensitive?: boolean;
     confidenceScore: number;
   };
+  currentCascadeDepth?: number;
 }): AutonomyDecisionResult {
-  const { agentProfile, governance, proposedAction } = params;
+  const { agentProfile, governance, proposedAction, currentCascadeDepth = 0 } = params;
 
   // 1. Emergency Kill Switch halts all autonomous execution instantly
   if (governance.emergencyKillSwitch) {
@@ -84,6 +85,16 @@ export function evaluateAgentAutonomyDecision(params: {
       decision: 'recommend',
       effectiveAutonomyLevel: 1,
       reason: 'Emergency Kill Switch is active. Autonomous execution frozen workspace-wide.',
+    };
+  }
+
+  // 1.1 Max Cascade Depth Guard prevents infinite agent-to-agent feedback loops
+  const maxDepth = governance.maxCascadeDepth ?? 3;
+  if (currentCascadeDepth >= maxDepth) {
+    return {
+      decision: 'suppress',
+      effectiveAutonomyLevel: 0,
+      reason: `Maximum agent cascade depth (${maxDepth}) reached. Halting automated cascade to prevent loops.`,
     };
   }
 
@@ -223,25 +234,27 @@ export function detectCrmHygieneAnomalies(params: {
 
     // Check Stale Deal (>14 days inactive)
     if (deal.lastActivityAt) {
-      const elapsedDays =
-        (now.getTime() - new Date(deal.lastActivityAt).getTime()) / (1000 * 60 * 60 * 24);
-      if (elapsedDays > 14) {
-        issues.push({
-          id: `hygiene_stale_${deal.id}`,
-          workspaceId,
-          organizationId,
-          issueType: 'stale_deal',
-          severity: elapsedDays > 30 ? 'critical' : 'high',
-          entityType: 'deal',
-          entityId: deal.id,
-          entityName: deal.name,
-          fieldName: 'lastActivityAt',
-          currentValue: deal.lastActivityAt,
-          suggestedValue: 'Schedule Account Re-engagement',
-          repairRationale: `Deal has been inactive for ${Math.round(elapsedDays)} days. Risk of deal slippage is elevated.`,
-          status: 'detected',
-          detectedAt: now.toISOString(),
-        });
+      const parsedTime = new Date(deal.lastActivityAt).getTime();
+      if (!isNaN(parsedTime)) {
+        const elapsedDays = (now.getTime() - parsedTime) / (1000 * 60 * 60 * 24);
+        if (elapsedDays > 14) {
+          issues.push({
+            id: `hygiene_stale_${deal.id}`,
+            workspaceId,
+            organizationId,
+            issueType: 'stale_deal',
+            severity: elapsedDays > 30 ? 'critical' : 'high',
+            entityType: 'deal',
+            entityId: deal.id,
+            entityName: deal.name,
+            fieldName: 'lastActivityAt',
+            currentValue: deal.lastActivityAt,
+            suggestedValue: 'Schedule Account Re-engagement',
+            repairRationale: `Deal has been inactive for ${Math.round(elapsedDays)} days. Risk of deal slippage is elevated.`,
+            status: 'detected',
+            detectedAt: now.toISOString(),
+          });
+        }
       }
     }
 

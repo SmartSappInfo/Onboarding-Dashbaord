@@ -160,6 +160,22 @@ describe('AI Sales Workforce Engine (Phase 9)', () => {
       expect(res.effectiveAutonomyLevel).toBe(2);
       expect(res.reason).toContain('below autonomous threshold');
     });
+
+    it('halts automated execution when currentCascadeDepth reaches or exceeds maxCascadeDepth', () => {
+      const res = evaluateAgentAutonomyDecision({
+        agentProfile: { ...mockAgent, currentAutonomyLevel: 4 },
+        governance: { ...mockGovernance, maxCascadeDepth: 3 },
+        proposedAction: {
+          actionType: 'schedule_followup',
+          confidenceScore: 95,
+        },
+        currentCascadeDepth: 3,
+      });
+
+      expect(res.decision).toBe('suppress');
+      expect(res.effectiveAutonomyLevel).toBe(0);
+      expect(res.reason).toContain('Maximum agent cascade depth (3) reached');
+    });
   });
 
   describe('computeNextBestActionPriority', () => {
@@ -217,6 +233,32 @@ describe('AI Sales Workforce Engine (Phase 9)', () => {
       const staleIssue = anomalies.find((a) => a.issueType === 'stale_deal');
       expect(staleIssue).toBeDefined();
       expect(staleIssue?.entityId).toBe('deal_stale');
+    });
+
+    it('gracefully skips invalid date strings for lastActivityAt without throwing or producing NaN', () => {
+      const deals: DealHygieneContext[] = [
+        {
+          id: 'deal_invalid_date',
+          name: 'Corrupt Date Deal',
+          value: 10000,
+          stage: 'Discovery',
+          status: 'open',
+          lastActivityAt: 'invalid-date-format',
+          nextStepDate: '2026-09-10T12:00:00Z',
+          nextStepDescription: 'Follow up',
+        },
+      ];
+
+      const anomalies = detectCrmHygieneAnomalies({
+        deals,
+        contacts: [],
+        workspaceId: 'ws_test',
+        organizationId: 'org_test',
+        now: fixedNow,
+      });
+
+      const staleIssue = anomalies.find((a) => a.entityId === 'deal_invalid_date' && a.issueType === 'stale_deal');
+      expect(staleIssue).toBeUndefined();
     });
 
     it('detects missing next steps on active deals', () => {

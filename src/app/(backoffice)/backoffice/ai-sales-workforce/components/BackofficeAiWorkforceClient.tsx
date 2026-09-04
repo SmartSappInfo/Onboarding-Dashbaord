@@ -28,11 +28,9 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import {
   Bot,
-  Sliders,
   ShieldAlert,
   Save,
   Loader2,
-  Database,
   CheckCircle2,
   AlertTriangle,
   Zap,
@@ -45,6 +43,7 @@ import {
   getAiWorkforceDashboardDataAction,
   toggleAiMasterKillSwitchAction,
   reseedAiWorkforceDefaultsAction,
+  updateAiGovernancePolicyAction,
 } from '@/app/actions/ai-sales-workforce-actions';
 
 export default function BackofficeAiWorkforceClient() {
@@ -169,6 +168,42 @@ export default function BackofficeAiWorkforceClient() {
     }
   };
 
+  const handleSaveGovernance = async () => {
+    try {
+      setIsSaving(true);
+      const res = await updateAiGovernancePolicyAction({
+        workspaceId,
+        organizationId,
+        actorId,
+        minConfidenceForAutonomous: minAutoConfidence,
+        minConfidenceForPrepare: minPrepConfidence,
+        sensitiveActionsRequireApproval: sensitiveRequireApproval,
+        tokenMonthlyBudget: tokenBudget,
+      });
+
+      if (res.success) {
+        toast({
+          title: 'Governance Policy Saved',
+          description: 'Autonomous thresholds, safety guardrails, and token quotas updated.',
+        });
+      } else {
+        toast({
+          title: 'Save Failed',
+          description: res.error || 'Could not update governance policy.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Save failed',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -177,7 +212,8 @@ export default function BackofficeAiWorkforceClient() {
     );
   }
 
-  const budgetUsagePercent = Math.min(100, Math.round((tokensConsumed / tokenBudget) * 100));
+  const budgetUsagePercent =
+    tokenBudget > 0 ? Math.min(100, Math.round((tokensConsumed / tokenBudget) * 100)) : 0;
 
   return (
     <div className="space-y-6 max-w-5xl mx-auto pb-12 px-4 sm:px-6">
@@ -198,7 +234,7 @@ export default function BackofficeAiWorkforceClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Link href="/admin/ai-sales-workforce">
             <Button
               type="button"
@@ -214,11 +250,21 @@ export default function BackofficeAiWorkforceClient() {
             variant="outline"
             size="sm"
             onClick={handleReseed}
-            disabled={isReseeding}
+            disabled={isReseeding || isSaving}
             className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5"
           >
             <Sparkles className="h-3.5 w-3.5 text-amber-500" />
             <span>{isReseeding ? 'Reseeding...' : 'Reseed Defaults'}</span>
+          </Button>
+          <Button
+            type="button"
+            size="sm"
+            onClick={handleSaveGovernance}
+            disabled={isSaving || isReseeding}
+            className="h-10 rounded-xl text-xs font-semibold min-h-[44px] active:scale-[0.97] transition-transform gap-1.5 shadow-sm"
+          >
+            {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+            <span>{isSaving ? 'Saving...' : 'Save Policy'}</span>
           </Button>
         </div>
       </div>
@@ -288,6 +334,15 @@ export default function BackofficeAiWorkforceClient() {
                 <span className="text-muted-foreground">Minimum Autonomous Execution:</span>
                 <span className="font-bold text-foreground">{minAutoConfidence}%</span>
               </div>
+              <input
+                type="range"
+                min={65}
+                max={99}
+                value={minAutoConfidence}
+                onChange={(e) => setMinAutoConfidence(Number(e.target.value))}
+                className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
+                aria-label="Minimum Autonomous Execution Confidence Slider"
+              />
               <p className="text-2xs text-muted-foreground">
                 Agent actions with confidence below this threshold cannot execute autonomously (falls back to Level 2 draft).
               </p>
@@ -298,6 +353,15 @@ export default function BackofficeAiWorkforceClient() {
                 <span className="text-muted-foreground">Minimum Recommendation & Prep:</span>
                 <span className="font-bold text-foreground">{minPrepConfidence}%</span>
               </div>
+              <input
+                type="range"
+                min={30}
+                max={80}
+                value={minPrepConfidence}
+                onChange={(e) => setMinPrepConfidence(Number(e.target.value))}
+                className="w-full accent-primary h-2 bg-muted rounded-lg cursor-pointer"
+                aria-label="Minimum Recommendation and Prep Confidence Slider"
+              />
               <p className="text-2xs text-muted-foreground">
                 Recommendations with confidence below this cutoff are suppressed to eliminate hallucination noise.
               </p>
@@ -353,9 +417,26 @@ export default function BackofficeAiWorkforceClient() {
             style={{ width: `${budgetUsagePercent}%` }}
           />
         </div>
-        <p className="text-2xs text-muted-foreground">
-          Enforces tenant budget caps across Google Gemini and Anthropic Claude inferences.
-        </p>
+
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+          <div className="flex items-center gap-3">
+            <label htmlFor="tokenBudgetInput" className="text-xs font-semibold text-muted-foreground whitespace-nowrap">
+              Monthly Budget:
+            </label>
+            <Input
+              id="tokenBudgetInput"
+              type="number"
+              min={10000}
+              step={50000}
+              value={tokenBudget}
+              onChange={(e) => setTokenBudget(Math.max(10000, Number(e.target.value) || 0))}
+              className="h-9 w-40 text-xs font-mono rounded-xl min-h-[44px]"
+            />
+          </div>
+          <p className="text-2xs text-muted-foreground">
+            Enforces tenant budget caps across Google Gemini and Anthropic Claude inferences.
+          </p>
+        </div>
       </Card>
     </div>
   );

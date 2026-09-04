@@ -20,6 +20,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { adminDb } from '@/lib/firebase-admin';
+import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import { seedAiWorkforceWorkspace } from '@/lib/ai-sales-workforce/migration-protocol';
 import {
@@ -39,35 +40,6 @@ import type {
   AiExecutionAuditDoc,
   AiFleetMetrics,
 } from '@/lib/ai-sales-workforce/types';
-
-/**
- * Checks workspace access and verifies tenant boundary.
- */
-async function checkWorkspaceAccess(
-  userId: string,
-  workspaceId: string
-): Promise<{ allowed: boolean; role?: string; error?: string }> {
-  try {
-    if (!userId || !workspaceId) {
-      return { allowed: false, error: 'Missing userId or workspaceId' };
-    }
-    const memberDoc = await adminDb
-      .collection('workspaces')
-      .doc(workspaceId)
-      .collection('members')
-      .doc(userId)
-      .get();
-
-    if (!memberDoc.exists) {
-      return { allowed: false, error: 'User is not a member of this workspace' };
-    }
-    const data = memberDoc.data();
-    return { allowed: true, role: (data?.role as string) || 'member' };
-  } catch (err) {
-    console.error('checkWorkspaceAccess error:', err);
-    return { allowed: false, error: 'Permission evaluation failed' };
-  }
-}
 
 /**
  * Server Action: Fetches all workforce telemetry, fleet roster, pending recommendations,
@@ -93,8 +65,8 @@ export async function getAiWorkforceDashboardDataAction(params: {
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, error: access.error || 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
     }
 
     // 1. Fetch Agents
@@ -201,8 +173,8 @@ export async function updateAgentAutonomyLevelAction(params: {
   try {
     const { workspaceId, actorId, agentId, newLevel } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
     }
 
     const agentRef = adminDb.collection('aiSalesAgents').doc(agentId);
@@ -247,8 +219,8 @@ export async function executeAiRecommendationAction(params: {
   try {
     const { workspaceId, organizationId, actorId, actorName, recommendationId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
     }
 
     const recRef = adminDb.collection('aiSalesRecommendations').doc(recommendationId);
@@ -338,8 +310,8 @@ export async function resolveAiApprovalAction(params: {
     const { workspaceId, organizationId, actorId, actorName, approvalId, decision, reviewNote } =
       params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
     }
 
     const appRef = adminDb.collection('aiSalesApprovals').doc(approvalId);
@@ -411,8 +383,8 @@ export async function runCrmHygieneScanAction(params: {
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, detectedCount: 0, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, detectedCount: 0, error: access.reason || 'Access denied.' };
     }
 
     // 1. Fetch active deals (limit 50)
@@ -497,10 +469,10 @@ export async function executeCrmHygieneRepairAction(params: {
   repairNote?: string;
 }): Promise<{ success: boolean; pointsAwarded?: number; error?: string }> {
   try {
-    const { workspaceId, organizationId, actorId, actorName, issueId } = params;
+    const { workspaceId, organizationId, actorId, actorName, issueId, repairNote } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
     }
 
     const issueRef = adminDb.collection('aiCrmHygieneIssues').doc(issueId);
@@ -514,11 +486,55 @@ export async function executeCrmHygieneRepairAction(params: {
       return { success: false, error: 'Forbidden: Issue belongs to different workspace.' };
     }
 
+    // Anti-gaming safeguard: prevent point farming on already repaired issues
+    if (issue.status === 'repaired') {
+      return { success: false, error: 'Hygiene anomaly has already been repaired.' };
+    }
+
     const now = new Date().toISOString();
-    await issueRef.update({
+    const batch = adminDb.batch();
+
+    // 1. Mark the hygiene issue document as repaired
+    batch.update(issueRef, {
       status: 'repaired',
       repairedAt: now,
+      repairedBy: actorName,
+      repairNote: repairNote || 'Resolved via CleanSweep CRM Hygiene Repair',
     });
+
+    // 2. Atomically persist the data fix to the underlying deal or contact collection
+    if (issue.entityType === 'deal') {
+      const dealRef = adminDb.collection('deals').doc(issue.entityId);
+      const dealUpdate: Record<string, unknown> = {
+        updatedAt: now,
+      };
+
+      if (issue.issueType === 'missing_next_step') {
+        dealUpdate.nextStepDate =
+          typeof issue.suggestedValue === 'string'
+            ? issue.suggestedValue
+            : new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+        dealUpdate.nextStepDescription =
+          issue.repairRationale || 'Automated CRM Hygiene next step: account follow-up and review';
+      } else if (issue.issueType === 'stale_deal') {
+        dealUpdate.lastActivityAt = now;
+      }
+
+      batch.update(dealRef, dealUpdate);
+    } else if (issue.entityType === 'lead' || issue.entityType === 'contact') {
+      const contactRef = adminDb.collection('contacts').doc(issue.entityId);
+      const contactUpdate: Record<string, unknown> = {
+        updatedAt: now,
+      };
+
+      if (issue.issueType === 'unassigned_lead') {
+        contactUpdate.assignedTo = actorId;
+      }
+
+      batch.update(contactRef, contactUpdate);
+    }
+
+    await batch.commit();
 
     // Award +15 Effort Points for maintaining CRM hygiene
     let pointsAwarded = 15;
@@ -565,8 +581,8 @@ export async function toggleAiMasterKillSwitchAction(params: {
   try {
     const { workspaceId, actorId, killSwitchActive } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
     }
 
     const govRef = adminDb.collection('aiSalesGovernance').doc(workspaceId);
@@ -602,8 +618,8 @@ export async function reseedAiWorkforceDefaultsAction(params: {
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
-    if (!access.allowed) {
-      return { success: false, seededAgents: 0, error: 'Access denied.' };
+    if (!access.granted) {
+      return { success: false, seededAgents: 0, error: access.reason || 'Access denied.' };
     }
 
     const res = await seedAiWorkforceWorkspace(workspaceId, organizationId);
@@ -616,6 +632,71 @@ export async function reseedAiWorkforceDefaultsAction(params: {
       success: false,
       seededAgents: 0,
       error: error instanceof Error ? error.message : 'Failed to reseed AI workforce',
+    };
+  }
+}
+
+/**
+ * Server Action: Updates workspace AI workforce governance policy thresholds and budgets.
+ */
+export async function updateAiGovernancePolicyAction(params: {
+  workspaceId: string;
+  organizationId: string;
+  actorId: string;
+  minConfidenceForAutonomous?: number;
+  minConfidenceForPrepare?: number;
+  sensitiveActionsRequireApproval?: boolean;
+  tokenMonthlyBudget?: number;
+  maxCascadeDepth?: number;
+}): Promise<{ success: boolean; error?: string }> {
+  try {
+    const {
+      workspaceId,
+      actorId,
+      minConfidenceForAutonomous,
+      minConfidenceForPrepare,
+      sensitiveActionsRequireApproval,
+      tokenMonthlyBudget,
+      maxCascadeDepth,
+    } = params;
+
+    const access = await checkWorkspaceAccess(actorId, workspaceId);
+    if (!access.granted) {
+      return { success: false, error: access.reason || 'Access denied.' };
+    }
+
+    const govRef = adminDb.collection('aiSalesGovernance').doc(workspaceId);
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+      updatedBy: actorId,
+    };
+
+    if (minConfidenceForAutonomous !== undefined) {
+      updateData.minConfidenceForAutonomous = Math.min(100, Math.max(50, minConfidenceForAutonomous));
+    }
+    if (minConfidenceForPrepare !== undefined) {
+      updateData.minConfidenceForPrepare = Math.min(100, Math.max(30, minConfidenceForPrepare));
+    }
+    if (sensitiveActionsRequireApproval !== undefined) {
+      updateData.sensitiveActionsRequireApproval = Boolean(sensitiveActionsRequireApproval);
+    }
+    if (tokenMonthlyBudget !== undefined) {
+      updateData.tokenMonthlyBudget = Math.max(10000, tokenMonthlyBudget);
+    }
+    if (maxCascadeDepth !== undefined) {
+      updateData.maxCascadeDepth = Math.max(1, Math.min(10, maxCascadeDepth));
+    }
+
+    await govRef.set(updateData, { merge: true });
+
+    revalidatePath('/admin/ai-sales-workforce');
+    revalidatePath('/backoffice/ai-sales-workforce');
+    return { success: true };
+  } catch (error) {
+    console.error('updateAiGovernancePolicyAction error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to update governance policy',
     };
   }
 }
