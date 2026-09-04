@@ -361,6 +361,41 @@ export async function getMyDayOverviewAction(params: {
       console.warn('Non-blocking sales play candidate resolution failure:', playErr);
     }
 
+    // 6.5 Build Candidates from Active AI Next-Best-Action Recommendations (Phase 9)
+    try {
+      const activeAiRecsSnap = await adminDb
+        .collection('aiSalesRecommendations')
+        .where('workspaceId', '==', workspaceId)
+        .where('status', '==', 'pending')
+        .limit(10)
+        .get();
+
+      activeAiRecsSnap.forEach((recDoc) => {
+        const rec = recDoc.data();
+        if (rec.assignedRepId && rec.assignedRepId !== repId) {
+          return;
+        }
+
+        candidates.push({
+          id: `ai_rec_${recDoc.id}`,
+          type: 'deal_action',
+          title: `AI Priority: ${rec.title || 'Recommended Action'}`,
+          description: `${rec.description || 'AI next-best-action.'} (${rec.rationale || 'Grounded in real-time intent.'})`,
+          entityId: rec.entityId || recDoc.id,
+          entityName: rec.entityName || 'Sales Target',
+          entityType: rec.entityType === 'deal' ? 'Deal' : 'Lead',
+          dueDate: rec.expiresAt || now.toISOString(),
+          confidence: Number(rec.confidenceScore) || 90,
+          assignedTo: repId,
+          workspaceId,
+          organizationId,
+          createdAt: rec.createdAt || now.toISOString(),
+        });
+      });
+    } catch (aiRecErr) {
+      console.warn('Non-blocking AI recommendation candidate resolution failure:', aiRecErr);
+    }
+
     // 7. Resolve Today's Meetings
     const upcomingMeetings: UpcomingMeetingBrief[] = [];
     meetingsSnap.forEach((doc) => {

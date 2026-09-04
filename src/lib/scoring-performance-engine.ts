@@ -163,7 +163,12 @@ export const DEFAULT_EFFORT_RULES: Omit<EffortRuleDoc, 'id' | 'workspaceId' | 'o
   // Sales Orchestration & Governance (Phase 8)
   { eventType: 'sales_play_step_completed', entityType: 'SalesPlay', points: 10, enabled: true, description: 'Points awarded when a seller executes a governed Sales Play action step.' },
   { eventType: 'play_approval_resolved', entityType: 'SalesPlay', points: 15, enabled: true, description: 'Points awarded when a manager or admin resolves a human-in-the-loop approval gate.' },
-  { eventType: 'escalated_sla_breach_remediated', entityType: 'SalesPlay', points: 20, enabled: true, description: 'Points awarded when an SLA breach incident is remediated within target window.' }
+  { eventType: 'escalated_sla_breach_remediated', entityType: 'SalesPlay', points: 20, enabled: true, description: 'Points awarded when an SLA breach incident is remediated within target window.' },
+
+  // AI Sales Workforce (Phase 9)
+  { eventType: 'ai_recommendation_accepted', entityType: 'AiRecommendation', points: 10, enabled: true, description: 'Points awarded when a seller executes an AI-recommended next best action.' },
+  { eventType: 'ai_crm_hygiene_resolved', entityType: 'Deal', points: 15, enabled: true, description: 'Points awarded when a seller or manager reviews and resolves a CRM data hygiene anomaly.' },
+  { eventType: 'ai_autonomous_action_approved', entityType: 'AiApproval', points: 10, enabled: true, description: 'Points awarded when a manager reviews and approves a sensitive AI action.' }
 ];
 
 /**
