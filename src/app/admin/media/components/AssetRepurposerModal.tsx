@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react';
-import { useFirestore } from '@/lib/firestore-context';
+import { useFirestore } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { DerivativeType, MediaDerivative } from '@/lib/types/media-2.0';
 import type { MediaAsset } from '@/lib/types';
