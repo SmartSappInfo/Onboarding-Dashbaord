@@ -183,7 +183,7 @@ export class SupervisorEngine {
     if (currentStep && currentStep.status === 'needs_approval') {
       if (approvalId) {
         try {
-          const adjudication = await McpApprovalEngine.adjudicateApproval({
+          const adjudication = await McpApprovalEngine.adjudicate({
             approvalId,
             decision: 'approved',
             adjudicatedBy: resumedBy,

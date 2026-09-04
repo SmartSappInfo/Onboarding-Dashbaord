@@ -3184,6 +3184,25 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- CompanyBrain 2.0 Autonomous Workflows & Triggers (Phase 9) ---
+    match /brain_workflows/{workflowId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; definitions saved exclusively via Server Actions & Admin SDK
+      allow write: if false;
+    }
+
+    match /workflow_runs/{runId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      // Client SDK writes prohibited; runs executed exclusively via Server Actions & Admin SDK
+      allow write: if false;
+    }
+
     // --- Ideas & Idea Intelligence (Company Brain 2.0 Phase 6) ---
     match /ideas/{ideaId} {
       allow read: if isAuthorized() && (

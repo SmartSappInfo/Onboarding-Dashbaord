@@ -34,6 +34,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
 import { useUser } from '@/firebase';
@@ -95,6 +97,19 @@ import {
   updateSpecialistConfigAction,
   startSwarmMissionAction,
 } from '@/lib/agents/actions/domain-agent-actions';
+import type {
+  WorkflowDefinition,
+  WorkflowRun,
+  WorkflowSimulationResult,
+} from '@/lib/workflows/types';
+import {
+  listWorkflowsAction,
+  toggleWorkflowAction,
+  installBlueprintAction,
+  simulateWorkflowAction,
+  listWorkflowRunsAction,
+} from '@/lib/workflows/actions/workflow-actions';
+import { TURNKEY_WORKFLOW_BLUEPRINTS } from '@/lib/workflows/blueprints';
 
 export default function BackofficeCompanyBrainClient() {
   const { user } = useUser();
@@ -427,6 +442,176 @@ export default function BackofficeCompanyBrainClient() {
     } finally {
       setIsSimulatingSwarm(false);
     }
+  };
+
+  // Phase 9: Autonomous Workflows & Event Triggers State
+  const [workflowsList, setWorkflowsList] = React.useState<WorkflowDefinition[]>([]);
+  const [workflowRunsList, setWorkflowRunsList] = React.useState<WorkflowRun[]>([]);
+  const [isLoadingWorkflows, setIsLoadingWorkflows] = React.useState<boolean>(false);
+  const [isEmergencyKillSwitchActive, setIsEmergencyKillSwitchActive] = React.useState<boolean>(false);
+  const [installingBlueprintId, setInstallingBlueprintId] = React.useState<string | null>(null);
+  const [syntheticEventType, setSyntheticEventType] = React.useState<string>('crm.deal.stalled');
+  const [syntheticPayloadJson, setSyntheticPayloadJson] = React.useState<string>(
+    JSON.stringify(
+      {
+        eventType: 'crm.deal.stalled',
+        dealId: 'deal_backoffice_mock_99',
+        dealTitle: 'Enterprise Cloud Transformation',
+        daysStalled: 21,
+        dealValue: 240000,
+        riskScore: 85,
+      },
+      null,
+      2
+    )
+  );
+  const [isSimulatingEvent, setIsSimulatingEvent] = React.useState<boolean>(false);
+  const [simulationResult, setSimulationResult] = React.useState<WorkflowSimulationResult | null>(null);
+
+  const fetchWorkflowsData = React.useCallback(async () => {
+    if (!user?.uid) return;
+    setIsLoadingWorkflows(true);
+    try {
+      const [wfRes, runsRes] = await Promise.all([
+        listWorkflowsAction({ workspaceId: playgroundWorkspaceId || 'default', userId: user.uid }),
+        listWorkflowRunsAction({ workspaceId: playgroundWorkspaceId || 'default', userId: user.uid, limit: 15 }),
+      ]);
+      if (wfRes.success && wfRes.data) {
+        setWorkflowsList(wfRes.data);
+      }
+      if (runsRes.success && runsRes.data) {
+        setWorkflowRunsList(runsRes.data);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setIsLoadingWorkflows(false);
+    }
+  }, [user?.uid, playgroundWorkspaceId]);
+
+  React.useEffect(() => {
+    void fetchWorkflowsData();
+  }, [fetchWorkflowsData]);
+
+  const handleToggleWorkflow = async (workflowId: string, currentStatus: 'active' | 'paused') => {
+    if (!user?.uid) return;
+    const newStatus = currentStatus === 'active' ? 'paused' : 'active';
+    try {
+      const res = await toggleWorkflowAction({
+        workflowId,
+        workspaceId: playgroundWorkspaceId || 'default',
+        status: newStatus,
+        userId: user.uid,
+      });
+      if (res.success) {
+        setWorkflowsList((prev) =>
+          prev.map((w) => (w.id === workflowId ? { ...w, status: newStatus } : w))
+        );
+        toast({
+          title: 'Workflow Toggled',
+          description: `Workflow is now ${newStatus}.`,
+        });
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to toggle workflow status.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleInstallBlueprintBackoffice = async (blueprintId: string) => {
+    if (!user?.uid) return;
+    setInstallingBlueprintId(blueprintId);
+    try {
+      const res = await installBlueprintAction({
+        blueprintId,
+        workspaceId: playgroundWorkspaceId || 'default',
+        organizationId: 'default_org',
+        userId: user.uid,
+      });
+      if (res.success && res.data) {
+        toast({
+          title: 'Blueprint Installed',
+          description: `Installed "${res.data.title}" into workspace.`,
+        });
+        await fetchWorkflowsData();
+      }
+    } catch {
+      toast({
+        title: 'Error',
+        description: 'Failed to install blueprint.',
+        variant: 'destructive',
+      });
+    } finally {
+      setInstallingBlueprintId(null);
+    }
+  };
+
+  const handleSimulateSyntheticEvent = async () => {
+    if (!user?.uid) return;
+    let payload: Record<string, McpPayloadValue> = {};
+    try {
+      payload = JSON.parse(syntheticPayloadJson);
+    } catch {
+      toast({
+        title: 'Invalid JSON',
+        description: 'Please provide valid JSON for the synthetic event payload.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const targetWf = workflowsList.find((w) => w.trigger.eventType === syntheticEventType) || workflowsList[0];
+    if (!targetWf) {
+      toast({
+        title: 'No Matching Workflow',
+        description: `Install a blueprint listening for "${syntheticEventType}" first.`,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSimulatingEvent(true);
+    try {
+      const res = await simulateWorkflowAction({
+        workflow: targetWf,
+        workspaceId: playgroundWorkspaceId || 'default',
+        userId: user.uid,
+        simulatedPayload: payload,
+      });
+      if (res.success && res.data) {
+        setSimulationResult(res.data);
+        toast({
+          title: 'Simulation Succeeded',
+          description: `Predicted ${res.data.predictedNodesExecuted} steps, ${res.data.predictedApprovalsCount} human approval gates.`,
+        });
+      }
+    } catch {
+      toast({
+        title: 'Simulation Error',
+        description: 'Failed to run dry-run simulation.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSimulatingEvent(false);
+    }
+  };
+
+  const handleToggleEmergencyKillSwitch = () => {
+    setIsEmergencyKillSwitchActive((prev) => {
+      const next = !prev;
+      toast({
+        title: next ? 'EMERGENCY KILL-SWITCH ACTIVE' : 'Kill-Switch Disengaged',
+        description: next
+          ? 'All automated background workflow triggers and cron executions are immediately HALTED.'
+          : 'Automated workflow triggers resumed normal operation.',
+        variant: next ? 'destructive' : 'default',
+        duration: next ? 15000 : 4000,
+      });
+      return next;
+    });
   };
 
   // Fetch health telemetry
@@ -834,6 +1019,10 @@ export default function BackofficeCompanyBrainClient() {
           <TabsTrigger value="domain-agents" className="gap-1.5 text-xs">
             <Users className="h-3.5 w-3.5 text-purple-600" />
             <span>Domain Specialists & Swarms</span>
+          </TabsTrigger>
+          <TabsTrigger value="workflows-triggers" className="gap-1.5 text-xs">
+            <Workflow className="h-3.5 w-3.5 text-purple-600" />
+            <span>Agentic Workflows & Triggers</span>
           </TabsTrigger>
         </TabsList>
 
@@ -1819,6 +2008,269 @@ export default function BackofficeCompanyBrainClient() {
                   </div>
                 )}
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Tab 9: Agentic Autonomous Workflows & Event Triggers */}
+        <TabsContent value="workflows-triggers" className="space-y-6">
+          {/* Section 1: Global Execution Guardrails & Emergency Kill-Switch */}
+          <Card className="border border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <ShieldAlert className="h-4 w-4 text-amber-500" />
+                    <span>Global Execution Guardrails & Emergency Controls</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Real-time safety telemetry, background execution limits, and workspace emergency kill-switch.
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-3 p-2 bg-muted/40 rounded-lg border">
+                  <div className="text-right">
+                    <span className="text-[11px] font-bold block text-foreground">
+                      {isEmergencyKillSwitchActive ? 'Automations Disabled' : 'Automations Active'}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">Emergency Kill-Switch</span>
+                  </div>
+                  <Switch
+                    checked={!isEmergencyKillSwitchActive}
+                    onCheckedChange={handleToggleEmergencyKillSwitch}
+                    aria-label="Emergency kill switch toggle"
+                  />
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div className="p-3 bg-muted/30 rounded-lg border space-y-1">
+                  <span className="text-muted-foreground block text-[11px]">Hard Timeout Ceiling</span>
+                  <span className="font-bold text-foreground">90 Seconds (Promise.race)</span>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg border space-y-1">
+                  <span className="text-muted-foreground block text-[11px]">DAG Step Limit</span>
+                  <span className="font-bold text-foreground">Max 12 Steps (Recursion Shield)</span>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg border space-y-1">
+                  <span className="text-muted-foreground block text-[11px]">Concurrency Limit</span>
+                  <span className="font-bold text-foreground">Max 5 Simultaneous Runs/WS</span>
+                </div>
+                <div className="p-3 bg-muted/30 rounded-lg border space-y-1">
+                  <span className="text-muted-foreground block text-[11px]">Approval Policy</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400">Strict HITL Interception</span>
+                </div>
+              </div>
+
+              {isEmergencyKillSwitchActive && (
+                <div className="p-3 bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 rounded-lg text-rose-900 dark:text-rose-200 text-xs flex items-center gap-2.5">
+                  <AlertTriangle className="h-4 w-4 text-rose-600 shrink-0" />
+                  <span>
+                    Emergency kill-switch is active. All inbound event routing, background triggers, and cron dispatches are currently suppressed platform-wide.
+                  </span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Section 2: Turnkey Blueprint Gallery (1-Click Install) */}
+          <Card className="border border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-blue-600" />
+                <span>Turnkey Production Blueprints (1-Click Deployment)</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Install pre-configured, tested agentic pipelines directly into target workspace without writing code.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {TURNKEY_WORKFLOW_BLUEPRINTS.map((bp) => (
+                  <div
+                    key={bp.id}
+                    className="p-3.5 rounded-xl border border-border/80 bg-muted/20 flex flex-col justify-between space-y-3"
+                  >
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-[10px] font-mono capitalize">
+                          {bp.category}
+                        </Badge>
+                        <Badge variant="secondary" className="text-[10px]">
+                          {bp.nodes.length} Steps
+                        </Badge>
+                      </div>
+                      <h4 className="text-xs font-bold text-foreground">{bp.title}</h4>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
+                        {bp.description}
+                      </p>
+                    </div>
+
+                    <Button
+                      type="button"
+                      size="sm"
+                      onClick={() => handleInstallBlueprintBackoffice(bp.id)}
+                      disabled={installingBlueprintId === bp.id}
+                      className="w-full min-h-[44px] sm:min-h-[36px] text-xs font-semibold active:scale-[0.97] transition-all"
+                    >
+                      {installingBlueprintId === bp.id ? 'Installing...' : '1-Click Install Blueprint'}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 3: Active Pipelines & Control Toggles */}
+          <Card className="border border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Workflow className="h-4 w-4 text-purple-600" />
+                    <span>Configured Pipelines ({workflowsList.length})</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Inspect active workflows, toggle automated execution, and view step topology.
+                  </CardDescription>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchWorkflowsData}
+                  disabled={isLoadingWorkflows}
+                  className="min-h-[44px] sm:min-h-[36px] text-xs active:scale-[0.97]"
+                >
+                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${isLoadingWorkflows ? 'animate-spin' : ''}`} />
+                  Refresh Workflows
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent className="space-y-3 text-xs">
+              {workflowsList.length === 0 ? (
+                <div className="p-6 text-center text-muted-foreground border border-dashed rounded-xl">
+                  No workflows installed in workspace yet. Use the 1-click installer above.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {workflowsList.map((wf) => (
+                    <div
+                      key={wf.id}
+                      className="p-3 rounded-lg border border-border bg-card flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-foreground text-xs">{wf.title}</span>
+                          <Badge variant="outline" className="text-[10px] font-mono">
+                            {wf.trigger.eventType || 'Manual'}
+                          </Badge>
+                          <Badge
+                            className={`text-[10px] ${
+                              wf.status === 'active'
+                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                            }`}
+                          >
+                            {wf.status}
+                          </Badge>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          {wf.description} • {wf.nodes.length} nodes
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3 self-end sm:self-center">
+                        <span className="text-[11px] text-muted-foreground">Active:</span>
+                        <Switch
+                          checked={wf.status === 'active'}
+                          onCheckedChange={() => handleToggleWorkflow(wf.id, wf.status as 'active' | 'paused')}
+                          aria-label={`Toggle active state for ${wf.title}`}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Section 4: Interactive Event Trigger Simulator */}
+          <Card className="border border-border shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Cpu className="h-4 w-4 text-purple-600" />
+                <span>Synthetic Event Ingestion & Simulation Sandbox</span>
+              </CardTitle>
+              <CardDescription className="text-xs">
+                Simulate inbound CRM events (e.g. stalled deal, new inbound lead, completed meeting) and predict branching decisions and approval intercepts.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4 text-xs">
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Select Event Type to Simulate:</label>
+                <div className="flex items-center gap-2 flex-wrap">
+                  {['crm.deal.stalled', 'crm.lead.created', 'meeting.completed'].map((evt) => (
+                    <Button
+                      key={evt}
+                      type="button"
+                      variant={syntheticEventType === evt ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setSyntheticEventType(evt)}
+                      className={`min-h-[44px] sm:min-h-[32px] text-xs font-mono active:scale-[0.97] ${
+                        syntheticEventType === evt ? 'bg-purple-600 text-white' : ''
+                      }`}
+                    >
+                      {evt}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-foreground">Synthetic Event Payload (JSON):</label>
+                <Textarea
+                  value={syntheticPayloadJson}
+                  onChange={(e) => setSyntheticPayloadJson(e.target.value)}
+                  className="font-mono text-[11px] min-h-[90px] bg-muted/20"
+                />
+              </div>
+
+              <Button
+                type="button"
+                onClick={handleSimulateSyntheticEvent}
+                disabled={isSimulatingEvent}
+                className="w-full min-h-[44px] text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white active:scale-[0.97]"
+              >
+                {isSimulatingEvent ? 'Simulating Event Dispatch...' : 'Simulate Event & Predict Flow'}
+              </Button>
+
+              {simulationResult && (
+                <div className="p-3.5 bg-muted/40 rounded-xl border border-border space-y-2">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="font-bold text-foreground">Dry-Run Prediction Output</span>
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-300">
+                      {simulationResult.predictedNodesExecuted} Steps Traversed
+                    </Badge>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-[11px] font-semibold text-muted-foreground block">
+                      Execution Steps:
+                    </span>
+                    {simulationResult.executionSteps.map((step, idx) => (
+                      <div key={idx} className="p-1.5 bg-card rounded border text-[11px] flex justify-between">
+                        <span className="font-medium text-foreground">{step.title}</span>
+                        <span className="text-muted-foreground">{step.details}</span>
+                      </div>
+                    ))}
+                  </div>
+                  {simulationResult.predictedApprovalsCount > 0 && (
+                    <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded text-amber-900 dark:text-amber-200 text-[11px]">
+                      Gated at Human Approval Checkpoint ({simulationResult.predictedApprovalsCount} Gate Predicted).
+                    </div>
+                  )}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

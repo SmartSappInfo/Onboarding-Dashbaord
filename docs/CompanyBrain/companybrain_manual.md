@@ -61,6 +61,10 @@ To ensure legal compliance, financial safety, and institutional integrity, the f
 | **17. Specialist Tool Whitelist & Mutation Permission Scoping** | Authorizing which specialists have write access to deals or tasks vs read-only observation. | Granting CRM write privileges carries commercial liability. Human administrators must explicitly configure allowed tool sets per workspace. | Configure tool policies in `/admin/companybrain/agents` *(Configure Specialist)*. |
 | **18. Swarm Multi-Specialist Consensus Adjudication** | Breaking ties and deciding policy when domain specialists produce opposing trade-offs (e.g. Revenue Agent urges immediate contract push while Governance Agent flags compliance blocker). | AI can detect divergent recommendations and highlight tension points, but strategic corporate priorities and risk tolerance can only be weighed by human leadership. | Review red tension callouts in `<SwarmSynthesisCard>` and execute the recommended escalation proposal. |
 | **19. Specialist Autonomy Tiering** | Granting autonomous mutation privileges (`autonomous`) vs requiring human sign-off (`supervised` or `read_only`). | The level of autonomous delegation directly controls operational risk. Human management must calibrate autonomy tiers based on workflow sensitivity. | Toggle autonomy level in `/backoffice/companybrain` *(Domain Specialists tab)*. |
+| **20. Workflow Business Rule Authorization** | Authorizing trigger criteria, threshold parameters, and branch predicates (e.g. `daysStalled > 14`, `score > 70`). | Defining corporate risk appetites and stage-transition criteria requires managerial authority. Automated pipelines cannot self-generate governance rules. | Configure via `/admin/companybrain/workflows` *(Workflow Builder Canvas)*. |
+| **21. Human Approval Gate Sign-Off** | Adjudicating and releasing paused workflows held at status `waiting_approval` before external emails or deal stage mutations occur. | High-risk commercial actions and customer-facing communications cannot execute without human operational sign-off. | Adjudicate via `<WorkflowApprovalGateBanner>` or Backoffice Approvals Queue. |
+| **22. Dry-Run Simulation Certification** | Reviewing and certifying synthetic test runs in the Simulator before enabling automated background event listening. | Ensuring that newly created or customized pipelines do not cause accidental mutations or unintended loops requires human verification. | Test and certify in `<WorkflowSimulatorModal>` via `/admin/companybrain/workflows`. |
+| **23. Emergency Workflow Kill-Switch** | Engaging the workspace or platform-wide kill-switch to immediately halt all background trigger execution and cron events. | Incident response, external API outages, or policy audits require immediate executive power to halt all background autonomous agents. | Toggle emergency switch in `/backoffice/companybrain` *(Agentic Workflows tab)*. |
 
 ### 2.5.1. Compliance Data Purges and Hard-Deletion Protocol (GDPR)
 
@@ -176,6 +180,19 @@ npx tsx scripts/fer-test-domain-agents.ts
 npx tsx scripts/fer-test-domain-agents.ts --workspace-id=<workspace_id>
 ```
 
+### 3.9. Verify Agentic Autonomous Workflows & Background Triggers
+Verifies the 3 turnkey production blueprints (Deal Rescue, Lead Activation, Meeting Follow-up), conditional branching evaluation, approval gate pause/resumption, timeout ceilings (90s), step recursion ceilings (12 steps), and Firestore persistence:
+```bash
+# Run automated unit tests
+npx vitest run src/lib/workflows/__tests__/workflow-engine.test.ts
+
+# Full Agentic Workflows & Event Triggers Verification Script
+npx tsx scripts/fer-test-agentic-workflows.ts
+
+# Target specific workspace
+npx tsx scripts/fer-test-agentic-workflows.ts --workspace-id=<workspace_id>
+```
+
 ---
 
 ## 4. UI Surfaces & Backoffice Governance
@@ -184,6 +201,8 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 | Surface | URL Path | Capabilities |
 | :--- | :--- | :--- |
+| **Autonomous Workflows Hub** | `/admin/companybrain/workflows` | Visual workflow builder, turnkey blueprint gallery, step execution monitor, dry-run simulator, and prominent approval gate banner. |
+| **Workflows Control Plane** | `/backoffice/companybrain` *(Agentic Workflows tab)* | Global execution guardrails, emergency kill-switch, 1-click turnkey blueprint installer, active workflow toggles, and synthetic event simulator. |
 | **Domain Agents & Swarm Hub** | `/admin/companybrain/agents` | Specialist roster cards, persona inspection drawer, code-free autonomy/directive editor, interactive swarm mission launcher, and multi-perspective consensus view. |
 | **Supervisor Agent Mission Control** | `/admin/companybrain/supervisor` | Autonomous multi-step goal execution, interactive plan timeline graph, live step inspector drawer, approval alerts, findings, and executable action proposals. |
 | **Quick Notes & Memory Extractor** | `/admin/quick-notes` | Dual-view notes/memories, human-in-the-loop candidate confirmation, semantic badges. |
@@ -204,6 +223,10 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 | Symptom | Root Cause | Resolution |
 | :--- | :--- | :--- |
+| **Workflow halted at `waiting_approval`** | Pipeline node stepped into an `approval_gate` requiring human sign-off before executing commercial mutations. | Review proposed step in `<WorkflowApprovalGateBanner>` at `/admin/companybrain/workflows` and click **"Approve & Continue Pipeline"** or reject to terminate. |
+| **Workflow failed: `Max step execution ceiling exceeded`** | Graph contained a cyclic loop or compound branch exceeding the 12-step ceiling. | Hard recursion ceiling stopped token drain. Edit the workflow in `/admin/companybrain/workflows` and verify all branch edges form a clean DAG. |
+| **Workflow execution timeout (90s ceiling)** | An external API or domain specialist hung during execution. | `Promise.race` safety ceiling aborted the run cleanly. Check specialist prompt directives and ensure external dependencies are reachable. |
+| **All background triggers halted (Kill-Switch Active)** | Emergency kill-switch was toggled in Backoffice during an incident or maintenance window. | Open `/backoffice/companybrain` *(Agentic Workflows tab)* and toggle the Emergency Kill-Switch back to active. |
 | **Specialist tool blocked (`AgentSecurityViolationError`)** | Specialist attempted to call a tool not present in its `allowedTools` whitelist or disabled by workspace policy. | Inspect specialist descriptor in `/admin/companybrain/agents`. If needed, update allowed tools or verify that the tool matches the specialist domain. |
 | **Swarm mission paused at `needs_approval`** | A specialist inside the swarm called a high-risk tool requiring human sign-off. | Adjudicate the approval in `/admin/companybrain/tools?tab=approvals` or click "Approve & Resume" in the swarm console. |
 | **Swarm execution timeout (75s ceiling)** | Swarm objective was too broad or external tool calls experienced excessive network latency. | Bounded safety ceiling aborted the swarm. Inspect individual specialist runs and refine the objective. |
@@ -224,10 +247,10 @@ Administrators and operators can inspect, query, and manage CompanyBrain across 
 
 ---
 
-## 6. Forward Look: Phase 9 Preparation
+## 6. Forward Look: Phase 10 Preparation
 
-Upcoming milestone: **Phase 9: Agentic Autonomous Workflows & Proactive Alerts**:
-1. Event-driven triggers: Webhook events, meeting completions, and deal stage changes initiating autonomous agent workflows.
-2. Durable multi-stage workflows (Deal Rescue, Lead Activation, Post-Meeting Auto-Tasking).
-3. Visual Workflow Builder & Simulator with approval nodes.
+Upcoming apex milestone: **Phase 10: Multi-Tenant Enterprise Security, Autonomous Intelligence & Continuous Self-Healing**:
+1. Autonomous Intelligence Engine running scheduled multi-agent deliberation and background health audits.
+2. Continuous self-healing knowledge mesh: Auto-detecting knowledge drift, scheduling reconciliation swarms, and generating proactive executive briefs.
+3. Multi-tenant zero-trust policy federation across enterprise organizational units.
 

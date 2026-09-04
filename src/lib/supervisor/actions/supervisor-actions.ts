@@ -340,7 +340,7 @@ export async function executeProposedActionAction(params: {
         method: 'tools/call',
         params: {
           name: action.toolName,
-          arguments: action.parameters,
+          arguments: action.parameters || {},
         },
       },
       {
