@@ -363,7 +363,7 @@ export async function executePlayStepAction(params: {
     const now = new Date();
 
     const stepLog: PlayStepExecutionLog = {
-      stepId,
+      stepId: currentStep?.id || stepId,
       stepTitle: currentStep?.title || 'Execution Step',
       actionType: currentStep?.actionType || 'create_task',
       executedAt: now.toISOString(),
@@ -523,6 +523,82 @@ export async function resolveApprovalRequestAction(params: {
 }
 
 /**
+ * Server Action: Resolve an active SLA escalation incident with audit note and +20 effort points.
+ */
+export async function resolveEscalationIncidentAction(params: {
+  workspaceId: string;
+  organizationId: string;
+  actorId: string;
+  actorName: string;
+  incidentId: string;
+  resolutionNote?: string;
+}): Promise<{
+  success: boolean;
+  pointsAwarded?: number;
+  error?: string;
+}> {
+  try {
+    const { workspaceId, organizationId, actorId, actorName, incidentId, resolutionNote } = params;
+    if (!workspaceId || !incidentId) {
+      return { success: false, error: 'Missing required parameters.' };
+    }
+
+    const hasAccess = await verifyCallerAccess(actorId, workspaceId);
+    if (!hasAccess) {
+      return { success: false, error: 'Unauthorized: User does not have access to this workspace.' };
+    }
+
+    const incRef = adminDb.collection('salesOrchestrationIncidents').doc(incidentId);
+    const incSnap = await incRef.get();
+    if (!incSnap.exists) {
+      return { success: false, error: 'Incident not found.' };
+    }
+
+    const incData = incSnap.data() as EscalationIncident;
+    if (incData.workspaceId !== workspaceId) {
+      return { success: false, error: 'Forbidden: Incident does not belong to active workspace.' };
+    }
+
+    const now = new Date().toISOString();
+    await incRef.update({
+      status: 'resolved',
+      resolvedAt: now,
+      resolutionNote: resolutionNote || `Remediated by ${actorName} (${actorId})`,
+    });
+
+    let pointsAwarded = 20;
+    try {
+      await evaluateEffortEvent({
+        organizationId,
+        workspaceId,
+        eventType: 'escalated_sla_breach_remediated',
+        entityType: 'SalesPlay',
+        entityId: incidentId,
+        actorType: 'User',
+        actorId,
+        metadata: {
+          ruleId: incData.ruleId,
+          severity: incData.severity,
+          entityName: incData.entityName,
+        },
+      });
+    } catch (scoreErr) {
+      console.warn('Non-blocking scoring emission failed on incident resolution:', scoreErr);
+    }
+
+    revalidatePath('/admin/sales-orchestration');
+    revalidatePath('/admin/sales-command');
+    return { success: true, pointsAwarded };
+  } catch (error) {
+    console.error('resolveEscalationIncidentAction error:', error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to resolve escalation incident.',
+    };
+  }
+}
+
+/**
  * Server Action: Manually launch a sales play from Deal page or Rep My Day.
  */
 export async function triggerSalesPlayManuallyAction(params: {
@@ -586,7 +662,11 @@ export async function triggerSalesPlayManuallyAction(params: {
       now
     );
 
-    await adminDb.collection('salesOrchestrationExecutions').doc(instance.id).set(instance);
+    const execRef = adminDb.collection('salesOrchestrationExecutions').doc(instance.id);
+    const existingSnap = await execRef.get();
+    if (!existingSnap.exists) {
+      await execRef.set(instance);
+    }
 
     revalidatePath('/admin/sales-orchestration');
     revalidatePath('/admin/my-day');

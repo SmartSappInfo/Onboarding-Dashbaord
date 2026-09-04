@@ -34,6 +34,7 @@ import type {
   EscalationIncident,
   EscalationSeverity,
 } from '@/lib/sales-orchestration/types';
+import { resolveEscalationIncidentAction } from '@/app/actions/sales-orchestration-actions';
 import { useToast } from '@/hooks/use-toast';
 
 interface EscalationMatrixTabProps {
@@ -42,6 +43,7 @@ interface EscalationMatrixTabProps {
   workspaceId: string;
   organizationId: string;
   actorId: string;
+  actorName?: string;
   onRefresh: () => void;
 }
 
@@ -51,9 +53,11 @@ export function EscalationMatrixTab({
   workspaceId,
   organizationId,
   actorId,
+  actorName,
   onRefresh,
 }: EscalationMatrixTabProps) {
   const { toast } = useToast();
+  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
 
   const getSeverityBadge = (severity: EscalationSeverity) => {
     switch (severity) {
@@ -68,12 +72,40 @@ export function EscalationMatrixTab({
     }
   };
 
-  const handleResolveIncident = (incidentId: string, entityName: string) => {
-    toast({
-      title: 'Incident Remediated',
-      description: `SLA breach for "${entityName}" marked as resolved. +20 effort points recorded.`,
-    });
-    onRefresh();
+  const handleResolveIncident = async (incidentId: string, entityName: string) => {
+    try {
+      setResolvingId(incidentId);
+      const res = await resolveEscalationIncidentAction({
+        workspaceId,
+        organizationId,
+        actorId,
+        actorName: actorName || 'Sales Leader',
+        incidentId,
+        resolutionNote: `SLA breach for "${entityName}" remediated.`,
+      });
+
+      if (res.success) {
+        toast({
+          title: 'Incident Remediated',
+          description: `SLA breach for "${entityName}" marked as resolved. +${res.pointsAwarded ?? 20} effort points recorded.`,
+        });
+        onRefresh();
+      } else {
+        toast({
+          title: 'Resolution Failed',
+          description: res.error || 'Could not resolve incident.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Failed to resolve SLA breach.',
+        variant: 'destructive',
+      });
+    } finally {
+      setResolvingId(null);
+    }
   };
 
   return (
@@ -118,10 +150,11 @@ export function EscalationMatrixTab({
                   type="button"
                   size="sm"
                   onClick={() => handleResolveIncident(inc.id, inc.entityName)}
+                  disabled={resolvingId === inc.id}
                   className="h-10 rounded-xl text-xs font-semibold px-4 min-h-[44px] active:scale-[0.97] transition-transform self-end sm:self-auto shrink-0"
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-1.5" />
-                  Resolve Breach
+                  <CheckCircle2 className={`h-4 w-4 mr-1.5 ${resolvingId === inc.id ? 'animate-spin' : ''}`} />
+                  {resolvingId === inc.id ? 'Resolving...' : 'Resolve Breach'}
                 </Button>
               </div>
             ))}

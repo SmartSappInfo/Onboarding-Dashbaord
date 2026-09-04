@@ -215,6 +215,11 @@ export function evaluatePlayTriggers(
     );
 
     if (executionsForPlay.length > 0) {
+      // If an execution is currently active, block re-entry to avoid simultaneous overlapping runs
+      if (executionsForPlay.some((e) => e.status === 'active')) {
+        continue;
+      }
+
       if (!play.allowReentry) {
         // Disallow re-entry entirely if already triggered
         continue;
@@ -228,8 +233,12 @@ export function evaluatePlayTriggers(
           : latest;
       }, executionsForPlay[0]);
 
+      const referenceTime =
+        latestExecution.completedAt ||
+        latestExecution.lastStepExecutedAt ||
+        latestExecution.startedAt;
       const elapsedHours =
-        (now.getTime() - new Date(latestExecution.startedAt).getTime()) / (1000 * 60 * 60);
+        (now.getTime() - new Date(referenceTime).getTime()) / (1000 * 60 * 60);
 
       if (elapsedHours < cooldownHours) {
         // Still within debounce cooldown window
@@ -262,7 +271,7 @@ export function createPlayExecutionInstance(
   const nextStepDueAt = new Date(now.getTime() + delayMs).toISOString();
 
   return {
-    id: `exec_${play.id}_${entity.id}_${now.getTime()}`,
+    id: idempotencyKey,
     workspaceId: play.workspaceId,
     organizationId: play.organizationId,
     playId: play.id,
@@ -521,7 +530,15 @@ export function detectSlaBreaches(
       const dealValue = entity.value ?? 0;
       const stakeholders = entity.stakeholderCount ?? 0;
 
-      if (dealValue >= 10000 && stakeholders <= 1) {
+      // Grace period check: allow rep time to input stakeholders if thresholdHours > 0
+      let pastGracePeriod = true;
+      if (rule.thresholdHours > 0 && entity.createdAt) {
+        const elapsedHours =
+          (now.getTime() - new Date(entity.createdAt).getTime()) / (1000 * 60 * 60);
+        pastGracePeriod = elapsedHours >= rule.thresholdHours;
+      }
+
+      if (dealValue >= 10000 && stakeholders <= 1 && pastGracePeriod) {
         breaches.push({
           breached: true,
           ruleId: rule.id,

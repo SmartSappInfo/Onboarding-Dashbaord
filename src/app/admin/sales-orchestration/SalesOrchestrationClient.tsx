@@ -444,6 +444,7 @@ export default function SalesOrchestrationClient() {
             workspaceId={workspaceId}
             organizationId={organizationId}
             actorId={currentUserId}
+            actorName={currentUserName}
             onRefresh={loadData}
           />
         </TabsContent>
