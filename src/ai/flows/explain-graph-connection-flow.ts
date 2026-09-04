@@ -87,8 +87,10 @@ Instructions:
 3. Be concise (2 to 3 sentences). Do NOT invent facts or events not listed in the path steps.
 4. Output JSON matching the requested schema.`;
 
-      const response = await ai.generate({
-        model: getModel('googleai/gemini-2.5-flash'),
+      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const generator = customAi || ai;
+      const response = await generator.generate({
+        model: modelString,
         prompt,
         output: { schema: explainGraphConnectionOutputSchema },
         config: {

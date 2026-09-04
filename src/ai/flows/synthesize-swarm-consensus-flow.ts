@@ -168,13 +168,11 @@ SPECIALIST OUTPUTS:
 ${JSON.stringify(input.specialistOutputs, null, 2)}
 `;
 
-      const model = getModel('gemini-1.5-flash');
-      if (!model) {
-        return synthesizeSwarmDeterministic(input);
-      }
+      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const generator = customAi || ai;
 
-      const response = await ai.generate({
-        model,
+      const response = await generator.generate({
+        model: modelString,
         prompt,
         output: {
           schema: synthesizeSwarmOutputSchema,

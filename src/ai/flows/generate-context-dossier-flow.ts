@@ -124,8 +124,10 @@ ACCOUNT CONTEXT:
 
 Synthesize a comprehensive, executive-ready briefing in the required structured schema.`;
 
-      const response = await ai.generate({
-        model: getModel('googleai/gemini-2.5-flash'),
+      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const generator = customAi || ai;
+      const response = await generator.generate({
+        model: modelString,
         prompt,
         output: { schema: contextDossierOutputSchema },
       });

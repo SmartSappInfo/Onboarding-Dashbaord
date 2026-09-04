@@ -265,9 +265,10 @@ Analyze these signals to extract:
 
 Return valid JSON conforming to the output schema. Keep descriptions actionable, professional, and grounded strictly in the provided evidence.`;
 
-      const model = await getModel('gemini-2.5-flash');
-      const response = await ai.generate({
-        model,
+      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const generator = customAi || ai;
+      const response = await generator.generate({
+        model: modelString,
         prompt,
         output: { schema: detectPatternsOutputSchema },
       });

@@ -126,13 +126,13 @@ async function main() {
   if (pendingApprovalId) {
     const adjudication = await McpApprovalEngine.adjudicate({
       approvalId: pendingApprovalId,
-      decision: 'approved',
+      decision: 'rejected',
       adjudicatedBy: 'supervisor_admin',
-      notes: 'Approved after review',
+      notes: 'Rejected after security compliance review',
     });
     console.log(`  ✓ Approval status after adjudication: ${adjudication.status} (by: ${adjudication.adjudicatedBy})`);
-    if (adjudication.status !== 'approved') {
-      throw new Error(`Expected status 'approved', got ${adjudication.status}`);
+    if (adjudication.status !== 'rejected') {
+      throw new Error(`Expected status 'rejected', got ${adjudication.status}`);
     }
   }
 

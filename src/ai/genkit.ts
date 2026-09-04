@@ -114,14 +114,28 @@ export async function getModel(
   let modelId = 'gemini-2.5-flash';
 
   if (typeof params === 'string') {
-    modelId = params;
-    if (params.startsWith('claude')) {
+    if (params.startsWith('anthropic/')) {
       provider = 'anthropic';
+      modelId = params.replace(/^anthropic\//, '');
+    } else if (params.startsWith('googleai/')) {
+      provider = 'googleai';
+      modelId = params.replace(/^googleai\//, '');
+    } else if (params.startsWith('claude')) {
+      provider = 'anthropic';
+      modelId = params;
+    } else {
+      modelId = params;
     }
   } else if (params) {
     organizationId = params.organizationId;
     provider = params.provider || 'googleai';
     modelId = params.modelId || 'gemini-2.5-flash';
+    if (modelId.startsWith('googleai/')) {
+      modelId = modelId.replace(/^googleai\//, '');
+    } else if (modelId.startsWith('anthropic/')) {
+      provider = 'anthropic';
+      modelId = modelId.replace(/^anthropic\//, '');
+    }
   }
 
   // Map legacy 'openai' provider to 'anthropic' and update modelId
@@ -189,13 +203,12 @@ export async function getModel(
   // 4. Fallback to system default if no key is found at all
   if (!apiKey) {
     console.warn(`[AI] No API key found for provider "${provider}", falling back to system default instance`);
-    if (provider === 'googleai') {
-      return { modelString: `googleai/${modelId}` };
-    }
-    if (provider === 'anthropic') {
-      return { modelString: `anthropic/${modelId}` };
-    }
-    return { modelString: `${provider}/${modelId}` };
+    const defaultModel = `${provider}/${modelId}`;
+    return {
+      modelString: defaultModel,
+      toString: () => defaultModel,
+      [Symbol.toPrimitive]: () => defaultModel,
+    };
   }
 
   // 5. Get or create cached Genkit instance with custom API key
@@ -274,5 +287,10 @@ export async function getModel(
     }
   }) as ReturnType<typeof genkit>;
 
-  return { modelString, customAi: wrappedAi };
+  return {
+    modelString,
+    customAi: wrappedAi,
+    toString: () => modelString,
+    [Symbol.toPrimitive]: () => modelString,
+  };
 }

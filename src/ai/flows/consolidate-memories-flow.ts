@@ -133,8 +133,10 @@ Guidelines:
 ${input.contextDomain ? `Domain Context: ${input.contextDomain}\n\n` : ''}Memory Fragments:
 ${memorySummaries}`;
 
-      const { output } = await ai.generate({
-        model: getModel(),
+      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const generator = customAi || ai;
+      const { output } = await generator.generate({
+        model: modelString,
         prompt,
         output: { schema: consolidateMemoriesOutputSchema },
         config: { temperature: 0.2 },
