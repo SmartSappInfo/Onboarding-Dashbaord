@@ -51,3 +51,5 @@ export default function DashboardCard({
     </motion.div>
   )
 }
+
+export { DashboardCard };
