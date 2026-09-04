@@ -133,7 +133,7 @@ Guidelines:
 ${input.contextDomain ? `Domain Context: ${input.contextDomain}\n\n` : ''}Memory Fragments:
 ${memorySummaries}`;
 
-      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const { modelString, customAi } = await getModel('gemini-3.6-flash');
       const generator = customAi || ai;
       const { output } = await generator.generate({
         model: modelString,

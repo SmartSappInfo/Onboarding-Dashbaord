@@ -288,7 +288,7 @@ export class NoteMemoryPipeline {
             sentiment: aiOutput.overallSentiment,
             actionItems,
             generatedAt: new Date().toISOString(),
-            model: 'googleai/gemini-2.5-flash',
+            model: 'googleai/gemini-3.6-flash',
           },
           updatedAt: new Date().toISOString(),
         };

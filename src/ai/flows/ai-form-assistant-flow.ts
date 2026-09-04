@@ -60,7 +60,7 @@ async function callAssistantAI<T>(params: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          model: 'google/gemini-2.5-flash',
+          model: 'google/gemini-3.6-flash',
           response_format: { type: 'json_object' },
           messages: [
             {
@@ -87,7 +87,7 @@ async function callAssistantAI<T>(params: {
     const { modelString, customAi } = await getModel({
       organizationId,
       provider: 'googleai',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.6-flash',
     });
 
     const activeAi = customAi || ai;

@@ -147,7 +147,7 @@ Evaluation Criteria:
 
 Respond strictly according to the output schema. If they do NOT contradict, set isContradiction=false.`;
 
-      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const { modelString, customAi } = await getModel('gemini-3.6-flash');
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

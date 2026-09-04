@@ -43,7 +43,7 @@ export async function generateHookAlternatives(input: GenerateHooksInput): Promi
     console.warn('Anthropic model failed, trying fallback Gemini model...', err);
     resolvedModel = await getModel({
       provider: 'google-genai',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.6-flash',
     });
   }
 

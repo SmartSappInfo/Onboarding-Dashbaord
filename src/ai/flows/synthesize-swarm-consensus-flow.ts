@@ -168,7 +168,7 @@ SPECIALIST OUTPUTS:
 ${JSON.stringify(input.specialistOutputs, null, 2)}
 `;
 
-      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const { modelString, customAi } = await getModel('gemini-3.6-flash');
       const generator = customAi || ai;
 
       const response = await generator.generate({

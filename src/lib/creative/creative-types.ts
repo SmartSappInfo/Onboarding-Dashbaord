@@ -488,7 +488,7 @@ export interface AiPromptTemplate {
   name: string;
   category: 'concept_generation' | 'canvas_nlp' | 'copy_matrix' | 'visual_audit';
   systemPrompt: string;
-  model: 'gemini-2.5-flash' | 'gemini-1.5-pro' | 'gpt-4o';
+  model: 'gemini-3.6-flash' | 'gemini-2.5-flash' | 'gemini-1.5-pro' | 'gpt-4o';
   temperature: number;
   isActive: boolean;
   updatedAt: string;

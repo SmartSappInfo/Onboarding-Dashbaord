@@ -30,7 +30,7 @@ function getErrorMessage(error: unknown): string {
   return 'An unexpected error occurred.';
 }
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 /**

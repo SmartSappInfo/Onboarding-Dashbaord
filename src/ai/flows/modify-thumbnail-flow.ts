@@ -54,7 +54,7 @@ const modifyThumbnailFlow = ai.defineFlow(
       console.warn('Anthropic model failed, trying fallback Gemini model...', err);
       resolvedModel = await getModel({
         provider: 'google-genai',
-        modelId: 'gemini-2.5-flash',
+        modelId: 'gemini-3.6-flash',
       });
       fallbackUsed = true;
     }
@@ -80,7 +80,7 @@ const modifyThumbnailFlow = ai.defineFlow(
         console.warn('Anthropic modification failed, triggering Gemini failover...', err);
         const backupModel = await getModel({
           provider: 'google-genai',
-          modelId: 'gemini-2.5-flash',
+          modelId: 'gemini-3.6-flash',
         });
         const backupAi = backupModel.customAi || ai;
         result = await backupAi.generate({

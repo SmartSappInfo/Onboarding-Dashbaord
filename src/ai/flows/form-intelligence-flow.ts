@@ -45,7 +45,7 @@ async function callIntelligenceAI<T>(params: {
   provider?: string;
   modelId?: string;
 }): Promise<T> {
-  const { prompt, schema, organizationId, provider = 'openrouter', modelId = 'google/gemini-2.5-flash' } = params;
+  const { prompt, schema, organizationId, provider = 'openrouter', modelId = 'google/gemini-3.6-flash' } = params;
 
   try {
     let apiKey = process.env.OPENROUTER_API_KEY;
@@ -88,11 +88,11 @@ async function callIntelligenceAI<T>(params: {
       }
     }
 
-    // Fallback to Native Genkit (Gemini 2.5 Flash / Claude)
+    // Fallback to Native Genkit (Gemini 3.6 Flash / Claude)
     const { modelString, customAi } = await getModel({
       organizationId,
       provider: 'googleai',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.6-flash',
     });
 
     const activeAi = customAi || ai;

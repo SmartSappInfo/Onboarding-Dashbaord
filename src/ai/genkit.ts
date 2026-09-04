@@ -111,7 +111,7 @@ export async function getModel(
 ) {
   let organizationId: string | undefined;
   let provider = 'googleai';
-  let modelId = 'gemini-2.5-flash';
+  let modelId = 'gemini-3.6-flash';
 
   if (typeof params === 'string') {
     if (params.startsWith('anthropic/')) {
@@ -129,7 +129,7 @@ export async function getModel(
   } else if (params) {
     organizationId = params.organizationId;
     provider = params.provider || 'googleai';
-    modelId = params.modelId || 'gemini-2.5-flash';
+    modelId = params.modelId || 'gemini-3.6-flash';
     if (modelId.startsWith('googleai/')) {
       modelId = modelId.replace(/^googleai\//, '');
     } else if (modelId.startsWith('anthropic/')) {
@@ -146,9 +146,16 @@ export async function getModel(
     }
   }
 
-  // Map fictional gemini-3.5-flash model to real gemini-2.5-flash model
-  if (provider === 'googleai' && modelId === 'gemini-3.5-flash') {
-    modelId = 'gemini-2.5-flash';
+  // Map deprecated/legacy Gemini models to active gemini-3.6-flash model
+  if (
+    provider === 'googleai' &&
+    (modelId === 'gemini-2.5-flash' ||
+      modelId === 'gemini-3.5-flash' ||
+      modelId === 'gemini-2.0-flash' ||
+      modelId === 'gemini-1.5-flash' ||
+      modelId === 'gemini-1.5-pro')
+  ) {
+    modelId = 'gemini-3.6-flash';
   }
 
   // Map generic claude-3-5-sonnet/claude-3.5-sonnet model to real API model name
@@ -232,8 +239,11 @@ export async function getModel(
               errorMsg.includes('x-api-key') || 
               errorMsg.includes('authentication_error') ||
               errorMsg.includes('permission_denied') ||
+              errorMsg.includes('PERMISSION_DENIED') ||
               errorMsg.includes('403') ||
               errorMsg.includes('404') ||
+              lowerError.includes('leaked') ||
+              lowerError.includes('no longer available') ||
               lowerError.includes('not_found') ||
               lowerError.includes('not found') ||
               lowerError.includes('no model') ||
@@ -241,7 +251,7 @@ export async function getModel(
                                 
             if (isAuthOrNotFoundError) {
               console.warn(`[AI] Custom API key generation failed with error: "${errorMsg}". Falling back to system default instance/Gemini.`);
-              const defaultModel = 'googleai/gemini-2.5-flash';
+              const defaultModel = 'googleai/gemini-3.6-flash';
               
               // Non-blocking telemetry log
               logBackofficeAction(
@@ -263,7 +273,7 @@ export async function getModel(
               try {
                 const globalKeys = await getGlobalBackofficeKeys();
                 const geminiKey = globalKeys.geminiApiKey || process.env.GEMINI_API_KEY;
-                if (geminiKey) {
+                if (geminiKey && geminiKey !== apiKey) {
                   const fallbackInstance = getOrCreateGenkitInstance('googleai', geminiKey);
                   return await fallbackInstance.generate({
                     ...options,
@@ -271,13 +281,19 @@ export async function getModel(
                   } as Parameters<typeof fallbackInstance.generate>[0]);
                 }
               } catch (fallbackErr) {
-                console.error('[AI] Resolved Gemini fallback failed:', fallbackErr);
+                console.warn('[AI] Resolved Gemini fallback failed:', fallbackErr);
               }
 
-              return await ai.generate({
-                ...options,
-                model: defaultModel
-              } as Parameters<typeof ai.generate>[0]);
+              if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== apiKey) {
+                try {
+                  return await ai.generate({
+                    ...options,
+                    model: defaultModel
+                  } as Parameters<typeof ai.generate>[0]);
+                } catch (defaultErr) {
+                  console.warn('[AI] System default Gemini generation failed:', defaultErr);
+                }
+              }
             }
             throw error;
           }

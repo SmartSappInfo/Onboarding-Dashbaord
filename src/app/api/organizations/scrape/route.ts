@@ -16,7 +16,7 @@ import { validateExternalUrl } from '@/lib/security/ssrf-guard';
  * - Zero `any` or `any[]` typing.
  */
 
-const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_MODEL = 'gemini-3.6-flash';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`;
 
 // Timeout for the external site fetch (10 seconds max)

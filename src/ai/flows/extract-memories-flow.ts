@@ -153,7 +153,7 @@ export const extractMemoriesFlow = ai.defineFlow(
     const { modelString, customAi } = await getModel({
       organizationId: input.organizationId,
       provider: 'googleai',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.6-flash',
     });
 
     const activeAi = customAi || ai;

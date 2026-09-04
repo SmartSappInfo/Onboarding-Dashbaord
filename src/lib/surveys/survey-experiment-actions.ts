@@ -352,7 +352,7 @@ export async function suggestSurveyVariantCopyAction(
 
     try {
       const { getModel, ai } = await import('@/ai/genkit');
-      const { modelString } = await getModel({ provider: 'googleai', modelId: 'gemini-2.5-flash' });
+      const { modelString } = await getModel({ provider: 'googleai', modelId: 'gemini-3.6-flash' });
 
       const promptText = `You are an expert Conversion Rate Optimization (CRO) copywriter and psychometric survey design specialist.
 Generate 3 distinct, high-converting alternative copy variants (A/B testing angles) for a survey with baseline copy:

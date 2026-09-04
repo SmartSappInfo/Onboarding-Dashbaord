@@ -75,7 +75,7 @@ async function callAIWithFallback<T>(params: {
   provider?: string;
   modelId?: string;
 }): Promise<T> {
-  const { prompt, schema, organizationId, provider = 'openrouter', modelId = 'gemini-2.5-flash' } = params;
+  const { prompt, schema, organizationId, provider = 'openrouter', modelId = 'gemini-3.6-flash' } = params;
 
   try {
     if (provider === 'openrouter') {
@@ -127,7 +127,7 @@ async function callAIWithFallback<T>(params: {
     const { modelString, customAi } = await getModel({
       organizationId,
       provider: 'googleai',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.6-flash',
     });
 
     const activeAi = customAi || ai;
@@ -173,7 +173,7 @@ export const generateFormFlow = ai.defineFlow(
       schema: GenerateFormOutputSchema,
       organizationId: input.organizationId,
       provider: 'openrouter',
-      modelId: 'google/gemini-2.5-flash',
+      modelId: 'google/gemini-3.6-flash',
     });
   }
 );

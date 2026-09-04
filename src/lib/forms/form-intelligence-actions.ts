@@ -122,7 +122,7 @@ export async function classifySubmissionAction(params: {
         })),
         confidence: aiResult.confidence,
         needsHumanReview: aiResult.needsHumanReview,
-        model: 'gemini-2.5-flash',
+        model: 'gemini-3.6-flash',
         classifiedAt: new Date().toISOString(),
       };
     }
@@ -319,7 +319,7 @@ export async function getOrGenerateFormTopicClustersAction(params: {
       keyPainPoints: aiOutput.keyPainPoints,
       actionableRecommendations: aiOutput.actionableRecommendations,
       analyzedAt: new Date().toISOString(),
-      model: 'gemini-2.5-flash',
+      model: 'gemini-3.6-flash',
     };
 
     // 4. Save Cache to Firestore

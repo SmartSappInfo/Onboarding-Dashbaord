@@ -227,9 +227,9 @@ export const leadEnrichmentFlow = ai.defineFlow(
           currentModel = fallbackModelDetails.modelString;
           activeAiInstance = fallbackModelDetails.customAi || ai;
         } else if (isUnavailable) {
-          if (currentModel.includes('gemini-3.5-flash')) {
-            currentModel = currentModel.replace('gemini-3.5-flash', 'gemini-2.5-flash');
-            console.log(`[AI] Model unavailable. Downgrading to model: ${currentModel}`);
+          if (currentModel.includes('gemini-3.5-flash') || currentModel.includes('gemini-2.5-flash')) {
+            currentModel = currentModel.replace(/gemini-[23]\.5-flash/, 'gemini-3.6-flash');
+            console.log(`[AI] Model unavailable. Normalizing to model: ${currentModel}`);
           } else {
             console.log('[AI] All Google AI models overloaded. Escalating failover to Anthropic Claude...');
             const fallbackModelDetails = await getModel({

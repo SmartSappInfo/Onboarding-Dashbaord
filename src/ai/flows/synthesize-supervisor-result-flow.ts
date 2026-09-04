@@ -183,7 +183,7 @@ ${citationDetails || 'No direct citations.'}
 
 Synthesize the final mission briefing.`;
 
-      const { modelString, customAi } = await getModel('gemini-2.5-flash');
+      const { modelString, customAi } = await getModel('gemini-3.6-flash');
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

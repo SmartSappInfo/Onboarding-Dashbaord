@@ -41,6 +41,7 @@ export const AI_PROVIDERS = [
         color: 'text-blue-500',
         bgColor: 'bg-blue-500/10',
         models: [
+            { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', description: 'Active flagship performance for high-volume tasks' },
             { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', description: 'Frontier performance for high-volume tasks' },
             { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', description: 'High-frequency, simple tasks' },
             { id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', description: 'Balanced Gemini 3 model' },

@@ -103,7 +103,7 @@ Provide an executive assessment adhering strictly to the structured schema:
 
     const resolvedModel = await getModel({
       provider: 'googleai',
-      modelId: 'gemini-2.5-flash',
+      modelId: 'gemini-3.6-flash',
     });
     const activeAi = resolvedModel.customAi || ai;
 
