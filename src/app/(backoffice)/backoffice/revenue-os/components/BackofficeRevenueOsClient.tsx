@@ -82,6 +82,7 @@ export default function BackofficeRevenueOsClient() {
         title: 'Error Loading Governance',
         description: err instanceof Error ? err.message : 'Unknown load error',
         variant: 'destructive',
+        actionConfig: { path: '/backoffice/revenue-os', label: 'Revenue OS Governance' },
       });
     } finally {
       setIsLoading(false);
@@ -116,6 +117,7 @@ export default function BackofficeRevenueOsClient() {
           title: 'Save Failed',
           description: res.error || 'Failed to update governance policy.',
           variant: 'destructive',
+          actionConfig: { path: '/backoffice/revenue-os', label: 'Retry Save' },
         });
       }
     } catch (err) {
@@ -123,6 +125,7 @@ export default function BackofficeRevenueOsClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Failed to save',
         variant: 'destructive',
+        actionConfig: { path: '/backoffice/revenue-os', label: 'Revenue OS Governance' },
       });
     } finally {
       setIsSaving(false);
@@ -149,6 +152,7 @@ export default function BackofficeRevenueOsClient() {
           title: 'Reseed Failed',
           description: res.error || 'Could not reseed defaults.',
           variant: 'destructive',
+          actionConfig: { path: '/backoffice/revenue-os', label: 'Retry Defaults' },
         });
       }
     } catch (err) {
@@ -156,6 +160,7 @@ export default function BackofficeRevenueOsClient() {
         title: 'Error',
         description: err instanceof Error ? err.message : 'Reseed error',
         variant: 'destructive',
+        actionConfig: { path: '/backoffice/revenue-os', label: 'Revenue OS Governance' },
       });
     } finally {
       setIsReseeding(false);

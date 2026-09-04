@@ -99,7 +99,8 @@ export async function getExecutiveBoardroomDataAction(params: {
 
     let scenarios: RevenueScenario[] = scenariosSnap.docs.map((d) => d.data() as RevenueScenario);
     if (scenarios.length === 0) {
-      // Re-fetch in case migration seeder just ran
+      // Self-healing seed if scenarios were cleared or uninitialized
+      await seedRevenueOsWorkspace(workspaceId, organizationId);
       const refreshedSnap = await adminDb
         .collection('revenueScenarios')
         .where('workspaceId', '==', workspaceId)
@@ -415,15 +416,18 @@ export async function saveRevenueScenarioAction(params: {
     try {
       const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
       const recentEventsSnap = await adminDb
-        .collection('activityEvents')
+        .collection('effortEvents')
         .where('workspaceId', '==', workspaceId)
         .where('actorId', '==', actorId)
-        .where('eventType', '==', 'revenue_scenario_calibrated')
         .where('createdAt', '>=', oneDayAgo)
-        .limit(1)
+        .limit(10)
         .get();
 
-      if (recentEventsSnap.empty) {
+      const hasCalibratedRecently = recentEventsSnap.docs.some(
+        (d) => d.data().eventType === 'revenue_scenario_calibrated'
+      );
+
+      if (!hasCalibratedRecently) {
         const effortRes = await evaluateEffortEvent({
           organizationId,
           workspaceId,

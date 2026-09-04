@@ -498,7 +498,7 @@ export async function getMyDayOverviewAction(params: {
     // 7c. Ingest Churn Radar Early-Warning Interventions (Phase 10 -> Phase 2 Closed Loop Bridge)
     dealsSnap.forEach((doc) => {
       const d = doc.data();
-      const assigned = d.assignedTo ? String(d.assignedTo) : '';
+      const assigned = String(d.assignedTo || d.ownerId || d.repId || d.userId || '');
       const isStatusOpen = d.status === 'open' || (d.status !== 'won' && d.status !== 'lost' && d.status !== 'cancelled');
       const dealVal = Number(d.value || d.amount || 0);
 
@@ -526,10 +526,15 @@ export async function getMyDayOverviewAction(params: {
         }
 
         const stakeholders = Array.isArray(d.stakeholders) ? d.stakeholders.length : (Number(d.stakeholderCount) || 1);
-        if (!isDecayed && stakeholders <= 1 && dealVal >= 25000) {
-          isDecayed = true;
-          reason = 'Single-threaded deal: vulnerable to champion departure';
-          action = 'Mandate Multi-Threading Play: Map Economic Buyer and technical stakeholders.';
+        if (stakeholders <= 1 && dealVal >= 25000) {
+          if (isDecayed) {
+            reason = `${reason} + Single-threaded stakeholder vulnerability`;
+            action = 'Execute Executive Outreach & Mandate Multi-Threading Play';
+          } else {
+            isDecayed = true;
+            reason = 'Single-threaded deal: vulnerable to champion departure';
+            action = 'Mandate Multi-Threading Play: Map Economic Buyer and technical stakeholders.';
+          }
         }
 
         if (isDecayed) {
