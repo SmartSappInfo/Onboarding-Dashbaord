@@ -62,6 +62,14 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { useTheme } from 'next-themes';
 import { nanoid } from 'nanoid';
 import { recordMediaPageEventAction } from '@/lib/media-analytics-actions';
+import type { MediaExperience, MediaExperiment, ExperimentVariant, ContentRecommendationItem } from '@/lib/types/media-2.0';
+import { 
+    evaluateDynamicCtaRules, 
+    resolvePersonalizedContent, 
+    assignExperimentVariant 
+} from '@/lib/media/personalization-rules-service';
+import { evaluateTrafficVariant } from '@/lib/media/experiment-service';
+import { MediaRecommendationsCarousel } from '@/app/admin/media/components/MediaRecommendationsCarousel';
 
 interface MediaShareClientProps {
     shareId: string;
@@ -81,6 +89,18 @@ interface MediaShareClientProps {
     searchParams: Record<string, string>;
     contactId?: string;
     entityId?: string;
+    // Phase 5 additions
+    experience?: MediaExperience | null;
+    recommendedAssets?: MediaAsset[];
+    contactName?: string;
+    contactEmail?: string;
+    companyName?: string;
+    contactScore?: number;
+    dealStage?: string;
+    contactTagIds?: string[];
+    // Phase 8 additions
+    activeExperiment?: MediaExperiment | null;
+    recommendationItems?: ContentRecommendationItem[];
 }
 
 export default function MediaShareClient({
@@ -101,12 +121,117 @@ export default function MediaShareClient({
     searchParams,
     contactId,
     entityId,
+    experience,
+    recommendedAssets = [],
+    contactName,
+    contactEmail,
+    companyName,
+    contactScore,
+    dealStage,
+    contactTagIds,
+    activeExperiment,
+    recommendationItems = [],
 }: MediaShareClientProps) {
     const { resolvedTheme } = useTheme();
 
-    const effectiveDescription = React.useMemo(() => {
-        return getEffectiveDescription(description, asset.type);
-    }, [description, asset.type]);
+    const sessionId = React.useMemo(() => nanoid(), []);
+    const startTimeRef = React.useRef<number>(Date.now());
+    const loggedPlay = React.useRef(false);
+    const loggedQuarter = React.useRef(false);
+    const loggedHalf = React.useRef(false);
+    const loggedThreeQuarters = React.useRef(false);
+    const loggedComplete = React.useRef(false);
+
+    // Phase 8: Autonomous Experiment & Multi-Armed Bandit Traffic Routing
+    const activeExperimentVariant = React.useMemo<ExperimentVariant | null>(() => {
+        if (!activeExperiment) return null;
+        return evaluateTrafficVariant(activeExperiment, contactId || sessionId);
+    }, [activeExperiment, contactId, sessionId]);
+
+    const effectiveActivationGate = React.useMemo<'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete'>(() => {
+        if (activeExperimentVariant?.overrides?.gating) {
+            return activeExperimentVariant.overrides.gating;
+        }
+        return ctaActivationGate;
+    }, [activeExperimentVariant, ctaActivationGate]);
+
+    // Phase 5: Deterministic A/B Split Test Variant Assignment
+    const assignedVariant = React.useMemo(() => {
+        if (activeExperimentVariant) return activeExperimentVariant.id;
+        if (!experience?.abExperiment?.enabled) return 'variantA';
+        return assignExperimentVariant(experience.abExperiment, contactId || sessionId);
+    }, [activeExperimentVariant, experience?.abExperiment, contactId, sessionId]);
+
+    // Apply Variant / Experiment overrides
+    const baseTitle = React.useMemo(() => {
+        if (activeExperimentVariant?.overrides?.headline) {
+            return activeExperimentVariant.overrides.headline;
+        }
+        if (assignedVariant === 'variantB' && experience?.abExperiment?.variantBOverrides?.customHeaderTitle) {
+            return experience.abExperiment.variantBOverrides.customHeaderTitle;
+        }
+        return title;
+    }, [activeExperimentVariant, assignedVariant, experience?.abExperiment, title]);
+
+    const baseDescription = React.useMemo(() => {
+        if (assignedVariant === 'variantB' && experience?.abExperiment?.variantBOverrides?.customHeaderSubtitle) {
+            return experience.abExperiment.variantBOverrides.customHeaderSubtitle;
+        }
+        return description;
+    }, [assignedVariant, experience?.abExperiment, description]);
+
+    const baseCtaText = React.useMemo(() => {
+        if (activeExperimentVariant?.overrides?.buttonText) {
+            return activeExperimentVariant.overrides.buttonText;
+        }
+        if (assignedVariant === 'variantB' && experience?.abExperiment?.variantBOverrides?.ctaText) {
+            return experience.abExperiment.variantBOverrides.ctaText;
+        }
+        return ctaText;
+    }, [activeExperimentVariant, assignedVariant, experience?.abExperiment, ctaText]);
+
+    const baseCtaTargetUrl = React.useMemo(() => {
+        if (activeExperimentVariant?.overrides?.targetUrl) {
+            return activeExperimentVariant.overrides.targetUrl;
+        }
+        if (assignedVariant === 'variantB' && experience?.abExperiment?.variantBOverrides?.ctaTargetUrl) {
+            return experience.abExperiment.variantBOverrides.ctaTargetUrl;
+        }
+        return ctaTargetUrl;
+    }, [activeExperimentVariant, assignedVariant, experience?.abExperiment, ctaTargetUrl]);
+
+    // Phase 5: Safe Variable Token Interpolation for Headline & Description
+    const personalizedTitle = React.useMemo(() => {
+        if (experience?.personalization?.headlineTemplate) {
+            return resolvePersonalizedContent(
+                experience.personalization.headlineTemplate,
+                { contactName, companyName, contactEmail, dealStage },
+                experience.personalization.fallbackHeadline || baseTitle
+            );
+        }
+        return baseTitle;
+    }, [experience?.personalization, contactName, companyName, contactEmail, dealStage, baseTitle]);
+
+    const personalizedDescription = React.useMemo(() => {
+        if (experience?.personalization?.descriptionTemplate) {
+            return resolvePersonalizedContent(
+                experience.personalization.descriptionTemplate,
+                { contactName, companyName, contactEmail, dealStage },
+                experience.personalization.fallbackDescription || getEffectiveDescription(baseDescription, asset.type)
+            );
+        }
+        return getEffectiveDescription(baseDescription, asset.type);
+    }, [experience?.personalization, contactName, companyName, contactEmail, dealStage, baseDescription, asset.type]);
+
+    // Phase 5: Dynamic CTA Rules State
+    const [dynamicCtaText, setDynamicCtaText] = React.useState(baseCtaText);
+    const [dynamicCtaTargetUrl, setDynamicCtaTargetUrl] = React.useState(baseCtaTargetUrl);
+    const [isCtaHighlighted, setIsCtaHighlighted] = React.useState(false);
+
+    React.useEffect(() => {
+        setDynamicCtaText(baseCtaText);
+        setDynamicCtaTargetUrl(baseCtaTargetUrl);
+    }, [baseCtaText, baseCtaTargetUrl]);
 
     const [isPlaying, setIsPlaying] = React.useState(autoPlay && asset.type === 'audio');
     const audioRef = React.useRef<HTMLAudioElement | null>(null);
@@ -141,13 +266,40 @@ export default function MediaShareClient({
         }
     }, []);
 
-    const sessionId = React.useMemo(() => nanoid(), []);
-    const startTimeRef = React.useRef<number>(Date.now());
-    const loggedPlay = React.useRef(false);
-    const loggedQuarter = React.useRef(false);
-    const loggedHalf = React.useRef(false);
-    const loggedThreeQuarters = React.useRef(false);
-    const loggedComplete = React.useRef(false);
+    const lastEvaluatedPctRef = React.useRef<number>(-1);
+
+    // Phase 5: Dynamic CTA Rules Evaluation (throttled by integer percentage to prevent redundant re-renders)
+    const runDynamicCtaEvaluation = React.useCallback((progressPercent: number) => {
+        if (!experience?.dynamicCtaRules || experience.dynamicCtaRules.length === 0) return;
+        if (lastEvaluatedPctRef.current === progressPercent) return;
+        lastEvaluatedPctRef.current = progressPercent;
+
+        const matchingAction = evaluateDynamicCtaRules(experience.dynamicCtaRules, {
+            watchProgressPercent: progressPercent,
+            contactScore,
+            dealStage,
+            contactTagIds,
+        });
+        if (matchingAction) {
+            if (matchingAction.unlockCta) {
+                setIsCtaUnlocked(true);
+            }
+            if (matchingAction.changeCtaText) {
+                setDynamicCtaText(matchingAction.changeCtaText);
+            }
+            if (matchingAction.changeCtaUrl) {
+                setDynamicCtaTargetUrl(matchingAction.changeCtaUrl);
+            }
+            if (matchingAction.highlightCta) {
+                setIsCtaHighlighted(true);
+            }
+        }
+    }, [experience?.dynamicCtaRules, contactScore, dealStage, contactTagIds]);
+
+    // Initial evaluation at 0%
+    React.useEffect(() => {
+        runDynamicCtaEvaluation(0);
+    }, [runDynamicCtaEvaluation]);
 
     const logEvent = React.useCallback(async (
         type: 'view' | 'cta_click' | 'download' | 'media_play' | 'media_progress' | 'media_complete',
@@ -164,8 +316,11 @@ export default function MediaShareClient({
             entityId,
             progressPercent,
             sessionTimeSeconds: elapsed,
+            variant: activeExperimentVariant?.id || assignedVariant,
+            experimentId: activeExperiment?.id || null,
+            variantId: activeExperimentVariant?.id || null,
         });
-    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId, entityId]);
+    }, [shareId, asset.id, asset.workspaceIds, sessionId, contactId, entityId, assignedVariant, activeExperiment, activeExperimentVariant]);
 
     React.useEffect(() => {
         logEvent('view');
@@ -258,9 +413,12 @@ export default function MediaShareClient({
         }
 
         if (dur > 0) {
+            const pct = Math.round((curr / dur) * 100);
+            runDynamicCtaEvaluation(pct);
+
             // 25% milestone
             if (curr >= dur * 0.25) {
-                if (ctaActivationGate === 'quarter') {
+                if (effectiveActivationGate === 'quarter') {
                     setIsCtaUnlocked(true);
                 }
                 if (!loggedQuarter.current) {
@@ -270,7 +428,7 @@ export default function MediaShareClient({
             }
             // 50% milestone
             if (curr >= dur * 0.5) {
-                if (ctaActivationGate === 'half') {
+                if (effectiveActivationGate === 'half') {
                     setIsCtaUnlocked(true);
                 }
                 if (!loggedHalf.current) {
@@ -280,7 +438,7 @@ export default function MediaShareClient({
             }
             // 75% milestone
             if (curr >= dur * 0.75) {
-                if (ctaActivationGate === 'threequarters') {
+                if (effectiveActivationGate === 'threequarters') {
                     setIsCtaUnlocked(true);
                 }
                 if (!loggedThreeQuarters.current) {
@@ -300,7 +458,8 @@ export default function MediaShareClient({
         setIsPlaying(false);
         setCurrentTime(0);
         setIsPlaybackFinished(true);
-        if (ctaActivationGate === 'complete' || ctaActivationGate === 'threequarters' || ctaActivationGate === 'half' || ctaActivationGate === 'quarter') {
+        runDynamicCtaEvaluation(100);
+        if (effectiveActivationGate === 'complete' || effectiveActivationGate === 'threequarters' || effectiveActivationGate === 'half' || effectiveActivationGate === 'quarter') {
             setIsCtaUnlocked(true);
         }
         if (!loggedComplete.current) {
@@ -363,11 +522,11 @@ export default function MediaShareClient({
      */
     const shouldUnlockImmediately = React.useMemo(() => {
         return (
-            ctaActivationGate === 'immediate' ||
+            effectiveActivationGate === 'immediate' ||
             (asset.type !== 'video' && asset.type !== 'audio') ||
             (asset.type === 'video' && isEmbeddable && !youtubeVideoId)
         );
-    }, [ctaActivationGate, asset.type, isEmbeddable, youtubeVideoId]);
+    }, [effectiveActivationGate, asset.type, isEmbeddable, youtubeVideoId]);
 
     React.useEffect(() => {
         if (shouldUnlockImmediately) {
@@ -402,9 +561,12 @@ export default function MediaShareClient({
             }
 
             if (dur > 0) {
+                const pct = Math.round((curr / dur) * 100);
+                runDynamicCtaEvaluation(pct);
+
                 // 25% milestone
                 if (curr >= dur * 0.25) {
-                    if (ctaActivationGate === 'quarter') setIsCtaUnlocked(true);
+                    if (effectiveActivationGate === 'quarter') setIsCtaUnlocked(true);
                     if (!loggedQuarter.current) {
                         loggedQuarter.current = true;
                         logEvent('media_progress', 25);
@@ -412,7 +574,7 @@ export default function MediaShareClient({
                 }
                 // 50% milestone
                 if (curr >= dur * 0.5) {
-                    if (ctaActivationGate === 'half') setIsCtaUnlocked(true);
+                    if (effectiveActivationGate === 'half') setIsCtaUnlocked(true);
                     if (!loggedHalf.current) {
                         loggedHalf.current = true;
                         logEvent('media_progress', 50);
@@ -420,7 +582,7 @@ export default function MediaShareClient({
                 }
                 // 75% milestone
                 if (curr >= dur * 0.75) {
-                    if (ctaActivationGate === 'threequarters') setIsCtaUnlocked(true);
+                    if (effectiveActivationGate === 'threequarters') setIsCtaUnlocked(true);
                     if (!loggedThreeQuarters.current) {
                         loggedThreeQuarters.current = true;
                         logEvent('media_progress', 75);
@@ -428,7 +590,7 @@ export default function MediaShareClient({
                 }
             }
         }, 1000);
-    }, [ctaActivationGate, logEvent, stopYtProgressInterval]);
+    }, [effectiveActivationGate, logEvent, runDynamicCtaEvaluation, stopYtProgressInterval]);
 
     // Handle YouTube Player State Change
     const handleYtStateChange = React.useCallback((event: { data: number }) => {
@@ -453,7 +615,8 @@ export default function MediaShareClient({
             stopYtProgressInterval();
             setIsPlaybackFinished(true);
             setIsVideoPlaying(false);
-            if (['complete', 'threequarters', 'half', 'quarter'].includes(ctaActivationGate)) {
+            runDynamicCtaEvaluation(100);
+            if (['complete', 'threequarters', 'half', 'quarter'].includes(effectiveActivationGate)) {
                 setIsCtaUnlocked(true);
             }
             if (!loggedComplete.current) {
@@ -462,7 +625,7 @@ export default function MediaShareClient({
                 logEvent('media_progress', 100);
             }
         }
-    }, [ctaActivationGate, logEvent, startYtProgressInterval, stopYtProgressInterval]);
+    }, [effectiveActivationGate, logEvent, startYtProgressInterval, stopYtProgressInterval]);
 
     // Initialize YouTube IFrame Player API
     React.useEffect(() => {
@@ -542,9 +705,12 @@ export default function MediaShareClient({
         }
 
         if (dur > 0) {
+            const pct = Math.round((curr / dur) * 100);
+            runDynamicCtaEvaluation(pct);
+
             // 25% milestone
             if (curr >= dur * 0.25) {
-                if (ctaActivationGate === 'quarter') {
+                if (effectiveActivationGate === 'quarter') {
                     setIsCtaUnlocked(true);
                 }
                 if (!loggedQuarter.current) {
@@ -554,7 +720,7 @@ export default function MediaShareClient({
             }
             // 50% milestone
             if (curr >= dur * 0.5) {
-                if (ctaActivationGate === 'half') {
+                if (effectiveActivationGate === 'half') {
                     setIsCtaUnlocked(true);
                 }
                 if (!loggedHalf.current) {
@@ -564,7 +730,7 @@ export default function MediaShareClient({
             }
             // 75% milestone
             if (curr >= dur * 0.75) {
-                if (ctaActivationGate === 'threequarters') {
+                if (effectiveActivationGate === 'threequarters') {
                     setIsCtaUnlocked(true);
                 }
                 if (!loggedThreeQuarters.current) {
@@ -578,7 +744,8 @@ export default function MediaShareClient({
     const handleVideoEnded = () => {
         setIsPlaybackFinished(true);
         setIsVideoPlaying(false);
-        if (ctaActivationGate === 'complete' || ctaActivationGate === 'threequarters' || ctaActivationGate === 'half' || ctaActivationGate === 'quarter') {
+        runDynamicCtaEvaluation(100);
+        if (effectiveActivationGate === 'complete' || effectiveActivationGate === 'threequarters' || effectiveActivationGate === 'half' || effectiveActivationGate === 'quarter') {
             setIsCtaUnlocked(true);
         }
         if (!loggedComplete.current) {
@@ -612,11 +779,12 @@ export default function MediaShareClient({
      * We combine URL searchParams AND server-resolved props so tracking and theme sync are never lost.
      */
     const getFinalCtaUrl = () => {
-        if (!ctaTargetUrl) return '';
+        const targetUrl = dynamicCtaTargetUrl || baseCtaTargetUrl || ctaTargetUrl;
+        if (!targetUrl) return '';
         try {
-            const urlObj = ctaTargetUrl.startsWith('http')
-                ? new URL(ctaTargetUrl)
-                : new URL(ctaTargetUrl, window.location.origin);
+            const urlObj = targetUrl.startsWith('http')
+                ? new URL(targetUrl)
+                : new URL(targetUrl, typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000');
 
             // XSS / Open Redirect Safeguard: Enforce HTTP/HTTPS or relative origin protocols only
             if (!['http:', 'https:'].includes(urlObj.protocol)) {
@@ -847,9 +1015,9 @@ export default function MediaShareClient({
                                 )}
                                 <Button
                                     onClick={handleCtaClick}
-                                    className="rounded-xl bg-primary hover:bg-primary/90 text-white font-extrabold h-11 min-h-[44px] px-6 text-xs uppercase tracking-wider cursor-pointer mx-auto flex items-center gap-1.5 active:scale-[0.97]"
+                                    className={`rounded-xl bg-primary hover:bg-primary/90 text-white font-extrabold h-11 min-h-[44px] px-6 text-xs uppercase tracking-wider cursor-pointer mx-auto flex items-center gap-1.5 active:scale-[0.97] ${isCtaHighlighted ? 'ring-4 ring-primary/40 ring-offset-2 animate-pulse' : ''}`}
                                 >
-                                    {ctaText || 'Get Started'}
+                                    {dynamicCtaText || ctaText || 'Get Started'}
                                     <ArrowRight className="h-4 w-4" />
                                 </Button>
                                 <div>
@@ -884,16 +1052,16 @@ export default function MediaShareClient({
                 {ctaType !== 'none' && !(ctaPopoverEnabled && isPlaybackFinished) && (
                     <div className="absolute bottom-0 left-0 w-full p-4 bg-gradient-to-t from-black/90 to-transparent flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-auto">
                         <div className="truncate pr-4 text-left">
-                            <p className="text-xs font-bold truncate">{title}</p>
+                            <p className="text-xs font-bold truncate">{personalizedTitle}</p>
                             <p className="text-[10px] text-muted-foreground truncate mt-0.5">
                                 {!isCtaUnlocked 
                                     ? (
-                                        ctaActivationGate === 'quarter' ? '🔒 Unlocks 25% through playback' :
-                                        ctaActivationGate === 'half' ? '🔒 Unlocks halfway through' :
-                                        ctaActivationGate === 'threequarters' ? '🔒 Unlocks 75% through playback' :
+                                        effectiveActivationGate === 'quarter' ? '🔒 Unlocks 25% through playback' :
+                                        effectiveActivationGate === 'half' ? '🔒 Unlocks halfway through' :
+                                        effectiveActivationGate === 'threequarters' ? '🔒 Unlocks 75% through playback' :
                                         '🔒 Unlocks on playback complete'
                                       ) 
-                                    : effectiveDescription}
+                                    : personalizedDescription}
                             </p>
                         </div>
                         <Button 
@@ -903,11 +1071,11 @@ export default function MediaShareClient({
                             className={`rounded-xl text-xs font-black h-11 min-h-[44px] px-5 flex items-center gap-1.5 shrink-0 cursor-pointer active:scale-[0.97] ${
                                 !isCtaUnlocked 
                                     ? 'bg-slate-800 text-slate-500 cursor-not-allowed opacity-60 border border-slate-700' 
-                                    : 'bg-primary text-white hover:bg-primary/90'
+                                    : `bg-primary text-white hover:bg-primary/90 ${isCtaHighlighted ? 'ring-4 ring-primary/40 ring-offset-2 animate-pulse' : ''}`
                             }`}
                         >
                             {!isCtaUnlocked && <Lock className="h-4 w-4" />}
-                            {ctaText || 'Get Started'} 
+                            {dynamicCtaText || baseCtaText || 'Get Started'} 
                             {isCtaUnlocked && <ChevronRight className="h-4 w-4" />}
                         </Button>
                     </div>
@@ -1006,11 +1174,11 @@ export default function MediaShareClient({
                 {/* 1. Typography and Meta Context - NOW AT THE TOP */}
                 <div className="w-full max-w-3xl space-y-3">
                     <h1 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900 dark:text-slate-50 leading-tight whitespace-pre-line">
-                        {title}
+                        {personalizedTitle}
                     </h1>
-                    {effectiveDescription && (
+                    {personalizedDescription && (
                         <p className="text-sm md:text-base text-slate-600 dark:text-slate-400 font-medium leading-relaxed whitespace-pre-line">
-                            {effectiveDescription}
+                            {personalizedDescription}
                         </p>
                     )}
                 </div>
@@ -1228,9 +1396,9 @@ export default function MediaShareClient({
                                 )}
                                 <Button
                                     onClick={handleCtaClick}
-                                    className="rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white font-extrabold h-12 px-8 shadow-xl hover:shadow-primary/10 transition-all active:scale-[0.97] flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer mx-auto"
+                                    className={`rounded-2xl bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white font-extrabold h-12 px-8 shadow-xl hover:shadow-primary/10 transition-all active:scale-[0.97] flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer mx-auto ${isCtaHighlighted ? 'ring-4 ring-primary/40 ring-offset-2 animate-pulse' : ''}`}
                                 >
-                                    {ctaText || 'Get Started'}
+                                    {dynamicCtaText || ctaText || 'Get Started'}
                                     <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                                 </Button>
                                 <div>
@@ -1276,21 +1444,38 @@ export default function MediaShareClient({
                             className={`rounded-2xl font-extrabold h-12 px-8 shadow-xl transition-all flex items-center gap-2 group text-xs tracking-wider uppercase cursor-pointer ${
                                 !isCtaUnlocked 
                                     ? 'bg-slate-300 dark:bg-slate-800 text-slate-500 dark:text-slate-500 cursor-not-allowed opacity-75 shadow-none border border-slate-300 dark:border-slate-800' 
-                                    : 'bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white hover:shadow-primary/10 active:scale-[0.97]'
+                                    : `bg-gradient-to-r from-primary to-primary/80 hover:from-primary/95 hover:to-primary/85 text-white hover:shadow-primary/10 active:scale-[0.97] ${isCtaHighlighted ? 'ring-4 ring-primary/40 ring-offset-2 animate-pulse' : ''}`
                             }`}
                         >
                             {!isCtaUnlocked && <Lock className="h-4 w-4 mr-0.5 animate-pulse" />}
-                            {ctaText || 'Get Started'}
+                            {dynamicCtaText || baseCtaText || 'Get Started'}
                             {isCtaUnlocked && <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />}
                         </Button>
                         {!isCtaUnlocked && (
                             <p className="text-[10px] font-bold text-slate-500 dark:text-slate-450 flex items-center gap-1">
-                                {ctaActivationGate === 'quarter' && 'Unlocks 25% through playback'}
-                                {ctaActivationGate === 'half' && 'Unlocks halfway through playback'}
-                                {ctaActivationGate === 'threequarters' && 'Unlocks 75% through playback'}
-                                {ctaActivationGate === 'complete' && 'Unlocks on playback complete'}
+                                {effectiveActivationGate === 'quarter' && 'Unlocks 25% through playback'}
+                                {effectiveActivationGate === 'half' && 'Unlocks halfway through playback'}
+                                {effectiveActivationGate === 'threequarters' && 'Unlocks 75% through playback'}
+                                {effectiveActivationGate === 'complete' && 'Unlocks on playback complete'}
                             </p>
                         )}
+                    </div>
+                )}
+
+                {/* Phase 5 & 8: Next-Best Content Recommendations */}
+                {((recommendedAssets && recommendedAssets.length > 0) || (recommendationItems && recommendationItems.length > 0)) && (
+                    <div className="w-full max-w-3xl mt-12 pt-8 border-t border-slate-200 dark:border-slate-800/80 animate-in fade-in duration-500">
+                        <MediaRecommendationsCarousel
+                            assets={recommendedAssets}
+                            recommendationItems={recommendationItems}
+                            title={experience?.recommendations?.headline || 'Recommended Next Content'}
+                            onSelectAsset={(selectedId) => {
+                                if (typeof window !== 'undefined') {
+                                    const nextRef = searchParams.ref ? `?ref=${encodeURIComponent(searchParams.ref)}` : '';
+                                    window.location.href = `/m/${selectedId}${nextRef}`;
+                                }
+                            }}
+                        />
                     </div>
                 )}
             </main>

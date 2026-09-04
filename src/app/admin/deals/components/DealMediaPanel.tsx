@@ -21,9 +21,13 @@ import type {
   DealAttributionBreakdown,
   AttributionModelType,
   AttributionType,
+  PredictiveDealForecast,
+  ContentRecommendationItem,
 } from '@/lib/types/media-2.0';
 import { getDealMediaSignalsAction } from '@/lib/media/crm-media-service';
 import { getDealAttributionBreakdownAction } from '@/lib/media/attribution-service';
+import { predictDealCloseVelocityAction } from '@/lib/media/predictive-service';
+import { getNextBestContentAction } from '@/lib/media/recommendation-service';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,7 +41,7 @@ import {
 import { 
   TrendingUp, Users, FileText, MousePointerClick, 
   Sparkles, CheckCircle2, Share2, Video, Music, 
-  Image as ImageIcon, PieChart, ChevronDown, ChevronUp, Bot
+  Image as ImageIcon, PieChart, ChevronDown, ChevronUp, Bot, Zap
 } from 'lucide-react';
 import { MediaCopilotDrawer } from '@/app/admin/media/components/MediaCopilotDrawer';
 import { cn } from '@/lib/utils';
@@ -58,6 +62,8 @@ export function DealMediaPanel({
   const firestore = useFirestore();
   const [signals, setSignals] = useState<DealMediaSignals | null>(null);
   const [breakdown, setBreakdown] = useState<DealAttributionBreakdown | null>(null);
+  const [forecast, setForecast] = useState<PredictiveDealForecast | null>(null);
+  const [recommendations, setRecommendations] = useState<ContentRecommendationItem[]>([]);
   const [model, setModel] = useState<AttributionModelType>('LINEAR');
   const [showAttribution, setShowAttribution] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,14 +73,18 @@ export function DealMediaPanel({
     if (!firestore || !dealId) return;
     setIsLoading(true);
     try {
-      const [signalData, breakdownData] = await Promise.all([
+      const [signalData, breakdownData, forecastData, recData] = await Promise.all([
         getDealMediaSignalsAction(firestore, workspaceId, dealId, associatedContactIds),
         getDealAttributionBreakdownAction(firestore, workspaceId, dealId, model),
+        predictDealCloseVelocityAction(firestore, workspaceId, dealId, associatedContactIds),
+        getNextBestContentAction(firestore, workspaceId, { dealStage: 'Proposal', limitCount: 2 }),
       ]);
       setSignals(signalData);
       setBreakdown(breakdownData);
+      setForecast(forecastData);
+      setRecommendations(recData);
     } catch (err) {
-      console.error('[DealMediaPanel] Error loading signals or breakdown:', err);
+      console.error('[DealMediaPanel] Error loading signals, breakdown, or forecast:', err);
     } finally {
       setIsLoading(false);
     }
@@ -331,6 +341,88 @@ export function DealMediaPanel({
         </Card>
       )}
 
+      {/* Phase 8: Predictive Deal Close Velocity & Win Probability Boost Card */}
+      {forecast && (
+        <Card className="rounded-2xl border-border bg-gradient-to-br from-card via-card to-primary/5 shadow-sm overflow-hidden">
+          <div className="p-4 flex items-center justify-between border-b border-border bg-muted/10">
+            <div className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              <div>
+                <h4 className="text-xs font-black text-foreground uppercase tracking-wider">
+                  Predictive Deal Close Forecast
+                </h4>
+                <p className="text-[10px] text-muted-foreground">
+                  AI velocity acceleration & stakeholder content coverage
+                </p>
+              </div>
+            </div>
+            <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px] font-black uppercase">
+              +{forecast.winProbabilityBoostPercent}% Win Boost
+            </Badge>
+          </div>
+
+          <CardContent className="p-4 space-y-4">
+            <div className="grid grid-cols-3 gap-2">
+              <div className="p-2.5 rounded-xl bg-background border border-border text-left">
+                <p className="text-[9px] font-bold uppercase text-muted-foreground">Baseline Probability</p>
+                <p className="text-base font-black text-muted-foreground">{forecast.currentCloseProbability}%</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-primary/10 border border-primary/20 text-left">
+                <p className="text-[9px] font-bold uppercase text-primary">Projected Win Rate</p>
+                <p className="text-base font-black text-primary">{forecast.projectedCloseProbabilityWithMedia}%</p>
+              </div>
+              <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-left">
+                <p className="text-[9px] font-bold uppercase text-emerald-600 dark:text-emerald-400">Velocity Gain</p>
+                <p className="text-base font-black text-emerald-600 dark:text-emerald-400">-{forecast.velocityAccelerationDays} Days</p>
+              </div>
+            </div>
+
+            {/* Stakeholder Coverage Bar */}
+            <div className="space-y-1.5 text-left">
+              <div className="flex items-center justify-between text-[10px] font-bold">
+                <span className="text-muted-foreground">Stakeholder Media Coverage</span>
+                <span className="text-foreground">{forecast.stakeholderCoveragePercent}% Covered</span>
+              </div>
+              <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                <div
+                  className="bg-gradient-to-r from-amber-500 to-emerald-500 h-full rounded-full transition-all"
+                  style={{ width: `${Math.max(5, forecast.stakeholderCoveragePercent)}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Recommended Next Assets to Share */}
+            {recommendations.length > 0 && (
+              <div className="pt-2 border-t border-border/60 space-y-2 text-left">
+                <p className="text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                  <Sparkles className="h-3 w-3 text-primary" />
+                  Recommended Next Assets for Stakeholders
+                </p>
+                <div className="space-y-1.5">
+                  {recommendations.map((rec) => (
+                    <div
+                      key={rec.assetId}
+                      className="p-2.5 rounded-xl bg-background border border-border flex items-center justify-between gap-2 hover:border-primary/40 transition-colors"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        {getFormatIcon(rec.type)}
+                        <div className="min-w-0 truncate">
+                          <p className="text-xs font-bold text-foreground truncate">{rec.title}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">{rec.rationale}</p>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="text-[9px] font-black shrink-0 text-primary border-primary/30">
+                        {rec.matchScore}% Match
+                      </Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Action Buttons */}
       <div className="flex flex-col sm:flex-row items-center gap-2 pt-1">
         <Button
@@ -365,7 +457,7 @@ export function DealMediaPanel({
           dealTitle: breakdown?.dealTitle || 'Deal',
           dealAmount: breakdown?.dealAmount || 0,
           dealStage: signals?.suggestedHealthMultiplier ? 'Active Deal' : 'Open',
-          topAssets: breakdown?.assets?.map(a => a.title).join(', ') || 'None',
+          topAssets: breakdown?.items?.map((a) => a.title).join(', ') || 'None',
           healthMultiplier: signals?.suggestedHealthMultiplier || 1.0,
         }}
       />

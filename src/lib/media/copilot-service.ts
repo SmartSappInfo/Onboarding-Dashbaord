@@ -74,6 +74,13 @@ export interface CopilotContextPayload {
   completionRate?: number;
   topChapterTitles?: string[];
   recentActivities?: string[];
+  // Phase 8 Predictive & Experiment Context
+  topAssets?: string;
+  healthMultiplier?: number;
+  activeExperimentsSummary?: string;
+  decayingAssetsCount?: number;
+  banditAlgorithm?: string;
+  confidenceScore?: number;
 }
 
 /**
@@ -113,7 +120,7 @@ CRITICAL SECURITY DIRECTIVE:
       break;
 
     case 'OPTIMIZER':
-      personaRole = `You are the Media Optimizer. Your expertise is optimizing interactive CTA gating timing, video retention drop-off, thumbnail click-through rates, and A/B split-testing variants.`;
+      personaRole = `You are the Media Optimizer. Your expertise is autonomous multi-armed bandit (MAB) experimentation, two-tailed statistical hypothesis testing, winner auto-promotion, interactive CTA gating timing, video retention drop-off, thumbnail click-through rates, and content decay detection. Analyze lifts and recommend traffic re-routing.`;
       break;
 
     default:
@@ -125,6 +132,8 @@ CRITICAL SECURITY DIRECTIVE:
     if (context.assetTitle) formattedContext += `Active Asset: ${context.assetTitle} (${context.assetType || 'media'})\n`;
     if (context.assetDurationSeconds) formattedContext += `Duration: ${context.assetDurationSeconds}s\n`;
     if (context.dealTitle) formattedContext += `Active Deal: ${context.dealTitle} | Stage: ${context.dealStage || 'Open'} | Value: ${context.dealAmount || 0}\n`;
+    if (context.topAssets) formattedContext += `Top Attributed Assets: ${context.topAssets}\n`;
+    if (context.healthMultiplier !== undefined) formattedContext += `Deal Health Multiplier: ${context.healthMultiplier}x\n`;
     if (context.contactName) formattedContext += `Contact: ${context.contactName} (Score: ${context.contactScore || 0}/100)\n`;
     if (context.viewsCount !== undefined) formattedContext += `Views: ${context.viewsCount} | Completion Rate: ${context.completionRate || 0}%\n`;
     if (context.topChapterTitles && context.topChapterTitles.length > 0) {
@@ -132,6 +141,15 @@ CRITICAL SECURITY DIRECTIVE:
     }
     if (context.transcriptSnippet) {
       formattedContext += `Transcript Outline:\n${context.transcriptSnippet.slice(0, 2000)}\n`;
+    }
+    if (context.activeExperimentsSummary) {
+      formattedContext += `Active Experiments: ${context.activeExperimentsSummary}\n`;
+    }
+    if (context.decayingAssetsCount !== undefined) {
+      formattedContext += `Decaying Assets Alert: ${context.decayingAssetsCount} assets experiencing velocity drop\n`;
+    }
+    if (context.confidenceScore !== undefined) {
+      formattedContext += `Statistical Confidence: ${context.confidenceScore}%\n`;
     }
   } else {
     formattedContext += 'No specific entity context selected.\n';
@@ -205,10 +223,30 @@ export async function executeCopilotInference(
   }
 
   // 6. Optimizer Persona Scenarios
-  return `Optimization Insights for **${context?.assetTitle || 'this experience'}**:
+  if (persona === 'OPTIMIZER') {
+    if (queryLower.includes('bandit') || queryLower.includes('experiment') || queryLower.includes('a/b') || queryLower.includes('split')) {
+      return `Autonomous Experimentation Brief for **${context?.assetTitle || 'Active Experience'}**:
+- **Algorithm**: Epsilon-Greedy Multi-Armed Bandit (90% Exploit / 10% Explore).
+- **Statistical Significance**: ${context?.confidenceScore || 95.8}% confidence (p < 0.05).
+- **Challenger Lift**: Variant B ("Unlock Onboarding Portal") demonstrates a **+28.4% conversion lift** over baseline.
+- **Auto-Promotion Recommendation**: Sample size threshold (N >= 100) reached. Reallocate 100% of incoming traffic to Variant B.`;
+    }
+
+    if (queryLower.includes('decay') || queryLower.includes('stale') || queryLower.includes('refresh')) {
+      return `Content Health & Decay Audit:
+- **Velocity Drop Detected**: Trailing 30-day viewership fell by **34%** compared to the 60-day baseline.
+- **Root Cause**: Audience fatigue in top-of-funnel email automations.
+- **Recommended Action**: Rotate thumbnail design, update title hook, or repurpose into a 60-second video short to restore distribution velocity.`;
+    }
+
+    return `Optimization Insights for **${context?.assetTitle || 'this experience'}**:
 - **Thumbnail Efficacy**: Current animated thumbnail achieves 8.4% play rate.
 - **CTA Gate Adjustment**: Setting the activation gate to 50% watch time increases CTA click-through by +18%.
-- **Mobile Readability**: Video player typography and overlay buttons are fully responsive on mobile viewports.`;
+- **Mobile Readability**: Video player typography and overlay buttons are fully responsive on mobile viewports.
+- **Autonomous Routing**: Epsilon-greedy bandit actively protecting conversion yield while exploring challengers.`;
+  }
+
+  return `Media Intelligence Copilot ready to assist with your workspace optimization goals.`;
 }
 
 /**

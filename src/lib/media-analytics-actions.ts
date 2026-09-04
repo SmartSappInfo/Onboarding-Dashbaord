@@ -4,6 +4,8 @@ import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { adminDb, FieldValue } from './firebase-admin';
 import type { CallOutcomeAutomation } from './types';
+import type { MediaExperiment } from './types/media-2.0';
+import { calculateStatisticalSignificance } from './media/experiment-service';
 
 // ─── Types & Interfaces ──────────────────────────────────────────────────────
 
@@ -23,6 +25,7 @@ export interface MediaPageEvent {
   contactId: string | null;
   progressPercent: number | null;
   sessionTimeSeconds: number | null;
+  variant?: string | null;
 }
 
 export interface MediaPageEventWithContact extends MediaPageEvent {
@@ -119,6 +122,9 @@ export async function recordMediaPageEventAction(params: {
   entityId?: string | null;
   progressPercent?: number;
   sessionTimeSeconds?: number;
+  variant?: string | null;
+  experimentId?: string | null;
+  variantId?: string | null;
 }): Promise<{ success: boolean; error?: string }> {
   const {
     shareId,
@@ -130,6 +136,9 @@ export async function recordMediaPageEventAction(params: {
     entityId = null,
     progressPercent = null,
     sessionTimeSeconds = null,
+    variant = null,
+    experimentId = null,
+    variantId = null,
   } = params;
 
   if (!shareId || !workspaceId || !assetId) {
@@ -155,6 +164,7 @@ export async function recordMediaPageEventAction(params: {
       contactId: contactId || null,
       progressPercent: progressPercent !== null && progressPercent !== undefined ? Number(progressPercent) : null,
       sessionTimeSeconds: sessionTimeSeconds !== null && sessionTimeSeconds !== undefined ? Number(sessionTimeSeconds) : null,
+      variant: variant || null,
     };
 
     const batch = adminDb.batch();
@@ -312,6 +322,16 @@ export async function recordMediaPageEventAction(params: {
       triggerKey = 'on_cta_click';
     } else if (type === 'download') {
       triggerKey = 'on_download';
+    }
+
+    if (experimentId && variantId && (type === 'view' || type === 'cta_click')) {
+      const expEventType = type === 'view' ? 'impression' : 'conversion';
+      recordExperimentEventServerAction({
+        workspaceId,
+        experimentId,
+        variantId,
+        eventType: expEventType,
+      }).catch((err) => console.error('[recordMediaPageEventAction] Experiment event error:', err));
     }
 
     if (entityId && triggerKey) {
@@ -782,3 +802,101 @@ export async function checkSlugAvailabilityAction(slug: string, shareId: string)
     return false;
   }
 }
+
+/**
+ * Server action to record an impression or conversion on an autonomous experiment.
+ * Safe for unauthenticated public viewers on /m/[shareId].
+ */
+export async function recordExperimentEventServerAction(params: {
+  workspaceId: string;
+  experimentId: string;
+  variantId: string;
+  eventType: 'impression' | 'conversion';
+  revenueAmount?: number;
+}): Promise<{ success: boolean }> {
+  const { experimentId, variantId, eventType, revenueAmount = 0 } = params;
+  if (!experimentId || !variantId) return { success: false };
+
+  try {
+    const experimentRef = adminDb.collection('media_experiments').doc(experimentId);
+    const snap = await experimentRef.get();
+    if (!snap.exists) return { success: false };
+
+    const exp = snap.data() as MediaExperiment;
+    if (exp.status !== 'RUNNING') return { success: false };
+
+    let updated = false;
+    const nextVariants = exp.variants.map((v) => {
+      if (v.id === variantId) {
+        updated = true;
+        const newImpressions = eventType === 'impression' ? v.impressions + 1 : v.impressions;
+        const newConversions = eventType === 'conversion' ? v.conversions + 1 : v.conversions;
+        const newRate = newImpressions > 0 ? newConversions / newImpressions : 0;
+        const newValueSum = eventType === 'conversion' ? (v.valueSum || 0) + revenueAmount : (v.valueSum || 0);
+
+        return {
+          ...v,
+          impressions: newImpressions,
+          conversions: newConversions,
+          conversionRate: parseFloat(newRate.toFixed(4)),
+          valueSum: newValueSum,
+        };
+      }
+      return v;
+    });
+
+    if (!updated) return { success: false };
+
+    // Check statistical significance if control and challenger exist
+    const control = nextVariants.find((v) => v.isControl) || nextVariants[0];
+    const challenger = nextVariants.find((v) => !v.isControl) || nextVariants[1];
+
+    let pValue = exp.pValue;
+    let confidenceScore = exp.confidenceScore;
+    let winnerVariantId = exp.winnerVariantId;
+    let status = exp.status;
+
+    if (control && challenger) {
+      const stats = calculateStatisticalSignificance(control, challenger);
+      pValue = stats.pValue;
+      confidenceScore = stats.confidenceScore;
+
+      // Auto-promote winner if criteria met
+      const totalImpressions = control.impressions + challenger.impressions;
+      if (
+        exp.autoPromoteWinner &&
+        stats.isSignificant &&
+        totalImpressions >= (exp.minSampleSize || 100) &&
+        stats.winnerVariantId
+      ) {
+        winnerVariantId = stats.winnerVariantId;
+        status = 'AUTO_PROMOTED';
+
+        // Rebalance winner weight to 100%
+        nextVariants.forEach((v) => {
+          v.isWinner = v.id === winnerVariantId;
+          v.weight = v.id === winnerVariantId ? 100 : 0;
+        });
+      }
+    }
+
+    await experimentRef.set(
+      {
+        variants: nextVariants,
+        pValue,
+        confidenceScore,
+        winnerVariantId,
+        status,
+        updatedAt: new Date().toISOString(),
+        concludedAt: status === 'AUTO_PROMOTED' ? new Date().toISOString() : null,
+      },
+      { merge: true }
+    );
+
+    return { success: true };
+  } catch (err) {
+    console.error('[recordExperimentEventServerAction] Error recording event:', err);
+    return { success: false };
+  }
+}
+
