@@ -437,7 +437,7 @@ export default function BackofficeKnowledgeGraphClient() {
             value="registry"
             className="text-xs font-semibold rounded-lg active:scale-[0.97] transition-all"
           >
-            Relation Types ({governanceConfig?.enabledRelationTypes.length || 0}/23)
+            Relation Types ({governanceConfig?.enabledRelationTypes.length || 0}/{KNOWLEDGE_RELATION_TYPES.length})
           </TabsTrigger>
           <TabsTrigger
             value="ai-tuning"
@@ -668,7 +668,7 @@ export default function BackofficeKnowledgeGraphClient() {
             <div className="space-y-0.5">
               <h4 className="text-xs font-semibold text-foreground">Reset Workspace Baseline</h4>
               <p className="text-[11px] text-muted-foreground">
-                Restore default parameters (65% confidence, 15 candidates, all 23 relation types enabled).
+                Restore default parameters (65% confidence, 15 candidates, all {KNOWLEDGE_RELATION_TYPES.length} relation types enabled).
               </p>
             </div>
             <Button

@@ -13,6 +13,7 @@ import {
 } from './quick-notes-domain';
 import {
   knowledgeRelationCreateInputSchema,
+  KNOWLEDGE_TYPES,
   type KnowledgeRelation,
   type KnowledgeRelationCreateInput,
   type KnowledgeGraphData,
@@ -132,8 +133,10 @@ export async function createKnowledgeRelationAction(
       };
     }
 
-    // Cross-tenant boundary verification
-    if (validated.fromObjectType === 'note') {
+    // Cross-tenant boundary verification for all note-backed knowledge types
+    const isNoteBacked = (t: string) => (KNOWLEDGE_TYPES as readonly string[]).includes(t) || t === 'note';
+
+    if (isNoteBacked(validated.fromObjectType)) {
       const fromNote = await QuickNoteRepository.getById(validated.fromObjectId);
       if (!fromNote || fromNote.workspaceId !== workspaceId) {
         return {
@@ -143,7 +146,7 @@ export async function createKnowledgeRelationAction(
         };
       }
     }
-    if (validated.toObjectType === 'note') {
+    if (isNoteBacked(validated.toObjectType)) {
       const toNote = await QuickNoteRepository.getById(validated.toObjectId);
       if (!toNote || toNote.workspaceId !== workspaceId) {
         return {

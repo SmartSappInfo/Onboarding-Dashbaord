@@ -135,6 +135,8 @@ CRITICAL RULES:
       const validatedSuggestions = (output.suggestions || [])
         .filter((s) => {
           if (s.confidenceScore < minConfidence) return false;
+          // Must link to a verified candidate object in the pool
+          if (!candidateMap.has(s.toObjectId)) return false;
           // Must contain at least one non-empty evidence quote
           if (!s.evidenceQuotes || s.evidenceQuotes.length === 0) return false;
 

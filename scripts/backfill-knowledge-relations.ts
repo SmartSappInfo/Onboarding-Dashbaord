@@ -50,8 +50,8 @@ async function main() {
       { targetId: note.links.entityId, relType: 'about_school', targetType: 'school' },
       { targetId: note.links.contactId, relType: 'about_contact', targetType: 'contact' },
       { targetId: note.links.dealId, relType: 'about_deal', targetType: 'deal' },
-      { targetId: note.links.taskId, relType: 'depends_on', targetType: 'note' },
-      { targetId: note.links.campaignId, relType: 'about_campaign', targetType: 'note' },
+      { targetId: note.links.taskId, relType: 'depends_on', targetType: 'task' },
+      { targetId: note.links.campaignId, relType: 'about_campaign', targetType: 'campaign' },
     ];
 
     for (const cand of candidates) {
