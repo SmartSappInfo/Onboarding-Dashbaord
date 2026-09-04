@@ -15,7 +15,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WorkflowEngine } from '../services/workflow-engine';
 import { EventTriggerRouter } from '../services/event-trigger-router';
 import { DEAL_RESCUE_BLUEPRINT, LEAD_ACTIVATION_BLUEPRINT } from '../blueprints';
-import type { WorkflowDefinition } from '../types';
+import type { WorkflowDefinition, WorkflowNodeType } from '../types';
 
 // Mock Firebase Admin
 vi.mock('@/lib/firebase-admin', () => ({
@@ -348,7 +348,7 @@ describe('CompanyBrain Phase 9: WorkflowEngine & EventTriggerRouter', () => {
       const nodes = Array.from({ length: 14 }).map((_, i) => ({
         id: `node_${i}`,
         title: `Step Node ${i}`,
-        nodeType: (i === 0 ? 'trigger' : 'action') as any,
+        nodeType: (i === 0 ? 'trigger' : 'action') as WorkflowNodeType,
         nextNodeIds: i < 13 ? [`node_${i + 1}`] : [],
       }));
 
