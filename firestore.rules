@@ -1278,6 +1278,37 @@ service cloud.firestore {
       allow update, delete: if isAuthorized();
     }
 
+    // --- Media Attribution & ROI Intelligence (Phase 6) ---
+    match /media_attributions/{attributionId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /media_attribution_configs/{workspaceId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+    }
+
+    // --- Media Copilot & AI Repurposing Studio (Phase 7) ---
+    match /media_derivatives/{derivativeId} {
+      allow get: if true; // Public access for rendering derivative summaries/FAQs on shared pages
+      allow list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /media_copilot_sessions/{sessionId} {
+      allow get, list: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
+      allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
+    match /media_copilot_configs/{workspaceId} {
+      allow get: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      allow create, update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+    }
+
     match /thumbnail_designs/{designId} {
       allow get: if true; // Public access for rendering thumbnail designs on shared media
       allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
@@ -3008,6 +3039,39 @@ service cloud.firestore {
         hasWorkspaceAccess(resource.data.workspaceId)
       );
       // Client SDK writes prohibited; generated via Server Actions / Admin SDK
+      allow write: if false;
+    }
+
+    // --- CompanyBrain 2.0 MCP Platform & Governed Tools (Phase 6) ---
+    match /mcp_keys/{keyId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow write: if false;
+    }
+
+    match /mcp_audit_logs/{logId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow write: if false;
+    }
+
+    match /mcp_pending_approvals/{approvalId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
+      allow write: if false;
+    }
+
+    match /mcp_approval_policies/{policyId} {
+      allow read: if isAuthorized() && (
+        isSystemAdmin() ||
+        hasWorkspaceAccess(resource.data.workspaceId)
+      );
       allow write: if false;
     }
 

@@ -35,6 +35,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import Link from 'next/link';
 import { useUser } from '@/firebase';
 import { cn } from '@/lib/utils';
 import {
@@ -49,6 +50,8 @@ import {
   Server,
   Trash2,
   Clock,
+  Cpu,
+  ExternalLink,
 } from 'lucide-react';
 import {
   getCompanyBrainHealthAction,
@@ -59,8 +62,17 @@ import {
 import { semanticSearchMemoriesAction } from '@/lib/memory/actions/semantic-search-actions';
 import { scanMemoryConflictsBatchAction } from '@/lib/memory/actions/orchestrator-actions';
 import { buildContextAction } from '@/lib/memory/actions/context-builder-actions';
+import {
+  listMcpToolsAction,
+  executeMcpToolAction,
+  upsertMcpApprovalPolicyAction,
+  type GovernedToolInfo,
+} from '@/lib/mcp/actions/mcp-governance-actions';
+import { ToolCatalogTable } from '@/components/mcp/ToolCatalogTable';
+import { LiveToolRunnerModal } from '@/components/mcp/LiveToolRunnerModal';
 import type { SemanticSearchResult } from '@/lib/memory/semantic-types';
 import type { ContextPackage, ContextSubjectType } from '@/lib/memory/context-types';
+import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
 
 export default function BackofficeCompanyBrainClient() {
   const { user } = useUser();
@@ -143,6 +155,95 @@ export default function BackofficeCompanyBrainClient() {
       });
     } finally {
       setIsSimulatingContext(false);
+    }
+  };
+
+  // MCP Governance State (Phase 6)
+  const [mcpTools, setMcpTools] = React.useState<GovernedToolInfo[]>([]);
+  const [isLoadingMcp, setIsLoadingMcp] = React.useState(false);
+  const [runnerTool, setRunnerTool] = React.useState<GovernedToolInfo | null>(null);
+
+  const fetchMcpTools = React.useCallback(async () => {
+    if (!user?.uid) return;
+    setIsLoadingMcp(true);
+    try {
+      const res = await listMcpToolsAction({
+        workspaceId: 'platform_backoffice',
+        userId: user.uid,
+      });
+      if (res.success && res.data) {
+        setMcpTools(res.data);
+      }
+    } catch {
+      // Non-blocking
+    } finally {
+      setIsLoadingMcp(false);
+    }
+  }, [user?.uid]);
+
+  React.useEffect(() => {
+    fetchMcpTools();
+  }, [fetchMcpTools]);
+
+  const handleBackofficeExecuteTool = async (
+    toolName: string,
+    args: Record<string, McpPayloadValue>
+  ): Promise<McpJsonRpcResponse> => {
+    if (!user?.uid) throw new Error('Unauthenticated');
+    const res = await executeMcpToolAction({
+      workspaceId: 'platform_backoffice',
+      organizationId: 'platform_org',
+      userId: user.uid,
+      toolName,
+      inputArguments: args,
+    });
+    if (!res.success) throw new Error(res.error);
+    return res.data;
+  };
+
+  const handleBackofficeToggleTool = async (toolName: string, enabled: boolean) => {
+    if (!user?.uid) return;
+    const currentTool = mcpTools.find((t) => t.name === toolName);
+    if (!currentTool) return;
+    const res = await upsertMcpApprovalPolicyAction({
+      workspaceId: 'platform_backoffice',
+      organizationId: 'platform_org',
+      userId: user.uid,
+      toolName,
+      requiresApproval: currentTool.requiresApproval,
+      enabled,
+    });
+    if (res.success) {
+      setMcpTools((prev) =>
+        prev.map((t) => (t.name === toolName ? { ...t, enabled, isCustomPolicy: true } : t))
+      );
+      toast({
+        title: enabled ? 'Tool Enabled' : 'Tool Disabled',
+        description: `Tool "${toolName}" policy updated.`,
+      });
+    }
+  };
+
+  const handleBackofficeToggleApproval = async (toolName: string, requiresApproval: boolean) => {
+    if (!user?.uid) return;
+    const currentTool = mcpTools.find((t) => t.name === toolName);
+    if (!currentTool) return;
+    const res = await upsertMcpApprovalPolicyAction({
+      workspaceId: 'platform_backoffice',
+      organizationId: 'platform_org',
+      userId: user.uid,
+      toolName,
+      requiresApproval,
+      enabled: currentTool.enabled,
+    });
+    if (res.success) {
+      setMcpTools((prev) =>
+        prev.map((t) => (t.name === toolName ? { ...t, requiresApproval, isCustomPolicy: true } : t))
+      );
+      toast({
+        title: requiresApproval ? 'Approval Gate Enabled' : 'Automatic Execution Enabled',
+        description: `Tool "${toolName}" approval requirement updated.`,
+      });
     }
   };
 
@@ -539,6 +640,10 @@ export default function BackofficeCompanyBrainClient() {
           <TabsTrigger value="context-simulator" className="gap-1.5 text-xs">
             <Brain className="h-3.5 w-3.5 text-indigo-500" />
             <span>Context Simulator</span>
+          </TabsTrigger>
+          <TabsTrigger value="mcp-governance" className="gap-1.5 text-xs">
+            <Cpu className="h-3.5 w-3.5 text-blue-500" />
+            <span>MCP & Governed Tools</span>
           </TabsTrigger>
         </TabsList>
 
@@ -973,7 +1078,53 @@ export default function BackofficeCompanyBrainClient() {
             </CardContent>
           </Card>
         </TabsContent>
+
+        {/* Tab 6: MCP & Governed Tools */}
+        <TabsContent value="mcp-governance" className="space-y-4">
+          <Card className="border border-border shadow-sm">
+            <CardHeader>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Cpu className="h-4 w-4 text-blue-600" />
+                    <span>Model Context Protocol (MCP) Governance</span>
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Inspect registered tool capabilities, risk profiles, human-in-the-loop approval gates, and agent telemetry.
+                  </CardDescription>
+                </div>
+                <Link href="/admin/companybrain/tools">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="min-h-[44px] text-xs gap-1.5 active:scale-[0.97] transition-transform"
+                  >
+                    <span>Open Full Console</span>
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </Button>
+                </Link>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ToolCatalogTable
+                tools={mcpTools}
+                onRunTool={(tool) => setRunnerTool(tool)}
+                onToggleToolEnabled={handleBackofficeToggleTool}
+                onToggleApprovalRequired={handleBackofficeToggleApproval}
+                isLoading={isLoadingMcp}
+              />
+            </CardContent>
+          </Card>
+        </TabsContent>
       </Tabs>
+
+      {/* Live Tool Runner Modal */}
+      <LiveToolRunnerModal
+        tool={runnerTool}
+        isOpen={Boolean(runnerTool)}
+        onClose={() => setRunnerTool(null)}
+        onExecute={handleBackofficeExecuteTool}
+      />
 
       {/* Clear Cache Confirmation Dialog */}
       <Dialog open={clearCacheDialogOpen} onOpenChange={setClearCacheDialogOpen}>
