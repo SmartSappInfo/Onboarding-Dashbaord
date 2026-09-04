@@ -31,6 +31,30 @@ All foundational infrastructure for Phases 1, 2, 3, and 4 is deployed, indexed, 
 
 ---
 
+## 2.5. Human-Only Operational Responsibilities (Tasks That Cannot Be Done with AI)
+
+To ensure legal compliance, financial safety, and institutional integrity, the following responsibilities **cannot and must not be delegated to AI agents**. They require explicit human intervention and authority:
+
+| Category | Human-Only Responsibility | Why AI Cannot Automate | Action Required & Location |
+| :--- | :--- | :--- | :--- |
+| **1. Secret & Key Provisioning** | Generating Google AI API keys in [Google AI Studio](https://aistudio.google.com) and rotating production secrets. | AI cannot enter third-party commercial contracts, accept cloud terms of service, or bind credit cards. | Set `GEMINI_API_KEY` in `.env.local` and Cloud Secret Managers. |
+| **2. Executive Dispute Adjudication** | Resolving contradictory institutional claims (e.g. Bursar fee agreement vs MD override). | AI can detect contradictions and propose resolutions, but cannot decide corporate policy or validate off-the-record handshake deals. | Navigate to `/admin/quick-notes/conflicts` and select `Confirm Claim A`, `Confirm Claim B`, or `Keep Both`. |
+| **3. Stale Truth Reconfirmation** | Reviewing expired memories that exceeded category TTL (e.g. 90-day pricing). | AI cannot verify whether an expired quote remains active without a human confirming current business terms. | Open the "Decaying / Stale" tab in `/admin/quick-notes` and click **"Reconfirm Truth"**. |
+| **4. Cloud Infrastructure & Cost Approvals** | Upgrading Qdrant Cloud cluster tiers, scaling replicas, or adjusting billing quotas. | Financial commitments and cluster provisioning require authorized human legal signatures. | Manage via [Qdrant Cloud Console](https://cloud.qdrant.io) and Google Cloud Console. |
+| **5. Irreversible Compliance Purging** | Executing permanent GDPR "Right to Be Forgotten" purges or hard-deletions across storage backups. | AI operations are strictly restricted to non-destructive invalidation (`status: 'archived'`). Permanent data removal requires authorized Data Protection Officer (DPO) action. | Perform via platform administrator database consoles when legally mandated. |
+
+### 2.5.1. Compliance Data Purges and Hard-Deletion Protocol (GDPR)
+
+* **Automated Non-Destructive Invalidation**: By default, all AI and user actions in CompanyBrain operate non-destructively. Invalidation marks records with `status: 'archived'` or `superseded` to preserve complete audit trails and provenance.
+* **Human-Authorized Hard Deletions**: Permanent data removal from Firestore (`memory_objects`, `memory_conflicts`, `graph_nodes`, `graph_edges`) and Qdrant Cloud vector clusters requires explicit written authorization from a designated Data Protection Officer (DPO). Automated agents do not have permission or credentials to execute hard purges.
+* **Execution Procedure**:
+  1. Submit a formal GDPR / Right to Be Forgotten request to the designated DPO.
+  2. DPO reviews legal requirements, verifies tenant scoping, and signs off.
+  3. Platform administrator executes targeted document deletion via Firebase Console and Qdrant Cloud REST API (`DELETE /collections/smartsapp_memory/points/delete` with filter `{ "must": [{ "key": "memoryId", "match": { "value": "<TARGET_ID>" } }] }`).
+  4. Log the purge event in compliance audit logs.
+
+---
+
 ## 3. Active Operational Runbooks (FER Protocol)
 
 All synchronization and backfill scripts are **100% idempotent** and safe to run multiple times without data duplication.
