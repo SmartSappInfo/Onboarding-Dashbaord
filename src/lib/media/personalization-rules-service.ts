@@ -148,7 +148,9 @@ export function resolvePersonalizedContent(
     valuesMap.set('stage', context.dealStage);
   }
 
-  const resolved = resolveTextWithMap(templateText, valuesMap, false);
+  const resolved = resolveTextWithMap(templateText, valuesMap, false)
+    .replace(/\s{2,}/g, ' ')
+    .trim();
   return resolved || fallbackText;
 }
 
