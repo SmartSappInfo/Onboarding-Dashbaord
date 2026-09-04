@@ -166,10 +166,10 @@ export const IdeaNodeCard = memo(function IdeaNodeCard({
                   e.stopPropagation();
                   onDelete(node.id);
                 }}
-                className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded active:scale-[0.97]"
+                className="min-h-[44px] min-w-[44px] text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg active:scale-[0.97] flex items-center justify-center transition-colors"
                 aria-label="Delete idea card"
               >
-                <Trash2 className="h-3.5 w-3.5" />
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>

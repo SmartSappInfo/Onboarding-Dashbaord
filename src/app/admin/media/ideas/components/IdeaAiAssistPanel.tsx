@@ -164,9 +164,10 @@ export function IdeaAiAssistPanel({
                       variant={isAdded ? 'secondary' : 'outline'}
                       disabled={isAdded}
                       onClick={() => handleAdd(id, 'topic', `Pain Point: ${item}`, item)}
-                      className="min-h-[36px] px-2 text-xs shrink-0 active:scale-[0.97]"
+                      className="min-h-[44px] min-w-[44px] px-2 text-xs shrink-0 active:scale-[0.97] flex items-center justify-center"
+                      aria-label="Add pain point to canvas"
                     >
-                      {isAdded ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Plus className="h-3.5 w-3.5" />}
+                      {isAdded ? <Check className="h-4 w-4 text-green-600" /> : <Plus className="h-4 w-4" />}
                     </Button>
                   </div>
                 );
@@ -197,9 +198,10 @@ export function IdeaAiAssistPanel({
                       variant={isAdded ? 'secondary' : 'outline'}
                       disabled={isAdded}
                       onClick={() => handleAdd(id, 'hook', item, 'Hook / Angle')}
-                      className="min-h-[36px] px-2 text-xs shrink-0 active:scale-[0.97]"
+                      className="min-h-[44px] min-w-[44px] px-2 text-xs shrink-0 active:scale-[0.97] flex items-center justify-center"
+                      aria-label="Add hook to canvas"
                     >
-                      {isAdded ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Plus className="h-3.5 w-3.5" />}
+                      {isAdded ? <Check className="h-4 w-4 text-green-600" /> : <Plus className="h-4 w-4" />}
                     </Button>
                   </div>
                 );
@@ -229,15 +231,16 @@ export function IdeaAiAssistPanel({
                           variant={isAdded ? 'secondary' : 'outline'}
                           disabled={isAdded}
                           onClick={() => handleAdd(id, 'asset', concept.title, concept.description)}
-                          className="min-h-[36px] text-xs active:scale-[0.97]"
+                          className="min-h-[44px] min-w-[44px] px-3 text-xs active:scale-[0.97] flex items-center justify-center"
+                          aria-label="Add concept to canvas"
                         >
                           {isAdded ? (
                             <>
-                              <Check className="h-3.5 w-3.5 text-green-600 mr-1" /> Added
+                              <Check className="h-4 w-4 text-green-600 mr-1" /> Added
                             </>
                           ) : (
                             <>
-                              <Plus className="h-3.5 w-3.5 mr-1" /> Add to Canvas
+                              <Plus className="h-4 w-4 mr-1" /> Add to Canvas
                             </>
                           )}
                         </Button>
@@ -282,9 +285,10 @@ export function IdeaAiAssistPanel({
                       variant={isAdded ? 'secondary' : 'outline'}
                       disabled={isAdded}
                       onClick={() => handleAdd(id, 'cta', item, 'Call to Action')}
-                      className="min-h-[36px] px-2 text-xs shrink-0 active:scale-[0.97]"
+                      className="min-h-[44px] min-w-[44px] px-2 text-xs shrink-0 active:scale-[0.97] flex items-center justify-center"
+                      aria-label="Add CTA to canvas"
                     >
-                      {isAdded ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Plus className="h-3.5 w-3.5" />}
+                      {isAdded ? <Check className="h-4 w-4 text-green-600" /> : <Plus className="h-4 w-4" />}
                     </Button>
                   </div>
                 );

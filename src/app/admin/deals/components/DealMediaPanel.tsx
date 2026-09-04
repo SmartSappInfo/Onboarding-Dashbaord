@@ -287,7 +287,7 @@ export function DealMediaPanel({
 
               <button
                 onClick={() => setShowAttribution((prev) => !prev)}
-                className="p-1.5 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+                className="p-2 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-all min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-[0.97]"
                 aria-label="Toggle Attribution Details"
               >
                 {showAttribution ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -448,7 +448,7 @@ export function DealMediaPanel({
             </div>
             <button
               onClick={() => setShowPreMeeting((prev) => !prev)}
-              className="p-1.5 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors min-h-[32px] min-w-[32px] flex items-center justify-center"
+              className="p-2 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-all min-h-[44px] min-w-[44px] flex items-center justify-center active:scale-[0.97]"
               aria-label="Toggle Pre-Meeting Details"
             >
               {showPreMeeting ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

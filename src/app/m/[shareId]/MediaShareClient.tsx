@@ -817,8 +817,9 @@ export default function MediaShareClient({
             }
 
             return urlObj.toString();
-        } catch {
-            return ctaTargetUrl;
+        } catch (err) {
+            console.error('[MediaShareClient] Failed to construct safe CTA URL:', err);
+            return '';
         }
     };
 
@@ -826,6 +827,7 @@ export default function MediaShareClient({
         logEvent('cta_click');
         if (ctaType === 'none' || !ctaTargetUrl) return;
         const finalUrl = getFinalCtaUrl();
+        if (!finalUrl) return;
 
         if (ctaMode === 'modal') {
             setIsCtaModalOpen(true);

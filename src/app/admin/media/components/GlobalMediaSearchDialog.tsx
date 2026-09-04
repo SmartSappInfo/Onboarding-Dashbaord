@@ -62,6 +62,7 @@ export function GlobalMediaSearchDialog({
   const firestore = useFirestore();
   const [queryText, setQueryText] = useState('');
   const [results, setResults] = useState<GlobalMediaSearchResult[]>([]);
+  const [selectedIndex, setSelectedIndex] = useState<number>(-1);
   const [isPending, startTransition] = useTransition();
 
   // Keyboard shortcut listener for Cmd+K / Ctrl+K
@@ -82,6 +83,7 @@ export function GlobalMediaSearchDialog({
 
     if (queryText.trim().length === 0) {
       setResults([]);
+      setSelectedIndex(-1);
       return;
     }
 
@@ -92,6 +94,7 @@ export function GlobalMediaSearchDialog({
           limit: 15,
         });
         setResults(hits);
+        setSelectedIndex(-1);
       });
     }, 250);
 
@@ -101,6 +104,22 @@ export function GlobalMediaSearchDialog({
   const handleSelectResult = (url: string) => {
     onOpenChange(false);
     router.push(url);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (results.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev < results.length - 1 ? prev + 1 : 0));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex((prev) => (prev > 0 ? prev - 1 : results.length - 1));
+    } else if (e.key === 'Enter') {
+      if (selectedIndex >= 0 && selectedIndex < results.length) {
+        e.preventDefault();
+        handleSelectResult(results[selectedIndex].url);
+      }
+    }
   };
 
   const getEntityIcon = (type: string, format?: string) => {
@@ -125,6 +144,7 @@ export function GlobalMediaSearchDialog({
           <Input
             value={queryText}
             onChange={(e) => setQueryText(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="Search assets, transcripts, experiences, or packages... (Cmd+K)"
             className="h-14 border-0 focus-visible:ring-0 text-sm bg-transparent shadow-none px-0"
             autoFocus
@@ -133,8 +153,12 @@ export function GlobalMediaSearchDialog({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setQueryText('')}
+              onClick={() => {
+                setQueryText('');
+                setSelectedIndex(-1);
+              }}
               className="h-8 w-8 text-slate-400 hover:text-slate-600 rounded-full"
+              aria-label="Clear search query"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -143,14 +167,26 @@ export function GlobalMediaSearchDialog({
         </div>
 
         {/* Results Body */}
-        <div className="max-h-[60vh] overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50/50 dark:bg-slate-950/50">
+        <div
+          role="listbox"
+          aria-label="Media search results"
+          className="max-h-[60vh] overflow-y-auto p-3 sm:p-4 space-y-2 bg-slate-50/50 dark:bg-slate-950/50"
+        >
           {results.length > 0 ? (
-            results.map((hit) => (
-              <Card
-                key={`${hit.type}_${hit.id}`}
-                onClick={() => handleSelectResult(hit.url)}
-                className="group cursor-pointer border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-700 hover:shadow-sm transition-all duration-150 active:scale-[0.98]"
-              >
+            results.map((hit, idx) => {
+              const isSelected = selectedIndex === idx;
+              return (
+                <Card
+                  key={`${hit.type}_${hit.id}`}
+                  role="option"
+                  aria-selected={isSelected}
+                  onClick={() => handleSelectResult(hit.url)}
+                  className={`group cursor-pointer transition-all duration-150 active:scale-[0.98] ${
+                    isSelected
+                      ? 'border-blue-500 bg-blue-50/60 dark:bg-blue-950/30 ring-1 ring-blue-500 shadow-sm'
+                      : 'border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-700 hover:shadow-sm'
+                  }`}
+                >
                 <CardContent className="p-3 sm:p-3.5 space-y-1.5">
                   <div className="flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2 min-w-0">

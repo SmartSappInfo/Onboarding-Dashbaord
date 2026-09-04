@@ -94,7 +94,7 @@ export async function searchGlobalMediaAction(
             thumbnailUrl: (data.thumbnailUrl as string) || undefined,
             format,
             summary: desc || 'Ready for publishing across experiences and campaigns.',
-            campaignCount: Math.floor(Math.random() * 6) + 1,
+            campaignCount: typeof data.campaignCount === 'number' ? data.campaignCount : undefined,
             score: matchesTitle ? 0.95 : matchesTag ? 0.85 : 0.7,
             matchedField: matchesTitle ? 'title' : matchesTag ? 'tag' : 'title',
             url: `/admin/media?assetId=${docSnap.id}`,

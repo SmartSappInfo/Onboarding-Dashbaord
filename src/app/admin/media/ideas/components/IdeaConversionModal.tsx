@@ -146,7 +146,15 @@ export function IdeaConversionModal({
     if (!firestore || !workspaceId) return;
     startTransition(async () => {
       try {
-        const assetIds = canvas.convertedAssetId ? [canvas.convertedAssetId] : ['asset_tour', 'asset_pricing'];
+        const assetIds = canvas.convertedAssetId ? [canvas.convertedAssetId] : [];
+        if (assetIds.length === 0) {
+          toast({
+            variant: 'destructive',
+            title: 'Asset Required',
+            description: 'Please convert an idea node into an Asset first before bundling into a Package.',
+          });
+          return;
+        }
         const result = await convertIdeaToPackageAction(
           firestore,
           workspaceId,
