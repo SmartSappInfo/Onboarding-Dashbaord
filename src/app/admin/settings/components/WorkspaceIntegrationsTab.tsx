@@ -30,6 +30,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { WorkspaceAiSettingsCard } from '@/components/ai/WorkspaceAiSettingsCard';
 
 export interface WorkspaceIntegrationsTabProps {
   workspace: Workspace;
@@ -359,6 +360,14 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
               </div>
             )}
           </div>
+
+          <hr className="border-border/50" />
+
+          {/* Workspace AI Model Governance */}
+          <WorkspaceAiSettingsCard
+            workspaceId={workspace.id}
+            initialSettings={workspace.aiSettings}
+          />
 
           <hr className="border-border/50" />
 

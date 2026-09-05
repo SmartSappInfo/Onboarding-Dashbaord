@@ -29,6 +29,10 @@ import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { getGlobalAiKeys, saveGlobalAiKeys, getGlobalAiConfig, saveGlobalAiConfig, rotateAllSecretsAction } from '@/lib/backoffice/backoffice-ai-actions';
+import {
+  AiModelRegistry,
+  type AiProviderId,
+} from '@/lib/ai/model-registry';
 import type { WorkspaceStatus, IndustryVertical, LeadScoringSettings, EmailVerificationRule, PhoneVerificationRule } from '@/lib/types';
 import { INDUSTRY_STATUS_DEFAULTS } from '@/lib/industry-defaults';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -62,9 +66,12 @@ export default function SystemDefaultsClient() {
     const [isSaving, setIsSaving] = React.useState(false);
     const [isReseeding, setIsReseeding] = React.useState(false);
     const [templates, setTemplates] = React.useState<SystemTemplates>({});
-    const [aiConfig, setAiConfig] = React.useState({
+    const [aiConfig, setAiConfig] = React.useState<{
+        defaultProvider: AiProviderId;
+        defaultModelId: string;
+    }>({
         defaultProvider: 'googleai',
-        defaultModelId: 'gemini-3.5-flash',
+        defaultModelId: AiModelRegistry.getFlagshipModel().id,
     });
 
     const [industryLifecycles, setIndustryLifecycles] = React.useState<Record<string, WorkspaceStatus[]>>({});
@@ -258,9 +265,13 @@ export default function SystemDefaultsClient() {
                 // Fetch global AI config defaults
                 const configRes = await getGlobalAiConfig(idToken);
                 if (configRes.success && configRes.data) {
+                    const resolvedProvider: AiProviderId =
+                        configRes.data.defaultProvider === 'anthropic' || configRes.data.defaultProvider === 'openrouter'
+                            ? configRes.data.defaultProvider
+                            : 'googleai';
                     setAiConfig({
-                        defaultProvider: configRes.data.defaultProvider,
-                        defaultModelId: configRes.data.defaultModelId,
+                        defaultProvider: resolvedProvider,
+                        defaultModelId: AiModelRegistry.normalizeModelId(configRes.data.defaultModelId),
                     });
                 }
                 const snap = await getDoc(doc(firestore, 'system_settings', 'templates'));
@@ -576,24 +587,51 @@ export default function SystemDefaultsClient() {
                                 <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default AI Provider</label>
                                 <select
                                     value={aiConfig.defaultProvider}
-                                    onChange={(e) => setAiConfig({ ...aiConfig, defaultProvider: e.target.value })}
+                                    onChange={(e) => {
+                                        const newProvider = e.target.value as AiProviderId;
+                                        const modelsForNewProvider = AiModelRegistry.getModelsByProvider(newProvider);
+                                        const currentBelongs = modelsForNewProvider.some(m => m.id === aiConfig.defaultModelId);
+                                        const nextModelId = currentBelongs
+                                            ? aiConfig.defaultModelId
+                                            : AiModelRegistry.getDefaultModelForTier('default', newProvider).id;
+                                        setAiConfig({
+                                            defaultProvider: newProvider,
+                                            defaultModelId: nextModelId,
+                                        });
+                                    }}
                                     className="w-full rounded-xl h-11 border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                                 >
-                                    <option value="googleai">Google Gemini (googleai)</option>
-                                    <option value="anthropic">Anthropic Claude (anthropic)</option>
-                                    <option value="openrouter">OpenRouter (openrouter)</option>
+                                    {AiModelRegistry.getProviders().map((prov) => (
+                                        <option key={prov.id} value={prov.id}>
+                                            {prov.name} ({prov.id})
+                                        </option>
+                                    ))}
                                 </select>
-                                <p className="text-[10px] text-muted-foreground">Select the primary default provider for the entire application.</p>
+                                <p className="text-[10px] text-muted-foreground">Primary default provider for all workspaces that have not specified a custom provider.</p>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default Model ID</label>
-                                <Input
+                                <label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Default Model</label>
+                                <select
                                     value={aiConfig.defaultModelId}
                                     onChange={(e) => setAiConfig({ ...aiConfig, defaultModelId: e.target.value })}
-                                    className="rounded-xl h-11"
-                                    placeholder="e.g. gemini-3.5-flash, claude-3-5-sonnet"
-                                />
-                                <p className="text-[10px] text-muted-foreground">The model ID matching the chosen provider (e.g. <code>gemini-3.5-flash</code> or <code>claude-3-5-sonnet</code>).</p>
+                                    className="w-full rounded-xl h-11 border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                                >
+                                    {AiModelRegistry.getModelsByProvider(aiConfig.defaultProvider).map((model) => (
+                                        <option key={model.id} value={model.id}>
+                                            {model.name} {model.isFlagship ? '★ (Flagship)' : `[${model.tier}]`}
+                                        </option>
+                                    ))}
+                                </select>
+                                {(() => {
+                                    const selectedDef = AiModelRegistry.getModelById(aiConfig.defaultModelId);
+                                    return selectedDef ? (
+                                        <p className="text-[11px] text-muted-foreground mt-1">
+                                            <span className="font-semibold text-foreground">{selectedDef.name}:</span> {selectedDef.description} (Context: {selectedDef.capabilities.maxContextTokens.toLocaleString()} tokens)
+                                        </p>
+                                    ) : (
+                                        <p className="text-[10px] text-muted-foreground">The platform-wide default model for {aiConfig.defaultProvider}.</p>
+                                    );
+                                })()}
                             </div>
                         </div>
                     </CardContent>

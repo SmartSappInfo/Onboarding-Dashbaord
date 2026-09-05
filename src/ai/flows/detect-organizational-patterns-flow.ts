@@ -46,6 +46,7 @@ export const meetingCommitmentInputSchema = z.object({
 });
 
 export const detectPatternsInputSchema = z.object({
+  workspaceId: z.string().optional(),
   workspaceName: z.string().optional(),
   recentMemories: z.array(memoryItemInputSchema),
   stalledDeals: z.array(dealItemInputSchema),
@@ -265,7 +266,10 @@ Analyze these signals to extract:
 
 Return valid JSON conforming to the output schema. Keep descriptions actionable, professional, and grounded strictly in the provided evidence.`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'default',
+      });
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

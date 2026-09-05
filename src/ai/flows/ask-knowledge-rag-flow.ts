@@ -1,4 +1,4 @@
-import { ai } from '../genkit';
+import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
 
 /**
@@ -63,20 +63,24 @@ export const askKnowledgeOutputSchema = z.object({
 
 export type AskKnowledgeOutput = z.infer<typeof askKnowledgeOutputSchema>;
 
+export const askKnowledgeInputSchema = z.object({
+  query: z.string().describe('The user query or question'),
+  retrievedChunks: z.array(ragChunkInputSchema).describe('Retrieved knowledge evidence chunks'),
+  workspaceName: z.string().optional().describe('Name of the active workspace'),
+  userRole: z.string().optional().describe('Role of the requesting user'),
+  entityContext: z.string().optional().describe('Optional CRM entity scope (e.g. contact or deal name)'),
+  customDirectives: z.string().optional().describe('Custom workspace AI directives from settings'),
+});
+
+export type AskKnowledgeInput = z.infer<typeof askKnowledgeInputSchema>;
+
 export const askKnowledgeRagFlow = ai.defineFlow(
   {
     name: 'askKnowledgeRagFlow',
-    inputSchema: z.object({
-      query: z.string().describe('The user query or question'),
-      retrievedChunks: z.array(ragChunkInputSchema).describe('Retrieved knowledge evidence chunks'),
-      workspaceName: z.string().optional().describe('Name of the active workspace'),
-      userRole: z.string().optional().describe('Role of the requesting user'),
-      entityContext: z.string().optional().describe('Optional CRM entity scope (e.g. contact or deal name)'),
-      customDirectives: z.string().optional().describe('Custom workspace AI directives from settings'),
-    }),
+    inputSchema: askKnowledgeInputSchema,
     outputSchema: askKnowledgeOutputSchema,
   },
-  async (input) => {
+  async (input: AskKnowledgeInput): Promise<AskKnowledgeOutput> => {
     const rawQuery = input.query.trim();
     if (!rawQuery) {
       return {
@@ -139,7 +143,10 @@ ${formattedEvidence}
 
 Analyze the evidence carefully and generate the structured response adhering strictly to the output schema.`;
 
-    const response = await ai.generate({
+    const { modelString, customAi } = await getModel('gemini-3.6-flash');
+    const generator = customAi || ai;
+    const response = await generator.generate({
+      model: modelString,
       system: systemPrompt,
       prompt,
       output: { schema: askKnowledgeOutputSchema },
@@ -155,12 +162,12 @@ Analyze the evidence carefully and generate the structured response adhering str
 
     // Enrich citations with originHref from input chunks if missing
     const chunkMap = new Map(input.retrievedChunks.map((c) => [c.chunkId, c]));
-    const enrichedCitations = output.citations.map((c) => {
+    const enrichedCitations: AskKnowledgeOutput['citations'] = output.citations.map((c) => {
       const match = chunkMap.get(c.citationId) || input.retrievedChunks.find((chunk) => chunk.objectId === c.objectId);
       return {
         ...c,
         originHref: c.originHref || match?.originHref || null,
-        sourceType: c.sourceType || match?.sourceType || 'quick_note',
+        sourceType: (c.sourceType || match?.sourceType || 'quick_note') as AskKnowledgeOutput['citations'][number]['sourceType'],
         authorName: c.authorName || match?.authorName,
         timestamp: c.timestamp || match?.timestamp,
       };

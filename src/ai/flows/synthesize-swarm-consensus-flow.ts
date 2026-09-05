@@ -21,6 +21,7 @@ import type { SwarmConsensus, SwarmDivergencePoint } from '@/lib/agents/domain-t
 import type { AgentActionProposal } from '@/lib/supervisor/types';
 
 export const synthesizeSwarmInputSchema = z.object({
+  workspaceId: z.string().optional(),
   objective: z.string(),
   mode: z.enum(['parallel_consensus', 'sequential_pipeline', 'supervisor_directed']),
   specialistOutputs: z.array(
@@ -168,7 +169,10 @@ SPECIALIST OUTPUTS:
 ${JSON.stringify(input.specialistOutputs, null, 2)}
 `;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'reasoning',
+      });
       const generator = customAi || ai;
 
       const response = await generator.generate({

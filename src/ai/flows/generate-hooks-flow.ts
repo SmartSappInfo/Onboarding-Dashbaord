@@ -33,20 +33,9 @@ Assign:
 });
 
 export async function generateHookAlternatives(input: GenerateHooksInput): Promise<GenerateHooksOutput> {
-  let resolvedModel;
-  try {
-    resolvedModel = await getModel({
-      provider: 'anthropic',
-      modelId: 'claude-3-5-sonnet',
-    });
-  } catch (err) {
-    console.warn('Anthropic model failed, trying fallback Gemini model...', err);
-    resolvedModel = await getModel({
-      provider: 'google-genai',
-      modelId: 'gemini-3.6-flash',
-    });
-  }
-
+  const resolvedModel = await getModel({
+    tier: 'default',
+  });
   const generatorAi = resolvedModel.customAi || ai;
 
   const rendered = await copywriterHookPrompt.render({

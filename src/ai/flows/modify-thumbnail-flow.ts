@@ -43,21 +43,9 @@ const modifyThumbnailFlow = ai.defineFlow(
     outputSchema: ModifyThumbnailOutputSchema,
   },
   async (input) => {
-    let resolvedModel;
-    let fallbackUsed = false;
-    try {
-      resolvedModel = await getModel({
-        provider: 'anthropic',
-        modelId: 'claude-3-5-sonnet',
-      });
-    } catch (err) {
-      console.warn('Anthropic model failed, trying fallback Gemini model...', err);
-      resolvedModel = await getModel({
-        provider: 'google-genai',
-        modelId: 'gemini-3.6-flash',
-      });
-      fallbackUsed = true;
-    }
+    const resolvedModel = await getModel({
+      tier: 'default',
+    });
 
     const generatorAi = resolvedModel.customAi || ai;
     
@@ -68,30 +56,11 @@ const modifyThumbnailFlow = ai.defineFlow(
       instruction: input.instruction,
     });
 
-    let result;
-    try {
-      result = await generatorAi.generate({
-        model: resolvedModel.modelString,
-        ...rendered,
-        output: { schema: ModifyThumbnailOutputSchema },
-      });
-    } catch (err) {
-      if (!fallbackUsed) {
-        console.warn('Anthropic modification failed, triggering Gemini failover...', err);
-        const backupModel = await getModel({
-          provider: 'google-genai',
-          modelId: 'gemini-3.6-flash',
-        });
-        const backupAi = backupModel.customAi || ai;
-        result = await backupAi.generate({
-          model: backupModel.modelString,
-          ...rendered,
-          output: { schema: ModifyThumbnailOutputSchema },
-        });
-      } else {
-        throw err;
-      }
-    }
+    const result = await generatorAi.generate({
+      model: resolvedModel.modelString,
+      ...rendered,
+      output: { schema: ModifyThumbnailOutputSchema },
+    });
 
     const { output } = result;
 

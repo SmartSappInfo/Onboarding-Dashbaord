@@ -93,6 +93,7 @@ export class SupervisorEngine {
 
     // 3. Decompose goal into an executable plan
     const decomposition = await decomposeSupervisorGoalFlow({
+      workspaceId: request.workspaceId,
       objective: request.objective,
       subjectId: request.subject?.id,
       subjectType: request.subject?.type,
@@ -468,6 +469,7 @@ export class SupervisorEngine {
       }));
 
     const synthesis = await synthesizeSupervisorResultFlow({
+      workspaceId: run.workspaceId,
       objective: run.objective,
       subjectId: run.subject?.id,
       subjectType: run.subject?.type,

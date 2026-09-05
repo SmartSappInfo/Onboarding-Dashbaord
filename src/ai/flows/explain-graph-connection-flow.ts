@@ -87,7 +87,10 @@ Instructions:
 3. Be concise (2 to 3 sentences). Do NOT invent facts or events not listed in the path steps.
 4. Output JSON matching the requested schema.`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'default',
+      });
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

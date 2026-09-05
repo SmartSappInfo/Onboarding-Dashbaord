@@ -22,6 +22,7 @@ import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
 
 export const contextDossierInputSchema = z.object({
+  workspaceId: z.string().optional().describe('Active workspace ID for model routing'),
   subjectName: z.string(),
   subjectType: z.string(),
   category: z.string().optional(),
@@ -124,7 +125,10 @@ ACCOUNT CONTEXT:
 
 Synthesize a comprehensive, executive-ready briefing in the required structured schema.`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'default',
+      });
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

@@ -91,8 +91,7 @@ async function callIntelligenceAI<T>(params: {
     // Fallback to Native Genkit (Gemini 3.6 Flash / Claude)
     const { modelString, customAi } = await getModel({
       organizationId,
-      provider: 'googleai',
-      modelId: 'gemini-3.6-flash',
+      tier: 'default',
     });
 
     const activeAi = customAi || ai;
@@ -107,7 +106,7 @@ async function callIntelligenceAI<T>(params: {
     }
 
     return result.output as T;
-  } catch (err: unknown) {
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[AI-INTELLIGENCE-FLOW] Call failed:', msg);
     throw new Error(`AI Intelligence Error: ${msg}`);

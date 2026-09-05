@@ -126,8 +126,7 @@ async function callAIWithFallback<T>(params: {
     // Native Genkit path (Gemini or Claude via getModel)
     const { modelString, customAi } = await getModel({
       organizationId,
-      provider: 'googleai',
-      modelId: 'gemini-3.6-flash',
+      tier: 'default',
     });
 
     const activeAi = customAi || ai;
@@ -142,7 +141,7 @@ async function callAIWithFallback<T>(params: {
     }
 
     return result.output as T;
-  } catch (error: unknown) {
+  } catch (error) {
     const msg = error instanceof Error ? error.message : String(error);
     console.error('[AI-FORM-FLOW] Error during generation, attempting fallback schema parse:', msg);
     throw new Error(`AI Form Generation Failed: ${msg}`);

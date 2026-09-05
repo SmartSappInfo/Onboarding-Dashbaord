@@ -23,6 +23,7 @@ import type { AgentFinding, AgentActionProposal } from '@/lib/supervisor/types';
 import type { McpPayloadValue } from '@/lib/mcp/types';
 
 export const synthesizeResultInputSchema = z.object({
+  workspaceId: z.string().optional(),
   objective: z.string(),
   subjectId: z.string().optional(),
   subjectType: z.string().optional(),
@@ -183,7 +184,10 @@ ${citationDetails || 'No direct citations.'}
 
 Synthesize the final mission briefing.`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'default',
+      });
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

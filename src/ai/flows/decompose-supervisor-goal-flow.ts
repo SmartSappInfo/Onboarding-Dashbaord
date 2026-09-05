@@ -23,6 +23,7 @@ import type { SupervisorPlan, SupervisorPlanStep } from '@/lib/supervisor/types'
 import type { McpPayloadValue } from '@/lib/mcp/types';
 
 export const decomposeGoalInputSchema = z.object({
+  workspaceId: z.string().optional().describe('Active workspace ID for AI model routing.'),
   objective: z.string().min(1).describe('The natural language objective or mission command.'),
   subjectId: z.string().optional().describe('Optional target entity ID, deal ID, or meeting ID.'),
   subjectType: z.string().optional().describe('Optional subject type (entity, deal, task, meeting).'),
@@ -62,7 +63,7 @@ export type DecomposeGoalOutput = z.infer<typeof decomposeGoalOutputSchema>;
  * Deterministic rule-based decomposition fallback when AI model is offline or unconfigured.
  */
 export function decomposeGoalDeterministic(input: DecomposeGoalInput): DecomposeGoalOutput {
-  const { objective, subjectId, subjectType, availableTools, maxSteps = 5 } = input;
+  const { objective, subjectId, subjectType, availableTools = [], maxSteps = 5 } = input;
   const lowerObj = objective.toLowerCase();
 
   const toolNames = new Set(availableTools.map((t) => t.name));
@@ -174,7 +175,8 @@ export const decomposeSupervisorGoalFlow = ai.defineFlow(
     }
 
     try {
-      const toolDescriptions = input.availableTools
+      const tools = input.availableTools || [];
+      const toolDescriptions = tools
         .map((t) => `- Tool: "${t.name}" | Category: ${t.category} | Risk: ${t.riskLevel} | Needs Approval: ${t.requiresApproval}\n  Description: ${t.description}`)
         .join('\n');
 
@@ -200,7 +202,10 @@ ${input.contextSummary || 'None provided'}
 
 Generate a structured execution plan.`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'reasoning',
+      });
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,
@@ -215,7 +220,7 @@ Generate a structured execution plan.`;
       }
 
       // Validate all tool names exist in availableTools
-      const validToolNames = new Set(input.availableTools.map((t) => t.name));
+      const validToolNames = new Set((input.availableTools || []).map((t) => t.name));
       const sanitizedSteps = response.output.steps
         .filter((s) => validToolNames.has(s.assignedAgentOrTool))
         .slice(0, input.maxSteps || 5)

@@ -30,6 +30,7 @@ export const memoryItemSchema = z.object({
 });
 
 export const consolidateMemoriesInputSchema = z.object({
+  workspaceId: z.string().optional().describe('Active workspace ID for model routing'),
   memories: z.array(memoryItemSchema).min(2).max(10).describe('Cluster of overlapping memory items to synthesize'),
   contextDomain: z.string().optional().describe('Commercial or operational domain context'),
 });
@@ -133,7 +134,10 @@ Guidelines:
 ${input.contextDomain ? `Domain Context: ${input.contextDomain}\n\n` : ''}Memory Fragments:
 ${memorySummaries}`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'reasoning',
+      });
       const generator = customAi || ai;
       const { output } = await generator.generate({
         model: modelString,

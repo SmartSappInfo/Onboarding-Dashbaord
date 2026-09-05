@@ -86,8 +86,7 @@ async function callAssistantAI<T>(params: {
     // Fallback to Native Genkit
     const { modelString, customAi } = await getModel({
       organizationId,
-      provider: 'googleai',
-      modelId: 'gemini-3.6-flash',
+      tier: 'default',
     });
 
     const activeAi = customAi || ai;
@@ -102,7 +101,7 @@ async function callAssistantAI<T>(params: {
     }
 
     return result.output as T;
-  } catch (err: unknown) {
+  } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error('[AI-ASSISTANT-FLOW] Call failed:', msg);
     throw new Error(`AI Assistant Error: ${msg}`);

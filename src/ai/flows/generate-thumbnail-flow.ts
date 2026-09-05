@@ -107,21 +107,9 @@ const generateThumbnailFlow = ai.defineFlow(
       }
     }
 
-    let resolvedModel;
-    let fallbackUsed = false;
-    try {
-      resolvedModel = await getModel({
-        provider: 'anthropic',
-        modelId: 'claude-3-5-sonnet',
-      });
-    } catch (err) {
-      console.warn('Primary Anthropic model config failed, trying fallback Gemini model...', err);
-      resolvedModel = await getModel({
-        provider: 'google-genai',
-        modelId: 'gemini-3.6-flash',
-      });
-      fallbackUsed = true;
-    }
+    const resolvedModel = await getModel({
+      tier: 'default',
+    });
 
     const generatorAi = resolvedModel.customAi || ai;
 

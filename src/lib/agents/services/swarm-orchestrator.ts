@@ -310,6 +310,7 @@ export class SwarmOrchestrator {
 
     try {
       const consensusOutput = await synthesizeSwarmConsensusFlow({
+        workspaceId: request.workspaceId,
         objective: request.objective,
         mode: request.mode,
         specialistOutputs,

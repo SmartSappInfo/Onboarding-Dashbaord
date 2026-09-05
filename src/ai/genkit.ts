@@ -5,6 +5,12 @@ import { openAICompatible } from '@genkit-ai/compat-oai';
 import { adminDb } from '@/lib/firebase-admin';
 import { openSecret } from '@/lib/backoffice/secret-vault';
 import { logBackofficeAction } from '@/lib/backoffice/audit-logger';
+import {
+  AiModelRegistry,
+  type AiModelTier,
+  type AiProviderId,
+} from '@/lib/ai/model-registry';
+import { WorkspaceAiService } from '@/lib/ai/services/workspace-ai-service';
 
 // System default instance using environment variables
 export const ai = genkit({
@@ -74,7 +80,7 @@ async function getGlobalBackofficeKeys(): Promise<Keys> {
   try {
     const docRef = adminDb.collection('system_settings').doc('ai_keys');
     const snap = await docRef.get();
-    if (snap.exists) {
+    if (snap?.exists) {
       const data = snap.data();
       // Keys are sealed at rest (envelopes); openSecret also tolerates legacy
       // plaintext values that predate the encryption migration.
@@ -100,83 +106,105 @@ async function getGlobalBackofficeKeys(): Promise<Keys> {
  * Resolves a model instance with the correct API key for an organization.
  * Hierarchy: Organization Custom Key -> Backoffice DB Key -> Environment Variable -> System Default
  */
+export interface GetModelParams {
+  workspaceId?: string;
+  organizationId?: string;
+  provider?: string; // 'googleai', 'anthropic', 'openrouter'
+  modelId?: string;
+  tier?: AiModelTier;
+}
+
+/**
+ * Resolves a model instance with the correct API key for a workspace or organization.
+ * Single Source of Truth: Integrates WorkspaceAiService & AiModelRegistry.
+ * Hierarchy: Organization Custom Key -> Backoffice DB Key -> Environment Variable -> System Default
+ */
 export async function getModel(
-  params?:
-    | {
-        organizationId?: string;
-        provider?: string; // 'googleai', 'anthropic', 'openrouter'
-        modelId?: string;
-      }
-    | string
+  params?: GetModelParams | string
 ) {
+  let workspaceId: string | undefined;
   let organizationId: string | undefined;
-  let provider = 'googleai';
-  let modelId = 'gemini-3.6-flash';
+  let provider: AiProviderId | undefined;
+  let requestedModelId: string | undefined;
+  let tier: AiModelTier | undefined;
 
   if (typeof params === 'string') {
-    if (params.startsWith('anthropic/')) {
-      provider = 'anthropic';
-      modelId = params.replace(/^anthropic\//, '');
-    } else if (params.startsWith('googleai/')) {
-      provider = 'googleai';
-      modelId = params.replace(/^googleai\//, '');
-    } else if (params.startsWith('claude')) {
-      provider = 'anthropic';
-      modelId = params;
-    } else {
-      modelId = params;
-    }
+    requestedModelId = params;
   } else if (params) {
+    workspaceId = params.workspaceId;
     organizationId = params.organizationId;
-    provider = params.provider || 'googleai';
-    modelId = params.modelId || 'gemini-3.6-flash';
-    if (modelId.startsWith('googleai/')) {
-      modelId = modelId.replace(/^googleai\//, '');
-    } else if (modelId.startsWith('anthropic/')) {
-      provider = 'anthropic';
-      modelId = modelId.replace(/^anthropic\//, '');
+    if (params.provider === 'googleai' || params.provider === 'anthropic' || params.provider === 'openrouter') {
+      provider = params.provider;
+    }
+    requestedModelId = params.modelId;
+    tier = params.tier;
+  }
+
+  // 1. Resolve workspace-specific AI settings if workspaceId is provided
+  if (workspaceId) {
+    try {
+      const wsSettings = await WorkspaceAiService.getSettings(workspaceId);
+      if (!organizationId && wsSettings.organizationId) {
+        organizationId = wsSettings.organizationId;
+      }
+
+      if (!requestedModelId) {
+        if (tier === 'reasoning') {
+          requestedModelId = wsSettings.reasoningModelId || wsSettings.preferredModelId;
+        } else if (tier === 'fast') {
+          requestedModelId = wsSettings.fastModelId || wsSettings.preferredModelId;
+        } else {
+          requestedModelId = wsSettings.preferredModelId;
+        }
+
+        if (!provider) {
+          provider = wsSettings.preferredProvider;
+        }
+      }
+    } catch (wsErr) {
+      console.warn(`[AI] Failed to resolve workspace settings for "${workspaceId}", falling back:`, wsErr);
     }
   }
 
-  // Map legacy 'openai' provider to 'anthropic' and update modelId
-  if (provider === 'openai') {
-    provider = 'anthropic';
-    if (modelId.startsWith('gpt-')) {
-      modelId = 'claude-3-5-sonnet';
+  // 2. If modelId is still not specified, resolve from tier or fallback to flagship
+  if (!requestedModelId) {
+    const tierDef = tier
+      ? AiModelRegistry.getDefaultModelForTier(tier, provider)
+      : AiModelRegistry.getFlagshipModel();
+    requestedModelId = tierDef.id;
+    if (!provider) {
+      provider = tierDef.provider;
     }
   }
 
-  // Map deprecated/legacy Gemini models to active gemini-3.6-flash model
-  if (
-    provider === 'googleai' &&
-    (modelId === 'gemini-2.5-flash' ||
-      modelId === 'gemini-3.5-flash' ||
-      modelId === 'gemini-2.0-flash' ||
-      modelId === 'gemini-1.5-flash' ||
-      modelId === 'gemini-1.5-pro')
-  ) {
-    modelId = 'gemini-3.6-flash';
-  }
+  // 3. Central Single Source of Truth Normalization
+  const normalizedModelId = AiModelRegistry.normalizeModelId(requestedModelId);
+  const modelDef = AiModelRegistry.getModelById(normalizedModelId);
 
-  // Map generic claude-3-5-sonnet/claude-3.5-sonnet model to real API model name
-  if (provider === 'anthropic' && (modelId === 'claude-3-5-sonnet' || modelId === 'claude-3.5-sonnet')) {
-    modelId = 'claude-3-5-sonnet-20241022';
+  let finalProvider: AiProviderId = provider || 'googleai';
+  let modelString: string;
+
+  if (modelDef) {
+    finalProvider = modelDef.provider;
+    modelString = modelDef.providerModelString;
+  } else {
+    modelString = `${finalProvider}/${normalizedModelId}`;
   }
 
   let apiKey: string | undefined;
 
-  // 1. Fetch Organization Key if orgId is provided (Highest Priority)
+  // 4. Fetch Organization Key if organizationId is provided (Highest Priority)
   if (organizationId) {
     try {
       const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
       if (orgDoc.exists) {
         const data = orgDoc.data();
-        if (provider === 'googleai') apiKey = data?.geminiApiKey;
-        else if (provider === 'anthropic') apiKey = data?.claudeApiKey;
-        else if (provider === 'openrouter') apiKey = data?.openRouterApiKey;
+        if (finalProvider === 'googleai') apiKey = data?.geminiApiKey;
+        else if (finalProvider === 'anthropic') apiKey = data?.claudeApiKey;
+        else if (finalProvider === 'openrouter') apiKey = data?.openRouterApiKey;
 
         if (apiKey) {
-          console.log(`[AI] Using Organization-specific key for provider "${provider}" (Org: ${organizationId})`);
+          console.log(`[AI] Using Organization-specific key for provider "${finalProvider}" (Org: ${organizationId})`);
         }
       }
     } catch (error) {
@@ -184,45 +212,46 @@ export async function getModel(
     }
   }
 
-  // 2. Fetch Backoffice Global keys (1st Fallback)
+  // 5. Fetch Backoffice Global keys (1st Fallback)
   if (!apiKey) {
     const globalKeys = await getGlobalBackofficeKeys();
-    if (provider === 'googleai') apiKey = globalKeys.geminiApiKey;
-    else if (provider === 'anthropic') apiKey = globalKeys.claudeApiKey;
-    else if (provider === 'openrouter') apiKey = globalKeys.openRouterApiKey;
+    if (finalProvider === 'googleai') apiKey = globalKeys.geminiApiKey;
+    else if (finalProvider === 'anthropic') apiKey = globalKeys.claudeApiKey;
+    else if (finalProvider === 'openrouter') apiKey = globalKeys.openRouterApiKey;
 
     if (apiKey) {
-      console.log(`[AI] Using Backoffice global fallback key for provider "${provider}"`);
+      console.log(`[AI] Using Backoffice global fallback key for provider "${finalProvider}"`);
     }
   }
 
-  // 3. Fetch Environment Variables (2nd Fallback)
+  // 6. Fetch Environment Variables (2nd Fallback)
   if (!apiKey) {
-    if (provider === 'googleai') apiKey = process.env.GEMINI_API_KEY;
-    else if (provider === 'anthropic') apiKey = process.env.ANTHROPIC_API_KEY;
-    else if (provider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY;
+    if (finalProvider === 'googleai') apiKey = process.env.GEMINI_API_KEY;
+    else if (finalProvider === 'anthropic') apiKey = process.env.ANTHROPIC_API_KEY;
+    else if (finalProvider === 'openrouter') apiKey = process.env.OPENROUTER_API_KEY;
 
     if (apiKey) {
-      console.log(`[AI] Using Environment fallback key for provider "${provider}"`);
+      console.log(`[AI] Using Environment fallback key for provider "${finalProvider}"`);
     }
   }
 
-  // 4. Fallback to system default if no key is found at all
+  // 7. Fallback to system default if no key is found at all
   if (!apiKey) {
-    console.warn(`[AI] No API key found for provider "${provider}", falling back to system default instance`);
-    const defaultModel = `${provider}/${modelId}`;
+    console.warn(`[AI] No API key found for provider "${finalProvider}", falling back to system default instance`);
     return {
-      modelString: defaultModel,
-      toString: () => defaultModel,
-      [Symbol.toPrimitive]: () => defaultModel,
+      modelString,
+      provider: finalProvider,
+      modelId: normalizedModelId,
+      modelDefinition: modelDef,
+      toString: () => modelString,
+      [Symbol.toPrimitive]: () => modelString,
     };
   }
 
-  // 5. Get or create cached Genkit instance with custom API key
-  const customAi = getOrCreateGenkitInstance(provider, apiKey);
-  const modelString = `${provider}/${modelId}`;
+  // 8. Get or create cached Genkit instance with custom API key
+  const customAi = getOrCreateGenkitInstance(finalProvider, apiKey);
 
-  // Wrap customAi in a Proxy to intercept and automatically recover from 401 authentication errors
+  // Wrap customAi in a Proxy to intercept and automatically recover from auth/deprecated errors
   const wrappedAi = new Proxy(customAi, {
     get(target, prop, receiver) {
       if (prop === 'generate') {
@@ -230,7 +259,7 @@ export async function getModel(
         return async function(options: Parameters<typeof target.generate>[0]) {
           try {
             return await originalGenerate(options);
-          } catch (error: unknown) {
+          } catch (error) {
             const errorMsg = error instanceof Error ? error.message : String(error);
             const lowerError = errorMsg.toLowerCase();
             const isAuthOrNotFoundError = 
@@ -250,21 +279,21 @@ export async function getModel(
               lowerError.includes('notfound');
                                 
             if (isAuthOrNotFoundError) {
-              console.warn(`[AI] Custom API key generation failed with error: "${errorMsg}". Falling back to system default instance/Gemini.`);
-              const defaultModel = 'googleai/gemini-3.6-flash';
+              console.warn(`[AI] Custom API key generation failed with error: "${errorMsg}". Falling back to flagship model.`);
+              const defaultModel = AiModelRegistry.getFlagshipModel().providerModelString;
               
               // Non-blocking telemetry log
               logBackofficeAction(
                 { userId: 'system_proxy', email: 'system@smartsapp.com', name: 'AI Key Proxy', role: 'super_admin' },
                 'ai_key.fallback',
                 'provider',
-                provider,
+                finalProvider,
                 {
                   scope: organizationId ? 'organization' : 'platform',
                   scopeId: organizationId,
                   metadata: {
                     error: errorMsg,
-                    modelId,
+                    modelId: normalizedModelId,
                     fallbackModel: defaultModel
                   }
                 }
@@ -306,6 +335,9 @@ export async function getModel(
   return {
     modelString,
     customAi: wrappedAi,
+    provider: finalProvider,
+    modelId: normalizedModelId,
+    modelDefinition: modelDef,
     toString: () => modelString,
     [Symbol.toPrimitive]: () => modelString,
   };

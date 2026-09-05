@@ -151,9 +151,9 @@ export const extractMemoriesFlow = ai.defineFlow(
     const cappedText = rawText.length > 20000 ? rawText.substring(0, 20000) : rawText;
 
     const { modelString, customAi } = await getModel({
+      workspaceId: input.workspaceId,
       organizationId: input.organizationId,
-      provider: 'googleai',
-      modelId: 'gemini-3.6-flash',
+      tier: 'default',
     });
 
     const activeAi = customAi || ai;

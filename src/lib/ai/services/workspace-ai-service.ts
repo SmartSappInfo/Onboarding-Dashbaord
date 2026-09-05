@@ -68,7 +68,7 @@ export class WorkspaceAiService {
       const docRef = adminDb.collection('workspaces').doc(workspaceId);
       const snap = await docRef.get();
 
-      if (snap.exists) {
+      if (snap?.exists) {
         const data = snap.data();
         const rawSettings = data?.aiSettings as Partial<WorkspaceAiSettings> | undefined;
 
@@ -101,6 +101,21 @@ export class WorkspaceAiService {
 
           return resolvedSettings;
         }
+        const discoveredOrgId = typeof data?.organizationId === 'string' ? data.organizationId : undefined;
+        // Resolve system-wide fallback settings
+        const fallbackSettings = await this.resolveSystemFallbackSettings();
+        const settingsWithOrg: WorkspaceAiSettings = {
+          ...fallbackSettings,
+          organizationId: discoveredOrgId,
+        };
+
+        pruneCacheIfNeeded();
+        workspaceAiCache.set(workspaceId, {
+          settings: settingsWithOrg,
+          expiresAt: now + CACHE_TTL_MS,
+        });
+
+        return settingsWithOrg;
       }
     } catch (err) {
       console.warn(`[WorkspaceAiService] Failed to fetch settings for workspace "${workspaceId}":`, err);
@@ -215,7 +230,7 @@ export class WorkspaceAiService {
     try {
       const docRef = adminDb.collection('system_settings').doc('ai_config');
       const snap = await docRef.get();
-      if (snap.exists) {
+      if (snap?.exists) {
         const data = snap.data();
         if (data?.defaultModelId) {
           const provider: AiProviderId =

@@ -138,6 +138,7 @@ export class AutonomousObservationEngine {
 
     // 2. Invoke Pattern Detection Flow
     const flowInput: DetectPatternsInput = {
+      workspaceId,
       workspaceName: workspaceId,
       recentMemories,
       stalledDeals,

@@ -30,6 +30,7 @@ export const memoryStatementSchema = z.object({
 });
 
 export const detectContradictionInputSchema = z.object({
+  workspaceId: z.string().optional().describe('Active workspace ID for model routing'),
   memoryA: memoryStatementSchema,
   memoryB: memoryStatementSchema,
   contextDomain: z.string().optional().describe('Commercial or operational domain context'),
@@ -62,15 +63,17 @@ export function detectMemoryContradictionsDeterministic(
   const pricesA = textA.match(priceRegex) || [];
   const pricesB = textB.match(priceRegex) || [];
 
-  if (pricesA.length > 0 && pricesB.length > 0) {
-    const normA = pricesA[0].replace(/[^\d]/g, '');
-    const normB = pricesB[0].replace(/[^\d]/g, '');
+  const firstA = pricesA[0];
+  const firstB = pricesB[0];
+  if (firstA && firstB) {
+    const normA = firstA.replace(/[^\d]/g, '');
+    const normB = firstB.replace(/[^\d]/g, '');
     if (normA && normB && normA !== normB) {
       return {
         isContradiction: true,
         conflictType: 'contradiction',
         confidenceScore: 0.88,
-        summary: `Conflicting amounts detected: "${pricesA[0]}" in "${memoryA.title}" vs "${pricesB[0]}" in "${memoryB.title}".`,
+        summary: `Conflicting amounts detected: "${firstA}" in "${memoryA.title}" vs "${firstB}" in "${memoryB.title}".`,
         opposingAspects: ['pricing_amount', 'budget_cap'],
       };
     }
@@ -147,7 +150,10 @@ Evaluation Criteria:
 
 Respond strictly according to the output schema. If they do NOT contradict, set isContradiction=false.`;
 
-      const { modelString, customAi } = await getModel('gemini-3.6-flash');
+      const { modelString, customAi } = await getModel({
+        workspaceId: input.workspaceId,
+        tier: 'reasoning',
+      });
       const generator = customAi || ai;
       const response = await generator.generate({
         model: modelString,

@@ -102,8 +102,7 @@ Provide an executive assessment adhering strictly to the structured schema:
 6. Next-Best-Actions: 3 prioritized, immediate actions for the account executive.`;
 
     const resolvedModel = await getModel({
-      provider: 'googleai',
-      modelId: 'gemini-3.6-flash',
+      tier: 'reasoning',
     });
     const activeAi = resolvedModel.customAi || ai;
 

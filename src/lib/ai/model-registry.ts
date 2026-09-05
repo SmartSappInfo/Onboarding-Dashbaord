@@ -239,11 +239,13 @@ const LEGACY_MODEL_NORMALIZATION_MAP: Record<string, string> = {
   'gemini-2.0-flash': 'gemini-3.6-flash',
   'gemini-2.0-flash-exp': 'gemini-3.6-flash',
   'gemini-1.5-flash': 'gemini-3.6-flash',
+  'gemini-1.5-flash-8b': 'gemini-3.1-flash-lite',
   'gemini-3.0-flash': 'gemini-3.6-flash',
   'googleai/gemini-2.5-flash': 'gemini-3.6-flash',
   'googleai/gemini-3.5-flash': 'gemini-3.6-flash',
   'googleai/gemini-2.0-flash': 'gemini-3.6-flash',
   'googleai/gemini-1.5-flash': 'gemini-3.6-flash',
+  'googleai/gemini-1.5-flash-8b': 'gemini-3.1-flash-lite',
   'googleai/gemini-3.6-flash': 'gemini-3.6-flash',
 
   // Pro tier normalization
@@ -318,6 +320,13 @@ export const AiModelRegistry = {
   },
 
   /**
+   * Retrieves all active models belonging to a specific provider.
+   */
+  getModelsByProvider(provider: AiProviderId): readonly AiModelDefinition[] {
+    return ACTIVE_AI_MODELS.filter((m) => m.provider === provider);
+  },
+
+  /**
    * Returns all supported provider definitions with their associated models.
    */
   getProviders(): readonly AiProviderDefinition[] {
@@ -331,7 +340,7 @@ export const AiModelRegistry = {
    * organization keys are returned.
    */
   getProvidersForOrganization(org?: {
-    aiKeyMode?: 'organization' | 'platform';
+    aiKeyMode?: 'organization' | 'platform' | 'custom';
     geminiApiKey?: string;
     claudeApiKey?: string;
     openRouterApiKey?: string;
