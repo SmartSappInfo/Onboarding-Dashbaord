@@ -1,238 +1,246 @@
 'use client';
 
+/**
+ * @fileOverview Unified Workspace AI Model Selector Component (<AiModelSelector>).
+ * 
+ * ARCHITECTURAL INVARIANTS:
+ * - Single Source of Truth: Exclusively retrieves provider & model catalogs from `AiModelRegistry`.
+ * - Workspace Persistence: Reading and mutations bind directly to the active workspace's `aiSettings`.
+ * - Emil Kowalski Micro-Interactions: Supports `active:scale-[0.97]` tactile press feedback,
+ *   sub-300ms easing transitions, and hardware-accelerated transforms.
+ * - Mobile-First Touch Targets: Select trigger and item targets adhere strictly to >= 44px (`min-h-[44px]`).
+ * - Plain Everyday UI English: Clear, friendly badges without technical jargon or HTML leaks.
+ * - Strict Typing: Zero `any`, zero `unknown`, zero `any[]`.
+ */
+
 import * as React from 'react';
-import { useUser, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import { doc, getDoc } from 'firebase/firestore';
-import { 
-    Select, 
-    SelectContent, 
-    SelectGroup, 
-    SelectItem, 
-    SelectLabel, 
-    SelectTrigger, 
-    SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
 } from '@/components/ui/select';
-import { Sparkles, Brain, Zap, Shield, Cpu, ExternalLink } from 'lucide-react';
-import { updateUserAiPreferencesAction } from '@/lib/user-preferences-actions';
-import { useToast } from '@/hooks/use-toast';
+import { Sparkles, Brain, Zap, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { UserProfile } from '@/lib/types';
-import { useLiveAiModel } from '@/hooks/use-live-ai-model';
+import {
+  AiModelRegistry,
+  type AiModelDefinition,
+  type AiModelTier,
+  type AiProviderId,
+} from '@/lib/ai/model-registry';
+import { useWorkspaceAiModel } from '@/hooks/use-workspace-ai-model';
 
-export const AI_PROVIDERS = [
-    {
-        id: 'anthropic',
-        name: 'Anthropic Claude',
-        icon: Zap,
-        color: 'text-orange-500',
-        bgColor: 'bg-orange-500/10',
-        models: [
-            { id: 'claude-3-5-sonnet', name: 'Claude 3.5 Sonnet', description: 'Best balance of speed & intelligence' },
-            { id: 'claude-3-5-haiku', name: 'Claude 3.5 Haiku', description: 'Fastest Claude model for low-latency tasks' },
-            { id: 'claude-3-opus', name: 'Claude 3 Opus', description: 'Deep reasoning & complex tasks' },
-            { id: 'claude-sonnet-5', name: 'Claude 5 Sonnet', description: 'Next-generation Claude model' },
-        ]
-    },
-    {
-        id: 'googleai',
-        name: 'Google Gemini',
-        icon: Sparkles,
-        color: 'text-blue-500',
-        bgColor: 'bg-blue-500/10',
-        models: [
-            { id: 'gemini-3.6-flash', name: 'Gemini 3.6 Flash', description: 'Active flagship performance for high-volume tasks' },
-            { id: 'gemini-3.5-flash', name: 'Gemini 3.5 Flash', description: 'Frontier performance for high-volume tasks' },
-            { id: 'gemini-3.1-flash-lite', name: 'Gemini 3.1 Flash-Lite', description: 'High-frequency, simple tasks' },
-            { id: 'gemini-3.0-flash', name: 'Gemini 3.0 Flash', description: 'Balanced Gemini 3 model' },
-            { id: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', description: 'Advanced reasoning & multimodal' },
-            { id: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', description: 'Balanced performance & low-latency' },
-            { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', description: 'Advanced logic and analysis' },
-            { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', description: 'Classic low-latency task runner' },
-        ]
-    },
-    {
-        id: 'openrouter',
-        name: 'OpenRouter (Free Tier)',
-        icon: Brain,
-        color: 'text-purple-500',
-        bgColor: 'bg-purple-500/10',
-        models: [
-            { id: 'openrouter/free', name: 'Auto Free Router', description: 'Auto-routes to the best available free model' },
-            { id: 'deepseek/deepseek-r1:free', name: 'DeepSeek R1', description: 'State-of-the-art open reasoning model' },
-            { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', description: 'Highly competent 70B general instruct model' },
-            { id: 'meta-llama/llama-3.2-3b-instruct:free', name: 'Llama 3.2 3B', description: 'Fast low-latency lightweight agent' },
-            { id: 'qwen/qwen-2.5-coder-32b-instruct:free', name: 'Qwen 2.5 Coder 32B', description: 'Optimized coding model from Qwen' },
-            { id: 'qwen/qwen-2.5-72b-instruct:free', name: 'Qwen 2.5 72B', description: 'High-capacity reasoning & coding' },
-            { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B', description: 'Google instruction-tuned 9B parameter model' },
-            { id: 'mistralai/mistral-7b-instruct:free', name: 'Mistral 7B', description: 'Classic high-performance lightweight model' },
-        ]
+/**
+ * Provider icon map for clean visual rendering.
+ */
+const PROVIDER_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
+  Sparkles,
+  Zap,
+  Brain,
+};
+
+/**
+ * Backward-compatible export of AI_PROVIDERS derived dynamically from the central registry.
+ * Preserves legacy callers without duplicating model metadata.
+ */
+export const AI_PROVIDERS = AiModelRegistry.getProviders().map((provider) => ({
+  id: provider.id,
+  name: provider.name,
+  icon: PROVIDER_ICONS[provider.iconName] || Sparkles,
+  color: provider.textColor,
+  bgColor: provider.bgColor,
+  models: provider.models.map((m) => ({
+    id: m.id,
+    name: m.name,
+    description: m.description,
+  })),
+}));
+
+export interface AiModelSelectorProps {
+  /** Optional workspace ID override; defaults to active workspace from context */
+  workspaceId?: string;
+  /** Filter models by operational tier */
+  tier?: AiModelTier | 'all';
+  /** Hides the top metadata label */
+  hideLabel?: boolean;
+  /** Container CSS classes */
+  className?: string;
+  /** Optional callback fired when model is changed */
+  onModelChange?: (model: AiModelDefinition) => void;
+}
+
+export default function AiModelSelector({
+  workspaceId,
+  tier = 'all',
+  hideLabel = false,
+  className,
+  onModelChange,
+}: AiModelSelectorProps) {
+  const { activeOrganization } = useTenant();
+  const { modelId, modelDefinition, setModel, isUpdating } = useWorkspaceAiModel(workspaceId);
+
+  // Filter providers based on organization's credentials
+  const availableProviders = React.useMemo(() => {
+    return AiModelRegistry.getProvidersForOrganization(activeOrganization);
+  }, [activeOrganization]);
+
+  // Filter models by tier if specified
+  const filteredProviders = React.useMemo(() => {
+    if (tier === 'all') {
+      return availableProviders;
     }
-];
+    return availableProviders
+      .map((p) => ({
+        ...p,
+        models: p.models.filter((m) => m.tier === tier),
+      }))
+      .filter((p) => p.models.length > 0);
+  }, [availableProviders, tier]);
 
-export default function AiModelSelector({ className, hideLabel = false }: { className?: string; hideLabel?: boolean }) {
-    const { user } = useUser();
-    const { activeOrganization } = useTenant();
-    const firestore = useFirestore();
-    const { toast } = useToast();
-    
-    const [selectedProvider, setSelectedProvider] = React.useState<string>('anthropic');
-    const [selectedModel, setSelectedModel] = React.useState<string>('claude-3-5-sonnet');
-    const [isLoading, setIsLoading] = React.useState(true);
-    const { modelId: liveModelId } = useLiveAiModel();
-
-    const availableProviders = React.useMemo(() => {
-        if (!activeOrganization) return [];
-
-        const mode = activeOrganization.aiKeyMode || 'platform';
-        // If organization uses platform defaults (fallback DB/env keys), hide selector
-        if (mode === 'platform') return [];
-
-        // Return only providers that have organization-configured API keys
-        return AI_PROVIDERS.filter(provider => {
-            if (provider.id === 'googleai') return !!activeOrganization.geminiApiKey;
-            if (provider.id === 'anthropic') return !!activeOrganization.claudeApiKey;
-            if (provider.id === 'openrouter') return !!activeOrganization.openRouterApiKey;
-            return false;
-        });
-    }, [activeOrganization]);
-
-    // Initial load of user preferences
-    React.useEffect(() => {
-        if (user && firestore) {
-            const userDoc = doc(firestore, 'users', user.uid);
-            getDoc(userDoc).then((docSnap) => {
-                if (docSnap.exists()) {
-                    const data = docSnap.data() as UserProfile;
-                    
-                    let provider = data.preferredAiProvider;
-                    let model = data.preferredAiModel;
-
-                    // Automatically migrate legacy 'openai' to 'anthropic'
-                    if (provider === 'openai') {
-                        provider = 'anthropic';
-                        model = 'claude-3-5-sonnet';
-                    }
-                    
-                    // Only apply if the preferred model is still available under the active organization's rules
-                    const isAvailable = availableProviders.some(p => p.id === provider);
-                    if (isAvailable && provider && model) {
-                        setSelectedProvider(provider);
-                        setSelectedModel(model);
-                    } else if (availableProviders.length > 0) {
-                        // Fallback to first available provider
-                        setSelectedProvider(availableProviders[0].id);
-                        setSelectedModel(availableProviders[0].models[0].id);
-                    }
-                }
-                setIsLoading(false);
-            });
-        } else {
-            setIsLoading(false);
+  const handleSelect = React.useCallback(
+    async (newModelId: string) => {
+      const success = await setModel(newModelId);
+      if (success && onModelChange) {
+        const resolved = AiModelRegistry.getModelById(newModelId);
+        if (resolved) {
+          onModelChange(resolved);
         }
-    }, [user, firestore, availableProviders]);
+      }
+    },
+    [setModel, onModelChange]
+  );
 
-    const handleModelChange = async (value: string) => {
-        if (!user) return;
-        
-        // Find provider for this model
-        const provider = AI_PROVIDERS.find(p => p.models.some(m => m.id === value));
-        if (!provider) return;
-
-        setSelectedProvider(provider.id);
-        setSelectedModel(value);
-
-        const result = await updateUserAiPreferencesAction(user.uid, {
-            preferredAiProvider: provider.id,
-            preferredAiModel: value
-        });
-
-        if (result.success) {
-            toast({
-                title: 'AI Model Updated',
-                description: `Successfully switched to ${value}`,
-            });
-        } else {
-            toast({
-                variant: 'destructive',
-                title: 'Update Failed',
-                description: result.error,
-            });
-        }
-    };
-
-    if (isLoading) {
-        return <div className="h-10 w-[240px] bg-muted animate-pulse rounded-xl" />;
-    }
-
-    // Return the clean read-only badge indicating system default if no custom keys are configured
-    if (availableProviders.length === 0) {
-        return (
-            <div className={cn("flex flex-col gap-1.5", className)}>
-                {!hideLabel && (
-                    <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                        AI Architect Model
-                    </label>
-                )}
-                <div className="flex items-center gap-2.5 p-3 bg-orange-500/5 border border-orange-500/10 text-orange-600 rounded-[1.25rem] text-sm font-bold w-[280px]">
-                    <Zap className="w-4 h-4 shrink-0 text-orange-500" />
-                    <span>System Default: {liveModelId}</span>
-                </div>
-            </div>
-        );
-    }
-
-    const currentProvider = availableProviders.find(p => p.id === selectedProvider) || availableProviders[0];
-
+  const currentProvider = React.useMemo(() => {
     return (
-        <div className={cn("flex flex-col gap-1.5", className)}>
-            {!hideLabel && (
-                <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
-                    AI Architect Model
-                </label>
-            )}
-            <Select value={selectedModel} onValueChange={handleModelChange}>
-                <SelectTrigger className="w-[280px] h-12 rounded-[1.25rem] bg-background border-none shadow-xl ring-1 ring-border/50 hover:ring-primary/20 transition-all font-bold group">
-                    <div className="flex items-center gap-2.5">
-                        <div className={cn("p-1.5 rounded-lg transition-colors shrink-0", currentProvider.bgColor)}>
-                            <currentProvider.icon className={cn("h-4 w-4", currentProvider.color)} />
-                        </div>
-                        <div className="flex items-center min-w-0">
-                            {(() => {
-                                const allModels = availableProviders.flatMap(p => p.models);
-                                const found = allModels.find(m => m.id === selectedModel);
-                                return (
-                                    <span className="text-sm font-bold text-foreground truncate">
-                                        {found?.name || 'Select Model'}
-                                    </span>
-                                );
-                            })()}
-                        </div>
-                    </div>
-                </SelectTrigger>
-                <SelectContent 
-                    className="rounded-[1.5rem] border-none shadow-2xl p-2 bg-background/95 backdrop-blur-xl"
-                    style={{ zIndex: 100000 }}
-                >
-                    {availableProviders.map((provider) => (
-                        <SelectGroup key={provider.id}>
-                            <SelectLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/60">
-                                <provider.icon className={cn("h-3 w-3", provider.color)} />
-                                {provider.name}
-                            </SelectLabel>
-                            {provider.models.map((model) => (
-                                <SelectItem 
-                                    key={model.id} 
-                                    value={model.id}
-                                    className="rounded-xl py-2 px-3 focus:bg-primary/5 cursor-pointer"
-                                >
-                                    <span className="font-bold text-sm tracking-tight">{model.name}</span>
-                                </SelectItem>
-                            ))}
-                        </SelectGroup>
-                    ))}
-                </SelectContent>
-            </Select>
-        </div>
+      filteredProviders.find((p) => p.id === modelDefinition.provider) ||
+      filteredProviders[0] ||
+      AiModelRegistry.getProviders()[0]
     );
+  }, [filteredProviders, modelDefinition.provider]);
+
+  const CurrentProviderIcon =
+    PROVIDER_ICONS[currentProvider?.iconName || 'Sparkles'] || Sparkles;
+
+  // Fallback badge if no providers match organization requirements
+  if (filteredProviders.length === 0) {
+    return (
+      <div className={cn('flex flex-col gap-1.5', className)}>
+        {!hideLabel && (
+          <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground ml-1">
+            Workspace AI Model
+          </label>
+        )}
+        <div className="flex items-center gap-2.5 p-3 min-h-[44px] bg-blue-500/5 border border-blue-500/15 text-blue-600 dark:text-blue-400 rounded-2xl text-xs font-semibold w-full max-w-[280px]">
+          <Sparkles className="w-4 h-4 shrink-0 text-blue-500" />
+          <span className="truncate">System Default: {modelDefinition.name}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={cn('flex flex-col gap-1.5', className)}>
+      {!hideLabel && (
+        <div className="flex items-center justify-between ml-1">
+          <label className="text-[10px] font-black uppercase tracking-wider text-muted-foreground">
+            Workspace AI Model
+          </label>
+          {modelDefinition.isFlagship && (
+            <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+              Flagship
+            </span>
+          )}
+        </div>
+      )}
+
+      <Select
+        value={modelId}
+        onValueChange={handleSelect}
+        disabled={isUpdating}
+      >
+        <SelectTrigger
+          aria-label="Select Workspace AI Model"
+          className={cn(
+            'w-full max-w-[300px] min-h-[44px] h-11 rounded-2xl bg-background border border-border/70 shadow-sm',
+            'hover:border-primary/40 focus:ring-2 focus:ring-primary/20 transition-all duration-200',
+            'active:scale-[0.97] font-medium text-left group'
+          )}
+        >
+          <div className="flex items-center gap-2.5 min-w-0 pr-2">
+            <div
+              className={cn(
+                'p-1.5 rounded-xl transition-colors shrink-0',
+                currentProvider.bgColor
+              )}
+            >
+              <CurrentProviderIcon className={cn('h-3.5 w-3.5', currentProvider.textColor)} />
+            </div>
+            <div className="flex flex-col min-w-0 text-left">
+              <span className="text-xs font-bold text-foreground truncate leading-tight">
+                {modelDefinition.name}
+              </span>
+              <span className="text-[10px] text-muted-foreground truncate leading-none mt-0.5">
+                {currentProvider.name}
+              </span>
+            </div>
+          </div>
+        </SelectTrigger>
+
+        <SelectContent
+          className="rounded-2xl border border-border/80 shadow-2xl p-2 bg-background/95 backdrop-blur-xl max-h-[380px]"
+          style={{ zIndex: 100000 }}
+        >
+          {filteredProviders.map((provider) => {
+            const ProviderIcon = PROVIDER_ICONS[provider.iconName] || Sparkles;
+            return (
+              <SelectGroup key={provider.id}>
+                <SelectLabel className="flex items-center gap-2 px-3 py-2 text-[10px] font-black uppercase tracking-wider text-muted-foreground/70">
+                  <ProviderIcon className={cn('h-3 w-3', provider.textColor)} />
+                  {provider.name}
+                </SelectLabel>
+
+                {provider.models.map((model) => {
+                  const isSelected = model.id === modelId;
+                  return (
+                    <SelectItem
+                      key={model.id}
+                      value={model.id}
+                      className={cn(
+                        'min-h-[44px] rounded-xl py-2 px-3 focus:bg-primary/5 cursor-pointer transition-all duration-150',
+                        'active:scale-[0.98]'
+                      )}
+                    >
+                      <div className="flex items-start justify-between w-full gap-2 pr-1">
+                        <div className="flex flex-col min-w-0 text-left">
+                          <div className="flex items-center gap-1.5">
+                            <span className="font-bold text-xs tracking-tight text-foreground">
+                              {model.name}
+                            </span>
+                            {model.isFlagship && (
+                              <span className="text-[8px] font-bold px-1.5 py-0.2 bg-emerald-500/10 text-emerald-600 rounded">
+                                Recommended
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">
+                            {model.description}
+                          </span>
+                        </div>
+                        {isSelected && (
+                          <Check className="w-3.5 h-3.5 text-primary shrink-0 mt-0.5" />
+                        )}
+                      </div>
+                    </SelectItem>
+                  );
+                })}
+              </SelectGroup>
+            );
+          })}
+        </SelectContent>
+      </Select>
+    </div>
+  );
 }

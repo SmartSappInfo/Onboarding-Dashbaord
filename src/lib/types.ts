@@ -587,8 +587,24 @@ export interface Workspace {
   leadScoringSettings?: LeadScoringSettings;
   /** Default copywriting framework for HeadlineIQ scoring and suggestions */
   defaultCopywritingFramework?: 'aida' | '4us' | 'pas';
+  /** Persistent AI model configuration for the workspace (Single Source of Truth) */
+  aiSettings?: WorkspaceAiSettings;
   createdAt: string;
   updatedAt: string;
+}
+
+/**
+ * Workspace-level persistent AI settings.
+ * Single source of truth for the workspace's active and specialized AI models.
+ */
+export interface WorkspaceAiSettings {
+  preferredProvider: 'googleai' | 'anthropic' | 'openrouter';
+  preferredModelId: string;
+  reasoningModelId?: string;
+  fastModelId?: string;
+  organizationId?: string;
+  updatedAt: string;
+  updatedBy?: string;
 }
 
 export interface HeadlineIQAnalysis {
