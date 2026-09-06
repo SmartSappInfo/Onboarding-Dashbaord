@@ -69,8 +69,12 @@ export class KnowledgeInboxRepository {
    * Batched creation of multiple inbox suggestions with deduplication.
    */
   static async batchCreateInboxItems(
-    items: Array<Omit<KnowledgeInboxItem, 'id' | 'createdAt' | 'updatedAt'>>
+    workspaceIdOrItems: string | Array<Omit<KnowledgeInboxItem, 'id' | 'createdAt' | 'updatedAt'>>,
+    maybeItems?: Array<Omit<KnowledgeInboxItem, 'id' | 'createdAt' | 'updatedAt'>>
   ): Promise<number> {
+    const items = Array.isArray(workspaceIdOrItems)
+      ? workspaceIdOrItems
+      : (maybeItems || []);
     if (!items || items.length === 0) return 0;
 
     const now = new Date().toISOString();
@@ -225,8 +229,12 @@ export class KnowledgeInboxRepository {
    * Batched creation of multiple insights.
    */
   static async batchCreateInsights(
-    insights: Array<Omit<KnowledgeInsight, 'id' | 'createdAt' | 'updatedAt'>>
+    workspaceIdOrInsights: string | Array<Omit<KnowledgeInsight, 'id' | 'createdAt' | 'updatedAt'>>,
+    maybeInsights?: Array<Omit<KnowledgeInsight, 'id' | 'createdAt' | 'updatedAt'>>
   ): Promise<number> {
+    const insights = Array.isArray(workspaceIdOrInsights)
+      ? workspaceIdOrInsights
+      : (maybeInsights || []);
     if (!insights || insights.length === 0) return 0;
 
     const now = new Date().toISOString();

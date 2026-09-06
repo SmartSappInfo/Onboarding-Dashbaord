@@ -35,10 +35,10 @@ export function ContradictionBanner({
             </Badge>
           </div>
           <p className="text-muted-foreground leading-relaxed">
-            {contradiction.explanation || `Thesis "${contradiction.thesis.claim}" conflicts with "${contradiction.antithesis.claim}".`}
+            {contradiction.explanation || `Thesis "${contradiction.thesis?.claim || contradiction.thesisClaim || 'Target Note'}" conflicts with "${contradiction.antithesis?.claim || contradiction.antithesisClaim || 'Candidate Note'}".`}
           </p>
           <div className="text-[11px] text-foreground font-semibold">
-            Conflicting record: <em>"{contradiction.antithesis.sourceTitle || 'Other Note'}"</em>
+            Conflicting record: <em>"{contradiction.antithesis?.sourceTitle || contradiction.conflictTopic || 'Other Note'}"</em>
           </div>
         </div>
       </div>

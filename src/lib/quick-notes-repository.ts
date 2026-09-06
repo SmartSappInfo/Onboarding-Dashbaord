@@ -2,11 +2,15 @@ import { adminDb } from '@/lib/firebase-admin';
 import { extractPlainText, dedupeTags, pruneUndefined } from './quick-notes-domain';
 import {
   QUICK_NOTES_COLLECTION,
+  QUICK_NOTE_CATEGORIES_COLLECTION,
   NOTE_CONTENT_VERSION,
   type QuickNote,
+  type QuickNoteCategory,
   type QuickNoteAiMeta,
   type QuickNoteCreateInput,
   type QuickNoteUpdateInput,
+  type NoteDocument,
+  type KnowledgeType,
 } from './quick-notes-types';
 
 /**
@@ -170,17 +174,99 @@ export class QuickNoteRepository {
 
   static async listByWorkspace(
     workspaceId: string,
-    options: ListByWorkspaceOptions = {}
+    options: ListByWorkspaceOptions | number = {}
   ): Promise<QuickNote[]> {
+    const opts: ListByWorkspaceOptions = typeof options === 'number' ? { limit: options } : options;
     let query = this.collection.where('workspaceId', '==', workspaceId);
-    if (options.categoryId) {
-      query = query.where('categoryId', '==', options.categoryId);
+    if (opts.categoryId) {
+      query = query.where('categoryId', '==', opts.categoryId);
     }
     query = query.orderBy('isPinned', 'desc').orderBy('updatedAt', 'desc');
-    if (options.limit) query = query.limit(options.limit);
+    if (opts.limit) query = query.limit(opts.limit);
 
     const snap = await query.get();
     return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<QuickNote, 'id'>) }));
+  }
+
+  /**
+   * Convenience alias for listByWorkspace.
+   */
+  static async getByWorkspace(
+    workspaceId: string,
+    options: ListByWorkspaceOptions | number = {}
+  ): Promise<QuickNote[]> {
+    return this.listByWorkspace(workspaceId, options);
+  }
+
+  static async createNote(params: {
+    workspaceId: string;
+    organizationId?: string;
+    title: string;
+    document?: NoteDocument;
+    content?: NoteDocument;
+    plainText?: string;
+    knowledgeType?: KnowledgeType;
+    categoryId?: string;
+    tags?: string[];
+    color?: string;
+    isPinned?: boolean;
+    isArchived?: boolean;
+    links?: QuickNote['links'];
+    createdBy?: string;
+    createdByName?: string;
+  }): Promise<QuickNote> {
+    const doc = params.content || params.document || { type: 'doc', content: [] };
+    return this.create({
+      workspaceId: params.workspaceId,
+      organizationId: params.organizationId || 'default-org',
+      createdBy: params.createdBy || 'system',
+      createdByName: params.createdByName || 'System',
+      input: {
+        title: params.title,
+        content: doc,
+        categoryId: params.categoryId,
+        tags: params.tags || [],
+        links: params.links || {},
+        attachments: [],
+        knowledgeType: params.knowledgeType || 'note',
+        visibility: 'workspace',
+        status: params.isArchived ? 'archived' : 'active',
+      },
+    });
+  }
+
+  static async updateNote(
+    noteId: string,
+    params: {
+      title?: string;
+      document?: NoteDocument;
+      content?: NoteDocument;
+      knowledgeType?: KnowledgeType;
+      categoryId?: string;
+      tags?: string[];
+      color?: string;
+      isPinned?: boolean;
+      isArchived?: boolean;
+      links?: QuickNote['links'];
+    }
+  ): Promise<QuickNote | null> {
+    const doc = params.content || params.document;
+    return this.update({
+      noteId,
+      input: {
+        title: params.title,
+        content: doc,
+        knowledgeType: params.knowledgeType,
+        categoryId: params.categoryId,
+        tags: params.tags,
+        links: params.links,
+        status: params.isArchived !== undefined ? (params.isArchived ? 'archived' : 'active') : undefined,
+      },
+    });
+  }
+
+  static async deleteNote(noteId: string): Promise<void> {
+    return this.delete(noteId);
   }
 
   /**
@@ -191,6 +277,36 @@ export class QuickNoteRepository {
     options: ListByWorkspaceOptions = {}
   ): Promise<QuickNote[]> {
     return this.listByWorkspace(workspaceId, options);
+  }
+
+  static async listCategories(workspaceId: string): Promise<QuickNoteCategory[]> {
+    const snap = await adminDb
+      .collection(QUICK_NOTE_CATEGORIES_COLLECTION)
+      .where('workspaceId', '==', workspaceId)
+      .orderBy('order', 'asc')
+      .get();
+    return snap.docs.map((doc) => ({ id: doc.id, ...(doc.data() as Omit<QuickNoteCategory, 'id'>) }));
+  }
+
+  static async batchCreateNotes(notes: QuickNote[]): Promise<number> {
+    if (notes.length === 0) return 0;
+    const MAX_BATCH_SIZE = 450;
+    let savedCount = 0;
+
+    for (let i = 0; i < notes.length; i += MAX_BATCH_SIZE) {
+      const chunk = notes.slice(i, i + MAX_BATCH_SIZE);
+      const batch = adminDb.batch();
+
+      for (const note of chunk) {
+        const ref = this.collection.doc(note.id);
+        batch.set(ref, pruneUndefined(note as unknown as Record<string, unknown>));
+        savedCount++;
+      }
+
+      await batch.commit();
+    }
+
+    return savedCount;
   }
 }
 

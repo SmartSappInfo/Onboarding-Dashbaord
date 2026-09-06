@@ -340,7 +340,7 @@ export async function askSmartSappKnowledgeAction(
         timestamp: c.timestamp,
         excerpt: c.excerpt,
         relevanceScore: c.relevanceScore,
-        originHref: c.originHref,
+        originHref: c.originHref ?? null,
       })),
       recommendedActions: flowResult.recommendedActions.map((a) => ({
         title: a.title,

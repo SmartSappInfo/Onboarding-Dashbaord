@@ -118,44 +118,35 @@ export async function POST(req: NextRequest) {
     }
 
     const { sanitizedPayload, document } = validation;
-    const now = new Date().toISOString();
-    const noteId = `note_ingest_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
 
-    // 6. Construct QuickNote Entity
-    const note: QuickNote = {
-      id: noteId,
+    // 6. Persist to Firestore & Update Search Index
+    const createdNote = await QuickNotesRepository.createNote({
       workspaceId,
       title: sanitizedPayload.title,
-      document,
-      categoryName: sanitizedPayload.categoryName || 'Inbound Webhooks',
+      content: document,
       tags: sanitizedPayload.tags || ['inbox', sanitizedPayload.source],
       knowledgeType: 'note',
-      sentiment: 'neutral',
       isPinned: false,
       isArchived: false,
-      authorId: createdBy,
-      authorName: sanitizedPayload.sourceAuthor || `Webhook (${sanitizedPayload.source})`,
+      createdBy,
+      createdByName: sanitizedPayload.sourceAuthor || `Webhook (${sanitizedPayload.source})`,
       links: {
-        entityId: sanitizedPayload.entityId,
-        contactId: sanitizedPayload.contactId,
-        dealId: sanitizedPayload.dealId,
+        schoolIds: sanitizedPayload.entityId ? [sanitizedPayload.entityId] : [],
+        contactIds: sanitizedPayload.contactId ? [sanitizedPayload.contactId] : [],
+        dealIds: sanitizedPayload.dealId ? [sanitizedPayload.dealId] : [],
       },
-      createdAt: now,
-      updatedAt: now,
-    };
+    });
 
-    // 7. Persist to Firestore & Update Search Index
-    await QuickNotesRepository.create(note);
-    await NoteIndexRepository.projectMany([note]);
+    await NoteIndexRepository.projectOne(createdNote);
 
     return NextResponse.json(
       {
         success: true,
-        noteId: note.id,
-        title: note.title,
+        noteId: createdNote.id,
+        title: createdNote.title,
         source: sanitizedPayload.source,
         workspaceId,
-        createdAt: note.createdAt,
+        createdAt: createdNote.createdAt,
       },
       { status: 201 }
     );

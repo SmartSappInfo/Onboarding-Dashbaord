@@ -84,15 +84,15 @@ export function InboxReviewDrawer({
               <div className="space-y-2">
                 <div className="p-3 rounded-xl border border-border/70 bg-card">
                   <span className="text-[10px] font-bold text-primary block mb-0.5 uppercase">
-                    Thesis ({item.contradictionDetails.thesis.sourceTitle || 'Target Record'})
+                    Thesis ({item.contradictionDetails.thesis?.sourceTitle || 'Target Record'})
                   </span>
-                  <p className="text-xs italic text-foreground">"{item.contradictionDetails.thesis.quote}"</p>
+                  <p className="text-xs italic text-foreground">"{item.contradictionDetails.thesis?.quote || item.contradictionDetails.thesisQuote || item.contradictionDetails.thesisClaim || ''}"</p>
                 </div>
                 <div className="p-3 rounded-xl border border-border/70 bg-card">
                   <span className="text-[10px] font-bold text-destructive block mb-0.5 uppercase">
-                    Antithesis ({item.contradictionDetails.antithesis.sourceTitle || 'Candidate Record'})
+                    Antithesis ({item.contradictionDetails.antithesis?.sourceTitle || 'Candidate Record'})
                   </span>
-                  <p className="text-xs italic text-foreground">"{item.contradictionDetails.antithesis.quote}"</p>
+                  <p className="text-xs italic text-foreground">"{item.contradictionDetails.antithesis?.quote || item.contradictionDetails.antithesisQuote || item.contradictionDetails.antithesisClaim || ''}"</p>
                 </div>
               </div>
               {item.contradictionDetails.suggestedResolution && (

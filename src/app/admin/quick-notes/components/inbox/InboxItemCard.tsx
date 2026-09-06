@@ -140,13 +140,13 @@ export function InboxItemCard({
                 <span className="text-[10px] font-bold text-muted-foreground block mb-0.5 uppercase tracking-wider">
                   Thesis (Current Record)
                 </span>
-                <p className="text-xs italic text-foreground">"{item.contradictionDetails.thesis.quote}"</p>
+                <p className="text-xs italic text-foreground">"{item.contradictionDetails.thesis?.quote || item.contradictionDetails.thesisQuote || item.contradictionDetails.thesisClaim || ''}"</p>
               </div>
               <div className="p-2.5 rounded-lg bg-card border border-border/60">
                 <span className="text-[10px] font-bold text-muted-foreground block mb-0.5 uppercase tracking-wider">
-                  Antithesis ({item.contradictionDetails.antithesis.sourceTitle || 'Other Record'})
+                  Antithesis ({item.contradictionDetails.antithesis?.sourceTitle || 'Other Record'})
                 </span>
-                <p className="text-xs italic text-foreground">"{item.contradictionDetails.antithesis.quote}"</p>
+                <p className="text-xs italic text-foreground">"{item.contradictionDetails.antithesis?.quote || item.contradictionDetails.antithesisQuote || item.contradictionDetails.antithesisClaim || ''}"</p>
               </div>
             </div>
           </div>

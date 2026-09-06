@@ -2923,16 +2923,22 @@ export function serializeKnowledgeToMarkdownArchive(params: {
 
   // 1. Serialize Notes
   for (const note of params.notes) {
-    const plainContent = extractPlainTextFromTipTap(note.document);
+    const noteDoc =
+      (note as { document?: NoteDocument }).document ||
+      (typeof note.content === 'object' && note.content ? (note.content as NoteDocument) : undefined);
+    const plainContent = note.plainText || extractPlainTextFromTipTap(noteDoc);
+    const category = (note as { categoryName?: string }).categoryName || note.categoryId || 'General';
+    const author = (note as { authorName?: string }).authorName || note.createdByName || 'User';
+    const sentiment = note.ai?.sentiment || (note as { sentiment?: string }).sentiment || 'neutral';
     const frontmatter = [
       '---',
       `id: "${note.id}"`,
       `title: "${note.title.replace(/"/g, '\\"')}"`,
       `type: "${note.knowledgeType || 'note'}"`,
-      `category: "${note.categoryName || 'General'}"`,
+      `category: "${category}"`,
       `tags: [${(note.tags || []).map((t) => `"${t}"`).join(', ')}]`,
-      `sentiment: "${note.sentiment || 'neutral'}"`,
-      `author: "${note.authorName || 'User'}"`,
+      `sentiment: "${sentiment}"`,
+      `author: "${author}"`,
       `createdAt: "${note.createdAt}"`,
       `updatedAt: "${note.updatedAt}"`,
       ...(note.links?.entityId ? [`entityId: "${note.links.entityId}"`] : []),
@@ -2952,22 +2958,26 @@ export function serializeKnowledgeToMarkdownArchive(params: {
   // 2. Serialize Ideas
   if (params.ideas) {
     for (const idea of params.ideas) {
+      const stage = (idea as { stage?: string }).stage || idea.lifecycleStage || 'discovery';
+      const effort = (idea as { ease?: number }).ease || idea.effort || 5;
+      const summaryText = (idea as { description?: string }).description || idea.summary || idea.proposedSolution || 'N/A';
+      const problemText = (idea as { problemStatement?: string }).problemStatement || idea.problem || 'N/A';
       const frontmatter = [
         '---',
         `id: "${idea.id}"`,
         `title: "${idea.title.replace(/"/g, '\\"')}"`,
         `type: "idea"`,
-        `stage: "${idea.stage}"`,
+        `stage: "${stage}"`,
         `iceScore: ${idea.iceScore}`,
         `impact: ${idea.impact}`,
         `confidence: ${idea.confidence}`,
-        `ease: ${idea.ease}`,
+        `ease: ${effort}`,
         `tags: [${(idea.tags || []).map((t) => `"${t}"`).join(', ')}]`,
         `createdAt: "${idea.createdAt}"`,
         '---',
       ].join('\n');
 
-      const markdownBody = `${frontmatter}\n\n# ${idea.title}\n\n## Description\n${idea.description}\n\n## Problem Statement\n${idea.problemStatement || 'N/A'}\n\n## Target Audience\n${idea.targetAudience || 'N/A'}\n`;
+      const markdownBody = `${frontmatter}\n\n# ${idea.title}\n\n## Description\n${summaryText}\n\n## Problem Statement\n${problemText}\n`;
       const safeSlug = idea.title.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 50) || idea.id;
       files.push({
         filename: `ideas/${safeSlug}.md`,
@@ -3004,19 +3014,21 @@ export function serializeKnowledgeToMarkdownArchive(params: {
   // 4. Serialize Insights
   if (params.insights) {
     for (const insight of params.insights) {
+      const insightType = (insight as { insightType?: string }).insightType || insight.type || 'trend';
       const frontmatter = [
         '---',
         `id: "${insight.id}"`,
         `title: "${insight.title.replace(/"/g, '\\"')}"`,
         `type: "insight"`,
-        `insightType: "${insight.insightType}"`,
+        `insightType: "${insightType}"`,
         `severity: "${insight.severity}"`,
         `status: "${insight.status}"`,
         `createdAt: "${insight.createdAt}"`,
         '---',
       ].join('\n');
 
-      const markdownBody = `${frontmatter}\n\n# Strategic Insight: ${insight.title}\n\n## Executive Summary\n${insight.summary}\n\n## Core Findings\n${(insight.findings || []).map((f) => `- ${f}`).join('\n')}\n`;
+      const findingsList = (insight as { findings?: string[] }).findings || (insight.evidenceSources || []).map((e) => `${e.title}: ${e.quote}`);
+      const markdownBody = `${frontmatter}\n\n# Strategic Insight: ${insight.title}\n\n## Executive Summary\n${insight.summary}\n\n## Core Findings\n${findingsList.map((f: string) => `- ${f}`).join('\n')}\n`;
       const safeSlug = insight.title.toLowerCase().replace(/[^a-z0-9_-]+/g, '-').slice(0, 50) || insight.id;
       files.push({
         filename: `insights/${safeSlug}.md`,
@@ -3250,22 +3262,35 @@ export function resolveFederationConflict(params: {
 
     case 'manual_inbox_review':
     default: {
-      const localText = extractPlainTextFromTipTap(localNote.document);
-      const remoteText = extractPlainTextFromTipTap(remoteNote.document);
+      const localText = localNote.plainText || extractPlainTextFromTipTap(localNote.content);
+      const remoteText = remoteNote.plainText || extractPlainTextFromTipTap(remoteNote.content);
       const inboxPayload: Partial<KnowledgeInboxItem> = {
         workspaceId: localNote.workspaceId,
         type: 'contradiction',
         status: 'pending',
         title: `Federation Conflict: "${localNote.title}"`,
-        summary: `Conflicting updates detected between local workspace copy and upstream federated space.`,
-        sourceNoteIds: [localNote.id, remoteNote.id],
+        description: `Conflicting updates detected between local workspace copy and upstream federated space.`,
+        sourceKnowledgeId: localNote.id,
+        targetKnowledgeId: remoteNote.id,
         contradictionDetails: {
           thesisNoteId: localNote.id,
-          thesisQuote: localText.slice(0, 300),
           antithesisNoteId: remoteNote.id,
+          thesisClaim: localNote.title,
+          antithesisClaim: remoteNote.title,
+          thesisQuote: localText.slice(0, 300),
           antithesisQuote: remoteText.slice(0, 300),
-          conflictTopic: localNote.title,
-          suggestedResolution: 'Review local and upstream edits, then accept the upstream update or retain local branch.',
+          thesis: {
+            claim: localNote.title,
+            sourceId: localNote.id,
+            quote: localText.slice(0, 300),
+          },
+          antithesis: {
+            claim: remoteNote.title,
+            sourceId: remoteNote.id,
+            quote: remoteText.slice(0, 300),
+          },
+          topic: localNote.title,
+          resolutionGuidance: 'Review local and upstream edits, then accept the upstream update or retain local branch.',
         },
         confidence: 0.95,
       };
@@ -3521,7 +3546,12 @@ export function resolveOfflineConflict(params: {
 
   // Conflict detected
   const localDoc = (localJob.payload.document as NoteDocument | undefined) || undefined;
-  const diffSummary = generateDocumentDiffSummary(localDoc, serverSnapshot.document);
+  const serverDoc: NoteDocument | undefined =
+    (serverSnapshot as { document?: NoteDocument }).document ||
+    (typeof serverSnapshot.content === 'object' && serverSnapshot.content
+      ? (serverSnapshot.content as NoteDocument)
+      : undefined);
+  const diffSummary = generateDocumentDiffSummary(localDoc, serverDoc);
 
   const conflictDetails: OfflineConflictDetails = {
     jobId: localJob.id,
@@ -3542,7 +3572,7 @@ export function resolveOfflineConflict(params: {
         conflictDetails,
         resolvedPayload: {
           title: serverSnapshot.title,
-          document: serverSnapshot.document,
+          document: serverDoc,
           tags: serverSnapshot.tags,
           categoryId: serverSnapshot.categoryId,
         },
@@ -3553,7 +3583,7 @@ export function resolveOfflineConflict(params: {
       // Non-destructive 3-way merge: combine documents with a horizontal separator
       const mergedDoc = mergeKnowledgeObjects(
         localDoc,
-        serverSnapshot.document,
+        serverDoc,
         'concatenate'
       );
       const mergedTags = dedupeTags([
@@ -3575,29 +3605,24 @@ export function resolveOfflineConflict(params: {
     case 'send_to_inbox': {
       // Escalate to Phase 7 Knowledge Inbox
       const localText = extractPlainText(localDoc);
-      const serverText = extractPlainText(serverSnapshot.document);
+      const serverText = serverSnapshot.plainText || extractPlainText(serverDoc);
       const inboxPayload: Partial<KnowledgeInboxItem> = {
         workspaceId: localJob.workspaceId,
         type: 'contradiction',
         status: 'pending',
         title: `Offline Sync Conflict: ${serverSnapshot.title}`,
-        summary: `Concurrent offline modifications detected on note "${serverSnapshot.title}".`,
+        description: `Concurrent offline modifications detected on note "${serverSnapshot.title}".`,
         sourceKnowledgeId: serverSnapshot.id,
         confidence: 0.95,
         contradictionDetails: {
           thesisClaim: `Local Client Edits: ${localText.slice(0, 200)}`,
-          antithesisClaim: `Server Cloud Version (by ${serverSnapshot.authorName}): ${serverText.slice(0, 200)}`,
+          antithesisClaim: `Server Cloud Version (by ${(serverSnapshot as { authorName?: string }).authorName || serverSnapshot.createdByName || 'User'}): ${serverText.slice(0, 200)}`,
           conflictingField: 'document',
           sourceQuotes: [localText.slice(0, 150), serverText.slice(0, 150)],
         },
-        suggestedPatches: [
-          {
-            field: 'document',
-            currentValue: serverText.slice(0, 100),
-            suggestedValue: localText.slice(0, 100),
-            rationale: 'Review offline edits against cloud updates.',
-          },
-        ],
+        suggestedPatch: {
+          proposedText: localText.slice(0, 500),
+        },
       };
       return {
         isConflict: true,

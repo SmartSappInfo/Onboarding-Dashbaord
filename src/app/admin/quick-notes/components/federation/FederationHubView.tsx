@@ -39,8 +39,8 @@ import {
   getFederatedKnowledgeFeedAction,
   subscribeToFederatedSpaceAction,
   unsubscribeFromFederatedSpaceAction,
+  cloneFederatedItemToWorkspaceAction,
 } from '@/lib/quick-notes-federation-actions';
-import { QuickNotesRepository } from '@/lib/quick-notes-repository';
 import { listApiKeys } from '@/lib/api-key-actions';
 import {
   getKnowledgeSpaceAccessLevelMeta,
@@ -53,7 +53,6 @@ import { ImportExportModal } from './ImportExportModal';
 import type {
   FederatedKnowledgeSpace,
   FederatedKnowledgeItem,
-  QuickNote,
 } from '@/lib/quick-notes-types';
 
 export function FederationHubView() {
@@ -186,32 +185,18 @@ export function FederationHubView() {
     if (!activeWorkspaceId || !user) return;
     setCopyingItemId(item.id);
     try {
-      const newNote: QuickNote = {
-        id: `note_fed_copy_${Date.now()}`,
+      const res = await cloneFederatedItemToWorkspaceAction({
         workspaceId: activeWorkspaceId,
-        title: `${item.title} (from ${item.sourceSpaceName})`,
-        document: {
-          type: 'doc',
-          content: [
-            {
-              type: 'paragraph',
-              content: [{ type: 'text', text: item.snippet }],
-            },
-          ],
-        },
-        categoryName: item.categoryName || 'Federated Knowledge',
-        tags: [...item.tags, 'federated-copy'],
-        knowledgeType: 'note',
-        sentiment: 'neutral',
-        isPinned: false,
-        isArchived: false,
-        authorId: user.uid,
-        authorName: user.displayName || 'User',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+        organizationId,
+        userId: user.uid,
+        userName: user.displayName || 'User',
+        item,
+      });
 
-      await QuickNotesRepository.create(newNote);
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to clone note');
+      }
+
       toast({
         title: 'Saved to Local Workspace',
         description: `Successfully cloned "${item.title}" into your local notes board.`,

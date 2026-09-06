@@ -91,6 +91,16 @@ export class IdeaRepository {
   }
 
   /**
+   * Fetches an idea by ID directly.
+   */
+  static async getById(ideaId: string): Promise<Idea | null> {
+    const docRef = this.collection.doc(ideaId);
+    const snap = await docRef.get();
+    if (!snap.exists) return null;
+    return snap.data() as Idea;
+  }
+
+  /**
    * Finds an idea associated with a specific QuickNote ID.
    */
   static async getIdeaByKnowledgeObjectId(
@@ -140,6 +150,13 @@ export class IdeaRepository {
 
     const snap = await query.get();
     return snap.docs.map((d) => d.data() as Idea);
+  }
+
+  /**
+   * Convenience method to list ideas by workspace.
+   */
+  static async listByWorkspace(workspaceId: string, limit = 250): Promise<Idea[]> {
+    return this.listIdeas(workspaceId);
   }
 
   /**

@@ -67,7 +67,7 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = (
 
   const localDoc = conflict.localJob.payload.document as NoteDocument | undefined;
   const localText = extractPlainText(localDoc);
-  const serverText = extractPlainText(conflict.serverSnapshot.document);
+  const serverText = conflict.serverSnapshot.plainText || extractPlainText(conflict.serverSnapshot.content);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
@@ -171,7 +171,7 @@ export const ConflictResolutionModal: React.FC<ConflictResolutionModalProps> = (
                 </span>
                 <span className="flex items-center gap-1 font-medium text-foreground">
                   <User className="w-3.5 h-3.5 text-muted-foreground" />
-                  <span>{conflict.serverSnapshot.authorName}</span>
+                  <span>{conflict.serverSnapshot.createdByName || 'Remote Collaborator'}</span>
                 </span>
               </div>
 

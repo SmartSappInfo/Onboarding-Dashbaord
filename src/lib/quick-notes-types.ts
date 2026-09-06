@@ -76,9 +76,17 @@ export type TimelineItemSource =
   | 'quick_note'
   | 'entity_note'
   | 'call'
+  | 'call_note'
   | 'meeting'
   | 'task'
+  | 'task_note'
   | 'activity';
+
+export interface ActionResult<T = unknown> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
 
 /**
  * Normalized item model for the CRM Knowledge Timeline.
@@ -1145,6 +1153,7 @@ export type KnowledgeInboxType =
   | 'link_suggestion'
   | 'duplicate_detection'
   | 'contradiction_detection'
+  | 'contradiction'
   | 'ai_insight'
   | 'action_suggestion'
   | 'idea_suggestion'
@@ -1164,23 +1173,34 @@ export type KnowledgeInboxStatus =
  * Granular breakdown of a contradiction detected between two assertions or documents.
  */
 export interface ContradictionDetails {
-  thesis: {
+  thesis?: {
     claim: string;
     sourceId: string;
     sourceTitle?: string;
     quote: string;
     sourceType?: string;
   };
-  antithesis: {
+  antithesis?: {
     claim: string;
     sourceId: string;
     sourceTitle?: string;
     quote: string;
     sourceType?: string;
   };
-  severity: 'low' | 'medium' | 'high' | 'critical';
-  explanation: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  explanation?: string;
   suggestedResolution?: string;
+  thesisClaim?: string;
+  antithesisClaim?: string;
+  thesisNoteId?: string;
+  antithesisNoteId?: string;
+  thesisQuote?: string;
+  antithesisQuote?: string;
+  conflictTopic?: string;
+  conflictingField?: string;
+  sourceQuotes?: string[];
+  topic?: string;
+  resolutionGuidance?: string;
 }
 
 /**

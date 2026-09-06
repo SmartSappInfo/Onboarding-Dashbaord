@@ -1,7 +1,6 @@
 import * as React from 'react';
 import { useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import { adminDb } from '@/lib/firebase-admin'; // Only available on server, use useDoc for client
 import type { WorkspaceEntity } from '@/lib/types';
 import { useFirestore } from '@/firebase';
 import { Mail, Phone, ExternalLink, Activity, Users, MapPin, Tag } from 'lucide-react';

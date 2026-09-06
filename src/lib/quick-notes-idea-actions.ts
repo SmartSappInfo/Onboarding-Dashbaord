@@ -98,10 +98,10 @@ export async function createIdeaAction(
 
     // If no underlying note exists, create one with knowledgeType: 'idea'
     if (!noteId) {
-      const noteDoc = await QuickNotesRepository.create({
+      const noteDoc = await QuickNotesRepository.createNote({
         workspaceId,
-        authorId,
-        authorName,
+        createdBy: authorId,
+        createdByName: authorName,
         title: payload.title,
         content: {
           type: 'doc',
@@ -199,15 +199,10 @@ export async function updateIdeaAction(
 
     // Sync title/tags to underlying note if changed
     if (updated.knowledgeObjectId && (updates.title || updates.tags)) {
-      await QuickNotesRepository.update(
-        workspaceId,
-        updated.knowledgeObjectId,
-        {
-          ...(updates.title ? { title: updates.title } : {}),
-          ...(updates.tags ? { tags: updates.tags } : {}),
-        },
-        userId
-      );
+      await QuickNotesRepository.updateNote(updated.knowledgeObjectId, {
+        ...(updates.title ? { title: updates.title } : {}),
+        ...(updates.tags ? { tags: updates.tags } : {}),
+      });
     }
 
     return { success: true, data: updated };

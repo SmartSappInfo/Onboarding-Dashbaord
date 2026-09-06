@@ -213,10 +213,12 @@ export default function NoteBlockEditor({
         userId,
       });
 
-      if (res.success && res.data.resultText) {
-        // Append result as a new blockquote / section
-        editor.chain().focus().insertContent(`\n\n> **AI ${action.replace('_', ' ').toUpperCase()}**:\n${res.data.resultText}\n\n`).run();
-        toast({ title: 'AI response inserted ✓' });
+      if (res.success) {
+        if (res.data.resultText) {
+          // Append result as a new blockquote / section
+          editor.chain().focus().insertContent(`\n\n> **AI ${action.replace('_', ' ').toUpperCase()}**:\n${res.data.resultText}\n\n`).run();
+          toast({ title: 'AI response inserted ✓' });
+        }
       } else {
         toast({ title: 'AI assist failed', description: res.error, variant: 'destructive' });
       }

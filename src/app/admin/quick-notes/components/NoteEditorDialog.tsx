@@ -174,7 +174,7 @@ export default function NoteEditorDialog({
         workspaceId,
         userId,
       });
-      if (res.success && res.data) {
+      if (res.success) {
         setKnowledgeType(res.data.suggestedType);
         if (!title.trim() && res.data.suggestedTitle) {
           setTitle(res.data.suggestedTitle);

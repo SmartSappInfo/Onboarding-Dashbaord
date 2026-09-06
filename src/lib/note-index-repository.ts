@@ -3,9 +3,11 @@ import {
   NOTE_INDEX_COLLECTION,
   type NoteIndexRow,
   type UnifiedNote,
+  type QuickNote,
   type KnowledgeType,
   type UnifiedNoteSource,
 } from './quick-notes-types';
+import { quickNoteToUnified } from './quick-notes-domain';
 
 /**
  * Quick Notes — denormalised read-model (`note_index`) projection layer (Phase 4).
@@ -80,6 +82,15 @@ export class NoteIndexRepository {
       if (onBatchComplete) onBatchComplete(written);
     }
     return written;
+  }
+
+  static async projectOne(note: UnifiedNote | QuickNote): Promise<void> {
+    const unified: UnifiedNote = 'source' in note ? (note as UnifiedNote) : quickNoteToUnified(note as QuickNote);
+    return this.projectNote(unified);
+  }
+
+  static async deleteOne(id: string): Promise<void> {
+    await this.collection.doc(this.docId(id)).delete();
   }
 
   static async deleteByUnifiedId(unifiedId: string): Promise<void> {

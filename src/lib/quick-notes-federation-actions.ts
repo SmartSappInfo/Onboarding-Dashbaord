@@ -23,6 +23,7 @@ import {
   deserializeMarkdownArchive,
   filterFederatedKnowledge,
   extractPlainTextFromTipTap,
+  quickNoteToUnified,
 } from './quick-notes-domain';
 import type {
   FederatedKnowledgeSpace,
@@ -204,11 +205,11 @@ export async function exportWorkspaceKnowledgeAction(params: {
 }>> {
   try {
     const [notes, categories, ideas, battlecards, insights] = await Promise.all([
-      QuickNotesRepository.listByWorkspace(params.workspaceId, 1000),
+      QuickNotesRepository.listByWorkspace(params.workspaceId, { limit: 1000 }),
       QuickNotesRepository.listCategories(params.workspaceId),
       IdeaRepository.listByWorkspace(params.workspaceId, 1000),
-      CampaignConceptRepository.listBattlecards(params.workspaceId, 500),
-      KnowledgeInboxRepository.listInsights(params.workspaceId, 500),
+      CampaignConceptRepository.getBattlecardsByWorkspace(params.workspaceId),
+      KnowledgeInboxRepository.getWorkspaceInsights(params.workspaceId, { limit: 500 }),
     ]);
 
     const orgSpaces = await KnowledgeFederationRepository.listSpacesForOrganization(params.organizationId);
@@ -282,17 +283,22 @@ export async function importKnowledgeArchiveAction(params: {
 
       const notesToCreate: QuickNote[] = parsedItems.map((item, idx) => ({
         id: `note_import_${Date.now()}_${idx}_${Math.random().toString(36).slice(2, 6)}`,
+        organizationId: 'default-org',
         workspaceId: params.workspaceId,
         title: item.title,
-        document: item.document,
-        categoryName: item.categoryName,
-        tags: item.tags,
-        knowledgeType: item.knowledgeType,
-        sentiment: 'neutral',
+        content: item.document,
+        plainText: extractPlainTextFromTipTap(item.document),
+        contentVersion: 1,
+        categoryId: undefined,
+        tags: item.tags || [],
+        attachments: [],
+        links: {},
         isPinned: false,
-        isArchived: false,
-        authorId: params.userId,
-        authorName: params.userName || 'Imported User',
+        knowledgeType: item.knowledgeType || 'note',
+        status: 'active',
+        visibility: 'workspace',
+        createdBy: params.userId,
+        createdByName: params.userName || 'Imported User',
         createdAt: now,
         updatedAt: now,
       }));
@@ -301,7 +307,7 @@ export async function importKnowledgeArchiveAction(params: {
       await QuickNotesRepository.batchCreateNotes(notesToCreate);
 
       // Project into search index
-      await NoteIndexRepository.projectMany(notesToCreate);
+      await NoteIndexRepository.projectMany(notesToCreate.map(quickNoteToUnified));
 
       importedCount = notesToCreate.length;
     } else if (params.jsonPackage) {
@@ -313,12 +319,12 @@ export async function importKnowledgeArchiveAction(params: {
           workspaceId: params.workspaceId,
           createdAt: now,
           updatedAt: now,
-          authorId: params.userId,
-          authorName: params.userName || n.authorName || 'Imported User',
+          createdBy: params.userId,
+          createdByName: params.userName || n.createdByName || 'Imported User',
         }));
 
         await QuickNotesRepository.batchCreateNotes(remappedNotes);
-        await NoteIndexRepository.projectMany(remappedNotes);
+        await NoteIndexRepository.projectMany(remappedNotes.map(quickNoteToUnified));
         importedCount = remappedNotes.length;
       }
     } else {
@@ -368,7 +374,7 @@ export async function getFederatedKnowledgeFeedAction(params: {
 
     // Query published notes across owner workspaces
     for (const [ownerWsId, spacesForOwner] of spacesByOwner.entries()) {
-      const notes = await QuickNotesRepository.listByWorkspace(ownerWsId, 50);
+      const notes = await QuickNotesRepository.listByWorkspace(ownerWsId, { limit: 50 });
 
       for (const note of notes) {
         for (const space of spacesForOwner) {
@@ -381,12 +387,12 @@ export async function getFederatedKnowledgeFeedAction(params: {
             feedItems.push({
               id: `${space.id}_${note.id}`,
               title: note.title,
-              snippet: extractPlainTextFromTipTap(note.document).slice(0, 200),
+              snippet: (note.plainText || extractPlainTextFromTipTap(note.content)).slice(0, 200),
               sourceWorkspaceId: note.workspaceId,
               sourceSpaceId: space.id,
               sourceSpaceName: space.name,
-              sourceAuthorName: note.authorName,
-              categoryName: note.categoryName,
+              sourceAuthorName: note.createdByName || 'Workspace Member',
+              categoryName: note.categoryId,
               tags: note.tags || [],
               accessLevel: space.accessLevel,
               updatedAt: note.updatedAt || note.createdAt,
@@ -455,6 +461,58 @@ export async function generateIngestionWebhookKeyAction(params: {
     };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Failed to generate webhook key';
+    return { success: false, error: msg };
+  }
+}
+
+/**
+ * Clones a federated knowledge item into a target workspace as a native QuickNote.
+ */
+export async function cloneFederatedItemToWorkspaceAction(params: {
+  workspaceId: string;
+  organizationId?: string;
+  userId: string;
+  userName?: string;
+  item: FederatedKnowledgeItem;
+}): Promise<ActionResult<{ noteId: string }>> {
+  try {
+    if (!params.workspaceId) {
+      return { success: false, error: 'Workspace ID is required to clone knowledge.' };
+    }
+    const note = await QuickNotesRepository.create({
+      organizationId: params.organizationId || 'default-org',
+      workspaceId: params.workspaceId,
+      createdBy: params.userId,
+      createdByName: params.userName || 'Federation Cloner',
+      input: {
+        title: `${params.item.title} (from ${params.item.sourceSpaceName})`,
+        content: {
+          type: 'doc',
+          content: [
+            {
+              type: 'paragraph',
+              content: [{ type: 'text', text: params.item.snippet }],
+            },
+          ],
+        },
+        tags: [...(params.item.tags || []), 'federated-copy'],
+        attachments: [],
+        links: {},
+        knowledgeType: 'note',
+        status: 'active',
+        visibility: 'workspace',
+      },
+    });
+
+    try {
+      await NoteIndexRepository.projectNote(quickNoteToUnified(note));
+    } catch {
+      // Non-blocking projection fallback
+    }
+
+    return { success: true, data: { noteId: note.id } };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to clone federated item';
     return { success: false, error: msg };
   }
 }

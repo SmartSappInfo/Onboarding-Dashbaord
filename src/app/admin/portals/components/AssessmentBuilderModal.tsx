@@ -22,7 +22,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { adminDb } from '@/lib/firebase-admin';
 import type {
   CourseAssessment,
   AssessmentQuestion,

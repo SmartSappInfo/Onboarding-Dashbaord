@@ -10,6 +10,7 @@ import {
   type ObjectionBattlecard,
   type CampaignChannel,
   type KnowledgeInsight,
+  type QuickNote,
 } from './quick-notes-types';
 import {
   extractObjectionClusters,
@@ -104,23 +105,28 @@ export async function generateCampaignConceptAction(
     if (options.ideaId) {
       const idea = await IdeaRepository.getById(options.ideaId);
       if (idea && idea.workspaceId === workspaceId) {
+        const audienceNames = [
+          ...(idea.targetAudience?.contactNames || []),
+          ...(idea.targetAudience?.schoolNames || []),
+        ].filter(Boolean).join(', ');
+
         sourceIdeaData = {
           id: idea.id,
           title: idea.title,
-          problemStatement: idea.problemStatement,
+          problemStatement: idea.problem,
           proposedSolution: idea.proposedSolution,
-          targetAudience: idea.targetAudience,
-          valueProposition: idea.valueProposition,
+          targetAudience: audienceNames || undefined,
+          valueProposition: idea.summary,
         };
       }
     }
 
     // Fetch qualitative notes in workspace
-    const allNotes = await QuickNotesRepository.getByWorkspace(workspaceId);
+    const allNotes: QuickNote[] = await QuickNotesRepository.getByWorkspace(workspaceId);
     const validNotes = allNotes
-      .filter((n) => !n.isArchived && (options.noteIds ? options.noteIds.includes(n.id) : true))
+      .filter((n: QuickNote) => n.status !== 'archived' && (options.noteIds ? options.noteIds.includes(n.id) : true))
       .slice(0, 30)
-      .map((n) => ({
+      .map((n: QuickNote) => ({
         id: n.id,
         title: n.title || 'Untitled Note',
         content: extractPlainText(n.content),
@@ -176,7 +182,7 @@ export async function generateCampaignConceptAction(
       callToAction: aiResult.callToAction,
       sourceIdeaId: sourceIdeaData?.id,
       sourceIdeaTitle: sourceIdeaData?.title,
-      sourceKnowledgeIds: validNotes.slice(0, 5).map((n) => n.id),
+      sourceKnowledgeIds: validNotes.slice(0, 5).map((n: { id: string }) => n.id),
       status: 'draft',
       relevanceScore,
       createdBy: userId,
@@ -383,11 +389,11 @@ export async function generateWorkspaceBattlecardsAction(
   if (!rate.allowed) return { success: false, error: rate.reason };
 
   try {
-    const allNotes = await QuickNotesRepository.getByWorkspace(workspaceId);
+    const allNotes: QuickNote[] = await QuickNotesRepository.getByWorkspace(workspaceId);
     const validNotes = allNotes
-      .filter((n) => !n.isArchived)
+      .filter((n: QuickNote) => n.status !== 'archived')
       .slice(0, 40)
-      .map((n) => ({
+      .map((n: QuickNote) => ({
         id: n.id,
         title: n.title || 'Untitled Note',
         content: extractPlainText(n.content),

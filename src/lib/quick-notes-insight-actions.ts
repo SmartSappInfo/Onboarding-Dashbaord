@@ -12,6 +12,7 @@ import {
   type InsightFilterOptions,
   type MergeStrategy,
   type SuggestedPatch,
+  type QuickNote,
 } from './quick-notes-types';
 import {
   detectLexicalDuplicates,
@@ -106,19 +107,21 @@ export async function reviewInboxItemAction(
       await KnowledgeRelationRepository.createRelation({
         workspaceId,
         fromObjectId: item.sourceKnowledgeId,
+        fromObjectType: 'note',
         toObjectId: item.targetKnowledgeId,
+        toObjectType: 'note',
         relationType: item.suggestedPatch.relationType,
         confidence: item.confidence,
-        provenance: 'ai_suggested',
-        reasoning: item.description,
+        source: 'ai',
+        metadata: { reasoning: item.description },
         createdBy: userId,
       });
     }
 
     // If accepted and has category/tag patch, apply to quick_notes
     if (resolution === 'accept' && item.type === 'classification' && patch && item.sourceKnowledgeId) {
-      await QuickNotesRepository.update(item.sourceKnowledgeId, {
-        category: patch.category,
+      await QuickNotesRepository.updateNote(item.sourceKnowledgeId, {
+        categoryId: patch.category,
         tags: patch.tags,
       });
     }
@@ -187,8 +190,8 @@ export async function scanDuplicatesAction(
     }
 
     // Pre-fetch candidate notes in same workspace
-    const allNotes = await QuickNotesRepository.getByWorkspace(workspaceId);
-    const candidateNotes = allNotes.filter((n) => n.id !== targetNoteId && !n.isArchived);
+    const allNotes: QuickNote[] = await QuickNotesRepository.getByWorkspace(workspaceId);
+    const candidateNotes = allNotes.filter((n: QuickNote) => n.id !== targetNoteId && n.status !== 'archived');
 
     // Pure lexical pre-filter to narrow candidates
     const lexicalCandidates: Array<{ id: string; title: string; content: string }> = [];
@@ -287,11 +290,11 @@ export async function detectWorkspaceContradictionsAction(
       return { success: true, contradictionsFound: 0 };
     }
 
-    const allNotes = await QuickNotesRepository.getByWorkspace(workspaceId);
+    const allNotes: QuickNote[] = await QuickNotesRepository.getByWorkspace(workspaceId);
     const candidateNotes = allNotes
-      .filter((n) => n.id !== targetNoteId && !n.isArchived)
+      .filter((n: QuickNote) => n.id !== targetNoteId && n.status !== 'archived')
       .slice(0, 20)
-      .map((n) => ({
+      .map((n: QuickNote) => ({
         id: n.id,
         title: n.title || 'Untitled Note',
         type: n.knowledgeType || 'note',
@@ -380,14 +383,14 @@ export async function generateWorkspaceInsightsAction(
   if (!rate.allowed) return { success: false, error: rate.reason };
 
   try {
-    const allNotes = await QuickNotesRepository.getByWorkspace(workspaceId);
-    const validNotes = allNotes.filter((n) => !n.isArchived).slice(0, 40);
+    const allNotes: QuickNote[] = await QuickNotesRepository.getByWorkspace(workspaceId);
+    const validNotes = allNotes.filter((n: QuickNote) => n.status !== 'archived').slice(0, 40);
 
     if (validNotes.length === 0) {
       return { success: true, insightsCount: 0 };
     }
 
-    const payload = validNotes.map((n) => ({
+    const payload = validNotes.map((n: QuickNote) => ({
       id: n.id,
       title: n.title || 'Untitled Note',
       type: n.knowledgeType || 'note',
@@ -477,14 +480,14 @@ export async function mergeDuplicateNotesAction(
     };
 
     // Update target note with combined payload
-    await QuickNotesRepository.update(targetNoteId, {
+    await QuickNotesRepository.updateNote(targetNoteId, {
       content: mergedContent,
       tags: combinedTags,
       links: combinedLinks,
     });
 
     // Soft-archive source note with merge reference
-    await QuickNotesRepository.update(sourceNoteId, {
+    await QuickNotesRepository.updateNote(sourceNoteId, {
       isArchived: true,
     });
 
@@ -511,6 +514,7 @@ export async function convertInsightToIdeaAction(
     const newIdea = await IdeaRepository.createIdea({
       workspaceId,
       organizationId: 'org-default',
+      knowledgeObjectId: insight.evidenceSources?.[0]?.id || insight.id,
       title: insight.title,
       summary: insight.summary,
       problem: insight.summary,

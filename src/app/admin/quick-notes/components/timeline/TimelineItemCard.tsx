@@ -55,8 +55,10 @@ const SOURCE_ICONS: Record<TimelineItemSource, React.ElementType> = {
   quick_note: Brain,
   entity_note: MessageSquare,
   call: Phone,
+  call_note: Phone,
   meeting: Users,
   task: CheckSquare,
+  task_note: CheckSquare,
   activity: ActivityIcon,
 };
 

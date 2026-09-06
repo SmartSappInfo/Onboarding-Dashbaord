@@ -108,9 +108,13 @@ export async function commitOfflineBatchAction(params: {
 
             // Project into search index
             await NoteIndexRepository.projectOne(newNote);
-            await logQuickNoteActivity(workspaceId, newNote.id, 'created', {
-              noteTitle: newNote.title,
-              source: 'offline_sync',
+            await logQuickNoteActivity({
+              noteId: newNote.id,
+              title: newNote.title,
+              workspaceId,
+              organizationId: newNote.organizationId || 'default-org',
+              createdBy: newNote.createdBy,
+              createdByName: newNote.createdByName,
             });
 
             syncedJobIds.push(job.id);
