@@ -5,7 +5,9 @@ import { logActivity } from './activity-logger';
 import { adminStorage } from './firebase-admin';
 import { getLinkMetadata } from '@/ai/flows/get-link-metadata-flow';
 import { isSafeHttpUrl, clampText } from './quick-notes-domain';
-import type { QuickNote, QuickNoteAttachment, QuickNoteLinks } from './quick-notes-types';
+import { QuickNotesRepository } from './quick-notes-repository';
+import { NoteIndexRepository } from './note-index-repository';
+import type { QuickNote, QuickNoteAttachment, QuickNoteLinks, NoteDocument, KnowledgeType } from './quick-notes-types';
 
 /**
  * Quick Notes — server actions for cross-cutting concerns.
@@ -191,4 +193,54 @@ export async function logQuickNoteCreated(note: QuickNote): Promise<void> {
     contentPreview: note.plainText,
     links: note.links,
   });
+}
+
+export interface CreateQuickNoteActionInput {
+  title: string;
+  content: NoteDocument;
+  knowledgeType?: KnowledgeType;
+  tags?: string[];
+  links?: QuickNoteLinks;
+  categoryId?: string;
+}
+
+/**
+ * Server action to create a QuickNote in the workspace, project it to NoteIndexRepository,
+ * and log to the global activity feed.
+ */
+export async function createQuickNoteAction(
+  workspaceId: string,
+  input: CreateQuickNoteActionInput,
+  userId: string
+): Promise<{ success: boolean; noteId?: string; error?: string }> {
+  try {
+    if (!workspaceId || !userId) {
+      return { success: false, error: 'Workspace ID and User ID are required.' };
+    }
+
+    const note = await QuickNotesRepository.createNote({
+      workspaceId,
+      title: input.title,
+      content: input.content,
+      knowledgeType: input.knowledgeType || 'note',
+      tags: input.tags || [],
+      links: input.links,
+      categoryId: input.categoryId,
+      createdBy: userId,
+    });
+
+    try {
+      await NoteIndexRepository.projectOne(note);
+    } catch (indexErr) {
+      console.warn('[createQuickNoteAction] Search index projection failed:', indexErr);
+    }
+
+    await logQuickNoteCreated(note);
+
+    return { success: true, noteId: note.id };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to create quick note';
+    console.error('[createQuickNoteAction] Error:', error);
+    return { success: false, error: message };
+  }
 }

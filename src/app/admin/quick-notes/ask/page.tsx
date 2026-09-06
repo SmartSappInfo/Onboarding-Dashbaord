@@ -16,7 +16,7 @@ export default function AskKnowledgePage() {
 }
 
 function AskKnowledgePageContent() {
-  const { currentWorkspace } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
   const { user } = useUser();
   const searchParams = useSearchParams();
 
@@ -28,7 +28,7 @@ function AskKnowledgePageContent() {
     <div className="font-figtree">
       <PageContainerFluid className="py-6 px-4 md:px-8">
         <AskSmartSappView
-          workspaceId={currentWorkspace?.id}
+          workspaceId={activeWorkspaceId}
           userId={user?.uid}
           initialQuery={initialQuery}
           entityId={entityId}

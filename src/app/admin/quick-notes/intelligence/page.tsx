@@ -19,11 +19,11 @@ import { useUser } from '@/firebase';
 import { CompanyBrainIntelligenceHub } from '@/components/intelligence/CompanyBrainIntelligenceHub';
 
 function QuickNotesIntelligenceContent() {
-  const { currentWorkspace, currentOrganization } = useWorkspace();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { user } = useUser();
 
-  const workspaceId = currentWorkspace?.id || '';
-  const organizationId = currentOrganization?.id || '';
+  const workspaceId = activeWorkspaceId || '';
+  const organizationId = activeOrganizationId || '';
   const userId = user?.uid || '';
 
   if (!workspaceId || !userId) {

@@ -29,15 +29,16 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { askSmartSappKnowledgeAction } from '@/lib/quick-notes-search-actions';
-import { createTaskAction } from '@/lib/task-actions';
+import { createTaskAction } from '@/lib/task-server-actions';
 import { createQuickNoteAction } from '@/lib/quick-notes-actions';
-import { toast } from '@/components/ui/use-toast';
+import { toast } from '@/hooks/use-toast';
 import type {
   AskKnowledgeResponse,
   RagEvidenceCitation,
   RagActionSuggestion,
   RagConfidence,
 } from '@/lib/quick-notes-types';
+import type { Task, TaskPriority } from '@/lib/types';
 
 export interface AskSmartSappViewProps {
   workspaceId: string | null | undefined;
@@ -144,13 +145,21 @@ export default function AskSmartSappView({
   const handleConvertToTask = async (action: RagActionSuggestion, index: number) => {
     if (!workspaceId || !userId) return;
     try {
-      const result = await createTaskAction({
+      const taskPayload: Omit<Task, 'id' | 'createdAt' | 'updatedAt'> = {
         workspaceId,
         title: action.title,
         description: action.rationale || `Generated from Company Brain query: "${query}"`,
-        priority: action.priority === 'urgent' ? 'high' : action.priority,
+        priority: action.priority as TaskPriority,
+        status: 'todo',
+        category: 'follow_up',
+        assignedTo: userId,
+        entityId: entityId ?? null,
+        entityName: entityName ?? null,
         dueDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      });
+        reminders: [],
+        reminderSent: false,
+      };
+      const result = await createTaskAction(taskPayload, userId);
 
       if (result.success) {
         setConvertedTasks((prev) => ({ ...prev, [index]: true }));

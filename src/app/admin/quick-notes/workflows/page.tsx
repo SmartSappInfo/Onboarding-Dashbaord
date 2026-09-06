@@ -21,11 +21,11 @@ import { useUser } from '@/firebase';
 import { CompanyBrainWorkflowsHub } from '@/components/workflows/CompanyBrainWorkflowsHub';
 
 function QuickNotesWorkflowsPageContent() {
-  const { currentWorkspace, currentOrganization } = useWorkspace();
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { user } = useUser();
 
-  const workspaceId = currentWorkspace?.id || '';
-  const organizationId = currentOrganization?.id || '';
+  const workspaceId = activeWorkspaceId || '';
+  const organizationId = activeOrganizationId || '';
   const userId = user?.uid || '';
 
   if (!workspaceId || !userId) {
