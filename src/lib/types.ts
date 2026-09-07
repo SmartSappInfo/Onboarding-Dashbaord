@@ -2391,6 +2391,7 @@ export interface WorkspaceEntity {
   } | null;
   status: 'active' | 'archived';
   workspaceTags: string[]; // Workspace-scoped operational tags (Requirement 7)
+  tagIds?: string[]; // Backwards-compatible alias for workspaceTags
   taggedAt?: { [tagId: string]: string }; // Tag assignment timestamps
   taggedBy?: { [tagId: string]: string }; // Tag assignment user IDs
   lastContactedAt?: string;
@@ -2451,6 +2452,7 @@ export interface WorkspaceEntity {
 }
 
 export interface DealContact {
+  contactId?: string;
   entityId: string;
   role: string;          // e.g., 'Decision Maker', 'Billing', 'Evaluator', 'Parent'
   name?: string;
@@ -2465,6 +2467,7 @@ export interface DealContact {
  */
 export interface DealFocalContact {
   id: string;            // Source EntityContact.id within the entity
+  contactId?: string;
   name: string;
   email?: string;
   phone?: string;
@@ -3904,6 +3907,12 @@ export interface MediaAsset {
   previewImageUrl?: string;
   category?: string;
   likesCount?: number;
+  title?: string;
+  description?: string;
+  thumbnailUrl?: string;
+  fileSize?: number;
+  durationSeconds?: number;
+  currentVersionId?: string;
 }
 
 export interface SurveyEntityDefaults {
@@ -4590,6 +4599,7 @@ export interface Task {
   relatedEntityType?: 'SurveyResponse' | 'Submission' | 'Meeting' | 'School' | 'Deal' | null;
   relatedParentId?: string | null; // e.g. Survey ID or PDF ID
   relatedEntityId?: string | null; // e.g. Response ID
+  dealId?: string | null;
 }
 
 export interface TaskNote {

@@ -93,8 +93,8 @@ export function ContextCitationDrawer({
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   const handleCopy = (citation: ContextSourceCitation) => {
-    navigator.clipboard.writeText(`"${citation.quoteSnippet}" — Source: ${citation.title}`);
-    setCopiedId(citation.id);
+    navigator.clipboard.writeText(`"${citation.quoteSnippet || citation.excerpt || ''}" — Source: ${citation.title || citation.sourceTitle || 'Knowledge'}`);
+    setCopiedId(citation.id || citation.sourceId);
     toast({
       title: 'Evidence Copied',
       description: 'Quotation copied to clipboard with source citation.',
@@ -207,7 +207,7 @@ export function ContextCitationDrawer({
                     <div className="flex items-center justify-between mt-3 pt-2.5 border-t border-border/40 text-[11px] text-muted-foreground">
                       <span>{citation.authorName ? `By ${citation.authorName}` : 'System Record'}</span>
                       <span className="font-mono">
-                        {new Date(citation.timestamp).toLocaleDateString(undefined, {
+                        {new Date(citation.timestamp || Date.now()).toLocaleDateString(undefined, {
                           month: 'short',
                           day: 'numeric',
                           year: 'numeric',

@@ -328,15 +328,14 @@ export default function QuickNotesSettingsPage() {
     if (!activeWorkspaceId) return;
     setIsGeneratingBattlecards(true);
     try {
-      const res = await generateWorkspaceBattlecardsAction({
-        workspaceId: activeWorkspaceId,
-        minConfidence: settings.minObjectionConfidence ?? 0.75,
-        temperature: settings.aiBattlecardTemperature ?? 0.25,
-      });
+      const res = await generateWorkspaceBattlecardsAction(
+        activeWorkspaceId,
+        user?.uid || 'system'
+      );
       if (res.success) {
         toast({
           title: 'Battlecards Refreshed',
-          description: `Successfully synthesized ${res.battlecardsCreated ?? 0} objection battlecards.`,
+          description: `Successfully synthesized ${res.battlecardsCount ?? 0} objection battlecards.`,
           actionConfig: {
             path: '/admin/quick-notes/campaigns',
             label: 'Open Campaigns Hub',

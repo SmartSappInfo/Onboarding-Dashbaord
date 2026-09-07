@@ -17,13 +17,14 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type {
-  SalesOrchestrationGovernance,
-  SalesPlay,
-  RoutingRule,
-  EscalationRule,
-  ApprovalRequest,
-  PlayExecutionInstance,
+import {
+  type SalesOrchestrationGovernance,
+  type SalesPlay,
+  type RoutingRule,
+  type EscalationRule,
+  type ApprovalRequest,
+  type PlayExecutionInstance,
+  DEFAULT_ORCHESTRATION_GOVERNANCE,
 } from './types';
 
 export interface SalesOrchestrationMigrationResult {
@@ -38,19 +39,7 @@ export interface SalesOrchestrationMigrationResult {
   error?: string;
 }
 
-export const DEFAULT_ORCHESTRATION_GOVERNANCE: Omit<
-  SalesOrchestrationGovernance,
-  'workspaceId' | 'organizationId' | 'updatedAt' | 'updatedBy'
-> = {
-  emergencyKillSwitch: false,
-  maxCascadeDepth: 3,
-  globalSlaUntouchedLeadMinutes: 30,
-  globalSlaStalledDealDays: 14,
-  globalSlaProposalResponseHours: 48,
-  managerEscalationDigestCooldownMinutes: 60,
-  approvalTimeoutHours: 24,
-  maxPlaysPointsPerDay: 50,
-};
+export { DEFAULT_ORCHESTRATION_GOVERNANCE } from './types';
 
 export async function executeSalesOrchestrationMigration(
   workspaceId: string,

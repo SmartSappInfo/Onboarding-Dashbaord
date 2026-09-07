@@ -45,7 +45,7 @@ const BLOCKED_HOST_PATTERNS = [
   /metadata\.google\.internal/i,
 ];
 
-export function validateWebhookUrl(rawUrl: string): { valid: boolean; error?: string } {
+function validateWebhookUrl(rawUrl: string): { valid: boolean; error?: string } {
   try {
     const parsed = new URL(rawUrl);
 

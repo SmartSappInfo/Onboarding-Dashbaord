@@ -131,9 +131,13 @@ export const taskCreateTool: McpToolDefinition<
         title: params.title,
         description: params.description || '',
         priority: (params.priority as TaskPriority) || 'medium',
-        dueDate: params.dueDate,
+        dueDate: params.dueDate || new Date().toISOString(),
         entityId: params.entityId,
         status: 'todo' as TaskStatus,
+        category: 'follow_up',
+        assignedTo: callerUserId,
+        reminders: [],
+        reminderSent: false,
       },
       callerUserId
     );

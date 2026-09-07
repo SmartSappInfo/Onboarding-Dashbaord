@@ -113,6 +113,7 @@ export function IdeaEditorDrawer({
   const [isSaving, setIsSaving] = React.useState(false);
   const [isChallengingAi, setIsChallengingAi] = React.useState(false);
   const [isConvertingTask, setIsConvertingTask] = React.useState(false);
+  const [isGeneratingCampaign, setIsGeneratingCampaign] = React.useState(false);
 
   React.useEffect(() => {
     if (idea) {

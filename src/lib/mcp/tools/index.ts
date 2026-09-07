@@ -38,7 +38,7 @@ export const ALL_CORE_MCP_TOOLS = [
 export function registerAllCoreTools(registry: McpRegistry = globalMcpRegistry): void {
   for (const tool of ALL_CORE_MCP_TOOLS) {
     if (!registry.hasTool(tool.name)) {
-      registry.registerTool(tool);
+      registry.registerTool(tool as unknown as Parameters<typeof registry.registerTool>[0]);
     }
   }
 }

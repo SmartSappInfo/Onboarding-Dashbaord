@@ -39,7 +39,7 @@ import {
   Activity,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import PageContainerFluid from '@/components/page-container-fluid';
+import { PageContainerFluid } from '@/components/ui/page-container';
 import Link from 'next/link';
 
 export default function OptimizationDashboardPage() {

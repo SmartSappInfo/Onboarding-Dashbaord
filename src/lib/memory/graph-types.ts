@@ -99,6 +99,7 @@ export interface CompanyBrainGraphEdge {
   targetNodeId: string; // target node id
   relationshipType: GraphRelationshipType;
   confidence: number; // 0.0 to 1.0 (1.0 for deterministic system/user relations)
+  weight?: number;
   sourceType: GraphSourceType;
   sourceId?: string; // Originating note, meeting, or event ID
   metadata?: Record<string, string | number | boolean>;
@@ -113,6 +114,8 @@ export interface GraphPath {
   nodes: CompanyBrainGraphNode[];
   edges: CompanyBrainGraphEdge[];
   length: number;
+  totalHops?: number;
+  totalWeight?: number;
 }
 
 /**

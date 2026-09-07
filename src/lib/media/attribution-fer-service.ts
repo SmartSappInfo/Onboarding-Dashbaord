@@ -124,7 +124,7 @@ export async function recomputeAttributionAction(
       );
       const eventsSnap = await getDocs(eventsQuery);
       rawEvents = eventsSnap.docs
-        .map((d) => ({ id: d.id, ...d.data() }) as RawEventDoc[])
+        .map((d) => ({ id: d.id, ...d.data() } as RawEventDoc))
         .filter((e) => {
           const t = e.createdAt || e.timestamp;
           return !t || new Date(t).getTime() >= lookbackThresholdMs;
@@ -166,12 +166,14 @@ export async function recomputeAttributionAction(
       const associatedContacts: string[] = [];
       if (deal.contacts && Array.isArray(deal.contacts)) {
         deal.contacts.forEach((c) => {
-          if (c.contactId) associatedContacts.push(c.contactId);
+          const cid = c.contactId || ('entityId' in c ? c.entityId : undefined);
+          if (cid) associatedContacts.push(cid);
         });
       }
       if (deal.focalContacts && Array.isArray(deal.focalContacts)) {
         deal.focalContacts.forEach((c) => {
-          if (c.contactId) associatedContacts.push(c.contactId);
+          const cid = c.contactId || c.id;
+          if (cid) associatedContacts.push(cid);
         });
       }
 

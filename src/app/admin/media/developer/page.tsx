@@ -60,7 +60,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import {
   generateMediaApiKeyAction,
   listMediaApiKeysAction,

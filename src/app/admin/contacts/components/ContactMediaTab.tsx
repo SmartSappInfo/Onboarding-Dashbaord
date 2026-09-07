@@ -17,7 +17,7 @@ import { useState, useEffect } from 'react';
 import { useFirestore } from '@/lib/firestore-context';
 import type { ContactMediaProfile } from '@/lib/types/media-2.0';
 import { getContactMediaProfileAction } from '@/lib/media/crm-media-service';
-import TagSelector from '@/components/tags/TagSelector';
+import { TagSelector } from '@/components/tags/TagSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

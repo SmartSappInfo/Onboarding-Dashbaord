@@ -11,7 +11,7 @@
 
 import { 
   collection, doc, getDocs, query, where, 
-  setDoc, orderBy, type Firestore 
+  setDoc, orderBy, type Firestore, type QueryConstraint 
 } from 'firebase/firestore';
 import type { MediaLink, EmbedConfig } from '../types/media-2.0';
 
@@ -91,7 +91,7 @@ export async function listDistributionLinksAction(
 
   try {
     const colRef = collection(firestore, 'media_links');
-    const constraints = [where('workspaceId', '==', workspaceId)];
+    const constraints: QueryConstraint[] = [where('workspaceId', '==', workspaceId)];
     if (assetId) {
       constraints.push(where('assetId', '==', assetId));
     }

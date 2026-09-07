@@ -86,14 +86,14 @@ export class ConflictEngine {
       const output = await detectMemoryContradictionsFlow({
         memoryA: {
           id: memoryA.id,
-          title: memoryA.title,
+          title: memoryA.title || '',
           content: memoryA.content,
           type: memoryA.type,
           createdAt: memoryA.createdAt,
         },
         memoryB: {
           id: memoryB.id,
-          title: memoryB.title,
+          title: memoryB.title || '',
           content: memoryB.content,
           type: memoryB.type,
           createdAt: memoryB.createdAt,
@@ -112,14 +112,14 @@ export class ConflictEngine {
       const fallback = detectMemoryContradictionsDeterministic({
         memoryA: {
           id: memoryA.id,
-          title: memoryA.title,
+          title: memoryA.title || '',
           content: memoryA.content,
           type: memoryA.type,
           createdAt: memoryA.createdAt,
         },
         memoryB: {
           id: memoryB.id,
-          title: memoryB.title,
+          title: memoryB.title || '',
           content: memoryB.content,
           type: memoryB.type,
           createdAt: memoryB.createdAt,

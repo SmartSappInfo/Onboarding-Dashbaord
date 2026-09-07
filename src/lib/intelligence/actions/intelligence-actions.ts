@@ -354,15 +354,19 @@ export async function getSelfHealingHealthAction(params: {
 export async function executeSelfHealingAction(params: {
   workspaceId: string;
   userId: string;
-  auditId: string;
-  actionIds: string[];
+  auditId?: string;
+  actionIds?: string[];
+  actionItemIds?: string[];
 }): Promise<
   ActionResult<{
-    audit: BrainHealthAudit;
+    audit?: BrainHealthAudit;
     executedCount: number;
+    planId?: string;
+    actionsExecuted?: number;
   }>
 > {
-  const { workspaceId, userId, auditId, actionIds } = params;
+  const { workspaceId, userId, auditId } = params;
+  const targetActionIds = params.actionIds ?? params.actionItemIds ?? [];
 
   if (!userId) {
     return {
@@ -384,12 +388,36 @@ export async function executeSelfHealingAction(params: {
   }
 
   try {
-    const result = await SelfHealingEngine.executeSelfHealingPlan({
-      auditId,
-      actionIds,
-      actorId: userId,
-    });
-    return { success: true, data: result };
+    if (auditId) {
+      const result = await SelfHealingEngine.executeSelfHealingPlan({
+        auditId,
+        actionIds: targetActionIds,
+        actorId: userId,
+      });
+      return {
+        success: true,
+        data: {
+          audit: result.audit,
+          executedCount: result.executedCount,
+          planId: result.audit.id,
+          actionsExecuted: result.executedCount,
+        },
+      };
+    } else {
+      const result = await SelfHealingEngine.executeHealingPlan(
+        workspaceId,
+        userId,
+        targetActionIds
+      );
+      return {
+        success: true,
+        data: {
+          executedCount: result.actionsExecuted,
+          planId: result.planId,
+          actionsExecuted: result.actionsExecuted,
+        },
+      };
+    }
   } catch (err) {
     return {
       success: false,
@@ -452,11 +480,17 @@ export async function generateComplianceExportAction(params: {
 export async function executeCryptographicDeletionAction(params: {
   workspaceId: string;
   userId: string;
-  targetSubjectId: string;
-  targetSubjectType: string;
+  targetSubjectId?: string;
+  subjectId?: string;
+  targetSubjectType?: string;
+  subjectType?: string;
+  requestedBy?: string;
+  legalBasis?: string;
   jurisdiction?: 'GDPR_ARTICLE_17' | 'CCPA' | 'SOC2_DATA_RETENTION';
 }): Promise<ActionResult<CryptographicDeletionCertificate>> {
-  const { workspaceId, userId, targetSubjectId, targetSubjectType, jurisdiction } = params;
+  const { workspaceId, userId, jurisdiction } = params;
+  const targetSubjectId = params.targetSubjectId ?? params.subjectId ?? '';
+  const targetSubjectType = params.targetSubjectType ?? params.subjectType ?? 'contact';
 
   if (!userId) {
     return {

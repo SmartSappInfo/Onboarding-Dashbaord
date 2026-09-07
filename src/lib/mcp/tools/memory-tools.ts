@@ -75,7 +75,7 @@ export const memoryRecallTool: McpToolDefinition<
     return {
       totalFound: result.totalFound,
       executionTimeMs: result.executionTimeMs,
-      routingStrategy: result.routingDecision.strategy,
+      routingStrategy: result.routingDecision.strategy || result.routingDecision.intent,
       hits: result.hits.map((h) => ({
         id: h.memory.id,
         title: h.memory.title || `${h.memory.type.toUpperCase()} Memory`,
@@ -146,7 +146,7 @@ export const memoryRememberTool: McpToolDefinition<
         sourceId: `agent_${context.callerId}`,
       },
       entities: params.entityId
-        ? [{ entityId: params.entityId, entityType: 'entity', entityName: 'Associated Account' }]
+        ? [{ entityId: params.entityId, entityType: 'unknown', entityName: 'Associated Account', confidenceScore: 1.0 }]
         : undefined,
       userId: context.callerId,
     });
@@ -259,17 +259,17 @@ export const memoryGetHealthTool: McpToolDefinition<
   parameters: getHealthInputSchema,
   responseSchema: getHealthOutputSchema,
   handler: async (_params, context) => {
-    const health = await OrganizationMemoryService.getHealth({
-      workspaceId: context.workspaceId,
-      organizationId: context.organizationId,
-    });
+    const health = await OrganizationMemoryService.getHealth(
+      context.workspaceId,
+      context.organizationId
+    );
 
     return {
       totalMemories: health.totalMemories,
       verifiedTruthCount: health.verifiedTruthCount,
-      staleCount: health.staleCount,
-      activeConflictsCount: health.activeConflictsCount,
-      storeStatus: health.stores.qdrant.connected ? 'healthy' : 'degraded',
+      staleCount: health.staleCount ?? health.staleMemoryCount,
+      activeConflictsCount: health.activeConflictsCount ?? health.unresolvedConflictCount,
+      storeStatus: health.stores?.qdrant?.connected ?? (health.syncHealthPercentage >= 70 ? true : false) ? 'healthy' : 'degraded',
     };
   },
 };

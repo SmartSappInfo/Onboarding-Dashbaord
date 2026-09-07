@@ -47,10 +47,11 @@ export function SupervisorResultCard({
   const [executedActionIds, setExecutedActionIds] = React.useState<Set<string>>(new Set());
 
   const handleActionClick = async (action: AgentActionProposal) => {
-    setExecutingActionId(action.id);
+    const actionId = action.id || action.title;
+    setExecutingActionId(actionId);
     try {
       await onExecuteAction(action);
-      setExecutedActionIds((prev) => new Set([...prev, action.id]));
+      setExecutedActionIds((prev) => new Set([...prev, actionId]));
     } finally {
       setExecutingActionId(null);
     }
@@ -133,13 +134,14 @@ export function SupervisorResultCard({
               Recommended Next Actions ({result.actions.length})
             </span>
             <div className="space-y-2.5">
-              {result.actions.map((act) => {
-                const isExecuted = executedActionIds.has(act.id);
-                const isRunning = executingActionId === act.id;
+              {result.actions.map((act, idx) => {
+                const actId = act.id || `action_${idx}_${act.title}`;
+                const isExecuted = executedActionIds.has(actId);
+                const isRunning = executingActionId === actId;
 
                 return (
                   <div
-                    key={act.id}
+                    key={actId}
                     className="p-3.5 sm:p-4 bg-white border border-slate-200 rounded-xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs hover:border-slate-300 transition-all"
                   >
                     <div className="space-y-1">
@@ -167,7 +169,7 @@ export function SupervisorResultCard({
                       ) : (
                         <Button
                           size="sm"
-                          onClick={() => handleActionClick(act)}
+                          onClick={() => handleActionClick({ ...act, id: actId })}
                           disabled={isRunning || isExecutingAction}
                           className="min-h-[44px] px-4 bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold rounded-xl active:scale-[0.97] transition-all gap-1.5 shadow-sm"
                         >

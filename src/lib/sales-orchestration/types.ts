@@ -331,3 +331,17 @@ export interface OrchestrationDashboardData {
   pendingApprovals: ApprovalRequest[];
   governance: SalesOrchestrationGovernance;
 }
+
+export const DEFAULT_ORCHESTRATION_GOVERNANCE: Omit<
+  SalesOrchestrationGovernance,
+  'workspaceId' | 'organizationId' | 'updatedAt' | 'updatedBy'
+> = {
+  emergencyKillSwitch: false,
+  maxCascadeDepth: 3,
+  globalSlaUntouchedLeadMinutes: 30,
+  globalSlaStalledDealDays: 14,
+  globalSlaProposalResponseHours: 48,
+  managerEscalationDigestCooldownMinutes: 60,
+  approvalTimeoutHours: 24,
+  maxPlaysPointsPerDay: 50,
+};

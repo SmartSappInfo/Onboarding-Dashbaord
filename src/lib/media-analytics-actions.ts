@@ -4,7 +4,7 @@ import { headers } from 'next/headers';
 import { after } from 'next/server';
 import { adminDb, FieldValue } from './firebase-admin';
 import type { CallOutcomeAutomation } from './types';
-import type { MediaExperiment } from './types/media-2.0';
+import type { MediaExperiment, ExperimentStatus } from './types/media-2.0';
 import { calculateStatisticalSignificance } from './media/experiment-service';
 
 // ─── Types & Interfaces ──────────────────────────────────────────────────────
@@ -854,7 +854,7 @@ export async function recordExperimentEventServerAction(params: {
     let pValue = exp.pValue;
     let confidenceScore = exp.confidenceScore;
     let winnerVariantId = exp.winnerVariantId;
-    let status = exp.status;
+    let status: ExperimentStatus = exp.status;
 
     if (control && challenger) {
       const stats = calculateStatisticalSignificance(control, challenger);

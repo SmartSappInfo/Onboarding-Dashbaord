@@ -21,6 +21,8 @@
 import type { McpPayloadValue } from '@/lib/mcp/types';
 import type { DomainSpecialistId } from '@/lib/agents/domain-types';
 
+export type { DomainSpecialistId };
+
 /**
  * Supported node types in the agentic workflow pipeline.
  */
@@ -73,6 +75,7 @@ export interface WorkflowTriggerConfig {
  * Decision branching rule condition.
  */
 export interface WorkflowDecisionRule {
+  id?: string;
   condition: {
     field: string;
     operator: 'eq' | 'neq' | 'gt' | 'lt' | 'contains';
@@ -183,12 +186,15 @@ export interface WorkflowRun {
   pausedNodeId?: string;
   metrics: {
     durationMs: number;
+    totalDurationMs?: number;
     totalNodesExecuted: number;
     toolCallsCount: number;
+    approvalWaitCount?: number;
   };
   startedAt: string;
   completedAt?: string;
   errorMessage?: string;
+  error?: string;
   resumedAt?: string;
   resumedBy?: string;
 }
@@ -235,6 +241,7 @@ export interface WorkflowSimulationResult {
   predictedApprovalsCount: number;
   potentialConflictsCount: number;
   estimatedDurationMs: number;
+  simulatedPath?: Array<{ nodeId: string; title: string }>;
   executionSteps: Array<{
     nodeId: string;
     nodeType: WorkflowNodeType;

@@ -77,13 +77,20 @@ export const OfflineSyncProvider: React.FC<OfflineSyncProviderProps> = ({
         const conflicts: OfflineConflictDetails[] = conflictJobs.map((job) => {
           const mockSnapshot: QuickNote = {
             id: job.entityId,
+            organizationId: 'org_offline',
             workspaceId: job.workspaceId,
             authorId: 'server-author',
             authorName: 'Cloud Server',
+            createdBy: 'server-author',
             title: (job.payload.title as string) || 'Cloud Document',
-            content: '',
+            content: { type: 'doc', content: [] },
             document: job.payload.document as QuickNote['document'],
+            plainText: (job.payload.title as string) || 'Cloud Document',
+            contentVersion: 1,
             tags: (job.payload.tags as string[]) || [],
+            attachments: [],
+            links: {},
+            isPinned: false,
             createdAt: job.baseServerUpdatedAt || new Date().toISOString(),
             updatedAt: job.baseServerUpdatedAt || new Date().toISOString(),
           };

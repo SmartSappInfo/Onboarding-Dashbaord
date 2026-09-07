@@ -126,6 +126,7 @@ export async function getContactMediaProfileAction(
       audio: 0,
       image: 0,
       document: 0,
+      link: 0,
     };
     let highIntentSignalsCount = 0;
 

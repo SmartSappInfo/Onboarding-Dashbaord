@@ -147,7 +147,7 @@ export function CompanyBrainIntelligenceHub({
       const res = await runObservationScanAction({
         workspaceId,
         userId,
-        forceRefresh: true,
+        forceFresh: true,
       });
 
       if (res.success && res.data) {
@@ -161,7 +161,7 @@ export function CompanyBrainIntelligenceHub({
 
         toast({
           title: 'Workspace Observation Scan Complete',
-          description: `Generated ${res.data.findings.length} findings and ${res.data.recommendations.length} actionable recommendations.`,
+          description: `Generated ${res.data.recommendations.length} actionable recommendations.`,
         });
       } else {
         toast({
@@ -190,7 +190,7 @@ export function CompanyBrainIntelligenceHub({
         workspaceId,
         userId,
         recommendationId: rec.id,
-        status: 'accepted',
+        decision: 'accept',
       });
 
       if (res.success) {
@@ -203,22 +203,20 @@ export function CompanyBrainIntelligenceHub({
           description: rec.actionTrigger?.target
             ? `Dispatched autonomous workflow ${rec.actionTrigger.target}.`
             : 'Recommendation marked as accepted and integrated into operational plan.',
-          actionConfig: rec.actionTrigger?.target
-            ? { path: '/admin/companybrain/workflows', label: 'View Workflow' }
-            : undefined,
         });
+        await handleTriggerAudit();
       } else {
         toast({
           title: 'Action Failed',
-          description: res.error || 'Could not adjudicate recommendation.',
+          description: res.error || 'Unable to process recommendation.',
           variant: 'destructive',
           actionConfig: res.actionConfig,
         });
       }
     } catch {
       toast({
-        title: 'Error Processing Recommendation',
-        description: 'An unexpected error occurred.',
+        title: 'Action Error',
+        description: 'An error occurred while executing recommendation.',
         variant: 'destructive',
       });
     } finally {
@@ -234,8 +232,8 @@ export function CompanyBrainIntelligenceHub({
         workspaceId,
         userId,
         recommendationId,
-        status: 'dismissed',
-        rejectionReason: 'Dismissed by operator',
+        decision: 'dismiss',
+        notes: 'Dismissed by operator',
       });
 
       if (res.success) {

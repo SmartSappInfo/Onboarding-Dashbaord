@@ -70,7 +70,7 @@ export function ExecutiveIntelligenceWidget({
 
       Promise.all([
         getExecutiveIntelligenceAction({ workspaceId, userId }),
-        listRecommendationsAction({ workspaceId, userId, status: 'active' }),
+        listRecommendationsAction({ workspaceId, userId, statusFilter: 'active' }),
       ])
         .then(([intelRes, recsRes]) => {
           if (!isMounted) return;

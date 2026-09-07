@@ -349,7 +349,7 @@ export function NoteMemorySidebar({
         }}
         memory={inspectTarget}
         onConfirm={handleConfirm}
-        onInvalidate={(id, reason) => handleInvalidate(id, reason)}
+        onInvalidate={(id, reason) => handleInvalidate(id, reason || '')}
         onUpdate={handleUpdate}
       />
     </div>

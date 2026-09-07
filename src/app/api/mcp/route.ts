@@ -85,7 +85,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     callerId = authResult.user.uid;
     callerType = 'user';
-    workspaceId = workspaceId || authResult.user.profile.workspaceId || '';
+    workspaceId = workspaceId || authResult.user.profile.workspaceIds?.[0] || '';
     organizationId = organizationId || authResult.user.profile.organizationId || '';
   } else {
     // Missing credentials entirely

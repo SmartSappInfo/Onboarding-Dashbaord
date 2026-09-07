@@ -87,24 +87,24 @@ export const contextBuildTool: McpToolDefinition<
 
     return {
       objective: pkg.objective,
-      totalEstimatedTokens: pkg.tokenBudget.totalEstimatedTokens,
+      totalEstimatedTokens: pkg.tokenBudget.totalEstimatedTokens ?? pkg.tokenBudget.totalTokens,
       executionTimeMs: pkg.executionTimeMs,
-      factsCount: pkg.facts.length,
+      factsCount: (pkg.facts || pkg.structuredFacts).length,
       memoriesCount: pkg.memories.length,
       relationshipsCount: pkg.relationships.length,
       conflictsCount: pkg.conflicts.length,
-      assembledPrompt: pkg.assembledPrompt,
+      assembledPrompt: pkg.assembledPrompt ?? '',
       citations: pkg.sources.map((s) => ({
-        id: s.id,
-        type: s.sourceType,
-        label: s.label,
-        relevanceScore: s.relevanceScore,
-        whyRelevant: s.whyRelevant,
+        id: s.id || s.sourceId || '',
+        type: String(s.sourceType || 'note'),
+        label: s.label || s.title || s.sourceTitle || 'Knowledge Source',
+        relevanceScore: s.relevanceScore ?? s.confidence ?? 0.8,
+        whyRelevant: s.whyRelevant ?? s.quoteSnippet ?? s.excerpt ?? '',
       })),
       conflicts: pkg.conflicts.map((c) => ({
-        conflictId: c.conflictId,
-        summary: c.summary,
-        severity: c.severity,
+        conflictId: c.conflictId || c.id || '',
+        summary: c.summary || '',
+        severity: c.severity || 'low',
       })),
     };
   },
@@ -116,7 +116,7 @@ export const contextBuildTool: McpToolDefinition<
 
 const getDossierInputSchema = z.object({
   subjectId: z.string().min(1).describe('The ID of the subject (e.g. CRM entity or deal).'),
-  subjectType: z.enum(['entity', 'deal', 'task', 'meeting', 'ticket']).default('entity').describe('Subject classification.'),
+  subjectType: z.enum(['entity', 'deal', 'task', 'meeting', 'ticket']).describe('Subject classification.'),
 });
 
 const getDossierOutputSchema = z.object({
@@ -168,9 +168,9 @@ export const contextGetDossierTool: McpToolDefinition<
       subjectType: dossier.subjectType,
       title: dossier.title,
       executiveSummary: dossier.executiveSummary,
-      commercialHealth: dossier.commercialHealth,
+      commercialHealth: dossier.commercialHealth?.status || dossier.commercialOutlook.revenueMomentum || 'stable',
       currentConcerns: dossier.currentConcerns,
-      suggestedTalkingPoints: dossier.suggestedTalkingPoints,
+      suggestedTalkingPoints: dossier.suggestedTalkingPoints || [],
       stakeholders: dossier.keyStakeholders.map((s) => ({
         name: s.name,
         role: s.role,

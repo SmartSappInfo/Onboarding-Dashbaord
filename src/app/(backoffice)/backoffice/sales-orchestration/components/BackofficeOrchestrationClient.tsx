@@ -40,8 +40,10 @@ import {
   Sparkles,
   Scale,
 } from 'lucide-react';
-import type { SalesOrchestrationGovernance } from '@/lib/sales-orchestration/types';
-import { DEFAULT_ORCHESTRATION_GOVERNANCE } from '@/lib/sales-orchestration/migration-protocol';
+import {
+  type SalesOrchestrationGovernance,
+  DEFAULT_ORCHESTRATION_GOVERNANCE,
+} from '@/lib/sales-orchestration/types';
 import {
   getSalesOrchestrationDataAction,
   saveOrchestrationGovernanceAction,

@@ -3,8 +3,9 @@
 import * as React from 'react';
 import { doc } from 'firebase/firestore';
 import { useFirestore, useUser, useDoc, useMemoFirebase } from '@/firebase';
-import { EmailHygieneHoverCard } from '../../components/EmailHygieneHoverCard';
+import { EmailHygieneHoverCard, type ContactHygieneData } from '../../components/EmailHygieneHoverCard';
 import { PhoneHygieneHoverCard } from '../../components/PhoneHygieneHoverCard';
+import type { PhoneStatus } from '../../components/PhoneHygieneBadge';
 import { logActivity } from '@/lib/activity-logger';
 import { 
     Plus, User, Mail, Phone, ShieldCheck, X, Loader2, Save, Trash2, Pencil, MoreHorizontal, UserCheck, Video, PhoneCall
@@ -51,14 +52,14 @@ import {
 import { AddToCampaignDialog } from './AddToCampaignDialog';
 
 interface EmailVerificationCacheDoc {
-    status?: string;
+    status?: ContactHygieneData['verificationStatus'];
     score?: number;
     lastVerifiedAt?: string;
     checks?: Record<string, unknown>;
 }
 
 interface PhoneVerificationCacheDoc {
-    status?: string;
+    status?: PhoneStatus;
     score?: number;
     lastVerifiedAt?: string;
     country?: string;
@@ -80,6 +81,7 @@ export default function EntityContactDirectory({
     organizationId, 
     workspaceId 
 }: EntityContactDirectoryProps) {
+    const singular = entityData.entityType || 'entity';
     const firestore = useFirestore();
     const { toast } = useToast();
     const [isAdding, setIsAdding] = React.useState(false);
@@ -769,13 +771,4 @@ function ContactEditor({
             </div>
         </div>
     );
-}
-
-// Sub-components
-function CardHeader({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <div className={cn("p-6", className)}>{children}</div>;
-}
-
-function CardTitle({ children, className }: { children: React.ReactNode, className?: string }) {
-    return <h3 className={cn("text-lg font-semibold", className)}>{children}</h3>;
 }

@@ -20,7 +20,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useTransition } from 'react';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { useFirestore } from '@/lib/firestore-context';
 import type {
   MediaIdeaCanvas,

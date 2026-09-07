@@ -19,9 +19,10 @@ import type {
 describe('Phase 9: Multi-Workspace Knowledge Federation & Ingestion Pure Domain Logic', () => {
   const dummyNote: QuickNote = {
     id: 'note_fed_1',
+    organizationId: 'org_acme',
     workspaceId: 'ws_alpha',
     title: 'HQ Brand Voice & Core Guidelines',
-    document: {
+    content: {
       type: 'doc',
       content: [
         {
@@ -30,9 +31,14 @@ describe('Phase 9: Multi-Workspace Knowledge Federation & Ingestion Pure Domain 
         },
       ],
     },
-    categoryName: 'Brand & Marketing',
+    plainText: 'All campuses must use friendly and accessible tone in parent communications.',
+    contentVersion: 1,
+    categoryId: 'Brand & Marketing',
     tags: ['brand', 'guidelines', 'communication'],
-    sentiment: 'positive',
+    attachments: [],
+    links: {},
+    isPinned: false,
+    createdBy: 'user_admin',
     authorName: 'Chief Marketing Officer',
     createdAt: '2026-09-01T10:00:00.000Z',
     updatedAt: '2026-09-01T10:00:00.000Z',
@@ -73,7 +79,7 @@ describe('Phase 9: Multi-Workspace Knowledge Federation & Ingestion Pure Domain 
       expect(result.sanitizedPayload?.tags).toContain('admissions');
       expect(result.sanitizedPayload?.tags).toContain('fees');
       expect(result.document?.type).toBe('doc');
-      expect(result.document?.content.length).toBeGreaterThan(0);
+      expect(result.document?.content?.length).toBeGreaterThan(0);
     });
 
     it('rejects empty titles and oversized payloads', () => {

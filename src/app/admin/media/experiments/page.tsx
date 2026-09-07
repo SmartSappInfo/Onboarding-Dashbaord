@@ -46,7 +46,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import PageContainerFluid from '@/components/page-container-fluid';
+import { PageContainerFluid } from '@/components/ui/page-container';
 
 export default function ExperimentsConsolePage() {
   const firestore = useFirestore();

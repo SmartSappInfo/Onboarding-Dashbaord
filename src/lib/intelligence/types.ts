@@ -31,7 +31,9 @@ export type ObservationSignalType =
   | 'champion_churn'
   | 'deal_acceleration'
   | 'cross_sell_signal'
-  | 'knowledge_gap';
+  | 'knowledge_gap'
+  | 'anomaly'
+  | 'growth';
 
 /**
  * Severity / Priority classification.
@@ -128,21 +130,21 @@ export interface ProactiveRecommendation {
  */
 export interface ExecutiveIntelligenceSummary {
   workspaceId?: string;
-  overallHealthScore: number; // 0 to 100
+  overallHealthScore?: number; // 0 to 100
   healthScore?: number;
-  knowledgeFreshnessRating: number; // 0 to 100
+  knowledgeFreshnessRating?: number; // 0 to 100
   freshnessScore?: number;
-  graphIntegrityScore: number; // 0 to 100
-  activeRiskCount: number;
+  graphIntegrityScore?: number; // 0 to 100
+  activeRiskCount?: number;
   activeRisksCount?: number;
-  activeOpportunityCount: number;
+  activeOpportunityCount?: number;
   emergingOpportunitiesCount?: number;
-  staleMemoriesCount: number;
-  pendingConflictsCount: number;
-  pipelineVelocityTrend: 'accelerating' | 'stable' | 'decelerating';
-  agentEfficiencyIndex: number; // 0 to 100
+  staleMemoriesCount?: number;
+  pendingConflictsCount?: number;
+  pipelineVelocityTrend?: 'accelerating' | 'stable' | 'decelerating';
+  agentEfficiencyIndex?: number; // 0 to 100
   agentEfficiencyRating?: number;
-  lastObservationScanAt: string;
+  lastObservationScanAt?: string;
   lastObservationScan?: string;
   emergingTrends?: ObservationTrend[];
 }

@@ -379,7 +379,7 @@ export default function BackofficeKnowledgeGraphClient() {
         workspaceId: workspaceId.trim(),
         userId: user.uid,
         startNodeId: simStartNodeId.trim(),
-        endNodeId: simEndNodeId.trim(),
+        targetNodeId: simEndNodeId.trim(),
         maxHops: 3,
       });
 
@@ -409,11 +409,12 @@ export default function BackofficeKnowledgeGraphClient() {
       const res = await explainGraphConnectionAction({
         workspaceId: workspaceId.trim(),
         userId: user.uid,
-        path: simPath,
+        startNodeId: simStartNodeId.trim(),
+        targetNodeId: simEndNodeId.trim(),
       });
 
-      if (res.success) {
-        setSimExplanation(res.data.synthesis);
+      if (res.success && res.data) {
+        setSimExplanation(res.data.narrative || res.data.summary);
       } else {
         toast({
           variant: 'destructive',
@@ -1029,10 +1030,10 @@ export default function BackofficeKnowledgeGraphClient() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge variant="outline" className="text-xs font-semibold bg-primary/10 text-primary border-primary/20">
-                        {simPath.totalHops} Hop{simPath.totalHops === 1 ? '' : 's'}
+                        {simPath.totalHops ?? simPath.edges.length} Hop{(simPath.totalHops ?? simPath.edges.length) === 1 ? '' : 's'}
                       </Badge>
                       <span className="text-xs text-muted-foreground font-mono">
-                        Weight: {simPath.totalWeight.toFixed(2)}
+                        Weight: {(simPath.totalWeight ?? simPath.edges.reduce((acc, e) => acc + (e.weight ?? e.confidence ?? 1.0), 0)).toFixed(2)}
                       </span>
                     </div>
                     <Button

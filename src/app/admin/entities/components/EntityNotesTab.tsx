@@ -224,7 +224,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                 activeOrganizationId
             );
             if (result.success) {
-                setAiSummary(result.summary);
+                setAiSummary(result.summary ?? null);
                 toast({ title: 'AI Brief generated' });
             } else {
                 toast({ title: 'AI Generation failed', description: result.error, variant: 'destructive' });

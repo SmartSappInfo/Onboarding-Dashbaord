@@ -41,10 +41,10 @@ export function ABExperimentEditor({
 }: ABExperimentEditorProps) {
   const [activeTab, setActiveTab] = useState<'variantA' | 'variantB'>('variantB');
 
-  const vAViews = config.metrics.variantAViews;
-  const vAClicks = config.metrics.variantAClicks;
-  const vBViews = config.metrics.variantBViews;
-  const vBClicks = config.metrics.variantBClicks;
+  const vAViews = config.metrics?.variantAViews ?? 0;
+  const vAClicks = config.metrics?.variantAClicks ?? 0;
+  const vBViews = config.metrics?.variantBViews ?? 0;
+  const vBClicks = config.metrics?.variantBClicks ?? 0;
 
   const vAConversionRate = vAViews > 0 ? ((vAClicks / vAViews) * 100).toFixed(1) : '0.0';
   const vBConversionRate = vBViews > 0 ? ((vBClicks / vBViews) * 100).toFixed(1) : '0.0';

@@ -100,7 +100,7 @@ export function MediaAssetInspectorDrawer({
 
   if (!asset) return null;
 
-  const currentVersionId = (asset as Record<string, unknown>).currentVersionId as string | undefined;
+  const currentVersionId = asset.currentVersionId;
 
   const handleSetActiveVersion = async (versionId: string) => {
     if (!firestore || !asset || isUpdatingVersion) return;

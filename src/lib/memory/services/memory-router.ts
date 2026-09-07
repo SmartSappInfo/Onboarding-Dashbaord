@@ -22,6 +22,7 @@ export type QueryIntent = 'semantic' | 'relational' | 'exact' | 'hybrid';
 
 export interface QueryRoutingDecision {
   intent: QueryIntent;
+  strategy?: QueryIntent;
   confidence: number;
   extractedEntities: string[];
   exactKeywords: string[];

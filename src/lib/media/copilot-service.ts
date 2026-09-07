@@ -81,6 +81,18 @@ export interface CopilotContextPayload {
   decayingAssetsCount?: number;
   banditAlgorithm?: string;
   confidenceScore?: number;
+  contactId?: string;
+  model?: string;
+  lookbackDays?: number;
+  totalInfluencedRevenue?: number;
+  totalDealsInfluenced?: number;
+  avgDealVelocityDays?: number;
+  viewToDealConversionRate?: number;
+  overallScore?: number;
+  totalViews?: number;
+  preferredFormat?: string;
+  topActivities?: string;
+  avgCompletionPercent?: number;
 }
 
 /**
@@ -167,7 +179,7 @@ export async function executeCopilotInference(
   persona: CopilotPersonaType,
   userPrompt: string,
   context?: CopilotContextPayload
-): string {
+): Promise<string> {
   const queryLower = userPrompt.toLowerCase();
 
   // 1. Analyst Persona Scenarios

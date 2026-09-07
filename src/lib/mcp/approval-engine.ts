@@ -96,6 +96,15 @@ export class McpApprovalEngine {
     };
   }
 
+  public static async adjudicateApproval(params: {
+    approvalId: string;
+    decision: 'approved' | 'rejected';
+    adjudicatedBy: string;
+    notes?: string;
+  }): Promise<McpPendingApproval> {
+    return this.adjudicate(params);
+  }
+
   /**
    * Adjudicates a pending tool execution approval.
    * If approved, immediately triggers the tool execution and records the result.

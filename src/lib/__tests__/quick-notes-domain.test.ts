@@ -623,6 +623,7 @@ describe('chunkNoteContent (Phase 4)', () => {
     const longText = 'Paragraph one about admissions.\n\nParagraph two with detailed fee structures.\n\nParagraph three with bus schedules.';
     const note: UnifiedNote = {
       id: 'quick_note:1',
+      sourceId: '1',
       source: 'quick_note',
       workspaceId: 'ws-1',
       title: 'School Guide',
@@ -635,6 +636,7 @@ describe('chunkNoteContent (Phase 4)', () => {
       originHref: null,
       editable: true,
       knowledgeType: 'note',
+      attachments: [],
     };
 
     const chunks = chunkNoteContent(note, 60);
@@ -646,6 +648,7 @@ describe('chunkNoteContent (Phase 4)', () => {
   it('returns empty array when plainText is empty', () => {
     const note: UnifiedNote = {
       id: 'quick_note:2',
+      sourceId: '2',
       source: 'quick_note',
       workspaceId: 'ws-1',
       title: '',
@@ -657,6 +660,7 @@ describe('chunkNoteContent (Phase 4)', () => {
       links: {},
       originHref: null,
       editable: true,
+      attachments: [],
     };
 
     expect(chunkNoteContent(note)).toEqual([]);
@@ -703,28 +707,42 @@ describe('fuseSearchResults (Phase 4)', () => {
     const lexicalRows: NoteIndexRow[] = [
       {
         id: 'quick_note:1',
+        sourceId: '1',
         source: 'quick_note',
         title: 'Tuition Policy',
+        content: { type: 'doc' },
         plainText: 'Tuition and fees schedule',
         knowledgeType: 'note',
         createdAt: '2026-09-01T10:00:00Z',
         workspaceId: 'ws-1',
         isPinned: false,
         tags: ['tuition'],
+        links: {},
+        originHref: null,
+        editable: true,
+        attachmentCount: 0,
+        indexedAt: '2026-09-01T10:00:00Z',
       },
     ];
 
     const vectorRows: NoteIndexRow[] = [
       {
         id: 'call_note:2',
+        sourceId: '2',
         source: 'call_note',
         title: 'Call on Pricing',
+        content: { type: 'doc' },
         plainText: 'Discussed discounts with parent',
         knowledgeType: 'feedback',
         createdAt: '2026-09-02T10:00:00Z',
         workspaceId: 'ws-1',
         isPinned: false,
         tags: ['pricing'],
+        links: {},
+        originHref: null,
+        editable: true,
+        attachmentCount: 0,
+        indexedAt: '2026-09-02T10:00:00Z',
       },
     ];
 

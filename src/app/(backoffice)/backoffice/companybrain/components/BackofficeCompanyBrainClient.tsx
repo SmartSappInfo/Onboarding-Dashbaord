@@ -58,6 +58,9 @@ import {
   Workflow,
   CheckCircle2,
   Activity,
+  RotateCw,
+  Play,
+  ShieldAlert,
   Users,
   Download,
   FileCheck2,
@@ -651,12 +654,12 @@ export default function BackofficeCompanyBrainClient() {
       const res = await runObservationScanAction({
         workspaceId: testTenantWorkspaceId || 'default',
         userId: user.uid,
-        forceRefresh: true,
+        forceFresh: true,
       });
       if (res.success && res.data) {
         toast({
           title: 'Observation Sweep Complete',
-          description: `Identified ${res.data.findings.length} findings and ${res.data.recommendations.length} recommendations.`,
+          description: `Identified ${res.data.recommendations.length} proactive recommendations.`,
         });
       } else {
         toast({
@@ -684,12 +687,12 @@ export default function BackofficeCompanyBrainClient() {
       const res = await executeSelfHealingAction({
         workspaceId: testTenantWorkspaceId || 'default',
         userId: user.uid,
-        actionItemIds: [],
+        actionIds: [],
       });
       if (res.success && res.data) {
         toast({
           title: 'Self-Healing Sweep Complete',
-          description: `Executed ${res.data.actionsExecuted} healing actions. Knowledge base is healthy.`,
+          description: `Executed ${res.data.executedCount} healing actions. Knowledge base is healthy.`,
         });
       } else {
         toast({

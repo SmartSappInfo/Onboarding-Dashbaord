@@ -128,6 +128,7 @@ export interface ContextKnowledge {
 
 export interface ContextConflictWarning {
   id: string;
+  conflictId?: string;
   summary: string;
   conflictType: string;
   severity: 'low' | 'medium' | 'high' | 'critical';
@@ -148,19 +149,27 @@ export interface ContextRecommendation {
 }
 
 export interface ContextSourceCitation {
-  id: string;
+  id?: string;
   sourceId: string;
   sourceType: MemorySourceType | ContextSource;
-  title: string;
-  quoteSnippet: string;
-  timestamp: string;
+  title?: string;
+  quoteSnippet?: string;
+  timestamp?: string;
   authorName?: string;
-  confidence: number;
+  confidence?: number;
   deepLinkPath?: string;
+  sourceTitle?: string;
+  label?: string;
+  relevanceScore?: number;
+  whyRelevant?: string;
+  score?: number;
+  uri?: string;
+  excerpt?: string;
 }
 
 export interface ContextTokenBudget {
   totalTokens: number;
+  totalEstimatedTokens?: number;
   maxBudget: number;
   utilizationPercentage: number;
   tierBreakdown: {
@@ -207,6 +216,8 @@ export interface ContextPackage {
   objective: string;
   subject?: ContextSubject;
   structuredFacts: ContextFact[];
+  facts?: ContextFact[]; // Backwards-compatible alias for structuredFacts
+  assembledPrompt?: string;
   memories: ContextMemory[];
   relationships: ContextRelationship[];
   recentActivity: ContextEvent[];
@@ -233,6 +244,11 @@ export interface SubjectDossier {
     winProbability?: number;
     revenueMomentum: 'strong' | 'stable' | 'at_risk' | 'dormant';
   };
+  commercialHealth?: {
+    healthScore?: number;
+    status?: string;
+  };
+  suggestedTalkingPoints?: string[];
   keyStakeholders: Array<{
     name: string;
     role: string;

@@ -347,7 +347,7 @@ export class ContextBuilderService {
 
         const noteCitId = addCitation(
           docSnap.id,
-          'note',
+          'user_note',
           `Note by ${String(noteData.createdByName || 'Team')}`,
           contentStr,
           String(noteData.createdByName || 'Team'),
@@ -376,7 +376,7 @@ export class ContextBuilderService {
 
         const isDirect = Boolean(
           subject?.id &&
-            ((hit.memory.subjectRefs?.entityId && hit.memory.subjectRefs.entityId === subject.id) ||
+            ((hit.memory.subjectRefs?.entityIds && hit.memory.subjectRefs.entityIds.includes(subject.id)) ||
               hit.memory.entities?.some((e) => e.entityId === subject.id))
         );
 

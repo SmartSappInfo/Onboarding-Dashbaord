@@ -63,7 +63,7 @@ interface SpeechRecognitionInstance {
   stop: () => void;
 }
 
-interface WindowWithSpeechRecognition extends Window {
+interface WindowWithSpeechRecognition {
   SpeechRecognition?: new () => SpeechRecognitionInstance;
   webkitSpeechRecognition?: new () => SpeechRecognitionInstance;
 }

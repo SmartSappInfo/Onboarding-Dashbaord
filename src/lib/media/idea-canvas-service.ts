@@ -128,7 +128,7 @@ export async function getIdeaCanvasAction(
     if (!snap.exists()) return null;
     const data = snap.data() as MediaIdeaCanvas;
     if (data.workspaceId !== workspaceId) return null;
-    return { id: snap.id, ...data };
+    return { ...data, id: snap.id };
   } catch (err) {
     console.error('[IdeaCanvasService] Error getting canvas:', err);
     return null;
@@ -315,7 +315,7 @@ export async function convertIdeaToAssetAction(
     title: title.trim() || 'Untitled Idea Asset',
     name: title.trim() || 'Untitled Idea Asset',
     description: description.trim() || 'Created from Idea Canvas brainstorm',
-    type: format === 'pdf' ? 'doc' : format === 'interactive' ? 'interactive' : (format as 'video' | 'audio'),
+    type: format === 'pdf' ? 'document' : format === 'interactive' ? 'link' : (format as 'video' | 'audio'),
     status: 'draft',
     currentVersionId: 'v1.0.0',
     tags: ['idea-canvas', 'brainstorm'],
@@ -352,14 +352,25 @@ export async function convertIdeaToExperienceAction(
   const newExp: MediaExperience = {
     id: experienceId,
     workspaceId,
+    assetId,
     primaryAssetId: assetId,
     title: title.trim(),
     description: 'Auto-scaffolded experience from Idea Canvas',
-    template: 'SHOWCASE',
+    template: 'showcase',
     status: 'PUBLISHED',
     theme: {
+      primaryColorHex: '#2563eb',
+      backgroundColorHex: '#0f172a',
       primaryColor: '#2563eb',
       layout: 'STANDARD',
+    },
+    playerControls: {
+      autoplay: false,
+      showPlaybackSpeed: true,
+      showQualitySelector: true,
+      allowDownload: true,
+      loop: false,
+      showCaptions: true,
     },
     gating: {
       requireEmail: false,
@@ -369,6 +380,7 @@ export async function convertIdeaToExperienceAction(
       text: ctaLabel,
       link: ctaTargetUrl,
     },
+    createdById: 'system',
     createdAt: now,
     updatedAt: now,
   };
@@ -398,8 +410,11 @@ export async function convertIdeaToPackageAction(
   const newPkg: MediaPackage = {
     id: packageId,
     workspaceId,
-    name: title.trim(),
+    title: title.trim() || 'Untitled Package',
+    name: title.trim() || 'Untitled Package',
     description: 'Curated package generated from Idea Canvas concept',
+    createdById: 'system',
+    items: assetIds.map((id, order) => ({ assetId: id, order })),
     assetIds,
     createdAt: now,
     updatedAt: now,
@@ -411,7 +426,7 @@ export async function convertIdeaToPackageAction(
   const canvasRef = doc(firestore, 'media_idea_canvases', canvasId);
   await setDoc(canvasRef, { convertedPackageId: packageId, updatedAt: now }, { merge: true });
 
-  return { packageId, title: newPkg.name };
+  return { packageId, title: newPkg.name || newPkg.title };
 }
 
 /**

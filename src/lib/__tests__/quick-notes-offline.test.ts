@@ -87,16 +87,26 @@ describe('Phase 10: Enterprise Offline Sync Pure Domain Logic', () => {
   describe('resolveOfflineConflict', () => {
     const mockServerNote: QuickNote = {
       id: 'note-1',
+      organizationId: 'org-1',
       workspaceId: 'ws-1',
       authorId: 'user-server',
       authorName: 'Sarah Jenkins',
+      createdBy: 'user-server',
       title: 'Server Cloud Version',
-      content: 'Server Cloud Body Content',
+      plainText: 'Server Cloud Body Content',
+      contentVersion: 1,
+      content: {
+        type: 'doc',
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Server Cloud Body Content' }] }],
+      },
       document: {
         type: 'doc',
         content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Server Cloud Body Content' }] }],
       },
       tags: ['server-tag'],
+      attachments: [],
+      links: {},
+      isPinned: false,
       createdAt: '2026-09-04T08:00:00.000Z',
       updatedAt: '2026-09-04T12:00:00.000Z', // Updated at 12:00
     };

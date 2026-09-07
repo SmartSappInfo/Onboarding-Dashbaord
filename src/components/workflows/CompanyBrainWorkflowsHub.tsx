@@ -274,7 +274,7 @@ export function CompanyBrainWorkflowsHub({
     if (res.success && res.data) {
       toast({
         title: 'Simulation Complete',
-        description: `Traversed ${res.data.simulatedPath.length} steps without mutating data.`,
+        description: `Traversed ${res.data.simulatedPath?.length ?? res.data.executionSteps.length} steps without mutating data.`,
       });
       return res.data;
     } else {

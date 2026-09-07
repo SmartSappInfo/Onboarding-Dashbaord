@@ -77,6 +77,7 @@ export interface MemoryFreshnessInfo {
   daysRemaining: number;
   lastConfirmedAt: string;
   category: MemoryType;
+  recommendedAction?: string;
 }
 
 export interface ConsolidationCandidate {
@@ -103,6 +104,9 @@ export interface MemoryHealthMetrics {
   graphNodesCount: number;
   graphEdgesCount: number;
   syncHealthPercentage: number;
+  staleCount?: number;
+  activeConflictsCount?: number;
+  stores?: { qdrant: { connected: boolean } };
 }
 
 export const MEMORY_CONFLICTS_COLLECTION = 'memory_conflicts';

@@ -152,7 +152,7 @@ export default function AiSurveyGenerator() {
         if (orgSnap.exists()) {
           const orgData = orgSnap.data();
           if (provider === 'googleai' && orgData.geminiApiKey) keyLevel = 'Org API';
-          else if (provider === 'openai' && orgData.openaiApiKey) keyLevel = 'Org API';
+          else if (provider === 'anthropic' && (orgData.claudeApiKey || orgData.anthropicApiKey)) keyLevel = 'Org API';
           else if (provider === 'openrouter' && orgData.openRouterApiKey) keyLevel = 'Org API';
         }
       }

@@ -278,8 +278,8 @@ export default function MediaUploader({
 
         const isGif = fileState.file.type === 'image/gif' || fileState.file.name.toLowerCase().endsWith('.gif');
 
-        if (mediaType === 'image' && fileState.editingState?.croppedAreaPixels && fileState.dataUrl && !isGif) {
-          const { editingState } = fileState;
+        const editingState = fileState.editingState;
+        if (mediaType === 'image' && editingState?.croppedAreaPixels && fileState.dataUrl && !isGif) {
           const { file, width, height } = await processImage(
             fileState.dataUrl,
             editingState.croppedAreaPixels, 

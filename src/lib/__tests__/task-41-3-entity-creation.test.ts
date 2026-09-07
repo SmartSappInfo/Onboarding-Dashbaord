@@ -80,7 +80,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
   describe('1. Institution Entity Creation', () => {
     it('should create institution entity with institutionData in institution workspace', async () => {
       const mockEntityId = 'entity_institution_1';
-      const mockWorkspaceEntityId = 'we_institution_1';
+      const mockWorkspaceEntityId = 'workspace_institution_1_entity_institution_1';
       const timestamp = new Date().toISOString();
 
       // Mock randomUUID to match mockEntityId prefix
@@ -267,7 +267,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
 
       expect(linkResult.success).toBe(true);
       expect(linkResult.workspaceEntityId).toBe(mockWorkspaceEntityId);
-      expect(mockWorkspaceEntitiesCollection.add).toHaveBeenCalledWith(
+      expect(mockWorkspaceEntitiesCollection.set).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
           workspaceId: 'workspace_institution_1',
@@ -276,7 +276,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           displayName: 'Test Institution',
           primaryEmail: 'principal@institution.edu',
           primaryPhone: '+1234567890',
-        })
+        }),
+        { merge: true }
       );
 
       // Verify workspace scope was locked (first entity)
@@ -291,7 +292,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
   describe('2. Family Entity Creation', () => {
     it('should create family entity with familyData in family workspace', async () => {
       const mockEntityId = 'entity_family_1';
-      const mockWorkspaceEntityId = 'we_family_1';
+      const mockWorkspaceEntityId = 'workspace_family_1_entity_family_1';
       const timestamp = new Date().toISOString();
 
       // Mock randomUUID to match mockEntityId prefix
@@ -532,7 +533,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
 
       expect(linkResult.success).toBe(true);
       expect(linkResult.workspaceEntityId).toBe(mockWorkspaceEntityId);
-      expect(mockWorkspaceEntitiesCollection.add).toHaveBeenCalledWith(
+      expect(mockWorkspaceEntitiesCollection.set).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
           workspaceId: 'workspace_family_1',
@@ -541,7 +542,8 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
           displayName: 'Smith Family',
           primaryEmail: 'jane@smith.com',
           primaryPhone: '+1234567890',
-        })
+        }),
+        { merge: true }
       );
 
       // Verify workspace scope was locked (first entity)
@@ -556,7 +558,7 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
   describe('3. Person Entity Creation', () => {
     it('should create person entity with personData in person workspace', async () => {
       const mockEntityId = 'entity_person_1';
-      const mockWorkspaceEntityId = 'we_person_1';
+      const mockWorkspaceEntityId = 'workspace_person_1_entity_person_1';
       const timestamp = new Date().toISOString();
 
       // Mock randomUUID to match mockEntityId prefix
@@ -695,14 +697,15 @@ describe('Task 41.3 - Entity Creation for All Three Scopes', () => {
 
       expect(linkResult.success).toBe(true);
       expect(linkResult.workspaceEntityId).toBe(mockWorkspaceEntityId);
-      expect(mockWorkspaceEntitiesCollection.add).toHaveBeenCalledWith(
+      expect(mockWorkspaceEntitiesCollection.set).toHaveBeenCalledWith(
         expect.objectContaining({
           organizationId: 'org_1',
           workspaceId: 'workspace_person_1',
           entityId: mockEntityId,
           
           displayName: 'Sarah Johnson',
-        })
+        }),
+        { merge: true }
       );
 
       // Verify workspace scope was locked (first entity)

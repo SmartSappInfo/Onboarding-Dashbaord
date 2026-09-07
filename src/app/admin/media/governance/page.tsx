@@ -59,7 +59,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { useWorkspace } from '@/contexts/WorkspaceContext';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import {
   listMediaAuditLogsAction,
   exportMediaAuditLogsCsvAction,

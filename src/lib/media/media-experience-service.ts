@@ -10,9 +10,18 @@
 
 import { 
   collection, doc, getDoc, getDocs, query, where, 
-  setDoc, updateDoc, orderBy, type Firestore 
+  setDoc, updateDoc, orderBy, type Firestore, type QueryConstraint 
 } from 'firebase/firestore';
-import type { MediaExperience, ExperienceTemplate, ExperienceTheme, PlayerControlsConfig } from '../types/media-2.0';
+import type { 
+  MediaExperience, 
+  ExperienceTemplate, 
+  ExperienceTheme, 
+  PlayerControlsConfig,
+  DynamicCtaRule,
+  PersonalizationConfig,
+  ContentRecommendation,
+  ABExperimentConfig
+} from '../types/media-2.0';
 
 export interface CreateExperienceParams {
   workspaceId: string;
@@ -26,6 +35,10 @@ export interface CreateExperienceParams {
   customHeaderTitle?: string;
   customHeaderSubtitle?: string;
   isDefault?: boolean;
+  dynamicCtaRules?: DynamicCtaRule[];
+  personalization?: PersonalizationConfig;
+  recommendations?: ContentRecommendation;
+  abExperiment?: ABExperimentConfig;
   createdById: string;
 }
 
@@ -68,6 +81,10 @@ export async function createExperienceAction(
       customHeaderTitle: params.customHeaderTitle,
       customHeaderSubtitle: params.customHeaderSubtitle,
       isDefault: params.isDefault || false,
+      dynamicCtaRules: params.dynamicCtaRules,
+      personalization: params.personalization,
+      recommendations: params.recommendations,
+      abExperiment: params.abExperiment,
       createdById: params.createdById,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -112,7 +129,7 @@ export async function listExperiencesAction(
 
   try {
     const colRef = collection(firestore, 'media_experiences');
-    const constraints = [where('workspaceId', '==', workspaceId)];
+    const constraints: QueryConstraint[] = [where('workspaceId', '==', workspaceId)];
     if (assetId) {
       constraints.push(where('assetId', '==', assetId));
     }

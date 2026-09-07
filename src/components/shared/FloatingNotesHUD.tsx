@@ -38,7 +38,7 @@ import {
   normalizeKnowledgeType,
   extractPlainText 
 } from '@/lib/quick-notes-domain';
-import type { KnowledgeType, KnowledgeClassificationResult } from '@/lib/quick-notes-types';
+import type { KnowledgeType, KnowledgeClassificationResult, NoteDocument } from '@/lib/quick-notes-types';
 import { classifyDraftKnowledgeAction } from '@/lib/quick-notes-ai-actions';
 import { DEFAULT_TEMPLATE_PRESETS } from '@/lib/knowledge-template-presets';
 import { VoiceCaptureButton } from '@/components/shared/VoiceCaptureButton';
@@ -172,7 +172,7 @@ export default function FloatingNotesHUD() {
 
   // Voice transcript append
   const handleVoiceTranscript = (text: string) => {
-    setDraftText((prev) => (prev ? `${prev} ${text}` : text));
+    setDraftText(draftText ? `${draftText} ${text}` : text);
   };
 
   // AI Auto-Classify
@@ -196,7 +196,8 @@ export default function FloatingNotesHUD() {
         setAiSuggestion(res.data);
         toast({ title: `AI detected: ${KNOWLEDGE_TYPE_META[res.data.suggestedType]?.label ?? res.data.suggestedType}` });
       } else {
-        toast({ title: 'Classification unavailable', description: res.error, variant: 'destructive' });
+        const errMsg = !res.success ? res.error : undefined;
+        toast({ title: 'Classification unavailable', description: errMsg, variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Failed to classify draft', variant: 'destructive' });
@@ -217,7 +218,7 @@ export default function FloatingNotesHUD() {
 
   const handleApplyTemplate = (templateContent: NoteDocument) => {
     const text = extractPlainText(templateContent);
-    setDraftText((prev) => (prev ? `${prev}\n\n${text}` : text));
+    setDraftText(draftText ? `${draftText}\n\n${text}` : text);
     toast({ title: 'Template inserted ✓' });
   };
 

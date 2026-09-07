@@ -176,8 +176,12 @@ export abstract class BaseDomainSpecialist implements SmartSappDomainSpecialist 
       const response: McpJsonRpcResponse = await McpGateway.handleRequest(rpcRequest, {
         workspaceId: request.workspaceId,
         organizationId: request.organizationId,
+        callerId: request.actor.id,
+        callerType: 'user',
         userId: request.actor.id,
+        requestId: `req_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
         callDepth: 1,
+        timestamp: new Date().toISOString(),
       });
 
       const durationMs = Date.now() - startMs;

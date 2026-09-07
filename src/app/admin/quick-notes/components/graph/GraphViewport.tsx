@@ -465,7 +465,7 @@ export function GraphViewport({
                 onPointerDown={(e) => {
                   e.stopPropagation();
                   setDraggedNodeId(node.id);
-                  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+                  (e.currentTarget as Element).setPointerCapture(e.pointerId);
                 }}
                 onClick={(e) => {
                   e.stopPropagation();

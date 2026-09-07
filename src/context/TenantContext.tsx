@@ -16,8 +16,11 @@ import type { UserProfile, Workspace, Organization, AppPermissionId } from '@/li
 type TenantContextType = {
   activeOrganizationId: string;
   activeOrganization?: Organization;
+  currentTenant?: Organization;
+  currentOrganization?: Organization;
   activeWorkspaceId: string;
   activeWorkspace?: Workspace;
+  currentWorkspace?: Workspace;
   setActiveOrganization: (orgId: string) => void;
   setActiveWorkspace: (workspaceId: string) => void;
   switchOrganizationAndWorkspace: (orgId: string, workspaceId: string) => void;
@@ -459,8 +462,11 @@ export function TenantProvider({ children }: { children: React.ReactNode }) {
   const value = React.useMemo(() => ({
     activeOrganizationId,
     activeOrganization,
+    currentTenant: activeOrganization,
+    currentOrganization: activeOrganization,
     activeWorkspaceId,
     activeWorkspace,
+    currentWorkspace: activeWorkspace,
     setActiveOrganization,
     setActiveWorkspace,
     switchOrganizationAndWorkspace,

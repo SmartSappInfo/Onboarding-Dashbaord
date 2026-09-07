@@ -44,6 +44,13 @@ export function ExecutiveIntelligenceRibbon({
     return 'text-rose-500 bg-rose-500/10 border-rose-500/20';
   };
 
+  const overallHealth = summary.overallHealthScore ?? summary.healthScore ?? 100;
+  const activeRisks = summary.activeRiskCount ?? summary.activeRisksCount ?? 0;
+  const activeOpportunities = summary.activeOpportunityCount ?? summary.emergingOpportunitiesCount ?? 0;
+  const freshness = summary.knowledgeFreshnessRating ?? summary.freshnessScore ?? 100;
+  const staleCount = summary.staleMemoriesCount ?? 0;
+  const efficiency = summary.agentEfficiencyIndex ?? summary.agentEfficiencyRating ?? 100;
+
   return (
     <div className="rounded-2xl border border-border/60 bg-gradient-to-br from-card/90 via-card/70 to-card/50 p-4 sm:p-6 backdrop-blur-xl shadow-sm">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 border-b border-border/40">
@@ -86,17 +93,17 @@ export function ExecutiveIntelligenceRibbon({
           </div>
           <div className="mt-2 flex items-baseline gap-1.5">
             <span className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              {summary.overallHealthScore}
+              {overallHealth}
             </span>
             <span className="text-xs text-muted-foreground font-semibold">/ 100</span>
           </div>
           <div className="mt-1">
             <span
               className={`inline-block px-2 py-0.5 rounded text-[10px] font-semibold border ${getScoreColor(
-                summary.overallHealthScore
+                overallHealth
               )}`}
             >
-              {summary.overallHealthScore >= 80 ? 'Optimal' : summary.overallHealthScore >= 60 ? 'Moderate' : 'Needs Attention'}
+              {overallHealth >= 80 ? 'Optimal' : overallHealth >= 60 ? 'Moderate' : 'Needs Attention'}
             </span>
           </div>
         </div>
@@ -109,11 +116,11 @@ export function ExecutiveIntelligenceRibbon({
           </div>
           <div className="mt-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-amber-500">
-              {summary.activeRiskCount}
+              {activeRisks}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground truncate">
-            {summary.activeRiskCount === 0 ? 'Zero active blockers' : 'Requires review'}
+            {activeRisks === 0 ? 'Zero active blockers' : 'Requires review'}
           </p>
         </div>
 
@@ -125,7 +132,7 @@ export function ExecutiveIntelligenceRibbon({
           </div>
           <div className="mt-2">
             <span className="text-2xl sm:text-3xl font-extrabold text-emerald-500">
-              {summary.activeOpportunityCount}
+              {activeOpportunities}
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground truncate">
@@ -141,11 +148,11 @@ export function ExecutiveIntelligenceRibbon({
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              {summary.knowledgeFreshnessRating}%
+              {freshness}%
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground truncate">
-            {summary.staleMemoriesCount} stale candidates
+            {staleCount} stale candidates
           </p>
         </div>
 
@@ -157,7 +164,7 @@ export function ExecutiveIntelligenceRibbon({
           </div>
           <div className="mt-2 flex items-baseline gap-1">
             <span className="text-2xl sm:text-3xl font-extrabold text-foreground">
-              {summary.agentEfficiencyIndex}%
+              {efficiency}%
             </span>
           </div>
           <p className="mt-1 text-[11px] text-muted-foreground truncate">

@@ -52,24 +52,34 @@ import { MEMORY_TYPE_CONFIG, VERIFICATION_CONFIG } from './MemoryCard';
 
 export interface MemoryInspectorDrawerProps {
   open: boolean;
-  onOpenChange: (open: boolean) => void;
+  onOpenChange?: (open: boolean) => void;
+  onClose?: () => void;
   memory: MemoryObject | null;
   onConfirm?: (memoryId: string) => Promise<void> | void;
-  onInvalidate?: (memoryId: string, reason: string) => Promise<void> | void;
+  onInvalidate?: (memoryId: string, reason?: string) => Promise<void> | void;
   onUpdate?: (
     memoryId: string,
     updates: { title?: string; content?: string }
   ) => Promise<void> | void;
+  isProcessing?: boolean;
 }
 
 export function MemoryInspectorDrawer({
   open,
   onOpenChange,
+  onClose,
   memory,
   onConfirm,
   onInvalidate,
   onUpdate,
+  isProcessing = false,
 }: MemoryInspectorDrawerProps) {
+  const handleOpenChange = (newOpen: boolean) => {
+    onOpenChange?.(newOpen);
+    if (!newOpen && onClose) {
+      onClose();
+    }
+  };
   const { toast } = useToast();
   const [isEditing, setIsEditing] = React.useState(false);
   const [editedTitle, setEditedTitle] = React.useState('');
@@ -158,7 +168,7 @@ export function MemoryInspectorDrawer({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
+    <Sheet open={open} onOpenChange={handleOpenChange}>
       <SheetContent
         side="right"
         className="w-full sm:max-w-xl overflow-y-auto flex flex-col justify-between p-6 gap-6"
@@ -432,7 +442,7 @@ export function MemoryInspectorDrawer({
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
             className="min-h-[44px] sm:min-h-[36px] text-xs font-semibold"
           >
             Close

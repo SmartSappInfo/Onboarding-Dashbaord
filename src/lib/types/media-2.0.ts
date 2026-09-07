@@ -18,7 +18,9 @@
  *    Zero use of `any` or `any[]`. All properties are explicitly typed.
  */
 
-import type { MediaAsset } from '../types';
+import type { MediaAsset as BaseMediaAsset } from '../types';
+
+export type MediaAsset = MediaAsset2;
 
 export type MediaLifecycleState = 'draft' | 'active' | 'archived' | 'deprecated';
 
@@ -61,7 +63,7 @@ export interface MediaCollection {
   assetIds: string[];
   smartCriteria?: {
     tags?: string[];
-    mediaTypes?: MediaAsset['type'][];
+    mediaTypes?: BaseMediaAsset['type'][];
     searchQuery?: string;
   };
   createdById: string;
@@ -81,9 +83,11 @@ export interface MediaPackage {
   id: string;
   workspaceId: string;
   title: string;
+  name?: string; // backwards compatibility
   description?: string;
   coverImageUrl?: string;
   items: MediaPackageItem[];
+  assetIds?: string[];
   defaultCtaId?: string;
   createdById: string;
   createdAt: string;
@@ -93,10 +97,12 @@ export interface MediaPackage {
 export interface ExperienceTheme {
   primaryColorHex: string;
   backgroundColorHex: string;
-  textColorHex: string;
+  textColorHex?: string;
   logoUrl?: string;
   fontFamily?: string;
   customCss?: string;
+  primaryColor?: string; // backwards compatibility
+  layout?: string;
 }
 
 export interface PlayerControlsConfig {
@@ -120,12 +126,16 @@ export interface RuleCondition {
 }
 
 export interface RuleAction {
-  ctaTitle: string;
-  ctaButtonText: string;
-  targetUrl: string;
-  ctaType: 'survey' | 'form' | 'pdf' | 'meeting' | 'external';
-  ctaMode: 'modal' | 'redirect' | 'replace';
-  unlockGate: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+  ctaTitle?: string;
+  ctaButtonText?: string;
+  targetUrl?: string;
+  ctaType?: 'survey' | 'form' | 'pdf' | 'meeting' | 'external';
+  ctaMode?: 'modal' | 'redirect' | 'replace';
+  unlockGate?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+  unlockCta?: boolean;
+  changeCtaText?: string;
+  changeCtaUrl?: string;
+  highlightCta?: boolean;
 }
 
 export interface DynamicCtaRule {
@@ -151,6 +161,7 @@ export interface ContentRecommendation {
   targetCollectionId?: string;
   targetPackageId?: string;
   maxRecommendations: number;
+  headline?: string;
 }
 
 export interface ABExperimentMetrics {
@@ -165,16 +176,21 @@ export interface ABExperimentVariantOverrides {
   buttonText?: string;
   targetUrl?: string;
   gating?: 'immediate' | 'quarter' | 'half' | 'threequarters' | 'complete';
+  customHeaderTitle?: string;
+  customHeaderSubtitle?: string;
+  ctaText?: string;
+  ctaTargetUrl?: string;
 }
 
 export interface ABExperimentConfig {
   id: string;
-  name: string;
+  name?: string;
   enabled: boolean;
   trafficSplitPercent: number; // 0 to 100 (% directed to Variant A, remainder to Variant B)
   variantA: ABExperimentVariantOverrides;
   variantB: ABExperimentVariantOverrides;
-  metrics: ABExperimentMetrics;
+  variantBOverrides?: ABExperimentVariantOverrides;
+  metrics?: ABExperimentMetrics;
 }
 
 export interface PersonaPreviewContext {
@@ -211,6 +227,10 @@ export interface MediaExperience {
   createdById: string;
   createdAt: string;
   updatedAt: string;
+  primaryAssetId?: string;
+  status?: string;
+  gating?: { requireEmail?: boolean; [key: string]: unknown };
+  cta?: { enabled?: boolean; text?: string; link?: string; [key: string]: unknown };
 }
 
 export interface MediaLink {
@@ -229,6 +249,7 @@ export interface MediaLink {
   lastClickedAt?: string;
   createdById: string;
   createdAt: string;
+  customUrl?: string;
 }
 
 export interface EmbedConfig {
@@ -331,12 +352,19 @@ export interface MediaGovernanceConfig {
   intelligenceConfig?: IntelligenceGovernanceConfig;
 }
 
-export interface MediaAsset2 extends MediaAsset {
+export interface MediaAsset2 extends BaseMediaAsset {
+  workspaceId?: string;
+  viewsCount?: number;
+  playsCount?: number;
+  completionsCount?: number;
+  updatedAt?: string;
   currentVersionId?: string;
   versionCount?: number;
   collectionIds?: string[];
   packageIds?: string[];
   lifecycleState?: MediaLifecycleState;
+  status?: string;
+  tags?: string[];
   defaultExperienceId?: string;
   technicalMetadata?: {
     codec?: string;
@@ -476,6 +504,7 @@ export interface MediaFunnelMetrics {
   ctaClicks: number;
   dealsCreated: number;
   dealsWon: number;
+  viewToDealConversionRate?: number;
 }
 
 export interface MediaInfluenceSummary {
@@ -491,10 +520,13 @@ export interface MediaInfluenceSummary {
   influencedDealsCount: number;
   totalDealsCount: number;
   avgDealAccelerationDays: number; // days saved compared to deals without media
+  totalDealsInfluenced?: number;
+  avgDealVelocityDays?: number;
   attributionModel: AttributionModelType;
   lookbackDays: number;
   currencySymbol: string;
   funnel: MediaFunnelMetrics;
+  funnelMetrics?: MediaFunnelMetrics;
   topInfluencingAssets: TopInfluencingAsset[];
 }
 

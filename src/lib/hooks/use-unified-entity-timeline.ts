@@ -388,12 +388,15 @@ export function useUnifiedEntityTimeline({
         title: actionText,
         description: `Generated from ${item.title} (${item.timestamp})`,
         priority: 'medium',
-        status: 'pending',
-        category: 'follow-up',
+        status: 'todo',
+        category: 'follow_up',
         assignedTo: user.uid,
         assignedToName: user.displayName || 'Me',
         entityId: item.links.entityId || (by === 'entity' ? recordId : undefined),
         dealId: item.links.dealId || (by === 'deal' ? recordId : undefined),
+        dueDate: new Date().toISOString(),
+        reminders: [],
+        reminderSent: false,
       }, user.uid);
 
       if (res.success) {

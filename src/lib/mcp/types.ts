@@ -74,6 +74,7 @@ export interface McpExecutionContext {
   organizationId: string;
   callerId: string;
   callerType: 'user' | 'agent' | 'api_key';
+  userId?: string;
   apiKeyId?: string;
   requestId: string;
   callDepth: number;

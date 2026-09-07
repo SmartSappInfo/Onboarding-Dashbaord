@@ -304,6 +304,7 @@ export async function createDeal(data: DealCreationData): Promise<{ id?: string;
 export interface UpdateDealStageOptions {
     status?: 'open' | 'won' | 'lost' | 'cancelled';
     lostReason?: string;
+    reason?: string;
     userId?: string;
     bypassValidation?: boolean;
 }
@@ -315,6 +316,9 @@ export async function updateDealStageAction(
 ): Promise<{ success: boolean; error?: string }> {
     try {
         const opts: UpdateDealStageOptions = typeof options === 'string' ? { userId: options } : (options || {});
+        if (opts.reason && !opts.lostReason) {
+            opts.lostReason = opts.reason;
+        }
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
         if (!dealSnap.exists) throw new Error('Deal not found');

@@ -100,7 +100,7 @@ export function IdeaConversionModal({
           title: 'Asset Created Successfully',
           description: `Created draft asset "${result.title}" in your Media Library.`,
           actionConfig: {
-            path: `/admin/media?assetId=${result.id}`,
+            path: `/admin/media?assetId=${result.assetId}`,
             label: 'View in Library',
           },
         });

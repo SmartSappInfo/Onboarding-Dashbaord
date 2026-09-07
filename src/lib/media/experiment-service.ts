@@ -33,6 +33,7 @@ import type {
   MediaExperiment,
   ExperimentVariant,
   ExperimentType,
+  ExperimentStatus,
   BanditAlgorithm,
   ABExperimentVariantOverrides,
 } from '../types/media-2.0';
@@ -360,7 +361,7 @@ export async function recordExperimentEventAction(
     let pValue = exp.pValue;
     let confidenceScore = exp.confidenceScore;
     let winnerVariantId = exp.winnerVariantId;
-    let status = exp.status;
+    let status: ExperimentStatus = exp.status;
 
     if (control && challenger) {
       const stats = calculateStatisticalSignificance(control, challenger);

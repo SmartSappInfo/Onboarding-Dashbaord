@@ -55,11 +55,10 @@ describe('linkEntityToWorkspaceAction', () => {
         { name: 'John Doe', email: 'john@test.com', phone: '+1234567890', type: 'Principal', isSignatory: true },
       ],
       entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
+      entityContacts: [],
+      globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
-        entityContacts: [],
     };
 
     const mockWorkspace = {
@@ -68,17 +67,25 @@ describe('linkEntityToWorkspaceAction', () => {
       name: 'Onboarding',
       contactScope: 'institution',
       status: 'active',
-      createdAt: '2024-01-01T00:00:00Z',
-      updatedAt: '2024-01-01T00:00:00Z',
-        entityContacts: [],
+      scopeLocked: false,
+      capabilities: {
+        billing: true,
+        admissions: true,
+        children: false,
+        contracts: true,
+        messaging: true,
+        automations: true,
+        tasks: true,
+      },
     };
 
     const mockStage = {
       id: 'stage_1',
-      name: 'Initial Contact',
+      name: 'Lead',
     };
 
     // Mock Firestore operations
+    const mockEntityUpdate = vi.fn().mockResolvedValue({});
     const mockEntityGet = vi.fn().mockResolvedValue({
       exists: true,
       id: 'entity_123',
@@ -104,9 +111,7 @@ describe('linkEntityToWorkspaceAction', () => {
       data: () => mockStage,
     });
 
-    const mockWorkspaceEntityAdd = vi.fn().mockResolvedValue({
-      id: 'workspace_entity_1',
-    });
+    const mockWorkspaceEntitySet = vi.fn().mockResolvedValue({});
 
     const mockWorkspaceUpdate = vi.fn().mockResolvedValue({});
 
@@ -116,6 +121,7 @@ describe('linkEntityToWorkspaceAction', () => {
         return {
           doc: () => ({
             get: mockEntityGet,
+            update: mockEntityUpdate,
           }),
         };
       }
@@ -139,7 +145,9 @@ describe('linkEntityToWorkspaceAction', () => {
               get: mockWorkspaceEntitiesQuery,
             }),
           }),
-          add: mockWorkspaceEntityAdd,
+          doc: () => ({
+            set: mockWorkspaceEntitySet,
+          }),
         };
       }
       if (collectionName === 'stages') {
@@ -161,7 +169,7 @@ describe('linkEntityToWorkspaceAction', () => {
     });
 
     expect(result.success).toBe(true);
-    expect(result.workspaceEntityId).toBe('workspace_entity_1');
+    expect(result.workspaceEntityId).toBe('workspace_1_entity_123');
     expect(result.scopeLocked).toBe(true);
 
     // Verify workspace was locked
@@ -286,11 +294,10 @@ describe('linkEntityToWorkspaceAction', () => {
       name: 'Test School',
       contacts: [],
       entityType: 'institution',
-    entityContacts: [],
-    globalTags: [],
+      entityContacts: [],
+      globalTags: [],
       createdAt: '2024-01-01T00:00:00Z',
       updatedAt: '2024-01-01T00:00:00Z',
-        entityContacts: [],
     };
 
     const mockEntityGet = vi.fn().mockResolvedValue({

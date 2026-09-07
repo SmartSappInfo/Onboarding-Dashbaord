@@ -435,6 +435,11 @@ export interface QuickNote {
   createdByName?: string;
   createdAt: string;
   updatedAt: string;
+  document?: NoteDocument;
+  color?: string;
+  authorId?: string;
+  authorName?: string;
+  isArchived?: boolean;
 }
 
 export interface QuickNoteCategory {
@@ -460,6 +465,7 @@ export interface UnifiedNote {
   sourceId: string;
   workspaceId: string;
   title?: string;
+  content?: NoteDocument;
   plainText: string;
   noteType?: string;
   knowledgeType?: KnowledgeType;

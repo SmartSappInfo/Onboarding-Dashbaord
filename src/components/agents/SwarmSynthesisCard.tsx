@@ -57,7 +57,7 @@ export function SwarmSynthesisCard({ run, workspaceId, userId }: SwarmSynthesisC
         organizationId: run.organizationId,
         userId,
         toolName: action.toolName,
-        parameters: action.arguments,
+        parameters: action.arguments || {},
       });
 
       if (res.success) {
