@@ -61,6 +61,8 @@ import {
     Check,
     ChevronDown,
     Brain,
+    Link2,
+    ArrowRight,
 } from 'lucide-react';
 import { format, isPast, isToday } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -105,6 +107,7 @@ import EntityContextTab from '../components/EntityContextTab';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
 import { createTaskAction } from '@/lib/task-server-actions';
+import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -136,9 +139,10 @@ export default function EntityDetailPage() {
     const entityId = params.id as string;
     const firestore = useFirestore();
     const { user: currentUser } = useFirebaseUser();
-    const { activeWorkspaceId, activeOrganization, activeOrganizationId, accessibleWorkspaces } = useTenant();
+    const { activeWorkspaceId, activeWorkspace, activeOrganization, activeOrganizationId, accessibleWorkspaces, setActiveWorkspace } = useTenant();
     const { industry } = useIndustry();
     const { canViewEntity } = useWorkspaceVisibility();
+    const [isLinkingToWorkspace, setIsLinkingToWorkspace] = React.useState(false);
 
     // Workspace name lookup map (from tenant context — already loaded)
     const workspaceNameMap = React.useMemo(
@@ -284,18 +288,135 @@ export default function EntityDetailPage() {
     // Navigation Entity Resolution
     useSetBreadcrumb(entityData?.name || weData?.displayName);
 
- if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
- if (!entityData || !weData || !canViewEntity(weData)) {
-    const errorMessage = !entityData || !weData 
-        ? getIndustryErrorMessage('entity_not_found', industry)
-        : 'You do not have permission to view this entity.';
-    return (
-        <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
-            <h2 className="text-xl font-bold">{errorMessage}</h2>
-            <Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button>
-        </div>
-    );
- }
+    const handleLinkToActiveWorkspace = async () => {
+        if (!activeWorkspaceId || !entityId || isLinkingToWorkspace) return;
+        setIsLinkingToWorkspace(true);
+        try {
+            const res = await linkEntityToWorkspaceAction({
+                workspaceId: activeWorkspaceId,
+                entityId,
+                actor: currentUser ? {
+                    userId: currentUser.uid,
+                    displayName: currentUser.displayName || currentUser.email || 'Admin User',
+                } : undefined,
+            });
+
+            if (res.success) {
+                toast({
+                    title: 'Contact Linked',
+                    description: `Successfully linked ${entityData?.name || 'contact'} to ${activeWorkspace?.name || 'this workspace'}.`,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Link Failed',
+                    description: res.error || 'Failed to link contact to workspace.',
+                });
+            }
+        } catch (err: unknown) {
+            const msg = err instanceof Error ? err.message : 'An error occurred while linking.';
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: msg,
+            });
+        } finally {
+            setIsLinkingToWorkspace(false);
+        }
+    };
+
+    if (isLoadingEntity || isLoadingWE) return <div className="p-8 space-y-8"><Skeleton className="h-48 w-full rounded-2xl"/><Skeleton className="h-96 w-full rounded-2xl"/></div>;
+
+    // Cross-workspace entity detection: entity exists in organization, but is not yet shared to active workspace
+    if (entityData && !weData) {
+        const isSameOrg = !activeOrganizationId || !entityData.organizationId || entityData.organizationId === activeOrganizationId;
+        const linkedWorkspaceIds = allMemberships?.map(m => m.workspaceId) || entityData.workspaceIds || [];
+        const linkedWorkspaces = accessibleWorkspaces.filter(w => linkedWorkspaceIds.includes(w.id));
+
+        return (
+            <div className="flex flex-col items-center justify-center py-16 px-4 max-w-2xl mx-auto text-center space-y-6">
+                <div className="p-4 rounded-full bg-primary/10 text-primary">
+                    <Building2 className="w-10 h-10" />
+                </div>
+                <div className="space-y-2">
+                    <h2 className="text-2xl font-bold tracking-tight text-foreground">
+                        {entityData.name}
+                    </h2>
+                    <p className="text-sm text-muted-foreground max-w-lg">
+                        This {singular.toLowerCase()} exists in your organization, but is not currently linked to the active workspace{' '}
+                        <span className="font-semibold text-foreground">({activeWorkspace?.name || 'Current Workspace'})</span>.
+                    </p>
+                    {linkedWorkspaces.length > 0 && (
+                        <p className="text-xs text-muted-foreground pt-1">
+                            Currently available in:{' '}
+                            {linkedWorkspaces.map(w => w.name).join(', ')}
+                        </p>
+                    )}
+                </div>
+
+                <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                    {isSameOrg && activeWorkspaceId && (
+                        <Button
+                            size="lg"
+                            className="min-h-[44px] font-medium active:scale-[0.97] transition-all shadow-sm"
+                            disabled={isLinkingToWorkspace}
+                            onClick={handleLinkToActiveWorkspace}
+                        >
+                            {isLinkingToWorkspace ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Linking Contact...
+                                </>
+                            ) : (
+                                <>
+                                    <Link2 className="w-4 h-4 mr-2" />
+                                    Link to {activeWorkspace?.name || 'Active Workspace'}
+                                </>
+                            )}
+                        </Button>
+                    )}
+
+                    {linkedWorkspaces.length > 0 && (
+                        <div className="flex items-center gap-2">
+                            {linkedWorkspaces.map(ws => (
+                                <Button
+                                    key={ws.id}
+                                    variant="secondary"
+                                    size="lg"
+                                    className="min-h-[44px] active:scale-[0.97]"
+                                    onClick={() => setActiveWorkspace(ws.id)}
+                                >
+                                    Switch to {ws.name}
+                                    <ArrowRight className="w-4 h-4 ml-2" />
+                                </Button>
+                            ))}
+                        </div>
+                    )}
+
+                    <Button
+                        variant="outline"
+                        size="lg"
+                        className="min-h-[44px] active:scale-[0.97]"
+                        onClick={() => router.push('/admin/entities')}
+                    >
+                        Back to List
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    if (!entityData || !weData || !canViewEntity(weData)) {
+        const errorMessage = !entityData || !weData 
+            ? getIndustryErrorMessage('entity_not_found', industry)
+            : 'You do not have permission to view this entity.';
+        return (
+            <div className="flex flex-col items-center justify-center py-20 text-center space-y-4">
+                <h2 className="text-xl font-bold">{errorMessage}</h2>
+                <Button variant="outline" onClick={() => router.push('/admin/entities')}>Back to List</Button>
+            </div>
+        );
+    }
 
     const handleTaskComplete = (taskId: string) => {
         if (firestore) {

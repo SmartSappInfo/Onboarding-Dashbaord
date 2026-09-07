@@ -1,8 +1,9 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { withEntitySearchFields } from './entities/entity-cache-domain';
-import { deleteContactProjectionForEntity } from './contacts/contact-projection-writer';
+import { deleteContactProjectionForEntity, syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { logActivity } from './activity-logger';
 import { validateScopeMatch } from './scope-guard';
 import { revalidatePath } from 'next/cache';
@@ -173,8 +174,10 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       }
     }
 
-    // 8. Create workspace_entities document
-    const workspaceEntityData: Omit<WorkspaceEntity, 'id'> = withEntitySearchFields({
+    // 8. Create workspace_entities document with deterministic document key
+    const workspaceEntityId = `${input.workspaceId}_${input.entityId}`;
+    const workspaceEntityData: WorkspaceEntity = withEntitySearchFields({
+      id: workspaceEntityId,
       organizationId: entity.organizationId,
       workspaceId: input.workspaceId,
       entityId: input.entityId,
@@ -186,12 +189,24 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       updatedAt: timestamp,
       // Denormalized read-model fields (displayNameLower stamped by helper)
       displayName: entity.name,
+      primaryContactName: primaryEmail || entity.name,
       primaryEmail,
       primaryPhone,
       entityContacts: entity.entityContacts || [],
     });
 
-    const workspaceEntityRef = await adminDb.collection('workspace_entities').add(workspaceEntityData);
+    await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData, { merge: true });
+
+    // Atomically append target workspace to master entity's workspaceIds
+    await adminDb.collection('entities').doc(input.entityId).update({
+      workspaceIds: FieldValue.arrayUnion(input.workspaceId),
+      updatedAt: timestamp,
+    });
+
+    // Project contacts into workspace_contacts (Phase 6.1) — read-model, non-blocking
+    await syncContactProjectionForWE(workspaceEntityData).catch((projErr: Error) => {
+      console.warn('[linkEntityToWorkspaceAction] Contact projection sync error:', projErr.message);
+    });
 
     // 9. Log audit trail (Requirement 29.4)
     await logWorkspaceEntityCreated({
@@ -202,7 +217,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       userId: input.userId,
       userName: input.userName || 'Unknown User',
       userEmail: input.userEmail || '',
-      newValue: { ...workspaceEntityData, id: workspaceEntityRef.id },
+      newValue: workspaceEntityData,
       operationContext: 'manual_edit',
     });
 
@@ -242,7 +257,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       source: 'user_action',
       description: `linked ${entity.entityType} entity "${entity.name}" to workspace`,
       metadata: {
-        workspaceEntityId: workspaceEntityRef.id,
+        workspaceEntityId,
         pipelineId: input.pipelineId,
         stageId: input.stageId,
         isFirstEntity,
@@ -255,14 +270,15 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
 
     return {
       success: true,
-      workspaceEntityId: workspaceEntityRef.id,
+      workspaceEntityId,
       scopeLocked: isFirstEntity,
     };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_ENTITY:LINK] Failed:', e.message);
+  } catch (e: unknown) {
+    const errorMsg = e instanceof Error ? e.message : 'Unknown error during entity linking';
+    console.error('>>> [WORKSPACE_ENTITY:LINK] Failed:', errorMsg);
     return {
       success: false,
-      error: e.message,
+      error: errorMsg,
     };
   }
 }
@@ -1130,8 +1146,213 @@ export async function getFilteredEntityIdsAction(
       success: true,
       data: filtered.map(e => e.id)
     };
-  } catch (err: any) {
-    console.error('>>> [WORKSPACE_ENTITY:GET_FILTERED_IDS] Failed:', err.message);
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Failed to get filtered entity IDs';
+    console.error('>>> [WORKSPACE_ENTITY:GET_FILTERED_IDS] Failed:', msg);
+    return { success: false, error: msg };
   }
 }
+
+/**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10):
+ * Server helper to idempotently share an entity to a target workspace within the same organization.
+ * 
+ * 1. Zero-Duplication: Links master entity from `entities/{entityId}` into `workspace_entities/{targetWorkspaceId}_{entityId}`.
+ * 2. Multi-Tenant Isolation: Strictly asserts `entity.organizationId === organizationId`. Cross-org links fail immediately.
+ * 3. ScopeGuard Validation: Enforces that entity type matches target workspace contact scope.
+ * 4. Idempotency & High Load: Uses deterministic key `${targetWorkspaceId}_${entityId}` with merge set.
+ * 5. Testability: Covered in `src/lib/__tests__/survey-cross-workspace-sharing.test.ts`.
+ */
+export interface EnsureEntitySharedInput {
+  entityId: string;
+  targetWorkspaceId: string;
+  organizationId?: string;
+  sourceContext?: string;
+  contactId?: string | null;
+  reason?: string;
+  actor?: {
+    userId: string;
+    displayName: string;
+  };
+}
+
+export interface EnsureEntitySharedResult {
+  success: boolean;
+  isNewShare: boolean;
+  alreadyShared?: boolean;
+  workspaceEntityId: string;
+  error?: string;
+}
+
+export async function ensureEntitySharedToWorkspace(
+  input: EnsureEntitySharedInput
+): Promise<EnsureEntitySharedResult> {
+  try {
+    const { entityId, targetWorkspaceId, sourceContext, reason, actor } = input;
+    if (!entityId || !targetWorkspaceId) {
+      return {
+        success: false,
+        isNewShare: false,
+        alreadyShared: false,
+        workspaceEntityId: '',
+        error: 'Missing required parameters: entityId and targetWorkspaceId are required',
+      };
+    }
+
+    const deterministicWeId = `${targetWorkspaceId}_${entityId}`;
+
+    // 1. Fast path: check if workspace entity link already exists
+    const existingWeSnap = await adminDb.collection('workspace_entities').doc(deterministicWeId).get();
+    if (existingWeSnap.exists) {
+      const existingData = existingWeSnap.data() as WorkspaceEntity;
+      if (existingData.status === 'active') {
+        // Ensure master entity's workspaceIds includes targetWorkspaceId
+        await adminDb.collection('entities').doc(entityId).update({
+          workspaceIds: FieldValue.arrayUnion(targetWorkspaceId),
+        }).catch((err: Error) => console.warn('[ensureEntitySharedToWorkspace] arrayUnion catch:', err.message));
+
+        return {
+          success: true,
+          isNewShare: false,
+          alreadyShared: true,
+          workspaceEntityId: deterministicWeId,
+        };
+      }
+    }
+
+    // 2. Fetch master entity document
+    const entityRef = adminDb.collection('entities').doc(entityId);
+    const entitySnap = await entityRef.get();
+    if (!entitySnap.exists) {
+      return {
+        success: false,
+        isNewShare: false,
+        alreadyShared: false,
+        workspaceEntityId: '',
+        error: `Master entity "${entityId}" not found`,
+      };
+    }
+
+    const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
+
+    // Fetch target workspace to validate existence and determine organization
+    const workspaceRef = adminDb.collection('workspaces').doc(targetWorkspaceId);
+    const workspaceSnap = await workspaceRef.get();
+    if (!workspaceSnap.exists) {
+      return {
+        success: false,
+        isNewShare: false,
+        alreadyShared: false,
+        workspaceEntityId: '',
+        error: `Target workspace "${targetWorkspaceId}" not found`,
+      };
+    }
+
+    const workspace = { id: workspaceSnap.id, ...workspaceSnap.data() } as Workspace;
+    const targetOrgId = input.organizationId || workspace.organizationId;
+
+    // 3. HARD MULTI-TENANT BOUNDARY CHECK (Security Principle)
+    if (entity.organizationId !== targetOrgId || workspace.organizationId !== targetOrgId) {
+      console.error(
+        `[SECURITY ALERT] Cross-organization entity share blocked! Entity org: ${entity.organizationId}, Target org: ${targetOrgId}, Workspace org: ${workspace.organizationId}`
+      );
+      return {
+        success: false,
+        isNewShare: false,
+        alreadyShared: false,
+        workspaceEntityId: '',
+        error: 'Tenant boundary violation: Entity belongs to a different organization.',
+      };
+    }
+
+    // 4. Validate ScopeGuard
+    const targetScope = workspace.contactScope || 'institution';
+    const scopeValidation = validateScopeMatch(entity.entityType, targetScope);
+    if (!scopeValidation.valid) {
+      console.warn(
+        `[ScopeGuard] Scope mismatch when sharing entity ${entityId} (${entity.entityType}) to workspace ${targetWorkspaceId} (${targetScope})`
+      );
+      return {
+        success: false,
+        isNewShare: false,
+        alreadyShared: false,
+        workspaceEntityId: '',
+        error: `Scope mismatch: cannot link ${entity.entityType} to ${targetScope} workspace.`,
+      };
+    }
+
+    // 5. Extract contact fields
+    const { primaryEmail, primaryPhone } = extractPrimaryContact(entity);
+    const timestamp = new Date().toISOString();
+
+    // 6. Construct deterministic WorkspaceEntity data
+    const workspaceEntityData: WorkspaceEntity = withEntitySearchFields({
+      id: deterministicWeId,
+      organizationId: entity.organizationId,
+      workspaceId: targetWorkspaceId,
+      entityId: entity.id,
+      entityType: entity.entityType,
+      status: 'active',
+      workspaceTags: [],
+      addedAt: timestamp,
+      updatedAt: timestamp,
+      displayName: entity.name,
+      primaryContactName: primaryEmail || entity.name,
+      primaryEmail,
+      primaryPhone,
+      entityContacts: entity.entityContacts || [],
+    });
+
+    // 7. Write workspace_entities idempotently
+    await adminDb.collection('workspace_entities').doc(deterministicWeId).set(workspaceEntityData, { merge: true });
+
+    // 8. Update master entity workspaceIds array
+    await entityRef.update({
+      workspaceIds: FieldValue.arrayUnion(targetWorkspaceId),
+      updatedAt: timestamp,
+    });
+
+    // 9. Sync contact projection
+    await syncContactProjectionForWE(workspaceEntityData).catch((projErr: Error) => {
+      console.warn('[ensureEntitySharedToWorkspace] Contact projection sync error:', projErr.message);
+    });
+
+    // 10. Audit Activity Log
+    await logActivity({
+      organizationId: entity.organizationId,
+      workspaceId: targetWorkspaceId,
+      entityId: entity.id,
+      entityType: entity.entityType,
+      displayName: entity.name,
+      entitySlug: entity.slug || '',
+      userId: actor?.userId,
+      type: 'entity_shared_to_workspace',
+      source: actor ? 'user_action' : 'system',
+      description: `Auto-shared ${entity.entityType} "${entity.name}" to workspace via ${reason || sourceContext || 'survey tracking'}`,
+      metadata: {
+        reason: reason || 'survey_tracking',
+        sourceContext: sourceContext || 'survey_tracking',
+        actor: actor || null,
+        workspaceEntityId: deterministicWeId,
+      },
+    }).catch((logErr: Error) => console.warn('[ensureEntitySharedToWorkspace] Activity log error:', logErr.message));
+
+    return {
+      success: true,
+      isNewShare: true,
+      alreadyShared: false,
+      workspaceEntityId: deterministicWeId,
+    };
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Failed to share entity to workspace';
+    console.error('[ensureEntitySharedToWorkspace] Unexpected failure:', msg);
+    return {
+      success: false,
+      isNewShare: false,
+      alreadyShared: false,
+      workspaceEntityId: '',
+      error: msg,
+    };
+  }
+}
+

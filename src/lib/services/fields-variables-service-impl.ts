@@ -1334,6 +1334,27 @@ export class FieldsVariablesService {
               entityId: targetEntityId,
               recipientContact: emailParam || phoneParam || null
             };
+          } else if (workspaceIds.length > 0) {
+            // Cross-workspace fallback within the same organization
+            try {
+              const wsSnap = await adminDb.collection('workspaces').doc(workspaceIds[0]).get();
+              const wsOrgId = wsSnap.data()?.organizationId;
+              const entSnap = await adminDb.collection('entities').doc(targetEntityId).get();
+              if (entSnap.exists) {
+                const entData = entSnap.data();
+                if (entData && wsOrgId && entData.organizationId === wsOrgId) {
+                  const contacts = (entData.entityContacts || []) as EntityContact[];
+                  const found = contacts.find(c => c.id === targetContactId);
+                  const primary = contacts.find(c => c.isPrimary) || contacts[0];
+                  return {
+                    entityId: targetEntityId,
+                    recipientContact: found?.email || found?.phone || primary?.email || primary?.phone || emailParam || phoneParam || null
+                  };
+                }
+              }
+            } catch (fbErr) {
+              console.warn('[FieldsVariablesService] Cross-workspace contact fallback error:', fbErr);
+            }
           }
         } else {
           // Fallback capped scan to avoid hanging the server when database size is huge
@@ -1370,6 +1391,24 @@ export class FieldsVariablesService {
         });
         if (docMatch) {
           return { entityId: entityIdParam, recipientContact: emailParam || phoneParam || null };
+        }
+
+        // Cross-workspace fallback within the same organization
+        if (workspaceIds.length > 0) {
+          const wsSnap = await adminDb.collection('workspaces').doc(workspaceIds[0]).get();
+          const wsOrgId = wsSnap.data()?.organizationId;
+          const entSnap = await adminDb.collection('entities').doc(entityIdParam).get();
+          if (entSnap.exists) {
+            const entData = entSnap.data();
+            if (entData && wsOrgId && entData.organizationId === wsOrgId) {
+              const contacts = (entData.entityContacts || []) as EntityContact[];
+              const primary = contacts.find(c => c.isPrimary) || contacts[0];
+              return {
+                entityId: entityIdParam,
+                recipientContact: primary?.email || primary?.phone || emailParam || phoneParam || null
+              };
+            }
+          }
         }
       } catch (err) {
         console.warn('[FieldsVariablesService] Error verifying entityId parameter:', err);

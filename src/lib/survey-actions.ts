@@ -20,6 +20,7 @@ import { canUser } from './workspace-permissions';
 import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
 import { splitFileUrls } from './survey-file-utils';
+import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
 import {
   extractFileNameFromStorageUrl,
   isGenericChoiceValue,
@@ -489,6 +490,40 @@ export async function resolveOrMatchWorkspaceEntity(
           matchedBy: 'tracked_id',
           existingEntityDoc: data,
         };
+      } else {
+        // Cross-workspace entity within the same organization:
+        // Automatically share the entity to the target workspace so the submission
+        // links cleanly without creating a duplicate entity.
+        try {
+          const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+          if (wsSnap.exists) {
+            const wsData = wsSnap.data();
+            const entityOrgId = data?.organizationId;
+            const targetWsOrgId = wsData?.organizationId;
+
+            if (entityOrgId && targetWsOrgId && entityOrgId === targetWsOrgId) {
+              await ensureEntitySharedToWorkspace({
+                entityId: preTrackedId,
+                targetWorkspaceId: workspaceId,
+                reason: 'survey_response_submission',
+                actor: {
+                  userId: 'system-survey-worker',
+                  displayName: 'Survey Cross-Workspace Engine',
+                },
+              });
+
+              return {
+                entityId: entSnap.id,
+                entityName: data?.name || '',
+                entityContacts: data?.entityContacts || [],
+                matchedBy: 'tracked_id',
+                existingEntityDoc: data,
+              };
+            }
+          }
+        } catch (shareErr: unknown) {
+          console.warn('[resolveOrMatchWorkspaceEntity] Cross-workspace link failed, falling through:', shareErr);
+        }
       }
     }
   }

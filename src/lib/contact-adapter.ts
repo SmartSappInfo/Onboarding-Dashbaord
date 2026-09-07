@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact, EntityContact } from './types';
 import { resolveEntityContacts } from './entity-contact-helpers';
 import { zoneDisplayName, type ZoneRef } from './zone-constants';
+import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
 
 // Re-export ResolvedContact for test compatibility
 export type { ResolvedContact } from './types';
@@ -124,8 +125,32 @@ async function resolveFromEntity(
       .limit(1)
       .get();
 
-    const workspaceEntity = weSnap.empty ? undefined : { id: weSnap.docs[0].id, ...weSnap.docs[0].data() } as WorkspaceEntity;
-    const workspaceEntityId = workspaceEntity?.id;
+    let workspaceEntity = weSnap.empty ? undefined : { id: weSnap.docs[0].id, ...weSnap.docs[0].data() } as WorkspaceEntity;
+    let workspaceEntityId = workspaceEntity?.id;
+
+    // Cross-workspace self-healing: if the entity exists in the same organization
+    // but has not yet been linked to this workspace, idempotently link it.
+    if (!workspaceEntity && entity.organizationId) {
+      try {
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (wsSnap.exists && wsSnap.data()?.organizationId === entity.organizationId) {
+          const shareResult = await ensureEntitySharedToWorkspace({
+            entityId,
+            targetWorkspaceId: workspaceId,
+            reason: 'adapter_auto_link',
+            actor: { userId: 'system', displayName: 'Contact Adapter Engine' },
+          });
+          workspaceEntityId = shareResult.workspaceEntityId;
+          const freshWeDoc = await adminDb.collection('workspace_entities').doc(workspaceEntityId).get();
+          if (freshWeDoc.exists) {
+            workspaceEntity = { id: freshWeDoc.id, ...freshWeDoc.data() } as WorkspaceEntity;
+          }
+        }
+      } catch (selfHealErr: unknown) {
+        console.warn(`[ADAPTER] Self-heal link failed for entity ${entityId} in workspace ${workspaceId}:`, selfHealErr);
+      }
+    }
+
     const legacySchoolData = undefined;
 
     // FER-01: Resolve canonical entityContacts
@@ -206,8 +231,9 @@ async function resolveFromEntity(
     };
 
     return resolved;
-  } catch (error: any) {
-    console.error(`[ADAPTER] Failed to resolve from entity ${entityId}:`, error.message);
+  } catch (error: unknown) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    console.error(`[ADAPTER] Failed to resolve from entity ${entityId}:`, errMsg);
     return null;
   }
 }

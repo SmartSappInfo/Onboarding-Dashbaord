@@ -164,21 +164,77 @@ export default async function PublicSurveyPage({
         resolvedContactId = ref;
     }
 
-    // Load contact email if contactId is resolved (cookie or ref)
-    if (resolvedContactId) {
+    // Resolve organizationId early to support multi-tenant security verification
+    let surveyOrgId = survey.organizationId;
+    if (!surveyOrgId && survey.workspaceIds?.length) {
+        try {
+            const wsSnap = await adminDb.collection('workspaces').doc(survey.workspaceIds[0]).get();
+            if (wsSnap.exists) {
+                surveyOrgId = wsSnap.data()?.organizationId;
+            }
+        } catch (wsErr) {
+            console.warn('[PublicSurveyPage] Failed to fetch workspace for orgId:', wsErr);
+        }
+    }
+
+    /**
+     * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+     * Cross-Workspace Entity Resolution & Idempotent Sharing (Zero-Duplication):
+     * When tracking links (?ref=...) are dispatched across workspaces within the same organization
+     * (e.g. Focus Groups survey sent to Onboarding contacts), automatically share the entity to the
+     * survey's target workspace. This guarantees variables preload and lead capture silently auto-submits.
+     */
+    if (resolvedEntityId && resolvedWorkspaceId && surveyOrgId) {
+        try {
+            const { ensureEntitySharedToWorkspace } = await import('@/lib/workspace-entity-actions');
+            await ensureEntitySharedToWorkspace({
+                entityId: resolvedEntityId,
+                targetWorkspaceId: resolvedWorkspaceId,
+                organizationId: surveyOrgId,
+                sourceContext: `survey_${survey.slug}`,
+                contactId: resolvedContactId,
+            });
+        } catch (shareErr) {
+            console.warn('[PublicSurveyPage] Cross-workspace entity share failed gracefully:', shareErr);
+        }
+    }
+
+    // Load contact email if contactId or entityId is resolved (cookie or ref)
+    if (resolvedContactId || resolvedEntityId) {
         const targetEntity = resolvedEntityId;
-        if (targetEntity && survey.workspaceIds && survey.workspaceIds.length > 0) {
+        if (targetEntity && resolvedWorkspaceId) {
             try {
-                const weSnap = await adminDb.collection('workspace_entities')
-                    .where('workspaceId', 'in', survey.workspaceIds)
-                    .where('entityId', '==', targetEntity)
-                    .limit(1)
-                    .get();
-                if (!weSnap.empty) {
-                    const contacts = (weSnap.docs[0].data().entityContacts || []) as EntityContact[];
-                    const found = contacts.find(c => c.id === resolvedContactId);
-                    if (found) {
-                        resolvedRecipientContact = found.email || null;
+                const weDocSnap = await adminDb.collection('workspace_entities').doc(`${resolvedWorkspaceId}_${targetEntity}`).get();
+                if (weDocSnap.exists) {
+                    const weData = weDocSnap.data();
+                    const contacts = (weData?.entityContacts || []) as EntityContact[];
+                    if (resolvedContactId) {
+                        const found = contacts.find(c => c.id === resolvedContactId);
+                        if (found) {
+                            resolvedRecipientContact = found.email || null;
+                        }
+                    }
+                    if (!resolvedRecipientContact) {
+                        resolvedRecipientContact = weData?.primaryEmail || null;
+                    }
+                } else if (survey.workspaceIds && survey.workspaceIds.length > 0) {
+                    const weSnap = await adminDb.collection('workspace_entities')
+                        .where('workspaceId', 'in', survey.workspaceIds)
+                        .where('entityId', '==', targetEntity)
+                        .limit(1)
+                        .get();
+                    if (!weSnap.empty) {
+                        const weData = weSnap.docs[0].data();
+                        const contacts = (weData.entityContacts || []) as EntityContact[];
+                        if (resolvedContactId) {
+                            const found = contacts.find(c => c.id === resolvedContactId);
+                            if (found) {
+                                resolvedRecipientContact = found.email || null;
+                            }
+                        }
+                        if (!resolvedRecipientContact) {
+                            resolvedRecipientContact = weData.primaryEmail || null;
+                        }
                     }
                 }
             } catch (weErr) {
@@ -186,7 +242,7 @@ export default async function PublicSurveyPage({
             }
         }
 
-        if (!resolvedRecipientContact) {
+        if (!resolvedRecipientContact && resolvedContactId) {
             try {
                 const contactSnap = await adminDb.collection('contacts').doc(resolvedContactId).get();
                 if (contactSnap.exists) {
