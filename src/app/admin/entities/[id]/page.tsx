@@ -295,22 +295,21 @@ export default function EntityDetailPage() {
             const res = await linkEntityToWorkspaceAction({
                 workspaceId: activeWorkspaceId,
                 entityId,
-                actor: currentUser ? {
-                    userId: currentUser.uid,
-                    displayName: currentUser.displayName || currentUser.email || 'Admin User',
-                } : undefined,
+                userId: currentUser?.uid || 'admin_user',
+                userName: currentUser?.displayName || currentUser?.email || 'Admin User',
+                userEmail: currentUser?.email || undefined,
             });
 
             if (res.success) {
                 toast({
-                    title: 'Contact Linked',
-                    description: `Successfully linked ${entityData?.name || 'contact'} to ${activeWorkspace?.name || 'this workspace'}.`,
+                    title: `${singular} Linked`,
+                    description: `Successfully linked ${entityData?.name || singular.toLowerCase()} to ${activeWorkspace?.name || 'this workspace'}.`,
                 });
             } else {
                 toast({
                     variant: 'destructive',
                     title: 'Link Failed',
-                    description: res.error || 'Failed to link contact to workspace.',
+                    description: res.error || `Failed to link ${singular.toLowerCase()} to workspace.`,
                 });
             }
         } catch (err: unknown) {
@@ -329,8 +328,9 @@ export default function EntityDetailPage() {
 
     // Cross-workspace entity detection: entity exists in organization, but is not yet shared to active workspace
     if (entityData && !weData) {
-        const isSameOrg = !activeOrganizationId || !entityData.organizationId || entityData.organizationId === activeOrganizationId;
-        const linkedWorkspaceIds = allMemberships?.map(m => m.workspaceId) || entityData.workspaceIds || [];
+        // FAIL-CLOSED MULTI-TENANT GUARD: Organization IDs must both exist and match exactly
+        const isSameOrg = Boolean(activeOrganizationId && entityData.organizationId && entityData.organizationId === activeOrganizationId);
+        const linkedWorkspaceIds = allMemberships?.map(m => m.workspaceId) || [];
         const linkedWorkspaces = accessibleWorkspaces.filter(w => linkedWorkspaceIds.includes(w.id));
 
         return (
@@ -365,7 +365,7 @@ export default function EntityDetailPage() {
                             {isLinkingToWorkspace ? (
                                 <>
                                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                    Linking Contact...
+                                    Linking {singular}...
                                 </>
                             ) : (
                                 <>
@@ -377,7 +377,7 @@ export default function EntityDetailPage() {
                     )}
 
                     {linkedWorkspaces.length > 0 && (
-                        <div className="flex items-center gap-2">
+                        <div className="flex flex-wrap items-center justify-center gap-2">
                             {linkedWorkspaces.map(ws => (
                                 <Button
                                     key={ws.id}

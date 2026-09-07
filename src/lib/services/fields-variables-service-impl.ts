@@ -981,7 +981,7 @@ export class FieldsVariablesService {
                         valuesMap.set(`q_${q.variableName}`, resolvedEntityName);
                       }
                     }
-                  } catch (_e) {
+                  } catch {
                     // Ignore resolution failure, retain original string
                   }
                 }
@@ -1337,9 +1337,11 @@ export class FieldsVariablesService {
           } else if (workspaceIds.length > 0) {
             // Cross-workspace fallback within the same organization
             try {
-              const wsSnap = await adminDb.collection('workspaces').doc(workspaceIds[0]).get();
+              const [wsSnap, entSnap] = await Promise.all([
+                adminDb.collection('workspaces').doc(workspaceIds[0]).get(),
+                adminDb.collection('entities').doc(targetEntityId).get(),
+              ]);
               const wsOrgId = wsSnap.data()?.organizationId;
-              const entSnap = await adminDb.collection('entities').doc(targetEntityId).get();
               if (entSnap.exists) {
                 const entData = entSnap.data();
                 if (entData && wsOrgId && entData.organizationId === wsOrgId) {
@@ -1395,9 +1397,11 @@ export class FieldsVariablesService {
 
         // Cross-workspace fallback within the same organization
         if (workspaceIds.length > 0) {
-          const wsSnap = await adminDb.collection('workspaces').doc(workspaceIds[0]).get();
+          const [wsSnap, entSnap] = await Promise.all([
+            adminDb.collection('workspaces').doc(workspaceIds[0]).get(),
+            adminDb.collection('entities').doc(entityIdParam).get(),
+          ]);
           const wsOrgId = wsSnap.data()?.organizationId;
-          const entSnap = await adminDb.collection('entities').doc(entityIdParam).get();
           if (entSnap.exists) {
             const entData = entSnap.data();
             if (entData && wsOrgId && entData.organizationId === wsOrgId) {

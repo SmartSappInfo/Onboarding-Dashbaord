@@ -1,6 +1,6 @@
 import type { Metadata, ResolvingMetadata } from 'next';
 import { cache } from 'react';
-import type { Survey, EntityContact } from '@/lib/types';
+import type { Survey } from '@/lib/types';
 import SurveyDisplay from './components/survey-display';
 import SurveyUnavailable from '../components/survey-unavailable';
 
@@ -199,63 +199,7 @@ export default async function PublicSurveyPage({
         }
     }
 
-    // Load contact email if contactId or entityId is resolved (cookie or ref)
-    if (resolvedContactId || resolvedEntityId) {
-        const targetEntity = resolvedEntityId;
-        if (targetEntity && resolvedWorkspaceId) {
-            try {
-                const weDocSnap = await adminDb.collection('workspace_entities').doc(`${resolvedWorkspaceId}_${targetEntity}`).get();
-                if (weDocSnap.exists) {
-                    const weData = weDocSnap.data();
-                    const contacts = (weData?.entityContacts || []) as EntityContact[];
-                    if (resolvedContactId) {
-                        const found = contacts.find(c => c.id === resolvedContactId);
-                        if (found) {
-                            resolvedRecipientContact = found.email || null;
-                        }
-                    }
-                    if (!resolvedRecipientContact) {
-                        resolvedRecipientContact = weData?.primaryEmail || null;
-                    }
-                } else if (survey.workspaceIds && survey.workspaceIds.length > 0) {
-                    const weSnap = await adminDb.collection('workspace_entities')
-                        .where('workspaceId', 'in', survey.workspaceIds)
-                        .where('entityId', '==', targetEntity)
-                        .limit(1)
-                        .get();
-                    if (!weSnap.empty) {
-                        const weData = weSnap.docs[0].data();
-                        const contacts = (weData.entityContacts || []) as EntityContact[];
-                        if (resolvedContactId) {
-                            const found = contacts.find(c => c.id === resolvedContactId);
-                            if (found) {
-                                resolvedRecipientContact = found.email || null;
-                            }
-                        }
-                        if (!resolvedRecipientContact) {
-                            resolvedRecipientContact = weData.primaryEmail || null;
-                        }
-                    }
-                }
-            } catch (weErr) {
-                console.warn('[PublicSurveyPage] Workspace entity lookup failed:', weErr);
-            }
-        }
-
-        if (!resolvedRecipientContact && resolvedContactId) {
-            try {
-                const contactSnap = await adminDb.collection('contacts').doc(resolvedContactId).get();
-                if (contactSnap.exists) {
-                    const data = contactSnap.data() || {};
-                    resolvedRecipientContact = String(data.email || '') || null;
-                    resolvedEntityId = resolvedEntityId || data.entityId || null;
-                }
-            } catch (cErr) {
-                console.warn('[PublicSurveyPage] Contacts collection lookup failed:', cErr);
-            }
-        }
-    }
-
+    // Canonical Entity & Variable Context Resolution via FieldsVariablesService (Rule 1 & AGENTS.md)
     if (survey.workspaceIds && survey.workspaceIds.length > 0) {
         try {
             const { FieldsVariablesService } = await import('@/lib/services/fields-variables-service-impl');
@@ -265,8 +209,9 @@ export default async function PublicSurveyPage({
                     paramsRecord[k] = v;
                 }
             });
-            // Fallback: Only pass plain (unencrypted) ref values as direct entityIds
-            if (ref && !isEncrypted) {
+            if (resolvedEntityId) {
+                paramsRecord.entityId = resolvedEntityId;
+            } else if (ref && !isEncrypted) {
                 paramsRecord.entityId = ref;
             }
             if (resolvedContactId) {
@@ -276,31 +221,50 @@ export default async function PublicSurveyPage({
                 paramsRecord.email = resolvedRecipientContact;
             }
 
-            console.log('[PublicSurveyPage] Params compile for resolveEntityContextFromParams:', paramsRecord);
             const entityCtx = await FieldsVariablesService.resolveEntityContextFromParams(
                 survey.workspaceIds,
                 paramsRecord
             );
-            console.log('[PublicSurveyPage] resolveEntityContextFromParams output:', entityCtx);
 
-            if (entityCtx.entityId || entityCtx.recipientContact) {
+            if (entityCtx?.entityId) {
                 resolvedEntityId = entityCtx.entityId;
-                resolvedRecipientContact = entityCtx.recipientContact;
-
-                console.log('[PublicSurveyPage] Fetching preloaded variables for workspace:', resolvedWorkspaceId, 'entity:', resolvedEntityId, 'contact:', resolvedRecipientContact);
-                const { getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
-                preloadedVariables = await getVariableValuesMapAction({
-                    workspaceId: resolvedWorkspaceId,
-                    entityId: entityCtx.entityId || undefined,
-                    recipientContact: entityCtx.recipientContact || undefined,
-                    surveyId: survey.id
-                });
-                console.log('[PublicSurveyPage] Preloaded variables loaded successfully:', preloadedVariables);
-            } else {
-                console.log('[PublicSurveyPage] No entity context resolved from params.');
             }
+            if (entityCtx?.recipientContact) {
+                resolvedRecipientContact = entityCtx.recipientContact;
+            }
+        } catch (ctxErr) {
+            console.warn('[PublicSurveyPage] FieldsVariablesService entity resolution failed:', ctxErr);
+        }
+    }
+
+    // Secondary fallback for legacy direct contacts collection if recipientContact is still unresolved
+    if (!resolvedRecipientContact && resolvedContactId) {
+        try {
+            const contactSnap = await adminDb.collection('contacts').doc(resolvedContactId).get();
+            if (contactSnap.exists) {
+                const data = contactSnap.data() || {};
+                resolvedRecipientContact = String(data.email || '') || null;
+                resolvedEntityId = resolvedEntityId || data.entityId || null;
+            }
+        } catch (cErr) {
+            console.warn('[PublicSurveyPage] Contacts collection fallback failed:', cErr);
+        }
+    }
+
+    // Preload template variables if entity or contact context is available
+    if (resolvedWorkspaceId && (resolvedEntityId || resolvedRecipientContact)) {
+        try {
+            console.log('[PublicSurveyPage] Fetching preloaded variables for workspace:', resolvedWorkspaceId, 'entity:', resolvedEntityId, 'contact:', resolvedRecipientContact);
+            const { getVariableValuesMapAction } = await import('@/lib/services/fields-variables-service');
+            preloadedVariables = await getVariableValuesMapAction({
+                workspaceId: resolvedWorkspaceId,
+                entityId: resolvedEntityId || undefined,
+                recipientContact: resolvedRecipientContact || undefined,
+                surveyId: survey.id,
+            });
+            console.log('[PublicSurveyPage] Preloaded variables loaded successfully:', preloadedVariables);
         } catch (err) {
-            console.error('[PublicSurveyPage] Failed to resolve entity context or preload variables:', err);
+            console.error('[PublicSurveyPage] Failed to preload variables:', err);
         }
     }
 
@@ -308,14 +272,8 @@ export default async function PublicSurveyPage({
     let entityLogoUrl: string | null = null;
     let orgBranding = null;
     try {
-        // Resolve organizationId: direct field → workspace lookup
-        let orgId = survey.organizationId;
-        if (!orgId && survey.workspaceIds?.length) {
-            const wsSnap = await adminDb.collection('workspaces').doc(survey.workspaceIds[0]).get();
-            if (wsSnap.exists) {
-                orgId = wsSnap.data()?.organizationId;
-            }
-        }
+        // Reuse early resolved surveyOrgId instead of querying workspace again
+        const orgId = surveyOrgId;
         if (orgId) {
             orgBranding = await getOrgBranding(orgId);
             organizationLogoUrl = orgBranding.logoUrl || null;

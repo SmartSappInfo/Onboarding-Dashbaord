@@ -12,7 +12,7 @@ import {
   logWorkspaceEntityUpdated, 
   logWorkspaceEntityDeleted 
 } from './entity-audit';
-import type { Entity, Workspace, WorkspaceEntity, EntityType } from './types';
+import type { Entity, Workspace, WorkspaceEntity } from './types';
 import { extractPrimaryContactFields } from './entity-contact-helpers';
 import { filterAndSortEntities, type FilterStateInput } from './utils/entity-filter-util';
 
@@ -101,6 +101,17 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
 
     const workspace = { id: workspaceSnap.id, ...workspaceSnap.data() } as Workspace;
 
+    // HARD MULTI-TENANT BOUNDARY CHECK (Security Principle)
+    if (entity.organizationId !== workspace.organizationId) {
+      console.error(
+        `[SECURITY ALERT] Cross-organization link rejected! Entity org: ${entity.organizationId}, Workspace org: ${workspace.organizationId}`
+      );
+      return {
+        success: false,
+        error: 'Tenant boundary violation: Entity belongs to a different organization.',
+      };
+    }
+
     // 3. Enforce ScopeGuard: entity.entityType === workspace.contactScope
     if (!workspace.contactScope) {
       return {
@@ -163,7 +174,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
     const isFirstEntity = workspaceEntitiesSnap.empty;
 
     // 6. Extract denormalized fields from entity
-    const { primaryEmail, primaryPhone } = extractPrimaryContact(entity);
+    const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContact(entity);
 
     // 7. Get stage name for denormalization
     let currentStageName: string | undefined;
@@ -189,7 +200,7 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       updatedAt: timestamp,
       // Denormalized read-model fields (displayNameLower stamped by helper)
       displayName: entity.name,
-      primaryContactName: primaryEmail || entity.name,
+      primaryContactName: primaryContactName || primaryEmail || entity.name,
       primaryEmail,
       primaryPhone,
       entityContacts: entity.entityContacts || [],
@@ -1282,7 +1293,7 @@ export async function ensureEntitySharedToWorkspace(
     }
 
     // 5. Extract contact fields
-    const { primaryEmail, primaryPhone } = extractPrimaryContact(entity);
+    const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContact(entity);
     const timestamp = new Date().toISOString();
 
     // 6. Construct deterministic WorkspaceEntity data
@@ -1297,7 +1308,7 @@ export async function ensureEntitySharedToWorkspace(
       addedAt: timestamp,
       updatedAt: timestamp,
       displayName: entity.name,
-      primaryContactName: primaryEmail || entity.name,
+      primaryContactName: primaryContactName || primaryEmail || entity.name,
       primaryEmail,
       primaryPhone,
       entityContacts: entity.entityContacts || [],

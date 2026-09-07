@@ -14,7 +14,7 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
 }));
 
-import { ensureEntitySharedToWorkspace } from '@/lib/workspace-entity-actions';
+import { ensureEntitySharedToWorkspace, linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import { resolveOrMatchWorkspaceEntity } from '@/lib/survey-actions';
 
 // Mock dependencies
@@ -41,11 +41,36 @@ const mockEntityDoc: Record<string, unknown> = {
   ],
 };
 
+const mockEntityCompetitor: Record<string, unknown> = {
+  id: 'ent_competitor_1',
+  name: 'Competitor Academy',
+  slug: 'competitor-academy',
+  organizationId: 'org_other',
+  entityType: 'institution',
+  workspaceIds: ['ws_competitor'],
+  entityContacts: [
+    {
+      id: 'c2',
+      name: 'Other User',
+      email: 'user@competitor.com',
+      isPrimary: true,
+      typeKey: 'administrator',
+    },
+  ],
+};
+
 const mockWsFocusGroups: Record<string, unknown> = {
   id: 'ws_focus_groups',
   name: 'Focus Groups Workspace',
   organizationId: 'org_main',
   contactScope: 'institution',
+};
+
+const mockWsPersonScope: Record<string, unknown> = {
+  id: 'ws_person_scope',
+  name: 'Candidate Workspace',
+  organizationId: 'org_main',
+  contactScope: 'person',
 };
 
 const mockWsDifferentOrg: Record<string, unknown> = {
@@ -65,9 +90,9 @@ vi.mock('@/lib/firebase-admin', () => {
           return {
             doc: vi.fn((id: string) => ({
               get: vi.fn().mockResolvedValue({
-                exists: id === 'ent_accra_1',
+                exists: id === 'ent_accra_1' || id === 'ent_competitor_1',
                 id,
-                data: () => mockEntityDoc,
+                data: () => (id === 'ent_competitor_1' ? mockEntityCompetitor : mockEntityDoc),
               }),
               update: mockUpdate,
             })),
@@ -83,14 +108,16 @@ vi.mock('@/lib/firebase-admin', () => {
           return {
             doc: vi.fn((id: string) => ({
               get: vi.fn().mockResolvedValue({
-                exists: id === 'ws_focus_groups' || id === 'ws_competitor' || id === 'ws_onboarding',
+                exists: id === 'ws_focus_groups' || id === 'ws_competitor' || id === 'ws_onboarding' || id === 'ws_person_scope',
                 id,
                 data: () => {
                   if (id === 'ws_focus_groups') return mockWsFocusGroups;
                   if (id === 'ws_competitor') return mockWsDifferentOrg;
+                  if (id === 'ws_person_scope') return mockWsPersonScope;
                   return { id, organizationId: 'org_main', contactScope: 'institution' };
                 },
               }),
+              update: mockUpdate,
             })),
           };
         }
@@ -214,6 +241,49 @@ describe('Cross-Workspace Entity Sharing & Survey Tracking Engine', () => {
       expect(result.error).toMatch(/Tenant boundary violation/);
       expect(mockSet).not.toHaveBeenCalled();
     });
+
+    it('rejects sharing when ScopeGuard detects incompatible contact scope', async () => {
+      const result = await ensureEntitySharedToWorkspace({
+        entityId: 'ent_accra_1', // institution entity
+        targetWorkspaceId: 'ws_person_scope', // person workspace
+        reason: 'survey_tracking_resolution',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Scope mismatch/);
+      expect(mockSet).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('linkEntityToWorkspaceAction multi-tenant isolation & data quality', () => {
+    it('rejects cross-organization linking with tenant boundary error', async () => {
+      const result = await linkEntityToWorkspaceAction({
+        workspaceId: 'ws_focus_groups', // org_main
+        entityId: 'ent_competitor_1', // org_other
+        userId: 'admin_user',
+      });
+
+      expect(result.success).toBe(false);
+      expect(result.error).toMatch(/Tenant boundary violation/);
+      expect(mockSet).not.toHaveBeenCalled();
+    });
+
+    it('stamps human primaryContactName correctly from entity contacts', async () => {
+      const result = await linkEntityToWorkspaceAction({
+        workspaceId: 'ws_focus_groups',
+        entityId: 'ent_accra_1',
+        userId: 'admin_user',
+      });
+
+      expect(result.success).toBe(true);
+      expect(mockSet).toHaveBeenCalledWith(
+        expect.objectContaining({
+          primaryContactName: 'Headmaster Mensah',
+          primaryEmail: 'mensah@accra-academy.edu',
+        }),
+        { merge: true }
+      );
+    });
   });
 
   describe('resolveOrMatchWorkspaceEntity cross-workspace Layer 1 resolution', () => {
@@ -236,6 +306,14 @@ describe('Cross-Workspace Entity Sharing & Survey Tracking Engine', () => {
         }),
         { merge: true }
       );
+    });
+
+    it('rejects tracked entity belonging to a different organization (fail-closed)', async () => {
+      const match = await resolveOrMatchWorkspaceEntity('ws_focus_groups', {
+        preTrackedEntityId: 'ent_competitor_1', // belongs to org_other
+      });
+
+      expect(match).toBeNull();
     });
   });
 });

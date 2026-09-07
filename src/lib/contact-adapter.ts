@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact, EntityContact } from './types';
+import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact } from './types';
 import { resolveEntityContacts } from './entity-contact-helpers';
 import { zoneDisplayName, type ZoneRef } from './zone-constants';
 import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
@@ -137,13 +137,16 @@ async function resolveFromEntity(
           const shareResult = await ensureEntitySharedToWorkspace({
             entityId,
             targetWorkspaceId: workspaceId,
+            organizationId: entity.organizationId,
             reason: 'adapter_auto_link',
             actor: { userId: 'system', displayName: 'Contact Adapter Engine' },
           });
-          workspaceEntityId = shareResult.workspaceEntityId;
-          const freshWeDoc = await adminDb.collection('workspace_entities').doc(workspaceEntityId).get();
-          if (freshWeDoc.exists) {
-            workspaceEntity = { id: freshWeDoc.id, ...freshWeDoc.data() } as WorkspaceEntity;
+          if (shareResult.success && shareResult.workspaceEntityId) {
+            workspaceEntityId = shareResult.workspaceEntityId;
+            const freshWeDoc = await adminDb.collection('workspace_entities').doc(workspaceEntityId).get();
+            if (freshWeDoc.exists) {
+              workspaceEntity = { id: freshWeDoc.id, ...freshWeDoc.data() } as WorkspaceEntity;
+            }
           }
         }
       } catch (selfHealErr: unknown) {

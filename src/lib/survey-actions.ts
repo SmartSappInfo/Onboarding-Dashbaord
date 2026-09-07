@@ -472,59 +472,64 @@ export async function resolveOrMatchWorkspaceEntity(
       return {
         entityId: data.entityId || preTrackedId,
         entityName: data.displayName || data.primaryName || '',
-        entityContacts: data.contacts || [],
+        entityContacts: data.entityContacts || data.contacts || [],
         matchedBy: 'tracked_id',
         existingEntityDoc: data,
       };
     }
-    // Check direct entities collection
-    const entSnap = await adminDb.collection('entities').doc(preTrackedId).get();
-    if (entSnap.exists) {
-      const data = entSnap.data();
-      const wsIds: string[] = data?.workspaceIds || [];
-      if (wsIds.includes(workspaceId) || wsIds.length === 0) {
-        return {
-          entityId: entSnap.id,
-          entityName: data?.name || '',
-          entityContacts: data?.entityContacts || [],
-          matchedBy: 'tracked_id',
-          existingEntityDoc: data,
-        };
-      } else {
+
+    // Check direct entities collection with STRICT MULTI-TENANT VERIFICATION
+    try {
+      const entSnap = await adminDb.collection('entities').doc(preTrackedId).get();
+      if (entSnap.exists) {
+        const entData = entSnap.data();
+        const wsIds: string[] = entData?.workspaceIds || [];
+        if (wsIds.includes(workspaceId)) {
+          return {
+            entityId: entSnap.id,
+            entityName: entData?.name || '',
+            entityContacts: entData?.entityContacts || entData?.contacts || [],
+            matchedBy: 'tracked_id',
+            existingEntityDoc: entData,
+          };
+        }
+
         // Cross-workspace entity within the same organization:
-        // Automatically share the entity to the target workspace so the submission
-        // links cleanly without creating a duplicate entity.
-        try {
-          const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
-          if (wsSnap.exists) {
-            const wsData = wsSnap.data();
-            const entityOrgId = data?.organizationId;
-            const targetWsOrgId = wsData?.organizationId;
+        const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
+        if (wsSnap.exists) {
+          const wsData = wsSnap.data();
+          const entityOrgId = entData?.organizationId;
+          const targetWsOrgId = wsData?.organizationId;
 
-            if (entityOrgId && targetWsOrgId && entityOrgId === targetWsOrgId) {
-              await ensureEntitySharedToWorkspace({
-                entityId: preTrackedId,
-                targetWorkspaceId: workspaceId,
-                reason: 'survey_response_submission',
-                actor: {
-                  userId: 'system-survey-worker',
-                  displayName: 'Survey Cross-Workspace Engine',
-                },
-              });
+          // HARD TENANT BOUNDARY: The entity MUST belong to the exact same organization as the survey workspace!
+          if (entityOrgId && targetWsOrgId && entityOrgId === targetWsOrgId) {
+            await ensureEntitySharedToWorkspace({
+              entityId: preTrackedId,
+              targetWorkspaceId: workspaceId,
+              organizationId: targetWsOrgId,
+              reason: 'survey_response_submission',
+              actor: {
+                userId: 'system-survey-worker',
+                displayName: 'Survey Cross-Workspace Engine',
+              },
+            });
 
-              return {
-                entityId: entSnap.id,
-                entityName: data?.name || '',
-                entityContacts: data?.entityContacts || [],
-                matchedBy: 'tracked_id',
-                existingEntityDoc: data,
-              };
-            }
+            return {
+              entityId: entSnap.id,
+              entityName: entData?.name || '',
+              entityContacts: entData?.entityContacts || entData?.contacts || [],
+              matchedBy: 'tracked_id',
+              existingEntityDoc: entData,
+            };
+          } else {
+            console.warn(
+              `[SECURITY ALERT] Cross-organization tracked entity rejected in survey! Entity org: ${entityOrgId}, Target workspace org: ${targetWsOrgId}`
+            );
           }
-        } catch (shareErr: unknown) {
-          console.warn('[resolveOrMatchWorkspaceEntity] Cross-workspace link failed, falling through:', shareErr);
         }
       }
+    } catch (shareErr: unknown) {
+      console.warn('[resolveOrMatchWorkspaceEntity] Cross-workspace link failed, falling through:', shareErr);
     }
   }
 
@@ -536,7 +541,7 @@ export async function resolveOrMatchWorkspaceEntity(
       return {
         entityId: data.entityId,
         entityName: data.displayName || data.primaryName || '',
-        entityContacts: data.contacts || [],
+        entityContacts: data.entityContacts || data.contacts || [],
         matchedBy: 'primary_email',
         existingEntityDoc: data,
       };
@@ -551,7 +556,7 @@ export async function resolveOrMatchWorkspaceEntity(
       return {
         entityId: data.entityId,
         entityName: data.displayName || data.primaryName || '',
-        entityContacts: data.contacts || [],
+        entityContacts: data.entityContacts || data.contacts || [],
         matchedBy: 'primary_phone',
         existingEntityDoc: data,
       };
