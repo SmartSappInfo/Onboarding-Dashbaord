@@ -61,12 +61,33 @@ const nextConfig: NextConfig = {
     'genkit',
   ],
   experimental: {
-    optimizePackageImports: ['lucide-react'],
+    cpus: process.env.BUILD_CPUS
+      ? parseInt(process.env.BUILD_CPUS, 10)
+      : process.env.CI
+        ? 2
+        : undefined,
+    optimizePackageImports: [
+      'lucide-react',
+      'date-fns',
+      'framer-motion',
+      'recharts',
+      '@radix-ui/react-icons',
+      '@tabler/icons-react',
+    ],
     serverActions: {
       bodySizeLimit: '2mb',
     },
   },
-  turbopack: {},
+  turbopack: {
+    resolveAlias: {
+      canvas: {
+        browser: './src/lib/empty-module.ts',
+      },
+      jsdom: {
+        browser: './src/lib/empty-module.ts',
+      },
+    },
+  },
   webpack: (config, { isServer }) => {
     // Optimize memory usage
     config.optimization = {

@@ -22,6 +22,18 @@ runConfig:
   # - variable: MY_SECRET
   #   secret: mySecretRef
 env:
+  - variable: RAYON_NUM_THREADS
+    value: "2"
+    availability:
+      - BUILD
+  - variable: BUILD_CPUS
+    value: "2"
+    availability:
+      - BUILD
+  - variable: NEXT_TELEMETRY_DISABLED
+    value: "1"
+    availability:
+      - BUILD
   - variable: CRON_SECRET
     secret: cron-secret
   - variable: WHATSAPP_ENCRYPTION_KEY
