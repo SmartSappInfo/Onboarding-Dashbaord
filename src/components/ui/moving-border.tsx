@@ -29,26 +29,27 @@ import {
 } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+export type ButtonProps<T extends React.ElementType = "button"> = {
   borderRadius?: string;
   children: React.ReactNode;
-  as?: React.ElementType;
+  as?: T;
   containerClassName?: string;
   borderClassName?: string;
   duration?: number;
   className?: string;
-}
+} & Omit<React.ComponentPropsWithoutRef<T>, "as" | "children" | "className">;
 
-export function Button({
+export function Button<T extends React.ElementType = "button">({
   borderRadius = "1.75rem",
   children,
-  as: Component = "button",
+  as,
   containerClassName,
   borderClassName,
   duration,
   className,
   ...otherProps
-}: ButtonProps) {
+}: ButtonProps<T>) {
+  const Component = (as || "button") as React.ElementType;
   return (
     <Component
       className={cn(

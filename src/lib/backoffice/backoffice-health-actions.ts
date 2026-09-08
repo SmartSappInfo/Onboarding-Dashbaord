@@ -301,7 +301,7 @@ export async function getSystemEngineManifestAction(idToken: string): Promise<{
     };
 
     return { success: true, manifest };
-  } catch (error: unknown) {
+  } catch (error) {
     console.error('[BACKOFFICE_HEALTH] getSystemEngineManifestAction failed:', error);
     return { success: false, error: getErrorMessage(error) };
   }
