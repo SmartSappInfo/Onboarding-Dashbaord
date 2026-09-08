@@ -63,7 +63,7 @@ const nextConfig: NextConfig = {
   experimental: {
     cpus: process.env.BUILD_CPUS
       ? parseInt(process.env.BUILD_CPUS, 10)
-      : undefined,
+      : 2,
     optimizePackageImports: [
       'lucide-react',
       'date-fns',
@@ -206,7 +206,7 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default process.env.SENTRY_AUTH_TOKEN
+export default (process.env.SENTRY_AUTH_TOKEN && process.env.SENTRY_UPLOAD_SOURCEMAPS === 'true')
   ? withSentryConfig(nextConfig, {
       org: 'smartsapp',
       project: 'javascript-nextjs',
