@@ -5,6 +5,9 @@ export const metadata = {
   title: 'Shared Creative Preview | SmartSapp',
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function SharedCreativePage({
   params,
 }: {

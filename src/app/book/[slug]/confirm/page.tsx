@@ -8,6 +8,9 @@ interface PageProps {
   searchParams: Promise<{ time?: string }>;
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function ConfirmBookingPage({ params, searchParams }: PageProps) {
   const { slug } = await params;
   const { time } = await searchParams;

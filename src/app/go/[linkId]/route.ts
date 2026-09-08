@@ -5,6 +5,9 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import type { PageEventChannel } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 /**
  * High-performance redirect route for multi-channel tracked links.
  * Supports:

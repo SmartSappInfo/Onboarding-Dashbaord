@@ -12,6 +12,14 @@ export const metadata: Metadata = {
 };
 
 /**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
+ * Enforces dynamic rendering across all nested /admin/* routes to prevent Next.js
+ * from attempting build-time static generation or Firestore evaluation in CI.
+ */
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+/**
  * Server Component wrapper for admin layout.
  * Provides Suspense boundary for useSearchParams usage in child components.
  * Renders FirebaseBootstrap here (not in root layout) to isolate dev-only

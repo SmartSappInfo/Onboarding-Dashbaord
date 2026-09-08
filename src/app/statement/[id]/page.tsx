@@ -9,6 +9,9 @@ export const metadata = {
   description: 'Public customer financial statement portal',
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function PublicStatementPage({ params }: PageProps) {
   const { id } = await params;
   return <PublicStatementClient tokenOrId={id} />;

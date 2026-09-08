@@ -15,6 +15,9 @@ interface LegacyPortalPageProps {
   }>;
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata({ params }: LegacyPortalPageProps): Promise<Metadata> {
   const { slug } = await params;
   const portal = await PortalService.getPortalBySlug(slug);

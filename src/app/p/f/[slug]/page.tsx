@@ -17,6 +17,9 @@ import { getOrgBranding } from '@/lib/org-branding';
  * Handles server-side form resolution by slug, version normalization, and metadata generation.
  */
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 // React.cache dedupes the lookup between generateMetadata and the page body.
 const getFormBySlug = cache(async function getFormBySlug(slug: string): Promise<Form | null> {
   try {

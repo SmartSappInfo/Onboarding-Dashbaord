@@ -3,6 +3,14 @@ import { ThemeToggle } from '@/components/theme-toggle';
 import { Suspense, ReactNode } from 'react';
 import IframeResizer from '@/components/iframe-resizer';
 
+/**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
+ * Enforces dynamic rendering across /meetings/* routes to prevent Next.js from attempting
+ * build-time static generation of booking and scheduling workflows requiring live backend state.
+ */
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default function MeetingsLayout({ children }: { children: ReactNode }) {
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem={true}>

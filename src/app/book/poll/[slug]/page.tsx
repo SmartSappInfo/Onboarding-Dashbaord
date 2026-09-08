@@ -8,6 +8,9 @@ interface PublicPollPageProps {
   }>;
 }
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function PublicPollPage({ params }: PublicPollPageProps) {
   const { slug } = await params;
   const res = await getMeetingPollBySlugAction(slug);

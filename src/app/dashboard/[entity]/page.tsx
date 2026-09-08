@@ -4,6 +4,9 @@ import { DashboardGrid } from '@/components/dashboard/dashboard-grid';
 import { Skeleton } from '@/components/ui/skeleton';
 import { notFound } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function generateMetadata({ params }: { params: Promise<{ entity: string }> }) {
   const { entity } = await params;
   return {

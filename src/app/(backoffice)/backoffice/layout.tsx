@@ -9,6 +9,14 @@ export const metadata: Metadata = {
 };
 
 /**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
+ * Enforces dynamic rendering across all nested /backoffice/* routes to prevent Next.js
+ * from attempting build-time static generation or Firestore evaluation in CI.
+ */
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
+/**
  * Server Component wrapper for the Backoffice control plane.
  * Provides a Suspense boundary and forces dark theme.
  */

@@ -9,6 +9,9 @@ export const metadata: Metadata = {
   description: 'Workspace analytics and overview.',
 };
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface Props {
   searchParams: Promise<{ workspaceId?: string; industry?: string }>;
 }

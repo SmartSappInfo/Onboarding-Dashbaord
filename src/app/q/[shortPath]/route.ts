@@ -17,6 +17,9 @@ import { getQRCodeByShortPath } from '@/lib/qr-actions';
 import { evaluateSecurityRules } from '@/lib/qr-helpers';
 import type { QRCode } from '@/lib/types';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 function renderBrandedStatusPage(options: {
   title: string;
   badge: string;
