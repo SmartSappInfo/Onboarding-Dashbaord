@@ -52,6 +52,7 @@ vi.mock('../secret-vault', () => ({
 import { toggleFeatureKillSwitch, listAllFeatures } from '../backoffice-feature-actions';
 import { saveGlobalAiKeys } from '../backoffice-ai-actions';
 import { getPlatformOpsStats } from '../backoffice-dashboard-actions';
+import { getSystemEngineManifestAction } from '../backoffice-health-actions';
 
 function mockUser(profile: Record<string, unknown>): void {
   verifyIdToken.mockResolvedValue({ uid: 'u1', email: 'u@b.c' });
@@ -153,3 +154,26 @@ describe('saveGlobalAiKeys (settings:edit)', () => {
     expect(docSet).not.toHaveBeenCalled();
   });
 });
+
+describe('getSystemEngineManifestAction (health:view)', () => {
+  it('allows super_admin and returns runtime engine manifest', async () => {
+    mockUser({ email: 'u@b.c', permissions: ['system_admin'] });
+
+    const res = await getSystemEngineManifestAction('tok');
+    expect(res.success).toBe(true);
+    expect(res.manifest).toBeDefined();
+    expect(res.manifest?.nextVersion).toBe('16.3.3');
+    expect(res.manifest?.reactVersion).toBe('19.2.1');
+    expect(res.manifest?.engines.ai.status).toBe('operational');
+    expect(res.manifest?.packageMetrics.status).toBe('optimized');
+  });
+
+  it('forbids callers with no backoffice roles', async () => {
+    mockUser({ email: 'u@b.c' });
+
+    const res = await getSystemEngineManifestAction('tok');
+    expect(res.success).toBe(false);
+    expect(res.error).toMatch(/forbidden|access/i);
+  });
+});
+

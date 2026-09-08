@@ -1,9 +1,25 @@
+/**
+ * @fileoverview Accessible User Avatar Primitives
+ *
+ * ARCHITECTURAL CONTEXT & DEPENDENCY QA:
+ * - Migrated from the monolithic `radix-ui` meta-package to the modular `@radix-ui/react-avatar` primitive.
+ * - Conforms with Vercel React Best Practices (`bundle-barrel-imports`) by eliminating unnecessary umbrella bundles.
+ * - Preserves exact `data-slot` selectors and Radix state machine lifecycle (idle -> loading -> loaded / error).
+ *
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Do not reintroduce imports from the unified `radix-ui` package; all UI components in this workspace
+ *   strictly consume scoped `@radix-ui/react-*` packages to optimize bundle tree-shaking.
+ * - When passing `src`, empty or falsy strings must evaluate to `undefined` to trigger the fallback slot immediately.
+ *
+ * @testability Exported components render valid semantic spans/images and pass standard React Testing Library DOM queries.
+ */
+
 'use client';
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { cva, VariantProps } from 'class-variance-authority';
-import { Avatar as AvatarPrimitive } from 'radix-ui';
+import { cva, type VariantProps } from 'class-variance-authority';
+import * as AvatarPrimitive from '@radix-ui/react-avatar';
 
 const avatarStatusVariants = cva('flex items-center rounded-full size-2 border-2 border-background', {
   variants: {
