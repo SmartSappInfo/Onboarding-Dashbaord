@@ -63,16 +63,12 @@ const nextConfig: NextConfig = {
   experimental: {
     cpus: process.env.BUILD_CPUS
       ? parseInt(process.env.BUILD_CPUS, 10)
-      : process.env.CI
-        ? 2
-        : undefined,
+      : undefined,
     optimizePackageImports: [
       'lucide-react',
       'date-fns',
       'framer-motion',
       'recharts',
-      '@radix-ui/react-icons',
-      '@tabler/icons-react',
     ],
     serverActions: {
       bodySizeLimit: '2mb',
