@@ -1170,7 +1170,7 @@ export class CallCentreService {
       .where('campaignId', '==', campaignId)
       .get();
 
-    let total = snap.size;
+    let total = 0;
     let completed = 0;
     let pending = 0;
     let skipped = 0;
@@ -1179,6 +1179,11 @@ export class CallCentreService {
 
     snap.forEach(doc => {
       const data = doc.data() as CallQueueItem;
+      // Isolate manual one-off CRM calls and cancelled items from skewing batch campaign audience targets
+      if (data.isManualEnrolment || data.status === 'cancelled') {
+        return;
+      }
+      total++;
       if (data.status === 'completed') completed++;
       else if (data.status === 'skipped') skipped++;
       else if (data.status === 'callback_scheduled') callbacks++;
