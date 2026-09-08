@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FileText, FolderPlus } from 'lucide-react';
 import { useRouter, useParams } from 'next/navigation';
-import * as pdfjs from 'pdfjs-dist';
 import AiModelSelector from '@/components/ai/AiModelSelector';
 import { createPortal } from 'react-dom';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -76,12 +75,6 @@ function AiChatPanel() {
     const isNew = !surveyId;
 
     React.useEffect(() => {
-        if (typeof window !== 'undefined') {
-            pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.mjs`;
-        }
-    }, []);
-
-    React.useEffect(() => {
         if (scrollRef.current) {
             scrollRef.current.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
         }
@@ -107,6 +100,8 @@ function AiChatPanel() {
     }
 
     const extractTextFromPdf = async (file: File): Promise<string> => {
+        const pdfjs = await import('pdfjs-dist');
+        pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@4.4.168/build/pdf.worker.min.mjs`;
         const arrayBuffer = await file.arrayBuffer();
         const loadingTask = pdfjs.getDocument({ data: arrayBuffer });
         const pdf = await loadingTask.promise;

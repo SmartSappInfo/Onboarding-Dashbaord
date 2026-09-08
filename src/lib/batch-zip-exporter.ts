@@ -10,7 +10,6 @@
  */
 
 import JSZip from 'jszip';
-import QRCodeStyling from 'qr-code-styling';
 import type { QRCode as QRCodeType, QRDesign } from '@/lib/types';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
 import { renderBarcodeVector } from '@/lib/barcode-engine';
@@ -96,6 +95,7 @@ export async function exportBatchQRsToZip(
     onProgress?: (progress: BatchExportProgress) => void;
   } = {}
 ): Promise<{ blob: Blob; filename: string }> {
+  const QRCodeStyling = (await import('qr-code-styling')).default;
   const zip = new JSZip();
   const format = options.format || 'png';
   const size = options.dimension || 600;
