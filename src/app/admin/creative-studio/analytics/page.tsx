@@ -11,6 +11,8 @@ import {
 } from '@/app/actions/creative-performance-actions';
 import { AnalyticsClient } from './AnalyticsClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function AnalyticsPage() {
   const workspaceId = 'default-workspace';
 

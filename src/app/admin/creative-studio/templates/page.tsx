@@ -8,6 +8,8 @@
 import { listCreativeTemplatesAction } from '@/app/actions/creative-template-actions';
 import { TemplatesClient } from './TemplatesClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function TemplatesPage() {
   const workspaceId = 'default-workspace';
   const res = await listCreativeTemplatesAction(workspaceId);

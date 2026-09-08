@@ -8,6 +8,8 @@
 import { listProjectExperimentsAction } from '@/app/actions/creative-experiment-actions';
 import { ExperimentsClient } from './ExperimentsClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ExperimentsPage() {
   const workspaceId = 'default-workspace';
   const res = await listProjectExperimentsAction(workspaceId);

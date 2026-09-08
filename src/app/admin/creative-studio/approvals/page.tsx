@@ -8,6 +8,8 @@
 import { listProjectsPendingApprovalAction } from '@/app/actions/creative-collab-actions';
 import { ApprovalsClient } from './ApprovalsClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function ApprovalsPage() {
   const workspaceId = 'default-workspace';
   const res = await listProjectsPendingApprovalAction(workspaceId);

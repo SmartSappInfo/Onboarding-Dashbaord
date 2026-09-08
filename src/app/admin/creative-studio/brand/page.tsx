@@ -9,6 +9,8 @@ import { getWorkspaceBrandKitAction } from '@/app/actions/brand-kit-actions';
 import { BrandStudioClient } from './BrandStudioClient';
 import type { BrandKit } from '@/lib/creative/creative-types';
 
+export const dynamic = 'force-dynamic';
+
 export default async function BrandStudioPage() {
   const workspaceId = 'default-workspace';
   const res = await getWorkspaceBrandKitAction(workspaceId);

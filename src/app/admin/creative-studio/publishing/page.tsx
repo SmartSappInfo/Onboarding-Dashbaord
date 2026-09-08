@@ -11,6 +11,8 @@ import {
 } from '@/app/actions/creative-publishing-actions';
 import { PublishingClient } from './PublishingClient';
 
+export const dynamic = 'force-dynamic';
+
 export default async function PublishingPage() {
   const workspaceId = 'default-workspace';
 
