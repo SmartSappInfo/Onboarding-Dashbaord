@@ -17,14 +17,13 @@ import {
     Calendar, 
     Mail, 
     MessageCircle, 
-    Plus, 
     Loader2, 
     Check, 
     Clock, 
     User, 
     Video, 
-    Send,
-    FileText
+    FileText, 
+    Phone
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { 
@@ -50,6 +49,7 @@ import { logDealInteractionAction } from '@/app/actions/deal-actions';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
+import { useCallModal } from '@/context/CallModalContext';
 
 interface DealQuickActionsProps {
     deal: Deal;
@@ -60,6 +60,7 @@ export default function DealQuickActions({ deal, contacts = [] }: DealQuickActio
     const { user } = useUser();
     const { toast } = useToast();
     const { activeWorkspaceId } = useTenant();
+    const { openCallModal } = useCallModal();
 
     // Active Modal Type
     const [activeModal, setActiveModal] = React.useState<'call' | 'meeting' | 'email' | 'whatsapp' | null>(null);
@@ -216,7 +217,20 @@ export default function DealQuickActions({ deal, contacts = [] }: DealQuickActio
         <>
             {/* Quick Actions Toolbar */}
             <div className="flex items-center gap-2.5 flex-wrap p-2.5 rounded-2xl bg-card border border-border/50 shadow-sm">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-2 mr-1">
+                <Button
+                    type="button"
+                    variant="default"
+                    size="sm"
+                    onClick={() => openCallModal({ entityId: deal.entityId, dealId: deal.id })}
+                    className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition-all active:scale-95 shadow-xs"
+                >
+                    <Phone className="h-4 w-4 shrink-0" />
+                    <span>Call Now</span>
+                </Button>
+
+                <div className="h-4 w-px bg-border/60 mx-0.5 hidden sm:block" />
+
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground ml-1 mr-1">
                     Quick Log:
                 </span>
 

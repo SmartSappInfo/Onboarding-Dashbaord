@@ -579,7 +579,8 @@ export async function enqueueAndLockSingleCallAction(
   entityId: string,
   workspaceId: string,
   userId: string,
-  contactContext?: { contactId?: string; contactName?: string; phone?: string; email?: string }
+  contactContext?: { contactId?: string; contactName?: string; phone?: string; email?: string },
+  dealId?: string
 ): Promise<{ success: boolean; queueItem?: CallQueueItem; error?: string }> {
   const { resolveWorkspaceGuid } = await import('./automations/workspace-resolver');
   const { workspaceId: effectiveWorkspaceId } = await resolveWorkspaceGuid(workspaceId);
@@ -592,10 +593,29 @@ export async function enqueueAndLockSingleCallAction(
       entityId,
       effectiveWorkspaceId,
       userId,
-      contactContext
+      contactContext,
+      dealId
     );
-    return result as any;
-  } catch (error: unknown) {
+    return result;
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return { success: false, error: errMsg };
+  }
+}
+
+export async function releaseSingleCallAction(
+  queueItemId: string,
+  workspaceId: string,
+  userId: string
+): Promise<{ success: boolean; error?: string }> {
+  const { resolveWorkspaceGuid } = await import('./automations/workspace-resolver');
+  const { workspaceId: effectiveWorkspaceId } = await resolveWorkspaceGuid(workspaceId);
+  const perm = await verifyPermission(userId, 'edit', effectiveWorkspaceId);
+  if (!perm.granted) return { success: false, error: perm.reason };
+
+  try {
+    return await CallCentreService.releaseSingleCall(queueItemId);
+  } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error);
     return { success: false, error: errMsg };
   }

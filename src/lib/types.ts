@@ -8365,6 +8365,7 @@ export interface CallCampaign {
   automationRules: Record<string, CallOutcomeAutomation[]>;
   status: CallCampaignStatus;
   allowAddContactsAfterLaunch?: boolean;
+  allowDirectCalling?: boolean;
   triggerActionsAutomatically?: boolean;
   createdAt: string;
   updatedAt: string;
@@ -8385,7 +8386,7 @@ export interface CallCampaign {
   };
 }
 
-export type CallQueueItemStatus = 'scheduled' | 'in_progress' | 'completed' | 'callback_scheduled' | 'deferred' | 'skipped' | 'invalid_contact';
+export type CallQueueItemStatus = 'scheduled' | 'in_progress' | 'completed' | 'callback_scheduled' | 'deferred' | 'skipped' | 'invalid_contact' | 'cancelled';
 
 export interface CallQueueItem {
   id: string;
@@ -8393,6 +8394,8 @@ export interface CallQueueItem {
   organizationId: string;
   workspaceId: string;
   entityId: string;
+  dealId?: string;
+  isManualEnrolment?: boolean;
   entityType: EntityType;
   entityName: string;
   entityPhone: string;

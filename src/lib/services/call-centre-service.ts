@@ -195,13 +195,20 @@ export class CallCentreService {
   }
 
 
+  /**
+   * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+   * Enqueues and immediately locks a single ad-hoc call item without altering campaign.progress.total,
+   * preserving organic batch campaign audience analytics while allowing instant CRM calling.
+   * TESTABILITY: Verifiable via call-centre-service.test.ts and CallNowModal integration flow.
+   */
   static async enqueueAndLockSingleCall(
     campaignId: string,
     entityId: string,
     workspaceId: string,
     userId: string,
-    contactContext?: { contactId?: string; contactName?: string; phone?: string; email?: string }
-  ): Promise<{ success: boolean; queueItem?: any; error?: string }> {
+    contactContext?: { contactId?: string; contactName?: string; phone?: string; email?: string },
+    dealId?: string
+  ): Promise<{ success: boolean; queueItem?: CallQueueItem; error?: string }> {
     try {
       const campaignRef = adminDb.collection('call_campaigns').doc(campaignId);
       const campaignSnap = await campaignRef.get();
@@ -209,6 +216,20 @@ export class CallCentreService {
         return { success: false, error: 'Campaign not found' };
       }
       const campaign = campaignSnap.data();
+
+      // Idempotency guard: reuse any existing active locked single-call for this user/entity
+      const recentExisting = await adminDb.collection('call_queue_items')
+        .where('campaignId', '==', campaignId)
+        .where('entityId', '==', entityId)
+        .where('assignedTo', '==', userId)
+        .where('status', '==', 'in_progress')
+        .limit(1)
+        .get();
+
+      if (!recentExisting.empty) {
+        const existingItem = recentExisting.docs[0].data() as CallQueueItem;
+        return { success: true, queueItem: existingItem };
+      }
 
       // Fetch entity data
       const entitySnap = await adminDb.collection('workspace_entities')
@@ -232,13 +253,13 @@ export class CallCentreService {
       let targetRole = 'Contact';
       
       if (!targetContactId) {
-        const contacts = (entityData.entityContacts || []);
-        const primary = contacts.find((c: any) => c.isPrimary) || contacts[0];
+        const contacts: EntityContact[] = entityData.entityContacts || [];
+        const primary = contacts.find((c: EntityContact) => c.isPrimary) || contacts[0];
         if (primary) {
           targetContactId = primary.id;
-          targetName = primary.name || `${primary.firstName || ''} ${primary.lastName || ''}`.trim();
-          targetPhone = primary.phone || primary.phoneNumber;
-          targetEmail = primary.email || primary.emailAddress;
+          targetName = primary.name || 'Primary Contact';
+          targetPhone = primary.phone;
+          targetEmail = primary.email;
           targetRole = primary.typeLabel || primary.typeKey || (primary.isPrimary ? 'Primary' : 'Contact');
         } else {
           // Fallback to entity level
@@ -249,16 +270,15 @@ export class CallCentreService {
         }
       }
       
-      // Use a random ID or explicit ID for the manual item. 
-      // Manual enrolment might happen multiple times, so we don't strictly use campaignId_entityId_contactId
       const queueItemId = adminDb.collection('call_queue_items').doc().id;
       
-      const queueItem = {
+      const queueItem: CallQueueItem = {
         id: queueItemId,
         campaignId,
         organizationId: campaign?.organizationId || '',
         workspaceId: campaign?.workspaceId || '',
         entityId,
+        dealId: dealId || undefined,
         entityType: entityData.entityType || 'person',
         entityName: entityData.displayName || 'Unknown Entity',
         entityPhone: entityData.phone || targetPhone || '',
@@ -279,12 +299,34 @@ export class CallCentreService {
       
       await adminDb.collection('call_queue_items').doc(queueItemId).set(queueItem);
       
-      // We do not bump campaign.progress.total here because it's a manual override, 
-      // but you can if you want it to reflect in the UI. We leave it out to not skew audience sizes.
-      
       return { success: true, queueItem };
-    } catch (err: any) {
-      return { success: false, error: err.message };
+    } catch (err) {
+      const errorMsg = err instanceof Error ? err.message : String(err);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Gracefully releases or cancels an uncompleted single call queue item when the modal is dismissed.
+   */
+  static async releaseSingleCall(queueItemId: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const itemRef = adminDb.collection('call_queue_items').doc(queueItemId);
+      const snap = await itemRef.get();
+      if (!snap.exists) return { success: false, error: 'Queue item not found' };
+      const data = snap.data() as CallQueueItem;
+      if (data.status === 'in_progress' && data.isManualEnrolment) {
+        await itemRef.update({
+          status: 'cancelled',
+          assignedTo: null,
+          lockExpiresAt: null,
+          updatedAt: new Date().toISOString(),
+        });
+      }
+      return { success: true };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { success: false, error: message };
     }
   }
 
@@ -995,17 +1037,27 @@ export class CallCentreService {
           updatedAt: timestamp,
         });
 
-        return { campaignId: data.campaignId, entityId: data.entityId, entityType: data.entityType, entityName: data.entityName, organizationId: data.organizationId, workspaceId: data.workspaceId, contactId: data.contactId ?? null };
+        return {
+          campaignId: data.campaignId,
+          entityId: data.entityId,
+          entityType: data.entityType,
+          entityName: data.entityName,
+          organizationId: data.organizationId,
+          workspaceId: data.workspaceId,
+          contactId: data.contactId ?? null,
+          dealId: data.dealId ?? null,
+        };
       });
 
-      const { campaignId, entityId, entityType, organizationId, workspaceId, contactId } = transactionResult;
+      const { campaignId, entityId, entityType, organizationId, workspaceId, contactId, dealId } = transactionResult;
 
-      // 1. Log Activity on the Entity Timeline (Standard CRM logging)
+      // 1. Log Activity on the Entity Timeline and Deal Timeline (Standard CRM logging)
       await logActivity({
         organizationId,
         workspaceId,
         entityId,
         entityType,
+        dealId: dealId ?? undefined,
         userId: agentId,
         type: 'call_completed',
         source: 'call_campaign',
@@ -1016,6 +1068,7 @@ export class CallCentreService {
           duration,
           notes,
           agentName,
+          dealId: dealId ?? undefined,
         }
       });
 
