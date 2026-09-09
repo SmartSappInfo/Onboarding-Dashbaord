@@ -6,8 +6,29 @@ import type { NextRequest } from 'next/server';
  * Handles route protection and request preprocessing
  * Note: In Next.js 16, middleware.ts has been renamed to proxy.ts
  */
+/**
+ * Areas that require a signed-in user.
+ *
+ * Deliberately an allowlist of PROTECTED prefixes rather than "everything not public".
+ * Most of this app is public by design — the marketing homepage, surveys, invoices,
+ * quotes, statements, preference centres, password reset and invitation links — and an
+ * inverted rule would redirect real visitors to /login. Missing an entry here costs a
+ * redirect convenience, not a security hole: `requireAuth()` is the actual boundary and
+ * runs server-side on every action that touches data (audit F14).
+ */
+const protectedPrefixes = [
+  '/admin',
+  '/backoffice',
+  '/dashboard',
+  '/onboarding',
+  '/profile-setup',
+  '/awaiting-approval',
+  '/force-password-reset',
+  '/seeds',
+];
+
 export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   
   // Auto-correct legacy survey route /s/[slug] -> /surveys/[slug]
   if (pathname.startsWith('/s/')) {
@@ -50,8 +71,23 @@ export function proxy(request: NextRequest) {
     return response;
   }
   
-  // For admin and protected routes, add custom headers
-  // The actual authentication is handled client-side by Firebase
+  // Redirect to /login when a protected area is requested without a session cookie.
+  //
+  // PRESENCE ONLY. The proxy runs on the Edge runtime, where firebase-admin is
+  // unavailable, so the cookie cannot be cryptographically verified here. A forged or
+  // expired cookie gets past this check and is then rejected by `requireAuth()` on the
+  // Node runtime. This is a redirect convenience, never the security boundary.
+  const isProtectedRoute = protectedPrefixes.some(route => pathname.startsWith(route));
+
+  if (isProtectedRoute && !request.cookies.get('__session')) {
+    const url = request.nextUrl.clone();
+    url.pathname = '/login';
+    // Param name must be `redirect` — that is what the login page reads, and it is
+    // already open-redirect protected there by safeInternalRedirect().
+    url.searchParams.set('redirect', pathname + search);
+    return NextResponse.redirect(url);
+  }
+
   const response = NextResponse.next();
   
   // Add pathname to headers for debugging

@@ -615,10 +615,64 @@ if (!sessionCookie) {
 
 ### Definition of done
 
-- [ ] Sign-in sets `__session`; sign-out clears it; refresh keeps it current.
-- [ ] `requireAuth()` unit-tested: missing cookie, expired cookie, revoked session, missing profile, `isAuthorized: false`.
-- [ ] Protected routes redirect to `/login` when the cookie is absent.
-- [ ] All existing e2e specs still pass (`pnpm test:e2e`).
+- [x] Sign-in sets `__session`; sign-out clears it; refresh keeps it current.
+- [x] `requireAuth()` unit-tested: missing cookie, expired cookie, revoked session, missing profile, `isAuthorized: false`.
+- [x] Protected routes redirect to `/login` when the cookie is absent.
+- [x] All existing e2e specs still pass (`pnpm test:e2e`) — see the note on the two pre-existing failures.
+
+### As applied — five deviations from the plan above
+
+**1. Session sync is centralised, not per-call-site.** §3.3 says to edit every sign-in path. There
+are six sign-in call sites and nine sign-out call sites, and a missed one is an account with no
+server identity. Instead `src/firebase/provider.tsx` switches `onAuthStateChanged` →
+`onIdTokenChanged`, which fires on sign-in, sign-out *and* refresh, and calls `syncSessionCookie()`
+(`src/firebase/session-sync.ts`). One subscription covers every path, including ones added later.
+
+**2. The cookie is NOT re-minted on token refresh — §3.1 and §3.3 contradict each other.** The mint
+endpoint rejects an `auth_time` older than five minutes, but `auth_time` records when the user
+*authenticated*, not when the current ID token was minted. An hourly refresh therefore carries the
+original `auth_time`, so the re-POST that §3.3 asks for would 401 for the entire life of the session.
+We mint only while `auth_time` is fresh. Nothing is lost: revocation stays prompt because
+`requireAuth()` verifies with `checkRevoked: true` on *every* call, and if the cookie expires while
+the Firebase session persists, `proxy.ts` bounces the user to `/login`, where signing in produces a
+fresh `auth_time`. The flow self-heals instead of looping on a request the server always rejects.
+
+**3. `keepalive: true` on both session requests.** Sign-out is almost always followed by an immediate
+navigation, which cancels in-flight `fetch`. A cancelled DELETE would leave a valid session cookie
+alive for its full five days *after* the user believes they signed out.
+
+**4. `proxy.ts` uses an allowlist of PROTECTED prefixes, not "everything not public".** The existing
+public list omits `/`, `/forgot-password`, `/accept-invitation`, `/preferences`, `/quotes`,
+`/statement`, `/portal` and most marketing pages. Inverting it would have redirected visitors away
+from the homepage and broken password-reset and invitation links. Missing a prefix costs a redirect
+convenience, not a security hole — `requireAuth()` is the boundary. 43 tests pin both directions.
+
+**5. The redirect param is `redirect`, not `returnTo`.** `src/app/login/page.tsx` reads
+`searchParams.get('redirect')` and passes it through `safeInternalRedirect()`. A `returnTo` param
+would have been silently ignored, dropping the user on the default landing page. The query string is
+carried through too, so filters survive the round trip.
+
+### Verification
+
+- 16 `requireAuth()` unit tests; 43 proxy tests; full suite green (581 files, 4293 tests).
+- Live against `next dev`: `/dashboard` without a cookie → `307 → /login?redirect=%2Fdashboard`;
+  `/` → 200; `POST /api/auth/session` → 400 without a token, 401 on a bogus one; `DELETE` returns
+  `__session=; Max-Age=0; HttpOnly; SameSite=lax`.
+- e2e: 14 of 16 passed. The two failures (`auth.spec.ts` invalid-credentials on chromium, and the
+  login heading on mobile-safari) reproduce identically with Phase 3 stashed, so they are
+  pre-existing and unrelated.
+
+### Two things to know before deploying
+
+**Every currently signed-in user gets bounced to `/login` once.** They hold a persisted Firebase
+session but no `__session` cookie, and their `auth_time` is stale, so no cookie is minted until they
+sign in again. There is no redirect loop — `/login` does not auto-redirect an authenticated user —
+but it is a one-time re-login for the entire active user base.
+
+**Phase 3 does not close F2 on its own.** A forged cookie still gets past `proxy.ts` (presence-only)
+and renders a protected page shell, because the pages and actions do not call `requireAuth()` yet.
+This phase builds the mechanism; Phase 4 applies it to the 327 server actions. Until then the
+Server Actions remain as exposed as before.
 
 ---
 

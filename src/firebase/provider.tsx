@@ -3,8 +3,9 @@
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
-import { Auth, User, onAuthStateChanged } from 'firebase/auth';
+import { Auth, User, onIdTokenChanged } from 'firebase/auth';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { syncSessionCookie } from '@/firebase/session-sync';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -76,13 +77,20 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
     setUserAuthState({ user: null, isUserLoading: true, userError: null }); // Reset on auth instance change
 
-    const unsubscribe = onAuthStateChanged(
+    // onIdTokenChanged rather than onAuthStateChanged: it fires on sign-in, sign-out
+    // AND token refresh, which is what keeps the server-side `__session` cookie in step
+    // (audit F14). Subscribing here covers every sign-in and sign-out path at once,
+    // including any added later.
+    const unsubscribe = onIdTokenChanged(
       auth,
       (firebaseUser) => { // Auth state determined
         setUserAuthState({ user: firebaseUser, isUserLoading: false, userError: null });
+        // Fire-and-forget: syncSessionCookie never throws, and rendering must not wait
+        // on a network round trip to the session endpoint.
+        void syncSessionCookie(firebaseUser);
       },
       (error) => { // Auth listener error
-        console.error("FirebaseProvider: onAuthStateChanged error:", error);
+        console.error("FirebaseProvider: onIdTokenChanged error:", error);
         setUserAuthState({ user: null, isUserLoading: false, userError: error });
       }
     );
