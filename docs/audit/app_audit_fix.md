@@ -404,7 +404,7 @@ so that a delay here costs nothing.
    cd Onboarding-Dashbaord.git
 
    git filter-repo \
-     --path .env --path .env.local --path serviceAccountKey.json \
+     --path .env --path .env.local --path .env.test --path serviceAccountKey.json \
      --invert-paths
 
    git push --force --all
@@ -421,8 +421,32 @@ so that a delay here costs nothing.
 
 ### Definition of done
 
-- [ ] `git log --all --diff-filter=A -- .env .env.local serviceAccountKey.json` returns nothing.
+- [ ] `git log --all --diff-filter=A -- .env .env.local .env.test serviceAccountKey.json` returns nothing.
 - [ ] All developers on fresh clones; CI green on the rewritten history.
+- [ ] `.env.test.example` still present — it is a committed template, not a secret.
+
+### Dry-run findings (verified against a throwaway mirror)
+
+**`.env.test` was missing from the path list above and has been added.** It was committed in
+`91ab1d1d "Push Keys temporarily"` (2026-05-13). Its contents are placeholders rather than live
+credentials, so it is not an exposure on its own, but it costs nothing to purge in the same pass.
+Take care not to catch `.env.test.example` — that one is a deliberate template and must survive;
+`--path` matches exact paths, so the four entries listed are safe as written.
+
+**Only two commits ever added secret files:** `4706fda4` (2026-04-09) and `91ab1d1d` (2026-05-13).
+Nine commits touch those paths in total.
+
+**Exactly one commit is dropped, and it is the right one.** `964f45d0 "Service Key removed"` only
+ever deleted the key, so stripping the path leaves it empty and `filter-repo` prunes it. Verified
+per branch: `main` and `deployment` each go 1676 → 1675 commits, and nothing else disappears. Repo
+size drops from ~60M to ~22M.
+
+**Every SHA changes**, including the Phase 1 commit. Any branch, tag, open PR, CI pin, deploy
+reference or bookmark that names a SHA must be recreated afterwards.
+
+**Sequencing:** push all outstanding work to `origin` *before* the rewrite. The rewrite operates on
+a mirror of `origin`, so anything still sitting unpushed locally is not included, and once `origin`
+is rewritten that local work can no longer be merged without a rebase onto the new history.
 
 ---
 
