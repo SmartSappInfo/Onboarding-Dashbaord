@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { SystemMigrationLog } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * FER: Org-Admin Permission Remediation
@@ -71,6 +72,11 @@ export async function executeFixOrgAdminPermissionsFerAction(
   executorId: string,
   options: { dryRun: boolean }
 ): Promise<OrgAdminFerResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const { dryRun } = options;
   const migrationId = 'fer_fix_org_admin_permissions';
   const now = new Date().toISOString();

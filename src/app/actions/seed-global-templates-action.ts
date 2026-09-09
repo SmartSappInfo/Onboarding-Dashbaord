@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { TEMPLATES } from '@/lib/messaging-templates-registry';
 import { MESSAGING_TRIGGERS } from '@/lib/messaging-triggers';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface SeedGlobalTemplatesResult {
   total: number;
@@ -13,6 +14,11 @@ export interface SeedGlobalTemplatesResult {
 }
 
 export async function seedGlobalTemplatesAction(): Promise<SeedGlobalTemplatesResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   try {
     const timestamp = new Date().toISOString();
     const batches: FirebaseFirestore.WriteBatch[] = [];

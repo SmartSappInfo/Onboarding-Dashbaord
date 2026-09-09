@@ -4,6 +4,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import type { UserProfile, Role, PermissionsSchema, AppPermissionId } from '@/lib/types';
 import { mergePermissionsSchemas, getBlankPermissions } from '@/lib/permissions-engine';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export type WorkspaceRbacMigrationResult = {
     total: number;
@@ -21,6 +22,11 @@ export type WorkspaceRbacMigrationResult = {
  * rather than the new `workspaceRoles` map.
  */
 export async function fetchUsersForWorkspaceRbacMigration(organizationId: string): Promise<{ success: boolean; data?: WorkspaceRbacMigrationResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'view');
+
     try {
         const usersSnap = await adminDb.collection('users')
             .where('organizationId', '==', organizationId)
@@ -63,6 +69,11 @@ export async function fetchUsersForWorkspaceRbacMigration(organizationId: string
  * Computes `workspacePermissions` and `workspacePermissionsSchemas` for each workspace.
  */
 export async function enrichUsersWithWorkspaceRbac(organizationId: string): Promise<{ success: boolean; data?: WorkspaceRbacMigrationResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const usersSnap = await adminDb.collection('users')
             .where('organizationId', '==', organizationId)
@@ -177,6 +188,11 @@ export async function enrichUsersWithWorkspaceRbac(organizationId: string): Prom
  * Ensures all users in the org have `workspaceRoles` mapped safely.
  */
 export async function restoreWorkspaceRbacMigration(organizationId: string): Promise<{ success: boolean; data?: WorkspaceRbacMigrationResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const usersSnap = await adminDb.collection('users')
             .where('organizationId', '==', organizationId)
@@ -221,6 +237,11 @@ export async function restoreWorkspaceRbacMigration(organizationId: string): Pro
  * Strips the new workspace maps to revert to the legacy array.
  */
 export async function rollbackWorkspaceRbacMigration(organizationId: string): Promise<{ success: boolean; data?: WorkspaceRbacMigrationResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const usersSnap = await adminDb.collection('users')
             .where('organizationId', '==', organizationId)

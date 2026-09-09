@@ -3,14 +3,21 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 const BATCH_SIZE = 400;
 
-export async function executePurgeFocalPersonsFerAction(userId: string): Promise<{
+export async function executePurgeFocalPersonsFerAction(): Promise<{
   success: boolean;
   message: string;
   details?: any;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This one performs an
+  // irreversible, cross-tenant field deletion, and previously accepted the executing
+  // user's id as an argument — so any caller could run it and attribute it to anyone.
+  // Identity and permission are now both resolved server-side from the session.
+  const actor = await authorizeBackofficeSession('operations', 'execute');
+
   const migrationId = 'fer_purge_focal_persons';
   const now = new Date().toISOString();
 
@@ -20,7 +27,7 @@ export async function executePurgeFocalPersonsFerAction(userId: string): Promise
     id: migrationId,
     status: 'in_progress',
     lastRunAt: now,
-    executedBy: userId,
+    executedBy: actor.userId,
     summary: 'Execution started...',
   } as SystemMigrationLog, { merge: true });
 

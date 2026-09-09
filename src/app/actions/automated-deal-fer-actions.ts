@@ -23,6 +23,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Query, QueryDocumentSnapshot } from 'firebase-admin/firestore';
 import type { Deal, WorkspaceEntity, EntityContact, DealFocalContact } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface AutomatedDealFERCandidate {
   dealId: string;
@@ -64,6 +65,11 @@ export interface AutomatedDealFERResult {
 export async function fetchCandidateDealsForFER(
   workspaceId?: string
 ): Promise<AutomatedDealFERCandidate[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'view');
+
   try {
     let query: Query = adminDb.collection('deals');
 
@@ -164,6 +170,11 @@ export function enrichDealData(
 export async function runAutomatedDealFERProtocol(
   workspaceId?: string
 ): Promise<AutomatedDealFERResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: AutomatedDealFERResult = {
     totalCandidates: 0,
     succeeded: 0,

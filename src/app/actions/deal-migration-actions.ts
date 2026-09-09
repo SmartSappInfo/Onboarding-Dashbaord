@@ -2,8 +2,14 @@
 
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export async function executeDealMigration(workspaceId: string, organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const weQuery = adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId);
         const snapshot = await weQuery.get();

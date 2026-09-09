@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { TEMPLATES } from '@/lib/messaging-templates-registry';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * Seeds all standard meeting templates and runs a Fetch-Enrich-Restore protocol
@@ -14,6 +15,11 @@ export async function seedEnrichedMeetingTemplatesAction(): Promise<{
   seededCount: number;
   errors: Array<{ name: string; error: string }>;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   try {
     const timestamp = new Date().toISOString();
     

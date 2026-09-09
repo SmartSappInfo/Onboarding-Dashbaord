@@ -57,7 +57,7 @@ function StatCard({
 }
 
 export default function SeedAllWorkspacesFieldsFer() {
-  const { can, profile } = useBackoffice();
+  const { can } = useBackoffice();
   const [phase, setPhase] = React.useState<Phase>('idle');
   const [lastResult, setLastResult] = React.useState<{
     success: boolean;
@@ -78,8 +78,8 @@ export default function SeedAllWorkspacesFieldsFer() {
     startTransition(async () => {
       setPhase('running');
       try {
-        const executorId = profile?.id || 'system_backoffice';
-        const result = await executeSeedAllWorkspacesFieldsFerAction(executorId);
+        // Identity is derived server-side from the session (audit F2).
+        const result = await executeSeedAllWorkspacesFieldsFerAction();
         setLastResult(result);
         setHistory((prev) => [
           {

@@ -9,6 +9,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Entity, SaaSInstitutionData, InstitutionData } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface IndustryMigrationResult {
   total: number;
@@ -27,6 +28,11 @@ export interface IndustryMigrationResult {
  * - OR don't have industryData field set
  */
 export async function fetchSchoolsForSaaSMigration(): Promise<IndustryMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'view');
+
   const result: IndustryMigrationResult = {
     total: 0,
     succeeded: 0,
@@ -104,6 +110,11 @@ export async function fetchSchoolsForSaaSMigration(): Promise<IndustryMigrationR
  * 2. Updates entity with industry: 'SaaS' and industryData
  */
 export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: IndustryMigrationResult = {
     total: 0,
     succeeded: 0,
@@ -255,6 +266,11 @@ export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigration
  * - Entity has valid industryData with all required fields
  */
 export async function restoreSaaSMigration(): Promise<IndustryMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: IndustryMigrationResult = {
     total: 0,
     succeeded: 0,
@@ -332,6 +348,11 @@ export async function restoreSaaSMigration(): Promise<IndustryMigrationResult> {
  * ROLLBACK: Removes SaaS industry data from entities
  */
 export async function rollbackSaaSMigration(): Promise<IndustryMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: IndustryMigrationResult = {
     total: 0,
     succeeded: 0,

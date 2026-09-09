@@ -2,16 +2,23 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * FER Protocol: Un-expires import payloads.
  * Sets rawFieldsCleared to false and resets startedAt to now, extending their TTL.
  */
-export async function executeUnexpireImportPayloadsFerAction(userId: string): Promise<{
+export async function executeUnexpireImportPayloadsFerAction(): Promise<{
   success: boolean;
   message: string;
   details?: any;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This one performs an
+  // irreversible, cross-tenant field deletion, and previously accepted the executing
+  // user's id as an argument — so any caller could run it and attribute it to anyone.
+  // Identity and permission are now both resolved server-side from the session.
+  const actor = await authorizeBackofficeSession('operations', 'execute');
+
   const migrationId = 'fer_unexpire_import_payloads';
   const now = new Date();
   const nowIso = now.toISOString();
@@ -22,7 +29,7 @@ export async function executeUnexpireImportPayloadsFerAction(userId: string): Pr
     id: migrationId,
     status: 'in_progress',
     lastRunAt: nowIso,
-    executedBy: userId,
+    executedBy: actor.userId,
     summary: 'Execution started...',
   } as SystemMigrationLog, { merge: true });
 

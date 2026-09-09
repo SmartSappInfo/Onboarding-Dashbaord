@@ -19,6 +19,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface SeedInfrastructureResult {
   success: boolean;
@@ -34,6 +35,11 @@ const SUPER_ADMIN_EMAIL = 'jakjoejoe@gmail.com';
  * in development environments safely via adminDb.
  */
 export async function seedInfrastructureAction(): Promise<SeedInfrastructureResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   // Production guard: Zero execution in production builds
   if (process.env.NODE_ENV !== 'development') {
     return { success: true, seeded: [] };

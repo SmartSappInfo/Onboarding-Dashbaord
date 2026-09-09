@@ -20,6 +20,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface DealStageBackfillResult {
     total: number;           // Total deals scanned
@@ -36,6 +37,11 @@ export interface DealStageBackfillResult {
 export async function fetchDealsForStageNameBackfill(
     organizationId: string
 ): Promise<{ success: boolean; data?: DealStageBackfillResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'view');
+
     try {
         const snap = await adminDb
             .collection('deals')
@@ -76,6 +82,11 @@ export async function fetchDealsForStageNameBackfill(
 export async function enrichDealsWithStageName(
     organizationId: string
 ): Promise<{ success: boolean; data?: DealStageBackfillResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const snap = await adminDb
             .collection('deals')
@@ -170,6 +181,11 @@ export async function enrichDealsWithStageName(
 export async function restoreDealStageNameBackfill(
     organizationId: string
 ): Promise<{ success: boolean; data?: DealStageBackfillResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const snap = await adminDb
             .collection('deals')
@@ -212,6 +228,11 @@ export async function restoreDealStageNameBackfill(
 export async function rollbackDealStageNameBackfill(
     organizationId: string
 ): Promise<{ success: boolean; data?: DealStageBackfillResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const snap = await adminDb
             .collection('deals')

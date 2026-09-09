@@ -1,9 +1,11 @@
-import { runDocumentCtaBackfillAction } from './backfill-document-cta-action';
+// The Server Action authenticates via session cookie; the CLI has none, so it runs
+// the core directly (it already has Admin SDK credentials).
+import { runDocumentCtaBackfillCore } from './backfill-document-cta-action';
 
 async function run() {
   console.log('[BACKFILL PROTOCOL] Initializing Document CTA Migration via Admin SDK...');
   
-  const result = await runDocumentCtaBackfillAction();
+  const result = await runDocumentCtaBackfillCore();
 
   console.log('================================================--');
   console.log(`STATUS: ${result.success ? 'SUCCESS' : 'FAILED'}`);

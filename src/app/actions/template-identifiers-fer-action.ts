@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 const BATCH_SIZE = 400;
 
@@ -31,11 +32,17 @@ function buildUpdatePayload(
   return Object.keys(updates).length > 0 ? updates : null;
 }
 
-export async function executeTemplateIdentifiersFerAction(userId: string): Promise<{
+export async function executeTemplateIdentifiersFerAction(): Promise<{
   success: boolean;
   message: string;
   details?: any;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This one performs an
+  // irreversible, cross-tenant field deletion, and previously accepted the executing
+  // user's id as an argument — so any caller could run it and attribute it to anyone.
+  // Identity and permission are now both resolved server-side from the session.
+  const actor = await authorizeBackofficeSession('operations', 'execute');
+
   const migrationId = 'fer_template_identifiers';
   const now = new Date().toISOString();
 
@@ -45,7 +52,7 @@ export async function executeTemplateIdentifiersFerAction(userId: string): Promi
     id: migrationId,
     status: 'in_progress',
     lastRunAt: now,
-    executedBy: userId,
+    executedBy: actor.userId,
     summary: 'Execution started...',
   } as SystemMigrationLog, { merge: true });
 

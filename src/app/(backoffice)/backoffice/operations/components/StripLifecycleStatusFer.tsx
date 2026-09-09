@@ -52,7 +52,7 @@ function StatCard({
 }
 
 export default function StripLifecycleStatusFer() {
-  const { can, profile } = useBackoffice();
+  const { can } = useBackoffice();
   const [phase, setPhase] = React.useState<Phase>('idle');
   const [lastResult, setLastResult] = React.useState<any>(null);
   const [history, setHistory] = React.useState<RunRecord[]>([]);
@@ -64,8 +64,9 @@ export default function StripLifecycleStatusFer() {
     startTransition(async () => {
       setPhase('running');
       try {
-        const executorId = profile?.id || 'system_backoffice';
-        const result = await executeStripLifecycleStatusFerAction(executorId);
+        // Identity is derived server-side from the session (audit F2) — the client no
+        // longer states who is executing.
+        const result = await executeStripLifecycleStatusFerAction();
         setLastResult(result);
         setHistory((prev) => [
           {

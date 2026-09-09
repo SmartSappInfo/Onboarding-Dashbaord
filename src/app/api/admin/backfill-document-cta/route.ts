@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { runDocumentCtaBackfillAction } from '@/app/actions/backfill-document-cta-action';
+import { runDocumentCtaBackfillCore } from '@/app/actions/backfill-document-cta-action';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 
 /**
@@ -17,7 +17,9 @@ export async function GET(req: NextRequest) {
       return authResult.errorResponse;
     }
 
-    const result = await runDocumentCtaBackfillAction();
+    // Already authenticated as a system admin above; call the core directly rather
+    // than the Server Action, whose guard reads a session cookie this caller may not have.
+    const result = await runDocumentCtaBackfillCore();
     return NextResponse.json(result);
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);

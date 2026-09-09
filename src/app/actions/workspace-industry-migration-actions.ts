@@ -17,6 +17,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { IndustryVertical } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface WorkspaceMigrationResult {
   total: number;
@@ -52,6 +53,11 @@ const WORKSPACE_INDUSTRY_MAP: Record<string, IndustryVertical> = {
  * - OR don't have industryScopeLocked set
  */
 export async function fetchWorkspacesForIndustryMigration(): Promise<WorkspaceMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'view');
+
   const result: WorkspaceMigrationResult = {
     total: 0,
     succeeded: 0,
@@ -136,6 +142,11 @@ export async function fetchWorkspacesForIndustryMigration(): Promise<WorkspaceMi
  * 3. Sets industryScopeLockedAt timestamp
  */
 export async function enrichWorkspacesWithIndustry(): Promise<WorkspaceMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: WorkspaceMigrationResult = {
     total: 0,
     succeeded: 0,
@@ -249,6 +260,11 @@ export async function enrichWorkspacesWithIndustry(): Promise<WorkspaceMigration
  * - Workspace has industryScopeLockedAt timestamp
  */
 export async function restoreWorkspaceIndustryMigration(): Promise<WorkspaceMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: WorkspaceMigrationResult = {
     total: 0,
     succeeded: 0,
@@ -352,6 +368,11 @@ export async function restoreWorkspaceIndustryMigration(): Promise<WorkspaceMigr
  * ROLLBACK: Removes industry data from workspaces
  */
 export async function rollbackWorkspaceIndustryMigration(): Promise<WorkspaceMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: WorkspaceMigrationResult = {
     total: 0,
     succeeded: 0,

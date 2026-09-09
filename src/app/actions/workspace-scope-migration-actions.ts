@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { logActivity } from '@/lib/activity-logger';
 import { normalizeContactScope } from '@/lib/scope-guard';
 import type { Workspace, ContactScope } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * FETCH-ENRICH-RESTORE PROTOCOL: Workspace Scope Deprecation & Migration
@@ -41,9 +42,12 @@ export interface ScopeMigrationResult {
 /**
  * Executes the Fetch-Enrich-Restore Protocol for workspace contact scopes.
  */
-export async function executeWorkspaceScopeFetchEnrichRestoreAction(
-  userId: string = 'system_migration'
-): Promise<ScopeMigrationResult> {
+export async function executeWorkspaceScopeFetchEnrichRestoreAction(): Promise<ScopeMigrationResult> {
+  // SECURITY (audit F2): this rewrites workspace scope across every tenant. The
+  // executing identity used to be an argument defaulting to 'system_migration', so an
+  // anonymous caller could both run it and choose the name in the activity log.
+  const actor = await authorizeBackofficeSession('operations', 'execute');
+
   try {
     console.log('[FETCH-ENRICH-RESTORE] Starting Workspace Scope Migration Protocol...');
 
@@ -116,7 +120,7 @@ export async function executeWorkspaceScopeFetchEnrichRestoreAction(
       await logActivity({
         entityId: '',
         organizationId: 'system',
-        userId,
+        userId: actor.userId,
         workspaceId: '',
         type: 'workspace_scope_updated',
         source: 'system',

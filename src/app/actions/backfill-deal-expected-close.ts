@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, Pipeline } from '@/lib/types';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface BackfillResult {
   success: boolean;
@@ -12,6 +13,11 @@ export interface BackfillResult {
 }
 
 export async function backfillDealExpectedCloseDatesAction(): Promise<BackfillResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   try {
     // 1. Fetch all pipelines
     const pipelinesSnap = await adminDb.collection('pipelines').get();

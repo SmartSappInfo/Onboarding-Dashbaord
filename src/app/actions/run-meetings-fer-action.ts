@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export async function runMeetingsFerAction(
   workspaceId: string,
@@ -13,6 +14,11 @@ export async function runMeetingsFerAction(
   updatedRegistrants: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   try {
     const now = new Date().toISOString();
     let processedMeetings = 0;

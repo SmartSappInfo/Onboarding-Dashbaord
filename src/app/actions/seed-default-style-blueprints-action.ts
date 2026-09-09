@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * Seeds and updates all global and workspace blueprints (message templates)
@@ -12,6 +13,11 @@ export async function seedDefaultStyleBlueprintsAction(): Promise<{
   updatedCount: number;
   errors: Array<{ name: string; error: string }>;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   try {
     const timestamp = new Date().toISOString();
     

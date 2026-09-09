@@ -94,3 +94,61 @@ export async function authorizeBackoffice(
 
   return actor;
 }
+
+/**
+ * Session-cookie variant of {@link authorizeBackoffice} (audit F2, Phase 4).
+ *
+ * Identical trust model and identical role matrix — the only difference is where the
+ * identity comes from. `authorizeBackoffice` takes an ID token the client passes
+ * explicitly; this reads the `httpOnly` `__session` cookie established in Phase 3, so
+ * an action needs no identity argument at all and the caller has nothing to forge.
+ *
+ * Prefer this in new actions. The token-based function remains for the existing call
+ * sites that already thread an `idToken` through.
+ *
+ * IMPORTANT: authorises against the backoffice ROLE_MATRIX, not `system_admin`.
+ * Operators holding `backofficeRoles` but not `system_admin` legitimately run these
+ * tools, and gating on system admin alone would lock them out.
+ *
+ * @returns the trusted AuditActor for audit logging and `executedBy` fields.
+ * @throws BackofficeAuthError('unauthenticated') when there is no usable session.
+ * @throws BackofficeAuthError('forbidden') when the role matrix denies access.
+ */
+export async function authorizeBackofficeSession(
+  module: BackofficeModule,
+  action: BackofficeAction = 'view'
+): Promise<AuditActor> {
+  const { requireAuth, UnauthorizedError, ForbiddenError } = await import('@/lib/auth/require-auth');
+
+  let uid: string;
+  let profile: BackofficeUserProfile;
+  try {
+    const ctx = await requireAuth();
+    uid = ctx.uid;
+    profile = ctx.profile as BackofficeUserProfile;
+  } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      throw new BackofficeAuthError(error.message, 'unauthenticated');
+    }
+    if (error instanceof ForbiddenError) {
+      throw new BackofficeAuthError(error.message, 'forbidden');
+    }
+    throw error;
+  }
+
+  const roles = resolveRoles(profile);
+  if (roles.length === 0) {
+    throw new BackofficeAuthError('User does not have backoffice access.', 'forbidden');
+  }
+  if (!evaluateBackofficePermission(roles, module, action)) {
+    throw new BackofficeAuthError(`Forbidden: ${module}:${action}`, 'forbidden');
+  }
+
+  const email = profile.email ?? '';
+  return {
+    userId: uid,
+    name: profile.name ?? profile.displayName ?? email,
+    email,
+    role: roles[0] ?? 'readonly_auditor',
+  };
+}

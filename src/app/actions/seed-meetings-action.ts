@@ -9,6 +9,7 @@
  */
 
 import { seedMeetingsV2, type SeedMeetingsResult } from '@/app/seeds/seed-meetings-v2';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -24,6 +25,11 @@ export async function seedMeetingsV2Action(
   organizationId?: string,
   hostUserId?: string
 ): Promise<{ success: boolean; result?: SeedMeetingsResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints. This platform
+  // migration was reachable unauthenticated. Identity and permission are resolved
+  // server-side from the session; the caller supplies neither.
+  await authorizeBackofficeSession('operations', 'execute');
+
   try {
     if (!workspaceId || !workspaceId.trim()) {
       return { success: false, error: 'Valid workspaceId is required to seed meetings data.' };

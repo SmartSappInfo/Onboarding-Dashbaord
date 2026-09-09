@@ -20,6 +20,7 @@ import {
   OLD_DOCUMENT_CTA_TEXT, 
   OLD_DOCUMENT_CTA_PRETEXT_KEYWORD 
 } from '@/lib/media/document-cta-backfill-service';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface BackfillCtaActionResult {
   success: boolean;
@@ -28,7 +29,7 @@ export interface BackfillCtaActionResult {
   message: string;
 }
 
-export async function runDocumentCtaBackfillAction(): Promise<BackfillCtaActionResult> {
+async function runDocumentCtaBackfillCore(): Promise<BackfillCtaActionResult> {
   try {
     const sharesRef = adminDb.collection('media_shares');
     const sharesSnap = await sharesRef.get();
@@ -116,4 +117,24 @@ export async function runDocumentCtaBackfillAction(): Promise<BackfillCtaActionR
       message: `Backfill failed: ${errorMsg}`,
     };
   }
+}
+
+/**
+ * Unguarded core, for callers that have ALREADY authenticated.
+ *
+ * Used by `/api/admin/backfill-document-cta` (which enforces system admin via bearer
+ * token) and by the CLI script. Neither has a session cookie to read, so they cannot go
+ * through the Server Action wrapper below.
+ */
+export { runDocumentCtaBackfillCore };
+
+/**
+ * Server Action entry point — a public HTTP endpoint, so it authenticates its caller.
+ *
+ * SECURITY (audit F2): this global, cross-tenant backfill was previously reachable by
+ * anyone who could reach the app.
+ */
+export async function runDocumentCtaBackfillAction(): Promise<BackfillCtaActionResult> {
+  await authorizeBackofficeSession('operations', 'execute');
+  return runDocumentCtaBackfillCore();
 }

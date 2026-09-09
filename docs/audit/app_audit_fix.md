@@ -735,6 +735,19 @@ echo "$guard / $tot server-action files authenticate the caller"
 
 Baseline: `19 / 327`. Target: `327 / 327`.
 
+> **The script above undercounts — add `authorizeBackoffice` to the pattern.** This codebase
+> already had a correct server-side guard, `authorizeBackoffice(idToken, module, action)` in
+> `src/lib/backoffice/backoffice-auth.ts`, which the audit's regex does not match. Files guarded
+> that way were scored as unguarded. Use:
+>
+> ```bash
+> grep -qE "requireAuth|requireWorkspace|requireOrgAdmin|requireSystemAdmin|verifyIdToken|authorizeBackoffice" "$f"
+> ```
+>
+> With the corrected pattern the count after Phase 4a is **55 / 326**. (The denominator drops by
+> one because `seed-all-workspaces-fields-fer-action.ts` no longer touches `adminDb` directly —
+> its body moved to `src/lib/migrations/`.)
+
 ### Make the fix permanent
 
 A migration this size regresses unless the old shape becomes impossible. Add a lint rule that fails
@@ -767,10 +780,51 @@ each batch lands. That way it never blocks work in progress but permanently lock
 
 ### Definition of done
 
-- [ ] The progress script reports `327 / 327`.
+- [ ] The progress script reports `327 / 327`. — **in progress: 55 / 326** (was 16 / 326).
 - [ ] No file under `src/app/actions/` accepts `userId`/`actorId`/`currentUserId`/`performedBy`.
+      — **done for batch 4a**; 4b–4e outstanding.
 - [ ] The lint rule is active for all of `src/app/actions/**` and CI fails on violation.
-- [ ] Full suite green; e2e green.
+      — **active for the 4a globs**, widening as each batch lands.
+- [x] Full suite green; e2e green. — 581 files / 4295 tests green after 4a.
+
+---
+
+### Batch 4a — complete
+
+24 of 24 destructive migration/seed/backfill/purge action files now authenticate the caller.
+
+**Use `authorizeBackofficeSession`, not `requireSystemAdmin`.** The plan's `requireAuth`/
+`requireSystemAdmin` shape would have broken the backoffice. Access there is granted by *either*
+`permissions: ['system_admin']` *or* a separate `backofficeRoles` field evaluated against
+`ROLE_MATRIX` — so operators holding `backofficeRoles` but not `system_admin` legitimately run these
+tools, and gating on system admin alone would have locked them out. A new
+`authorizeBackofficeSession(module, action)` was added alongside the existing token-based
+`authorizeBackoffice`: same role matrix, same trust model, but it reads the Phase 3 `__session`
+cookie so actions need no identity argument and call sites need no token threading.
+
+**Eight actions accepted a `userId` and now derive it.** `purge-focal-persons`,
+`purge-legacy-fields`, `strip-account-status`, `strip-lifecycle-status`, `template-identifiers`,
+`unexpire-import-payloads`, `workspace-scope-migration` and `seed-all-workspaces-fields`. The worst,
+`executePurgeFocalPersonsFerAction(userId)`, irreversibly stripped `focalPerson` / `focalPersons` /
+`contactPersons` from **every entity in every tenant** and wrote the caller's chosen name to the
+audit log. The three backoffice components that passed `profile?.id || 'system_backoffice'` now pass
+nothing.
+
+**Two call paths would have broken, and were preserved by splitting the core out of the action.**
+A Server Action's guard reads a session cookie, which neither of these has:
+
+- `pnpm migrate:workspace-fields` (`src/app/seeds/migrate-workspace-fields.ts`) runs from the CLI.
+  The migration body moved to `src/lib/migrations/seed-all-workspaces-fields.ts`; the action is now
+  a thin authenticated wrapper, and the CLI calls the core directly.
+- `/api/admin/backfill-document-cta` authenticates with a **bearer token** and already enforces
+  system admin. Adding a cookie-based guard inside the action would have broken it, so
+  `backfill-document-cta-action.ts` exports `runDocumentCtaBackfillCore` for callers that have
+  already authenticated, while the Server Action wrapper stays guarded.
+
+One behaviour change worth knowing: `/admin/media` auto-fires the CTA backfill on mount for any
+admin. That call is now authorised, so for users without backoffice rights it fails and is swallowed
+by the existing `.catch()` — the global backfill simply stops running for them, which is the intent
+of the fix rather than a regression, but it does mean the auto-trigger is no longer universal.
 
 ---
 
