@@ -3,7 +3,7 @@
 import * as React from 'react';
 import type { Survey, SurveyResponse, SurveyResultPage, SurveyResultBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { interpolateWithMap } from '@/lib/survey-variable-utils';
+import { interpolateWithMap, interpolateWithMapForHtml } from '@/lib/survey-variable-utils';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowRight, Quote, Trophy, Building2, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -592,7 +592,10 @@ export default function ResultRenderer({
                         </h1>
                         <div 
                             className="text-lg sm:text-xl text-muted-foreground leading-relaxed font-medium whitespace-pre-wrap prose prose-slate max-w-none" 
-                            dangerouslySetInnerHTML={{ __html: preview ? interpolateWithMap(survey.thankYouDescription || 'Your submission has been securely processed.', simulatedValues, true) : (resolvedThankYouDescription || survey.thankYouDescription || 'Your submission has been securely processed.') }} 
+                            // HTML sink: the preview branch interpolates respondent-controlled
+                            // values, so it must escape them (audit F5). The non-preview branch
+                            // receives resolvedThankYouDescription already escaped server-side.
+                            dangerouslySetInnerHTML={{ __html: preview ? interpolateWithMapForHtml(survey.thankYouDescription || 'Your submission has been securely processed.', simulatedValues, true) : (resolvedThankYouDescription || survey.thankYouDescription || 'Your submission has been securely processed.') }} 
                         />
                     </div>
                     <ResubmitButton />

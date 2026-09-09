@@ -7,8 +7,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logMigrationOperationStart } from '@/lib/migration-monitoring';
 import type { MigrationOperationType } from '@/lib/migration-monitoring-types';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 
 export async function POST(request: NextRequest) {
+  // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
+  // operational data via adminDb. Restricted to platform system admins.
+  const auth = await authenticateApiRequest(request, { requireSystemAdmin: true });
+  if (!auth.success) return auth.errorResponse;
+
   try {
     const body = await request.json();
     const { operationType, collection, userId, userName, organizationId } = body;

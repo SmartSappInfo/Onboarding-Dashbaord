@@ -9,7 +9,7 @@ import { BackgroundPattern } from '../../components/survey-background-pattern';
 import { hexToHslString, getContrastTextColor } from '@/app/admin/surveys/components/inspector/contrast-utils';
 import { Building2, RotateCcw, Sun, Moon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { interpolateWithMap } from '@/lib/survey-variable-utils';
+import { interpolateWithMap, interpolateWithMapForHtml } from '@/lib/survey-variable-utils';
 import { SurveyVariableProvider } from '../context/SurveyVariableContext';
 import SurveyLoader from '../../components/survey-loader';
 import ResultRenderer from '../result/components/ResultRenderer';
@@ -389,7 +389,7 @@ export default function SurveyDisplay({
                                 <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-4 px-4">{interpolateWithMap(survey.thankYouTitle || 'Thank You!', simulatedValues, isPreviewMode)}</h1>
                                 <div 
                                     className="text-muted-foreground text-lg sm:text-xl px-4 whitespace-pre-wrap prose prose-slate max-w-none mx-auto" 
-                                    dangerouslySetInnerHTML={{ __html: interpolateWithMap(survey.thankYouDescription || 'Your response has been recorded.', simulatedValues, isPreviewMode) }} 
+                                    dangerouslySetInnerHTML={{ __html: interpolateWithMapForHtml(survey.thankYouDescription || 'Your response has been recorded.', simulatedValues, isPreviewMode) }} 
                                 />
                                 
                                 {survey.allowResubmission && (

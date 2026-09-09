@@ -52,6 +52,50 @@ export function sanitizeHtml(html: string): string {
   });
 }
 
+/**
+ * Escape a substituted value so it cannot introduce markup.
+ *
+ * Applied to VALUES only, never to the surrounding template — survey authors may
+ * legitimately write HTML in copy, but a respondent's answer is untrusted input.
+ */
+export function escapeHtml(value: unknown): string {
+  return String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
+ * Interpolate for an HTML sink: the template is trusted, the values are not.
+ *
+ * Use this — never {@link interpolateWithMap} — wherever the result is passed to
+ * `dangerouslySetInnerHTML`. Sanitising the template on write is not sufficient,
+ * because substitution happens afterwards on read: a respondent's answer spliced into
+ * an already-sanitised template reintroduces arbitrary markup (audit F5).
+ *
+ * @example
+ * // thankYouDescription = 'Thanks {{q1}}!', answer to q1 = '<img src=x onerror=alert(1)>'
+ * interpolateWithMapForHtml(tpl, values)  // → 'Thanks &lt;img src=x onerror=alert(1)&gt;!'
+ */
+export function interpolateWithMapForHtml(
+  text: string | undefined | null,
+  valuesMap: VariableValuesMap,
+  keepMissing = false,
+): string {
+  if (!text) return '';
+
+  const escaped: VariableValuesMap = {};
+  if (valuesMap) {
+    for (const [k, v] of Object.entries(valuesMap)) {
+      escaped[k] = escapeHtml(v);
+    }
+  }
+
+  return interpolateWithMap(text, escaped, keepMissing);
+}
+
 export function interpolateWithMap(
   text: string | undefined | null,
   valuesMap: VariableValuesMap,

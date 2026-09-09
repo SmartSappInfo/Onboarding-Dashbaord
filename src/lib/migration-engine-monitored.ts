@@ -20,6 +20,7 @@ import type {
   ProgressCallback,
 } from './migration-types';
 import { MigrationEngineImpl } from './migration-engine';
+import { authedFetch } from '@/lib/auth/authed-fetch';
 import type { MigrationOperationType } from './migration-monitoring-types';
 
 /**
@@ -189,7 +190,7 @@ export class MonitoredMigrationEngine implements MigrationEngine {
   ): Promise<string> {
     try {
       // Call server action to log operation start
-      const response = await fetch('/api/migration/log-operation-start', {
+      const response = await authedFetch('/api/migration/log-operation-start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -228,7 +229,7 @@ export class MonitoredMigrationEngine implements MigrationEngine {
     }
   ): Promise<void> {
     try {
-      await fetch('/api/migration/log-operation-complete', {
+      await authedFetch('/api/migration/log-operation-complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logId, result }),
@@ -243,7 +244,7 @@ export class MonitoredMigrationEngine implements MigrationEngine {
    */
   private async logOperationFailed(logId: string, error: string): Promise<void> {
     try {
-      await fetch('/api/migration/log-operation-failed', {
+      await authedFetch('/api/migration/log-operation-failed', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ logId, error }),

@@ -9,6 +9,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { authedFetch } from '@/lib/auth/authed-fetch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,7 +42,7 @@ export function MigrationDashboard() {
   const loadDashboard = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/migration/dashboard');
+      const response = await authedFetch('/api/migration/dashboard');
       const data = await response.json();
 
       if (!data.success) {
@@ -59,13 +60,12 @@ export function MigrationDashboard() {
 
   const acknowledgeAlert = async (alertId: string) => {
     try {
-      const response = await fetch('/api/migration/alerts', {
+      const response = await authedFetch('/api/migration/alerts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          alertId,
-          acknowledgedBy: 'current-user', // TODO: Get from auth context
-        }),
+        // acknowledgedBy is derived server-side from the verified token — never
+        // sent by the client (audit F2/F3).
+        body: JSON.stringify({ alertId }),
       });
 
       if (!response.ok) {
@@ -81,7 +81,7 @@ export function MigrationDashboard() {
 
   const exportLogs = async () => {
     try {
-      const response = await fetch('/api/migration/export');
+      const response = await authedFetch('/api/migration/export');
       const blob = await response.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');

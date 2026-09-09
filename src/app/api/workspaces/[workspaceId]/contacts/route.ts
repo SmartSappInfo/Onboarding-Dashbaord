@@ -1,10 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { WorkspaceEntity, EntityType } from '@/lib/types';
 
 /**
  * @fileOverview Workspace contacts list API endpoint
  * Requirements: 24.1, 24.2
+ *
+ * SECURITY: this route reads `workspace_entities` through `adminDb`, which bypasses
+ * Firestore rules. The caller MUST be authenticated and MUST be a member of the
+ * workspace named in the path — `workspaceId` is attacker-controlled URL input, and
+ * workspace IDs appear in client-side URLs, so they are not secret. See audit F3.
  */
 
 /**
@@ -17,6 +23,9 @@ export async function GET(
 ) {
   try {
     const { workspaceId } = await params;
+
+    const auth = await authenticateApiRequest(request, { requiredWorkspaceId: workspaceId });
+    if (!auth.success) return auth.errorResponse;
     const searchParams = request.nextUrl.searchParams;
     const entityType = searchParams.get('entityType') as EntityType | null;
     const pipelineId = searchParams.get('pipelineId');

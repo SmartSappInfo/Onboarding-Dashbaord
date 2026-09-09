@@ -32,7 +32,7 @@ import Image from 'next/image';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
-import { interpolateWithMap } from '@/lib/survey-variable-utils';
+import { interpolateWithMap, interpolateWithMapForHtml } from '@/lib/survey-variable-utils';
 import { 
   validateFileType, 
   validateFileSize, 
@@ -737,6 +737,11 @@ const ElementRenderer = ({
         return interpolateWithMap(text, simulatedValues || {}, false);
     };
 
+    // HTML sinks: escape substituted values, keep the authored template intact (audit F5).
+    const interpolateHtml = (text: string | undefined | null): string => {
+        return interpolateWithMapForHtml(text, simulatedValues || {}, false);
+    };
+
     const interpolateArray = (items: string[] | undefined | null): string[] => {
         if (!items) return [];
         return items.map(item => interpolateText(item));
@@ -766,13 +771,13 @@ const ElementRenderer = ({
                         "text-xl sm:text-2xl block leading-tight tracking-tight text-foreground/90 whitespace-pre-wrap",
                         survey.questionTitleBold !== false ? "font-bold" : "font-semibold"
                     )}>
-                        <span dangerouslySetInnerHTML={{ __html: interpolateText(question.title) }} />
+                        <span dangerouslySetInnerHTML={{ __html: interpolateHtml(question.title) }} />
                         {isRequired && <span className="text-destructive ml-1.5">*</span>}
                     </Label>
                     {question.description && (
                         <div 
                             className="text-base text-muted-foreground font-medium whitespace-pre-wrap leading-relaxed opacity-70"
-                            dangerouslySetInnerHTML={{ __html: interpolateText(question.description) }}
+                            dangerouslySetInnerHTML={{ __html: interpolateHtml(question.description) }}
                         />
                     )}
                 </div>
@@ -1405,14 +1410,14 @@ const ElementRenderer = ({
                 const sizeClass = Tag === 'h1' ? "text-3xl sm:text-4xl" : Tag === 'h3' ? "text-xl" : "text-2xl";
                 return (
                     <Tag id={block.id} className={cn(sizeClass, fontWeightClass, alignmentClass, "mt-2 mb-4 leading-tight whitespace-pre-wrap")}>
-                        <span dangerouslySetInnerHTML={{ __html: interpolateText(block.title || '') }} />
+                        <span dangerouslySetInnerHTML={{ __html: interpolateHtml(block.title || '') }} />
                     </Tag>
                 );
             }
             case 'description':
                 return (
                     <div id={block.id} className={cn("text-muted-foreground my-4 text-base sm:text-lg leading-relaxed font-medium whitespace-pre-wrap", alignmentClass)}>
-                        <div dangerouslySetInnerHTML={{ __html: interpolateText(block.text || '') }} />
+                        <div dangerouslySetInnerHTML={{ __html: interpolateHtml(block.text || '') }} />
                     </div>
                 );
             case 'divider':
@@ -1453,7 +1458,7 @@ const ElementRenderer = ({
                                     <div className="flex-1 min-w-0">
                                         {block.title && (
                                             <h4 className="text-base sm:text-lg font-bold tracking-tight text-foreground leading-snug">
-                                                <span dangerouslySetInnerHTML={{ __html: interpolateText(block.title) }} />
+                                                <span dangerouslySetInnerHTML={{ __html: interpolateHtml(block.title) }} />
                                             </h4>
                                         )}
                                         <p className="text-xs font-semibold text-muted-foreground truncate">{rawFileName}</p>
@@ -1462,7 +1467,7 @@ const ElementRenderer = ({
 
                                 {block.description && (
                                     <div className="text-sm text-muted-foreground font-medium leading-relaxed whitespace-pre-wrap pl-0.5">
-                                        <span dangerouslySetInnerHTML={{ __html: interpolateText(block.description) }} />
+                                        <span dangerouslySetInnerHTML={{ __html: interpolateHtml(block.description) }} />
                                     </div>
                                 )}
 
@@ -1821,6 +1826,11 @@ export default function SurveyForm({
 
     const interpolateText = React.useCallback((text: string | undefined | null): string => {
         return interpolateWithMap(text, simulatedValues, isPreview);
+    }, [simulatedValues, isPreview]);
+
+    // HTML sinks: escape substituted values, keep the authored template intact (audit F5).
+    const interpolateHtml = React.useCallback((text: string | undefined | null): string => {
+        return interpolateWithMapForHtml(text, simulatedValues, isPreview);
     }, [simulatedValues, isPreview]);
     
     const surveySchema = React.useMemo(() => generateSchema(survey.elements), [survey.elements]);
@@ -2890,9 +2900,9 @@ export default function SurveyForm({
 
                              {pageSection && (pageSection.showSectionHeader ?? true) && (elementStates[pageSection.id]?.isVisible ?? !pageSection.hidden) && (
                                 <div className="text-center space-y-2 mb-4 sm:mb-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
-                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateText(pageSection.title || '') }} />
+                                    <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-foreground leading-tight whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateHtml(pageSection.title || '') }} />
                                     {pageSection.description && (
-                                        <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateText(pageSection.description) }} />
+                                        <div className="text-muted-foreground text-lg sm:text-xl leading-relaxed max-w-3xl mx-auto font-medium italic whitespace-pre-wrap" dangerouslySetInnerHTML={{ __html: interpolateHtml(pageSection.description) }} />
                                     )}
                                 </div>
                             )}

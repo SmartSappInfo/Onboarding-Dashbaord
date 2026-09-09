@@ -13,6 +13,8 @@ import { FieldsVariablesService } from '@/lib/services/fields-variables-service-
 export const dynamic = 'force-dynamic';
 
 import { stripHtml } from '@/lib/utils';
+import { escapeHtml } from '@/lib/survey-variable-utils';
+import { isSafeRedirectUrl } from '@/lib/survey-redirect-safety';
 
 function sanitizeAndFormatUrl(url: string): string {
     if (!url) return '';
@@ -216,12 +218,27 @@ async function getResultData(slug: string, submissionId: string) {
             }
         });
 
-        // Resolve thank you title & description server-side
+        // Resolve thank you title & description server-side.
+        //
+        // SECURITY (audit F5): valuesMap carries raw respondent answers. The description
+        // is rendered through dangerouslySetInnerHTML downstream, so its substituted
+        // values must be HTML-escaped here — the template itself stays intact so authored
+        // markup still works. The title renders as a React child and React escapes it.
+        const escapedValuesMap = new Map<string, unknown>();
+        valuesMap.forEach((value, key) => escapedValuesMap.set(key, escapeHtml(value)));
+
         const resolvedThankYouTitle = FieldsVariablesService.resolveTextWithMap(survey.thankYouTitle || 'Thank you!', valuesMap);
-        const resolvedThankYouDescription = FieldsVariablesService.resolveTextWithMap(survey.thankYouDescription || 'Your submission has been securely processed.', valuesMap);
+        const resolvedThankYouDescription = FieldsVariablesService.resolveTextWithMap(survey.thankYouDescription || 'Your submission has been securely processed.', escapedValuesMap);
 
         if (redirectUrl) {
             const finalRedirectUrl = FieldsVariablesService.resolveTextWithMap(redirectUrl, valuesMap);
+
+            // SECURITY (audit F5): the resolved URL contains respondent-controlled values,
+            // so it must be validated before it becomes a redirect target. Anything that is
+            // not a plain http(s) URL — javascript:, data:, protocol-relative — is dropped.
+            if (!isSafeRedirectUrl(finalRedirectUrl)) {
+                console.warn('[SURVEY_RESULT] Blocked unsafe redirect target after variable resolution.');
+            } else {
             return { 
                 survey, 
                 response, 
@@ -233,6 +250,7 @@ async function getResultData(slug: string, submissionId: string) {
                 resolvedThankYouTitle, 
                 resolvedThankYouDescription 
             };
+            }
         }
 
         // Compile variables on resolvedPage blocks

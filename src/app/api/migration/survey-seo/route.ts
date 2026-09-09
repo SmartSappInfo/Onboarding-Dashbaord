@@ -16,6 +16,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { mapLegacySurveySeo } from '@/lib/seo';
 import type { Survey } from '@/lib/types';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,6 +25,11 @@ export const runtime = 'nodejs';
 const BATCH_LIMIT = 400;
 
 export async function POST(request: NextRequest) {
+  // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
+  // operational data via adminDb. Restricted to platform system admins.
+  const auth = await authenticateApiRequest(request, { requireSystemAdmin: true });
+  if (!auth.success) return auth.errorResponse;
+
   try {
     let apply = request.nextUrl.searchParams.get('apply') === '1';
     try {

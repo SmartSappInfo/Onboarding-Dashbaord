@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 
 /**
  * @fileOverview SchoolId to EntityId mapping endpoint for API consumers
@@ -11,6 +12,11 @@ import { adminDb } from '@/lib/firebase-admin';
  * Get mapping of entityId to entityId for an organization
  */
 export async function GET(request: NextRequest) {
+  // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
+  // operational data via adminDb. Restricted to platform system admins.
+  const auth = await authenticateApiRequest(request, { requireSystemAdmin: true });
+  if (!auth.success) return auth.errorResponse;
+
   try {
     const searchParams = request.nextUrl.searchParams;
     const organizationId = searchParams.get('organizationId');

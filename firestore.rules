@@ -29,6 +29,24 @@ service cloud.firestore {
       );
     }
 
+    // Workspace-scoped access to a survey and everything beneath it.
+    //
+    // Subcollection documents (responses, sessions, ai_insights, …) do not carry
+    // workspaceIds themselves, so tenancy is resolved from the parent survey. Costs one
+    // document read per evaluation, which is why callers should prefer `get` over broad
+    // `list` where possible.
+    //
+    // Replaces the former `isAuthorized()` OR-ed with `isSignedIn()` pattern, which was dead code:
+    // isAuthorized() already implies isSignedIn(), so the disjunction collapsed to "any
+    // signed-in account" — and signup is public. See audit F4.
+    function canAccessSurvey(surveyId) {
+      let path = /databases/$(database)/documents/surveys/$(surveyId);
+      let survey = exists(path) ? get(path).data : null;
+      return isAuthorized() && survey != null && (
+        isSystemAdmin() || canAccessWorkspace(survey.get('workspaceIds', []))
+      );
+    }
+
     function isOrgMatch(orgId) {
       let data = getUserData();
       return isSignedIn() && (
@@ -765,8 +783,11 @@ service cloud.firestore {
     }
 
     match /webinar_questions/{questionId} {
-      allow read, create, update: if true;
-      allow delete: if isAuthorized();
+      // `update: if true` let anyone overwrite another attendee's question (audit F4).
+      // All access runs through webinar-stage-actions.ts via the Admin SDK, so no client
+      // path is needed here.
+      allow read: if isAuthorized();
+      allow write: if isAuthorized();
     }
 
     match /meeting_feedback/{feedbackId} {
@@ -1015,50 +1036,58 @@ service cloud.firestore {
     }
 
     match /surveys/{surveyId} {
-      allow get: if isAuthorized() || isSignedIn() || resource.data.status == 'published';
-      allow list: if isAuthorized() || isSignedIn();
+      // A published survey stays publicly readable — that is how respondents load it.
+      allow get: if resource.data.status == 'published'
+                 || (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', []))));
+      // `list` cannot inspect resource.data per document, so it must be workspace-filtered
+      // by the query itself; application code queries with array-contains workspaceId.
+      allow list: if isAuthorized();
       allow write: if isAuthorized() && hasPermission('studios_edit') && canAccessWorkspace(request.resource.data.workspaceIds);
 
       match /responses/{rId} {
-        allow create: if true;
-        allow read, list: if isAuthorized() || isSignedIn();
+        allow create: if true;                       // anonymous respondents — intended
+        allow read, list: if canAccessSurvey(surveyId);
       }
       match /sessions/{sId} {
-        allow create, update: if true;
-        allow read, list, write: if isAuthorized() || isSignedIn();
+        allow create, update: if true;               // anonymous progress tracking — intended
+        allow read, list, write: if canAccessSurvey(surveyId);
       }
       match /summaries/{sId} {
-        allow read, list, write: if isAuthorized() || isSignedIn();
+        allow read, list, write: if canAccessSurvey(surveyId);
       }
       match /resultPages/{pId} {
-        allow read: if true;
-        allow write: if isAuthorized() || isSignedIn();
+        allow read: if true;                         // rendered on the public result page
+        allow write: if canAccessSurvey(surveyId);
       }
       match /versions/{vId} {
-        allow read: if isAuthorized() || isSignedIn() || resource.data.isPublished == true;
-        allow write: if isAuthorized() || isSignedIn();
+        allow read: if resource.data.isPublished == true || canAccessSurvey(surveyId);
+        allow write: if canAccessSurvey(surveyId);
       }
       match /ai_insights/{insightId} {
-        allow get, list, write: if isAuthorized() || isSignedIn();
+        allow get, list, write: if canAccessSurvey(surveyId);
       }
       match /ai_audits/{auditId} {
-        allow get, list, write: if isAuthorized() || isSignedIn();
+        allow get, list, write: if canAccessSurvey(surveyId);
       }
       match /experiments/{experimentId} {
-        allow get, list, write: if isAuthorized() || isSignedIn();
+        allow get, list, write: if canAccessSurvey(surveyId);
       }
       match /retention_waves/{waveId} {
-        allow get, list, write: if isAuthorized() || isSignedIn();
+        allow get, list, write: if canAccessSurvey(surveyId);
       }
     }
 
     match /survey_projects/{projectId} {
-      allow read, list, write: if isAuthorized() || isSignedIn();
+      allow get: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', [])));
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(request.resource.data.get('workspaceIds', [])));
     }
 
     match /question_bank/{questionId} {
-      allow get, list: if isAuthorized() || isSignedIn() || resource.data.visibility == 'system';
-      allow write: if isAuthorized() || isSignedIn();
+      allow get: if resource.data.visibility == 'system'
+                 || (isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.get('workspaceIds', []))));
+      allow list: if isAuthorized();
+      allow write: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(request.resource.data.get('workspaceIds', [])));
     }
 
     match /survey_deployments/{deploymentId} {
@@ -1654,7 +1683,7 @@ service cloud.firestore {
         (getUserData() != null && resource.data.workspaceId in getUserData().get('workspaceIds', []))
       );
       allow list: if isAuthorized();
-      allow create: if isAuthorized() || isSignedIn();
+      allow create: if isAuthorized();
       allow update, delete: if isSignedIn() && request.auth.uid == resource.data.userId && resource.data.type == 'note';
     }
 
@@ -1984,12 +2013,14 @@ service cloud.firestore {
       allow write: if isAuthorized();
     }
     match /survey_sessions/{sId} {
-      allow create, update: if true;
-      allow read, list: if isAuthorized() || isSignedIn();
+      allow create: if true;                       // anonymous respondents — intended
+      allow update: if true;                       // TODO(F4): gate on a per-session token
+      allow read, list: if isAuthorized();
     }
     match /surveySessions/{sId} {
-      allow create, update: if true;
-      allow read, list: if isAuthorized() || isSignedIn();
+      allow create: if true;                       // anonymous respondents — intended
+      allow update: if true;                       // TODO(F4): gate on a per-session token
+      allow read, list: if isAuthorized();
     }
     match /campaign_sessions/{sId} {
       allow get, create, update: if true; // Public campaign visitor session
@@ -2569,7 +2600,12 @@ service cloud.firestore {
     }
 
     match /portal_waitlists/{waitlistId} {
-      allow get, list, create, update, delete: if true;
+      // Contains PII (name, email, phone). Previously world-readable, world-writable
+      // AND world-deletable (audit F4). All legitimate access is server-side through
+      // the Admin SDK (`CommerceService.joinWaitlist`), which bypasses these rules —
+      // there are no client reads or writes anywhere in the codebase, so deny all
+      // direct client access.
+      allow read, write: if isAuthorized() && isSystemAdmin();
     }
 
     // --- {{Org_name}} Experience Platform — AI Experience & Intelligence ---

@@ -1,5 +1,6 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 
 /**
  * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10 Maintainer Guidance):
@@ -9,12 +10,22 @@ import { adminDb } from '@/lib/firebase-admin';
  * Parameterless GET route handlers are statically rendered during `next build` by default in Next.js.
  * Enforces `dynamic = 'force-dynamic'` and `revalidate = 0` to prevent CI build-time evaluation
  * attempting to query Firestore without active cloud credentials.
+ *
+ * SECURITY: previously unauthenticated while dumping `automation_runs` / `automation_jobs`
+ * via `adminDb`. Now restricted to platform system admins (audit F3).
+ *
+ * NOTE: this route queries a hardcoded automation ID and has no callers in the codebase —
+ * it appears to be a debugging leftover. Consider deleting it outright rather than
+ * maintaining it.
  */
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export async function GET() {
+export async function GET(request: NextRequest) {
     try {
+        const auth = await authenticateApiRequest(request, { requireSystemAdmin: true });
+        if (!auth.success) return auth.errorResponse;
+
         console.log('Querying jobs for automation fKusL81zGttPq1025ZLA...');
         const runsSnap = await adminDb.collection('automation_runs')
             .where('automationId', '==', 'fKusL81zGttPq1025ZLA')
