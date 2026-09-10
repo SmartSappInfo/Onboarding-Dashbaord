@@ -152,6 +152,34 @@ sourcemap upload, in which case add both variables to `apphosting.yaml` with `av
 - [ ] Abuse review completed and findings recorded — including "no anomalies found".
 - [ ] Push protection enabled.
 
+### Runbook verified against the current tree
+
+Re-checked after Phases 1 and 3-6 landed, since those touched a lot of this surface:
+
+- **The precedence chain still holds, and it is the thing that makes rotation go wrong.**
+  `src/ai/genkit.ts` reads a per-organization key at the *highest* priority — above the
+  sealed backoffice global and above `process.env`. Those org values are stored in
+  **plaintext**. Rotating the env var, or even the backoffice value, silently changes
+  nothing for any tenant holding its own override.
+- **`OPENAI_API_KEY` is still dead config** — `grep -rn "OPENAI_API_KEY" src scripts`
+  returns nothing. Revoke it; do not bother replacing it.
+- **`SENTRY_AUTH_TOKEN` is still inactive.** It is read only at `next.config.ts:206`, gated
+  on `SENTRY_UPLOAD_SOURCEMAPS === 'true'`, and that variable is set nowhere in the repo —
+  not in `apphosting.yaml`, not in CI. Revoke it. (Check the Firebase App Hosting console
+  too: a value set there would not appear in the repo.)
+
+**Finding the per-org overrides — the step easiest to miss:**
+
+```bash
+pnpm audit:ai-keys
+```
+
+`scripts/audit-ai-key-overrides.ts` is read-only. It lists every organization holding a
+`geminiApiKey` / `claudeApiKey` / `openRouterApiKey`, printing only presence and the last
+four characters — never a usable key — then prints the state of the sealed global. Any
+organization it lists must be updated individually through Settings → Integrations, or that
+tenant keeps using the leaked key after rotation.
+
 > **Verification tip.** `src/ai/genkit.ts` logs which tier supplied the key on every call —
 > `[AI] Using Organization-specific key…`, `[AI] Using Backoffice global fallback key…`, or
 > `[AI] Using Environment fallback key…`. Watch those lines after rotating to confirm which source is
