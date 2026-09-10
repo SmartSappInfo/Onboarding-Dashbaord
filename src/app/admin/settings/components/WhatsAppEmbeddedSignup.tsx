@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MessageCircle, Loader2 } from 'lucide-react';
 import { connectWhatsAppViaOAuth } from '@/lib/whatsapp-actions';
 import type { WhatsAppConnectionPublic } from '@/lib/whatsapp/whatsapp-types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // Platform Embedded Signup config (public — app id + the ES configuration id).
 const APP_ID = process.env.NEXT_PUBLIC_META_APP_ID;
@@ -113,8 +114,8 @@ export default function WhatsAppEmbeddedSignup({ organizationId, onConnected }: 
             } else {
               toast({ variant: 'destructive', title: 'Connect failed', description: res.error });
             }
-          } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+          } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
           } finally {
             setLoading(false);
           }

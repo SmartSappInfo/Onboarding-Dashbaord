@@ -21,6 +21,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface DealStageBackfillResult {
     total: number;           // Total deals scanned
@@ -71,8 +72,8 @@ export async function fetchDealsForStageNameBackfill(
                 errors: [],
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -153,9 +154,9 @@ export async function enrichDealsWithStageName(
             try {
                 await batch.commit();
                 succeeded += chunk.length;
-            } catch (e: any) {
+            } catch (e: unknown) {
                 failed += chunk.length;
-                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${e.message}`);
+                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${getErrorMessage(e)}`);
             }
         }
 
@@ -170,8 +171,8 @@ export async function enrichDealsWithStageName(
                 errors,
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -217,8 +218,8 @@ export async function restoreDealStageNameBackfill(
                 errors: errors.slice(0, 20),
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -259,9 +260,9 @@ export async function rollbackDealStageNameBackfill(
             try {
                 await batch.commit();
                 succeeded += chunk.length;
-            } catch (e: any) {
+            } catch (e: unknown) {
                 failed += chunk.length;
-                errors.push(`Rollback batch ${Math.floor(i / BATCH_SIZE) + 1}: ${e.message}`);
+                errors.push(`Rollback batch ${Math.floor(i / BATCH_SIZE) + 1}: ${getErrorMessage(e)}`);
             }
         }
 
@@ -276,7 +277,7 @@ export async function rollbackDealStageNameBackfill(
                 errors,
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }

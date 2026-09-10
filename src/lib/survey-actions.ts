@@ -23,7 +23,7 @@ import { splitFileUrls } from './survey-file-utils';
 import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): opaque client message + server-side detail.
-import { toClientErrorMessage } from '@/lib/errors/report-error';
+import { getErrorMessage, toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   extractFileNameFromStorageUrl,
   isGenericChoiceValue,
@@ -211,9 +211,9 @@ export async function getSurveysForContact(
 
     const snapshot = await query.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Survey));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get Surveys For Contact Error:', error);
-    throw new Error(error.message || 'Failed to get surveys for contact');
+    throw new Error(getErrorMessage(error) || 'Failed to get surveys for contact');
   }
 }
 
@@ -241,9 +241,9 @@ export async function getSurveyResponsesForContact(
 
     const snapshot = await query.get();
     return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as SurveyResponse));
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get Survey Responses For Contact Error:', error);
-    throw new Error(error.message || 'Failed to get survey responses for contact');
+    throw new Error(getErrorMessage(error) || 'Failed to get survey responses for contact');
   }
 }
 
@@ -316,9 +316,9 @@ export async function cloneSurvey(surveyId: string, userId: string) {
 
     revalidatePath('/admin/surveys');
     return { success: true, id: newSurveyRef.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Clone Survey Error:", error);
-    return { success: false, error: error.message || 'Unknown error occurred during cloning.' };
+    return { success: false, error: getErrorMessage(error) || 'Unknown error occurred during cloning.' };
   }
 }
 
@@ -371,9 +371,9 @@ export async function deleteSurveyAction(surveyId: string, userId: string) {
 
         revalidatePath('/admin/surveys');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Delete Survey Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -397,9 +397,9 @@ export async function updateSurveyStatusAction(surveyId: string, status: 'publis
 
         revalidatePath('/admin/surveys');
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Update Survey Status Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -441,9 +441,9 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
 
         revalidatePath(`/admin/surveys/${surveyId}/results`);
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Delete Responses Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -1032,9 +1032,9 @@ export async function triggerSurveyWebhook(webhookId: string, payload: Record<st
         }
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("Trigger Webhook Error:", error);
-        return { success: false, error: error.message || "Failed to trigger webhook." };
+        return { success: false, error: getErrorMessage(error) || "Failed to trigger webhook." };
     }
 }
 
@@ -1097,9 +1097,9 @@ export async function autoSaveSurveyAction(
         }
 
         return { success: true, id: targetId };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error("AutoSave Survey Error:", error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 

@@ -13,6 +13,7 @@ import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { logWorkspaceEntityUpdated } from './entity-audit';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Bulk restores all documents in 'entities' and 'workspace_entities' to 'active' status.
@@ -103,9 +104,9 @@ export async function restoreAllEntitiesToActiveAction(userId: string, userName:
             errorCount,
             message: `Restoration complete: ${entityCount} entities and ${weCount} workspace links activated.`
         };
-    } catch (e: any) {
-        console.error('[FER-03] Critical Restoration Failure:', e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        console.error('[FER-03] Critical Restoration Failure:', getErrorMessage(e));
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 

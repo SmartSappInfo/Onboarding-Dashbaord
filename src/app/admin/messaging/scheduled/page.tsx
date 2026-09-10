@@ -65,6 +65,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function ScheduledMessagesPage() {
     const { toast } = useToast();
@@ -173,8 +174,8 @@ export default function ScheduledMessagesPage() {
 
             toast({ title: 'Schedule Updated', description: 'Changes have been saved successfully.' });
             setEditingMessage(null);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
         } finally {
             setIsUpdating(false);
         }
@@ -189,8 +190,8 @@ export default function ScheduledMessagesPage() {
             if (result.success) {
                 toast({ title: 'Message Cancelled', description: 'Successfully removed from the scheduled queue.' });
             } else throw new Error(result.error);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Cancellation Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Cancellation Failed', description: getErrorMessage(e) });
         } finally {
             setIsDeletingId(null);
             setMessageToDelete(null);
@@ -205,8 +206,8 @@ export default function ScheduledMessagesPage() {
             if (result.success) {
                 toast({ title: 'Message Dispatched', description: 'Message sent immediately.' });
             } else throw new Error(result.error);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Dispatch Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Dispatch Failed', description: getErrorMessage(e) });
         } finally {
             setIsSendingNowId(null);
             setMessageToSendNow(null);

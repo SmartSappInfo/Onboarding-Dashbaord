@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { authorizeBackofficeSession } from './backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Migrates existing global roles, modules, and zones to all current organizations.
@@ -107,8 +108,8 @@ export async function migrateGlobalSettingsToAllOrgsAction(): Promise<{ success:
         }
 
         return { success: true, stats };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Migration failed:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

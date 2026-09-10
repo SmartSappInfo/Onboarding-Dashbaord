@@ -28,6 +28,7 @@ import {
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { PageContainer, PageContainerNarrow } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function AudiencesPage() {
     const firestore = useFirestore();
@@ -84,8 +85,8 @@ export default function AudiencesPage() {
                 toast({ title: 'Audience Saved' });
             }
             setEditorOpen(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         } finally {
             setIsSaving(false);
         }
@@ -96,8 +97,8 @@ export default function AudiencesPage() {
         try {
             await duplicateAudience(firestore, audience, user.uid);
             toast({ title: 'Audience Cloned', description: `"Copy of ${audience.name}" created.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Clone Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Clone Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -106,8 +107,8 @@ export default function AudiencesPage() {
         try {
             await deleteAudience(firestore, deleteTarget.id);
             toast({ title: 'Audience Deleted' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: getErrorMessage(e) });
         } finally {
             setDeleteTarget(null);
         }

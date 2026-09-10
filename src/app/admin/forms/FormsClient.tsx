@@ -81,6 +81,7 @@ import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { PageContainer } from '@/components/ui/page-container';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import AiFormGeneratorModal from './components/AiFormGeneratorModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function FormsClient() {
   const firestore = useFirestore();
@@ -191,8 +192,8 @@ export default function FormsClient() {
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsCreating(false);
     }

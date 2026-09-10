@@ -30,6 +30,7 @@ import {
   type EnrichedDuplicateMatch 
 } from '@/lib/signup-conflict-actions';
 import { SignupDuplicateResolutionModal } from '@/components/signup/SignupDuplicateResolutionModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -357,11 +358,11 @@ export default function NewSchoolSignupForm() {
         // No conflicts -> Complete registration directly
         await executeSignupCompletion(preparedInput, data, 'create');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: error.message || "Could not complete signup. Please try again.",
+        description: getErrorMessage(error) || "Could not complete signup. Please try again.",
       });
     } finally {
       setIsCheckingDuplicates(false);

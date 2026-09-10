@@ -15,6 +15,7 @@
 import { adminDb } from './firebase-admin';
 import type { TagFilterQuery } from './types';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Queries entities by tag filter with workspace-aware logic
@@ -226,9 +227,9 @@ export async function getEntitiesByTagsAction(
     }
 
     return { success: true, data: Array.from(entityIds) };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getEntitiesByTagsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -311,8 +312,8 @@ export async function getCombinedEntityTagsAction(
       globalTags,
       workspaceTags,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getCombinedEntityTagsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

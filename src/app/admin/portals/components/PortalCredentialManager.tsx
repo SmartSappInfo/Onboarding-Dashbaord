@@ -22,6 +22,7 @@ import {
   DialogDescription,
 } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   listCertificateTemplatesAction,
   createCertificateTemplateAction,
@@ -117,8 +118,8 @@ export function PortalCredentialManager({
       if (cRes.success && cRes.data) setIssuedCerts(cRes.data);
       if (bRes.success && bRes.data) setBadges(bRes.data);
       if (xRes.success && xRes.data) setXApiLogs(xRes.data);
-    } catch (err: any) {
-      toast({ title: 'Data Load Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Data Load Failed', description: getErrorMessage(err) });
     } finally {
       setIsLoadingCerts(false);
     }
@@ -155,8 +156,8 @@ export function PortalCredentialManager({
       setIsCreateTemplateOpen(false);
       setTemplateTitle('');
       loadData();
-    } catch (err: any) {
-      toast({ title: 'Save Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Save Failed', description: getErrorMessage(err) });
     } finally {
       setIsSavingTemplate(false);
     }
@@ -174,8 +175,8 @@ export function PortalCredentialManager({
       setRevokeCertId(null);
       setRevokeReason('');
       loadData();
-    } catch (err: any) {
-      toast({ title: 'Revocation Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Revocation Failed', description: getErrorMessage(err) });
     } finally {
       setIsRevoking(false);
     }
@@ -208,8 +209,8 @@ export function PortalCredentialManager({
       setBadgeTitle('');
       setBadgeDescription('');
       loadData();
-    } catch (err: any) {
-      toast({ title: 'Badge Creation Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Badge Creation Failed', description: getErrorMessage(err) });
     } finally {
       setIsSavingBadge(false);
     }

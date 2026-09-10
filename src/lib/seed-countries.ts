@@ -8,6 +8,7 @@
 import { adminDb } from './firebase-admin';
 import countriesData from '@/data/countries.json';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function seedCountriesAction() {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
@@ -45,8 +46,8 @@ export async function seedCountriesAction() {
     }
 
     return { success: true, seeded, total: seeded, message: `Seeded ${seeded} countries` };
-  } catch (e: any) {
-    console.error('[SEED:COUNTRIES] Failed:', e.message);
-    return { success: false, seeded: 0, total: 0, error: e.message };
+  } catch (e: unknown) {
+    console.error('[SEED:COUNTRIES] Failed:', getErrorMessage(e));
+    return { success: false, seeded: 0, total: 0, error: getErrorMessage(e) };
   }
 }

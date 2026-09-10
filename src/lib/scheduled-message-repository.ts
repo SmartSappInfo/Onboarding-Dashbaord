@@ -1,5 +1,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { ScheduledMessage } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Repository layer for the scheduled_messages Firestore collection.
@@ -35,8 +36,8 @@ export class ScheduledMessageRepository {
 
       const snap = await q.orderBy('scheduledAt', 'asc').get();
       return snap.docs.map(doc => ({ id: doc.id, ...doc.data() }) as ScheduledMessage);
-    } catch (err: any) {
-      console.error('[ScheduledMessageRepo] Failed to fetch scheduled queue:', err.message);
+    } catch (err: unknown) {
+      console.error('[ScheduledMessageRepo] Failed to fetch scheduled queue:', getErrorMessage(err));
       throw err;
     }
   }
@@ -94,8 +95,8 @@ export class ScheduledMessageRepository {
           const { deleteScheduledMessageAction } = await import('@/lib/mnotify-actions');
           await deleteScheduledMessageAction(data.providerId);
         }
-      } catch (err: any) {
-        console.warn(`[ScheduledMessageRepo] Provider cancellation failed for ${id}:`, err.message);
+      } catch (err: unknown) {
+        console.warn(`[ScheduledMessageRepo] Provider cancellation failed for ${id}:`, getErrorMessage(err));
       }
     }
 

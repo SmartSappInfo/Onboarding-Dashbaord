@@ -8,6 +8,7 @@ import * as z from "zod";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
 import { collection } from 'firebase/firestore';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 import { Button } from "@/components/ui/button";
 import {
@@ -192,11 +193,11 @@ export default function NewSchoolSignupForm() {
       } else {
         throw new Error(result.error || 'Failed to create signup');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description: error.message || "Could not save the new school record. Please try again.",
+        description: getErrorMessage(error) || "Could not save the new school record. Please try again.",
       });
     }
   };

@@ -81,7 +81,7 @@ export async function GET(
       total: contacts.length,
       nextCursor: null // Pagination not implemented yet
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:WORKSPACES:CONTACTS:GET] Error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.workspaces.[workspaceId].contacts', error, undefined, 'Internal server error') },

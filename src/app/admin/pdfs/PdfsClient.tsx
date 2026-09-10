@@ -50,6 +50,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function PdfsClient() {
   const firestore = useFirestore();
@@ -86,8 +87,8 @@ export default function PdfsClient() {
       if (result.success) {
         toast({ title: 'Document Deleted' });
       }
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message || 'Failed to delete document' });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) || 'Failed to delete document' });
     }
     
     setFormToDelete(null);
@@ -107,7 +108,7 @@ export default function PdfsClient() {
         } else {
             toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
         }
-    } catch (e: any) {
+    } catch (e: unknown) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete duplication.' });
     } finally {
         setCloningId(null);

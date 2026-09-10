@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import type { MessageCampaign, MessageTask, AutomationTrigger } from './types';
 import { resolveContact } from './contact-adapter';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   buildCampaignAutomationJobPayload,
   campaignAutomationJobDocId,
@@ -86,8 +87,8 @@ export async function logCampaignEventToTimeline(params: {
       const msg = scoringErr instanceof Error ? scoringErr.message : 'Unknown scoring trigger failure';
       console.error(`[logCampaignEventToTimeline] Failed to trigger scoring for ${entityId}:`, msg);
     }
-  } catch (err: any) {
-    console.error(`[logCampaignEventToTimeline] Failed for entity ${entityId}:`, err.message);
+  } catch (err: unknown) {
+    console.error(`[logCampaignEventToTimeline] Failed for entity ${entityId}:`, getErrorMessage(err));
   }
 }
 
@@ -248,9 +249,9 @@ export async function emitCampaignEvents(campaignId: string): Promise<{
 
     return { success: true, queuedCount: totalQueued };
 
-  } catch (error: any) {
-    console.error('[CAMPAIGN-EVENT] Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('[CAMPAIGN-EVENT] Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -354,8 +355,8 @@ export async function emitSingleCampaignEvent(params: {
 
     return { success: true, queuedCount };
 
-  } catch (error: any) {
-    console.error('[CAMPAIGN-EVENT-SINGLE] Failed:', error.message);
-    return { success: false, queuedCount: 0, error: error.message };
+  } catch (error: unknown) {
+    console.error('[CAMPAIGN-EVENT-SINGLE] Failed:', getErrorMessage(error));
+    return { success: false, queuedCount: 0, error: getErrorMessage(error) };
   }
 }

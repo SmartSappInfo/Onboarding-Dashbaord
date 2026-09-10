@@ -89,6 +89,7 @@ import MeetingLeadCaptureSection from '../../components/MeetingLeadCaptureSectio
 import MeetingMessagingTab from '../../components/MeetingMessagingTab';
 import { MeetingFacilitatorsSection } from '../../components/MeetingFacilitatorsSection';
 import MeetingPreviewPanel from '../../components/MeetingPreviewPanel';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const formSchema = z.object({
   title: z.string().min(1, 'Internal title is required.'),
@@ -563,8 +564,8 @@ export default function EditMeetingPage() {
         ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
 
         router.push(`/admin/meetings/${meetingId}`);
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Update failed', description: error.message });
+    } catch (error: unknown) {
+        toast({ variant: 'destructive', title: 'Update failed', description: getErrorMessage(error) });
     }
   };
 

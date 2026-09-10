@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * FER Protocol: Un-expires import payloads.
@@ -102,20 +103,20 @@ export async function executeUnexpireImportPayloadsFerAction(): Promise<{
       details: stats,
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[FER Un-expire Import Payloads] Fatal error:`, error);
-    stats.errors.push(error.message);
+    stats.errors.push(getErrorMessage(error));
 
     await migrationRef.set({
       status: 'failed',
       lastRunAt: nowIso,
-      summary: `Failed: ${error.message}`,
+      summary: `Failed: ${getErrorMessage(error)}`,
       details: stats,
     } as Partial<SystemMigrationLog>, { merge: true });
 
     return {
       success: false,
-      message: error.message || 'Fatal error during migration',
+      message: getErrorMessage(error) || 'Fatal error during migration',
       details: stats,
     };
   }

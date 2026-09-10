@@ -10,6 +10,7 @@ import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { FieldValue } from 'firebase-admin/firestore';
 import { sendFacilitatorNewRegistrationAlert } from '@/lib/reminder-actions';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ─── Types ───────────────────────────────────────────────────────
 interface LeadCaptureInput {
@@ -238,9 +239,9 @@ export async function createEntityFromRegistration(
     void fireFacilitatorRegistrationAlert(meetingId, { name: entityName, email, phone, entityName }, organizationId);
 
     return { success: true, entityId: newEntityId, isNew: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[createEntityFromRegistration] Failed:', error);
-    return { success: false, isNew: false, error: error.message };
+    return { success: false, isNew: false, error: getErrorMessage(error) };
   }
 }
 

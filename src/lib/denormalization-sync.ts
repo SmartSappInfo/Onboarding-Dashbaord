@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { toSearchKey } from './entities/entity-cache-domain';
 import type { Entity } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Denormalization sync utilities for workspace_entities.
@@ -98,12 +99,12 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
       success: true,
       updatedCount,
     };
-  } catch (e: any) {
-    console.error('>>> [DENORM_SYNC] Failed:', e.message);
+  } catch (e: unknown) {
+    console.error('>>> [DENORM_SYNC] Failed:', getErrorMessage(e));
     return {
       success: false,
       updatedCount: 0,
-      error: e.message,
+      error: getErrorMessage(e),
     };
   }
 }

@@ -49,6 +49,7 @@ import type {
   CompletionRuleType,
 } from '@/lib/types/learning';
 import { AssessmentBuilderModal } from './AssessmentBuilderModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   GraduationCap,
   Layers,
@@ -119,7 +120,7 @@ export function CurriculumBuilderDrawer({
 
       setModules(modulesSnap.docs.map(d => d.data() as CourseModule));
       setLessons(lessonsSnap.docs.map(d => d.data() as CourseLesson));
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Error fetching curriculum:', err);
     } finally {
       setIsLoading(false);
@@ -155,8 +156,8 @@ export function CurriculumBuilderDrawer({
         toast({ title: 'Module Added', description: `Created "${res.data.title}".` });
         onCurriculumChanged?.();
       }
-    } catch (err: any) {
-      toast({ title: 'Failed to Add Module', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Failed to Add Module', description: getErrorMessage(err) });
     } finally {
       setIsMutating(false);
     }
@@ -167,8 +168,8 @@ export function CurriculumBuilderDrawer({
     try {
       await updateModuleAction(moduleId, updates, course.portalId, portalSlug);
       setModules(modules.map(m => (m.id === moduleId ? { ...m, ...updates } : m)));
-    } catch (err: any) {
-      toast({ title: 'Update Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Update Failed', description: getErrorMessage(err) });
     }
   };
 
@@ -182,8 +183,8 @@ export function CurriculumBuilderDrawer({
       setLessons(lessons.filter(l => l.moduleId !== moduleId));
       toast({ title: 'Module Deleted', description: 'Module and lessons removed.' });
       onCurriculumChanged?.();
-    } catch (err: any) {
-      toast({ title: 'Failed to Delete Module', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Failed to Delete Module', description: getErrorMessage(err) });
     } finally {
       setIsMutating(false);
     }
@@ -216,8 +217,8 @@ export function CurriculumBuilderDrawer({
         toast({ title: 'Lesson Added', description: `Created "${res.data.title}".` });
         onCurriculumChanged?.();
       }
-    } catch (err: any) {
-      toast({ title: 'Failed to Add Lesson', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Failed to Add Lesson', description: getErrorMessage(err) });
     } finally {
       setIsMutating(false);
     }
@@ -228,8 +229,8 @@ export function CurriculumBuilderDrawer({
     try {
       await updateLessonAction(lessonId, updates, course.portalId, portalSlug);
       setLessons(lessons.map(l => (l.id === lessonId ? { ...l, ...updates } : l)));
-    } catch (err: any) {
-      toast({ title: 'Update Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Update Failed', description: getErrorMessage(err) });
     }
   };
 
@@ -242,8 +243,8 @@ export function CurriculumBuilderDrawer({
       setLessons(lessons.filter(l => l.id !== lessonId));
       toast({ title: 'Lesson Deleted', description: 'Lesson removed.' });
       onCurriculumChanged?.();
-    } catch (err: any) {
-      toast({ title: 'Failed to Delete Lesson', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Failed to Delete Lesson', description: getErrorMessage(err) });
     } finally {
       setIsMutating(false);
     }

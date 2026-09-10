@@ -35,6 +35,7 @@ import {
 import { Skeleton } from '@/components/ui/skeleton';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // bundle-dynamic-imports: Lazy-load the heavy editor sheet
 const WebhookEditor = dynamic(() => import('./components/WebhookEditor'), {
@@ -111,8 +112,8 @@ export default function WebhooksClient() {
       await deleteDoc(doc(firestore, 'webhooks', webhookToDelete.id));
       toast({ title: 'Webhook Deleted', description: `"${webhookToDelete.name}" removed.` });
       setWebhookToDelete(null);
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Delete Failed', description: getErrorMessage(e) });
     } finally {
       setIsDeleting(false);
     }
@@ -130,8 +131,8 @@ export default function WebhooksClient() {
         title: `Webhook ${newStatus === 'active' ? 'Activated' : 'Paused'}`,
         description: `"${webhook.name}" is now ${newStatus}.`
       });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
     }
   };
 

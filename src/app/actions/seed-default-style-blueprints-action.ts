@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Seeds and updates all global and workspace blueprints (message templates)
@@ -62,13 +63,13 @@ export async function seedDefaultStyleBlueprintsAction(): Promise<{
       updatedCount,
       errors: []
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[SEED_DEFAULT_STYLE_BLUEPRINTS] FER Seeding failed:', error);
     return {
       success: false,
       totalProcessed: 0,
       updatedCount: 0,
-      errors: [{ name: 'Default Style Seeding Failure', error: error.message || 'Unknown error' }]
+      errors: [{ name: 'Default Style Seeding Failure', error: getErrorMessage(error) || 'Unknown error' }]
     };
   }
 }

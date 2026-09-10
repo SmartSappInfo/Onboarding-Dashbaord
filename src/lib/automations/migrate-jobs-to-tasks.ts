@@ -3,7 +3,7 @@ import { scheduleDelayTask } from '../gcp-tasks-client';
 import type { AutomationJob } from '../types';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
-import { reportError } from '@/lib/errors/report-error';
+import { getErrorMessage, reportError } from '@/lib/errors/report-error';
 
 /**
  * Migration script to transition legacy pending pull-cron jobs to event-driven push tasks.
@@ -71,20 +71,20 @@ export async function migratePendingJobsToTasks(): Promise<{
           payload: job.payload,
         });
         migratedCount++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         reportError('automations.migrate-jobs-to-tasks', err, { note: `[MIGRATION] Failed to schedule task for job ${job.id}:` });
       }
     }
 
     console.info(`[MIGRATION] Migration complete. Migrated: ${migratedCount}, Cancelled: ${cancelledCount}`);
     return { success: true, migratedCount, cancelledCount };
-  } catch (error: any) {
+  } catch (error: unknown) {
     reportError('automations.migrate-jobs-to-tasks', error, { note: '[MIGRATION] Critical failure running job migration:' });
     return {
       success: false,
       migratedCount: 0,
       cancelledCount: 0,
-      error: error.message || 'Migration critical error',
+      error: getErrorMessage(error) || 'Migration critical error',
     };
   }
 }

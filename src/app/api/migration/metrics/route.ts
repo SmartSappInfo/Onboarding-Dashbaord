@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: result.data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('metrics GET error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.metrics', error, undefined, 'Failed to fetch metrics') },

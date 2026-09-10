@@ -41,6 +41,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const AddContactsDialog = dynamic(
   () => import('../../components/AddContactsDialog').then(m => m.AddContactsDialog),
@@ -94,8 +95,8 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
       } else {
         toast({ variant: 'destructive', title: 'Launch Failed', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsLaunching(false);
     }

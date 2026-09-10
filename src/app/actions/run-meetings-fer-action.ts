@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function runMeetingsFerAction(
   workspaceId: string,
@@ -151,14 +152,14 @@ export async function runMeetingsFerAction(
       enrichedMeetings,
       updatedRegistrants
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[runMeetingsFerAction] Error:', error);
     return {
       success: false,
       processedMeetings: 0,
       enrichedMeetings: 0,
       updatedRegistrants: 0,
-      error: error.message || 'Failed to execute Meetings FER'
+      error: getErrorMessage(error) || 'Failed to execute Meetings FER'
     };
   }
 }

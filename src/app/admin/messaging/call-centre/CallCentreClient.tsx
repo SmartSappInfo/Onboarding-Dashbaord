@@ -71,6 +71,7 @@ import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScriptPlaybookView } from './scripts/components/ScriptPlaybookView';
 import { ManageCampaignContactsDialog } from './components/ManageCampaignContactsDialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   PhoneCall, 
   Plus, 
@@ -155,8 +156,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
     try {
       const text = serializeScriptExport(buildScriptExport(script));
       downloadTextFile(`${slugifyScriptName(script.name)}${CFLOW_EXTENSION}`, text);
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Export Failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: getErrorMessage(err) });
     }
   }, [toast]);
 
@@ -184,8 +185,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Import Failed', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Import Failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Import Failed', description: getErrorMessage(err) });
     } finally {
       setIsImporting(false);
     }
@@ -200,8 +201,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsCloningId(null);
     }
@@ -215,8 +216,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Archive Failed', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     }
   };
 
@@ -228,8 +229,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Operation Failed', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     }
   };
 
@@ -241,8 +242,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setScriptToDelete(null);
     }
@@ -256,8 +257,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setCampaignToDelete(null);
     }
@@ -286,8 +287,8 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
       } else {
         toast({ variant: 'destructive', title: 'Launch Failed', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setLaunchingCampaignId(null);
     }

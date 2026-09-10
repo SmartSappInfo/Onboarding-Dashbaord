@@ -30,6 +30,7 @@ import {
     ChevronRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface WorkspaceAccessDialogProps {
     open: boolean;
@@ -120,8 +121,8 @@ export default function WorkspaceAccessDialog({
             toast({ title: 'Access Granted', description: `${user.name} added to ${wsName}.` });
             setAddingWorkspaceId(null);
             setNewRoles([]);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Failed', description: getErrorMessage(e) });
         } finally {
             setIsUpdating(false);
         }
@@ -157,8 +158,8 @@ export default function WorkspaceAccessDialog({
             });
 
             toast({ title: 'Access Revoked', description: `${user.name} removed from ${wsName}.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Failed', description: getErrorMessage(e) });
         } finally {
             setIsUpdating(false);
         }

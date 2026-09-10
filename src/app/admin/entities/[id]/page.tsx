@@ -108,6 +108,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
 import { createTaskAction } from '@/lib/task-server-actions';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const ActivityTimeline = dynamic(() => import('../../components/ActivityTimeline'), {
  loading: () => <div className="p-8 space-y-4"><Skeleton className="h-4 w-32"/><Skeleton className="h-20 w-full"/><Skeleton className="h-20 w-full"/></div>,
@@ -200,8 +201,8 @@ export default function EntityDetailPage() {
             });
             toast({ title: 'Online Presence Updated' });
             setIsEditingPresence(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
         } finally {
             setIsSavingPresence(false);
         }

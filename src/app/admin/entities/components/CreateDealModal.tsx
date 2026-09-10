@@ -28,6 +28,7 @@ import type { EntityContact, DealFocalContact, Pipeline, OnboardingStage } from 
 import { useTerminology } from '@/hooks/use-terminology';
 import { calculateExpectedCloseDate } from '@/app/admin/pipeline/utils/deal-expected-close';
 import { getCurrencySymbol } from '@/lib/currency-utils';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface CreateDealModalProps {
     entityId?: string;
@@ -231,8 +232,8 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
 
             toast({ title: 'Deal Created', description: `Deal "${name}" successfully initiated.` });
             onOpenChange(false);
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Deal Creation Failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Deal Creation Failed', description: getErrorMessage(error) });
         } finally {
             setIsSubmitting(false);
         }

@@ -12,6 +12,7 @@ import type { IndustryVertical } from './types';
 import { getWorkspaceIndustry } from './industry-cache';
 import { adminDb } from './firebase-admin';
 import type { Workspace } from './types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Industry-specific permission system
@@ -194,8 +195,8 @@ export async function checkPermission(
     
     // 3. Check role-based access
     return await roleHasPermission(userId, workspaceId, permission);
-  } catch (error: any) {
-    console.error('[PERMISSIONS] checkPermission failed:', error.message);
+  } catch (error: unknown) {
+    console.error('[PERMISSIONS] checkPermission failed:', getErrorMessage(error));
     return false;
   }
 }
@@ -244,8 +245,8 @@ async function roleHasPermission(
     // 3. Return true if permission is granted
     
     return false;
-  } catch (error: any) {
-    console.error('[PERMISSIONS] roleHasPermission failed:', error.message);
+  } catch (error: unknown) {
+    console.error('[PERMISSIONS] roleHasPermission failed:', getErrorMessage(error));
     return false;
   }
 }
@@ -285,8 +286,8 @@ export async function getUserPermissionsInWorkspace(
     }
     
     return userPermissions;
-  } catch (error: any) {
-    console.error('[PERMISSIONS] getUserPermissionsInWorkspace failed:', error.message);
+  } catch (error: unknown) {
+    console.error('[PERMISSIONS] getUserPermissionsInWorkspace failed:', getErrorMessage(error));
     return [];
   }
 }

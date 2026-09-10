@@ -186,7 +186,7 @@ export default function OrganizationManagementDialog({
             }
 
             setSeedResult(data.result as AISeedResult);
-        } catch (err: any) {
+        } catch (err: unknown) {
             setScrapeError('Network error. Please check your connection and try again.');
         } finally {
             setIsScraping(false);

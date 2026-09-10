@@ -14,6 +14,7 @@ import { createQRCode, getQRCodeByUrl, updateQRCode, updateQRShortPath } from '@
 import type { QRDesign, QRCodeType } from '@/lib/types';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
 import QRDesigner from '@/app/admin/qr-studio/components/designer/qr-designer';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface UnifiedQRSheetProps {
     open: boolean;
@@ -154,8 +155,8 @@ export default function UnifiedQRSheet({
             }
             setIsSuccess(true);
             setTimeout(() => setIsSuccess(false), 3000);
-        } catch (err: any) {
-            toast({ title: 'Save Failed', description: err.message || 'Unknown error', variant: 'destructive' });
+        } catch (err: unknown) {
+            toast({ title: 'Save Failed', description: getErrorMessage(err) || 'Unknown error', variant: 'destructive' });
         } finally {
             setIsSaving(false);
         }

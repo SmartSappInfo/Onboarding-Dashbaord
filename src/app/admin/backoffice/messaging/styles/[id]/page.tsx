@@ -48,6 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const DEFAULT_HTML = `<html>
   <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
@@ -137,8 +138,8 @@ export default function BackofficeStyleEditorPage() {
                     toast({ variant: 'destructive', title: 'Error', description: 'Style blueprint not found.' });
                     router.push('/admin/backoffice/messaging/styles');
                 }
-            } catch (err: any) {
-                toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to fetch style.' });
+            } catch (err: unknown) {
+                toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) || 'Failed to fetch style.' });
             } finally {
                 setLoading(false);
             }
@@ -182,8 +183,8 @@ export default function BackofficeStyleEditorPage() {
                 toast({ title: 'Saved Blueprint', description: `"${name}" global blueprint changes saved.` });
             }
             router.push('/admin/backoffice/messaging/styles');
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(err) });
         } finally {
             setSaving(false);
         }
@@ -204,8 +205,8 @@ export default function BackofficeStyleEditorPage() {
             await deleteDoc(doc(firestore, 'message_styles', styleId));
             toast({ title: 'Blueprint Deleted', description: 'System global wrapper removed successfully.' });
             router.push('/admin/backoffice/messaging/styles');
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: getErrorMessage(err) });
         } finally {
             setDeleting(false);
         }

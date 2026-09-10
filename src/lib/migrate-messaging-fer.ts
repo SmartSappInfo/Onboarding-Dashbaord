@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, MessageBlock } from './types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Parses plain text or HTML legacy content into blocks for the rich builder.
@@ -162,8 +163,8 @@ export async function migrateLegacyTemplatesToBlocks(): Promise<{ success: boole
         
         console.log(`[MIGRATION] Successfully upgraded ${migratedCount} of ${totalCount} templates.`);
         return { success: true, migrated: migratedCount, total: totalCount };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('[MIGRATION] Upgrade failed:', e);
-        return { success: false, migrated: 0, total: 0, error: e.message };
+        return { success: false, migrated: 0, total: 0, error: getErrorMessage(e) };
     }
 }

@@ -18,6 +18,7 @@ import { revalidatePath } from 'next/cache';
 import type { Entity, WorkspaceEntity } from './types';
 import { syncContactProjectionForEntityWorkspace } from './contacts/contact-projection-writer';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Applies tags to an entity, automatically determining scope from tag definitions
@@ -169,9 +170,9 @@ export async function applyTagAction(
       revalidatePath(`/admin/workspaces/${workspaceId}`);
     }
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('applyTagAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -338,9 +339,9 @@ export async function removeTagAction(
       revalidatePath(`/admin/workspaces/${workspaceId}`);
     }
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('removeTagAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -395,8 +396,8 @@ export async function getEntityTagsAction(
       globalTags,
       workspaceTags,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getEntityTagsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

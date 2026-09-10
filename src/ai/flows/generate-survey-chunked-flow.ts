@@ -460,6 +460,7 @@ export async function generateSurveyLogic(input: LogicInput): Promise<LogicOutpu
 // it's a pure synchronous utility that runs client-side.
 import { mergeSurveyPhases } from '@/ai/utils/merge-survey-phases';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage, getErrorStatus } from '@/lib/errors/report-error';
 
 // ══════════════════════════════════════════════════════════
 // ORCHESTRATOR — Called by the UI
@@ -527,8 +528,8 @@ async function resolveSourceText(input: { sourceType: string; content: string })
       if (!response.ok) throw new Error(`Failed to fetch URL: ${response.statusText}`);
       const text = await response.text();
       return text.substring(0, 20000); // Limit to avoid prompt blowup
-    } catch (e: any) {
-      console.error('[CHUNKED] URL fetch failed:', e.message);
+    } catch (e: unknown) {
+      console.error('[CHUNKED] URL fetch failed:', getErrorMessage(e));
       throw new Error('Could not retrieve content from the provided URL.');
     }
   }
@@ -617,12 +618,12 @@ async function callAI<T>(params: {
       if (!output) throw new Error(`Phase ${phaseName}: AI model returned empty output.`);
       return output;
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       retries++;
-      const isRetryable = error.message?.includes('503') ||
-        error.message?.includes('429') ||
-        error.status === 503 ||
-        error.status === 429;
+      const isRetryable = getErrorMessage(error)?.includes('503') ||
+        getErrorMessage(error)?.includes('429') ||
+        getErrorStatus(error) === 503 ||
+        getErrorStatus(error) === 429;
 
       if (isRetryable && retries < maxRetries) {
         const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
@@ -631,8 +632,8 @@ async function callAI<T>(params: {
         continue;
       }
 
-      console.error(`[CHUNKED:${phaseName}] Failed after ${retries} attempts:`, error.message);
-      throw new Error(`Survey generation failed at ${phaseName}: ${error.message}`);
+      console.error(`[CHUNKED:${phaseName}] Failed after ${retries} attempts:`, getErrorMessage(error));
+      throw new Error(`Survey generation failed at ${phaseName}: ${getErrorMessage(error)}`);
     }
   }
 

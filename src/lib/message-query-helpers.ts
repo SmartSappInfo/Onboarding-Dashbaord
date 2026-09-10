@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageLog } from './types';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Query message logs by contact identifier (entityId or schoolId)
@@ -44,8 +45,8 @@ export async function getMessagesForContact(params: {
       id: doc.id,
       ...doc.data()
     })) as MessageLog[];
-  } catch (error: any) {
-    console.error('Error querying messages for contact:', error.message);
+  } catch (error: unknown) {
+    console.error('Error querying messages for contact:', getErrorMessage(error));
     throw error;
   }
 }
@@ -98,8 +99,8 @@ export async function getMessagesForEntities(params: {
     return allMessages
       .sort((a, b) => new Date(b.sentAt).getTime() - new Date(a.sentAt).getTime())
       .slice(0, queryLimit);
-  } catch (error: any) {
-    console.error('Error querying messages for entities:', error.message);
+  } catch (error: unknown) {
+    console.error('Error querying messages for entities:', getErrorMessage(error));
     throw error;
   }
 }
@@ -135,8 +136,8 @@ export async function countMessagesForContact(params: {
 
     const snapshot = await query.count().get();
     return snapshot.data().count;
-  } catch (error: any) {
-    console.error('Error counting messages for contact:', error.message);
+  } catch (error: unknown) {
+    console.error('Error counting messages for contact:', getErrorMessage(error));
     throw error;
   }
 }

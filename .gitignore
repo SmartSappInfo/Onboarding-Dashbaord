@@ -67,3 +67,21 @@ scratch/
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# Scratch and generated output (audit F15).
+# These were tracked in git: one-off codemods, dead .bak copies of live modules that
+# project-wide search surfaces as though current, and captured tool output.
+*.bak
+*_output.txt
+*-output.log
+*_output.log
+tsc*.txt
+lint_output.txt
+diff.txt
+extracted_text.txt
+fix_*.py
+fix_*.cjs
+patch_*.cjs
+refactor*.js
+scratch-*.ts
+test-*.cjs

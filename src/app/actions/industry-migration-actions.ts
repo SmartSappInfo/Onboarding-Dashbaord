@@ -10,6 +10,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Entity, SaaSInstitutionData, InstitutionData } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface IndustryMigrationResult {
   total: number;
@@ -94,9 +95,9 @@ export async function fetchSchoolsForSaaSMigration(): Promise<IndustryMigrationR
     console.log(`✅ [FETCH] Found ${needsEnrichment} entities needing SaaS enrichment, ${alreadyEnriched} already enriched`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [FETCH] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     result.failed = result.total;
     return result;
   }
@@ -235,10 +236,10 @@ export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigration
           console.log(`✅ [ENRICH] Committed batch of ${batchCount} entities`);
           batchCount = 0;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`❌ [ENRICH] Error processing entity ${entityDoc.id}:`, error);
         result.failed++;
-        result.errors.push(`${entityDoc.id}: ${error.message}`);
+        result.errors.push(`${entityDoc.id}: ${getErrorMessage(error)}`);
       }
     }
 
@@ -251,9 +252,9 @@ export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigration
     console.log(`✅ [ENRICH] Completed: ${result.succeeded} succeeded, ${result.failed} failed, ${result.skipped} skipped`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [ENRICH] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     return result;
   }
 }
@@ -327,19 +328,19 @@ export async function restoreSaaSMigration(): Promise<IndustryMigrationResult> {
         // Validation passed
         result.succeeded++;
         console.log(`  ✓ Entity ${entityId} (${entity.name}) has valid SaaS industry data`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`❌ [RESTORE] Error validating entity ${entityDoc.id}:`, error);
         result.failed++;
-        result.errors.push(`${entityDoc.id}: ${error.message}`);
+        result.errors.push(`${entityDoc.id}: ${getErrorMessage(error)}`);
       }
     }
 
     console.log(`✅ [RESTORE] Completed: ${result.succeeded} valid, ${result.failed} invalid`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [RESTORE] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     return result;
   }
 }
@@ -402,10 +403,10 @@ export async function rollbackSaaSMigration(): Promise<IndustryMigrationResult> 
           console.log(`✅ [ROLLBACK] Committed batch of ${batchCount} entities`);
           batchCount = 0;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`❌ [ROLLBACK] Error rolling back entity ${entityDoc.id}:`, error);
         result.failed++;
-        result.errors.push(`${entityDoc.id}: ${error.message}`);
+        result.errors.push(`${entityDoc.id}: ${getErrorMessage(error)}`);
       }
     }
 
@@ -418,9 +419,9 @@ export async function rollbackSaaSMigration(): Promise<IndustryMigrationResult> 
     console.log(`✅ [ROLLBACK] Completed: ${result.succeeded} succeeded, ${result.failed} failed`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [ROLLBACK] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     return result;
   }
 }

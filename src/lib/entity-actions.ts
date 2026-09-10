@@ -23,6 +23,7 @@ import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { zoneOrUnassigned } from './zone-constants';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Runs background contact verification for a primary contact.
@@ -44,8 +45,8 @@ async function runContactVerification(opts: {
     try {
       console.log(`[autoVerify] Initiating background email verification (${context}): ${email}`);
       await new BulkVerificationService().processBulk([email]);
-    } catch (err: any) {
-      console.error('[autoVerify] Background email verification failed:', err.message);
+    } catch (err: unknown) {
+      console.error('[autoVerify] Background email verification failed:', getErrorMessage(err));
     }
   }
 
@@ -53,8 +54,8 @@ async function runContactVerification(opts: {
     try {
       console.log(`[autoVerify] Initiating background phone verification (${context}): ${phone}`);
       await new BulkPhoneVerificationService().processBulk([{ phone, defaultCountry }]);
-    } catch (err: any) {
-      console.error('[autoVerify] Background phone verification failed:', err.message);
+    } catch (err: unknown) {
+      console.error('[autoVerify] Background phone verification failed:', getErrorMessage(err));
     }
   }
 }
@@ -129,9 +130,9 @@ export async function convertToOnboardingAction(
         revalidatePath(`/admin/entities/${entityId}`);
 
         return { success: true };
-    } catch (e: any) {
-        console.error(">>> [ENTITY:CONVERT] Failed:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        console.error(">>> [ENTITY:CONVERT] Failed:", getErrorMessage(e));
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -501,9 +502,9 @@ export async function createEntityAction(
     }
 
     return { success: true, id: entityId };
-  } catch (e: any) {
-    console.error(">>> [ENTITY:CREATE] Failed:", e.message);
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    console.error(">>> [ENTITY:CREATE] Failed:", getErrorMessage(e));
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -831,8 +832,8 @@ export async function updateEntityAction(
       after(async () => {
         try {
           await checkEntityFieldChangedTrigger(entityId, oldEntityData, data, workspaceId, organizationId);
-        } catch (err: any) {
-          console.error('[fieldChangedTrigger] Background evaluation failed:', err.message);
+        } catch (err: unknown) {
+          console.error('[fieldChangedTrigger] Background evaluation failed:', getErrorMessage(err));
         }
       });
     } catch (err) {
@@ -893,9 +894,9 @@ export async function updateEntityAction(
     }
 
     return { success: true };
-  } catch (e: any) {
-    console.error(">>> [ENTITY:UPDATE] Failed:", e.message);
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    console.error(">>> [ENTITY:UPDATE] Failed:", getErrorMessage(e));
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 

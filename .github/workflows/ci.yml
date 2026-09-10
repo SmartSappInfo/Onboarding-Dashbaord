@@ -75,6 +75,44 @@ jobs:
       - name: Run Vitest Test Suite
         run: NODE_OPTIONS='--max-old-space-size=4096' pnpm test:run
 
+  firestore-rules:
+    name: Firestore Rules
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.7.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      # The Firestore emulator is a Java process.
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '21'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Architectural Pointer: firestore.rules is 4,200+ lines with 500+ match blocks and
+      # cannot be reviewed by eye — audit F4 is the proof: a stray `isAuthorized() ||
+      # isSignedIn()` made every survey subcollection readable by any signed-in account,
+      # and `portal_waitlists` held PII world-readable and world-writable. These tests run
+      # the real rules against the emulator so a regression fails the build.
+      - name: Run Firestore Rules Tests
+        # test:rules:ci fetches firebase-tools via dlx; the CLI is not a project dependency.
+        run: pnpm test:rules:ci
+
   build-verification:
     name: Next.js Build Verification
     runs-on: ubuntu-latest

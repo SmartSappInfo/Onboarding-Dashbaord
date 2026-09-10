@@ -43,6 +43,7 @@ import { getGlobalPrompts, saveGlobalPrompt } from '@/lib/pms-repository';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import type { GlobalPrompt } from '@/lib/pms-types';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const CATEGORIES = [
   'marketing',
@@ -122,11 +123,11 @@ export default function PromptListClient() {
           description: result.error,
         });
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error during seeding.',
-        description: e.message,
+        description: getErrorMessage(e),
       });
     } finally {
       setIsSeeding(false);

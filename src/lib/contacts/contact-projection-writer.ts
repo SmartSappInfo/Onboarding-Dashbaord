@@ -21,6 +21,7 @@
 import { adminDb } from '../firebase-admin';
 import type { WorkspaceEntity } from '../types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   flattenEntityContacts,
   diffContactDocs,
@@ -87,8 +88,8 @@ export async function syncContactProjectionForWE(
     await batch.commit();
 
     return { upserts: upserts.length, deletes: deleteIds.length };
-  } catch (err: any) {
-    console.error('[contacts] projection sync failed (will heal via reconcile):', err?.message);
+  } catch (err: unknown) {
+    console.error('[contacts] projection sync failed (will heal via reconcile):', getErrorMessage(err));
     return { upserts: 0, deletes: 0 };
   }
 }
@@ -113,8 +114,8 @@ export async function syncContactProjectionForEntityWorkspace(
     for (const doc of snap.docs) {
       await syncContactProjectionForWE({ ...(doc.data() as WorkspaceEntity), id: doc.id });
     }
-  } catch (err: any) {
-    console.error('[contacts] projection tag-sync failed:', err?.message);
+  } catch (err: unknown) {
+    console.error('[contacts] projection tag-sync failed:', getErrorMessage(err));
   }
 }
 
@@ -134,8 +135,8 @@ export async function deleteContactProjectionForEntity(
     for (const d of existing) batch.delete(col.doc(d.id));
     await batch.commit();
     return existing.length;
-  } catch (err: any) {
-    console.error('[contacts] projection delete failed:', err?.message);
+  } catch (err: unknown) {
+    console.error('[contacts] projection delete failed:', getErrorMessage(err));
     return 0;
   }
 }

@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import crypto from 'crypto';
 import { requireAuth, requireSystemAdmin } from './auth/require-auth';
 import { authorizeWorkspaceOrBackoffice, authorizeBackofficeSession } from './backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface ApiKeyRecord {
   id: string;
@@ -67,9 +68,9 @@ export async function generateApiKey(
         createdBy: record.createdBy
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API_KEYS] generateApiKey error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -119,9 +120,9 @@ export async function listApiKeys(workspaceId?: string): Promise<{ success: bool
     keys.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return { success: true, keys };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API_KEYS] listApiKeys error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -147,8 +148,8 @@ export async function revokeApiKey(keyId: string): Promise<{ success: boolean; e
       revokedAt: new Date().toISOString()
     });
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API_KEYS] revokeApiKey error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

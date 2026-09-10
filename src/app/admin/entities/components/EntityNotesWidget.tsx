@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { logNoteActivity } from '@/lib/note-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface EntityNotesWidgetProps {
     entityId: string;
@@ -89,9 +90,9 @@ export default function EntityNotesWidget({ entityId, onViewAll }: EntityNotesWi
             setNoteType('general');
             setIsAddModalOpen(false);
             toast({ title: 'Note added successfully' });
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Error adding note:', error);
-            toast({ title: 'Failed to add note', description: error.message, variant: 'destructive' });
+            toast({ title: 'Failed to add note', description: getErrorMessage(error), variant: 'destructive' });
         } finally {
             setIsSubmitting(false);
         }

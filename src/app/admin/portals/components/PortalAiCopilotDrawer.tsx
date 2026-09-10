@@ -31,6 +31,7 @@ import {
 import { createCourseAction } from '@/app/actions/learning-actions';
 import type { GeneratedCurriculum, AiPedagogyDiagnostic } from '@/lib/types/ai-experience';
 import type { AssessmentQuestion } from '@/lib/types/learning';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Sparkles,
   BookOpen,
@@ -99,8 +100,8 @@ export function PortalAiCopilotDrawer({
       if (!res.success) throw new Error(res.error);
       setGeneratedCurriculum(res.data || null);
       toast({ title: 'Curriculum Generated! ✨', description: 'Review the modules and lessons below.' });
-    } catch (err: any) {
-      toast({ title: 'Generation Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Generation Failed', description: getErrorMessage(err) });
     } finally {
       setIsGeneratingCurriculum(false);
     }
@@ -129,8 +130,8 @@ export function PortalAiCopilotDrawer({
         description: `"${generatedCurriculum.courseTitle}" is saved in Courses Studio.`,
       });
       onClose();
-    } catch (err: any) {
-      toast({ title: 'Save Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Save Failed', description: getErrorMessage(err) });
     } finally {
       setIsApplyingCurriculum(false);
     }
@@ -153,8 +154,8 @@ export function PortalAiCopilotDrawer({
       if (!res.success) throw new Error(res.error);
       setGeneratedQuestions(res.data || null);
       toast({ title: '5 Questions Generated! 📝', description: 'High-yield assessment items ready.' });
-    } catch (err: any) {
-      toast({ title: 'Quiz Generation Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Quiz Generation Failed', description: getErrorMessage(err) });
     } finally {
       setIsGeneratingQuiz(false);
     }
@@ -171,8 +172,8 @@ export function PortalAiCopilotDrawer({
       if (!res.success) throw new Error(res.error);
       setDiagnostic(res.data || null);
       toast({ title: 'Pedagogy Audit Complete! 📊', description: 'Identified drop-off bottlenecks.' });
-    } catch (err: any) {
-      toast({ title: 'Diagnostic Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Diagnostic Failed', description: getErrorMessage(err) });
     } finally {
       setIsDiagnosing(false);
     }

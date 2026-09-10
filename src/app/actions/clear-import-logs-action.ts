@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function clearAllImportLogsAction(userId: string): Promise<{
     success: boolean;
@@ -99,13 +100,13 @@ export async function clearAllImportLogsAction(userId: string): Promise<{
             deletedLogsCount,
             deletedSubdocsCount,
         };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[clearAllImportLogsAction] Error clearing import logs:', error);
         return {
             success: false,
             deletedLogsCount: 0,
             deletedSubdocsCount: 0,
-            error: error.message || 'Failed to clear import logs',
+            error: getErrorMessage(error) || 'Failed to clear import logs',
         };
     }
 }

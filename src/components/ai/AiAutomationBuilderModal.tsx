@@ -12,6 +12,7 @@ import { createLearningSignalAction } from '@/lib/learning-loop-actions';
 import { generateAutomation } from '@/ai/flows/generate-automation-flow';
 import { Loader2, Sparkles, Zap } from 'lucide-react';
 import { RainbowButton } from '@/components/ui/rainbow-button';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface AiAutomationBuilderModalProps {
   isOpen: boolean;
@@ -85,11 +86,11 @@ export function AiAutomationBuilderModal({
         title: 'Automation Workflow Constructed',
         description: `Successfully architected "${result.name}" with ${result.steps.length} steps.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Workflow Generation Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: getErrorMessage(error) || 'An unexpected error occurred.',
       });
     } finally {
       setIsGenerating(false);

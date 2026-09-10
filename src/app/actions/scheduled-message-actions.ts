@@ -6,6 +6,7 @@ import { buildVariableMap } from '@/lib/template-resolver';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
 import { sendRawMessage } from '@/lib/messaging-engine';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function renderScheduledMessageAction(messageId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
@@ -45,8 +46,8 @@ export async function renderScheduledMessageAction(messageId: string) {
       let vars: Record<string, any> = {};
       try {
         vars = await buildVariableMap(template.variableContext || 'meeting', resolutionCtx);
-      } catch (varErr: any) {
-        console.warn('Could not fully build variable map, proceeding with raw stored variables:', varErr.message);
+      } catch (varErr: unknown) {
+        console.warn('Could not fully build variable map, proceeding with raw stored variables:', getErrorMessage(varErr));
         vars = message.variables || {};
       }
       
@@ -108,19 +109,19 @@ export async function renderScheduledMessageAction(messageId: string) {
         recipient: message.recipientContact,
         templateId: template.id
       };
-    } catch (e: any) {
-      console.warn('Template preview render failed:', e.message);
+    } catch (e: unknown) {
+      console.warn('Template preview render failed:', getErrorMessage(e));
       return {
         success: true,
         subject: fallbackSubject,
-        body: `<div style="padding: 20px; font-family: sans-serif; color: #dc2626; border: 1px solid #fca5a5; background: #fef2f2; border-radius: 8px;"><strong>Preview Warning:</strong> ${e.message}<br/><br/>The message might still send correctly during actual dispatch if variables are resolved correctly at that time.</div>`,
+        body: `<div style="padding: 20px; font-family: sans-serif; color: #dc2626; border: 1px solid #fca5a5; background: #fef2f2; border-radius: 8px;"><strong>Preview Warning:</strong> ${getErrorMessage(e)}<br/><br/>The message might still send correctly during actual dispatch if variables are resolved correctly at that time.</div>`,
         channel: message.channel,
         recipient: message.recipientContact
       };
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[renderScheduledMessageAction]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -156,9 +157,9 @@ export async function sendTestMessageAction(
     }
 
     return { success: true, message: `Test message successfully sent to ${recipient}` };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[sendTestMessageAction]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -170,9 +171,9 @@ export async function rescheduleMessageAction(id: string, dateIsoString: string)
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     await ScheduledMessageRepository.updateSchedule(id, new Date(dateIsoString));
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[rescheduleMessageAction]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -184,9 +185,9 @@ export async function cancelMessageAction(id: string) {
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     await ScheduledMessageRepository.cancel(id);
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[cancelMessageAction]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -197,9 +198,9 @@ export async function sendMessageNowAction(id: string) {
   try {
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     return await ScheduledMessageRepository.sendNow(id);
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[sendMessageNowAction]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }
 
@@ -211,8 +212,8 @@ export async function updateScheduledMessageContentAction(id: string, subject: s
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     await ScheduledMessageRepository.updateContent(id, subject, body);
     return { success: true };
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[updateScheduledMessageContentAction]', err);
-    return { success: false, error: err.message };
+    return { success: false, error: getErrorMessage(err) };
   }
 }

@@ -21,6 +21,7 @@
     "test:ci": "NODE_OPTIONS='--max-old-space-size=4096' vitest run",
     "test:emulator": "firebase emulators:exec --only firestore 'vitest run'",
     "test:rules": "firebase emulators:exec --only firestore --project demo-rules 'vitest run .rules.test.ts'",
+    "test:rules:ci": "pnpm dlx firebase-tools@14 emulators:exec --only firestore --project demo-rules 'vitest run .rules.test.ts'",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:pre-deploy": "playwright test src/e2e/survey-routing.spec.ts",

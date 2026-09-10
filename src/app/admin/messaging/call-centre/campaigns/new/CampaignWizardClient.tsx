@@ -46,6 +46,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const MessagingTemplateSelector = dynamic(
   () => import('@/app/admin/components/MessagingTemplateSelector')
@@ -292,8 +293,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
         if (!result.success) throw new Error(result.error);
         return result.id || null;
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(err) });
       return null;
     }
   };
@@ -343,8 +344,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
       } else {
         toast({ variant: 'destructive', title: 'Queue Generation Failed', description: queueResult.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsLaunching(false);
     }

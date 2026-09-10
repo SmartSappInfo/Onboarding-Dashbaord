@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     await runAutomationById(automationId, triggerPayload);
 
     return NextResponse.json({ success: true, message: 'Entity successfully enrolled in automation.' });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[ENROLL_AUTOMATION_ROUTE] Error:', error);
     return NextResponse.json({ error: toClientErrorMessage('api.automations.enroll', error, undefined, 'Failed to enroll entity') }, { status: 500 });
   }

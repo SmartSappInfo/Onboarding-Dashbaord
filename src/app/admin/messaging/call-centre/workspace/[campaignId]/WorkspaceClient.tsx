@@ -75,6 +75,7 @@ import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const MessagingTemplateSelector = dynamic(
   () =>
@@ -1619,9 +1620,9 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         }
       });
       toast({ title: 'Call Details Logged', description: `Logged timeline activity for ${activeContactName}.` });
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[WORKSPACE_CLIENT] Failed to log timeline activity:', err);
-      toast({ variant: 'destructive', title: 'Activity Logging Failed', description: err.message });
+      toast({ variant: 'destructive', title: 'Activity Logging Failed', description: getErrorMessage(err) });
     }
 
     const currentIdx = contacts.findIndex(c => c.id === activeContactId);

@@ -2,6 +2,7 @@ import { adminDb } from '../firebase-admin';
 import type { IndustryVertical, AppField, FieldGroup } from '../types';
 import type { IndustryGroupDef } from '../industry-field-registry';
 import { resolveGroupIcon } from '../industry-field-registry';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Propagates changes made to an industry-specific field group (and its fields)
@@ -179,8 +180,8 @@ export async function propagateIndustryGroupChanges(
     }
 
     return { success: true, count: totalUpdated };
-  } catch (error: any) {
-    console.error(`>>> [INDUSTRY_PROPAGATION] Failed for industry ${industry}:`, error.message);
-    return { success: false, count: 0, error: error.message };
+  } catch (error: unknown) {
+    console.error(`>>> [INDUSTRY_PROPAGATION] Failed for industry ${industry}:`, getErrorMessage(error));
+    return { success: false, count: 0, error: getErrorMessage(error) };
   }
 }

@@ -7,6 +7,7 @@ import { getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import { buildMeetingBaseVariables, buildFacilitatorVariables } from '@/lib/meeting-variable-helpers';
 import { MeetingFacilitator, Meeting, MeetingMessagingConfig } from '@/lib/types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function resendFacilitatorLinksAction(
   meetingId: string,
@@ -118,9 +119,9 @@ export async function resendFacilitatorLinksAction(
       success: failures === 0,
       message: `Sent briefing notifications successfully to ${successes} facilitator(s).${failures > 0 ? ` ${failures} failed.` : ''}`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[Facilitator Actions] Error resending links:', error);
-    return { success: false, message: error.message };
+    return { success: false, message: getErrorMessage(error) };
   }
 }
 
@@ -156,9 +157,9 @@ export async function updateMeetingFacilitatorAction(
 
     await meetingRef.update({ facilitators });
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[updateMeetingFacilitatorAction] Failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -203,8 +204,8 @@ export async function logFacilitatorAttendance(
     }
     
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[logFacilitatorAttendance] Failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

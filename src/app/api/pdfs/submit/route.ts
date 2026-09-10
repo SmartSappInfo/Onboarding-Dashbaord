@@ -167,7 +167,7 @@ export async function POST(req: Request) {
     }
 
     return Response.json({ submissionId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(">>> [API: SUBMIT] Error:", error);
     return Response.json({ error: toClientErrorMessage('api.pdfs.submit', error, undefined, 'Internal server error') }, { status: 500 });
   }

@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Button } from '@/components/ui/button';
 import { Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 function RsvpOptionsPanel({ 
   meeting, 
@@ -37,8 +38,8 @@ function RsvpOptionsPanel({
         setErrorMsg(res.error || 'Failed to submit RSVP.');
         setStatus('error');
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred.');
+    } catch (err: unknown) {
+      setErrorMsg(getErrorMessage(err) || 'An error occurred.');
       setStatus('error');
     }
   };

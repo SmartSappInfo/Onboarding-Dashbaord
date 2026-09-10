@@ -150,7 +150,7 @@ export default function SharedSubmissionView({ pdfForm, submission, school }: { 
         document.body.removeChild(a);
         
         toast({ title: 'Download Successful' });
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Download error:", e);
         toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate the signed document.' });
     } finally { setIsDownloading(false); }

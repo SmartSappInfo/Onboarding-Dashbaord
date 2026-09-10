@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   AlertCircle,
   CheckCircle2,
@@ -51,8 +52,8 @@ export function MigrationDashboard() {
 
       setSummary(data.data);
       setError(null);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -74,7 +75,7 @@ export function MigrationDashboard() {
 
       // Reload dashboard
       await loadDashboard();
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to acknowledge alert:', err);
     }
   };
@@ -91,7 +92,7 @@ export function MigrationDashboard() {
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to export logs:', err);
     }
   };

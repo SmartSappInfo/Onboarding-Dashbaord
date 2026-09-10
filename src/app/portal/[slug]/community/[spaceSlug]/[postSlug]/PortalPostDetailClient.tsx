@@ -59,6 +59,7 @@ import {
   Check,
 } from 'lucide-react';
 import { PortalAuthModal } from '../../../components/PortalAuthModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalPostDetailClientProps {
   slug: string;
@@ -190,8 +191,8 @@ export default function PortalPostDetailClient({
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Comment Posted! 💬', description: 'Earned +2 Community Points.' });
       setCommentText('');
-    } catch (err: any) {
-      toast({ title: 'Comment Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Comment Failed', description: getErrorMessage(err) });
     } finally {
       setIsPostingComment(false);
     }
@@ -227,8 +228,8 @@ export default function PortalPostDetailClient({
       toast({ title: 'Reply Posted! 💬', description: 'Response added to thread.' });
       setReplyText('');
       setReplyingToCommentId(null);
-    } catch (err: any) {
-      toast({ title: 'Reply Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Reply Failed', description: getErrorMessage(err) });
     } finally {
       setIsPostingComment(false);
     }
@@ -239,8 +240,8 @@ export default function PortalPostDetailClient({
     try {
       await deleteCommentAction(commentId, slug, space?.id, post?.id);
       toast({ title: 'Comment Deleted', description: 'Comment removed from thread.' });
-    } catch (err: any) {
-      toast({ title: 'Delete Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Delete Failed', description: getErrorMessage(err) });
     }
   };
 
@@ -264,8 +265,8 @@ export default function PortalPostDetailClient({
         reason: reason.trim(),
       });
       toast({ title: 'Report Submitted', description: 'Our moderation team will review this post.' });
-    } catch (err: any) {
-      toast({ title: 'Report Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Report Failed', description: getErrorMessage(err) });
     }
   };
 

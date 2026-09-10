@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
 import { FieldValue } from 'firebase-admin/firestore';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const BATCH_SIZE = 400;
 
@@ -125,22 +126,22 @@ export async function executeTemplateIdentifiersFerAction(): Promise<{
       details: stats,
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[FER Template Identifiers] Fatal error:`, error);
     stats.failed++;
-    stats.errors.push(error.message);
+    stats.errors.push(getErrorMessage(error));
 
     // 3. Mark as Failed
     await migrationRef.set({
       status: 'failed',
       lastRunAt: now,
-      summary: `Failed: ${error.message}`,
+      summary: `Failed: ${getErrorMessage(error)}`,
       details: stats,
     } as Partial<SystemMigrationLog>, { merge: true });
 
     return {
       success: false,
-      message: error.message || 'Fatal error during migration',
+      message: getErrorMessage(error) || 'Fatal error during migration',
       details: stats,
     };
   }

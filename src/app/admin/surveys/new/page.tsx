@@ -49,6 +49,7 @@ import Step4Publish from '../components/step-4-publish';
 import LivePreviewPane from '../components/live-preview-pane';
 import ValidationErrorModal, { type ValidationError } from '../components/validation-error-modal';
 import AiChatEditor from '../components/ai-chat-editor';
+import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
 
 const elementSchema = z.custom<SurveyElement>((val) => typeof val === 'object' && val !== null && 'id' in val && 'type' in val);
 
@@ -430,21 +431,21 @@ export default function NewSurveyPage() {
                 syncVariableRegistry().catch(console.error);
             }
             router.push('/admin/surveys');
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error('Survey creation error:', error);
             
             // Parse Firebase/Firestore errors for better user feedback
             let errorMessage = 'An unexpected error occurred while saving the survey.';
             let errorDetails = '';
             
-            if (error.code) {
-                switch (error.code) {
+            if (getErrorCode(error)) {
+                switch (getErrorCode(error)) {
                     case 'permission-denied':
                         errorMessage = 'Permission denied. You don\'t have access to create surveys.';
                         errorDetails = 'Please check your workspace permissions or contact an administrator.';
                         break;
                     case 'invalid-argument':
-                        if (error.message && error.message.includes('undefined')) {
+                        if (getErrorMessage(error) && getErrorMessage(error).includes('undefined')) {
                             errorMessage = 'Invalid survey data: some fields contain undefined values.';
                             errorDetails = 'This is usually caused by incomplete form data. Please ensure all fields are properly filled.';
                         } else {
@@ -465,24 +466,24 @@ export default function NewSurveyPage() {
                         errorDetails = 'Please log in again and try creating the survey.';
                         break;
                     default:
-                        errorMessage = `System error: ${error.code}`;
-                        errorDetails = error.message || 'Please try again or contact support if the issue persists.';
+                        errorMessage = `System error: ${getErrorCode(error)}`;
+                        errorDetails = getErrorMessage(error) || 'Please try again or contact support if the issue persists.';
                 }
-            } else if (error.message) {
-                if (error.message.includes('undefined')) {
+            } else if (getErrorMessage(error)) {
+                if (getErrorMessage(error).includes('undefined')) {
                     errorMessage = 'Survey data contains invalid undefined values.';
                     errorDetails = 'Some form fields were not properly initialized. Please refresh the page and try again.';
-                } else if (error.message.includes('slug')) {
+                } else if (getErrorMessage(error).includes('slug')) {
                     errorMessage = 'Survey URL slug is already in use.';
                     errorDetails = 'Please modify the survey title or manually set a unique slug.';
-                } else if (error.message.includes('workspace')) {
+                } else if (getErrorMessage(error).includes('workspace')) {
                     errorMessage = 'Workspace configuration error.';
                     errorDetails = 'Please ensure you have access to the selected workspace.';
-                } else if (error.message.includes('network')) {
+                } else if (getErrorMessage(error).includes('network')) {
                     errorMessage = 'Network connection error.';
                     errorDetails = 'Please check your internet connection and try again.';
                 } else {
-                    errorDetails = error.message;
+                    errorDetails = getErrorMessage(error);
                 }
             }
             

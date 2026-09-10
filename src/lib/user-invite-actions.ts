@@ -11,6 +11,7 @@ import { resolveAndRender } from './template-resolver';
 import { getBaseUrl } from './utils/url-helpers';
 import { InvitationDispatchService } from './services/workforce/invitation-dispatch-service';
 import { IdentityMigrationService } from './services/identity/identity-migration-service';
+import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Generates a random secure password.
@@ -58,8 +59,8 @@ export async function inviteUserAction(params: {
             userRecord = await auth.getUserByEmail(email);
             // If user exists, we might want to just update them or error
             throw new Error('User already exists in authentication system.');
-        } catch (e: any) {
-            if (e.code === 'auth/user-not-found') {
+        } catch (e: unknown) {
+            if (getErrorCode(e) === 'auth/user-not-found') {
                 userRecord = await auth.createUser({
                     email,
                     password: tempPassword,
@@ -305,8 +306,8 @@ export async function publicResetPasswordViaPhoneAction(phone: string) {
         });
 
         return { success: true, message: 'If your number is registered, you will receive a new password via SMS.' };
-    } catch (error: any) {
-        console.error('>>> [PUBLIC RESET PASSWORD] Error:', error.message);
+    } catch (error: unknown) {
+        console.error('>>> [PUBLIC RESET PASSWORD] Error:', getErrorMessage(error));
         return { success: true, message: 'Password recovery initiated.' };
     }
 }
@@ -434,9 +435,9 @@ export async function adminUpdateUserAccessAction(userId: string, isAuthorized: 
             message: `User access has been ${isAuthorized ? 'restored' : 'cancelled'}.`, 
             warnings: warnings.length > 0 ? warnings : undefined 
         };
-    } catch (error: any) {
-        console.error('>>> [UPDATE ACCESS] Error:', error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error('>>> [UPDATE ACCESS] Error:', getErrorMessage(error));
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -570,9 +571,9 @@ export async function declineJoinRequestAction(userId: string, adminUserId: stri
             message: `Join request from ${userData.name || 'User'} has been declined.`,
             warnings: warnings.length > 0 ? warnings : undefined
         };
-    } catch (error: any) {
-        console.error('>>> [DECLINE JOIN REQUEST] Error:', error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error('>>> [DECLINE JOIN REQUEST] Error:', getErrorMessage(error));
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 

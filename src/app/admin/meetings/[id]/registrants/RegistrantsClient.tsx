@@ -47,6 +47,7 @@ import {
     DialogHeader, DialogTitle
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function RegistrantsClient({ meetingId }: { meetingId: string }) {
   const { toast } = useToast();
@@ -174,8 +175,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
         const result = await toggleRegistrantAttendance(meetingId, registrant.id, newStatus === 'attended');
         if (!result.success) throw new Error(result.error);
         toast({ title: 'Status Updated', description: `${registrant.name}'s attendance status updated.` });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Update failed', description: e.message });
+    } catch (e: unknown) {
+        toast({ variant: 'destructive', title: 'Update failed', description: getErrorMessage(e) });
     } finally {
         setIsToggling(prev => ({ ...prev, [registrant.id]: false }));
     }
@@ -187,8 +188,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
       const result = await updateRegistrantStatusAction(meetingId, registrant.id, status);
       if (!result.success) throw new Error(result.error);
       toast({ title: 'Status Updated', description: `Registrant has been ${status}.` });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     }
   };
 
@@ -202,8 +203,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
       toast({ title: 'Registrant Deleted', description: 'The registration was permanently removed.' });
       setSelectedIds(prev => { const n = new Set(prev); n.delete(registrantToDelete.id); return n; });
       setRegistrantToDelete(null);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     } finally {
       setIsDeleting(false);
     }
@@ -221,8 +222,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
       );
       if (!result.success) throw new Error(result.message);
       toast({ title: 'Link Sent', description: `Join link emailed to ${registrant.name}.` });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     }
   };
 
@@ -256,8 +257,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
         toast({ title: 'Links Sent', description: result.message });
         setSelectedIds(new Set());
       }
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Bulk Action Failed', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Bulk Action Failed', description: getErrorMessage(error) });
     } finally {
       setIsProcessingBulk(false);
     }
@@ -277,8 +278,8 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
       toast({ title: 'Success', description: 'Registrant manually added and approved.' });
       setIsRegisterOpen(false);
       setRegForm({ name: '', email: '', phone: '' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Registration Failed', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Registration Failed', description: getErrorMessage(error) });
     } finally {
       setIsRegistering(false);
     }

@@ -55,6 +55,7 @@ import {
   Check,
 } from 'lucide-react';
 import { LearningProgressService } from '@/lib/services/learning-progress-service';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalCoursePlayerClientProps {
   slug: string;
@@ -229,8 +230,8 @@ export default function PortalCoursePlayerClient({
       if (nextLesson) {
         router.push(`/portal/${slug}/learn/${courseSlug}/${nextLesson.slug}`);
       }
-    } catch (err: any) {
-      toast({ title: 'Progress Save Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Progress Save Failed', description: getErrorMessage(err) });
     }
   };
 
@@ -276,8 +277,8 @@ export default function PortalCoursePlayerClient({
           toast({ title: 'Quiz Not Passed', description: `Scored ${res.data.score}%. Retake to pass.` });
         }
       }
-    } catch (err: any) {
-      toast({ title: 'Evaluation Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Evaluation Failed', description: getErrorMessage(err) });
     } finally {
       setIsEvaluatingQuiz(false);
     }

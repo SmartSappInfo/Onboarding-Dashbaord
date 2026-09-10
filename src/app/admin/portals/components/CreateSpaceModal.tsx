@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { createSpaceAction, updateSpaceAction } from '@/app/actions/community-actions';
 import type { CommunitySpace, SpaceVisibility } from '@/lib/types/community';
 import { MessageSquare, Sparkles, Lock, Layers, Loader2 } from 'lucide-react';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface CreateSpaceModalProps {
   open: boolean;
@@ -126,8 +127,8 @@ export function CreateSpaceModal({
         toast({ title: 'Space Created! 💬', description: `Channel "${res.data?.name}" is now live.` });
       }
       onOpenChange(false);
-    } catch (err: any) {
-      toast({ title: 'Action Failed', description: err?.message || 'Could not save space.' });
+    } catch (err: unknown) {
+      toast({ title: 'Action Failed', description: getErrorMessage(err) || 'Could not save space.' });
     } finally {
       setIsSubmitting(false);
     }

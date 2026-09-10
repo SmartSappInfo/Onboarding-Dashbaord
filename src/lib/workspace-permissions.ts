@@ -1,6 +1,7 @@
 import { adminDb } from './firebase-admin';
 import type { AppPermissionId, UserProfile, Role, Workspace, WorkspaceEntity, PermissionsSchema, AppPermissionAction } from './types';
 import { evaluatePermission } from './permissions-engine';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Workspace-scoped permission checking utilities.
@@ -113,11 +114,11 @@ export async function checkWorkspaceAccess(
     return {
       granted: true,
     };
-  } catch (error: any) {
-    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspaceAccess failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspaceAccess failed:', getErrorMessage(error));
     return {
       granted: false,
-      reason: `Permission check failed: ${error.message}`,
+      reason: `Permission check failed: ${getErrorMessage(error)}`,
     };
   }
 }
@@ -170,11 +171,11 @@ export async function checkWorkspaceEntityAccess(
     return {
       granted: true,
     };
-  } catch (error: any) {
-    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspaceEntityAccess failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspaceEntityAccess failed:', getErrorMessage(error));
     return {
       granted: false,
-      reason: `Permission check failed: ${error.message}`,
+      reason: `Permission check failed: ${getErrorMessage(error)}`,
     };
   }
 }
@@ -254,11 +255,11 @@ export async function checkWorkspacePermission(
     return {
       granted: true,
     };
-  } catch (error: any) {
-    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspacePermission failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspacePermission failed:', getErrorMessage(error));
     return {
       granted: false,
-      reason: `Permission check failed: ${error.message}`,
+      reason: `Permission check failed: ${getErrorMessage(error)}`,
     };
   }
 }
@@ -308,11 +309,11 @@ export async function checkWorkspaceCapability(
     return {
       granted: true,
     };
-  } catch (error: any) {
-    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspaceCapability failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [WORKSPACE_PERMISSIONS] checkWorkspaceCapability failed:', getErrorMessage(error));
     return {
       granted: false,
-      reason: `Capability check failed: ${error.message}`,
+      reason: `Capability check failed: ${getErrorMessage(error)}`,
     };
   }
 }
@@ -358,11 +359,11 @@ export async function checkFullWorkspacePermission(
     return {
       granted: true,
     };
-  } catch (error: any) {
-    console.error('>>> [WORKSPACE_PERMISSIONS] checkFullWorkspacePermission failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [WORKSPACE_PERMISSIONS] checkFullWorkspacePermission failed:', getErrorMessage(error));
     return {
       granted: false,
-      reason: `Permission check failed: ${error.message}`,
+      reason: `Permission check failed: ${getErrorMessage(error)}`,
     };
   }
 }
@@ -413,8 +414,8 @@ export async function getUserWorkspaceIds(userId: string): Promise<string[]> {
     });
 
     return Array.from(workspaceIds);
-  } catch (error: any) {
-    console.error('>>> [WORKSPACE_PERMISSIONS] getUserWorkspaceIds failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [WORKSPACE_PERMISSIONS] getUserWorkspaceIds failed:', getErrorMessage(error));
     return [];
   }
 }
@@ -462,9 +463,9 @@ export async function canUser(
       reason: granted ? undefined : `Access denied for ${section}/${feature}:${action}`,
       level: 'feature'
     };
-  } catch (error: any) {
-    console.error(`>>> [WORKSPACE_PERMISSIONS] canUser failed:`, error.message);
-    return { granted: false, reason: `Permission check error: ${error.message}` };
+  } catch (error: unknown) {
+    console.error(`>>> [WORKSPACE_PERMISSIONS] canUser failed:`, getErrorMessage(error));
+    return { granted: false, reason: `Permission check error: ${getErrorMessage(error)}` };
   }
 }
 

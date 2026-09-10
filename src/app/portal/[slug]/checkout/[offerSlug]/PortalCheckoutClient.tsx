@@ -26,6 +26,7 @@ import {
 } from '@/app/actions/commerce-actions';
 import type { PortalOffer, PaymentMethodType, PortalCoupon } from '@/lib/types/commerce';
 import type { Portal } from '@/lib/types/portal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   CreditCard,
   CheckCircle2,
@@ -123,8 +124,8 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
         setDiscountAmount(res.data.discountAmount);
         toast({ title: 'Coupon Applied! 🎉', description: `Saved ${offer.currency} ${res.data.discountAmount}.` });
       }
-    } catch (err: any) {
-      toast({ title: 'Validation Error', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Validation Error', description: getErrorMessage(err) });
     } finally {
       setIsValidatingCoupon(false);
     }
@@ -172,8 +173,8 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
 
       // Redirect to Member Learning Dashboard
       router.push(`/portal/${slug}/dashboard`);
-    } catch (err: any) {
-      toast({ title: 'Checkout Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Checkout Failed', description: getErrorMessage(err) });
     } finally {
       setIsProcessingOrder(false);
     }

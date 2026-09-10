@@ -116,6 +116,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Progress } from '@/components/ui/progress';
 import { useTenant } from '@/context/TenantContext';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon: any }> = {
     urgent: { label: 'Urgent', color: 'text-rose-600 bg-rose-500/10 border-rose-200/20', icon: ShieldAlert },
@@ -561,8 +562,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to update assignee' });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to update assignee' });
         }
     };
 
@@ -575,8 +576,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to update status' });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to update status' });
         }
     };
 
@@ -591,8 +592,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to postpone task' });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to postpone task' });
         }
     };
 
@@ -609,8 +610,8 @@ export default function TasksClient() {
                 toast({ variant: 'destructive', title: 'Reschedule Failed', description: res.error });
                 return false;
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message || 'Failed to reschedule task' });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || 'Failed to reschedule task' });
             return false;
         }
     };
@@ -631,8 +632,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to save task." });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || "Failed to save task." });
         } finally {
             setIsSaving(false);
         }
@@ -670,8 +671,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         }
         setTaskToComplete(null);
     };
@@ -685,8 +686,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Delete Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         }
         setTaskToDelete(null);
     };
@@ -703,8 +704,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         } finally {
             setIsBulkProcessing(false);
             setIsBulkResolveOpen(false);
@@ -723,8 +724,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Bulk Action Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         } finally {
             setIsBulkProcessing(false);
             setIsBulkDeleteOpen(false);
@@ -750,8 +751,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Bulk Assignment Failed', description: `${failures.length} tasks failed to assign.` });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         } finally {
             setIsBulkProcessing(false);
         }
@@ -775,8 +776,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Bulk Status Update Failed', description: `${failures.length} tasks failed to update.` });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         } finally {
             setIsBulkProcessing(false);
         }
@@ -802,8 +803,8 @@ export default function TasksClient() {
             } else {
                 toast({ variant: 'destructive', title: 'Bulk Postpone Failed', description: `${failures.length} tasks failed to update.` });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
         } finally {
             setIsBulkProcessing(false);
         }

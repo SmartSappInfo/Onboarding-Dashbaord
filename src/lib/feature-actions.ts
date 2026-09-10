@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { APP_FEATURES, type AppFeatureId, type FeatureToggleMap } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server actions for the Feature Toggle system.
@@ -38,9 +39,9 @@ export async function updateOrganizationFeaturesAction(
 
     revalidatePath('/admin/settings');
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[FEATURE_ACTIONS] Org update failed:', e);
-    return { success: false, error: e.message };
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -99,8 +100,8 @@ export async function updateWorkspaceFeaturesAction(
 
     revalidatePath('/admin/settings');
     return { success: true };
-  } catch (e: any) {
+  } catch (e: unknown) {
     console.error('[FEATURE_ACTIONS] Workspace update failed:', e);
-    return { success: false, error: e.message };
+    return { success: false, error: getErrorMessage(e) };
   }
 }

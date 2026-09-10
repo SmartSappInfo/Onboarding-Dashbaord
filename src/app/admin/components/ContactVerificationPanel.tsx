@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { EmailHygieneBadge } from './EmailHygieneBadge';
 import { PhoneHygieneBadge, PhoneStatus } from './PhoneHygieneBadge';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface VerificationPanelContact {
   name?: string;
@@ -135,8 +136,8 @@ export function ContactVerificationPanel({ contact, onRecheckEmail, onRecheckPho
         if (!res.ok) throw new Error('Verification trigger failed');
         toast({ title: 'Email verification queued', description: `${contact.email} is being verified.` });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Recheck failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Recheck failed', description: getErrorMessage(e) });
     } finally {
       setEmailBusy(false);
     }
@@ -157,8 +158,8 @@ export function ContactVerificationPanel({ contact, onRecheckEmail, onRecheckPho
         if (!res.ok) throw new Error('Verification trigger failed');
         toast({ title: 'Phone verification queued', description: `${contact.phone} is being verified.` });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Recheck failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Recheck failed', description: getErrorMessage(e) });
     } finally {
       setPhoneBusy(false);
     }

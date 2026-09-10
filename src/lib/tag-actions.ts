@@ -9,6 +9,7 @@ import type { Tag, TagCategory, TagAuditLog, EntityType } from './types';
 import { logActivity } from './activity-logger';
 import { userHasTagPermission } from './tag-permissions';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 
 import {
@@ -34,8 +35,8 @@ import {
 function safeRevalidatePath(path: string) {
   try {
     nextRevalidatePath(path);
-  } catch (err: any) {
-    console.warn(`[CACHE] revalidatePath skipped for path "${path}" (${err.message || err})`);
+  } catch (err: unknown) {
+    console.warn(`[CACHE] revalidatePath skipped for path "${path}" (${getErrorMessage(err) || err})`);
   }
 }
 
@@ -173,7 +174,7 @@ export async function createTagAction(data: {
     
     safeRevalidatePath('/admin/contacts/tags');
     return { success: true, data: tag };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create tag error:', error);
     return { success: false, error: getUserFriendlyErrorMessage(error) };
   }
@@ -271,7 +272,7 @@ export async function updateTagAction(
     
     safeRevalidatePath('/admin/contacts/tags');
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update tag error:', error);
     return { success: false, error: getUserFriendlyErrorMessage(error) };
   }
@@ -372,7 +373,7 @@ export async function deleteTagAction(
     safeRevalidatePath('/admin/entities');
     safeRevalidatePath('/admin/prospects');
     return { success: true, affectedCount: processedCount };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete tag error:', error);
     return { success: false, error: getUserFriendlyErrorMessage(error) };
   }
@@ -538,7 +539,7 @@ export async function mergeTagsAction(
     safeRevalidatePath('/admin/entities');
     safeRevalidatePath('/admin/prospects');
     return { success: true, affectedCount: contactsToUpdate.size };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Merge tags error:', error);
     return { success: false, error: getUserFriendlyErrorMessage(error) };
   }
@@ -565,9 +566,9 @@ export async function getTagsAction(workspaceId: string) {
     })) as Tag[];
     
     return { success: true, data: tags };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get tags error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -591,9 +592,9 @@ export async function getTagAction(tagId: string) {
     } as Tag;
     
     return { success: true, data: tag };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get tag error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -758,7 +759,7 @@ export async function applyTagsAction(
     safeRevalidatePath(`/admin/${collection}`);
     safeRevalidatePath(`/admin/${collection}/${contactId}`);
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Apply tags error:', error);
     return { success: false, error: getUserFriendlyErrorMessage(error) };
   }
@@ -912,7 +913,7 @@ export async function removeTagsAction(
     safeRevalidatePath(`/admin/${collection}`);
     safeRevalidatePath(`/admin/${collection}/${contactId}`);
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Remove tags error:', error);
     return { success: false, error: getUserFriendlyErrorMessage(error) };
   }
@@ -1623,9 +1624,9 @@ export async function getContactsByTagsAction(
     }
 
     return { success: true, data: Array.from(contactIds) };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getContactsByTagsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -1757,9 +1758,9 @@ export async function getTagUsageStatsAction(workspaceId: string): Promise<{
     stats.sort((a, b) => b.contactCount - a.contactCount);
 
     return { success: true, data: stats };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getTagUsageStatsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -1812,9 +1813,9 @@ export async function bulkDeleteUnusedTagsAction(
 
     safeRevalidatePath('/admin/contacts/tags');
     return { success: true, deletedCount };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('bulkDeleteUnusedTagsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -1867,8 +1868,8 @@ export async function getTagAuditLogsAction(
     const logs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as TagAuditLog[];
 
     return { success: true, data: logs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getTagAuditLogsAction error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

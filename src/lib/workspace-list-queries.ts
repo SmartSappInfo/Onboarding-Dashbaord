@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { WorkspaceEntity, Entity } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Optimized workspace list queries.
@@ -148,12 +149,12 @@ export async function queryWorkspaceContacts(
       items,
       total: workspaceEntitiesSnap.size,
     };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_LIST_QUERY] Failed:', e.message);
+  } catch (e: unknown) {
+    console.error('>>> [WORKSPACE_LIST_QUERY] Failed:', getErrorMessage(e));
     return {
       items: [],
       total: 0,
-      error: e.message,
+      error: getErrorMessage(e),
     };
   }
 }
@@ -189,8 +190,8 @@ export async function countWorkspaceContacts(
 
     const snapshot = await query.count().get();
     return snapshot.data().count;
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_COUNT_QUERY] Failed:', e.message);
+  } catch (e: unknown) {
+    console.error('>>> [WORKSPACE_COUNT_QUERY] Failed:', getErrorMessage(e));
     return 0;
   }
 }

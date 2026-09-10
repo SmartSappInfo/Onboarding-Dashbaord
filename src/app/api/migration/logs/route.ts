@@ -39,7 +39,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: result.data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('logs GET error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.logs', error, undefined, 'Failed to fetch logs') },

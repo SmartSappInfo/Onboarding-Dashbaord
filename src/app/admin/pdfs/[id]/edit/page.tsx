@@ -257,7 +257,7 @@ export default function EditPdfPage() {
             else setFields(prev => [...prev, ...newSuggestions]);
             toast({ title: 'AI Detection Complete', description: `${result.fields.length} potential fields found.` });
         }
-    } catch (error: any) { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
+    } catch (error: unknown) { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
   };
 
  if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;

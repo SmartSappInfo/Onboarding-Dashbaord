@@ -19,6 +19,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Plus, Loader2 } from 'lucide-react';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface DistrictSelectProps {
   value?: { id: string; name: string } | null;
@@ -86,8 +87,8 @@ export function DistrictSelect({
       onValueChange({ id: docRef.id, name });
       setSearch('');
       toast({ title: 'District Created', description: `"${name}" has been added.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsCreating(false);
     }

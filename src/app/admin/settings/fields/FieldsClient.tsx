@@ -30,6 +30,7 @@ import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { PageContainer } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ────────────────────────────────────────────
 // Constants
@@ -388,8 +389,8 @@ export default function FieldsClient() {
       } else {
         throw new Error(res.error);
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Initialization Failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Initialization Failed', description: getErrorMessage(err) });
     } finally {
       setIsInitializing(false);
     }
@@ -512,8 +513,8 @@ export default function FieldsClient() {
           setGroupModalOpen(false);
         } else throw new Error(res.error);
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     }
     setIsSubmitting(false);
   };
@@ -587,8 +588,8 @@ export default function FieldsClient() {
           setFieldModalOpen(false);
         } else throw new Error(res.error);
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     }
     setIsSubmitting(false);
   };

@@ -13,6 +13,7 @@ import { evaluateConditionNode } from './automation-condition';
 import { getBaseUrl } from './utils/url-helpers';
 import { getPersonalizedMeetingUrl } from './meeting-tokens';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -119,9 +120,9 @@ export async function syncVariableRegistry() {
     }
 
     return { success: true };
-  } catch (error: any) {
-    console.error(">>> [VARIABLES] Sync Failed:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error(">>> [VARIABLES] Sync Failed:", getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -236,9 +237,9 @@ export async function syncAllLogStatuses() {
 
     revalidatePath('/admin/messaging/logs');
     return { success: true, count: updatedCount };
-  } catch (e: any) {
-    console.error(">>> [MESSAGING:SYNC] Global Failure:", e.message);
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    console.error(">>> [MESSAGING:SYNC] Global Failure:", getErrorMessage(e));
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -276,8 +277,8 @@ export async function upsertConstantVariable(data: {
 
     revalidatePath('/admin/settings/fields');
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -295,8 +296,8 @@ export async function updateVariableVisibility(id: string, hidden: boolean) {
     });
     revalidatePath('/admin/settings/fields');
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -311,8 +312,8 @@ export async function deleteVariable(id: string) {
     await adminDb.collection('app_fields').doc(id).delete();
     revalidatePath('/admin/settings/fields');
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -358,8 +359,8 @@ export async function fetchContextualData(entity: string, id: string, parentId?:
     }
 
     return { success: true, data };
-  } catch (e: any) {
-    return { success: false, error: e.message };
+  } catch (e: unknown) {
+    return { success: false, error: getErrorMessage(e) };
   }
 }
 
@@ -473,8 +474,8 @@ export async function resolveTagVariables(
       tag_list: JSON.stringify(tagNames),
       has_tag: JSON.stringify(hasTagMap),
     };
-  } catch (error: any) {
-    console.error('resolveTagVariables error:', error.message);
+  } catch (error: unknown) {
+    console.error('resolveTagVariables error:', getErrorMessage(error));
     return empty;
   }
 }
@@ -1108,9 +1109,9 @@ export async function previewCampaignAudience(params: {
     }
 
     return { success: true, count: results.length, contactCount, preview, tagDistribution, contactsPreview };
-  } catch (error: any) {
-    console.error('previewCampaignAudience error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('previewCampaignAudience error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -1258,9 +1259,9 @@ export async function updateEntityLastContactedAt(entityId: string, workspaceId:
     });
 
     return { success: true };
-  } catch (error: any) {
-    console.error('[LAST_CONTACTED] Update failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('[LAST_CONTACTED] Update failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -1506,9 +1507,9 @@ export async function getSimulationVariablesAction(params: {
       variables, 
       contacts: contact ? contact.entityContacts || [] : [] 
     };
-  } catch (error: any) {
-    console.error('getSimulationVariablesAction error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('getSimulationVariablesAction error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

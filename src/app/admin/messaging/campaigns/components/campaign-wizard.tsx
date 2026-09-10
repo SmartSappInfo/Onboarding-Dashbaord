@@ -49,6 +49,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { createTagAction } from '@/lib/tag-actions';
 import { ChevronsUpDown } from 'lucide-react';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 
 
@@ -447,8 +448,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
             } else {
                 toast({ variant: 'destructive', title: 'Failed to create tag', description: result.error || 'Could not create tag.' });
             }
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Error', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
         }
     };
 
@@ -650,8 +651,8 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                 await createCampaign(firestore, data);
                 toast({ title: 'Draft Saved' });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         } finally {
             setField('isSaving', false);
         }

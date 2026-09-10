@@ -23,6 +23,7 @@ import type {
   WhatsAppQualityRating,
 } from '@/lib/whatsapp/whatsapp-types';
 import { parseDraft, serializeDraft, isDraftEmpty, type CredentialDraft } from '@/lib/whatsapp/whatsapp-draft';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // Derived display maps — computed during render, never in effects. Status/quality
 // keep semantic state colours (with dark: variants) per the QR Studio convention.
@@ -182,8 +183,8 @@ export default function WhatsAppCredentialForm() {
       } else {
         toast({ variant: 'destructive', title: 'Save failed', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsSaving(false);
     }
@@ -208,8 +209,8 @@ export default function WhatsAppCredentialForm() {
       } else {
         toast({ variant: 'destructive', title: 'Test failed', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsTesting(false);
     }
@@ -229,8 +230,8 @@ export default function WhatsAppCredentialForm() {
       } else {
         toast({ variant: 'destructive', title: 'Disconnect failed', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsDisconnecting(false);
     }

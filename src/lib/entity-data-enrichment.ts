@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors/report-error';
 /**
  * Entity Data Enrichment — Fetch → Enrich → Restore Protocol
  *
@@ -219,10 +220,10 @@ export async function enrichEntitiesFromBackup(
                 console.log(
                     `   ✓ Enriched "${entitySlug}" (+${fieldsEnriched} fields)`
                 );
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error(`❌ Error enriching "${entitySlug}":`, error);
                 result.failed++;
-                result.errors.push({ slug: entitySlug, error: error.message });
+                result.errors.push({ slug: entitySlug, error: getErrorMessage(error) });
             }
         }
 
@@ -250,7 +251,7 @@ export async function enrichEntitiesFromBackup(
         console.log(`     • slogan: ${result.fieldStats.slogan}`);
 
         return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('💥 Fatal error during enrichment:', error);
         throw error;
     }

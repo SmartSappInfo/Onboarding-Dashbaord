@@ -9,6 +9,7 @@ import { COLLECTIONS } from './collection-constants';
 import { submissionsToCSV } from './forms-utils';
 import { normalizeFormEntityCapture } from './tracking-utils';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server-side actions for the Form Builder.
@@ -52,9 +53,9 @@ export async function createFormAction(data: Omit<Form, 'id' | 'createdAt' | 'up
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true, id: ref.id };
-  } catch (error: any) {
-    console.error('>>> [FORMS] Create Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FORMS] Create Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -113,9 +114,9 @@ export async function updateFormAction(id: string, data: Partial<Form>, userId: 
     revalidatePath(REVALIDATION_PATH);
     revalidatePath(`/admin/forms/${id}/edit`);
     return { success: true, version: nextVersion };
-  } catch (error: any) {
-    console.error('>>> [FORMS] Update Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FORMS] Update Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -214,9 +215,9 @@ export async function cloneFormAction(formId: string, userId: string) {
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true, id: newRef.id };
-  } catch (error: any) {
-    console.error('>>> [FORMS] Clone Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FORMS] Clone Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -242,9 +243,9 @@ export async function toggleFormStatusAction(id: string, newStatus: 'published' 
     await ref.update(updates);
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FORMS] Status Toggle Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FORMS] Status Toggle Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -440,9 +441,9 @@ export async function processFormSubmissionAction(input: {
     }
 
     return { success: true, submissionId: subRef.id };
-  } catch (error: any) {
-    console.error('>>> [FORMS:SUBMIT] Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FORMS:SUBMIT] Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

@@ -44,6 +44,7 @@ import {
   normalizeContactScope,
 } from '@/lib/scope-guard';
 import { migrateLegacyWorkspaceScopesAction } from '@/lib/workspace-actions';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface ManageWorkspacesModalProps {
   entityId: string;
@@ -149,8 +150,8 @@ export default function ManageWorkspacesModal({
       } else {
         throw new Error(result.error || 'Unknown error');
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Failed to Add', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Failed to Add', description: getErrorMessage(e) });
     } finally {
       setIsSubmitting(false);
     }
@@ -174,8 +175,8 @@ export default function ManageWorkspacesModal({
       } else {
         throw new Error(result.error || 'Unknown error');
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Failed to Remove', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Failed to Remove', description: getErrorMessage(e) });
     } finally {
       setRemovingWeId(null);
     }

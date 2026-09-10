@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { exportOpenBadgeAction } from '@/app/actions/credential-actions';
 import type { IssuedCertificate, Portal } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   CheckCircle2,
   ShieldCheck,
@@ -90,8 +91,8 @@ export function PortalVerifyClient({
         title: 'Open Badge 3.0 Exported! 🏅',
         description: 'W3C Verifiable Credential JSON saved to downloads.',
       });
-    } catch (err: any) {
-      toast({ title: 'Export Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Export Failed', description: getErrorMessage(err) });
     } finally {
       setIsExportingBadge(false);
     }

@@ -59,6 +59,7 @@ import { cn } from '@/lib/utils';
 import MediaSelectorTrigger from '@/app/admin/components/MediaSelectorTrigger';
 
 import { resolveBrandingPreview as resolveBrandingInHtml } from '@/lib/utils/resolve-branding-preview';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const DEFAULT_HTML = `<html>
   <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">
@@ -226,8 +227,8 @@ export default function TenantStyleEditorPage() {
                     toast({ variant: 'destructive', title: 'Error', description: 'Style blueprint not found.' });
                     router.push(wrapHref('/admin/messaging/styles'));
                 }
-            } catch (err: any) {
-                toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to fetch style.' });
+            } catch (err: unknown) {
+                toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) || 'Failed to fetch style.' });
             } finally {
                 setLoading(false);
             }
@@ -320,8 +321,8 @@ export default function TenantStyleEditorPage() {
                 toast({ title: 'Saved Style Wrapper', description: `"${name}" changes saved.` });
             }
             router.push(wrapHref('/admin/messaging/styles'));
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(err) });
         } finally {
             setSaving(false);
         }
@@ -342,8 +343,8 @@ export default function TenantStyleEditorPage() {
             await deleteDoc(doc(firestore, 'message_styles', styleId));
             toast({ title: 'Style Deleted', description: 'Template wrapper removed successfully.' });
             router.push(wrapHref('/admin/messaging/styles'));
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Deletion Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: getErrorMessage(err) });
         } finally {
             setDeleting(false);
         }

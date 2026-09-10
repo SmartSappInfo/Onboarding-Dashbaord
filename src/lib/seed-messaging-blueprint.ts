@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import type { 
     MessageTemplate, 
     MessageStyle, 
@@ -362,8 +363,8 @@ export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean
         console.log(`✅ Seeded ${templatesCount} templates and ${stylesCount} styles.`);
         return { success: true, templates: templatesCount, styles: stylesCount };
 
-    } catch (error: any) {
-        console.error('❌ Seeding failed:', error.message);
-        return { success: false, templates: 0, styles: 0, error: error.message };
+    } catch (error: unknown) {
+        console.error('❌ Seeding failed:', getErrorMessage(error));
+        return { success: false, templates: 0, styles: 0, error: getErrorMessage(error) };
     }
 }

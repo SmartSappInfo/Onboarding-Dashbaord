@@ -30,7 +30,7 @@ export async function POST(request: NextRequest) {
     await logMigrationOperationFailed(logId, error);
 
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('log-operation-failed error:', err);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.log-operation-failed', err, undefined, 'Failed to log operation failure') },

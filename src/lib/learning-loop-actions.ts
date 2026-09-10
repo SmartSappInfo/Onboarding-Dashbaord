@@ -5,6 +5,7 @@ import { after } from 'next/server';
 import type { LearningSignal } from './types';
 import { calculateJsonDiff } from './json-diff';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Creates a new learning signal record when AI generates content.
@@ -26,9 +27,9 @@ export async function createLearningSignalAction(data: Omit<LearningSignal, 'id'
 
         await signalRef.set(signal);
         return { success: true, id: signalRef.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Create Learning Signal Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -75,9 +76,9 @@ export async function finalizeLearningSignalAction(signalId: string, finalData: 
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Finalize Learning Signal Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -101,9 +102,9 @@ export async function updateSignalRatingAction(signalId: string, rating: number)
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Update Signal Rating Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -124,9 +125,9 @@ export async function deleteLearningSignalsBySurveyAction(surveyId: string) {
         await batch.commit();
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Delete Learning Signals Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 

@@ -1,6 +1,7 @@
 'use server';
 
 import { migrateLegacyTemplatesToBlocks } from '@/lib/migrate-messaging-fer';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface MigrateLegacyTemplatesResult {
   success: boolean;
@@ -18,13 +19,13 @@ export async function migrateLegacyTemplatesToBlocksAction(): Promise<MigrateLeg
       migrated: result.migrated,
       error: result.error,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[MIGRATE_LEGACY_TEMPLATES] Migration failed:', error);
     return {
       success: false,
       total: 0,
       migrated: 0,
-      error: error.message || 'Unknown error occurred during template migration.',
+      error: getErrorMessage(error) || 'Unknown error occurred during template migration.',
     };
   }
 }

@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
       failedCount: failedAttempts.length,
       hasMore: hasMoreToSweep,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[BULK-RESEND-WORKER] Fatal error processing webhook:', error);
     return NextResponse.json({ error: toClientErrorMessage('api.automations.messages.bulk-resend', error, undefined, 'Internal server error') }, { status: 500 });
   }

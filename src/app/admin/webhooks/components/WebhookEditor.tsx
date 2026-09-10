@@ -16,6 +16,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFo
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Save, Loader2, ArrowUpRight, ArrowDownLeft, Zap,
   Globe, ShieldCheck, Eye, EyeOff, Copy, Check,
@@ -115,8 +116,8 @@ export default function WebhookEditor({ isOpen, onOpenChange, webhook }: Webhook
         toast({ title: 'Webhook Created', description: `"${name}" is now active.` });
       }
       onOpenChange(false);
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
     } finally {
       setIsSaving(false);
     }

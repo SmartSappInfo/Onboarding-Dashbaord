@@ -18,6 +18,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { IndustryVertical } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface WorkspaceMigrationResult {
   total: number;
@@ -125,9 +126,9 @@ export async function fetchWorkspacesForIndustryMigration(): Promise<WorkspaceMi
     console.log(`✅ [FETCH] Found ${needsMigration} workspaces needing migration, ${alreadyMigrated} already migrated`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [FETCH] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     result.failed = result.total;
     return result;
   }
@@ -221,10 +222,10 @@ export async function enrichWorkspacesWithIndustry(): Promise<WorkspaceMigration
           console.log(`✅ [ENRICH] Committed batch of ${batchCount} workspaces`);
           batchCount = 0;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`❌ [ENRICH] Error processing workspace ${workspaceDoc.id}:`, error);
         result.failed++;
-        result.errors.push(`${workspaceDoc.id}: ${error.message}`);
+        result.errors.push(`${workspaceDoc.id}: ${getErrorMessage(error)}`);
         result.workspaceDetails?.push({
           id: workspaceDoc.id,
           name: workspaceDoc.data().name,
@@ -244,9 +245,9 @@ export async function enrichWorkspacesWithIndustry(): Promise<WorkspaceMigration
     console.log(`✅ [ENRICH] Completed: ${result.succeeded} succeeded, ${result.failed} failed, ${result.skipped} skipped`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [ENRICH] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     return result;
   }
 }
@@ -347,19 +348,19 @@ export async function restoreWorkspaceIndustryMigration(): Promise<WorkspaceMigr
           status: 'success',
         });
         console.log(`  ✓ Workspace "${workspaceName}" has valid industry data: ${targetIndustry}`);
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`❌ [RESTORE] Error validating workspace ${workspaceDoc.id}:`, error);
         result.failed++;
-        result.errors.push(`${workspaceDoc.id}: ${error.message}`);
+        result.errors.push(`${workspaceDoc.id}: ${getErrorMessage(error)}`);
       }
     }
 
     console.log(`✅ [RESTORE] Completed: ${result.succeeded} valid, ${result.failed} invalid`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [RESTORE] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     return result;
   }
 }
@@ -432,10 +433,10 @@ export async function rollbackWorkspaceIndustryMigration(): Promise<WorkspaceMig
           console.log(`✅ [ROLLBACK] Committed batch of ${batchCount} workspaces`);
           batchCount = 0;
         }
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error(`❌ [ROLLBACK] Error rolling back workspace ${workspaceDoc.id}:`, error);
         result.failed++;
-        result.errors.push(`${workspaceDoc.id}: ${error.message}`);
+        result.errors.push(`${workspaceDoc.id}: ${getErrorMessage(error)}`);
       }
     }
 
@@ -448,9 +449,9 @@ export async function rollbackWorkspaceIndustryMigration(): Promise<WorkspaceMig
     console.log(`✅ [ROLLBACK] Completed: ${result.succeeded} succeeded, ${result.failed} failed`);
     
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ [ROLLBACK] Error:', error);
-    result.errors.push(error.message);
+    result.errors.push(getErrorMessage(error));
     return result;
   }
 }

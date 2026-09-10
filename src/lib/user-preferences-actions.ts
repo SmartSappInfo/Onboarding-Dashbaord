@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { requireAuth } from './auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Update user AI preferences for persistence across sessions
@@ -30,8 +31,8 @@ export async function updateUserAiPreferencesAction(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error updating user AI preferences:', error);
-    return { success: false, error: error.message || 'Failed to update preferences' };
+    return { success: false, error: getErrorMessage(error) || 'Failed to update preferences' };
   }
 }

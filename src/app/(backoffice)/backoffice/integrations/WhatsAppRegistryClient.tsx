@@ -14,6 +14,7 @@ import {
 } from '@/lib/whatsapp-backoffice-actions';
 import type { WhatsAppConnectionPublic } from '@/lib/whatsapp/whatsapp-types';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const STATUS_CLS: Record<string, string> = {
   connected: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20',
@@ -42,8 +43,8 @@ export default function WhatsAppRegistryClient() {
       const res = await listAllWhatsAppConnections(idToken);
       if (res.success) setRows(res.data);
       else toast({ variant: 'destructive', title: 'Load failed', description: res.error });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setLoading(false);
     }
@@ -66,8 +67,8 @@ export default function WhatsAppRegistryClient() {
       } else {
         toast({ variant: 'destructive', title: 'Failed', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setBusyOrg(null);
     }

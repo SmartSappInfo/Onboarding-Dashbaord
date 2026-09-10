@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageJob, MessageTask, MessageCampaign } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Gets campaign stats by aggregating from the job's tasks subcollection.
@@ -66,9 +67,9 @@ export async function getCampaignStats(campaignId: string): Promise<{
         deliveryRate, failureRate,
       },
     };
-  } catch (error: any) {
-    console.error('getCampaignStats error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('getCampaignStats error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -109,9 +110,9 @@ export async function getCampaignRecipientBreakdown(campaignId: string): Promise
     });
 
     return { success: true, recipients };
-  } catch (error: any) {
-    console.error('getCampaignRecipientBreakdown error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('getCampaignRecipientBreakdown error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -150,9 +151,9 @@ export async function getFailedRecipients(campaignId: string): Promise<{
     });
 
     return { success: true, failed };
-  } catch (error: any) {
-    console.error('getFailedRecipients error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('getFailedRecipients error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -174,9 +175,9 @@ export async function syncCampaignStats(campaignId: string): Promise<{ success: 
     });
 
     return { success: true };
-  } catch (error: any) {
-    console.error('syncCampaignStats error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('syncCampaignStats error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -198,9 +199,9 @@ export async function updateCampaignRealtimeStat(
     });
 
     return { success: true };
-  } catch (error: any) {
-    console.error(`[ANALYTICS] Failed to update ${stat}:`, error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error(`[ANALYTICS] Failed to update ${stat}:`, getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -256,9 +257,9 @@ export async function getCampaignEngagementTimeline(campaignId: string): Promise
       .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
     return { success: true, timeline };
-  } catch (error: any) {
-    console.error('getCampaignEngagementTimeline error:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('getCampaignEngagementTimeline error:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

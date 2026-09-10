@@ -6,6 +6,7 @@ import { getFullAdminPermissions } from './permissions-engine';
 import { migrateToPermissionsSchema } from './permissions-migration';
 import { assertUserTenantPermission } from './organization-utils';
 import { requireAuth } from './auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Generate a random 4-character hex string for slug entropy
@@ -170,9 +171,9 @@ export async function deleteOrganizationAction(
         await adminDb.collection('organizations').doc(organizationId).delete();
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error deleting organization:', error);
-        return { success: false, error: error.message || 'Failed to delete organization' };
+        return { success: false, error: getErrorMessage(error) || 'Failed to delete organization' };
     }
 }
 
@@ -198,9 +199,9 @@ export async function archiveOrganizationAction(
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error archiving organization:', error);
-        return { success: false, error: error.message || 'Failed to archive organization' };
+        return { success: false, error: getErrorMessage(error) || 'Failed to archive organization' };
     }
 }
 
@@ -227,9 +228,9 @@ export async function setOrganizationDefaultWorkspaceAction(
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Error setting default workspace:', error);
-        return { success: false, error: error.message || 'Failed to set default workspace' };
+        return { success: false, error: getErrorMessage(error) || 'Failed to set default workspace' };
     }
 }
 

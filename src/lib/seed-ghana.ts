@@ -8,6 +8,7 @@
 import { adminDb } from './firebase-admin';
 import ghanaData from '@/data/ghana_regions_districts.json';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function seedGhanaLocationsAction(organizationId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
@@ -82,8 +83,8 @@ export async function seedGhanaLocationsAction(organizationId: string) {
       seededRegions,
       seededDistricts 
     };
-  } catch (error: any) {
-    console.error('[SEED:GHANA_LOCATIONS] Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('[SEED:GHANA_LOCATIONS] Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }

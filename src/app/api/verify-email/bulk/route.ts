@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { BulkVerificationService } from '@/lib/bulk-verifier';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * POST /api/verify-email/bulk
@@ -29,10 +30,10 @@ export async function POST(req: Request) {
       processedCount: resultsTuple.length,
       data: dataMapping
     }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Bulk Email Verification API Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error during bulk verification.', details: error.message },
+      { error: 'Internal Server Error during bulk verification.', details: getErrorMessage(error) },
       { status: 500 }
     );
   }

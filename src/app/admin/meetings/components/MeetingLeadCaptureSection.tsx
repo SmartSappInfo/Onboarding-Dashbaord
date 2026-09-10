@@ -36,6 +36,7 @@ import { createTagAction } from '@/lib/tag-actions';
 import { saveAutomationAction } from '@/lib/automation-actions';
 import { createFieldAction } from '@/lib/fields-actions';
 import type { MeetingRegistrationField } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ─── Types ───────────────────────────────────────────────────────
 
@@ -187,8 +188,8 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
       } else {
         toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create field.' });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsCreatingField(false);
     }
@@ -217,8 +218,8 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
       } else {
         toast({ variant: 'destructive', title: 'Failed', description: result.error || 'Could not create automation.' });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     }
   }, [user, activeWorkspaceId, activeOrganizationId, watch, setValue, toast]);
 
@@ -556,8 +557,8 @@ function CreateTagDialog({ open, onOpenChange, workspaceId, organizationId, user
       toast({ title: 'Tag created', description: `"${newTagName}" is now available.` });
       setNewTagName('');
       onOpenChange(false);
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Failed', description: getErrorMessage(err) });
     } finally {
       setIsSubmitting(false);
     }
@@ -616,8 +617,8 @@ function CreateAutomationDialog({ open, onOpenChange, workspaceId, organizationI
       toast({ title: 'Automation created', description: `"${newAutoName}" saved as draft.` });
       setNewAutoName('');
       onOpenChange(false);
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Failed', description: getErrorMessage(err) });
     } finally {
       setIsSubmitting(false);
     }

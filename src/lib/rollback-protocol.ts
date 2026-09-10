@@ -1,4 +1,5 @@
 import { adminDb } from './firebase-admin';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const BATCH_SIZE = 450;
 
@@ -55,10 +56,10 @@ export async function rollbackCollectionForeignKeys(
                 
                 result.succeeded++;
                 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error(`❌ Error rolling back doc ${doc.id}:`, error);
                 result.failed++;
-                result.errors.push({ id: doc.id, error: error.message });
+                result.errors.push({ id: doc.id, error: getErrorMessage(error) });
             }
         }
         
@@ -69,7 +70,7 @@ export async function rollbackCollectionForeignKeys(
         
         return result;
         
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('💥 Fatal error during rollback:', error);
         throw error;
     }

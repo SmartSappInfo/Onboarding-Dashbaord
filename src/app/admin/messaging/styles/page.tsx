@@ -86,6 +86,7 @@ import { MultiSelect } from '@/components/ui/multi-select';
 import { Skeleton } from '@/components/ui/skeleton';
 import MediaSelectorTrigger from '../../components/MediaSelectorTrigger';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function MessageStylesPage() {
     const firestore = useFirestore();
@@ -311,8 +312,8 @@ export default function MessageStylesPage() {
             setWorkspaceIds([activeWorkspaceId]);
             setIsAdding(false);
             toast({ title: 'Style Created' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         } finally {
             setIsSubmitting(false);
         }
@@ -359,8 +360,8 @@ export default function MessageStylesPage() {
 
             // Automatically route to edit page for newly cloned adopted style
             router.push(wrapHref(`/admin/messaging/styles/${docRef.id}`));
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Adoption Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Adoption Failed', description: getErrorMessage(err) });
         } finally {
             setIsSubmitting(false);
         }
@@ -393,8 +394,8 @@ export default function MessageStylesPage() {
             });
             setEditingStyle(null);
             toast({ title: 'Style Updated' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
         } finally {
             setIsUpdating(false);
         }
@@ -423,8 +424,8 @@ export default function MessageStylesPage() {
 
             setGeneratedHtml(result.htmlWrapper);
             toast({ title: 'AI Style Generated', description: result.explanation });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'AI Generation Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'AI Generation Failed', description: getErrorMessage(e) });
         } finally {
             setIsAiProcessing(false);
         }
@@ -456,8 +457,8 @@ export default function MessageStylesPage() {
             setGeneratedHtml(null);
             setIsAiGenerating(false);
             toast({ title: 'AI Style Created' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         } finally {
             setIsSubmitting(false);
         }
@@ -544,8 +545,8 @@ export default function MessageStylesPage() {
                     title: 'Blueprint Adopted & Set Default',
                     description: `"${style.name}" has been adopted and set as default for this workspace.`
                 });
-            } catch (e: any) {
-                toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
+            } catch (e: unknown) {
+                toast({ variant: 'destructive', title: 'Action Failed', description: getErrorMessage(e) });
             } finally {
                 setIsSubmitting(false);
             }
@@ -572,8 +573,8 @@ export default function MessageStylesPage() {
                     ? `"${style.name}" is now the default brand style.`
                     : `"${style.name}" is no longer the default brand style.`
             });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Action Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Action Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -596,8 +597,8 @@ export default function MessageStylesPage() {
                 updatedAt: new Date().toISOString()
             });
             toast({ title: 'Brand Aesthetics Saved', description: 'Organization branding assets updated successfully.' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(err) });
         } finally {
             setIsSavingBrand(false);
         }

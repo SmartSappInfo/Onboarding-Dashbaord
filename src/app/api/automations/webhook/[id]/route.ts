@@ -2,6 +2,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { triggerAutomationProtocols } from '@/lib/automation-processor';
 import { NextResponse, after } from 'next/server';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Universal Ingress for External Automation Triggers.
@@ -66,8 +67,8 @@ export async function POST(
         }
       });
     }
-  } catch (parseError: any) {
-    console.warn('[WEBHOOK] Payload parsing warning:', parseError.message);
+  } catch (parseError: unknown) {
+    console.warn('[WEBHOOK] Payload parsing warning:', getErrorMessage(parseError));
   }
 
   try {
@@ -129,8 +130,8 @@ export async function POST(
       after(async () => {
         try {
           await triggerAutomationProtocols('WEBHOOK_RECEIVED', payload);
-        } catch (err: any) {
-          console.error(`>>> [WEBHOOK:INGRESS] Async trigger failed for ${automationId}:`, err.message);
+        } catch (err: unknown) {
+          console.error(`>>> [WEBHOOK:INGRESS] Async trigger failed for ${automationId}:`, getErrorMessage(err));
         }
       });
 
@@ -147,9 +148,9 @@ export async function POST(
       ingressId: automationId 
     });
 
-  } catch (error: any) {
-    console.error(">>> [WEBHOOK:INGRESS] CRITICAL FAILURE:", error.message);
-    return NextResponse.json({ error: 'Logical Ingress Failure', details: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error(">>> [WEBHOOK:INGRESS] CRITICAL FAILURE:", getErrorMessage(error));
+    return NextResponse.json({ error: 'Logical Ingress Failure', details: getErrorMessage(error) }, { status: 500 });
   }
 }
 
@@ -253,8 +254,8 @@ export async function GET(
       after(async () => {
         try {
           await triggerAutomationProtocols('WEBHOOK_RECEIVED', payload);
-        } catch (err: any) {
-          console.error(`>>> [WEBHOOK:INGRESS] Async GET trigger failed for ${automationId}:`, err.message);
+        } catch (err: unknown) {
+          console.error(`>>> [WEBHOOK:INGRESS] Async GET trigger failed for ${automationId}:`, getErrorMessage(err));
         }
       });
     }
@@ -387,8 +388,8 @@ export async function GET(
       ingressId: automationId 
     });
 
-  } catch (error: any) {
-    console.error(">>> [WEBHOOK:INGRESS] GET FAILURE:", error.message);
-    return NextResponse.json({ error: 'Logical Ingress Failure', details: error.message }, { status: 500 });
+  } catch (error: unknown) {
+    console.error(">>> [WEBHOOK:INGRESS] GET FAILURE:", getErrorMessage(error));
+    return NextResponse.json({ error: 'Logical Ingress Failure', details: getErrorMessage(error) }, { status: 500 });
   }
 }

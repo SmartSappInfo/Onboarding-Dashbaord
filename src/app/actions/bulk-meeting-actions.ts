@@ -5,6 +5,7 @@ import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meetin
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
 import type { WorkspaceEntity, MeetingRegistrant } from '@/lib/types';
 import { getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface BulkMeetingInviteData {
   entityIds: string[];
@@ -201,9 +202,9 @@ export async function bulkRegisterParticipantsActionCore(data: BulkMeetingInvite
       count: processedResults.length,
       message: `Successfully registered ${processedResults.length} participants.${sendInvites ? ' Invitation links have been dispatched.' : ''}`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[bulkRegisterParticipantsAction] Error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

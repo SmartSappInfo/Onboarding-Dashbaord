@@ -56,6 +56,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { PageContainer } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 function SurveyResponseCount({ surveyId }: { surveyId: string }) {
     const firestore = useFirestore();
@@ -150,8 +151,8 @@ export default function SurveysClient() {
         } else {
             toast({ variant: 'destructive', title: 'Delete Failed', description: result.error });
         }
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to delete survey." });
+    } catch (e: unknown) {
+        toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || "Failed to delete survey." });
     }
   };
 
@@ -173,7 +174,7 @@ export default function SurveysClient() {
       } else {
         toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete cloning operation.' });
     } finally {
       setCloningId(null);
@@ -190,8 +191,8 @@ export default function SurveysClient() {
         } else {
             toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
         }
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to update status." });
+    } catch (e: unknown) {
+        toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || "Failed to update status." });
     }
   };
 

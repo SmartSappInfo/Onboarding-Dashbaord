@@ -173,7 +173,7 @@ const generateSurveyFlow = ai.defineFlow(
                 const response = await fetch(input.content);
                 if (!response.ok) throw new Error(`Failed to fetch URL: ${response.statusText}`);
                 sourceText = await response.text();
-            } catch (e: any) {
+            } catch (e: unknown) {
                 console.error("URL fetch failed:", e);
                 throw new Error("Could not retrieve content from the provided URL.");
             }

@@ -18,6 +18,7 @@ import { validateScopeMatch } from './scope-guard';
 import { parseCSV, inferEntityType } from './csv-parser';
 import { validateRequiredFields } from './import-templates';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import type {
   Entity,
   InstitutionData,
@@ -163,10 +164,10 @@ export async function importContactsAction(input: ImportContactsInput): Promise<
           );
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         errors.push({
           row: rowNumber,
-          reason: error.message || 'Unknown error during import',
+          reason: getErrorMessage(error) || 'Unknown error during import',
         });
       }
     }
@@ -199,15 +200,15 @@ export async function importContactsAction(input: ImportContactsInput): Promise<
       duplicateEntityIds,
     };
 
-  } catch (error: any) {
-    console.error('>>> [IMPORT] Failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [IMPORT] Failed:', getErrorMessage(error));
     return {
       success: false,
       totalRows: 0,
       successCount: 0,
       errorCount: 1,
       skippedCount: 0,
-      errors: [{ row: 0, reason: error.message }],
+      errors: [{ row: 0, reason: getErrorMessage(error) }],
       createdEntityIds: [],
       duplicateEntityIds: [],
     };

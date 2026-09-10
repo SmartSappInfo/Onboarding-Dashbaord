@@ -2,6 +2,7 @@
 
 import { seedDefaultPrompts } from '@/lib/seed-prompts';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface SeedPromptsResult {
   success: boolean;
@@ -17,12 +18,12 @@ export async function seedPromptsAction(): Promise<SeedPromptsResult> {
 
   try {
     return await seedDefaultPrompts();
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[SEED_PROMPTS_ACTION] Failed:', error);
     return {
       success: false,
       seededCount: 0,
-      error: error.message || 'Unknown seeding failure.'
+      error: getErrorMessage(error) || 'Unknown seeding failure.'
     };
   }
 }

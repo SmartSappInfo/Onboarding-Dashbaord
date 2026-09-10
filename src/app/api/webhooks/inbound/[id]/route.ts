@@ -3,6 +3,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { triggerAutomationProtocols } from '@/lib/automation-processor';
 import { logActivity } from '@/lib/activity-logger';
 import crypto from 'crypto';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Inbound Webhook Endpoint
@@ -135,8 +136,8 @@ export async function POST(
       webhookId: id,
     });
 
-  } catch (error: any) {
-    console.error('>>> [INBOUND WEBHOOK] Error:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [INBOUND WEBHOOK] Error:', getErrorMessage(error));
 
     return NextResponse.json(
       { error: 'Internal server error' },

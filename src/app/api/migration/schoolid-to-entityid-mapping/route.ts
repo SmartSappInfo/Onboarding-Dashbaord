@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
       total: mappings.length,
       generatedAt: new Date().toISOString()
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:MIGRATION:MAPPING] Error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.schoolid-to-entityid-mapping', error, undefined, 'Internal server error') },

@@ -22,6 +22,7 @@ import { Label } from '@/components/ui/label';
 import { Search, X, CheckCircle2, AlertCircle, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface AssignContactsToTagDialogProps {
   open: boolean;
@@ -102,9 +103,9 @@ export function AssignContactsToTagDialog({
         setResult({ success: false, count: 0 });
         toast({ variant: 'destructive', title: 'Assignment Failed', description: (res as any).error });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       setResult({ success: false, count: 0 });
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsProcessing(false);
     }

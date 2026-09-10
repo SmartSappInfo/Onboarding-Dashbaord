@@ -17,6 +17,7 @@ import { seedMeetingsV2Action } from '@/app/actions/seed-meetings-action';
 import type { BackfillReport } from '@/lib/migrations/backfill-sender-org';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function SeedsClient() {
     const { toast } = useToast();
@@ -76,11 +77,11 @@ export default function SeedsClient() {
                     description: result.errors[0]?.error || 'Failed to seed global messaging blueprints.',
                 });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 variant: 'destructive',
                 title: 'Execution Error',
-                description: error.message || 'An error occurred during global messaging blueprints seeding.',
+                description: getErrorMessage(error) || 'An error occurred during global messaging blueprints seeding.',
             });
         }
         setIsGlobalSeeding(false);
@@ -102,11 +103,11 @@ export default function SeedsClient() {
                     description: result.errors[0]?.error || 'Failed to enrich meeting templates.',
                 });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 variant: 'destructive',
                 title: 'Execution Error',
-                description: error.message || 'An error occurred during meeting template seeding.',
+                description: getErrorMessage(error) || 'An error occurred during meeting template seeding.',
             });
         }
         setIsSeeding(false);
@@ -136,8 +137,8 @@ export default function SeedsClient() {
                 title: 'Search index backfilled',
                 description: `${processed.toLocaleString()} scanned · ${updated.toLocaleString()} updated.`,
             });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Backfill failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Backfill failed', description: getErrorMessage(error) });
         } finally {
             setIsBackfilling(false);
         }
@@ -167,8 +168,8 @@ export default function SeedsClient() {
                 title: 'Contact projection backfilled',
                 description: `${processed.toLocaleString()} entities scanned · ${written.toLocaleString()} contacts projected.`,
             });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Backfill failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Backfill failed', description: getErrorMessage(error) });
         } finally {
             setIsContactsBackfilling(false);
         }
@@ -198,8 +199,8 @@ export default function SeedsClient() {
                 title: 'Contact projection reconciled',
                 description: `${processed.toLocaleString()} entities · ${upserts.toLocaleString()} upserts · ${deletes.toLocaleString()} deletes.`,
             });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Reconcile failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Reconcile failed', description: getErrorMessage(error) });
         } finally {
             setIsReconciling(false);
         }
@@ -223,7 +224,7 @@ export default function SeedsClient() {
                     description: result.errors[0]?.error || 'Failed to update blueprint styles.',
                 });
             }
-        } catch (error: any) {
+        } catch (error: unknown) {
             toast({
                 variant: 'destructive',
                 title: 'Execution Error',

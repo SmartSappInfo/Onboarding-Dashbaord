@@ -22,6 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import type {
   CourseAssessment,
   AssessmentQuestion,
@@ -180,8 +181,8 @@ export function AssessmentBuilderModal({
       onSaved?.(assessmentDoc);
       toast({ title: 'Assessment Saved! 🎯', description: 'Quiz questions and pass rules updated.' });
       onOpenChange(false);
-    } catch (err: any) {
-      toast({ title: 'Error Saving Assessment', description: err?.message || 'Could not save quiz.' });
+    } catch (err: unknown) {
+      toast({ title: 'Error Saving Assessment', description: getErrorMessage(err) || 'Could not save quiz.' });
     } finally {
       setIsSaving(false);
     }

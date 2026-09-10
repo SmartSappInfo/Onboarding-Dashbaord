@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
 import { schedulePostEventMessages } from '@/lib/reminder-actions';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ---------------------------------------------------------------------------
 // endMeetingAction
@@ -46,9 +47,9 @@ export async function endMeetingAction(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[endMeetingAction] Error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

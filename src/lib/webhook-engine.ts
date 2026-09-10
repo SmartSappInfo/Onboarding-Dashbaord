@@ -9,6 +9,7 @@ import { adminDb } from './firebase-admin';
 import type { Webhook, AutomationTrigger } from './types';
 import { logActivity } from './activity-logger';
 import crypto from 'crypto';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * High-performance generic webhook engine.
@@ -128,8 +129,8 @@ export async function dispatchWebhook(options: {
     }
 
     return { success: true };
-  } catch (error: any) {
-    console.error(">>> [WEBHOOK] Dispatch Error:", error.message);
+  } catch (error: unknown) {
+    console.error(">>> [WEBHOOK] Dispatch Error:", getErrorMessage(error));
     
     await logActivity({
       workspaceId,
@@ -137,11 +138,11 @@ export async function dispatchWebhook(options: {
       entityId: entityId || null,
       type: 'webhook_failed' as any,
       source: source as any,
-      description: `Webhook dispatch error: ${error.message}`,
-      metadata: { error: error.message, webhookIdOrUrl, trigger }
+      description: `Webhook dispatch error: ${getErrorMessage(error)}`,
+      metadata: { error: getErrorMessage(error), webhookIdOrUrl, trigger }
     });
     
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -184,8 +185,8 @@ export async function dispatchWebhooksByTrigger(options: {
     const successCount = results.filter(r => r.success).length;
 
     return { success: true, count: successCount, total: results.length };
-  } catch (error: any) {
-    console.error(">>> [WEBHOOK] Trigger Dispatch Error:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error(">>> [WEBHOOK] Trigger Dispatch Error:", getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { BulkPhoneVerificationService } from '@/lib/bulk-phone-verifier';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const BulkSchema = z.object({
   phones: z.array(z.string()).min(1).max(200),
@@ -40,10 +41,10 @@ export async function POST(req: Request) {
       processedCount: resultsTuple.length,
       data: dataMapping,
     }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Bulk Phone Verification API Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error during bulk verification.', details: error.message },
+      { error: 'Internal Server Error during bulk verification.', details: getErrorMessage(error) },
       { status: 500 }
     );
   }

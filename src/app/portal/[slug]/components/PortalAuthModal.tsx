@@ -30,6 +30,7 @@ import {
 import { createMembershipAction } from '@/app/actions/membership-actions';
 import type { Portal } from '@/lib/types/portal';
 import { Lock, Mail, User, Key, Sparkles, Loader2, ArrowRight } from 'lucide-react';
+import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalAuthModalProps {
   open: boolean;
@@ -125,11 +126,11 @@ export function PortalAuthModal({
         toast({ title: 'Reset Link Sent 📬', description: 'Check your email inbox for password reset instructions.' });
         setMode('signin');
       }
-    } catch (err: any) {
-      let msg = err?.message || 'Authentication failed.';
-      if (err?.code === 'auth/invalid-credential' || err?.code === 'auth/wrong-password') {
+    } catch (err: unknown) {
+      let msg = getErrorMessage(err) || 'Authentication failed.';
+      if (getErrorCode(err) === 'auth/invalid-credential' || getErrorCode(err) === 'auth/wrong-password') {
         msg = 'Invalid email or password.';
-      } else if (err?.code === 'auth/email-already-in-use') {
+      } else if (getErrorCode(err) === 'auth/email-already-in-use') {
         msg = 'An account with this email already exists. Please sign in.';
       }
       toast({ title: 'Authentication Error', description: msg });

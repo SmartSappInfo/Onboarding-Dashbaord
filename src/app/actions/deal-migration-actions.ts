@@ -3,6 +3,7 @@
 import { FieldValue } from 'firebase-admin/firestore';
 import { adminDb } from '@/lib/firebase-admin';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function executeDealMigration(workspaceId: string, organizationId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints. This platform
@@ -56,8 +57,8 @@ export async function executeDealMigration(workspaceId: string, organizationId: 
         }
 
         return { success: true, migratedCount };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Deal Migration Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

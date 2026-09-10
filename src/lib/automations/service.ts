@@ -370,9 +370,9 @@ export async function manuallyReleaseWaitJob(
 
     revalidateAutomationsHub();
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logAutomationEvent('error', 'manual_release_failed', { jobId, error });
-    return { success: false, error: error.message || String(error) };
+    return { success: false, error: getErrorMessage(error) || String(error) };
   }
 }
 
@@ -404,9 +404,9 @@ export async function manuallyEndAutomationRun(
 
     revalidateAutomationsHub();
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logAutomationEvent('error', 'manual_terminate_failed', { runId, error });
-    return { success: false, error: error.message || String(error) };
+    return { success: false, error: getErrorMessage(error) || String(error) };
   }
 }
 
@@ -502,7 +502,7 @@ import type { AudienceFilter } from '../types';
 import type { ConditionGroup } from '../automation-condition';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
-import { reportError } from '@/lib/errors/report-error';
+import { getErrorMessage, reportError } from '@/lib/errors/report-error';
 
 export interface EnrollContactsOptions {
   contactScope?: 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
@@ -867,9 +867,9 @@ export async function manuallyReleaseAllWaitJobs(
 
     revalidateAutomationsHub();
     return { success: true, count: totalResumed };
-  } catch (error: any) {
+  } catch (error: unknown) {
     logAutomationEvent('error', 'manual_release_all_failed', { automationId, nodeId, error });
-    return { success: false, error: error.message || String(error) };
+    return { success: false, error: getErrorMessage(error) || String(error) };
   }
 }
 

@@ -59,6 +59,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tag as TagIcon, X, Plus, Search, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/use-media-query';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const TAG_CATEGORIES: { value: TagCategory; label: string }[] = [
   { value: 'behavioral', label: 'Behavioral' },
@@ -399,8 +400,8 @@ export function TagSelector({
       } else {
         toast({ variant: 'destructive', title: 'Error', description: result.error });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message || 'Failed to create tag' });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) || 'Failed to create tag' });
     }
   };
 

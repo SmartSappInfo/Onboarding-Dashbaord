@@ -1,5 +1,6 @@
 import type { CloudTasksClient } from '@google-cloud/tasks';
 import { adminDb } from './firebase-admin';
+import { getErrorCode, getErrorNumericCode, getErrorStatus } from '@/lib/errors/report-error';
 
 // Configurations
 const PROJECT = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';
@@ -60,10 +61,12 @@ async function executeWithRetry<T>(
   while (true) {
     try {
       return await operation();
-    } catch (err: any) {
+    } catch (err: unknown) {
       attempt++;
-      const code = err.code ?? 0;
-      const status = err.status ?? 0;
+      // gRPC codes are numeric; getErrorCode() returns the string form and would never
+      // equal 8 or 14, silently disabling the transient-retry path.
+      const code = getErrorNumericCode(err) ?? 0;
+      const status = getErrorStatus(err) ?? 0;
       // Transient codes: 8 (RESOURCE_EXHAUSTED), 14 (UNAVAILABLE). Statuses: 429, 503
       const isTransient = code === 8 || code === 14 || status === 429 || status === 503;
       if (!isTransient || attempt >= maxRetries) {
@@ -474,9 +477,9 @@ export async function cancelDelayTask(
   try {
     await executeWithRetry(() => client.deleteTask({ name: taskPath }));
     console.info(`[GCP-TASKS] Deleted remote task: ${taskPath}`);
-  } catch (err: any) {
+  } catch (err: unknown) {
     // code 5 corresponds to NOT_FOUND
-    if (err.code !== 5) {
+    if (getErrorNumericCode(err) !== 5) {
       throw err;
     }
   }

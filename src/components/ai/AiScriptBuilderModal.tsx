@@ -13,6 +13,7 @@ import { createLearningSignalAction, finalizeLearningSignalAction } from '@/lib/
 import { generateScript } from '@/ai/flows/generate-script-flow';
 import { Loader2, Sparkles, MessageSquare } from 'lucide-react';
 import { RainbowButton } from '@/components/ui/rainbow-button';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface AiScriptBuilderModalProps {
   isOpen: boolean;
@@ -83,11 +84,11 @@ export function AiScriptBuilderModal({
         title: 'Conversational Script Drafted',
         description: `Successfully generated ${channel.toUpperCase()} copy using ${liveModelId}.`,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Script Generation Failed',
-        description: error.message || 'An unexpected error occurred.',
+        description: getErrorMessage(error) || 'An unexpected error occurred.',
       });
     } finally {
       setIsGenerating(false);

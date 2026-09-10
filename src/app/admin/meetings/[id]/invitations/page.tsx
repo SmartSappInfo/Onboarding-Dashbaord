@@ -88,6 +88,7 @@ import {
   DialogHeader, DialogTitle
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const DEFAULT_SLOTS: MeetingInvitationSlot[] = [
   { id: 'initial', label: 'Initial Invitation', emailTemplateId: DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID, channels: ['email'], enabled: true },
@@ -543,8 +544,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           'messagingConfig.invitationSeries': invitationSeries,
           'messagingConfig.invitationsEnabled': true
         });
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Sync Error', description: err.message });
+      } catch (err: unknown) {
+        toast({ variant: 'destructive', title: 'Sync Error', description: getErrorMessage(err) });
       }
     }
   }, [meeting, selectedSlotId, meetingDocRef, toast]);
@@ -560,8 +561,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         await updateDoc(meetingDocRef, {
           'messagingConfig.invitationSeries': invitationSeries
         });
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Sync Error', description: err.message });
+      } catch (err: unknown) {
+        toast({ variant: 'destructive', title: 'Sync Error', description: getErrorMessage(err) });
       }
     }
   }, [meeting, selectedSlotId, meetingDocRef, toast]);
@@ -577,8 +578,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         await updateDoc(meetingDocRef, {
           'messagingConfig.invitationSeries': invitationSeries
         });
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Sync Error', description: err.message });
+      } catch (err: unknown) {
+        toast({ variant: 'destructive', title: 'Sync Error', description: getErrorMessage(err) });
       }
     }
   }, [meeting, selectedSlotId, meetingDocRef, toast]);
@@ -636,8 +637,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           toast({ variant: 'destructive', title: 'Dispatch completed with failures', description: res.message });
         }
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsSending(false);
     }
@@ -686,8 +687,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
           toast({ variant: 'destructive', title: 'Action completed with failures', description: res.message });
         }
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsAddingToSchedule(false);
     }
@@ -742,8 +743,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       } else {
         toast({ variant: 'destructive', title: 'Partial Retry Failure', description: res.message });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Retry Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Retry Error', description: getErrorMessage(e) });
     } finally {
       setIsRetrying(false);
     }
@@ -754,8 +755,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       const res = await manuallyUpdateGuestStatusAction(meetingId, invitee.id, targetState);
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Status Updated', description: `${invitee.name}'s status updated to ${targetState === 'cancelled' ? 'Declined' : targetState}.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
     }
   };
 
@@ -767,8 +768,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       const result = await toggleRegistrantAttendance(meetingId, registrant.id, newStatus === 'attended');
       if (!result.success) throw new Error(result.error);
       toast({ title: 'Attendance Updated', description: `${registrant.name}'s attendance updated.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Update failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Update failed', description: getErrorMessage(e) });
     } finally {
       setIsToggling(prev => ({ ...prev, [registrant.id]: false }));
     }
@@ -780,8 +781,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       const result = await updateRegistrantStatusAction(meetingId, registrant.id, status);
       if (!result.success) throw new Error(result.error);
       toast({ title: 'Status Updated', description: `Registrant has been ${status}.` });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     }
   };
 
@@ -795,8 +796,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       toast({ title: 'Registrant Deleted', description: 'The registration was permanently removed.' });
       setSelectedIds(prev => { const n = new Set(prev); n.delete(registrantToDelete.id); return n; });
       setRegistrantToDelete(null);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     } finally {
       setIsDeleting(false);
     }
@@ -814,8 +815,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       );
       if (!result.success) throw new Error(result.message);
       toast({ title: 'Link Sent', description: `Join link emailed to ${registrant.name}.` });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     }
   };
 
@@ -849,8 +850,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
         toast({ title: 'Links Sent', description: result.message });
         setSelectedIds(new Set());
       }
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Bulk Action Failed', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Bulk Action Failed', description: getErrorMessage(error) });
     } finally {
       setIsProcessingBulk(false);
     }
@@ -868,8 +869,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       });
       toast({ title: 'Success', description: 'Resend templates updated successfully.' });
       setIsResendTemplatesModalOpen(false);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Error', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
     } finally {
       setIsSavingResendTemplates(false);
     }
@@ -889,8 +890,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
       toast({ title: 'Success', description: 'Registrant manually added.' });
       setIsRegisterOpen(false);
       setRegForm({ name: '', email: '', phone: '' });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Registration Failed', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Registration Failed', description: getErrorMessage(error) });
     } finally {
       setIsRegistering(false);
     }
@@ -1621,8 +1622,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                                   smsTemplateId
                                 );
                                 toast({ title: 'Success', description: 'Invitation resent successfully.' });
-                              } catch (e: any) {
-                                toast({ variant: 'destructive', title: 'Error', description: e.message });
+                              } catch (e: unknown) {
+                                toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
                               } finally {
                                 setIsRowSending(prev => ({ ...prev, [invitee.id]: false }));
                               }

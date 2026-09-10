@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { TEMPLATES } from '@/lib/messaging-templates-registry';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Seeds all standard meeting templates and runs a Fetch-Enrich-Restore protocol
@@ -231,14 +232,14 @@ export async function seedEnrichedMeetingTemplatesAction(): Promise<{
       seededCount,
       errors: []
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[SEED_ENRICHED_MEETING_TEMPLATES] Seeding failed:', error);
     return {
       success: false,
       totalProcessed: 0,
       enrichedCount: 0,
       seededCount: 0,
-      errors: [{ name: 'Enriched Seeding Failure', error: error.message || 'Unknown error' }]
+      errors: [{ name: 'Enriched Seeding Failure', error: getErrorMessage(error) || 'Unknown error' }]
     };
   }
 }

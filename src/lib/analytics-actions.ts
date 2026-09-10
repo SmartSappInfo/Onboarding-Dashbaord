@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Analytics Actions for Requirement 15.10: Performance Tracking
@@ -32,9 +33,9 @@ export async function recordPageViewAction(pageId: string, isUnique: boolean) {
 
         await pageRef.update(updates);
         return { success: true };
-    } catch (error: any) {
-        console.error(">>> [ANALYTICS:VIEW] Failed:", error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error(">>> [ANALYTICS:VIEW] Failed:", getErrorMessage(error));
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -56,9 +57,9 @@ export async function recordInteractionAction(pageId: string, blockId?: string) 
         // we could log to a subcollection or increment a map here.
         
         return { success: true };
-    } catch (error: any) {
-        console.error(">>> [ANALYTICS:INTERACTION] Failed:", error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error(">>> [ANALYTICS:INTERACTION] Failed:", getErrorMessage(error));
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -76,7 +77,7 @@ export async function recordConversion(pageId: string) {
             'stats.conversions': FieldValue.increment(1),
             updatedAt: new Date().toISOString()
         });
-    } catch (error: any) {
-        console.error(">>> [ANALYTICS:CONVERSION] Failed to record:", error.message);
+    } catch (error: unknown) {
+        console.error(">>> [ANALYTICS:CONVERSION] Failed to record:", getErrorMessage(error));
     }
 }

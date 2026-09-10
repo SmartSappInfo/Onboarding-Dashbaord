@@ -6,6 +6,7 @@ import { useEditor } from '../EditorContext';
 import { FieldOverlay } from './FieldOverlay';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useDroppable } from '@dnd-kit/core';
+import { getErrorName } from '@/lib/errors/report-error';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -83,8 +84,8 @@ export const PageRenderer = React.memo(function PageRenderer({ pdfDoc, pageNumbe
             await renderTask.promise;
           }
         }
-      } catch (e: any) {
-        if (e.name !== 'RenderingCancelledException') console.error("Render Error:", e);
+      } catch (e: unknown) {
+        if (getErrorName(e) !== 'RenderingCancelledException') console.error("Render Error:", e);
       } finally {
         if (isMounted) setIsRendering(false);
       }

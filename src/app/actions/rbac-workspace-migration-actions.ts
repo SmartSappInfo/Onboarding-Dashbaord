@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { UserProfile, Role, PermissionsSchema, AppPermissionId } from '@/lib/types';
 import { mergePermissionsSchemas, getBlankPermissions } from '@/lib/permissions-engine';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export type WorkspaceRbacMigrationResult = {
     total: number;
@@ -57,9 +58,9 @@ export async function fetchUsersForWorkspaceRbacMigration(organizationId: string
                 errors: []
             }
         };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Fetch error:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -154,9 +155,9 @@ export async function enrichUsersWithWorkspaceRbac(organizationId: string): Prom
                     await batch.commit();
                     batchCount = 0;
                 }
-            } catch (err: any) {
+            } catch (err: unknown) {
                 failed++;
-                errors.push(`User ${user.id}: ${err.message}`);
+                errors.push(`User ${user.id}: ${getErrorMessage(err)}`);
             }
         }
 
@@ -177,9 +178,9 @@ export async function enrichUsersWithWorkspaceRbac(organizationId: string): Prom
             }
         };
 
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Enrich error:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -226,9 +227,9 @@ export async function restoreWorkspaceRbacMigration(organizationId: string): Pro
                 errors
             }
         };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Restore error:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -289,8 +290,8 @@ export async function rollbackWorkspaceRbacMigration(organizationId: string): Pr
                 errors
             }
         };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('Rollback error:', e);
-        return { success: false, error: e.message };
+        return { success: false, error: getErrorMessage(e) };
     }
 }

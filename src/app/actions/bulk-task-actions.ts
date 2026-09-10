@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Task, WorkspaceEntity } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface BulkTaskCreationData {
   entityIds: string[];
@@ -95,9 +96,9 @@ export async function bulkCreateTasksActionCore(data: BulkTaskCreationData) {
       count: processedResults.length,
       message: `Successfully initiated ${processedResults.length} administrative tasks.`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[bulkCreateTasksAction] Error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

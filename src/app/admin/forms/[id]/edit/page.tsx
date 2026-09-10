@@ -81,6 +81,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ────────────────────────────────────────────
 // Constants
@@ -329,8 +330,8 @@ export default function EditFormPage() {
       } else {
         toast({ variant: 'destructive', title: 'Action Failed', description: res.error });
       }
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) });
     } finally {
       setIsTagSaving(false);
     }
@@ -364,8 +365,8 @@ export default function EditFormPage() {
         ...currentActions,
         webhooks: [...currentWebhooks, docRef.id]
       });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Error Saving Webhook', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Error Saving Webhook', description: getErrorMessage(e) });
     } finally {
       setIsWebhookSaving(false);
     }

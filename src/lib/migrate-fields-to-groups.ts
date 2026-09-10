@@ -1,6 +1,7 @@
 import { adminDb } from './firebase-admin';
 import type { AppField, FieldGroup, Workspace, IndustryVertical } from './types';
 import { resolveGroupIcon } from './industry-field-registry';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Migration Script: Fields to Groups
@@ -126,8 +127,8 @@ export async function migrateFieldsToGroups() {
     console.log(`- Fields Migrated: ${migratedFields}`);
     
     return { success: true, migratedWorkspaces, createdGroups, migratedFields };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('>>> Migration Failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface AttendanceResult {
   success: boolean;
@@ -89,9 +90,9 @@ export async function logMeetingAttendance(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[logMeetingAttendance] Failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -151,7 +152,7 @@ export async function validateRegistrantToken(
         registrationData: data.registrationData || {},
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[validateRegistrantToken] Failed:', error);
     return { valid: false };
   }
@@ -198,9 +199,9 @@ export async function toggleRegistrantAttendance(
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[toggleRegistrantAttendance] Failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

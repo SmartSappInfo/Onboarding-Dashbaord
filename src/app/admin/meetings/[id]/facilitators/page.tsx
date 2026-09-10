@@ -45,6 +45,7 @@ import {
   DropdownMenuSeparator 
 } from '@/components/ui/dropdown-menu';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const CUSTOM_FACILITATOR_SENTINEL = '__add_custom__';
 
@@ -130,8 +131,8 @@ export default function MeetingFacilitatorsPage() {
         facilitators: [...currentFacs, newFacilitator]
       });
       toast({ title: 'Facilitator Added', description: `${newFacilitator.name} is now assigned.` });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Failed to add', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Failed to add', description: getErrorMessage(err) });
     }
   };
 
@@ -160,8 +161,8 @@ export default function MeetingFacilitatorsPage() {
       toast({ title: 'Presenter Added', description: `${newFacilitator.name} is now assigned.` });
       setIsAddingCustom(false);
       setCustomFacilitator({ name: '', email: '', phone: '', role: '', bio: '', image: '' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Failed to add', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Failed to add', description: getErrorMessage(err) });
     }
   };
 
@@ -179,8 +180,8 @@ export default function MeetingFacilitatorsPage() {
     try {
       await updateDoc(meetingDocRef, { facilitators: updatedFacs });
       toast({ title: 'Profile Updated', description: 'Changes saved successfully.' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Save failed', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Save failed', description: getErrorMessage(err) });
     }
   };
 
@@ -194,8 +195,8 @@ export default function MeetingFacilitatorsPage() {
       try {
         await updateDoc(meetingDocRef, { facilitators: updatedFacs });
         toast({ title: 'Facilitator Removed', description: `${name} has been removed.` });
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Removal failed', description: err.message });
+      } catch (err: unknown) {
+        toast({ variant: 'destructive', title: 'Removal failed', description: getErrorMessage(err) });
       }
     }
   };
@@ -215,8 +216,8 @@ export default function MeetingFacilitatorsPage() {
       } else {
         toast({ variant: 'destructive', title: 'Failed to send email', description: result.message });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsSendingId(null);
     }
@@ -238,8 +239,8 @@ export default function MeetingFacilitatorsPage() {
       } else {
         toast({ variant: 'destructive', title: 'Failed to send emails', description: result.message });
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsSendingId(null);
     }

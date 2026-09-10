@@ -9,6 +9,7 @@ import { logBackofficeAction } from './audit-logger';
 import type { AuditActor, PlatformJob } from './backoffice-types';
 import type { TemplateCategory, RecipientType } from '../types';
 import { MESSAGING_TRIGGERS } from '../messaging-triggers';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // FER Protocol: Fetch, Enrich, Restore — Messaging Templates Migration
@@ -329,13 +330,13 @@ export async function processMessagingTemplatesFer(
     for (const batch of enrichBatches) {
       try {
         await batch.commit();
-      } catch (err: any) {
+      } catch (err: unknown) {
         errors++;
         await jobRef.update({
           'logs': FieldValue.arrayUnion({
             timestamp: new Date().toISOString(),
             level: 'error',
-            message: `Enrichment batch commit failed: ${err.message}`
+            message: `Enrichment batch commit failed: ${getErrorMessage(err)}`
           })
         });
       }
@@ -443,13 +444,13 @@ export async function processMessagingTemplatesFer(
       for (const batch of seedBatches) {
         try {
           await batch.commit();
-        } catch (err: any) {
+        } catch (err: unknown) {
           errors++;
           await jobRef.update({
             'logs': FieldValue.arrayUnion({
               timestamp: new Date().toISOString(),
               level: 'error',
-              message: `Seed batch commit failed: ${err.message}`
+              message: `Seed batch commit failed: ${getErrorMessage(err)}`
             })
           });
         }
@@ -490,16 +491,16 @@ export async function processMessagingTemplatesFer(
 
     return { success: true };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[FER_PROTOCOL] Critical Failure:', error);
     await jobRef.update({
       status: 'failed',
       'logs': FieldValue.arrayUnion({
         timestamp: new Date().toISOString(),
         level: 'error',
-        message: `Critical Failure: ${error.message}`
+        message: `Critical Failure: ${getErrorMessage(error)}`
       })
     });
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

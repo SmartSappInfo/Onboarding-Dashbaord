@@ -16,6 +16,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { Search, Plus, Loader2, Check } from 'lucide-react';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface LeadSourceSelectProps {
   value?: string;
@@ -89,11 +90,11 @@ export function LeadSourceSelect({
         title: 'Lead Source Created',
         description: `"${name}" has been added to custom sources.`,
       });
-    } catch (e: any) {
+    } catch (e: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: e.message || 'Failed to create lead source.',
+        description: getErrorMessage(e) || 'Failed to create lead source.',
       });
     } finally {
       setIsCreating(false);

@@ -80,6 +80,7 @@ import { ActionNodeConfigPanel } from '../components/ActionNodeConfigPanel';
 import type { ActionConfigDataSources } from '../components/ActionConfigFields';
 import { Skeleton } from '@/components/ui/skeleton';
 import { MEETING_TYPES } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface SimulatedContact extends EntityContact {
   role?: string;
@@ -649,8 +650,8 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
           toast({ variant: 'destructive', title: 'Error', description: 'Script not found' });
           router.push(wrapHref('/admin/messaging/call-centre'));
         }
-      } catch (err: any) {
-        toast({ variant: 'destructive', title: 'Error', description: err.message });
+      } catch (err: unknown) {
+        toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
       } finally {
         setIsLoading(false);
       }
@@ -1312,11 +1313,11 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
           description: res.error 
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({ 
         variant: 'destructive', 
         title: 'Error testing action', 
-        description: err.message 
+        description: getErrorMessage(err) 
       });
     } finally {
       setIsTestingAction(false);
@@ -1457,8 +1458,8 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
           toast({ variant: 'destructive', title: 'Creation Failed', description: result.error });
         }
       }
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Error', description: err.message });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
     } finally {
       setIsSaving(false);
     }
@@ -3266,8 +3267,8 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                       } else {
                         toast({ variant: 'destructive', title: 'Generation Failed', description: res.error });
                       }
-                    } catch (err: any) {
-                      toast({ variant: 'destructive', title: 'Error', description: err.message });
+                    } catch (err: unknown) {
+                      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
                     } finally {
                       setIsAiLoading(false);
                     }
@@ -3314,8 +3315,8 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                       } else {
                         toast({ variant: 'destructive', title: 'Refinement Failed', description: res.error });
                       }
-                    } catch (err: any) {
-                      toast({ variant: 'destructive', title: 'Error', description: err.message });
+                    } catch (err: unknown) {
+                      toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(err) });
                     } finally {
                       setIsAiLoading(false);
                     }

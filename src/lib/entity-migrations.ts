@@ -18,6 +18,7 @@ import {
     type Firestore
 } from 'firebase/firestore';
 import type { School } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const DEFAULT_ORG_ID = 'smartsapp-hq';
 const BATCH_SIZE = 450; // Leave room for safety
@@ -131,10 +132,10 @@ export async function migrateSchoolsToEntities(firestore: Firestore): Promise<Mi
                 
                 result.succeeded++;
                 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error(`❌ Error migrating school ${schoolDoc.id}:`, error);
                 result.failed++;
-                result.errors.push({ id: schoolDoc.id, error: error.message });
+                result.errors.push({ id: schoolDoc.id, error: getErrorMessage(error) });
             }
         }
         
@@ -152,7 +153,7 @@ export async function migrateSchoolsToEntities(firestore: Firestore): Promise<Mi
         
         return result;
         
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('💥 Fatal error during migration:', error);
         throw error;
     }
@@ -210,10 +211,10 @@ export async function rollbackEntitiesMigration(firestore: Firestore): Promise<M
                 
                 result.succeeded++;
                 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error(`❌ Error rolling back school ${backupDoc.id}:`, error);
                 result.failed++;
-                result.errors.push({ id: backupDoc.id, error: error.message });
+                result.errors.push({ id: backupDoc.id, error: getErrorMessage(error) });
             }
         }
         
@@ -230,7 +231,7 @@ export async function rollbackEntitiesMigration(firestore: Firestore): Promise<M
         
         return result;
         
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('💥 Fatal error during rollback:', error);
         throw error;
     }
@@ -354,9 +355,9 @@ export async function migrateContractsToEntities(firestore: Firestore): Promise<
                     operationCount = 0;
                 }
                 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 result.failed++;
-                result.errors.push({ id: contractDoc.id, error: error.message });
+                result.errors.push({ id: contractDoc.id, error: getErrorMessage(error) });
             }
         }
         
@@ -369,7 +370,7 @@ export async function migrateContractsToEntities(firestore: Firestore): Promise<
         console.log(`   ❌ Failed/Unmatched: ${result.failed}`);
         
         return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
         throw error;
     }
 }
@@ -399,14 +400,14 @@ export async function rollbackContractsMigration(firestore: Firestore): Promise<
                     operationCount = 0;
                 }
                 result.succeeded++;
-            } catch (e: any) {
+            } catch (e: unknown) {
                 result.failed++;
-                result.errors.push({ id: backupDoc.id, error: e.message });
+                result.errors.push({ id: backupDoc.id, error: getErrorMessage(e) });
             }
         }
         if (operationCount > 0) await batch.commit();
         return result;
-    } catch (e: any) {
+    } catch (e: unknown) {
         throw e;
     }
 }
@@ -472,15 +473,15 @@ export async function migrateSubmissionsToEntities(firestore: Firestore): Promis
                     operationCount = 0;
                 }
                 result.succeeded++;
-            } catch (error: any) {
+            } catch (error: unknown) {
                 result.failed++;
-                result.errors.push({ id: subDoc.id, error: error.message });
+                result.errors.push({ id: subDoc.id, error: getErrorMessage(error) });
             }
         }
         
         if (operationCount > 0) await batch.commit();
         return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
         throw error;
     }
 }
@@ -510,14 +511,14 @@ export async function rollbackSubmissionsMigration(firestore: Firestore): Promis
                     operationCount = 0;
                 }
                 result.succeeded++;
-            } catch (e: any) {
+            } catch (e: unknown) {
                 result.failed++;
-                result.errors.push({ id: backupDoc.id, error: e.message });
+                result.errors.push({ id: backupDoc.id, error: getErrorMessage(e) });
             }
         }
         if (operationCount > 0) await batch.commit();
         return result;
-    } catch (e: any) {
+    } catch (e: unknown) {
         throw e;
     }
 }

@@ -229,7 +229,7 @@ export default function MeetingLoader({ slug, typeSlug }: MeetingLoaderProps) {
                 setEntity(null);
             }
 
-          } catch (e: any) {
+          } catch (e: unknown) {
             console.error("MeetingLoader: Critical error", e);
             setError("Communication failure with database.");
           } finally {

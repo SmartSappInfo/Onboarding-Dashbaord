@@ -22,6 +22,7 @@ import type {
 import { MigrationEngineImpl } from './migration-engine';
 import { authedFetch } from '@/lib/auth/authed-fetch';
 import type { MigrationOperationType } from './migration-monitoring-types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Monitored Migration Engine
@@ -174,9 +175,9 @@ export class MonitoredMigrationEngine implements MigrationEngine {
       }
       
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Log operation failed
-      await this.logOperationFailed(logId, error.message || 'Unknown error');
+      await this.logOperationFailed(logId, getErrorMessage(error) || 'Unknown error');
       throw error;
     }
   }

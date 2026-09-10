@@ -40,7 +40,7 @@ export async function getActivitiesForContactCore(
             id: doc.id,
             ...doc.data()
         })) as Activity[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[ACTIVITY] Failed to query activities for contact:', error);
         return [];
     }

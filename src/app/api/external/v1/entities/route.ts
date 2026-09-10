@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
       },
       { status: 201 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:EXTERNAL:ENTITIES] POST Error:', error);
     return NextResponse.json({ error: toClientErrorMessage('api.external.v1.entities', error, undefined, 'Internal Server Error') }, { status: 500 });
   }

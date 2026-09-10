@@ -22,6 +22,7 @@ import { bulkRegisterParticipantsAction } from '@/app/actions/bulk-meeting-actio
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, getDoc } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface BulkMeetingInviteModalProps {
   entityIds: string[];
@@ -243,11 +244,11 @@ export default function BulkMeetingInviteModal({
       });
       onOpenChange(false);
       onComplete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Meeting operation failed',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setIsSubmitting(false);

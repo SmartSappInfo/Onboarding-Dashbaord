@@ -62,6 +62,7 @@ import {
   Check,
 } from 'lucide-react';
 import { PortalAuthModal } from '../components/PortalAuthModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalCommunityClientProps {
   slug: string;
@@ -228,8 +229,8 @@ export default function PortalCommunityClient({
       setPollQuestion('');
       setPollOptions(['', '']);
       setIsComposerOpen(false);
-    } catch (err: any) {
-      toast({ title: 'Publishing Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Publishing Failed', description: getErrorMessage(err) });
     } finally {
       setIsPublishing(false);
     }
@@ -257,8 +258,8 @@ export default function PortalCommunityClient({
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Vote Counted! 📊', description: 'Your selection was recorded.' });
-    } catch (err: any) {
-      toast({ title: 'Voting Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Voting Failed', description: getErrorMessage(err) });
     }
   };
 
@@ -302,9 +303,9 @@ export default function PortalCommunityClient({
         userId: user.uid,
         type,
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
       // Revert on error
-      toast({ title: 'Reaction Error', description: err?.message });
+      toast({ title: 'Reaction Error', description: getErrorMessage(err) });
     }
   };
 

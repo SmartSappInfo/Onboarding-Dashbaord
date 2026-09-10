@@ -20,6 +20,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Loader2, Search, User, ArrowLeft, UserCheck, ShieldCheck, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ContactOverride } from '@/app/admin/entities/components/AddToCampaignDialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface AddContactsDialogProps {
   open: boolean;
@@ -149,11 +150,11 @@ export function AddContactsDialog({
           description: result.error || 'Failed to add contacts.',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: err.message || 'An unexpected error occurred.',
+        description: getErrorMessage(err) || 'An unexpected error occurred.',
       });
     } finally {
       setIsSubmitting(false);

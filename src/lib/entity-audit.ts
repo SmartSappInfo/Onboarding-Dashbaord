@@ -12,6 +12,7 @@
 import { adminDb } from './firebase-admin';
 import type { EntityAuditLog } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Log an entity operation to the audit trail
@@ -382,8 +383,8 @@ export async function getEntityAuditLogs(
     const logs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as EntityAuditLog[];
 
     return { success: true, data: logs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getEntityAuditLogs error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

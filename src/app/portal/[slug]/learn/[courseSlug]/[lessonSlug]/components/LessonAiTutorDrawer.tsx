@@ -21,6 +21,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { askAiTutorAction } from '@/app/actions/ai-experience-actions';
 import type { AiTutorMessage } from '@/lib/types/ai-experience';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Sparkles,
   Send,
@@ -128,8 +129,8 @@ export function LessonAiTutorDrawer({
       };
 
       setMessages(prev => [...prev, aiMsg]);
-    } catch (err: any) {
-      toast({ title: 'Tutor Error', description: err?.message || 'Failed to reach AI Tutor.' });
+    } catch (err: unknown) {
+      toast({ title: 'Tutor Error', description: getErrorMessage(err) || 'Failed to reach AI Tutor.' });
     } finally {
       setIsSending(false);
     }

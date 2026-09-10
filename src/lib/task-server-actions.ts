@@ -6,6 +6,7 @@ import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
 import { canUser } from './workspace-permissions';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Server action to create a task with workspace awareness and entity support.
@@ -73,9 +74,9 @@ export async function createTaskAction(taskData: Omit<Task, 'id' | 'createdAt' |
         });
         
         return { success: true, id: docRef.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TASK] Failed to create task:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -179,9 +180,9 @@ export async function updateTaskAction(taskId: string, updates: Partial<Task>, u
         }
         
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TASK] Failed to update task:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -205,9 +206,9 @@ export async function deleteTaskAction(taskId: string, userId: string) {
 
         await adminDb.collection('tasks').doc(taskId).delete();
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TASK] Failed to delete task:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -234,7 +235,7 @@ export async function getTasksForContact(
             id: doc.id,
             ...doc.data()
         })) as Task[];
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TASK] Failed to query tasks for contact:', error);
         return [];
     }
@@ -268,9 +269,9 @@ export async function bulkUpdateTasksAction(taskIds: string[], updates: Partial<
 
         await batch.commit();
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TASK] Bulk Update Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 
@@ -298,8 +299,8 @@ export async function bulkDeleteTasksAction(taskIds: string[], userId: string, w
 
         await batch.commit();
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[TASK] Bulk Delete Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Tooltip,
   TooltipContent,
@@ -94,8 +95,8 @@ export default function QuickComposeButton({ entityId, recipient, entityName, as
 
       toast({ title: 'Message sent', description: `${channel === 'email' ? 'Email' : 'SMS'} sent to ${to}` });
       setOpen(false);
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: 'Send failed', description: error.message });
+    } catch (error: unknown) {
+      toast({ variant: 'destructive', title: 'Send failed', description: getErrorMessage(error) });
     } finally {
       setIsSending(false);
     }

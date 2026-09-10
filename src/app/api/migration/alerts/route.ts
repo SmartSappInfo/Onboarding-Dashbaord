@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: result.data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('alerts GET error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.alerts', error, undefined, 'Failed to fetch alerts') },
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('alerts POST error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.alerts', error, undefined, 'Failed to acknowledge alert') },

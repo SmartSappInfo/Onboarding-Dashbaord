@@ -29,6 +29,7 @@ import { ExecutionStep } from './components/ExecutionStep';
 import { CompleteStep } from './components/CompleteStep';
 import { CorrectionStep } from './components/CorrectionStep';
 import { RowEditorDialog } from './components/RowEditorDialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Base fields shown in the mapping step (always visible regardless of scope).
@@ -374,8 +375,8 @@ export default function BulkUploadClient() {
                 description: `${sanitizedRows.length} records are being processed in the background.` 
             });
             setCurrentStep('COMPLETE');
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Import Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Import Failed', description: getErrorMessage(e) });
             setCurrentStep('PREVIEW');
         }
     };

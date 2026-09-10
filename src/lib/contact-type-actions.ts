@@ -13,6 +13,7 @@
 import { adminDb } from './firebase-admin';
 import type { ContactTypeEntry, EntityType } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
     resolveContactTypes,
     getContactTypeTemplateId,
@@ -108,8 +109,8 @@ export async function saveContactTypeOverrides(
         }, { merge: true });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('[contact-type-actions] Failed to save overrides:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

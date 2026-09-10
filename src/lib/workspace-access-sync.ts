@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { Role, UserProfile } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Workspace access synchronization utilities.
@@ -81,10 +82,10 @@ export async function syncUserWorkspaceAccess(userId: string): Promise<void> {
       `>>> [WORKSPACE_ACCESS_SYNC] Updated user ${userId} workspaceIds:`,
       workspaceIdsArray
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       `>>> [WORKSPACE_ACCESS_SYNC] Failed to sync workspace access for user ${userId}:`,
-      error.message
+      getErrorMessage(error)
     );
     throw error;
   }
@@ -133,10 +134,10 @@ export async function syncRoleMembersWorkspaceAccess(roleId: string): Promise<vo
     console.log(
       `>>> [WORKSPACE_ACCESS_SYNC] Synced workspace access for ${usersSnap.size} users in role ${roleId}`
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       `>>> [WORKSPACE_ACCESS_SYNC] Failed to sync workspace access for role ${roleId} members:`,
-      error.message
+      getErrorMessage(error)
     );
     throw error;
   }
@@ -183,10 +184,10 @@ export async function syncOrganizationWorkspaceAccess(organizationId: string): P
     console.log(
       `>>> [WORKSPACE_ACCESS_SYNC] Synced workspace access for ${usersSnap.size} users in organization ${organizationId}`
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(
       `>>> [WORKSPACE_ACCESS_SYNC] Failed to sync workspace access for organization ${organizationId}:`,
-      error.message
+      getErrorMessage(error)
     );
     throw error;
   }

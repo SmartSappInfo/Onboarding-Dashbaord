@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { after } from 'next/server';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Updates the workspace-specific vocabulary map when a user corrects an AI mapping.
@@ -36,9 +37,9 @@ export async function updateWorkspaceVocabularyAction(workspaceId: string, mappi
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('Update Workspace Vocabulary Error:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }
 

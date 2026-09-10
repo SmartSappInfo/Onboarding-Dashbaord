@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import type { Perspective } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server-side actions for Perspective Management.
@@ -61,8 +62,8 @@ export async function savePerspectiveAction(id: string | null, data: Partial<Per
             revalidatePath('/admin/settings');
             return { success: true, id: newId };
         }
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -102,8 +103,8 @@ export async function deletePerspectiveAction(id: string, userId: string) {
         revalidatePath('/admin/settings');
         return { success: true };
 
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -121,7 +122,7 @@ export async function archivePerspectiveAction(id: string, archive: boolean) {
         });
         revalidatePath('/admin/settings');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }

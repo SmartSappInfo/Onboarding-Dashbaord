@@ -26,6 +26,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface CustomDataCleanupResult {
     total: number;             // Total entities scanned
@@ -74,8 +75,8 @@ export async function fetchEntitiesWithCustomData(
                 errors: [],
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -125,9 +126,9 @@ export async function cleanupEntityCustomData(
             try {
                 await batch.commit();
                 succeeded += chunk.length;
-            } catch (e: any) {
+            } catch (e: unknown) {
                 failed += chunk.length;
-                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${e.message}`);
+                errors.push(`Batch ${Math.floor(i / BATCH_SIZE) + 1}: ${getErrorMessage(e)}`);
             }
         }
 
@@ -142,8 +143,8 @@ export async function cleanupEntityCustomData(
                 errors,
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -187,7 +188,7 @@ export async function validateCustomDataCleanup(
                 errors: errors.slice(0, 20),
             },
         };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }

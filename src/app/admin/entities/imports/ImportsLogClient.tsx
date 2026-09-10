@@ -20,6 +20,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction, resolveFailedRowAction } from '@/lib/bulk-upload-actions';
 import { DuplicateResolutionPortal } from './components/DuplicateResolutionPortal';
 import { useToast } from '@/hooks/use-toast';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function ImportsLogClient() {
     const { activeWorkspace } = useWorkspace();
@@ -94,8 +95,8 @@ export default function ImportsLogClient() {
             } else {
                 toast({ title: 'Cannot cancel', description: res.message, variant: 'destructive' });
             }
-        } catch (err: any) {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        } catch (err: unknown) {
+            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' });
         }
     };
 
@@ -107,8 +108,8 @@ export default function ImportsLogClient() {
             } else {
                 toast({ title: 'Cannot resume', description: res.message, variant: 'destructive' });
             }
-        } catch (err: any) {
-            toast({ title: 'Error', description: err.message, variant: 'destructive' });
+        } catch (err: unknown) {
+            toast({ title: 'Error', description: getErrorMessage(err), variant: 'destructive' });
         }
     };
 
@@ -150,8 +151,8 @@ export default function ImportsLogClient() {
             setFailedRows(prev => prev.filter(r => r.id !== row.id));
 
             toast({ title: 'Retry dispatched successfully' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Retry failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Retry failed', description: getErrorMessage(error) });
         } finally {
             setRetryingRow(null);
         }

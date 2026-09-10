@@ -38,7 +38,7 @@ export async function GET(
         'Cache-Control': 'no-store',
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('>>> [API:GEN] CRITICAL SERVER ERROR:', error);
     return new Response(JSON.stringify({ error: toClientErrorMessage('api.pdfs.[pdfId].generate.[submissionId]', error, undefined, 'Internal server error') }), { 
         status: 500,

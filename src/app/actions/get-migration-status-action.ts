@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Fetches the status and logs of a specific migration
@@ -29,8 +30,8 @@ export async function getMigrationStatusAction(migrationId: string): Promise<{
       success: true, 
       log: { id: docSnap.id, ...docSnap.data() } as SystemMigrationLog 
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[getMigrationStatusAction] Error fetching ${migrationId}:`, error);
-    return { success: false, error: error.message || 'Failed to fetch migration status' };
+    return { success: false, error: getErrorMessage(error) || 'Failed to fetch migration status' };
   }
 }

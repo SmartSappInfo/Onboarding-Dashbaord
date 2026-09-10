@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Loader2, ClipboardCheck } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { bulkCreateTasksAction } from '@/app/actions/bulk-task-actions';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface BulkCreateTaskModalProps {
   entityIds: string[];
@@ -79,11 +80,11 @@ export default function BulkCreateTaskModal({
       });
       onOpenChange(false);
       onComplete?.();
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Bulk Task Assignment Failed',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setIsSubmitting(false);

@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { completeTaskAction } from '@/app/actions/engagement-actions';
 import type { MemberTask, TaskSubmission } from '@/lib/types/engagement';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   ListOrdered,
   CheckCircle2,
@@ -99,8 +100,8 @@ export function MemberTasksWidget({
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Task Completed! 🏆', description: 'Points claimed to your profile.' });
-    } catch (err: any) {
-      toast({ title: 'Action Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Action Failed', description: getErrorMessage(err) });
     } finally {
       setCompletingTaskId(null);
     }

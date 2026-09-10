@@ -2,6 +2,7 @@ import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { BulkVerificationService } from '@/lib/bulk-verifier';
 import { ContactHygieneRepository } from '@/lib/hygiene-repository';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const TriggerSchema = z.object({
   emails: z.array(z.string()).min(1).max(200),
@@ -71,8 +72,8 @@ export async function POST(req: Request) {
       try {
         const service = new BulkVerificationService();
         await service.processBulk(unlocked, { forceRefresh: true });
-      } catch (err: any) {
-        console.error('[verify-email/trigger] Background verification failed:', err.message);
+      } catch (err: unknown) {
+        console.error('[verify-email/trigger] Background verification failed:', getErrorMessage(err));
       }
     });
 
@@ -84,10 +85,10 @@ export async function POST(req: Request) {
       },
       { status: 202 }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[verify-email/trigger] Error:', error);
     return NextResponse.json(
-      { error: 'Verification trigger failed.', details: error.message },
+      { error: 'Verification trigger failed.', details: getErrorMessage(error) },
       { status: 500 }
     );
   }

@@ -4,6 +4,7 @@
 import { sendEmail } from './resend-service';
 import { sendSms } from './mnotify-service';
 import { getBaseUrl } from './utils/url-helpers';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Handles automated notifications for subscription payment receipt requests.
@@ -141,8 +142,8 @@ export async function sendReceiptAcknowledgementAction(payload: {
         });
 
         return { success: true };
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(">>> [NOTIFICATION ERROR]", error);
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

@@ -10,7 +10,7 @@ import { after } from 'next/server';
 import { requireWorkspace } from './auth/require-auth';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
-import { reportError } from '@/lib/errors/report-error';
+import { getErrorMessage, reportError } from '@/lib/errors/report-error';
 
 /**
  * Dispatches a campaign: resolves audience, creates job, triggers processing.
@@ -293,7 +293,7 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
 
     return { success: true, jobId: jobResult.jobId };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Rollback campaign status on critical failure
     try {
       await adminDb.collection('message_campaigns').doc(campaignId).update({
@@ -304,7 +304,7 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
       console.error('[DISPATCH] Rollback failed:', (rollbackErr as Error).message);
     }
     reportError('campaign-dispatch', error, { note: '[DISPATCH] Campaign dispatch failed:' });
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -376,9 +376,9 @@ export async function resendToFailed(campaignId: string): Promise<{
     }
 
     return { success: true, jobId: jobResult.jobId };
-  } catch (error: any) {
+  } catch (error: unknown) {
     reportError('campaign-dispatch', error, { note: '[RESEND] Failed:' });
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

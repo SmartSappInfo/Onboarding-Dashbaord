@@ -1,6 +1,7 @@
 'use server';
 
 import { processUnsubscribe } from '@/lib/services/unsubscribe-service';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PreferenceInput {
   emailStatus: 'valid' | 'bounced' | 'unsubscribed' | 'complained' | 'snoozed' | 'opt-down';
@@ -25,8 +26,8 @@ export async function updatePreferencesAction(
 
     await processUnsubscribe(recipient, preferences);
     return { success: true };
-  } catch (err: any) {
-    console.error('[UNSUBSCRIBE-ACTION] Failed to save preferences:', err.message);
-    return { success: false, error: err.message };
+  } catch (err: unknown) {
+    console.error('[UNSUBSCRIBE-ACTION] Failed to save preferences:', getErrorMessage(err));
+    return { success: false, error: getErrorMessage(err) };
   }
 }

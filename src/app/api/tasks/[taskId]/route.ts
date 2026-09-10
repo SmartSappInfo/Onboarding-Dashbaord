@@ -49,7 +49,7 @@ export async function PATCH(
 
     // Return both identifiers in response (Requirement 24.2)
     return NextResponse.json(task);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:TASKS:PATCH] Error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.tasks.[taskId]', error, undefined, 'Internal server error') },
@@ -80,7 +80,7 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:TASKS:DELETE] Error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.tasks.[taskId]', error, undefined, 'Internal server error') },

@@ -16,6 +16,7 @@ import type { Entity, Workspace, WorkspaceEntity } from './types';
 import { extractPrimaryContactFields } from './entity-contact-helpers';
 import { filterAndSortEntities, type FilterStateInput } from './utils/entity-filter-util';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server actions for workspace-entity relationship management.
@@ -381,11 +382,11 @@ export async function unlinkEntityFromWorkspaceAction(input: UnlinkEntityFromWor
     return {
       success: true,
     };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_ENTITY:UNLINK] Failed:', e.message);
+  } catch (e: unknown) {
+    console.error('>>> [WORKSPACE_ENTITY:UNLINK] Failed:', getErrorMessage(e));
     return {
       success: false,
-      error: e.message,
+      error: getErrorMessage(e),
     };
   }
 }
@@ -515,11 +516,11 @@ export async function updateWorkspaceEntityAction(input: UpdateWorkspaceEntityIn
     return {
       success: true,
     };
-  } catch (e: any) {
-    console.error('>>> [WORKSPACE_ENTITY:UPDATE] Failed:', e.message);
+  } catch (e: unknown) {
+    console.error('>>> [WORKSPACE_ENTITY:UPDATE] Failed:', getErrorMessage(e));
     return {
       success: false,
-      error: e.message,
+      error: getErrorMessage(e),
     };
   }
 }

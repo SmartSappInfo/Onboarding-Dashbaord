@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { sendRawMessage } from '@/lib/messaging-engine';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface AssigneeDetails {
   userId: string;
@@ -45,9 +46,9 @@ export async function getAssigneeDetails(userIds: string[]): Promise<{ success: 
     }
 
     return { success: true, assignees };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching assignee details:', error);
-    return { success: false, error: error.message || 'Failed to fetch assignee details' };
+    return { success: false, error: getErrorMessage(error) || 'Failed to fetch assignee details' };
   }
 }
 
@@ -147,8 +148,8 @@ export async function sendSurveyLinkToAssignee(
     }
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error sending survey link:', error);
-    return { success: false, error: error.message || 'Failed to send message' };
+    return { success: false, error: getErrorMessage(error) || 'Failed to send message' };
   }
 }

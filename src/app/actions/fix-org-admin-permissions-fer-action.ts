@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { SystemMigrationLog } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * FER: Org-Admin Permission Remediation
@@ -186,18 +187,18 @@ export async function executeFixOrgAdminPermissionsFerAction(
     }
 
     return { success: true, message: summary, dryRun, details };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[FER:ORG_ADMIN_PERMS] Failed:', error);
-    details.errors.push(error.message || 'Unknown error');
+    details.errors.push(getErrorMessage(error) || 'Unknown error');
     if (!dryRun) {
       await migrationRef.set({
         id: migrationId,
         status: 'failed',
         lastRunAt: now,
         executedBy: executorId,
-        summary: `Failed: ${error.message}`,
+        summary: `Failed: ${getErrorMessage(error)}`,
       } as SystemMigrationLog, { merge: true }).catch(() => {});
     }
-    return { success: false, message: error.message || 'Remediation failed.', dryRun, details };
+    return { success: false, message: getErrorMessage(error) || 'Remediation failed.', dryRun, details };
   }
 }

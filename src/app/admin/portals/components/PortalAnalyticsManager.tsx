@@ -20,6 +20,7 @@ import {
   refreshPortalAnalyticsAction,
 } from '@/app/actions/portal-analytics-actions';
 import type { PortalAnalyticsSnapshot } from '@/lib/types/portal-analytics';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   TrendingUp,
   Users,
@@ -75,8 +76,8 @@ export function PortalAnalyticsManager({
         } else {
           throw new Error(res.error || 'Failed to load analytics.');
         }
-      } catch (err: any) {
-        toast({ title: 'Analytics Error', description: err?.message });
+      } catch (err: unknown) {
+        toast({ title: 'Analytics Error', description: getErrorMessage(err) });
       } finally {
         setIsLoading(false);
         setIsRefreshing(false);

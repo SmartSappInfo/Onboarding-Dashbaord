@@ -5,6 +5,7 @@ import { logActivity } from './activity-logger';
 import { createEntityAction } from './entity-actions';
 import type { InstitutionData, EntityContact } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server actions for signup flow using unified entity architecture.
@@ -148,11 +149,11 @@ export async function handleSignupAction(input: SignupInput) {
       success: true,
       entityId: createdEntityId,
     };
-  } catch (e: any) {
-    console.error('>>> [SIGNUP:ACTION] Failed:', e.message);
+  } catch (e: unknown) {
+    console.error('>>> [SIGNUP:ACTION] Failed:', getErrorMessage(e));
     return {
       success: false,
-      error: e.message,
+      error: getErrorMessage(e),
     };
   }
 }

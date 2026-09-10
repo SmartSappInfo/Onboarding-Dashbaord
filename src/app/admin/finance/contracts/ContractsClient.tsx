@@ -80,6 +80,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Agreements Hub Client.
@@ -226,8 +227,8 @@ export default function AgreementsClient() {
             document.body.removeChild(a);
             
             toast({ title: 'Download Successful' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Download Failed', description: getErrorMessage(e) });
         } finally {
             setDownloadingId(null);
         }
@@ -251,8 +252,8 @@ export default function AgreementsClient() {
                 toast({ title: 'Agreement Purged', description: 'Record and associated signed document removed.' });
                 setContractToPurge(null);
             } else throw new Error(result.error);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Purge Failed', description: getErrorMessage(e) });
         } finally {
             setIsPurging(false);
         }

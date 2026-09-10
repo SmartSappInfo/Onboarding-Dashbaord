@@ -17,6 +17,7 @@ import {
 import dynamic from 'next/dynamic';
 
 import { useSearchParams } from 'next/navigation';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // bundle-dynamic-imports: lazy load wizard + analytics (Vercel best practice)
 const CampaignWizard = dynamic(
@@ -68,8 +69,8 @@ export default function CampaignsPage() {
         try {
             await cloneCampaign(firestore, campaign, user.uid);
             toast({ title: 'Campaign Cloned', description: `"Copy of ${campaign.internalName}" created as draft.` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Clone Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Clone Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -78,8 +79,8 @@ export default function CampaignsPage() {
         try {
             await archiveCampaign(firestore, campaign.id);
             toast({ title: 'Campaign Archived' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Archive Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Archive Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -88,8 +89,8 @@ export default function CampaignsPage() {
         try {
             await deleteCampaign(firestore, deleteTarget.id);
             toast({ title: 'Draft Deleted' });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Delete Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Delete Failed', description: getErrorMessage(e) });
         } finally {
             setDeleteTarget(null);
         }

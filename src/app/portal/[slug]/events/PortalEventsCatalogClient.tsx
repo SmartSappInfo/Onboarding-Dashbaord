@@ -21,6 +21,7 @@ import { useToast } from '@/hooks/use-toast';
 import { registerForEventAction } from '@/app/actions/event-actions';
 import type { LiveEvent, EventRegistration } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Calendar,
   Clock,
@@ -116,8 +117,8 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Seat Confirmed! 🎟️', description: `Registered for "${event.title}". +15 Points Earned.` });
-    } catch (err: any) {
-      toast({ title: 'Registration Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Registration Failed', description: getErrorMessage(err) });
     } finally {
       setRegisteringEventId(null);
     }

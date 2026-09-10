@@ -5,6 +5,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { updateCampaignRealtimeStat } from '@/lib/campaign-analytics';
 import { incrementMessageNodeStat } from '@/lib/messaging/message-node-stats';
 import type { MessageLog, MessageNodeStatCounter, TrackedMessageChannel } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET;
 
@@ -356,8 +357,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
 
-  } catch (error: any) {
-    console.error(`>>> [WEBHOOK] Error processing ${type}:`, error.message);
+  } catch (error: unknown) {
+    console.error(`>>> [WEBHOOK] Error processing ${type}:`, getErrorMessage(error));
     return NextResponse.json({ error: 'Internal processing error' }, { status: 500 });
   }
 }

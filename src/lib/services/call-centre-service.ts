@@ -25,7 +25,7 @@ import { logActivity } from '../activity-logger';
 import { after } from 'next/server';
 import { FieldsVariablesService } from './fields-variables-service-impl';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
-import { toClientErrorMessage } from '@/lib/errors/report-error';
+import { getErrorMessage, toClientErrorMessage } from '@/lib/errors/report-error';
 
 export class CallCentreService {
   // ─── Call Scripts ──────────────────────────────────────────────────────────
@@ -638,9 +638,9 @@ export class CallCentreService {
       await campaignRef.update(updateFields);
 
       return { success: true, count: queueItems.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CALL_CENTRE_SERVICE] Dynamic contact addition failed:', error);
-      return { success: false, count: 0, error: error.message };
+      return { success: false, count: 0, error: getErrorMessage(error) };
     }
   }
 
@@ -738,9 +738,9 @@ export class CallCentreService {
       await campaignRef.update(updateFields);
 
       return { success: true, count: validItemsToDelete.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CALL_CENTRE_SERVICE] Contact removal failed:', error);
-      return { success: false, count: 0, error: error.message };
+      return { success: false, count: 0, error: getErrorMessage(error) };
     }
   }
 
@@ -936,9 +936,9 @@ export class CallCentreService {
       });
 
       return { success: true, count: queueItems.length };
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CALL_CENTRE_SERVICE] Queue generation failed:', error);
-      return { success: false, count: 0, error: error.message };
+      return { success: false, count: 0, error: getErrorMessage(error) };
     }
   }
 
@@ -977,9 +977,9 @@ export class CallCentreService {
       });
 
       return result;
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('[CALL_CENTRE_SERVICE] Lock failed:', error);
-      return { success: false, error: error.message };
+      return { success: false, error: getErrorMessage(error) };
     }
   }
 

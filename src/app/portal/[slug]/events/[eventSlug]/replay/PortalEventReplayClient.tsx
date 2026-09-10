@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { recordEventAttendanceAction } from '@/app/actions/event-actions';
 import type { LiveEvent } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   PlayCircle,
   Sparkles,
@@ -87,8 +88,8 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
       );
       setHasClaimedPoints(true);
       toast({ title: 'Points Claimed! 🏆', description: '+20 Attendance Points added to your profile.' });
-    } catch (err: any) {
-      toast({ title: 'Claim Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Claim Failed', description: getErrorMessage(err) });
     }
   };
 

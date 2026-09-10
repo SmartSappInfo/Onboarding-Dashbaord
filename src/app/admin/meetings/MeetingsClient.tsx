@@ -98,6 +98,7 @@ const MeetingCalendar = dynamic(() => import('./components/MeetingCalendar'), {
 const MeetingQRDialog = dynamic(() => import('./components/MeetingQRDialog'), { ssr: false });
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { MeetingsNavigation } from './components/MeetingsNavigation';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const getInitials = (name?: string) => {
     if (!name) return '?';
@@ -201,11 +202,11 @@ export default function MeetingsHubClient() {
       });
 
       router.push(`/admin/meetings/${docRef.id}/edit`);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Cloning failed',
-        description: err.message || 'An error occurred while cloning the meeting.',
+        description: getErrorMessage(err) || 'An error occurred while cloning the meeting.',
       });
       setIsCloningMeetingId(null);
     }
@@ -225,11 +226,11 @@ export default function MeetingsHubClient() {
         description: 'Meeting internal name has been successfully updated.',
       });
       setEditingMeetingId(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Update failed',
-        description: err.message || 'An error occurred.',
+        description: getErrorMessage(err) || 'An error occurred.',
       });
     } finally {
       setIsUpdating(false);
@@ -370,8 +371,8 @@ export default function MeetingsHubClient() {
         });
         toast({ title: "Template Saved", description: "You can now use this layout for new sessions." });
         setMeetingForTemplate(null);
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: "Failed to save template", description: error.message });
+    } catch (error: unknown) {
+        toast({ variant: 'destructive', title: "Failed to save template", description: getErrorMessage(error) });
     } finally {
         setIsSavingTemplate(false);
     }

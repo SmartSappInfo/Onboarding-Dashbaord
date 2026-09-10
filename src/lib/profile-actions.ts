@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { EntityContact, EntityType } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Profile Update Actions
@@ -95,9 +96,9 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
     // Legacy school sync removed — entities + workspace_entities are the canonical stores
     
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[PROFILE] Update failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -127,9 +128,9 @@ export async function updateEntityIdentity(
     });
     
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[PROFILE] Entity identity update failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -178,8 +179,8 @@ export async function updateWorkspaceEntityOperations(
     });
     
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[PROFILE] Workspace entity operations update failed:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -2,6 +2,7 @@
 
 import { sendMessage } from './messaging-engine';
 import type { EmailAttachment } from './resend-service';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Input configuration for scheduling multi-entity messages
@@ -179,15 +180,15 @@ export async function scheduleMultiEntityMessages(
           await new Promise(resolve => setTimeout(resolve, delayMs));
         }
 
-      } catch (error: any) {
+      } catch (error: unknown) {
         // Unexpected error: log and continue (Requirement 4.3)
         results.totalFailed++;
         const errorKey = recipient ? `${entityId}:${recipient}` : entityId;
         results.failedEntities.push({
           entityId: errorKey,
-          error: error.message
+          error: getErrorMessage(error)
         });
-        if (onError) onError(errorKey, error.message);
+        if (onError) onError(errorKey, getErrorMessage(error));
         
         messagesSent++;
         

@@ -96,6 +96,7 @@ import BulkCreateDealModal from './components/BulkCreateDealModal';
 import BulkCreateTaskModal from './components/BulkCreateTaskModal';
 import BulkMeetingInviteModal from './components/BulkMeetingInviteModal';
 import dynamic from 'next/dynamic';
+import { getErrorMessage, getErrorName } from '@/lib/errors/report-error';
 
 const AddToCampaignDialog = dynamic(
   () => import('./components/AddToCampaignDialog').then(m => m.AddToCampaignDialog),
@@ -253,9 +254,9 @@ export default function EntitiesClient() {
       if (!abort.signal.aborted) {
         toast({ title: 'Verification Queued', description: `${allEmails.length} emails are being verified in the background. Results will appear automatically.` });
       }
-    } catch (e: any) {
-      if (e.name !== 'AbortError') {
-         toast({ variant: 'destructive', title: 'Scan Interrupted', description: e.message });
+    } catch (e: unknown) {
+      if (getErrorName(e) !== 'AbortError') {
+         toast({ variant: 'destructive', title: 'Scan Interrupted', description: getErrorMessage(e) });
       }
     } finally {
       setTimeout(() => setIsScanning(false), 2000);
@@ -272,8 +273,8 @@ export default function EntitiesClient() {
       });
       if (!res.ok) throw new Error('Verification trigger failed');
       toast({ title: 'Verification Queued', description: `${email} is being verified in the background.` });
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Recheck Failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Recheck Failed', description: getErrorMessage(e) });
     }
   };
 
@@ -470,8 +471,8 @@ export default function EntitiesClient() {
       setIsSaveAudienceOpen(false);
       setAudienceName('');
       setAudienceDesc('');
-    } catch (e: any) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
     } finally {
       setIsSavingAudience(false);
     }

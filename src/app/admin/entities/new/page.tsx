@@ -76,6 +76,7 @@ import { PageContainer } from '@/components/ui/page-container';
 // Deal opportunity integration
 import { DealOpportunityCard, type DealConfig } from '../components/DealOpportunityCard';
 import { createDeal } from '@/app/actions/deal-actions';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const formSchema = z.object({
   name: z.string().min(2, { message: 'Required name must be at least 2 characters.' }),
@@ -617,10 +618,10 @@ export default function NewEntityPage() {
       } else {
         throw new Error(result.error || `Failed to create ${singular.toLowerCase()}`);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({ 
         title: 'Save Failed', 
-        description: error.message || `An error occurred while creating the ${singular.toLowerCase()}`,
+        description: getErrorMessage(error) || `An error occurred while creating the ${singular.toLowerCase()}`,
         variant: 'destructive'
       });
       console.error('Entity creation error:', error);

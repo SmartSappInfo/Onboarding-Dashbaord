@@ -5,7 +5,7 @@ import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
-import { reportError } from '@/lib/errors/report-error';
+import { getErrorMessage, reportError } from '@/lib/errors/report-error';
 import {
   notifyAutomationStarted,
   notifyAutomationCompleted,
@@ -101,8 +101,8 @@ export async function executeAutomation(
           trigger: (triggerPayload._firingTrigger as string) || (triggerPayload.startedBy as string) || 'event',
         }
       });
-    } catch (err: any) {
-      console.error(`Failed to log activity for automation run: ${err.message}`);
+    } catch (err: unknown) {
+      console.error(`Failed to log activity for automation run: ${getErrorMessage(err)}`);
     }
   }
 

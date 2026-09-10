@@ -24,6 +24,7 @@ import {
   checkFullWorkspacePermission,
 } from './workspace-permissions';
 import type { WorkspaceEntity } from './types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Example 1: Reading a workspace_entities record
@@ -66,11 +67,11 @@ export async function getWorkspaceEntityAction(
       success: true,
       data: workspaceEntity,
     };
-  } catch (error: any) {
-    console.error('>>> [EXAMPLE] getWorkspaceEntityAction failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [EXAMPLE] getWorkspaceEntityAction failed:', getErrorMessage(error));
     return {
       success: false,
-      error: error.message,
+      error: getErrorMessage(error),
     };
   }
 }
@@ -129,11 +130,11 @@ export async function updateWorkspaceEntityStageAction(
     return {
       success: true,
     };
-  } catch (error: any) {
-    console.error('>>> [EXAMPLE] updateWorkspaceEntityStageAction failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [EXAMPLE] updateWorkspaceEntityStageAction failed:', getErrorMessage(error));
     return {
       success: false,
-      error: error.message,
+      error: getErrorMessage(error),
     };
   }
 }
@@ -190,11 +191,11 @@ export async function listWorkspaceEntitiesAction(
       success: true,
       items,
     };
-  } catch (error: any) {
-    console.error('>>> [EXAMPLE] listWorkspaceEntitiesAction failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [EXAMPLE] listWorkspaceEntitiesAction failed:', getErrorMessage(error));
     return {
       success: false,
-      error: error.message,
+      error: getErrorMessage(error),
       items: [],
     };
   }
@@ -253,11 +254,11 @@ export async function createWorkspaceBillingRecordAction(
       success: true,
       id: docRef.id,
     };
-  } catch (error: any) {
-    console.error('>>> [EXAMPLE] createWorkspaceBillingRecordAction failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [EXAMPLE] createWorkspaceBillingRecordAction failed:', getErrorMessage(error));
     return {
       success: false,
-      error: error.message,
+      error: getErrorMessage(error),
     };
   }
 }
@@ -322,11 +323,11 @@ export async function bulkUpdateEntitiesAcrossWorkspacesAction(
       accessibleWorkspaces: accessibleWorkspaceIds.length,
       totalWorkspaces: workspaceIds.length,
     };
-  } catch (error: any) {
-    console.error('>>> [EXAMPLE] bulkUpdateEntitiesAcrossWorkspacesAction failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [EXAMPLE] bulkUpdateEntitiesAcrossWorkspacesAction failed:', getErrorMessage(error));
     return {
       success: false,
-      error: error.message,
+      error: getErrorMessage(error),
       updated: 0,
     };
   }

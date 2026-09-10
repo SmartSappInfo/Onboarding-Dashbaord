@@ -24,6 +24,7 @@ import {
 } from '@/app/actions/commerce-actions';
 import type { AffiliatePartner, AffiliateReferral } from '@/lib/types/commerce';
 import type { Portal } from '@/lib/types/portal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Users,
   DollarSign,
@@ -136,8 +137,8 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Welcome Partner! 🚀', description: 'Your affiliate link is active.' });
-    } catch (err: any) {
-      toast({ title: 'Registration Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Registration Failed', description: getErrorMessage(err) });
     } finally {
       setIsRegistering(false);
     }

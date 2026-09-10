@@ -65,6 +65,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { useFirestore } from '@/firebase';
 import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { saveAgreementProgressAction, finalizeAgreementAction } from '@/lib/pdf-actions';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const pdfjsPromise = import('pdfjs-dist');
 
@@ -345,8 +346,8 @@ export default function PdfFormRenderer({
                 setIsFinalizedView(true);
             } else throw new Error(result.error);
         }
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Submission Failed', description: e.message });
+    } catch (e: unknown) {
+        toast({ variant: 'destructive', title: 'Submission Failed', description: getErrorMessage(e) });
     } finally {
         setIsSubmitting(false);
     }

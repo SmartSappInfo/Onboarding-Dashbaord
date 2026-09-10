@@ -14,6 +14,7 @@ import { adminDb } from './firebase-admin';
 import type { Entity, School } from './types';
 import { getOrganizationId } from './organization-utils';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Classification rules for determining if a tag should be global or workspace-scoped.
@@ -203,8 +204,8 @@ export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<
         }
 
         console.log(`  Processed school ${entityId}: ${globalTags.size} global, ${workspaceTagsByWorkspace.size} workspace contexts\n`);
-      } catch (error: any) {
-        result.errors.push(`Error processing school ${schoolDoc.id}: ${error.message}`);
+      } catch (error: unknown) {
+        result.errors.push(`Error processing school ${schoolDoc.id}: ${getErrorMessage(error)}`);
         console.error(`  ❌ Error processing school ${schoolDoc.id}:`, error);
       }
     }
@@ -221,10 +222,10 @@ export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<
     console.log('═══════════════════════════════════════════════════════\n');
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Migration failed:', error);
     result.success = false;
-    result.errors.push(`Fatal error: ${error.message}`);
+    result.errors.push(`Fatal error: ${getErrorMessage(error)}`);
     return result;
   }
 }
@@ -255,7 +256,7 @@ export async function classifyTagManuallyAction(
 
     console.log(`Manual classification: tag ${tagId} → ${scope} (by user ${userId})`);
     return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    return { success: false, error: getErrorMessage(error) };
   }
 }

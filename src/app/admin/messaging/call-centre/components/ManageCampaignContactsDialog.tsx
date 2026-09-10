@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge';
 import type { CallCampaign } from '@/lib/types';
 import { useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface ManageCampaignContactsDialogProps {
   campaign: CallCampaign | null;
@@ -92,8 +93,8 @@ export function ManageCampaignContactsDialog({ campaign, open, onOpenChange }: M
       } else {
         toast({ title: 'Removal Failed', description: result.error || 'Failed to remove contacts', variant: 'destructive' });
       }
-    } catch (error: any) {
-      toast({ title: 'Error', description: error.message, variant: 'destructive' });
+    } catch (error: unknown) {
+      toast({ title: 'Error', description: getErrorMessage(error), variant: 'destructive' });
     } finally {
       setIsRemoving(false);
     }

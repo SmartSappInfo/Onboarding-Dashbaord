@@ -9,6 +9,7 @@ import {
   type OrgAdminFerResult,
 } from '@/app/actions/fix-org-admin-permissions-fer-action';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 type Phase = 'idle' | 'running' | 'done' | 'error';
 
@@ -42,12 +43,12 @@ export default function FixOrgAdminPermissionsFer() {
         const res = await executeFixOrgAdminPermissionsFerAction(executorId, { dryRun });
         setResult(res);
         setPhase(res.success ? 'done' : 'error');
-      } catch (err: any) {
+      } catch (err: unknown) {
         setResult({
           success: false,
-          message: err.message || 'Unexpected error.',
+          message: getErrorMessage(err) || 'Unexpected error.',
           dryRun,
-          details: { usersScanned: 0, usersAffected: [], usersFixed: 0, rolesAffected: [], rolesFixed: 0, skippedSuperAdmins: [], errors: [err.message] },
+          details: { usersScanned: 0, usersAffected: [], usersFixed: 0, rolesAffected: [], rolesFixed: 0, skippedSuperAdmins: [], errors: [getErrorMessage(err)] },
         });
         setPhase('error');
       }

@@ -307,7 +307,7 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
         setShowSavedNotification(true);
         setTimeout(() => setShowSavedNotification(false), 3000);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('[FacilitatorPhotoUpload] Failed:', err);
       setUploadError('Failed to upload image. Please try again.');
     } finally {

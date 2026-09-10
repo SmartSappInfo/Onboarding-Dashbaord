@@ -21,7 +21,7 @@ async function testLogActivity() {
       }
     });
     console.log('logActivity call completed successfully!');
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('logActivity threw an error:', err);
   }
 }

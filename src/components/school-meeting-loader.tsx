@@ -215,7 +215,7 @@ export default function SchoolMeetingLoader({ entitySlug, typeSlug }: SchoolMeet
                 }
             }
 
-          } catch (e: any) {
+          } catch (e: unknown) {
             console.error("SchoolMeetingLoader: Critical error", e);
             setError("Communication failure with database.");
           } finally {

@@ -47,6 +47,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import DOMPurify from 'isomorphic-dompurify';
 
 import { MessageContactDisplay } from '@/components/messaging/MessageContactDisplay';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Messaging Log Audit Ledger.
@@ -153,8 +154,8 @@ export default function MessageLogsPage() {
             } : null);
             
             toast({ title: 'Status Synchronized', description: `Delivery confirmed as: ${providerStatus}` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Sync Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Sync Failed', description: getErrorMessage(e) });
         } finally {
             setIsSyncing(false);
         }

@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors/report-error';
 'use server';
 
 const PABBLY_WEBHOOK_URL = 'https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTZiMDYzNTA0MzE1MjZkNTUzMzUxMzYi_pc';
@@ -26,8 +27,8 @@ export async function dispatchSignupWebhook(webhookData: Record<string, any>): P
 
     console.log('>>> [WEBHOOK] Successfully dispatched to Pabbly');
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [WEBHOOK] Failed to dispatch:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [WEBHOOK] Failed to dispatch:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -68,6 +68,7 @@ import type { TemplateDraft } from './components/whatsapp/shared';
 import type { WhatsAppTemplate } from '@/lib/whatsapp/whatsapp-types';
 import { bulkPushWhatsAppSkeletonsAction } from '@/app/actions/bulk-push-whatsapp-skeletons-action';
 import dynamic from 'next/dynamic';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // WhatsApp authoring dialogs — lazy + conditional: only loaded when opened, so the
 // Meta builder stays out of the main templates bundle (vercel:bundle-conditional).
@@ -486,8 +487,8 @@ export default function MessageTemplatesPage() {
             const params = new URLSearchParams(searchParams.toString());
             params.delete('mode');
             router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -513,8 +514,8 @@ export default function MessageTemplatesPage() {
             invalidateAllTemplatesCache();
             
             toast({ title: 'Template Cloned Successfully', description: `Created "${clonedData.name}"` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Clone Error', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Clone Error', description: getErrorMessage(e) });
         } finally {
             setCloningId(null);
         }
@@ -625,7 +626,7 @@ export default function MessageTemplatesPage() {
             invalidateAllTemplatesCache();
             toast({ title: 'Template Removed' });
             setTemplateToDelete(null);
-        } catch (e: any) {
+        } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         } finally {
             setIsDeleting(false);

@@ -24,6 +24,7 @@ import { TagSelector } from '@/components/tags';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { getErrorMessage, getErrorName } from '@/lib/errors/report-error';
 
 interface DuplicateRow {
     id: string;
@@ -361,15 +362,15 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                 const err = await response.json();
                 throw new Error(err.error || 'Failed to verify email');
             }
-        } catch (e: any) {
-            if (e.name === 'AbortError') {
+        } catch (e: unknown) {
+            if (getErrorName(e) === 'AbortError') {
                 console.log(`Email verification for ${email} was aborted.`);
                 return;
             }
             toast({
                 variant: 'destructive',
                 title: 'Verification Failed',
-                description: e.message,
+                description: getErrorMessage(e),
             });
         } finally {
             activeControllersRef.current.delete(email);
@@ -589,8 +590,8 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
                     return next;
                 });
             }, 350);
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Resolution Failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Resolution Failed', description: getErrorMessage(error) });
         } finally {
             setIsResolving(false);
         }

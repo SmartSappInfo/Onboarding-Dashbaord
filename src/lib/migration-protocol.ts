@@ -1,5 +1,6 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const BATCH_SIZE = 450;
 
@@ -98,10 +99,10 @@ export async function migrateCollectionForeignKeys(
                 
                 result.succeeded++;
                 
-            } catch (error: any) {
+            } catch (error: unknown) {
                 console.error(`❌ Error migrating doc ${doc.id}:`, error);
                 result.failed++;
-                result.errors.push({ id: doc.id, error: error.message });
+                result.errors.push({ id: doc.id, error: getErrorMessage(error) });
             }
         }
         
@@ -112,7 +113,7 @@ export async function migrateCollectionForeignKeys(
         
         return result;
         
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error('💥 Fatal error during migration:', error);
         throw error;
     }

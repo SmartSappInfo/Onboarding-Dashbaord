@@ -10,6 +10,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { PortalAnalyticsService } from '@/lib/services/portal-analytics-service';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import type {
   AnalyticsPeriod,
   PortalAnalyticsSnapshot,
@@ -34,8 +35,8 @@ export async function getPortalAnalyticsAction(
       false
     );
     return { success: true, data: snapshot };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to retrieve portal analytics.' };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || 'Failed to retrieve portal analytics.' };
   }
 }
 
@@ -59,7 +60,7 @@ export async function refreshPortalAnalyticsAction(
     }
 
     return { success: true, data: snapshot };
-  } catch (err: any) {
-    return { success: false, error: err?.message || 'Failed to refresh portal analytics.' };
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) || 'Failed to refresh portal analytics.' };
   }
 }

@@ -13,6 +13,7 @@ import { Loader2 } from 'lucide-react';
 import { invalidateAllTemplatesCache } from '@/app/admin/components/template-cache-manager';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import { useTerminology } from '@/hooks/use-terminology';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const TemplateWorkshop = dynamic(
     () => import('../templates/components/template-workshop').then(m => m.TemplateWorkshop),
@@ -211,8 +212,8 @@ export function TemplateWorkshopSheet({
                 if (onCreated) onCreated({ id: docRef.id, ...sanitizedData });
             }
             onOpenChange(false);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         } finally {
             setIsSaving(false);
         }

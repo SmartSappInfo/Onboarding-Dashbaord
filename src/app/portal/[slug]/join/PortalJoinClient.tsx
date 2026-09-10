@@ -30,6 +30,7 @@ import {
 } from '@/app/actions/membership-actions';
 import type { Portal } from '@/lib/types/portal';
 import type { PortalInvitation } from '@/lib/types/membership';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Sparkles,
   ShieldCheck,
@@ -142,8 +143,8 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
 
       toast({ title: 'Welcome to the Portal! 🎉', description: 'Your membership is now active.' });
       router.push(`/portal/${slug}/dashboard`);
-    } catch (err: any) {
-      toast({ title: 'Registration Failed', description: err?.message || 'Could not complete registration.' });
+    } catch (err: unknown) {
+      toast({ title: 'Registration Failed', description: getErrorMessage(err) || 'Could not complete registration.' });
     } finally {
       setIsSubmitting(false);
     }

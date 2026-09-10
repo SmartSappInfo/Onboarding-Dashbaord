@@ -50,7 +50,7 @@ export async function POST(req: Request) {
                 for (const recipient of toList) {
                   await processUnsubscribe(recipient, { emailStatus });
                 }
-              } catch (e: any) {
+              } catch (e: unknown) {
                 reportError('api.webhooks.email', e, { note: `[EMAIL-WEBHOOK] Async processing failed:` });
               }
             });
@@ -62,7 +62,7 @@ export async function POST(req: Request) {
             }
           }
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         reportError('api.webhooks.email', err, { note: '[EMAIL-WEBHOOK] Svix verification failed:' });
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
       }
@@ -86,7 +86,7 @@ export async function POST(req: Request) {
     }
     
     return NextResponse.json({ received: true }, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     reportError('api.webhooks.email', error, { note: '[EMAIL-WEBHOOK] Error handling webhook:' });
     return NextResponse.json({ error: toClientErrorMessage('api.webhooks.email', error, undefined, 'Internal server error') }, { status: 500 });
   }

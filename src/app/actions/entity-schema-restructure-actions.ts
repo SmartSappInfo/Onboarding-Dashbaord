@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 
 import { FieldValue } from 'firebase-admin/firestore';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface MigrationResult {
   total: number;
@@ -52,9 +53,9 @@ export async function fetchEntitiesForSchemaRestructure(organizationId: string) 
         entities: needingMigration.slice(0, 50) // Return sample for UI
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error fetching entities for migration:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -215,9 +216,9 @@ export async function enrichEntitiesWithNewSchema(organizationId: string) {
           result.skipped++;
         }
         
-      } catch (err: any) {
+      } catch (err: unknown) {
         result.failed++;
-        result.errors.push(`Entity ${doc.id}: ${err.message}`);
+        result.errors.push(`Entity ${doc.id}: ${getErrorMessage(err)}`);
       }
     }
     
@@ -228,9 +229,9 @@ export async function enrichEntitiesWithNewSchema(organizationId: string) {
     await Promise.all(batches);
     
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in enrich phase:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -282,9 +283,9 @@ export async function restoreEntitySchemaRestructure(organizationId: string) {
     }
     
     return { success: true, data: result };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in restore phase:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -367,8 +368,8 @@ export async function rollbackEntitySchemaRestructure(organizationId: string) {
     await Promise.all(batches);
     
     return { success: true, data: { succeeded, failed } };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in rollback phase:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

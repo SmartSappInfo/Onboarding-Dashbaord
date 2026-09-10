@@ -14,7 +14,7 @@ import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageSt
 import { requireAuth } from '@/lib/auth/require-auth';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
-import { reportError } from '@/lib/errors/report-error';
+import { getErrorMessage, reportError } from '@/lib/errors/report-error';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 
@@ -117,7 +117,7 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
 
     return { jobId: jobRef.id };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     reportError('bulk-messaging', error, { note: ">>> [BULK] JOB CREATION FAILED:" });
     throw error;
   }
@@ -352,10 +352,10 @@ export async function processBulkJobChunk(jobId: string) {
                     }
                 }
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             failedIncrement = tasksSnap.size;
             for (const doc of tasksSnap.docs) {
-                await doc.ref.update({ status: 'failed', error: e.message });
+                await doc.ref.update({ status: 'failed', error: getErrorMessage(e) });
             }
         }
     } else {
@@ -462,7 +462,7 @@ export async function processBulkJobChunk(jobId: string) {
         total: job.totalRecipients
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     reportError('bulk-messaging', error, { note: ">>> [BULK] CHUNK PROCESSING FAILED:" });
     throw error;
   }
@@ -732,11 +732,11 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
             await payload.taskDocRef.update({ status: 'failed', error: String(result.error) });
           }
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         reportError('bulk-messaging', e, { note: '>>> [BULK-BG] Batch send API call crashed:' });
         failedIncrement = batchPayload.length;
         for (const payload of batchPayload) {
-          await payload.taskDocRef.update({ status: 'failed', error: e.message });
+          await payload.taskDocRef.update({ status: 'failed', error: getErrorMessage(e) });
         }
       }
     }

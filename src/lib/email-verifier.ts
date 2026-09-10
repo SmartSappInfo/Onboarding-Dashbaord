@@ -3,6 +3,7 @@ import * as dns from 'dns';
 import * as net from 'net';
 import * as fs from 'fs';
 import * as path from 'path';
+import { getErrorCode, getErrorMessage } from '@/lib/errors/report-error';
 
 export interface VerificationContext {
   email: string;
@@ -122,11 +123,11 @@ export class DnsValidator implements IVerificationStrategy {
         };
       }
       return { passed: false, scoreWeight: 0, error: 'No MX records found for domain' };
-    } catch (e: any) {
+    } catch (e: unknown) {
       const reason =
-        e.code === 'ENOTFOUND' ? 'Domain does not exist' :
-        e.code === 'ENODATA' || e.code === 'ESERVFAIL' ? 'No MX records configured' :
-        `DNS lookup failed: ${e.message}`;
+        getErrorCode(e) === 'ENOTFOUND' ? 'Domain does not exist' :
+        getErrorCode(e) === 'ENODATA' || getErrorCode(e) === 'ESERVFAIL' ? 'No MX records configured' :
+        `DNS lookup failed: ${getErrorMessage(e)}`;
       return { passed: false, scoreWeight: 0, error: reason };
     }
   }

@@ -78,6 +78,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { StepTimeline } from './components/StepTimeline';
 import { AutomationDeadLettersModal } from './components/AutomationDeadLettersModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
     Table,
     TableBody,
@@ -324,8 +325,8 @@ export default function AutomationsClient() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Rename failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Rename failed', description: getErrorMessage(e) });
         } finally {
             setIsSavingName(false);
         }
@@ -436,8 +437,8 @@ export default function AutomationsClient() {
                 });
                 setSelectedIds(new Set());
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Batch failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Batch failed', description: getErrorMessage(e) });
         } finally {
             setIsBatchProcessing(false);
         }
@@ -466,8 +467,8 @@ export default function AutomationsClient() {
                 });
                 setSelectedIds(new Set());
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Batch delete failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Batch delete failed', description: getErrorMessage(e) });
         } finally {
             setIsBatchProcessing(false);
         }
@@ -693,8 +694,8 @@ export default function AutomationsClient() {
             } else {
                 throw new Error(res.error);
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Clear Archive failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Clear Archive failed', description: getErrorMessage(e) });
         } finally {
             setIsBatchProcessing(false);
         }
@@ -710,8 +711,8 @@ export default function AutomationsClient() {
                     description: res.processed ? `Resumed ${res.processed} pending protocols.` : 'No pending delays identified.' 
                 });
             } else throw new Error(res.error);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Heartbeat Failure', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Heartbeat Failure', description: getErrorMessage(e) });
         } finally {
             setIsPulsing(false);
         }

@@ -1,6 +1,7 @@
 'use server';
 
 import { generateKeywords } from '@/ai/flows/generate-keywords-flow';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function generateKeywordsAction(title: string, description: string, organizationId?: string) {
   try {
@@ -9,8 +10,8 @@ export async function generateKeywordsAction(title: string, description: string,
     }
     const result = await generateKeywords({ title, description, organizationId });
     return { success: true, keywords: result.keywords || [] };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error in generateKeywordsAction:', error);
-    return { success: false, error: error.message || 'Failed to generate keywords via AI.' };
+    return { success: false, error: getErrorMessage(error) || 'Failed to generate keywords via AI.' };
   }
 }

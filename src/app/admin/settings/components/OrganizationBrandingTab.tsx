@@ -139,7 +139,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             }
 
             setSeedResult(data.result as AISeedResult);
-        } catch (err: any) {
+        } catch (err: unknown) {
             setScrapeError('Network error. Please check your connection and try again.');
         } finally {
             setIsScraping(false);

@@ -17,6 +17,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { mapLegacySurveySeo } from '@/lib/seo';
 import type { Survey } from '@/lib/types';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -96,10 +97,10 @@ export async function POST(request: NextRequest) {
         ? `Backfilled seo on ${migrated} survey(s).`
         : `Dry run: ${migrated} survey(s) would be backfilled. Re-run with ?apply=1 to write.`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('survey-seo migration error:', error);
     return NextResponse.json(
-      { success: false, error: error?.message || 'Migration failed' },
+      { success: false, error: getErrorMessage(error) || 'Migration failed' },
       { status: 500 },
     );
   }

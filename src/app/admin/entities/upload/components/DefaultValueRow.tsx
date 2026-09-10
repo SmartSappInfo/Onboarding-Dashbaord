@@ -12,6 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { LeadSourceSelect } from '@/components/LeadSourceSelect';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface DefaultValueRowProps {
     fieldKey: string;
@@ -109,11 +110,11 @@ export const DefaultValueRow = React.memo(({
                 title: 'District Created',
                 description: `"${name}" has been added to districts under region "${parentRegionValue}".`,
             });
-        } catch (e: any) {
+        } catch (e: unknown) {
             toast({
                 variant: 'destructive',
                 title: 'Error',
-                description: e.message || 'Failed to create district.',
+                description: getErrorMessage(e) || 'Failed to create district.',
             });
         } finally {
             setIsCreatingDistrict(false);

@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
       },
       { headers }
     );
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:TASKS:GET] Error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.tasks', error, undefined, 'Internal server error') },
@@ -143,7 +143,7 @@ export async function POST(request: NextRequest) {
 
     // Return both identifiers in response (Requirement 24.2)
     return NextResponse.json(task, { status: 201, headers });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:TASKS:POST] Error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.tasks', error, undefined, 'Internal server error') },

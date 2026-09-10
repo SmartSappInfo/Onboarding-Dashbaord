@@ -51,6 +51,7 @@ import { cn } from '@/lib/utils';
 import type { PageTemplate, CampaignPage, CampaignPageVersion } from '@/lib/types';
 import Link from 'next/link';
 import { ALL_TEMPLATES } from '@/lib/page-builder/templates';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const GOAL_ICONS: Record<string, any> = {
     lead_capture: Target,
@@ -295,9 +296,9 @@ export default function NewPageClient() {
 
             toast({ title: 'Page Created', description: 'Redirecting to builder...' });
             router.push(`/admin/pages/${newPageId}/builder`);
-        } catch (error: any) {
+        } catch (error: unknown) {
             setIsCreating(false);
-            toast({ variant: 'destructive', title: 'Creation failed', description: error.message });
+            toast({ variant: 'destructive', title: 'Creation failed', description: getErrorMessage(error) });
         }
     };
 

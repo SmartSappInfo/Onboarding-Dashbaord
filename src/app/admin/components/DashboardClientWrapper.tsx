@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors/report-error';
 'use client';
 
 import * as React from "react";
@@ -48,8 +49,8 @@ export function DashboardClientWrapper({
             } else {
                 toast({ variant: 'destructive', title: 'Operation Failed', description: res.error });
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Error', description: e.message || "Failed to save task." });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(e) || "Failed to save task." });
         } finally {
             setIsSavingTask(false);
         }

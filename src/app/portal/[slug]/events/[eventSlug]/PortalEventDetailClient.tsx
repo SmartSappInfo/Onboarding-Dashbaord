@@ -20,6 +20,7 @@ import { useToast } from '@/hooks/use-toast';
 import { registerForEventAction, cancelEventRegistrationAction } from '@/app/actions/event-actions';
 import type { LiveEvent, EventRegistration } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   Calendar,
   Clock,
@@ -148,8 +149,8 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Registration Confirmed! 🎉', description: 'Your seat is reserved. +15 Points Earned.' });
-    } catch (err: any) {
-      toast({ title: 'Registration Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Registration Failed', description: getErrorMessage(err) });
     } finally {
       setIsSubmitting(false);
     }
@@ -164,8 +165,8 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
       const res = await cancelEventRegistrationAction(event.id, user.uid, slug, eventSlug);
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Registration Cancelled', description: 'Your seat has been released.' });
-    } catch (err: any) {
-      toast({ title: 'Cancellation Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Cancellation Failed', description: getErrorMessage(err) });
     } finally {
       setIsSubmitting(false);
     }

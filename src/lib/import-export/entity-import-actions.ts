@@ -24,6 +24,7 @@ import type {
 } from '@/app/admin/contacts/import/types';
 import { normalizePhoneNumber } from '../phone-utils';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage, getErrorStack } from '@/lib/errors/report-error';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -449,12 +450,12 @@ export async function executeImportBatch(
           originalData: rows[i],
         });
       }
-    } catch (err: any) {
-      console.error(`[IMPORT] Row ${i + 1} exception:`, err.message, err.stack);
+    } catch (err: unknown) {
+      console.error(`[IMPORT] Row ${i + 1} exception:`, getErrorMessage(err), getErrorStack(err));
       errorCount++;
       failedRows.push({
         rowNumber: i + 1,
-        reason: err.message || 'Unexpected error',
+        reason: getErrorMessage(err) || 'Unexpected error',
         originalData: rows[i],
       });
     }

@@ -44,6 +44,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import EntityNotesTab from '../../components/EntityNotesTab';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const entityEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -387,10 +388,10 @@ function EditEntityForm({ entityId }: EditFormProps) {
         } else {
             throw new Error(result.error);
         }
-    } catch (error: any) {
+    } catch (error: unknown) {
         toast({ 
             title: 'Save Failed', 
-            description: error.message || 'An error occurred while updating the profile.',
+            description: getErrorMessage(error) || 'An error occurred while updating the profile.',
             variant: 'destructive'
         });
         console.error('Profile update error:', error);

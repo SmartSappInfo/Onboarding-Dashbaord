@@ -10,6 +10,7 @@ import { logBackofficeAction } from './audit-logger';
 import { createAuditSnapshot } from './backoffice-utils';
 import type { AuditActor, PlatformJob } from './backoffice-types';
 import type { UserProfile, Role, PermissionsSchema } from '../types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Migration Job: Hydrates user records with their merged hierarchical permissions.
@@ -111,14 +112,14 @@ export async function processRbacMigration(
            })
         });
 
-      } catch (userErr: any) {
+      } catch (userErr: unknown) {
         errors++;
         await jobRef.update({
           'progress.errors': errors,
           'logs': FieldValue.arrayUnion({
             timestamp: new Date().toISOString(),
             level: 'error',
-            message: `Failed to process user ${userDoc.id}: ${userErr.message}`
+            message: `Failed to process user ${userDoc.id}: ${getErrorMessage(userErr)}`
           })
         });
       }
@@ -135,16 +136,16 @@ export async function processRbacMigration(
     });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[RBAC_MIGRATION_JOB] Critical Failure:', error);
     await jobRef.update({
       status: 'failed',
       'logs': FieldValue.arrayUnion({
         timestamp: new Date().toISOString(),
         level: 'error',
-        message: `Critical Failure: ${error.message}`
+        message: `Critical Failure: ${getErrorMessage(error)}`
       })
     });
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, logId });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('log-operation-start error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.log-operation-start', error, undefined, 'Failed to log operation start') },

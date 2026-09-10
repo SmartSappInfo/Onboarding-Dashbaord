@@ -20,7 +20,7 @@ export class BackofficeAuthError extends Error {
 
 /**
  * Narrows an unknown catch value to a human-readable message.
- * Replaces `catch (error: any)` patterns (no-any rule).
+ * Replaces `catch (error: unknown)` patterns (no-any rule).
  */
 export function getErrorMessage(e: unknown): string {
   if (e instanceof Error) return e.message;

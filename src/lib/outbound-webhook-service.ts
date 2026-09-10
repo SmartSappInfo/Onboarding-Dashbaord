@@ -22,6 +22,7 @@
 import { adminDb } from './firebase-admin';
 import { createHmac } from 'crypto';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -108,9 +109,9 @@ export async function dispatchRegistrationWebhook(input: DispatchInput): Promise
       dispatchStatus = 'failed';
       errorMessage = `HTTP ${res.status}: ${await res.text().catch(() => '(no body)')}`;
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     dispatchStatus = 'failed';
-    errorMessage = err?.message ?? 'Unknown fetch error';
+    errorMessage = getErrorMessage(err) ?? 'Unknown fetch error';
   }
 
   // ── Audit log ──────────────────────────────────────────────────────────────
@@ -129,9 +130,9 @@ export async function dispatchRegistrationWebhook(input: DispatchInput): Promise
     if (errorMessage) logEntry.error = errorMessage;
 
     await adminDb.collection('webhook_logs').add(logEntry);
-  } catch (logErr: any) {
+  } catch (logErr: unknown) {
     // If even logging fails, just console.warn — never throw
-    console.warn('[WEBHOOK] Firestore log failed:', logErr?.message);
+    console.warn('[WEBHOOK] Firestore log failed:', getErrorMessage(logErr));
   }
 
   if (dispatchStatus === 'failed') {

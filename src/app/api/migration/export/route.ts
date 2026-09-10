@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
         'Content-Disposition': `attachment; filename="migration-logs-${new Date().toISOString()}.json"`,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('export error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.export', error, undefined, 'Failed to export logs') },

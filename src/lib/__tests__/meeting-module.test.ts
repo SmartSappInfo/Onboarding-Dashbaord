@@ -99,7 +99,7 @@ const createMeetingAction = async (
     });
 
     return { success: true, meeting };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, error: error.message };
   }
 };
@@ -132,7 +132,7 @@ const updateMeetingAction = async (
     await mockUpdate(updatedMeeting as any, {} as any);
 
     return { success: true, meeting: updatedMeeting };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, error: error.message };
   }
 };
@@ -164,7 +164,7 @@ const resolveMeetingBySlugAction = async (
     // This simulates the actual query logic
     // In real implementation, this would query Firestore
     return { success: false, error: 'Meeting not found' };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return { success: false, error: error.message };
   }
 };

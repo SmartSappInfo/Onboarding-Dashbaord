@@ -31,6 +31,7 @@ import { migrateLegacyTemplatesToBlocks } from '@/lib/migrate-messaging-fer';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PageContainerFluid } from '@/components/ui/page-container';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function TemplatesClient() {
     const firestore = useFirestore();
@@ -156,8 +157,8 @@ export default function TemplatesClient() {
             toast({ title: 'Global Template Saved' });
             setIsAdding(false);
             setEditingTemplate(null);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -260,7 +261,7 @@ export default function TemplatesClient() {
             await deleteDoc(doc(firestore, 'message_templates', templateToDelete.id));
             toast({ title: 'Template Removed' });
             setTemplateToDelete(null);
-        } catch (e: any) {
+        } catch (e: unknown) {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         } finally {
             setIsDeleting(false);
@@ -276,8 +277,8 @@ export default function TemplatesClient() {
                 updatedAt: new Date().toISOString()
             });
             toast({ title: `Global Blueprint status updated to ${newStatus}` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Failed to update status', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Failed to update status', description: getErrorMessage(e) });
         }
     };
 
@@ -292,8 +293,8 @@ export default function TemplatesClient() {
             });
             invalidateAllTemplatesCache();
             toast({ title: 'Global Blueprint Renamed', description: `Updated name to "${trimmed}"` });
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
         }
     };
 
@@ -306,8 +307,8 @@ export default function TemplatesClient() {
             } else {
                 throw new Error(result.error);
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Sync Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Sync Failed', description: getErrorMessage(e) });
         } finally {
             setIsSeeding(false);
         }
@@ -325,8 +326,8 @@ export default function TemplatesClient() {
             } else {
                 throw new Error(result.error);
             }
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Migration Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Migration Failed', description: getErrorMessage(e) });
         } finally {
             setIsMigrating(false);
         }

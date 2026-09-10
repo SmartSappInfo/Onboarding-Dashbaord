@@ -14,6 +14,7 @@ import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { getErrorMessage, getErrorName } from '@/lib/errors/report-error';
 
 // Shared PDF.js promise
 const pdfjsPromise = import('pdfjs-dist');
@@ -103,8 +104,8 @@ export default function SubmissionDetailPage() {
         }
         
         toast({ title: 'Download Successful' });
-    } catch (e: any) {
-        toast({ variant: 'destructive', title: 'Download Failed', description: e.message });
+    } catch (e: unknown) {
+        toast({ variant: 'destructive', title: 'Download Failed', description: getErrorMessage(e) });
     } finally {
         setIsDownloading(false);
     }
@@ -171,9 +172,9 @@ export default function SubmissionDetailPage() {
         }
         
         toast({ title: 'Front-end Download Successful' });
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error("Front-end download error:", e);
-        toast({ variant: 'destructive', title: 'Front-end Download Failed', description: e.message });
+        toast({ variant: 'destructive', title: 'Front-end Download Failed', description: getErrorMessage(e) });
     } finally {
         setIsFrontEndDownloading(false);
     }
@@ -280,8 +281,8 @@ function SubmissionPageRenderer({ pdf, pageNumber, fields, formData, entity }: {
                         await renderTask.promise;
                     }
                 }
-            } catch (e: any) {
-                if (e.name === 'RenderingCancelledException') return;
+            } catch (e: unknown) {
+                if (getErrorName(e) === 'RenderingCancelledException') return;
                 console.error("Failed to render page", e);
             } finally {
                 if (!isCancelled) setIsRendering(false);

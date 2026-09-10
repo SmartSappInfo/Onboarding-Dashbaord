@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { MessageBlock, MessageTemplate } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface MigrateTemplatesResult {
   total: number;
@@ -155,9 +156,9 @@ export async function migrateTemplatesAction(): Promise<MigrateTemplatesResult> 
         } else {
           result.skipped++;
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         result.failed++;
-        result.errors.push(`Template ID ${doc.id}: ${err.message}`);
+        result.errors.push(`Template ID ${doc.id}: ${getErrorMessage(err)}`);
       }
     }
 
@@ -169,14 +170,14 @@ export async function migrateTemplatesAction(): Promise<MigrateTemplatesResult> 
     await Promise.all(batches.map(b => b.commit()));
 
     return result;
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[MIGRATE_TEMPLATES] Migration action failed:', error);
     return {
       total: result.total,
       migrated: result.migrated,
       skipped: result.skipped,
       failed: result.failed + (result.total - (result.migrated + result.skipped + result.failed)),
-      errors: [...result.errors, error.message || 'Migration action failed.'],
+      errors: [...result.errors, getErrorMessage(error) || 'Migration action failed.'],
     };
   }
 }

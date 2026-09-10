@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { submitRsvpResponseAction } from '@/app/actions/meeting-registrants-actions';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface RsvpResponseClientProps {
   meetingId: string;
@@ -65,8 +66,8 @@ export default function RsvpResponseClient({
           setErrorMsg(res.error || 'Failed to update RSVP.');
           setStatus('error');
         }
-      } catch (err: any) {
-        setErrorMsg(err.message || 'An error occurred.');
+      } catch (err: unknown) {
+        setErrorMsg(getErrorMessage(err) || 'An error occurred.');
         setStatus('error');
       }
     },

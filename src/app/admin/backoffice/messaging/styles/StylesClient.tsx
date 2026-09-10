@@ -47,6 +47,7 @@ import { RainbowButton } from '@/components/ui/rainbow-button';
 import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { TemplatePreviewModal } from '../../../messaging/templates/components/template-preview-modal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -276,8 +277,8 @@ export default function StylesClient() {
             setName('');
             setIsAdding(false);
             toast({ title: 'Global Style Blueprint Initialized' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(err) });
         } finally {
             setIsSubmitting(false);
         }
@@ -307,8 +308,8 @@ export default function StylesClient() {
             });
             setEditingStyle(null);
             toast({ title: 'Style Updated' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(err) });
         } finally {
             setIsUpdating(false);
         }
@@ -337,8 +338,8 @@ export default function StylesClient() {
 
             setGeneratedHtml(result.htmlWrapper);
             toast({ title: 'AI Style Generated', description: result.explanation });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'AI Generation Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'AI Generation Failed', description: getErrorMessage(err) });
         } finally {
             setIsAiProcessing(false);
         }
@@ -361,8 +362,8 @@ export default function StylesClient() {
             setGeneratedHtml(null);
             setIsAiGenerating(false);
             toast({ title: 'AI Global Style Created' });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(err) });
         } finally {
             setIsSubmitting(false);
         }
@@ -405,8 +406,8 @@ export default function StylesClient() {
                     ? `"${style.name}" is now the default system blueprint.`
                     : `"${style.name}" is no longer the default system blueprint.`
             });
-        } catch (err: any) {
-            toast({ variant: 'destructive', title: 'Action Failed', description: err.message });
+        } catch (err: unknown) {
+            toast({ variant: 'destructive', title: 'Action Failed', description: getErrorMessage(err) });
         }
     };
 

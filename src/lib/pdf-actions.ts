@@ -13,7 +13,7 @@ import { format } from 'date-fns';
 import { getBaseUrl } from './utils/url-helpers';
 import { requireAuth } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
-import { toClientErrorMessage } from '@/lib/errors/report-error';
+import { getErrorMessage, toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
@@ -93,15 +93,15 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
         const file = adminStorage.file(pdfForm.storagePath);
         const [downloadedBuffer] = await file.download();
         pdfBuffer = downloadedBuffer;
-    } catch (e: any) {
-        throw new Error(`Failed to download PDF template: ${e.message}`);
+    } catch (e: unknown) {
+        throw new Error(`Failed to download PDF template: ${getErrorMessage(e)}`);
     }
 
     let pdfDoc: PDFDocument;
     try {
         pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
-    } catch (e: any) {
-        throw new Error(`Failed to parse PDF template: ${e.message}`);
+    } catch (e: unknown) {
+        throw new Error(`Failed to parse PDF template: ${getErrorMessage(e)}`);
     }
 
     const fontRegular = await pdfDoc.embedFont(StandardFonts.Helvetica);
@@ -269,9 +269,9 @@ export async function saveAgreementProgressAction(
         }
 
         return { success: true, submissionId };
-    } catch (e: any) {
-        console.error(">>> [PDF:PARTIAL] Failed:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        console.error(">>> [PDF:PARTIAL] Failed:", getErrorMessage(e));
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -424,9 +424,9 @@ export async function finalizeAgreementAction(
         });
 
         return { success: true, submissionId };
-    } catch (e: any) {
-        console.error(">>> [PDF:FINALIZE] Failed:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        console.error(">>> [PDF:FINALIZE] Failed:", getErrorMessage(e));
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -675,9 +675,9 @@ export async function purgeContractAction(
 
         revalidatePath('/admin/finance/contracts');
         return { success: true };
-    } catch (e: any) {
-        console.error(">>> [PDF:PURGE] Failed:", e.message);
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        console.error(">>> [PDF:PURGE] Failed:", getErrorMessage(e));
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -696,8 +696,8 @@ export async function updatePdfResultsSharing(pdfId: string, options: { shared: 
         });
         revalidatePath(`/admin/pdfs/${pdfId}/submissions`);
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -716,7 +716,7 @@ export async function updatePdfFormMapping(pdfId: string, data: Partial<PDFForm>
         revalidatePath(`/admin/pdfs/${pdfId}/submissions`);
         revalidatePath('/admin/pdfs');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }

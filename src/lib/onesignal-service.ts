@@ -1,3 +1,4 @@
+import { getErrorMessage } from '@/lib/errors/report-error';
 export interface OneSignalResponse {
   id?: string;
   recipients?: number;
@@ -45,8 +46,8 @@ export async function sendPushNotification(
 
     const responseData = await response.json();
     return responseData;
-  } catch (error: any) {
-    console.error('>>> [PUSH] Failed to dispatch via OneSignal:', error.message);
-    return { errors: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [PUSH] Failed to dispatch via OneSignal:', getErrorMessage(error));
+    return { errors: getErrorMessage(error) };
   }
 }

@@ -26,6 +26,7 @@ import { ArrowLeft, Mail, Phone, Loader2 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import { publicResetPasswordViaPhoneAction } from '@/lib/user-invite-actions';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const emailSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email.' }),
@@ -62,11 +63,11 @@ export default function ForgotPasswordPage() {
         description: 'Check your inbox for password reset instructions.',
       });
       router.push('/login');
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Reset Failed',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setIsSubmitting(false);
@@ -86,11 +87,11 @@ export default function ForgotPasswordPage() {
       } else {
         throw new Error(result.message || 'Reset failed');
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       toast({
         variant: 'destructive',
         title: 'Reset Failed',
-        description: error.message,
+        description: getErrorMessage(error),
       });
     } finally {
       setIsSubmitting(false);

@@ -12,6 +12,7 @@ import { useTenant } from '@/context/TenantContext';
 import { Loader2, Save, Mail, MessageSquare, Info, ShieldAlert, Sparkles } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function OrganizationInvitationSettings() {
     const firestore = useFirestore();
@@ -35,8 +36,8 @@ export default function OrganizationInvitationSettings() {
                 if (orgSnap.exists()) {
                     setOverrides(orgSnap.data().templateOverrides || {});
                 }
-            } catch (error: any) {
-                toast({ variant: 'destructive', title: 'Fetch Error', description: error.message });
+            } catch (error: unknown) {
+                toast({ variant: 'destructive', title: 'Fetch Error', description: getErrorMessage(error) });
             } finally {
                 setIsLoading(false);
             }
@@ -53,8 +54,8 @@ export default function OrganizationInvitationSettings() {
                 updatedAt: new Date().toISOString()
             });
             toast({ title: 'Preferences Saved', description: 'Your custom invitation templates are now active.' });
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Save Failed', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: getErrorMessage(error) });
         } finally {
             setIsSaving(false);
         }

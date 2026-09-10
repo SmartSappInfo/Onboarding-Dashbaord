@@ -49,7 +49,7 @@ describe('Bug Condition Exploration: TypeScript Type Errors', () => {
         stdio: 'pipe',
         cwd: process.cwd(),
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       // TypeScript errors cause non-zero exit code
       exitCode = error.status || 1;
       typecheckOutput = error.stdout || error.stderr || '';
@@ -111,7 +111,7 @@ describe('Bug Condition Exploration: TypeScript Type Errors', () => {
           cwd: process.cwd(),
         }
       );
-    } catch (error: any) {
+    } catch (error: unknown) {
       fileTypecheckOutput = error.stdout || error.stderr || '';
     }
     

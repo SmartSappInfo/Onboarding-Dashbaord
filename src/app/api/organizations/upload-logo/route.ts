@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminStorage } from '@/lib/firebase-admin';
 // SECURITY (audit F9): report the detail server-side, return an opaque message.
-import { toClientErrorMessage } from '@/lib/errors/report-error';
+import { getErrorMessage, toClientErrorMessage } from '@/lib/errors/report-error';
 
 // 8 seconds timeout
 const UPLOAD_TIMEOUT_MS = 8_000;
@@ -39,9 +39,9 @@ export async function POST(request: NextRequest) {
         },
       });
       clearTimeout(timeoutId);
-    } catch (fetchErr: any) {
+    } catch (fetchErr: unknown) {
       clearTimeout(timeoutId);
-      return NextResponse.json({ error: `Could not fetch external logo: ${fetchErr.message}` }, { status: 422 });
+      return NextResponse.json({ error: `Could not fetch external logo: ${getErrorMessage(fetchErr)}` }, { status: 422 });
     }
 
     if (!siteResponse.ok) {
@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, storageUrl: publicUrl }, { status: 200 });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[API:UPLOAD-LOGO:POST] Unhandled error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.organizations.upload-logo', error, undefined, 'An unexpected error occurred during logo upload.') },

@@ -97,6 +97,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useSearchParams } from 'next/navigation';
 import { DiagnosticsPanel } from './DiagnosticsPanel';
 import { useConfirm } from '@/components/ui/confirm-dialog';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const nodeTypes = {
     triggerNode: TriggerNode,
@@ -2355,8 +2356,8 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
                             'admin_user_id' // Mock actor ID or load from user context if available
                         );
                         setTestResult(res);
-                    } catch (err: any) {
-                        setTestResult({ success: false, error: err.message });
+                    } catch (err: unknown) {
+                        setTestResult({ success: false, error: getErrorMessage(err) });
                     } finally {
                         setIsTestingStep(false);
                     }

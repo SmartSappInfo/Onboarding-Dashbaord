@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     console.info(`[AUTOMATION-WORKER] Successfully resumed run ${runId} at node ${nodeId}`);
     return NextResponse.json({ success: true });
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error('[AUTOMATION-WORKER] Unhandled exception processing queue task:', err);
     return NextResponse.json({ error: toClientErrorMessage('api.automations.resume', err, undefined, 'Worker critical error') }, { status: 500 });
   }

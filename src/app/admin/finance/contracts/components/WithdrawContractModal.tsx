@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import type { WorkspaceEntity } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface WithdrawContractModalProps {
     entity: WorkspaceEntity;
@@ -108,8 +109,8 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
                 toast({ title: 'Records Purged', description: 'Legal history has been successfully sanitized.' });
                 onOpenChange(false);
             } else throw new Error(result.error);
-        } catch (e: any) {
-            toast({ variant: 'destructive', title: 'Purge Failed', description: e.message });
+        } catch (e: unknown) {
+            toast({ variant: 'destructive', title: 'Purge Failed', description: getErrorMessage(e) });
         } finally {
             setIsPurging(false);
         }

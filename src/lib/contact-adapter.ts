@@ -6,6 +6,7 @@ import { resolveEntityContacts } from './entity-contact-helpers';
 import { zoneDisplayName, type ZoneRef } from './zone-constants';
 import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 // Re-export ResolvedContact for test compatibility
 export type { ResolvedContact } from './types';
@@ -51,8 +52,8 @@ export async function resolveContact(
     }
 
     return null;
-  } catch (error: any) {
-    console.error(`[ADAPTER] Failed to resolve contact:`, error.message);
+  } catch (error: unknown) {
+    console.error(`[ADAPTER] Failed to resolve contact:`, getErrorMessage(error));
     return null;
   }
 }
@@ -374,8 +375,8 @@ export async function readFromLegacySchools(legacySchoolId: string): Promise<Ent
 
     const school = { id: schoolSnap.id, ...schoolSnap.data() } as School;
     return await mapSchoolToSaaSEntity(school);
-  } catch (error: any) {
-    console.error(`[ADAPTER] Failed to read from legacy schools collection:`, error.message);
+  } catch (error: unknown) {
+    console.error(`[ADAPTER] Failed to read from legacy schools collection:`, getErrorMessage(error));
     return null;
   }
 }
@@ -403,8 +404,8 @@ export async function readFromEntities(entityId: string): Promise<Entity | null>
 
     const entity = { id: entitySnap.id, ...entitySnap.data() } as Entity;
     return entity;
-  } catch (error: any) {
-    console.error(`[ADAPTER] Failed to read from entities collection:`, error.message);
+  } catch (error: unknown) {
+    console.error(`[ADAPTER] Failed to read from entities collection:`, getErrorMessage(error));
     return null;
   }
 }
@@ -432,8 +433,8 @@ export async function getEntity(
 
   try {
     return await readFromEntities(entityId);
-  } catch (error: any) {
-    console.error(`[ADAPTER] Failed to get entity ${entityId}:`, error.message);
+  } catch (error: unknown) {
+    console.error(`[ADAPTER] Failed to get entity ${entityId}:`, getErrorMessage(error));
     return null;
   }
 }

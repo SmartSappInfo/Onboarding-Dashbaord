@@ -24,7 +24,7 @@ import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
 import { resolveContextWorkspaceId, resolveWorkspaceIdFromEntity } from './services/workspace-resolver';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
-import { reportError } from '@/lib/errors/report-error';
+import { getErrorMessage, reportError } from '@/lib/errors/report-error';
 
 interface SendMessageInput {
   templateId: string;
@@ -959,11 +959,11 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
                 headers
             });
             providerId = providerResponse?.id;
-        } catch (e: any) {
+        } catch (e: unknown) {
             dispatchError = e;
         }
     }
-    } catch (err: any) {
+    } catch (err: unknown) {
         dispatchError = err;
     }
 
@@ -1050,9 +1050,9 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
 
     return { success: true, logId: logRef.id };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     reportError('messaging-engine', error, { note: ">>> [MESSAGING] Logic Error:" });
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -1344,11 +1344,11 @@ export async function sendRawMessage(input: {
                     domain: resendDomain,
                     headers
                 });
-            } catch (e: any) {
+            } catch (e: unknown) {
                 dispatchError = e;
             }
         }
-        } catch (err: any) {
+        } catch (err: unknown) {
             dispatchError = err;
         }
 
@@ -1423,8 +1423,8 @@ export async function sendRawMessage(input: {
         }
 
         return { success: true, logId: logRef.id };
-    } catch (error: any) {
+    } catch (error: unknown) {
         reportError('messaging-engine', error, { note: ">>> [MESSAGING] Raw Dispatch Error:" });
-        return { success: false, error: error.message };
+        return { success: false, error: getErrorMessage(error) };
     }
 }

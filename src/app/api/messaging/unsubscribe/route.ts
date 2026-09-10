@@ -1,6 +1,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { suppressRecipient } from '@/lib/suppression-service';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * API route to process unsubscribe requests from the preference center.
@@ -32,8 +33,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ success: true });
     
-  } catch (error: any) {
-    console.error('[API-UNSUBSCRIBE] Failed:', error.message);
+  } catch (error: unknown) {
+    console.error('[API-UNSUBSCRIBE] Failed:', getErrorMessage(error));
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

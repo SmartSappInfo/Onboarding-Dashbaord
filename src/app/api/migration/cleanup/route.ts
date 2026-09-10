@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
       deletedCount: result.deletedCount,
       message: `Cleaned up ${result.deletedCount} old migration logs`,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('cleanup error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.cleanup', error, undefined, 'Failed to cleanup logs') },

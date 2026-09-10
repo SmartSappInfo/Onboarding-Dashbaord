@@ -20,6 +20,7 @@ import type {
 } from './types';
 import type { ExportOptions, ExportResult } from './import-export-types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Exports entities from a workspace to CSV
@@ -75,8 +76,8 @@ export async function exportContactsAction(options: ExportOptions): Promise<Expo
       rowCount: entities.length,
     };
 
-  } catch (error: any) {
-    console.error('>>> [EXPORT] Failed:', error.message);
+  } catch (error: unknown) {
+    console.error('>>> [EXPORT] Failed:', getErrorMessage(error));
     return {
       success: false,
       csvContent: '',

@@ -4,6 +4,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog, Workspace } from '@/lib/types';
 import { seedNativeFieldsAction } from '@/lib/fields-actions';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const BATCH_SIZE = 400;
 
@@ -109,9 +110,9 @@ export async function executePurgeLegacyFieldsFerAction(): Promise<{
       try {
         await seedNativeFieldsAction(workspaceId, organizationId, 'system_admin');
         stats.workspacesReseeded++;
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(`Failed to reseed workspace ${workspaceId}:`, err);
-        stats.errors.push(`Workspace ${workspaceId} reseed failed: ${err.message}`);
+        stats.errors.push(`Workspace ${workspaceId} reseed failed: ${getErrorMessage(err)}`);
       }
 
       // Create a fallback group immediately so we can re-parent orphaned fields
@@ -180,22 +181,22 @@ export async function executePurgeLegacyFieldsFerAction(): Promise<{
       details: stats,
     };
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error(`[FER Purge Legacy Fields] Fatal error:`, error);
     stats.failed++;
-    stats.errors.push(error.message);
+    stats.errors.push(getErrorMessage(error));
 
     // 3. Mark as Failed
     await migrationRef.set({
       status: 'failed',
       lastRunAt: now,
-      summary: `Failed: ${error.message}`,
+      summary: `Failed: ${getErrorMessage(error)}`,
       details: stats,
     } as Partial<SystemMigrationLog>, { merge: true });
 
     return {
       success: false,
-      message: error.message || 'Fatal error during migration',
+      message: getErrorMessage(error) || 'Fatal error during migration',
       details: stats,
     };
   }

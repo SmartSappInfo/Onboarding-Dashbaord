@@ -7,6 +7,7 @@ import type { Workspace } from './types';
 import { resolveTerminologyFromWorkspace } from './terminology';
 import { createDefaultPipelineForIndustry } from './pipeline-actions';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server-side actions for Workspace Management.
@@ -151,8 +152,8 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
             revalidatePath('/admin/settings');
             return { success: true, id: newId };
         }
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -190,8 +191,8 @@ export async function deleteWorkspaceAction(id: string, userId: string) {
         revalidatePath('/admin/settings');
         return { success: true };
 
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -209,8 +210,8 @@ export async function archiveWorkspaceAction(id: string, archive: boolean) {
         });
         revalidatePath('/admin/settings');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -284,8 +285,8 @@ export async function updateWorkspaceScopeAction(
 
         revalidatePath('/admin/settings');
         return { success: true };
-    } catch (e: any) {
-        return { success: false, error: e.message };
+    } catch (e: unknown) {
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 
@@ -349,9 +350,9 @@ export async function migrateLegacyWorkspaceScopesAction(
         }
 
         return { success: true, count };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error('[WORKSPACE_MIGRATION] Failed to migrate legacy scopes:', e);
-        return { success: false, count: 0, error: e.message || 'Migration failed' };
+        return { success: false, count: 0, error: getErrorMessage(e) || 'Migration failed' };
     }
 }
 

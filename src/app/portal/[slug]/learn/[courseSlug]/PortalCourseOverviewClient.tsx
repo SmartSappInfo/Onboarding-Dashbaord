@@ -47,6 +47,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { PortalAuthModal } from '../../components/PortalAuthModal';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalCourseOverviewClientProps {
   slug: string;
@@ -160,8 +161,8 @@ export default function PortalCourseOverviewClient({
       } else {
         router.refresh();
       }
-    } catch (err: any) {
-      toast({ title: 'Enrollment Error', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Enrollment Error', description: getErrorMessage(err) });
     } finally {
       setIsEnrolling(false);
     }

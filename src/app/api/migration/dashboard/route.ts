@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ success: true, data: result.data });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('dashboard error:', error);
     return NextResponse.json(
       { error: toClientErrorMessage('api.migration.dashboard', error, undefined, 'Failed to fetch dashboard summary') },

@@ -7,6 +7,7 @@ import { ensureAbsoluteUrl, getBaseUrl, getRequestBaseUrl } from '@/lib/utils/ur
 import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 import { resolveActiveTemplate } from '@/lib/template-resolver';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -56,9 +57,9 @@ export async function deleteRegistrantAction(meetingId: string, registrantId: st
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[deleteRegistrantAction]', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -70,9 +71,9 @@ export async function updateRegistrantStatusAction(meetingId: string, registrant
       ...(newStatus === 'cancelled' ? { cancelledAt: new Date().toISOString() } : {})
     });
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[updateRegistrantStatusAction]', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -183,7 +184,7 @@ export async function sendRegistrantJoinLinkAction(
 
         const dispatchResults = await Promise.allSettled(dispatches);
         const successes = dispatchResults.filter(d => d.status === 'fulfilled').map(d => (d as PromiseFulfilledResult<string>).value);
-        const failures = dispatchResults.filter(d => d.status === 'rejected').map(d => ((d as PromiseRejectedResult).reason?.message || 'Dispatch error') as string);
+        const failures = dispatchResults.filter(d => d.status === 'rejected').map(d => (getErrorMessage((d as PromiseRejectedResult).reason) || 'Dispatch error') as string);
 
         if (successes.length === 0) {
           throw new Error(`Failed to send link on all channels: ${failures.join(', ')}`);
@@ -202,7 +203,7 @@ export async function sendRegistrantJoinLinkAction(
         if (cResult.status === 'fulfilled') {
           finalResults.push(cResult.value);
         } else {
-          errorsList.push(cResult.reason?.message || 'Unknown chunk execution error');
+          errorsList.push(getErrorMessage(cResult.reason) || 'Unknown chunk execution error');
         }
       });
     }
@@ -214,9 +215,9 @@ export async function sendRegistrantJoinLinkAction(
       success: failures === 0,
       message: `Sent join links successfully to ${successes} registrant(s). ${failures > 0 ? `${failures} failed.` : ''}`
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[sendRegistrantJoinLinkAction]', error);
-    return { success: false, message: error.message };
+    return { success: false, message: getErrorMessage(error) };
   }
 }
 
@@ -267,7 +268,7 @@ export async function adminRegisterParticipantAction(
 
     const orgId = meeting.organizationId || 'default';
     void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, docRef.id, orgId).catch(err => {
-      console.warn('[ADMIN-REGISTER] Failed to schedule reminders:', err?.message);
+      console.warn('[ADMIN-REGISTER] Failed to schedule reminders:', getErrorMessage(err));
     });
 
     let workspaceId = meeting.workspaceIds?.[0] || '';
@@ -290,9 +291,9 @@ export async function adminRegisterParticipantAction(
     }
 
     return { success: true, registrantId: docRef.id };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[adminRegisterParticipantAction]', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -572,8 +573,8 @@ async function dispatchSingleRecipient(
             sentChannels.push(channel);
           }
         }
-      } catch (err: any) {
-        failedChannels.push({ channel, error: err.message || 'Unknown error' });
+      } catch (err: unknown) {
+        failedChannels.push({ channel, error: getErrorMessage(err) || 'Unknown error' });
       }
     }
 
@@ -645,11 +646,11 @@ async function dispatchSingleRecipient(
         entityName: rec.entityName || ''
       }
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     return {
       success: false,
       sentChannels: [],
-      failedChannels: channels.map(c => ({ channel: c, error: error.message || 'Fatal execution error' })),
+      failedChannels: channels.map(c => ({ channel: c, error: getErrorMessage(error) || 'Fatal execution error' })),
       recipient: {
         entityId: rec.entityId || '',
         name: rec.name,
@@ -744,9 +745,9 @@ export async function sendMeetingInvitationsAction(
       skippedRecipients: skippedList,
       failedRecipients: failedList,
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[sendMeetingInvitationsAction]', error);
-    return { success: false, message: error.message, totalRecipients: 0, successCount: 0, skippedCount: 0, failedCount: 0, skippedRecipients: [], failedRecipients: [] };
+    return { success: false, message: getErrorMessage(error), totalRecipients: 0, successCount: 0, skippedCount: 0, failedCount: 0, skippedRecipients: [], failedRecipients: [] };
   }
 }
 
@@ -821,7 +822,7 @@ export async function submitRsvpResponseAction(
         const meeting = meetingSnap.data()!;
         const orgId = meeting.organizationId || 'default';
         void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, regDoc.id, orgId).catch(err => {
-          console.warn('[RSVP-GOING] Failed to schedule reminders:', err?.message);
+          console.warn('[RSVP-GOING] Failed to schedule reminders:', getErrorMessage(err));
         });
 
         let workspaceId = meeting.workspaceIds?.[0] || regData.workspaceIds?.[0] || '';
@@ -872,16 +873,16 @@ export async function submitRsvpResponseAction(
           const snaps = await Promise.all(queryPromises);
           snaps.forEach(s => s.docs.forEach(d => batch.delete(d.ref)));
           await batch.commit();
-        } catch (err: any) {
-          console.warn('[RSVP-DECLINE] Failed to clear scheduled reminders:', err?.message);
+        } catch (err: unknown) {
+          console.warn('[RSVP-DECLINE] Failed to clear scheduled reminders:', getErrorMessage(err));
         }
       }
     }
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[submitRsvpResponseAction]', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -922,7 +923,7 @@ export async function manuallyUpdateGuestStatusAction(
         const meeting = meetingSnap.data()!;
         const orgId = meeting.organizationId || 'default';
         void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, registrantId, orgId).catch(err => {
-          console.warn('[MANUAL-STATUS-GOING] Failed to schedule reminders:', err?.message);
+          console.warn('[MANUAL-STATUS-GOING] Failed to schedule reminders:', getErrorMessage(err));
         });
       }
     } else if (targetState === 'cancelled') {
@@ -956,16 +957,16 @@ export async function manuallyUpdateGuestStatusAction(
             const snaps = await Promise.all(queryPromises);
             snaps.forEach(s => s.docs.forEach(d => batch.delete(d.ref)));
             await batch.commit();
-          } catch (err: any) {
-            console.warn('[MANUAL-STATUS-CANCEL] Failed to clear scheduled reminders:', err?.message);
+          } catch (err: unknown) {
+            console.warn('[MANUAL-STATUS-CANCEL] Failed to clear scheduled reminders:', getErrorMessage(err));
           }
         }
       }
     }
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('[manuallyUpdateGuestStatusAction]', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

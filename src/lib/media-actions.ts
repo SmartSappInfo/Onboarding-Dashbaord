@@ -3,6 +3,7 @@
 import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server actions for media asset mutations.
@@ -27,9 +28,9 @@ export async function updateMediaName(assetId: string, newName: string) {
     
     revalidatePath('/admin/media');
     return { success: true };
-  } catch (error: any) {
-    console.error(">>> [MEDIA] Rename Failed:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error(">>> [MEDIA] Rename Failed:", getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -52,16 +53,16 @@ export async function deleteMediaAsset(assetId: string, storagePath?: string) {
     if (storagePath) {
         try {
             await adminStorage.file(storagePath).delete();
-        } catch (storageError: any) {
-            console.warn(">>> [MEDIA] Storage Deletion Warning (Document removed, file may persist):", storageError.message);
+        } catch (storageError: unknown) {
+            console.warn(">>> [MEDIA] Storage Deletion Warning (Document removed, file may persist):", getErrorMessage(storageError));
         }
     }
     
     revalidatePath('/admin/media');
     return { success: true };
-  } catch (error: any) {
-    console.error(">>> [MEDIA] Deletion Failed:", error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error(">>> [MEDIA] Deletion Failed:", getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 

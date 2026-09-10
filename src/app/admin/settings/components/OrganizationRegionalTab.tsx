@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
 import { Settings, Loader2, Save, X, Plus } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -129,8 +130,8 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
             }
-        } catch (error: any) {
-            toast({ variant: 'destructive', title: 'Error', description: error.message });
+        } catch (error: unknown) {
+            toast({ variant: 'destructive', title: 'Error', description: getErrorMessage(error) });
         } finally {
             setIsSaving(false);
         }

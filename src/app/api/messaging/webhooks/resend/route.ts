@@ -4,6 +4,7 @@
 import { NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { Webhook } from 'svix';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * POST /api/messaging/webhooks/resend
@@ -103,10 +104,10 @@ export async function POST(req: Request) {
     await taskDoc.ref.update(updatePayload);
 
     return NextResponse.json({ received: true }, { status: 200 });
-  } catch (err: any) {
-    console.error('[RESEND-WEBHOOK] Verification failed:', err.message);
+  } catch (err: unknown) {
+    console.error('[RESEND-WEBHOOK] Verification failed:', getErrorMessage(err));
     return NextResponse.json(
-      { error: `Webhook Error: ${err.message}` },
+      { error: `Webhook Error: ${getErrorMessage(err)}` },
       { status: 400 }
     );
   }

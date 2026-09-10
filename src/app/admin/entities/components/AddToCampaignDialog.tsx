@@ -26,6 +26,7 @@ import {
 } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import type { EntityContact } from '@/lib/types';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 export type ContactOverride = {
   entityId: string;
@@ -190,11 +191,11 @@ export function AddToCampaignDialog({
           description: result.error || 'Could not add contacts to the campaign.',
         });
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       toast({
         variant: 'destructive',
         title: 'Error occurred',
-        description: err.message || 'An unexpected error occurred.',
+        description: getErrorMessage(err) || 'An unexpected error occurred.',
       });
     } finally {
       setIsSubmitting(false);

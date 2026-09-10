@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { PhoneVerificationEngine } from '@/lib/phone-verifier';
 import { PhoneHygieneRepository } from '@/lib/phone-hygiene-repository';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const SingleSchema = z.object({
   phone: z.string().min(1),
@@ -44,10 +45,10 @@ export async function POST(req: Request) {
     await PhoneHygieneRepository.commitBatch([[phone, result]]);
 
     return NextResponse.json(result, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Phone Verification API Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error during verification.', details: error.message },
+      { error: 'Internal Server Error during verification.', details: getErrorMessage(error) },
       { status: 500 }
     );
   }

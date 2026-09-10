@@ -15,6 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { executeStripLifecycleStatusFerAction } from '@/app/actions/strip-lifecycle-status-fer-action';
 import { useBackoffice } from '../../context/BackofficeProvider';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 type Phase = 'idle' | 'confirm' | 'running' | 'done' | 'error';
 
@@ -78,8 +79,8 @@ export default function StripLifecycleStatusFer() {
           ...prev,
         ].slice(0, 10));
         setPhase(result.success ? 'done' : 'error');
-      } catch (err: any) {
-        setLastResult({ success: false, error: err.message });
+      } catch (err: unknown) {
+        setLastResult({ success: false, error: getErrorMessage(err) });
         setPhase('error');
       }
     });

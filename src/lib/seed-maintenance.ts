@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * SEED: System Maintenance Template
@@ -37,8 +38,8 @@ export async function seedMaintenanceTemplate() {
         });
         
         return { success: true };
-    } catch (error: any) {
-        console.error('Failed to seed maintenance template:', error.message);
-        return { success: false, error: error.message };
+    } catch (error: unknown) {
+        console.error('Failed to seed maintenance template:', getErrorMessage(error));
+        return { success: false, error: getErrorMessage(error) };
     }
 }

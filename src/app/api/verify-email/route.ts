@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import { 
   EmailVerificationEngine, 
   SyntaxValidator, 
@@ -34,10 +35,10 @@ export async function POST(req: Request) {
     const result = await engine.verify(email);
 
     return NextResponse.json(result, { status: 200 });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Email Verification API Error:', error);
     return NextResponse.json(
-      { error: 'Internal Server Error during verification.', details: error.message },
+      { error: 'Internal Server Error during verification.', details: getErrorMessage(error) },
       { status: 500 }
     );
   }

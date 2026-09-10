@@ -19,6 +19,7 @@ import { useToast } from '@/hooks/use-toast';
 import { advanceOnboardingStepAction } from '@/app/actions/engagement-actions';
 import type { OnboardingFlow, OnboardingStep, MemberOnboardingProgress } from '@/lib/types/engagement';
 import { DEFAULT_ONBOARDING_STEPS } from '@/lib/portal-presets';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   CheckCircle2,
   Circle,
@@ -94,8 +95,8 @@ export function MemberOnboardingWidget({
 
       if (!res.success) throw new Error(res.error);
       toast({ title: 'Step Completed! 🎯', description: 'Onboarding progress updated.' });
-    } catch (err: any) {
-      toast({ title: 'Action Failed', description: err?.message });
+    } catch (err: unknown) {
+      toast({ title: 'Action Failed', description: getErrorMessage(err) });
     } finally {
       setAdvancingStepId(null);
     }

@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { CampaignPageTheme } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Saves or updates a Campaign Page Theme.
@@ -14,9 +15,9 @@ export async function saveThemeAction(theme: CampaignPageTheme) {
     try {
         await adminDb.collection('campaign_page_themes').doc(theme.id).set(theme, { merge: true });
         return { success: true };
-    } catch (e: any) {
+    } catch (e: unknown) {
         console.error(">>> [THEME] Save Failed:", e);
-        return { success: false, error: e.message };
+        return { success: false, error: getErrorMessage(e) };
     }
 }
 

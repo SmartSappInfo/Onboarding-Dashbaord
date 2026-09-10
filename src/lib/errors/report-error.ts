@@ -87,3 +87,63 @@ export function toClientErrorMessage(
 ): string {
   return toClientError(scope, error, context, publicMessage).message;
 }
+
+/**
+ * Narrow an `unknown` caught value to a message (audit F11).
+ *
+ * `catch (e: unknown)` disables type checking for everything reached through `e`, so a typo
+ * like `e.mesage` compiles and silently yields `undefined`. Catch clauses should bind
+ * `unknown` and narrow here instead.
+ */
+export function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) {
+    const m = (error as { message?: unknown }).message;
+    if (typeof m === 'string') return m;
+  }
+  return 'Unexpected error';
+}
+
+/** Provider SDKs commonly carry a string `code`; read it without widening to `any`. */
+export function getErrorCode(error: unknown): string | undefined {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const c = (error as { code?: unknown }).code;
+    if (typeof c === 'string') return c;
+    if (typeof c === 'number') return String(c);
+  }
+  return undefined;
+}
+
+/** DOMException / AbortError style discrimination without widening to `any`. */
+export function getErrorName(error: unknown): string | undefined {
+  if (error instanceof Error) return error.name;
+  if (error && typeof error === 'object' && 'name' in error) {
+    const n = (error as { name?: unknown }).name;
+    if (typeof n === 'string') return n;
+  }
+  return undefined;
+}
+
+/** HTTP-ish status carried by fetch/SDK errors, for retry decisions. */
+export function getErrorStatus(error: unknown): number | undefined {
+  if (error && typeof error === 'object' && 'status' in error) {
+    const s = (error as { status?: unknown }).status;
+    if (typeof s === 'number') return s;
+    if (typeof s === 'string' && s.trim() !== '' && !Number.isNaN(Number(s))) return Number(s);
+  }
+  return undefined;
+}
+
+/** gRPC-style numeric code (Firestore, Cloud Tasks), distinct from the string `code`. */
+export function getErrorNumericCode(error: unknown): number | undefined {
+  if (error && typeof error === 'object' && 'code' in error) {
+    const c = (error as { code?: unknown }).code;
+    if (typeof c === 'number') return c;
+  }
+  return undefined;
+}
+
+export function getErrorStack(error: unknown): string | undefined {
+  return error instanceof Error ? error.stack : undefined;
+}

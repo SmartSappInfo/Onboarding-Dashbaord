@@ -21,6 +21,7 @@ import { isDealImportConfig, type DealImportConfig, type IngestBatchOptions, typ
 import { buildDealDocument, resolveDealName } from './deal-writer';
 import { calculateExpectedCloseDate } from '../app/admin/pipeline/utils/deal-expected-close';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -605,12 +606,12 @@ export async function processImportChunkBackground(importLogId: string): Promise
                 if (normalisedPhone) existingByPhone.set(normalisedPhone, extracted.workspaceEntityDoc);
                 successIncrement++;
             }
-        } catch (err: any) {
+        } catch (err: unknown) {
             failedIncrement++;
             failedRowDocs.push({
                 id: `fail_${Date.now()}_${rowIdx}`,
                 importLogId, rowIdx, rawPayload,
-                error: err.message || 'Unknown error',
+                error: getErrorMessage(err) || 'Unknown error',
                 resolved: false, retryCount: 0, createdAt: FieldValue.serverTimestamp()
             });
         }
@@ -673,11 +674,11 @@ export async function processImportChunkBackground(importLogId: string): Promise
         }
     });
 
-    } catch (error: any) {
+    } catch (error: unknown) {
         console.error(`[BULK-BG] Fatal error processing chunk for ${importLogId}:`, error);
         await importLogRef.update({ 
             status: 'failed', 
-            errorMessage: error.message || 'Unknown fatal error during chunk processing' 
+            errorMessage: getErrorMessage(error) || 'Unknown fatal error during chunk processing' 
         });
     }
 }

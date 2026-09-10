@@ -16,6 +16,7 @@
 // a session guard anyway. No client component imports this module.
 
 import { adminDb } from './firebase-admin';
+import { getErrorMessage } from '@/lib/errors/report-error';
 import type {
   MigrationOperationLog,
   MigrationOperationResult,
@@ -329,9 +330,9 @@ export async function getMigrationOperationLogs(filters?: {
     const logs = snapshot.docs.map(doc => doc.data() as MigrationOperationLog);
     
     return { success: true, data: logs };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getMigrationOperationLogs error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -377,9 +378,9 @@ export async function getMigrationMetrics(filters?: {
     const metrics = snapshot.docs.map(doc => doc.data() as MigrationMetrics);
     
     return { success: true, data: metrics };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getMigrationMetrics error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -435,9 +436,9 @@ export async function getMigrationAlerts(filters?: {
     const alerts = snapshot.docs.map(doc => doc.data() as MigrationAlert);
     
     return { success: true, data: alerts };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getMigrationAlerts error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -460,9 +461,9 @@ export async function acknowledgeMigrationAlert(
     });
     
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('acknowledgeMigrationAlert error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -549,9 +550,9 @@ export async function getMigrationDashboardSummary(): Promise<{
     };
     
     return { success: true, data: summary };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('getMigrationDashboardSummary error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -613,9 +614,9 @@ export async function cleanupOldMigrationLogs(
     console.log(`Cleaned up ${deletedCount} old migration logs (retention: ${retentionDays} days)`);
     
     return { success: true, deletedCount };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('cleanupOldMigrationLogs error:', error);
-    return { success: false, deletedCount: 0, error: error.message };
+    return { success: false, deletedCount: 0, error: getErrorMessage(error) };
   }
 }
 
@@ -676,8 +677,8 @@ export async function exportMigrationLogs(filters?: {
         exportedAt: new Date().toISOString(),
       },
     };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('exportMigrationLogs error:', error);
-    return { success: false, error: error.message };
+    return { success: false, error: getErrorMessage(error) };
   }
 }

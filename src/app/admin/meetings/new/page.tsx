@@ -86,6 +86,7 @@ import MeetingLeadCaptureSection from '../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../components/MeetingMessagingTab';
 import { MeetingFacilitatorsSection } from '../components/MeetingFacilitatorsSection';
 import dynamic from 'next/dynamic';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 const MeetingQRDialog = dynamic(() => import('../components/MeetingQRDialog'), { ssr: false });
 
@@ -562,8 +563,8 @@ export default function NewMeetingPage() {
         ).catch(err => console.warn("Reminder rescheduling deferred:", err.message));
 
         router.push('/admin/meetings');
-    } catch (error: any) {
-        toast({ variant: 'destructive', title: 'Schedule failed', description: error.message });
+    } catch (error: unknown) {
+        toast({ variant: 'destructive', title: 'Schedule failed', description: getErrorMessage(error) });
     }
   };
 

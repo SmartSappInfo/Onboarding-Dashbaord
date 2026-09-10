@@ -3,6 +3,7 @@ import { getAuth } from 'firebase-admin/auth';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import { getStorage } from 'firebase-admin/storage';
 import path from 'path';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 function getAdminApp(): App {
   if (getApps().length > 0) {
@@ -71,8 +72,8 @@ if (!(globalThis as any)._firestoreSettingsApplied) {
   try {
     firestoreInstance.settings({ ignoreUndefinedProperties: true });
     (globalThis as any)._firestoreSettingsApplied = true;
-  } catch (e: any) {
-    if (e.message && e.message.includes('already been initialized')) {
+  } catch (e: unknown) {
+    if (getErrorMessage(e) && getErrorMessage(e).includes('already been initialized')) {
       (globalThis as any)._firestoreSettingsApplied = true;
     } else {
       throw e;

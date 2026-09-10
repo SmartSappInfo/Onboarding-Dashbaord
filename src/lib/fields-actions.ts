@@ -8,6 +8,7 @@ import { listPlatformIndustryFieldGroupsInternal } from './backoffice/backoffice
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server-side actions for the Fields & Variables Manager.
@@ -52,9 +53,9 @@ export async function createFieldGroupAction(data: Omit<FieldGroup, 'id' | 'crea
     await ref.set(newGroup);
     revalidatePath(REVALIDATION_PATH);
     return { success: true, id: ref.id, group: newGroup };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Create Group Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Create Group Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -91,9 +92,9 @@ export async function updateFieldGroupAction(id: string, data: Partial<FieldGrou
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Update Group Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Update Group Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -143,9 +144,9 @@ export async function deleteFieldGroupAction(id: string, userId: string) {
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Delete Group Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Delete Group Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -177,9 +178,9 @@ export async function reorderFieldGroupsAction(updates: { id: string; order: num
     await batch.commit();
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Reorder Groups Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Reorder Groups Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -205,9 +206,9 @@ export async function moveFieldToGroupAction(fieldId: string, targetGroupId: str
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Move Field Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Move Field Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -248,9 +249,9 @@ export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' 
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true, id: ref.id };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Create Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Create Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -309,9 +310,9 @@ export async function updateFieldAction(id: string, data: Partial<AppField>, use
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Update Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Update Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -362,9 +363,9 @@ export async function deleteFieldAction(id: string, userId: string) {
     await ref.delete();
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Delete Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Delete Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -515,9 +516,9 @@ export async function seedNativeFieldsAction(
 
     revalidatePath(REVALIDATION_PATH);
     return { success: true, seededGroups, seededFields };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Seed Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Seed Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -537,9 +538,9 @@ export async function getFieldGroupsForWorkspace(workspaceId: string): Promise<{
 
     const groups = snap.docs.map(d => d.data() as FieldGroup);
     return { success: true, groups };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Fetch Groups Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Fetch Groups Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -556,9 +557,9 @@ export async function getFieldsForWorkspace(workspaceId: string): Promise<{ succ
 
     const fields = snap.docs.map(d => ({ id: d.id, ...d.data() } as AppField));
     return { success: true, fields };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Fetch Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Fetch Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -640,9 +641,9 @@ export async function getWorkspaceVariablesAction(workspaceId: string): Promise<
     const allVariables = [...filteredStaticVariables, ...dynamicVars];
 
     return { success: true, variables: allVariables };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] Get Variables Failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] Get Variables Failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -677,9 +678,9 @@ export async function listIndustryPredefinedGroupsAction(industry: IndustryVerti
 
   try {
     return await listPlatformIndustryFieldGroupsInternal(industry);
-  } catch (error: any) {
-    console.error('>>> [FIELDS] listIndustryPredefinedGroupsAction failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] listIndustryPredefinedGroupsAction failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
 
@@ -789,8 +790,8 @@ export async function installPredefinedIndustryGroupsAction(
     const REVALIDATION_PATH = '/admin/settings/fields';
     revalidatePath(REVALIDATION_PATH);
     return { success: true };
-  } catch (error: any) {
-    console.error('>>> [FIELDS] installPredefinedIndustryGroupsAction failed:', error.message);
-    return { success: false, error: error.message };
+  } catch (error: unknown) {
+    console.error('>>> [FIELDS] installPredefinedIndustryGroupsAction failed:', getErrorMessage(error));
+    return { success: false, error: getErrorMessage(error) };
   }
 }
