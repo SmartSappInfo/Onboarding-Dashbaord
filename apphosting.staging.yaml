@@ -1,0 +1,75 @@
+# Staging backend — shares the PRODUCTION Firebase project.
+#
+# Because it shares production Firestore, it must be structurally incapable of two things:
+# contacting a customer, and writing anonymous public-page data.
+#
+# CAUTION FOR FUTURE EDITORS
+# The sending secrets below are omitted DELIBERATELY. Do not add them "to make staging
+# realistic" — and note that omitting them is not by itself sufficient, because provider
+# keys are also stored per organization in Firestore, which this backend can read. The
+# ALLOW_OUTBOUND_MESSAGING floor is what actually stops sending; see
+# src/lib/platform/outbound-guard.ts.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+env:
+  # Serves the same routes as the client app, so routing changes can be smoke-tested.
+  - variable: APP_SURFACE
+    value: "client"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Hard floor. Cannot be lifted from the backoffice UI (see outbound-guard.ts).
+  - variable: ALLOW_OUTBOUND_MESSAGING
+    value: "false"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Blocks anonymous public pages so staging cannot write real tenant data (decision D-1).
+  - variable: APP_ENV
+    value: "staging"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Customer-facing links must still resolve to the real client origin, never to this host.
+  - variable: PUBLIC_APP_ORIGIN
+    value: "https://go.smartsapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_APP_URL
+    value: "https://go.smartsapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: RAYON_NUM_THREADS
+    value: "2"
+    availability:
+      - BUILD
+
+  - variable: BUILD_CPUS
+    value: "2"
+    availability:
+      - BUILD
+
+  - variable: NEXT_TELEMETRY_DISABLED
+    value: "1"
+    availability:
+      - BUILD
+
+  # CRON_SECRET is intentionally absent: /api/cron/* returns 500 without it, so staging
+  # cannot run scheduled sends even if the kill switch were somehow lifted.
+
+  # Needed to decrypt stored WhatsApp credentials for read paths; sending is still blocked.
+  - variable: WHATSAPP_ENCRYPTION_KEY
+    secret: whatsapp-encryption-key

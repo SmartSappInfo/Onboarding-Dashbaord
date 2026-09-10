@@ -609,7 +609,7 @@ git commit -m "feat(platform): add outbound messaging kill switch"
 - Modify: `src/lib/whatsapp/whatsapp-send.ts` (`sendWhatsApp`)
 - Test: `src/lib/platform/__tests__/outbound-boundaries.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -646,12 +646,12 @@ Note `sendPushNotification` currently returns `null` when credentials are missin
 than throwing. The guard must run **before** that check, so a blocked send is loud rather
 than silently indistinguishable from "not configured".
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run src/lib/platform/__tests__/outbound-boundaries.test.ts`
 Expected: FAIL — the calls attempt a real request instead of throwing.
 
-- [ ] **Step 3: Add the guard to each boundary**
+- [x] **Step 3: Add the guard to each boundary**
 
 Add this import to each of the four files:
 
@@ -671,9 +671,9 @@ Then as the first statement of each send function:
   await assertOutboundAllowed('whatsapp'); // whatsapp/whatsapp-send.ts: sendWhatsApp
 ```
 
-- [ ] **Step 4: Run the boundary tests — expect PASS**
+- [x] **Step 4: Run the boundary tests — expect PASS**
 
-- [ ] **Step 5: Run the full suite — nothing may regress**
+- [x] **Step 5: Run the full suite — nothing may regress**
 
 Run: `NODE_OPTIONS='--max-old-space-size=4096' npx vitest run`
 Expected: same pass count as before this stage, plus the new tests.
@@ -682,7 +682,7 @@ Expected: same pass count as before this stage, plus the new tests.
 > allow and they are unaffected. If any test fails, the guard has been placed in a read
 > path by mistake — check it is only on send functions.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/lib/resend-service.ts src/lib/mnotify-service.ts src/lib/onesignal-service.ts \
@@ -696,7 +696,7 @@ git commit -m "feat(platform): enforce the outbound kill switch at every provide
 - Modify: `firestore.rules`
 - Test: `src/lib/__tests__/platform-config-rules.rules.test.ts`
 
-- [ ] **Step 1: Write the failing rules test**
+- [x] **Step 1: Write the failing rules test**
 
 ```ts
 // @ts-nocheck
@@ -760,12 +760,12 @@ describe.skipIf(!up)('platform_config rules', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npm run test:rules`
 Expected: the admin-read case FAILS — no rule matches `platform_config` yet, so it is denied.
 
-- [ ] **Step 3: Add the rules**
+- [x] **Step 3: Add the rules**
 
 Insert into `firestore.rules`, inside `match /databases/{database}/documents {`:
 
@@ -783,11 +783,11 @@ Insert into `firestore.rules`, inside `match /databases/{database}/documents {`:
     }
 ```
 
-- [ ] **Step 4: Run the rules tests — expect PASS (4 tests)**
+- [x] **Step 4: Run the rules tests — expect PASS (4 tests)**
 
 Run: `npm run test:rules`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add firestore.rules src/lib/__tests__/platform-config-rules.rules.test.ts

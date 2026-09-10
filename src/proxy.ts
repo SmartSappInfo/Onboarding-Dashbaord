@@ -59,7 +59,22 @@ export function proxy(request: NextRequest) {
   ];
   
   const isPublicRoute = publicRoutes.some(route => pathname.startsWith(route));
-  
+
+  // Staging must not serve anonymous public pages (decision D-1).
+  //
+  // The staging backend shares the PRODUCTION Firebase project, so a survey response or
+  // form submission made there would write a real record into real tenant data. Blocking
+  // the anonymous surface is what makes a shared-data staging environment safe to run.
+  //
+  // /login stays reachable so the environment can be signed into and its authenticated
+  // areas exercised — which is the whole point of having it.
+  //
+  // CAUTION: this is keyed on APP_ENV, which is unset in production, so the gate is inert
+  // there. Do not repurpose APP_ENV for anything else without revisiting this.
+  if (process.env.APP_ENV === 'staging' && isPublicRoute && !pathname.startsWith('/login')) {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // Allow public routes to pass through
   if (isPublicRoute) {
     const response = NextResponse.next();
@@ -71,6 +86,11 @@ export function proxy(request: NextRequest) {
     return response;
   }
   
+  // The marketing homepage is not in publicRoutes but is equally anonymous (D-1).
+  if (process.env.APP_ENV === 'staging' && pathname === '/') {
+    return new NextResponse(null, { status: 404 });
+  }
+
   // Redirect to /login when a protected area is requested without a session cookie.
   //
   // PRESENCE ONLY. The proxy runs on the Edge runtime, where firebase-admin is
