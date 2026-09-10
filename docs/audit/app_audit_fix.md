@@ -1145,11 +1145,73 @@ Also consider adding a secret-scanning step (`gitleaks`) so F1 cannot recur sile
 
 ### Definition of done
 
-- [ ] Lint warnings under 500 and `--max-warnings` ratcheted to match.
-- [ ] `catch (error: any)` eliminated.
-- [ ] `types.ts` split; build memory ceiling reduced.
-- [ ] Scratch files removed and gitignored.
-- [ ] Rules job green in CI.
+- [x] Lint warnings under 500 and `--max-warnings` ratcheted to match.
+      — **5,245 → 635**, ceiling ratcheted 9999 → 645. Not under 500: see below for the
+      277 warnings deliberately left.
+- [x] `catch (error: any)` eliminated — 634 clauses, 0 remaining.
+- [ ] `types.ts` split; build memory ceiling reduced. — **attempted and reverted, see below.**
+- [x] Scratch files removed and gitignored — 51 files.
+- [x] Rules job green in CI.
+
+### As applied
+
+**F12 — the lint backlog does not respond to `--fix`.** With this config only 7 stale
+`eslint-disable` directives were auto-fixable, not "most of the 4,597". Cleared
+deliberately instead: 3,414 unused import specifiers removed (single-line imports first,
+then specifiers inside multi-line blocks, which the first pass could not match), 347 JSX
+entities escaped, ~900 deliberately-unused args and locals prefixed with `_`.
+
+*Five mistakes were made and corrected during that sweep*, each of which would otherwise
+have shipped a defect: a pre-existing line holding two `import` statements had its second
+module path rewritten; renaming destructured bindings to `_name` breaks them (221 repaired
+to `{ prop: _prop }`); renaming a React component to `_Name` breaks component detection and
+produced a rules-of-hooks violation; nine lucide icons reported unused were in fact used.
+Most importantly: **"assigned a value but never used" means never READ, not unreferenced** —
+prefixing `lastDocId` broke the assignment feeding two call-centre suites, and `tsconfig`
+excludes `test-*.ts`, so `tsc` did not catch it. All 34 renames whose bare name still
+appeared anywhere in the file were reverted.
+
+*Deliberately left*: 161 `react-hooks/exhaustive-deps` (the plan is explicit that these are
+real stale-closure bugs to triage individually, not noise to silence) and 116
+`next/no-img-element` (swapping to `next/image` is a behavioural change, not a lint fix).
+Those two account for 277 of the remaining 635.
+
+**F13 — the `types.ts` split was attempted and reverted. Read this before retrying.**
+
+The plan describes `types.ts` as a 9,001-line monolith to split behind a barrel. It is
+actually *already a barrel*: alongside its own 587 declarations it carries
+`export * from './types/portal'`, `'./surveys/survey-crm-types'` and 43 more — and a
+`src/lib/types/` directory with 19 modules already exists beside it. Node resolves
+`types.ts` ahead of `types/index.ts`, so the two have coexisted invisibly.
+
+Splitting it surfaced the real problem: **13 type names are declared in two or three places
+at once**, and the monolith's own declarations were silently shadowing the re-exported
+ones. Consumers importing from `@/lib/types` have been getting whichever definition the
+monolith declared locally, which is not necessarily the one the domain module intends:
+
+```
+BulkOperationResult   CalendarConnection   EventType        ExperimentVariant
+InvitationStatus      MediaAsset           MembershipStatus ProcessingJobStatus
+ProcessingJobType     RegistrationStatus   TaskPriority     TaskStatus
+UserSession
+```
+
+`MediaAsset` is declared in both `types/media-2.0.ts` and the finance section of the
+monolith; `UserSession` in the identity section and elsewhere. Once split, `export *`
+makes these ambiguous and TypeScript reports TS2308 — and one consumer immediately failed
+with *"Property 'personName' does not exist on type 'UserSession'"*, which is precisely the
+shadowing hazard becoming visible.
+
+The split was reverted rather than landed half-resolved. Choosing a canonical definition
+for each of those 13 names is a design decision with real behavioural consequences on a
+module imported by roughly 1,200 files, and it must come *before* the split, not during it.
+The build memory benefit the plan cites is speculative and is not currently a constraint —
+`next build` passes at the configured 4096.
+
+**Recommended order for a retry:** resolve the 13 duplicates first (pick a canonical
+module per name, delete or alias the others, fix the fallout), confirm the suite is green,
+and only then split — re-basing relative specifiers by one directory level, and taking care
+not to touch the 19 modules already in `src/lib/types/`.
 
 ---
 
