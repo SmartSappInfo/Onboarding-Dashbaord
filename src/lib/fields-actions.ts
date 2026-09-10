@@ -62,8 +62,12 @@ export async function createFieldGroupAction(data: Omit<FieldGroup, 'id' | 'crea
  * Updates an existing field group.
  */
 export async function updateFieldGroupAction(id: string, data: Partial<FieldGroup>, userId: string) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   try {
     const ref = adminDb.collection('field_groups').doc(id);
@@ -97,8 +101,12 @@ export async function updateFieldGroupAction(id: string, data: Partial<FieldGrou
  * Deletes a field group (if custom) and moves orphaned fields.
  */
 export async function deleteFieldGroupAction(id: string, userId: string) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   try {
     const ref = adminDb.collection('field_groups').doc(id);
@@ -145,8 +153,12 @@ export async function deleteFieldGroupAction(id: string, userId: string) {
  * Reorders field groups.
  */
 export async function reorderFieldGroupsAction(updates: { id: string; order: number }[], workspaceId: string, userId: string) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireWorkspace(workspaceId);
+  userId = __verified.uid;
 
   try {
     const permission = await canUser(userId, 'management', 'fields', 'edit', workspaceId);
@@ -175,8 +187,12 @@ export async function reorderFieldGroupsAction(updates: { id: string; order: num
  * Moves a field to a new group.
  */
 export async function moveFieldToGroupAction(fieldId: string, targetGroupId: string, workspaceId: string, userId: string) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireWorkspace(workspaceId);
+  userId = __verified.uid;
 
   try {
     const permission = await canUser(userId, 'management', 'fields', 'edit', workspaceId);
@@ -242,8 +258,12 @@ export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' 
  * Updates an existing field. Native fields can only have limited updates (label, helpText, status).
  */
 export async function updateFieldAction(id: string, data: Partial<AppField>, userId: string) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   try {
     const ref = adminDb.collection('app_fields').doc(id);
@@ -299,8 +319,12 @@ export async function updateFieldAction(id: string, data: Partial<AppField>, use
  * Deletes a custom field. Native fields cannot be deleted.
  */
 export async function deleteFieldAction(id: string, userId: string) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   try {
     const ref = adminDb.collection('app_fields').doc(id);

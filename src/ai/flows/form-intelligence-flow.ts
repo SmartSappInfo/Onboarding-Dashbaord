@@ -1,5 +1,9 @@
-'use server';
-
+// NOTE: intentionally NOT 'use server' (audit F2).
+//
+// These AI flows are invoked by the survey/form action modules, which authenticate
+// their own callers. The directive additionally published each flow as a public HTTP
+// endpoint — meaning anyone could run model inference on this account's keys and
+// bill it to the platform. No client component imports this module.
 /**
  * SmartSapp Forms 2.0: AI Response Intelligence & Qualitative Research Flows
  * 

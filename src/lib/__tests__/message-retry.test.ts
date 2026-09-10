@@ -37,10 +37,14 @@ describe('Message Retry & Bulk Actions Suite', () => {
     vi.clearAllMocks();
   });
 
-  it('resendFailedMessageAction throws error if userId is missing', async () => {
+  // This used to assert that the action rejected an empty userId ARGUMENT. That check
+  // was never a security control: a caller who could omit the id could equally supply
+  // someone else's. The action now derives identity from the verified session and
+  // discards whatever the caller passed (audit F2), so an empty argument is simply
+  // irrelevant — which is what this asserts.
+  it('resendFailedMessageAction ignores a caller-supplied identity', async () => {
     const res = await resendFailedMessageAction('log-123', '');
-    expect(res.success).toBe(false);
-    expect(res.error).toBe('UserId is required.');
+    expect(res.success).toBe(true);
   });
 
   it('resendFailedMessageAction successfully executes retry', async () => {

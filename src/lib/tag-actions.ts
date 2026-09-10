@@ -188,8 +188,12 @@ export async function updateTagAction(
   userId: string,
   userName?: string
 ) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   const parsed = UpdateTagSchema.safeParse(updates);
   if (!parsed.success) {
@@ -281,8 +285,12 @@ export async function deleteTagAction(
   userId: string,
   userName?: string
 ) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   try {
     // Permission check: requires tags_manage
@@ -379,8 +387,12 @@ export async function mergeTagsAction(
   userId: string,
   userName?: string
 ) {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireAuth();
+  userId = __verified.uid;
 
   const parsed = MergeTagsSchema.safeParse({ sourceTagIds, targetTagId, userId });
   if (!parsed.success) {

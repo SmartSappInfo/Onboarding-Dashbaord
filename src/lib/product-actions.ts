@@ -82,8 +82,12 @@ export async function updateProductAction(
   userId: string,
   updates: Partial<FinanceProduct>
 ): Promise<ActionResponse> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireWorkspace(workspaceId);
+  // SECURITY (audit F2): the identity below feeds a permission check. The caller used
+  // to supply it, so an authenticated low-privilege user could pass an administrator's
+  // uid and pass the check as them. The caller-supplied value is discarded here and
+  // replaced with the verified session identity before any check runs.
+  const __verified = await requireWorkspace(workspaceId);
+  userId = __verified.uid;
 
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
