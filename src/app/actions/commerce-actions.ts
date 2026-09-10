@@ -10,6 +10,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { CommerceService } from '@/lib/services/commerce-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   PortalOffer,
   PortalCoupon,
@@ -44,7 +46,7 @@ export async function createOfferAction(
     }
     return { success: true, data: offer };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create offer.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to create offer.') };
   }
 }
 
@@ -64,7 +66,7 @@ export async function updateOfferAction(
     }
     return { success: true, data: offer };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update offer.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to update offer.') };
   }
 }
 
@@ -79,7 +81,7 @@ export async function deleteOfferAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete offer.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to delete offer.') };
   }
 }
 
@@ -90,7 +92,7 @@ export async function listOffersByPortalAction(
     const offers = await CommerceService.listPortalOffers(portalId);
     return { success: true, data: offers };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list offers.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to list offers.') };
   }
 }
 
@@ -104,7 +106,7 @@ export async function createCouponAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: coupon };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create coupon.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to create coupon.') };
   }
 }
 
@@ -117,7 +119,7 @@ export async function deleteCouponAction(
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete coupon.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to delete coupon.') };
   }
 }
 
@@ -128,7 +130,7 @@ export async function listCouponsByPortalAction(
     const coupons = await CommerceService.listPortalCoupons(portalId);
     return { success: true, data: coupons };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list coupons.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to list coupons.') };
   }
 }
 
@@ -139,7 +141,7 @@ export async function validateCouponAction(
     const result = await CommerceService.validateCoupon(input);
     return { success: true, data: result };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to validate coupon.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to validate coupon.') };
   }
 }
 
@@ -160,7 +162,7 @@ export async function processCheckoutOrderAction(
     }
     return { success: true, data: order };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to process checkout order.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to process checkout order.') };
   }
 }
 
@@ -171,7 +173,7 @@ export async function listOrdersByPortalAction(
     const orders = await CommerceService.listPortalOrders(portalId);
     return { success: true, data: orders };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list orders.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to list orders.') };
   }
 }
 
@@ -186,7 +188,7 @@ export async function registerAffiliatePartnerAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/affiliates`);
     return { success: true, data: partner };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to register as affiliate partner.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to register as affiliate partner.') };
   }
 }
 
@@ -197,7 +199,7 @@ export async function listAffiliatesByPortalAction(
     const affiliates = await CommerceService.listPortalAffiliates(portalId);
     return { success: true, data: affiliates };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list affiliates.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to list affiliates.') };
   }
 }
 
@@ -211,7 +213,7 @@ export async function updateAffiliatePartnerStatusAction(
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update affiliate partner status.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to update affiliate partner status.') };
   }
 }
 
@@ -224,6 +226,6 @@ export async function joinPortalWaitlistAction(
     const waitlist = await CommerceService.joinWaitlist(input);
     return { success: true, data: waitlist };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to join waitlist.' };
+    return { success: false, error: toClientErrorMessage('actions.commerce-actions', err, undefined, 'Failed to join waitlist.') };
   }
 }

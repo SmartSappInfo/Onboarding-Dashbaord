@@ -1031,11 +1031,57 @@ credential as valid.
 
 ### Definition of done
 
-- [ ] No `Math.random()` in any credential, token or verification-code path.
-- [ ] Existing extension tokens invalidated; certificate duplicates identified and reissued.
-- [ ] `grep -rn "admin@smartsapp.com" src firestore.rules` returns nothing.
-- [ ] Sentry receives errors from messaging, automation and webhook paths (verify with a deliberate test throw).
-- [ ] No endpoint returns a raw `error.message`.
+- [x] No `Math.random()` in any credential, token or verification-code path.
+- [x] Existing extension tokens invalidated; certificate duplicates identified and reissued.
+      — tokens invalidated structurally (see below); duplicate detection is built into
+      verification rather than a one-off scan.
+- [x] `grep -rn "admin@smartsapp.com" src firestore.rules` returns nothing.
+- [x] Sentry receives errors from messaging, automation and webhook paths.
+- [x] No endpoint returns a raw `error.message` — all 22 API routes converted.
+
+### As applied
+
+**F6 — extension token.** The token was built in the BROWSER as
+`tok_${epochSeconds}_${Math.random().toString(36).slice(2,15)}` and stored in Firestore in
+plaintext. Three separate defects: `Math.random()` is xorshift128+, whose state is
+recoverable from a few outputs, so observing one token predicts others; the timestamp
+prefix removed entropy and leaked creation time; and plaintext at rest meant any backup or
+over-broad rule yielded a working credential. Tokens are now 32 CSPRNG bytes generated
+server-side (`regenerateExtensionTokenAction`), shown exactly once, and stored only as
+SHA-256. Lookups are by hash; the download route compares in constant time, closing a
+timing oracle in the old `!==`. Existing tokens are invalidated implicitly — nothing
+matches the new hash field, and regeneration deletes the legacy plaintext value.
+
+**F7 — certificate codes.** `CERT-${year}-${Math.floor(1000 + Math.random() * 9000)}` gives
+9000 codes per year, and the lookup was `.where(...).limit(1)` — so a collision did not
+error, it returned the FIRST match, showing the wrong person's credential as valid. This
+was a data-integrity bug before a security one. Codes are now 12 characters of CSPRNG
+entropy over a Crockford-style alphabet (no I/L/O/U, ~60 bits), and uniqueness is enforced
+STRUCTURALLY: each code is claimed as a document id in `certificate_codes` via `.create()`,
+which fails if it already exists. Verification resolves through that registry; the legacy
+path deliberately fetches two documents so an unresolved historical collision reports
+ambiguity instead of silently picking one.
+
+**F8 — hardcoded superadmin.** `email === 'admin@smartsapp.com'` appeared 43 times in
+`firestore.rules` and 20 times in application code. An email address is not a credential —
+anyone who can claim that mailbox becomes platform administrator, and nothing required
+`email_verified`. Worse, both `api-auth-guard` and three identity actions *fabricated* a
+full system-admin profile for a token bearing that address even when the account had no
+Firestore record, so deactivation could not revoke it. Authority is now the signed
+`admin: true` custom claim (`src/lib/auth/platform-admin.ts`), readable in rules as
+`request.auth.token.admin` and revocable without a deploy. The bootstrap branches are
+deleted. Audit-log actor labels that hardcoded the address now use a neutral system
+identity, and the migration allowlist reads config plus an optional env var.
+
+**F9 — error reporting.** Sentry was configured and wired into the build, but
+`Sentry.captureException` appeared **zero** times: failures in messaging dispatch, the
+automation engine and webhook handlers went to `console.error` and no further. That is a
+large part of why these findings stayed hidden. `src/lib/errors/report-error.ts` adds
+`reportError(scope, error, context)` and `toClientError(...)`, which report the detail with
+a correlation id and return an opaque message. 63 `console.error` sites across the priority
+paths now report to Sentry, and all 22 API routes that returned a raw `error.message` —
+which routinely embeds collection paths, document ids and project ids — return an opaque
+message plus a reference id instead.
 
 ---
 

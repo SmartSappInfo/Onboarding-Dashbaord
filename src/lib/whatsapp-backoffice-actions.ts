@@ -10,11 +10,13 @@
 import { requireSystemAdmin } from './auth/require-org-admin';
 import { WhatsAppCredentialRepository } from './whatsapp/whatsapp-credential-repository';
 import type { WhatsAppConnectionPublic } from './whatsapp/whatsapp-types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
 
 function fail(error: unknown): { success: false; error: string } {
-  return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+  return { success: false, error: toClientErrorMessage('whatsapp-backoffice-actions', error, undefined, 'Unexpected error') };
 }
 
 /** List every organization's WhatsApp connection (redacted). */

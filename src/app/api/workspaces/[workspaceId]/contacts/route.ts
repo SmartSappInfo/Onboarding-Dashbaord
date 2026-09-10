@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { WorkspaceEntity, EntityType } from '@/lib/types';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Workspace contacts list API endpoint
@@ -82,7 +84,7 @@ export async function GET(
   } catch (error: any) {
     console.error('[API:WORKSPACES:CONTACTS:GET] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: toClientErrorMessage('api.workspaces.[workspaceId].contacts', error, undefined, 'Internal server error') },
       { status: 500 }
     );
   }

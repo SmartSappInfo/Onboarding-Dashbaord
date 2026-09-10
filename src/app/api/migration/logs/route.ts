@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMigrationOperationLogs } from '@/lib/migration-monitoring';
 import type { MigrationOperationType } from '@/lib/migration-monitoring-types';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function GET(request: NextRequest) {
   // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
@@ -40,7 +42,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('logs GET error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch logs' },
+      { error: toClientErrorMessage('api.migration.logs', error, undefined, 'Failed to fetch logs') },
       { status: 500 }
     );
   }

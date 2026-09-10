@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
 import type { Task } from '@/lib/types';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Task detail API endpoint
@@ -50,7 +52,7 @@ export async function PATCH(
   } catch (error: any) {
     console.error('[API:TASKS:PATCH] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: toClientErrorMessage('api.tasks.[taskId]', error, undefined, 'Internal server error') },
       { status: 500 }
     );
   }
@@ -81,7 +83,7 @@ export async function DELETE(
   } catch (error: any) {
     console.error('[API:TASKS:DELETE] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: toClientErrorMessage('api.tasks.[taskId]', error, undefined, 'Internal server error') },
       { status: 500 }
     );
   }

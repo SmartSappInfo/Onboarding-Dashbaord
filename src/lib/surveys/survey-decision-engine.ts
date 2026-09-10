@@ -30,6 +30,8 @@ import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
 import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   type SurveyDecisionContext,
   evaluateCondition,
@@ -284,7 +286,7 @@ export async function executeSingleDecisionAction(
     return {
       success: false,
       actionType: action.type,
-      error: err instanceof Error ? err.message : 'Unknown execution error',
+      error: toClientErrorMessage('surveys.survey-decision-engine', err, undefined, 'Unknown execution error'),
     };
   }
 }
@@ -429,7 +431,7 @@ export async function getSurveyDecisionConfigAction(
   } catch (err: unknown) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to get decision config',
+      error: toClientErrorMessage('surveys.survey-decision-engine', err, undefined, 'Failed to get decision config'),
     };
   }
 }
@@ -465,7 +467,7 @@ export async function saveSurveyDecisionConfigAction(
   } catch (err: unknown) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save decision config',
+      error: toClientErrorMessage('surveys.survey-decision-engine', err, undefined, 'Failed to save decision config'),
     };
   }
 }
@@ -622,7 +624,7 @@ export async function saveSystemDecisionPlaybooksAction(
   } catch (err: unknown) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save system playbooks',
+      error: toClientErrorMessage('surveys.survey-decision-engine', err, undefined, 'Failed to save system playbooks'),
     };
   }
 }

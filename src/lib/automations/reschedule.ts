@@ -1,6 +1,9 @@
 import { adminDb } from '../firebase-admin';
 import { cancelDelayTask, rescheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
 import { calculateExecuteAt } from './nodes/delay';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 /**
  * Converts value and unit into milliseconds.
@@ -158,7 +161,7 @@ export async function reschedulePendingJobs(
               gcpTaskName: data.gcpTaskName as string | undefined, // Pass gcpTaskName for collision safety!
             });
           } catch (err) {
-            console.error(`[RESCHEDULE] Failed to reschedule task for run ${data.runId}:`, err);
+            reportError('automations.reschedule', err, { note: `[RESCHEDULE] Failed to reschedule task for run ${data.runId}:` });
           }
         })
       );
@@ -222,7 +225,7 @@ export async function purgePendingJobsForNode(
               data.gcpTaskName as string | undefined // Pass gcpTaskName for collision safety!
             );
           } catch (err) {
-            console.error(`[PURGE-NODE] Failed to cancel task for run ${data.runId}:`, err);
+            reportError('automations.reschedule', err, { note: `[PURGE-NODE] Failed to cancel task for run ${data.runId}:` });
           }
         })
       );
@@ -285,7 +288,7 @@ export async function purgeAllPendingJobsForAutomation(
                 data.gcpTaskName as string | undefined // Pass gcpTaskName for collision safety!
               );
             } catch (err) {
-              console.error(`[PURGE-AUTO] Failed to cancel task for run ${data.runId}:`, err);
+              reportError('automations.reschedule', err, { note: `[PURGE-AUTO] Failed to cancel task for run ${data.runId}:` });
             }
           }
         })

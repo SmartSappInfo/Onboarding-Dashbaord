@@ -13,6 +13,8 @@
 
 import dns from 'node:dns';
 import type { MXProviderType } from '../types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface MXResolutionResult {
   hasMx: boolean;
@@ -82,7 +84,7 @@ export class DNSMXResolverService {
         allHosts: [],
         provider: 'unknown',
         latencyMs,
-        error: err instanceof Error ? err.message : 'DNS resolution failed'
+        error: toClientErrorMessage('lead-intelligence.verification.DNSMXResolverService', err, undefined, 'DNS resolution failed')
       };
     }
   }

@@ -13,6 +13,8 @@
  */
 
 import net from 'node:net';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface SMTPProbeResult {
   isDeliverable: boolean;
@@ -93,7 +95,7 @@ export class SMTPHandshakeProberService {
         isCatchAll: false,
         latencyMs,
         handshakePassed: false,
-        error: err instanceof Error ? err.message : 'SMTP probe encountered error'
+        error: toClientErrorMessage('lead-intelligence.verification.SMTPHandshakeProberService', err, undefined, 'SMTP probe encountered error')
       };
     }
   }

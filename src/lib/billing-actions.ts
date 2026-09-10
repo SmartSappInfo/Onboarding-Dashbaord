@@ -21,6 +21,9 @@ import { InvoiceLifecycleService } from './services/invoice-lifecycle-service';
 import { FinancialApprovalService } from './services/financial-approval-service';
 import { FinancialAuditService } from './services/financial-audit-service';
 import crypto from 'crypto';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export interface ActionResponse<T = undefined> {
     success: boolean;
@@ -309,7 +312,7 @@ export async function updateInvoiceAction(
             FinancialEventService.emitInvoiceIssued(
                 { ...existingInvoice, ...updates, id } as Invoice,
                 userId
-            ).catch(err => console.error('[BILLING_ACTION] Event emit error:', err));
+            ).catch(err => reportError('billing-actions', err, { note: '[BILLING_ACTION] Event emit error:' }));
         } else {
             await adminDb.collection('invoices').doc(id).update(safeUpdates);
         }

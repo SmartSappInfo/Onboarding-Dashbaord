@@ -37,6 +37,8 @@ export interface ActionResponse<T> {
 }
 
 import { STARTER_BLUEPRINTS } from '@/lib/creative/creative-templates-data';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 const _UNUSED_STARTER_BLUEPRINTS: CreativeTemplate[] = [
   {
@@ -340,7 +342,7 @@ export async function listCreativeTemplatesAction(
     console.error('listCreativeTemplatesAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch templates.',
+      error: toClientErrorMessage('actions.creative-template-actions', err, undefined, 'Failed to fetch templates.'),
     };
   }
 }
@@ -430,7 +432,7 @@ export async function createProjectFromTemplateAction(
     console.error('createProjectFromTemplateAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to instantiate project from template.',
+      error: toClientErrorMessage('actions.creative-template-actions', err, undefined, 'Failed to instantiate project from template.'),
     };
   }
 }
@@ -492,7 +494,7 @@ export async function saveCanvasAsTemplateAction(
     console.error('saveCanvasAsTemplateAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save template.',
+      error: toClientErrorMessage('actions.creative-template-actions', err, undefined, 'Failed to save template.'),
     };
   }
 }
@@ -521,7 +523,7 @@ export async function seedDefaultTemplatesAction(): Promise<ActionResponse<numbe
     console.error('seedDefaultTemplatesAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to seed templates.',
+      error: toClientErrorMessage('actions.creative-template-actions', err, undefined, 'Failed to seed templates.'),
     };
   }
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { runAutomationById } from '@/lib/automation-processor';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function POST(req: Request) {
   try {
@@ -22,6 +24,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ success: true, message: 'Entity successfully enrolled in automation.' });
   } catch (error: any) {
     console.error('[ENROLL_AUTOMATION_ROUTE] Error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to enroll entity' }, { status: 500 });
+    return NextResponse.json({ error: toClientErrorMessage('api.automations.enroll', error, undefined, 'Failed to enroll entity') }, { status: 500 });
   }
 }

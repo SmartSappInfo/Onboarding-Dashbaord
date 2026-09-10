@@ -35,6 +35,8 @@ import { resolveMultipleContacts } from '@/lib/contact-adapter';
 import { format } from 'date-fns';
 import { parseDateSafe } from '@/lib/forms-utils';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface SurveyAnalyticsOverviewResult {
   success: boolean;
@@ -177,7 +179,7 @@ export async function getSurveyAnalyticsOverviewAction(
       qualityMetrics: computeResponseQualityMetrics([]),
       channelDistribution: [],
       dailyTrends: [],
-      error: error instanceof Error ? error.message : 'Failed to compute analytics overview',
+      error: toClientErrorMessage('surveys.survey-analytics-actions', error, undefined, 'Failed to compute analytics overview'),
     };
   }
 }
@@ -227,7 +229,7 @@ export async function getSurveyCrossTabsAction(
     console.error('Failed to compute cross-tabulation:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Cross-tabulation failed',
+      error: toClientErrorMessage('surveys.survey-analytics-actions', error, undefined, 'Cross-tabulation failed'),
     };
   }
 }
@@ -447,7 +449,7 @@ export async function exportSurveyDataAction(
       content: '',
       mimeType: '',
       recordCount: 0,
-      error: error instanceof Error ? error.message : 'Export failed',
+      error: toClientErrorMessage('surveys.survey-analytics-actions', error, undefined, 'Export failed'),
     };
   }
 }

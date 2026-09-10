@@ -1,6 +1,9 @@
 import { adminDb } from '../firebase-admin';
 import { scheduleDelayTask } from '../gcp-tasks-client';
 import type { AutomationJob } from '../types';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 /**
  * Migration script to transition legacy pending pull-cron jobs to event-driven push tasks.
@@ -69,14 +72,14 @@ export async function migratePendingJobsToTasks(): Promise<{
         });
         migratedCount++;
       } catch (err: any) {
-        console.error(`[MIGRATION] Failed to schedule task for job ${job.id}:`, err.message);
+        reportError('automations.migrate-jobs-to-tasks', err, { note: `[MIGRATION] Failed to schedule task for job ${job.id}:` });
       }
     }
 
     console.info(`[MIGRATION] Migration complete. Migrated: ${migratedCount}, Cancelled: ${cancelledCount}`);
     return { success: true, migratedCount, cancelledCount };
   } catch (error: any) {
-    console.error('[MIGRATION] Critical failure running job migration:', error);
+    reportError('automations.migrate-jobs-to-tasks', error, { note: '[MIGRATION] Critical failure running job migration:' });
     return {
       success: false,
       migratedCount: 0,

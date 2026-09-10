@@ -23,6 +23,8 @@ import type {
   CreativeApprovalDecision,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId } from '@/lib/creative/creative-types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ActionResponse<T> {
   success: boolean;
@@ -74,7 +76,7 @@ export async function submitProjectForReviewAction(
     console.error('submitProjectForReviewAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to submit review.',
+      error: toClientErrorMessage('actions.creative-collab-actions', err, undefined, 'Failed to submit review.'),
     };
   }
 }
@@ -122,7 +124,7 @@ export async function approveCreativeProjectAction(
     console.error('approveCreativeProjectAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to approve creative.',
+      error: toClientErrorMessage('actions.creative-collab-actions', err, undefined, 'Failed to approve creative.'),
     };
   }
 }
@@ -174,7 +176,7 @@ export async function requestProjectChangesAction(
     console.error('requestProjectChangesAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to request changes.',
+      error: toClientErrorMessage('actions.creative-collab-actions', err, undefined, 'Failed to request changes.'),
     };
   }
 }
@@ -204,7 +206,7 @@ export async function listProjectsPendingApprovalAction(
     console.error('listProjectsPendingApprovalAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list approval projects.',
+      error: toClientErrorMessage('actions.creative-collab-actions', err, undefined, 'Failed to list approval projects.'),
     };
   }
 }
@@ -260,7 +262,7 @@ export async function addCanvasPinCommentAction(
     console.error('addCanvasPinCommentAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to add pin comment.',
+      error: toClientErrorMessage('actions.creative-collab-actions', err, undefined, 'Failed to add pin comment.'),
     };
   }
 }
@@ -306,7 +308,7 @@ export async function addCommentReplyAction(
     console.error('addCommentReplyAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to post reply.',
+      error: toClientErrorMessage('actions.creative-collab-actions', err, undefined, 'Failed to post reply.'),
     };
   }
 }

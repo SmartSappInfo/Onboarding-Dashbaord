@@ -34,6 +34,7 @@ import { InvitationLifecycleService, CreateInvitationPayload } from '@/lib/servi
 import { InvitationDispatchService } from '@/lib/services/workforce/invitation-dispatch-service';
 import { AccessRequestService, SubmitAccessRequestPayload } from '@/lib/services/workforce/access-request-service';
 import { BulkWorkforceService, BulkActionPayload } from '@/lib/services/workforce/bulk-workforce-service';
+import { hasPlatformAdminClaim, isPlatformSystemAdmin } from '@/lib/auth/platform-admin';
 
 interface CallerAuthContext {
   uid: string;
@@ -62,7 +63,11 @@ async function verifyCallerAuth(idToken: string, targetOrgId: string): Promise<C
 
   const userDoc = await adminDb.collection('users').doc(uid).get();
   if (!userDoc.exists) {
-    if (email === 'admin@smartsapp.com') {
+    // SECURITY (audit F8): this used to fabricate a full system-admin identity for a
+    // token bearing a hardcoded address, even with no user record — so deactivating
+    // the account could not revoke it. Authority is now the signed `admin` claim, and
+    // a caller with no profile is refused like anyone else.
+    if (hasPlatformAdminClaim(decoded)) {
       return {
         uid,
         email,
@@ -75,12 +80,12 @@ async function verifyCallerAuth(idToken: string, targetOrgId: string): Promise<C
   }
 
   const profile = { id: userDoc.id, ...userDoc.data() } as UserProfile;
-  if (!profile.isAuthorized && email !== 'admin@smartsapp.com') {
+  if (!profile.isAuthorized && !hasPlatformAdminClaim(decoded)) {
     throw new Error('Forbidden: Account is inactive or unapproved');
   }
 
   const isSystemAdmin = Boolean(
-    email === 'admin@smartsapp.com' || profile.permissions?.includes('system_admin')
+    isPlatformSystemAdmin(decoded, profile)
   );
 
   const permissionsArray = (profile.permissions as unknown as string[]) || [];

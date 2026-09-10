@@ -29,6 +29,8 @@ import type {
   SubjectReferences,
 } from '../types';
 import { QUICK_NOTES_COLLECTION, type QuickNote } from '@/lib/quick-notes-types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ProcessNoteMemoryParams {
   noteId: string;
@@ -188,7 +190,7 @@ export class NoteMemoryPipeline {
       return {
         success: false,
         memories: [],
-        error: err instanceof Error ? err.message : 'AI memory extraction failed.',
+        error: toClientErrorMessage('memory.pipeline.note-memory-pipeline', err, undefined, 'AI memory extraction failed.'),
       };
     }
 

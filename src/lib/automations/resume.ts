@@ -4,6 +4,11 @@ import { logAutomationEvent } from '../automation-log';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
 import { runAutomationById } from './run-by-id';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   flushAutomationNotificationBuffers,
 } from './automation-lifecycle-notify';
@@ -136,7 +141,7 @@ export async function processScheduledJobsAction(): Promise<{
       }
     }
   } catch (reclaimErr) {
-    console.error('Failed to sweep orphaned processing jobs:', reclaimErr);
+    reportError('automations.resume', reclaimErr, { note: 'Failed to sweep orphaned processing jobs:' });
   }
 
   try {
@@ -158,14 +163,14 @@ export async function processScheduledJobsAction(): Promise<{
     try {
       await evaluateHeartbeatTriggers();
     } catch (triggerErr) {
-      console.error('Failed to evaluate heartbeat automation triggers:', triggerErr);
+      reportError('automations.resume', triggerErr, { note: 'Failed to evaluate heartbeat automation triggers:' });
     }
 
     // Flush any pending aggregated automation notifications
     try {
       await flushAutomationNotificationBuffers();
     } catch (flushErr) {
-      console.error('Failed to flush automation notification buffers:', flushErr);
+      reportError('automations.resume', flushErr, { note: 'Failed to flush automation notification buffers:' });
     }
 
     let processedCount = 0;
@@ -269,7 +274,7 @@ export async function processScheduledJobsAction(): Promise<{
     logAutomationEvent('error', 'heartbeat_critical_failure', { error });
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Heartbeat failed',
+      error: toClientErrorMessage('automations.resume', error, undefined, 'Heartbeat failed'),
     };
   }
 }

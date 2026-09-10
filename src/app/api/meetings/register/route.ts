@@ -8,6 +8,8 @@ import { dispatchRegistrationWebhook, type RegistrationWebhookPayload } from '@/
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * POST /api/meetings/register
@@ -38,7 +40,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     formData = (body.formData as Record<string, unknown>) || {};
     if (!meetingId) throw new Error('meetingId is required');
   } catch (err: any) {
-    return NextResponse.json({ error: err.message || 'Invalid request body' }, { status: 400 });
+    return NextResponse.json({ error: toClientErrorMessage('api.meetings.register', err, undefined, 'Invalid request body') }, { status: 400 });
   }
 
   // ── 2. Fetch meeting ────────────────────────────────────────────────────

@@ -14,6 +14,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   EntityPredictiveHealth,
   WorkspacePredictiveOverview,
@@ -284,7 +286,7 @@ export async function calculateEntityPredictiveHealthAction(
     console.error('[survey-predictive-actions] calculateEntityPredictiveHealthAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to calculate entity predictive health',
+      error: toClientErrorMessage('surveys.survey-predictive-actions', err, undefined, 'Failed to calculate entity predictive health'),
     };
   }
 }
@@ -364,7 +366,7 @@ export async function getWorkspacePredictiveOverviewAction(
     console.error('[survey-predictive-actions] getWorkspacePredictiveOverviewAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve workspace predictive overview',
+      error: toClientErrorMessage('surveys.survey-predictive-actions', err, undefined, 'Failed to retrieve workspace predictive overview'),
     };
   }
 }
@@ -423,7 +425,7 @@ export async function executePredictiveNextBestAction(
     console.error('[survey-predictive-actions] executePredictiveNextBestAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute prescribed next best action',
+      error: toClientErrorMessage('surveys.survey-predictive-actions', err, undefined, 'Failed to execute prescribed next best action'),
     };
   }
 }
@@ -473,7 +475,7 @@ export async function saveSystemPredictiveWeightsAction(
     console.error('[survey-predictive-actions] saveSystemPredictiveWeightsAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save system predictive weights',
+      error: toClientErrorMessage('surveys.survey-predictive-actions', err, undefined, 'Failed to save system predictive weights'),
     };
   }
 }

@@ -6,6 +6,9 @@ import { validateAutomationBlueprint } from '../automation-validation';
 import { assertAutomationManagePermission } from '../automation-permissions';
 import { serializeBlueprint } from '../automation-blueprint';
 import type { AutomationTrigger } from '../types';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export interface PortableTemplate {
   id: string;
@@ -533,7 +536,7 @@ export async function importAutomationAction(
     return { success: true, id: newAutoId };
   } catch (error: unknown) {
     const err = error as Error;
-    console.error('>>> [PORTABILITY:IMPORT] FAILED:', err.message);
+    reportError('automations.portability', err, { note: '>>> [PORTABILITY:IMPORT] FAILED:' });
     return { success: false, error: err.message };
   }
 }

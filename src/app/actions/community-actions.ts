@@ -10,6 +10,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { CommunityService } from '@/lib/services/community-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   CommunitySpace,
   CommunityPost,
@@ -43,7 +45,7 @@ export async function createSpaceAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
     return { success: true, data: space };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create space.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to create space.') };
   }
 }
 
@@ -59,7 +61,7 @@ export async function updateSpaceAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
     return { success: true, data: space };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update space.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to update space.') };
   }
 }
 
@@ -74,7 +76,7 @@ export async function deleteSpaceAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete space.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to delete space.') };
   }
 }
 
@@ -85,7 +87,7 @@ export async function listSpacesByPortalAction(
     const spaces = await CommunityService.listPortalSpaces(portalId);
     return { success: true, data: spaces };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list spaces.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to list spaces.') };
   }
 }
 
@@ -103,7 +105,7 @@ export async function createPostAction(
     }
     return { success: true, data: post };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create post.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to create post.') };
   }
 }
 
@@ -121,7 +123,7 @@ export async function updatePostAction(
     }
     return { success: true, data: post };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update post.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to update post.') };
   }
 }
 
@@ -138,7 +140,7 @@ export async function deletePostAction(
     }
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete post.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to delete post.') };
   }
 }
 
@@ -154,7 +156,7 @@ export async function togglePinPostAction(
     }
     return { success: true, data: isPinned };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to toggle pin.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to toggle pin.') };
   }
 }
 
@@ -171,7 +173,7 @@ export async function createCommentAction(
     }
     return { success: true, data: comment };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to post comment.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to post comment.') };
   }
 }
 
@@ -188,7 +190,7 @@ export async function deleteCommentAction(
     }
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete comment.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to delete comment.') };
   }
 }
 
@@ -207,7 +209,7 @@ export async function castPollVoteAction(
     }
     return { success: true, data: poll };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to vote on poll.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to vote on poll.') };
   }
 }
 
@@ -218,7 +220,7 @@ export async function toggleReactionAction(
     const res = await CommunityService.toggleReaction(input);
     return { success: true, data: res };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to toggle reaction.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to toggle reaction.') };
   }
 }
 
@@ -231,7 +233,7 @@ export async function reportContentAction(
     const report = await CommunityService.reportContent(input);
     return { success: true, data: report };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to submit report.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to submit report.') };
   }
 }
 
@@ -242,6 +244,6 @@ export async function listModerationReportsAction(
     const reports = await CommunityService.listModerationReports(portalId);
     return { success: true, data: reports };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list moderation reports.' };
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to list moderation reports.') };
   }
 }

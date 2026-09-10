@@ -21,6 +21,8 @@ import { generateTrackingToken, buildSurveyAttributionUrl } from './survey-attri
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { sendMessage } from '@/lib/messaging-engine';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface CreateDistributionCampaignInput {
   surveyId: string;
@@ -95,7 +97,7 @@ export async function createSurveyDistributionCampaignAction(
     console.error('Failed to create survey distribution campaign:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to create campaign',
+      error: toClientErrorMessage('surveys.survey-campaign-actions', error, undefined, 'Failed to create campaign'),
     };
   }
 }
@@ -250,7 +252,7 @@ export async function dispatchSurveyDistributionCampaignAction(
       success: false,
       dispatchedCount: 0,
       failedCount: 0,
-      error: error instanceof Error ? error.message : 'Dispatch failed',
+      error: toClientErrorMessage('surveys.survey-campaign-actions', error, undefined, 'Dispatch failed'),
     };
   }
 }

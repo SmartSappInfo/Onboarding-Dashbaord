@@ -12,6 +12,8 @@ import { triggerInternalNotification } from './notification-engine';
 import { format } from 'date-fns';
 import { getBaseUrl } from './utils/url-helpers';
 import { requireAuth } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
@@ -529,7 +531,7 @@ export async function clonePdfForm(pdfId: string, userId: string): Promise<{ suc
     revalidatePath('/admin/pdfs');
     return { success: true, id: newDocRef.id };
   } catch (error: unknown) {
-    return { success: false, error: error instanceof Error ? error.message : 'Unknown error during cloning' };
+    return { success: false, error: toClientErrorMessage('pdf-actions', error, undefined, 'Unknown error during cloning') };
   }
 }
 

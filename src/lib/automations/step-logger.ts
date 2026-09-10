@@ -1,3 +1,6 @@
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 export interface StepLogEntry {
   nodeId: string;
   nodeType: string;
@@ -78,6 +81,6 @@ export async function logStepExecution(
     await docRef.update(updatePayload);
   } catch (err) {
     // Swallow error so execution is not interrupted by logging failures
-    console.error(`[step-logger] Failed to log step ${entry.nodeId} for run ${runId}:`, err);
+    reportError('automations.step-logger', err, { note: `[step-logger] Failed to log step ${entry.nodeId} for run ${runId}:` });
   }
 }

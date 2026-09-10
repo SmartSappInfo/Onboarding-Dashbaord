@@ -22,6 +22,9 @@ import { resolveOrgId, resolveSenderProfileId, toSenderProfile } from './messagi
 import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
 import { resolveContextWorkspaceId, resolveWorkspaceIdFromEntity } from './services/workspace-resolver';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 interface SendMessageInput {
   templateId: string;
@@ -304,7 +307,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             }
         });
     } catch (varMapErr) {
-        console.error('>>> [MSG-ENGINE] Failed to resolve FieldsVariablesService map:', varMapErr);
+        reportError('messaging-engine', varMapErr, { note: '>>> [MSG-ENGINE] Failed to resolve FieldsVariablesService map:' });
     }
 
     if (finalVariables.encrypted_recipient_token === undefined) {
@@ -531,7 +534,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             });
         }
     } catch (e) {
-        console.error('[MESSAGING_ENGINE] Failed resolving workspace/organization branding:', e);
+        reportError('messaging-engine', e, { note: '[MESSAGING_ENGINE] Failed resolving workspace/organization branding:' });
     }
     // Ensure current_year is always available even without an org
     if (finalVariables.current_year === undefined) {
@@ -1048,7 +1051,7 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
     return { success: true, logId: logRef.id };
 
   } catch (error: any) {
-    console.error(">>> [MESSAGING] Logic Error:", error.message);
+    reportError('messaging-engine', error, { note: ">>> [MESSAGING] Logic Error:" });
     return { success: false, error: error.message };
   }
 }
@@ -1421,7 +1424,7 @@ export async function sendRawMessage(input: {
 
         return { success: true, logId: logRef.id };
     } catch (error: any) {
-        console.error(">>> [MESSAGING] Raw Dispatch Error:", error.message);
+        reportError('messaging-engine', error, { note: ">>> [MESSAGING] Raw Dispatch Error:" });
         return { success: false, error: error.message };
     }
 }

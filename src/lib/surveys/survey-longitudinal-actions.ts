@@ -12,6 +12,8 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   SurveyProject,
   Survey,
@@ -361,7 +363,7 @@ export async function getProjectLongitudinalAnalyticsAction(
       waves: [],
       questionDeltas: [],
       thematicDrift: [],
-      error: err instanceof Error ? err.message : 'Failed to calculate longitudinal analytics',
+      error: toClientErrorMessage('surveys.survey-longitudinal-actions', err, undefined, 'Failed to calculate longitudinal analytics'),
     };
   }
 }
@@ -425,7 +427,7 @@ export async function createSurveyWaveAction(
     console.error('[survey-longitudinal-actions] createSurveyWaveAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to create survey wave',
+      error: toClientErrorMessage('surveys.survey-longitudinal-actions', err, undefined, 'Failed to create survey wave'),
     };
   }
 }
@@ -472,7 +474,7 @@ export async function concludeSurveyWaveAction(
     console.error('[survey-longitudinal-actions] concludeSurveyWaveAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to conclude wave',
+      error: toClientErrorMessage('surveys.survey-longitudinal-actions', err, undefined, 'Failed to conclude wave'),
     };
   }
 }

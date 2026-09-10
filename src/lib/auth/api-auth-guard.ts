@@ -17,6 +17,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import type { UserProfile } from '@/lib/types';
+import { hasPlatformAdminClaim } from '@/lib/auth/platform-admin';
 
 export interface AuthenticatedUserContext {
   uid: string;
@@ -71,11 +72,15 @@ export async function authenticateApiRequest(
 
   let uid: string;
   let email: string | null = null;
+  let isPlatformAdmin = false;
 
   try {
     const decodedToken = await adminAuth.verifyIdToken(idToken);
     uid = decodedToken.uid;
     email = decodedToken.email ?? null;
+    // Capture the platform-admin claim here: decodedToken is scoped to this block
+    // (audit F8).
+    isPlatformAdmin = hasPlatformAdminClaim(decodedToken);
   } catch (authErr: unknown) {
     const errMessage = authErr instanceof Error ? authErr.message : 'Invalid session token';
     console.warn(`[API_AUTH_GUARD] Token verification failed: ${errMessage}`);
@@ -93,31 +98,11 @@ export async function authenticateApiRequest(
     const userDoc = await adminDb.collection('users').doc(uid).get();
 
     if (!userDoc.exists) {
-      // Fallback for hardcoded system admin email bootstrap
-      if (email === 'admin@smartsapp.com') {
-        const bootstrapProfile: UserProfile = {
-          id: uid,
-          email,
-          name: 'System Administrator',
-          phone: '',
-          isAuthorized: true,
-          permissions: ['system_admin'],
-          workspaceIds: options?.requiredWorkspaceId ? [options.requiredWorkspaceId] : [],
-          organizationId: options?.requiredOrgId || 'smartsapp-hq',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-
-        return {
-          success: true,
-          user: {
-            uid,
-            email,
-            profile: bootstrapProfile,
-            isSystemAdmin: true,
-          },
-        };
-      }
+      // SECURITY (audit F8): a bootstrap branch used to fabricate a system-admin profile
+      // here for any token carrying a hardcoded email address, even with no user record.
+      // That made platform admin unrevocable by account deactivation. It is removed:
+      // a caller with no profile is refused, and platform admin is the signed `admin`
+      // custom claim instead (see @/lib/auth/platform-admin).
 
       return {
         success: false,
@@ -142,7 +127,7 @@ export async function authenticateApiRequest(
     }
 
     const isSystemAdmin = Boolean(
-      email === 'admin@smartsapp.com' || profile.permissions?.includes('system_admin')
+      isPlatformAdmin || profile.permissions?.includes('system_admin')
     );
 
     // Require platform system admin if specified

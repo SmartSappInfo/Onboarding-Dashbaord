@@ -31,6 +31,8 @@ import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
 import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 interface ExecuteSurveyCrmSyncParams {
   survey: Survey;
@@ -492,7 +494,7 @@ export async function executeSurveyCrmSyncAction(
       success: false,
       tasksCreatedCount: 0,
       activityLogged: false,
-      error: error instanceof Error ? error.message : 'Unknown CRM sync error',
+      error: toClientErrorMessage('surveys.survey-crm-sync-actions', error, undefined, 'Unknown CRM sync error'),
     };
   }
 }
@@ -564,7 +566,7 @@ export async function getSurveyCrmFieldDefinitionsAction(
     console.error('Failed to get CRM field definitions:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: toClientErrorMessage('surveys.survey-crm-sync-actions', error, undefined, 'Unknown error'),
     };
   }
 }
@@ -602,7 +604,7 @@ export async function saveSurveyCrmConfigAction(
     console.error('Failed to save survey CRM config:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: toClientErrorMessage('surveys.survey-crm-sync-actions', error, undefined, 'Unknown error'),
     };
   }
 }
@@ -681,7 +683,7 @@ export async function getSystemCrmFieldMappingTemplatesAction(): Promise<{
     console.error('Failed to get system CRM templates:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: toClientErrorMessage('surveys.survey-crm-sync-actions', error, undefined, 'Unknown error'),
     };
   }
 }
@@ -706,7 +708,7 @@ export async function saveSystemCrmFieldMappingTemplatesAction(
     console.error('Failed to save system CRM templates:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error',
+      error: toClientErrorMessage('surveys.survey-crm-sync-actions', error, undefined, 'Unknown error'),
     };
   }
 }

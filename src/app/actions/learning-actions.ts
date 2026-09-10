@@ -12,6 +12,8 @@ import { revalidatePath } from 'next/cache';
 import { CourseService } from '@/lib/services/course-service';
 import { EnrollmentService } from '@/lib/services/enrollment-service';
 import { LearningProgressService } from '@/lib/services/learning-progress-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   Course,
   CourseStatus,
@@ -46,7 +48,7 @@ export async function createCourseAction(
     revalidatePath(`/admin/portals/${input.portalId}`);
     return { success: true, data: course };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Action failed.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Action failed.') };
   }
 }
 
@@ -65,7 +67,7 @@ export async function updateCourseAction(
     }
     return { success: true, data: course };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update course.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to update course.') };
   }
 }
 
@@ -78,7 +80,7 @@ export async function deleteCourseAction(
     revalidatePath(`/admin/portals/${portalId}`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete course.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to delete course.') };
   }
 }
 
@@ -90,7 +92,7 @@ export async function listCoursesByPortalAction(
     const courses = await CourseService.listCourses(portalId, status);
     return { success: true, data: courses };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list courses.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to list courses.') };
   }
 }
 
@@ -106,7 +108,7 @@ export async function createModuleAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: mod };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create module.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to create module.') };
   }
 }
 
@@ -122,7 +124,7 @@ export async function updateModuleAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: mod };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update module.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to update module.') };
   }
 }
 
@@ -137,7 +139,7 @@ export async function deleteModuleAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete module.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to delete module.') };
   }
 }
 
@@ -153,7 +155,7 @@ export async function createLessonAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: lesson };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create lesson.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to create lesson.') };
   }
 }
 
@@ -169,7 +171,7 @@ export async function updateLessonAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: lesson };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update lesson.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to update lesson.') };
   }
 }
 
@@ -184,7 +186,7 @@ export async function deleteLessonAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete lesson.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to delete lesson.') };
   }
 }
 
@@ -209,7 +211,7 @@ export async function enrollInCourseAction(
     }
     return { success: true, data: enrollment };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to enroll in course.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to enroll in course.') };
   }
 }
 
@@ -228,7 +230,7 @@ export async function completeLessonAction(
     }
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to mark lesson complete.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to mark lesson complete.') };
   }
 }
 
@@ -251,7 +253,7 @@ export async function recordVideoProgressAction(
     );
     return { success: true, data: prog };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to record video progress.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to record video progress.') };
   }
 }
 
@@ -267,7 +269,7 @@ export async function submitAssessmentAction(
     }
     return { success: true, data: result };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to evaluate assessment.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to evaluate assessment.') };
   }
 }
 
@@ -278,6 +280,6 @@ export async function submitAssignmentAction(
     const submission = await LearningProgressService.submitAssignment(input);
     return { success: true, data: submission };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to submit assignment.' };
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to submit assignment.') };
   }
 }

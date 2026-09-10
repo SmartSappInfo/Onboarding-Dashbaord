@@ -18,6 +18,8 @@
 
 import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
 import { ContextBuilderService } from '../services/context-builder-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   generateContextDossierFlow,
   type ContextDossierOutput,
@@ -73,7 +75,7 @@ export async function buildContextAction(
     console.error('[buildContextAction] Failed to assemble context package:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Context assembly failed.',
+      error: toClientErrorMessage('memory.actions.context-builder-actions', err, undefined, 'Context assembly failed.'),
       code: 'server_error',
       actionConfig: { path: '/admin/quick-notes', label: 'Back to Notes' },
     };
@@ -122,7 +124,7 @@ export async function getEntityDossierAction(params: {
     console.error('[getEntityDossierAction] Failed to build entity dossier:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to compile entity dossier.',
+      error: toClientErrorMessage('memory.actions.context-builder-actions', err, undefined, 'Failed to compile entity dossier.'),
       code: 'server_error',
       actionConfig: { path: `/admin/entities/${entityId}`, label: 'Back to Entity' },
     };
@@ -171,7 +173,7 @@ export async function getDealDossierAction(params: {
     console.error('[getDealDossierAction] Failed to build deal dossier:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to compile deal dossier.',
+      error: toClientErrorMessage('memory.actions.context-builder-actions', err, undefined, 'Failed to compile deal dossier.'),
       code: 'server_error',
       actionConfig: { path: '/admin/deals', label: 'Back to Deals' },
     };
@@ -235,7 +237,7 @@ export async function synthesizeContextDossierWithAIAction(params: {
     console.error('[synthesizeContextDossierWithAIAction] AI synthesis failed:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to synthesize AI briefing.',
+      error: toClientErrorMessage('memory.actions.context-builder-actions', err, undefined, 'Failed to synthesize AI briefing.'),
       code: 'server_error',
       actionConfig: { path: '/admin/quick-notes', label: 'Back to Notes' },
     };

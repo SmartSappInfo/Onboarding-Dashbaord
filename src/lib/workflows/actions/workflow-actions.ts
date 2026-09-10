@@ -28,6 +28,8 @@ import type {
 } from '../types';
 import type { McpPayloadValue } from '@/lib/mcp/types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -149,7 +151,7 @@ export async function listWorkflowsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve workflows.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to retrieve workflows.'),
       code: 'server_error',
     };
   }
@@ -210,7 +212,7 @@ export async function getWorkflowAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve workflow.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to retrieve workflow.'),
       code: 'server_error',
     };
   }
@@ -300,7 +302,7 @@ export async function saveWorkflowAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save workflow.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to save workflow.'),
       code: 'server_error',
     };
   }
@@ -369,7 +371,7 @@ export async function toggleWorkflowAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to toggle workflow status.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to toggle workflow status.'),
       code: 'server_error',
     };
   }
@@ -432,7 +434,7 @@ export async function startWorkflowRunAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to start workflow run.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to start workflow run.'),
       code: 'server_error',
       actionConfig: { path: '/admin/companybrain/workflows', label: 'Workflows Hub' },
     };
@@ -493,7 +495,7 @@ export async function getWorkflowRunAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve workflow run.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to retrieve workflow run.'),
       code: 'server_error',
     };
   }
@@ -555,7 +557,7 @@ export async function listWorkflowRunsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve workflow runs.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to retrieve workflow runs.'),
       code: 'server_error',
     };
   }
@@ -601,7 +603,7 @@ export async function resumeWorkflowRunAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to resume workflow run.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to resume workflow run.'),
       code: 'server_error',
       actionConfig: { path: '/admin/companybrain/workflows', label: 'Workflows Hub' },
     };
@@ -653,7 +655,7 @@ export async function simulateWorkflowAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Workflow simulation failed.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Workflow simulation failed.'),
       code: 'simulation_error',
     };
   }
@@ -727,7 +729,7 @@ export async function installBlueprintAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to install blueprint.',
+      error: toClientErrorMessage('workflows.actions.workflow-actions', err, undefined, 'Failed to install blueprint.'),
       code: 'server_error',
     };
   }

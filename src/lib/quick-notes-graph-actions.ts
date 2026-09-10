@@ -23,6 +23,8 @@ import {
   type UnifiedNote,
 } from './quick-notes-types';
 import { logActivity } from './activity-logger';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Company Brain (Knowledge 2.0) — Knowledge Graph & Backlinks Actions (Phase 5).
@@ -93,7 +95,7 @@ export async function getWorkspaceKnowledgeGraphAction(
     return { success: true, data: finalGraph };
   } catch (err) {
     console.error('[getWorkspaceKnowledgeGraphAction] Error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to load Knowledge Graph.' };
+    return { success: false, error: toClientErrorMessage('quick-notes-graph-actions', err, undefined, 'Failed to load Knowledge Graph.') };
   }
 }
 
@@ -192,7 +194,7 @@ export async function createKnowledgeRelationAction(
     return { success: true, data: relation };
   } catch (err) {
     console.error('[createKnowledgeRelationAction] Error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create relationship.' };
+    return { success: false, error: toClientErrorMessage('quick-notes-graph-actions', err, undefined, 'Failed to create relationship.') };
   }
 }
 
@@ -216,7 +218,7 @@ export async function deleteKnowledgeRelationAction(
     return { success: true, data: { deletedId: relationId } };
   } catch (err) {
     console.error('[deleteKnowledgeRelationAction] Error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete relationship.' };
+    return { success: false, error: toClientErrorMessage('quick-notes-graph-actions', err, undefined, 'Failed to delete relationship.') };
   }
 }
 
@@ -290,7 +292,7 @@ export async function suggestKnowledgeLinksAction(
     };
   } catch (err) {
     console.error('[suggestKnowledgeLinksAction] Error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'AI Link Discovery failed.' };
+    return { success: false, error: toClientErrorMessage('quick-notes-graph-actions', err, undefined, 'AI Link Discovery failed.') };
   }
 }
 
@@ -320,7 +322,7 @@ export async function getBacklinksAction(
     return { success: true, data: backlinks };
   } catch (err) {
     console.error('[getBacklinksAction] Error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch backlinks.' };
+    return { success: false, error: toClientErrorMessage('quick-notes-graph-actions', err, undefined, 'Failed to fetch backlinks.') };
   }
 }
 
@@ -385,6 +387,6 @@ export async function backfillCrmRelationsAction(
     return { success: true, data: { backfilledCount: toCreate.length } };
   } catch (err) {
     console.error('[backfillCrmRelationsAction] Error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Backfill failed.' };
+    return { success: false, error: toClientErrorMessage('quick-notes-graph-actions', err, undefined, 'Backfill failed.') };
   }
 }

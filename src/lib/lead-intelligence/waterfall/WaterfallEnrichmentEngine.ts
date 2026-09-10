@@ -17,6 +17,8 @@ import type {
 } from '../types';
 import { DOMScraperService } from '../scraper/DOMScraperService';
 import { canonicalizeDomain } from '../identity-resolver';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export class WaterfallEnrichmentEngine {
   private static readonly PROVIDER_TIMEOUT_MS = 2500;
@@ -108,7 +110,7 @@ export class WaterfallEnrichmentEngine {
           status: 'timeout',
           latencyMs: Date.now() - stepStart,
           matchCount: 0,
-          error: err instanceof Error ? err.message : 'Timeout'
+          error: toClientErrorMessage('lead-intelligence.waterfall.WaterfallEnrichmentEngine', err, undefined, 'Timeout')
         });
       }
     }
@@ -233,7 +235,7 @@ export class WaterfallEnrichmentEngine {
           status: 'timeout',
           latencyMs: Date.now() - stepStart,
           matchCount: 0,
-          error: err instanceof Error ? err.message : 'Timeout'
+          error: toClientErrorMessage('lead-intelligence.waterfall.WaterfallEnrichmentEngine', err, undefined, 'Timeout')
         });
       }
     }
@@ -312,7 +314,7 @@ export class WaterfallEnrichmentEngine {
           status: 'error',
           latencyMs: Date.now() - stepStart,
           matchCount: 0,
-          error: err instanceof Error ? err.message : 'AI flow failure'
+          error: toClientErrorMessage('lead-intelligence.waterfall.WaterfallEnrichmentEngine', err, undefined, 'AI flow failure')
         });
       }
     }

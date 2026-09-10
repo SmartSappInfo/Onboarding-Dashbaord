@@ -26,6 +26,8 @@ import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import { seedRevenueOsWorkspace } from '@/lib/revenue-os/migration-protocol';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   simulateRevenueScenario,
   calculateTeamCapacity,
@@ -336,7 +338,7 @@ export async function getExecutiveBoardroomDataAction(params: {
     console.error('getExecutiveBoardroomDataAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch executive boardroom data',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to fetch executive boardroom data'),
     };
   }
 }
@@ -380,7 +382,7 @@ export async function simulateRevenueScenarioAction(params: {
     console.error('simulateRevenueScenarioAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to simulate scenario',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to simulate scenario'),
     };
   }
 }
@@ -466,7 +468,7 @@ export async function saveRevenueScenarioAction(params: {
     console.error('saveRevenueScenarioAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to save revenue scenario',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to save revenue scenario'),
     };
   }
 }
@@ -511,7 +513,7 @@ export async function deleteRevenueScenarioAction(params: {
     console.error('deleteRevenueScenarioAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to delete scenario',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to delete scenario'),
     };
   }
 }
@@ -587,7 +589,7 @@ export async function applyStrategicRecommendationAction(params: {
     console.error('applyStrategicRecommendationAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to apply strategic recommendation',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to apply strategic recommendation'),
     };
   }
 }
@@ -655,7 +657,7 @@ export async function updateRevenueOsGovernanceAction(params: {
     console.error('updateRevenueOsGovernanceAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update governance policy',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to update governance policy'),
     };
   }
 }
@@ -688,7 +690,7 @@ export async function reseedRevenueOsDefaultsAction(params: {
       success: false,
       seededScenarios: 0,
       seededRecommendations: 0,
-      error: error instanceof Error ? error.message : 'Failed to reseed Revenue OS',
+      error: toClientErrorMessage('actions.revenue-os-actions', error, undefined, 'Failed to reseed Revenue OS'),
     };
   }
 }

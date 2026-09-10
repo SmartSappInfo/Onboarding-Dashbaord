@@ -4,6 +4,9 @@ import { assertAutomationManagePermission } from '../automation-permissions';
 import { logAutomationEvent } from '../automation-log';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export type ParkedContactStrategy = 'advance_now' | 'fulfill_schedule' | 'cancel_runs';
 
@@ -46,7 +49,7 @@ export async function getParkedJobsCount(
     const snap = await query.get();
     return snap.size;
   } catch (err) {
-    console.error(`[NODE-RECONCILE] Error fetching parked jobs count for node ${nodeId}:`, err);
+    reportError('automations.node-deletion-reconciliation', err, { note: `[NODE-RECONCILE] Error fetching parked jobs count for node ${nodeId}:` });
     return 0;
   }
 }
@@ -214,7 +217,7 @@ export async function reconcileParkedJobsOnNodeDeletion(
     };
   } catch (err: unknown) {
     const errorMsg = err instanceof Error ? err.message : String(err);
-    console.error(`[NODE-RECONCILE] Failed to reconcile parked jobs for node ${deletedNodeId}:`, errorMsg);
+    reportError('automations.node-deletion-reconciliation', errorMsg, { note: `[NODE-RECONCILE] Failed to reconcile parked jobs for node ${deletedNodeId}:` });
     return {
       success: false,
       totalParked: 0,

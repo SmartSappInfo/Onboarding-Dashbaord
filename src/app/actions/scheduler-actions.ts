@@ -24,7 +24,7 @@ export async function getGoogleAuthUrlAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to generate Google auth URL' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to generate Google auth URL') 
     };
   }
 }
@@ -42,7 +42,7 @@ export async function getMicrosoftAuthUrlAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to generate Microsoft auth URL' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to generate Microsoft auth URL') 
     };
   }
 }
@@ -63,7 +63,7 @@ export async function getZoomAuthUrlAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to generate Zoom auth URL' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to generate Zoom auth URL') 
     };
   }
 }
@@ -83,7 +83,7 @@ export async function disconnectConnectionAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to disconnect connection' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to disconnect connection') 
     };
   }
 }
@@ -110,7 +110,7 @@ export async function getBookingPageBySlugAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to retrieve booking page' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to retrieve booking page') 
     };
   }
 }
@@ -127,7 +127,7 @@ export async function getAvailableSlotsAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to calculate slots' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to calculate slots') 
     };
   }
 }
@@ -286,7 +286,7 @@ export async function createBookingAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Booking creation failed' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Booking creation failed') 
     };
   }
 }
@@ -313,7 +313,7 @@ export async function saveBookingPageAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to save booking page configuration' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to save booking page configuration') 
     };
   }
 }
@@ -330,7 +330,7 @@ export async function deleteBookingPageAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to delete booking page' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to delete booking page') 
     };
   }
 }
@@ -378,7 +378,7 @@ export async function ensureWorkspaceAvailabilityAction(
   } catch (err: unknown) {
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to provision default availability' 
+      error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to provision default availability') 
     };
   }
 }
@@ -391,5 +391,7 @@ export interface TimeSlot {
 import type { BookingPage, BookingResponse, WorkingDay, UserAvailability, Meeting } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 

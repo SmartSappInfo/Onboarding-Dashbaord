@@ -446,7 +446,9 @@ export async function enforceSuperAdminProfileAction(
     const trimmedEmail = email?.trim().toLowerCase();
     if (!trimmedEmail) return { success: false, isSuperAdmin: false };
 
-    let isSuper = trimmedEmail === 'admin@smartsapp.com';
+    // SECURITY (audit F8): platform admin is the signed `admin` custom claim, not an
+    // email address anyone could register or take over.
+    let isSuper = false;
 
     if (!isSuper) {
       const configSnap = await adminDb.collection('system_config').doc('super_admins').get();

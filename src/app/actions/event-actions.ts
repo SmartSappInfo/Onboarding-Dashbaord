@@ -10,6 +10,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { EventService } from '@/lib/services/event-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   LiveEvent,
   EventRegistration,
@@ -42,7 +44,7 @@ export async function createLiveEventAction(
     }
     return { success: true, data: event };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create live event.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to create live event.') };
   }
 }
 
@@ -63,7 +65,7 @@ export async function updateLiveEventAction(
     }
     return { success: true, data: event };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update live event.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to update live event.') };
   }
 }
 
@@ -81,7 +83,7 @@ export async function deleteLiveEventAction(
     }
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete live event.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to delete live event.') };
   }
 }
 
@@ -93,7 +95,7 @@ export async function listLiveEventsByPortalAction(
     const events = await EventService.listPortalEvents(portalId, options);
     return { success: true, data: events };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list live events.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to list live events.') };
   }
 }
 
@@ -105,7 +107,7 @@ export async function listCohortsByPortalAction(
     const cohorts = await EventService.listCourseCohorts(portalId, courseId);
     return { success: true, data: cohorts };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list course cohorts.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to list course cohorts.') };
   }
 }
 
@@ -125,7 +127,7 @@ export async function registerForEventAction(
     }
     return { success: true, data: reg };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to register for event.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to register for event.') };
   }
 }
 
@@ -144,7 +146,7 @@ export async function cancelEventRegistrationAction(
     }
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to cancel registration.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to cancel registration.') };
   }
 }
 
@@ -162,7 +164,7 @@ export async function recordEventAttendanceAction(
     }
     return { success: true, data: reg };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to record attendance.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to record attendance.') };
   }
 }
 
@@ -182,7 +184,7 @@ export async function publishEventReplayAction(
     }
     return { success: true, data: event };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to publish event replay.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to publish event replay.') };
   }
 }
 
@@ -198,7 +200,7 @@ export async function createCohortAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: cohort };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create cohort.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to create cohort.') };
   }
 }
 
@@ -214,7 +216,7 @@ export async function updateCohortAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: cohort };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update cohort.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to update cohort.') };
   }
 }
 
@@ -229,6 +231,6 @@ export async function deleteCohortAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete cohort.' };
+    return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to delete cohort.') };
   }
 }

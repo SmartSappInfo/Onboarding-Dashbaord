@@ -294,7 +294,19 @@ export interface LeadIntelligenceSettings {
   hunterApiKey?: string;
   apolloApiKey?: string;
   clearbitApiKey?: string;
+  /**
+   * @deprecated Legacy plaintext token from the Math.random() scheme (audit F6). Never
+   * written any more; kept only so existing documents still type-check while the
+   * regeneration flow clears them.
+   */
   chromeExtensionToken?: string;
+  /** SHA-256 of the current token. The only stored form of the secret. */
+  chromeExtensionTokenHash?: string;
+  /** Non-secret display hint, e.g. "lit_…8f3a". Safe to show after creation. */
+  chromeExtensionTokenHint?: string;
+  /** Whether a token exists, so the UI can render state without the secret. */
+  hasChromeExtensionToken?: boolean;
+  chromeExtensionTokenRotatedAt?: string;
   waterfallEnabled?: boolean;
   autoMergeConfidenceThreshold?: number; // Defaults to 0.95
 }

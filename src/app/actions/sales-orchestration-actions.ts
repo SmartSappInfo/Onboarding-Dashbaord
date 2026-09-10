@@ -47,6 +47,8 @@ import {
 } from '@/lib/sales-orchestration/migration-protocol';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Internal helper to verify tenant access safely.
@@ -194,7 +196,7 @@ export async function getSalesOrchestrationDataAction(params: {
     console.error('getSalesOrchestrationDataAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to retrieve sales orchestration data.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to retrieve sales orchestration data.'),
     };
   }
 }
@@ -254,7 +256,7 @@ export async function saveSalesPlayAction(params: {
     console.error('saveSalesPlayAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to save sales play.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to save sales play.'),
     };
   }
 }
@@ -307,7 +309,7 @@ export async function toggleSalesPlayStatusAction(params: {
     console.error('toggleSalesPlayStatusAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to toggle sales play status.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to toggle sales play status.'),
     };
   }
 }
@@ -423,7 +425,7 @@ export async function executePlayStepAction(params: {
     console.error('executePlayStepAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to execute play step.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to execute play step.'),
     };
   }
 }
@@ -533,7 +535,7 @@ export async function resolveApprovalRequestAction(params: {
     console.error('resolveApprovalRequestAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to resolve approval request.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to resolve approval request.'),
     };
   }
 }
@@ -612,7 +614,7 @@ export async function resolveEscalationIncidentAction(params: {
     console.error('resolveEscalationIncidentAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to resolve escalation incident.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to resolve escalation incident.'),
     };
   }
 }
@@ -697,7 +699,7 @@ export async function triggerSalesPlayManuallyAction(params: {
     console.error('triggerSalesPlayManuallyAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to trigger sales play manually.',
+      error: toClientErrorMessage('actions.sales-orchestration-actions', error, undefined, 'Failed to trigger sales play manually.'),
     };
   }
 }

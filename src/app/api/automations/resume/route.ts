@@ -7,6 +7,8 @@ import type { AutomationJob } from '@/lib/types';
 export const dynamic = 'force-dynamic';
 
 import { isAuthorizedCloudTaskRequest } from '@/lib/security/cloud-tasks-auth';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,6 +85,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true });
   } catch (err: any) {
     console.error('[AUTOMATION-WORKER] Unhandled exception processing queue task:', err);
-    return NextResponse.json({ error: err.message || 'Worker critical error' }, { status: 500 });
+    return NextResponse.json({ error: toClientErrorMessage('api.automations.resume', err, undefined, 'Worker critical error') }, { status: 500 });
   }
 }

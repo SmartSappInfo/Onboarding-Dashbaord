@@ -82,7 +82,8 @@ describe.skipIf(!emulatorRunning)('Message Template Security Rules', () => {
 
     // Setup test users with different roles
     const adminContext = testEnv.authenticatedContext(SUPER_ADMIN_UID, {
-      email: 'admin@smartsapp.com',
+      // audit F8: platform admin is the signed custom claim, not an email address.
+      admin: true,
     });
 
     await adminContext.firestore().collection('users').doc(SUPER_ADMIN_UID).set({

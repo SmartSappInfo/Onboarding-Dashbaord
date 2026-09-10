@@ -4,6 +4,8 @@ import crypto from 'crypto';
 import { createEntityAction } from '@/lib/entity-actions';
 import { linkEntityToWorkspaceAction } from '@/lib/workspace-entity-actions';
 import type { EntityType } from '@/lib/types';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview External API endpoint for Entity Creation
@@ -116,6 +118,6 @@ export async function POST(request: NextRequest) {
     );
   } catch (error: any) {
     console.error('[API:EXTERNAL:ENTITIES] POST Error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    return NextResponse.json({ error: toClientErrorMessage('api.external.v1.entities', error, undefined, 'Internal Server Error') }, { status: 500 });
   }
 }

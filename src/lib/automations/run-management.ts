@@ -13,6 +13,9 @@ import { traverseNodes } from './nodes/traverse';
 import type { ExecutionContext } from './execution-types';
 import { cancelDelayTask, scheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 interface RunManagementResult {
   success: boolean;
@@ -51,7 +54,7 @@ async function purgeRunPendingJobs(runId: string): Promise<number> {
       try {
         await cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel));
       } catch (err) {
-        console.error(`[PURGE] Failed to cancel task for run ${runId}:`, err);
+        reportError('automations.run-management', err, { note: `[PURGE] Failed to cancel task for run ${runId}:` });
       }
     }
   }
@@ -329,7 +332,7 @@ export async function terminateAutomationRunInternal(
             jobData.gcpTaskName as string | undefined
           );
         } catch (err) {
-          console.error(`[TERMINATE] Failed to cancel task from queue for run ${runId}:`, err);
+          reportError('automations.run-management', err, { note: `[TERMINATE] Failed to cancel task from queue for run ${runId}:` });
         }
       }
     });
@@ -485,7 +488,7 @@ export async function forceAdvanceRun(
         const payloadObj = jobData.payload as Record<string, unknown> | undefined;
         await cancelDelayTask(runId, jobData.targetNodeId as string, parseQueueChannel(payloadObj?.channel));
       } catch (err) {
-        console.error(`[ADVANCE] Failed to cancel task for run ${runId}:`, err);
+        reportError('automations.run-management', err, { note: `[ADVANCE] Failed to cancel task for run ${runId}:` });
       }
     }
 
@@ -565,7 +568,7 @@ export async function pauseRun(
           try {
             await cancelDelayTask(runId, jobData.targetNodeId, parseQueueChannel(jobData.payload?.channel));
           } catch (err) {
-            console.error(`[PAUSE] Failed to cancel task for run ${runId}:`, err);
+            reportError('automations.run-management', err, { note: `[PAUSE] Failed to cancel task for run ${runId}:` });
           }
         }
       }
@@ -644,7 +647,7 @@ export async function resumePausedRun(
               payload: jobData.payload,
             });
           } catch (err) {
-            console.error(`[RESUME] Failed to schedule task for run ${runId}:`, err);
+            reportError('automations.run-management', err, { note: `[RESUME] Failed to schedule task for run ${runId}:` });
           }
         }
       }

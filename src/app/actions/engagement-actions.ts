@@ -10,6 +10,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { EngagementService } from '@/lib/services/engagement-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   OnboardingFlow,
   MemberOnboardingProgress,
@@ -40,7 +42,7 @@ export async function saveOnboardingFlowAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: flow };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to save onboarding flow.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to save onboarding flow.') };
   }
 }
 
@@ -51,7 +53,7 @@ export async function getOnboardingFlowAction(
     const flow = await EngagementService.getOnboardingFlow(portalId);
     return { success: true, data: flow };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to get onboarding flow.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to get onboarding flow.') };
   }
 }
 
@@ -64,7 +66,7 @@ export async function advanceOnboardingStepAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: progress };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to advance onboarding step.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to advance onboarding step.') };
   }
 }
 
@@ -80,7 +82,7 @@ export async function createTaskAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: task };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create task.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to create task.') };
   }
 }
 
@@ -96,7 +98,7 @@ export async function updateTaskAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: task };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update task.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to update task.') };
   }
 }
 
@@ -111,7 +113,7 @@ export async function deleteTaskAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: true };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete task.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to delete task.') };
   }
 }
 
@@ -122,7 +124,7 @@ export async function listTasksByPortalAction(
     const tasks = await EngagementService.listPortalTasks(portalId);
     return { success: true, data: tasks };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list tasks.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to list tasks.') };
   }
 }
 
@@ -135,7 +137,7 @@ export async function completeTaskAction(
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
     return { success: true, data: sub };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to complete task.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to complete task.') };
   }
 }
 
@@ -148,6 +150,6 @@ export async function logMemberActivityAction(
     const activity = await EngagementService.logMemberActivity(input);
     return { success: true, data: activity };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to log activity.' };
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to log activity.') };
   }
 }

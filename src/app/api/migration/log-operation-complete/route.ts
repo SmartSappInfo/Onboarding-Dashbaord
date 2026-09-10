@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { logMigrationOperationComplete } from '@/lib/migration-monitoring';
 import type { MigrationOperationResult } from '@/lib/migration-monitoring-types';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function POST(request: NextRequest) {
   // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('log-operation-complete error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to log operation complete' },
+      { error: toClientErrorMessage('api.migration.log-operation-complete', error, undefined, 'Failed to log operation complete') },
       { status: 500 }
     );
   }

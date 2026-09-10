@@ -16,6 +16,8 @@
  */
 
 import { getAdminFirestore } from '@/lib/firebase-admin';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   PerformanceMetrics,
   CampaignAttributionSummary,
@@ -70,7 +72,7 @@ export async function getProjectPerformanceMetricsAction(
     console.error('getProjectPerformanceMetricsAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch metrics.',
+      error: toClientErrorMessage('actions.creative-performance-actions', err, undefined, 'Failed to fetch metrics.'),
     };
   }
 }
@@ -123,7 +125,7 @@ export async function listWorkspaceCampaignPerformanceAction(
     console.error('listWorkspaceCampaignPerformanceAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to load campaign performance.',
+      error: toClientErrorMessage('actions.creative-performance-actions', err, undefined, 'Failed to load campaign performance.'),
     };
   }
 }
@@ -162,7 +164,7 @@ export async function exportHighResolutionAssetAction(
     console.error('exportHighResolutionAssetAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Export failed.',
+      error: toClientErrorMessage('actions.creative-performance-actions', err, undefined, 'Export failed.'),
     };
   }
 }

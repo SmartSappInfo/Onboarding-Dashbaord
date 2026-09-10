@@ -11,6 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import { LeadIntelligenceEngine } from '@/lib/lead-intelligence/LeadIntelligenceEngine';
 import type { 
   Prospect, 
@@ -63,6 +64,8 @@ import { AutonomousSDREngine } from '@/lib/lead-intelligence/sdr';
 import { PredictiveIntelligenceEngine } from '@/lib/lead-intelligence/predictive';
 import { EnterpriseGovernanceEngine } from '@/lib/lead-intelligence/governance';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -91,7 +94,10 @@ export async function getLeadSettingsAction(workspaceId: string): Promise<LeadIn
         googlePlacesApiKey: data?.googlePlacesApiKey || '',
         builtwithApiKey: data?.builtwithApiKey || '',
         hunterApiKey: data?.hunterApiKey || '',
-        chromeExtensionToken: data?.chromeExtensionToken || '',
+        // SECURITY (audit F6): the token is stored only as a SHA-256 hash and is shown
+        // exactly once, at generation. Only the non-secret hint is returned here.
+        chromeExtensionTokenHint: data?.chromeExtensionTokenHint || '',
+        hasChromeExtensionToken: Boolean(data?.chromeExtensionTokenHash),
       };
     }
   } catch (err: unknown) {
@@ -113,8 +119,22 @@ export async function saveLeadSettingsAction(
 
   if (!workspaceId) return { success: false, error: 'workspaceId is required' };
   try {
+    // SECURITY (audit F6): the extension token is generated server-side and stored as a
+    // hash. Strip any token-ish field the client sends so a caller cannot set a known
+    // value, or overwrite the hash with plaintext.
+    const {
+      chromeExtensionToken: _ignoredToken,
+      chromeExtensionTokenHash: _ignoredHash,
+      chromeExtensionTokenHint: _ignoredHint,
+      ...safeSettings
+    } = settings as LeadIntelligenceSettings & {
+      chromeExtensionToken?: string;
+      chromeExtensionTokenHash?: string;
+      chromeExtensionTokenHint?: string;
+    };
+
     const dataToSave = {
-      ...settings,
+      ...safeSettings,
       workspaceId,
       organizationId,
       updatedAt: new Date().toISOString()
@@ -123,7 +143,7 @@ export async function saveLeadSettingsAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save settings:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -141,7 +161,7 @@ export async function parseNaturalLanguageQueryAction(
     return { success: true, result };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] NL query parsing failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to parse natural language prompt' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to parse natural language prompt') };
   }
 }
 
@@ -183,7 +203,7 @@ export async function searchProspectsAction(
     return { success: true, prospects };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Search failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -206,7 +226,7 @@ export async function enrichProspectAction(
     return { success: true, prospect: enriched };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Enrichment failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -281,7 +301,7 @@ export async function importProspectsFromCSVAction(
     return { success: true, prospects };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] CSV Import failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -418,7 +438,7 @@ export async function syncProspectToCRMAction(
     return { success: true, entityId: result.entityId };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Sync failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -506,7 +526,7 @@ export async function saveSearchAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save search:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -567,7 +587,7 @@ export async function createLeadListAction(
     return { success: true, list: newList };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to create lead list:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -631,7 +651,7 @@ export async function addProspectsToListAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to add to lead list:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -661,7 +681,7 @@ export async function deleteLeadListAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to delete lead list:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -729,7 +749,7 @@ export async function saveViewAction(
     return { success: true, view: newView };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save view:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -786,7 +806,7 @@ export async function deleteSavedViewAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to delete view:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -1038,7 +1058,7 @@ export async function executeIdentityMergeAction(
       entityId: payload.entityId,
       mergedContactsCount: 0,
       mergedTechnologiesCount: 0,
-      error: err instanceof Error ? err.message : 'Unknown merge error'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown merge error')
     };
   }
 }
@@ -1075,7 +1095,7 @@ export async function dismissCollisionAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to dismiss collision:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown error') };
   }
 }
 
@@ -1187,7 +1207,7 @@ export async function enrichTechnographicsDeepAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to enrich deep technographics:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Unknown scan error' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Unknown scan error') };
   }
 }
 
@@ -1296,7 +1316,7 @@ export async function verifyProspectEmailAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to verify email:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Email verification failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Email verification failed') };
   }
 }
 
@@ -1378,7 +1398,7 @@ export async function bulkVerifyProspectEmailsAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to bulk verify emails:', err);
-    return { success: false, verifiedCount: 0, results: [], error: err instanceof Error ? err.message : 'Bulk verification failed' };
+    return { success: false, verifiedCount: 0, results: [], error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Bulk verification failed') };
   }
 }
 
@@ -1430,7 +1450,7 @@ export async function generateAIResearchDossierAction(
     console.error('[lead-intelligence-actions] Failed to generate AI research dossier:', err);
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'AI research dossier generation failed' 
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'AI research dossier generation failed') 
     };
   }
 }
@@ -1468,7 +1488,7 @@ export async function getAIResearchDossierAction(
     console.error('[lead-intelligence-actions] Failed to fetch AI research dossier:', err);
     return { 
       success: false, 
-      error: err instanceof Error ? err.message : 'Failed to retrieve AI research dossier' 
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to retrieve AI research dossier') 
     };
   }
 }
@@ -1540,7 +1560,7 @@ export async function getWorkspaceSignalsAction(
     console.error('[lead-intelligence-actions] Failed to fetch workspace signals:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve signals'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to retrieve signals')
     };
   }
 }
@@ -1586,7 +1606,7 @@ export async function getProspectSignalsAction(
     console.error('[lead-intelligence-actions] Failed to fetch prospect signals:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve prospect signals'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to retrieve prospect signals')
     };
   }
 }
@@ -1634,7 +1654,7 @@ export async function getAccountMonitoringConfigAction(
     console.error('[lead-intelligence-actions] Failed to fetch monitoring config:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve monitoring configuration'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to retrieve monitoring configuration')
     };
   }
 }
@@ -1669,7 +1689,7 @@ export async function saveAccountMonitoringConfigAction(
     console.error('[lead-intelligence-actions] Failed to save monitoring config:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save monitoring configuration'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to save monitoring configuration')
     };
   }
 }
@@ -1695,7 +1715,7 @@ export async function markSignalReadAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to mark signal read:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update signal' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to update signal') };
   }
 }
 
@@ -1720,7 +1740,7 @@ export async function dismissSignalAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to dismiss signal:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to dismiss signal' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to dismiss signal') };
   }
 }
 
@@ -1841,7 +1861,7 @@ export async function triggerProspectDeltaScanAction(
     return {
       success: false,
       newSignalsCount: 0,
-      error: err instanceof Error ? err.message : 'Failed to execute delta scan'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to execute delta scan')
     };
   }
 }
@@ -1955,7 +1975,7 @@ export async function saveWorkspaceScoringModelAction(
     return { success: true, model };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save scoring model:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to save model' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to save model') };
   }
 }
 
@@ -2031,7 +2051,7 @@ export async function simulateScoringModelAction(
       droppersCount: 0,
       unchangedCount: 0,
       newCriticalCount: 0,
-      error: err instanceof Error ? err.message : 'Simulation failed'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Simulation failed')
     };
   }
 }
@@ -2134,7 +2154,7 @@ export async function recalculateWorkspaceScoresAction(
     return {
       success: false,
       recalculatedCount: 0,
-      error: err instanceof Error ? err.message : 'Bulk re-scoring failed'
+      error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Bulk re-scoring failed')
     };
   }
 }
@@ -2212,7 +2232,7 @@ export async function checkProspectCRMMatchAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to check CRM match:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to check match' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to check match') };
   }
 }
 
@@ -2327,7 +2347,7 @@ export async function enrichExistingCRMRecordAction(
     return { success: true, newContactsAddedCount: addedContactsCount };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to enrich CRM record:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Enrichment merge failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Enrichment merge failed') };
   }
 }
 
@@ -2454,7 +2474,7 @@ export async function saveDynamicSegmentAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save segment:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Save segment failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Save segment failed') };
   }
 }
 
@@ -2478,7 +2498,7 @@ export async function deleteDynamicSegmentAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to delete segment:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Delete segment failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Delete segment failed') };
   }
 }
 
@@ -2573,7 +2593,7 @@ export async function saveProspectingCampaignAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save campaign:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Save campaign failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Save campaign failed') };
   }
 }
 
@@ -2711,7 +2731,7 @@ export async function launchProspectingCampaignAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to launch campaign:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Launch campaign failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Launch campaign failed') };
   }
 }
 
@@ -2761,7 +2781,7 @@ export async function getRevenueAttributionReportAction(
     return { success: true, report };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to generate attribution report:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate report' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to generate report') };
   }
 }
 
@@ -2825,7 +2845,7 @@ export async function executeDataRemediationAction(
     return { success: true, remediatedCount: count };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to execute remediation:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Remediation failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Remediation failed') };
   }
 }
 
@@ -2872,7 +2892,7 @@ export async function getDailyRepBriefingAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to get rep briefing:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch briefing' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to fetch briefing') };
   }
 }
 
@@ -2902,7 +2922,7 @@ export async function getPriorityQueueItemAction(
     return { success: true, item };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to get priority queue item:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to load item' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to load item') };
   }
 }
 
@@ -3004,7 +3024,7 @@ export async function executeProspectActivationAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to execute activation:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Activation failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Activation failed') };
   }
 }
 
@@ -3037,7 +3057,7 @@ export async function generateAIOutreachDraftAction(
     return { success: true, draft };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to generate outreach draft:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate draft' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to generate draft') };
   }
 }
 
@@ -3097,7 +3117,7 @@ export async function getIntelligenceInboxAction(
     };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to get intelligence inbox:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch inbox' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to fetch inbox') };
   }
 }
 
@@ -3125,7 +3145,7 @@ export async function markInboxItemReadAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to mark inbox item read:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update item' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to update item') };
   }
 }
 
@@ -3161,7 +3181,7 @@ export async function getPredictiveConversionAction(
     return { success: true, likelihood };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to calculate predictive conversion:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Calculation failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Calculation failed') };
   }
 }
 
@@ -3198,7 +3218,7 @@ export async function getEnterpriseGovernanceConfigAction(
     return { success: true, config: snap.data() as EnterpriseGovernanceConfig };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to get governance config:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch governance config' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to fetch governance config') };
   }
 }
 
@@ -3224,7 +3244,7 @@ export async function saveEnterpriseGovernanceConfigAction(
     return { success: true };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to save governance config:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to save governance config' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to save governance config') };
   }
 }
 
@@ -3302,7 +3322,7 @@ export async function getProviderHealthStatusAction(
     return { success: true, providers };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to get provider health status:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch provider health' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to fetch provider health') };
   }
 }
 
@@ -3342,7 +3362,7 @@ export async function getCreditLedgerSummaryAction(
     return { success: true, ledger };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to get credit ledger:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch credit ledger' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Failed to fetch credit ledger') };
   }
 }
 
@@ -3451,12 +3471,44 @@ export async function executeEnterpriseDataImportAction(
     return { success: true, importedCount: prospectsToCreate.length };
   } catch (err: unknown) {
     console.error('[lead-intelligence-actions] Failed to execute enterprise data import:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Import failed' };
+    return { success: false, error: toClientErrorMessage('actions.lead-intelligence-actions', err, undefined, 'Import failed') };
   }
 }
 
+/**
+ * Generates a new Chrome extension token for a workspace (audit F6).
+ *
+ * Returns the plaintext value ONCE. Only a SHA-256 hash and a display hint are stored, so
+ * it cannot be recovered afterwards — a lost token must be regenerated, which is the
+ * point: a leaked settings document no longer yields a working credential.
+ *
+ * Generating a new token immediately invalidates the previous one.
+ */
+export async function regenerateExtensionTokenAction(
+  workspaceId: string,
+  organizationId: string
+): Promise<{ success: boolean; token?: string; hint?: string; error?: string }> {
+  await requireWorkspace(workspaceId);
 
+  if (!workspaceId) return { success: false, error: 'workspaceId is required' };
+  try {
+    const { generateExtensionToken } = await import('@/lib/lead-intelligence/extension-token');
+    const { token, tokenHash, tokenHint } = generateExtensionToken();
 
+    await adminDb.collection('system_settings').doc(`keys_${workspaceId}`).set({
+      workspaceId,
+      organizationId,
+      chromeExtensionTokenHash: tokenHash,
+      chromeExtensionTokenHint: tokenHint,
+      // Remove any legacy plaintext value left over from the Math.random() scheme.
+      chromeExtensionToken: FieldValue.delete(),
+      chromeExtensionTokenRotatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    }, { merge: true });
 
-
-
+    return { success: true, token, hint: tokenHint };
+  } catch (err: unknown) {
+    console.error('[lead-intelligence-actions] Failed to regenerate extension token:', err);
+    return { success: false, error: 'Could not generate a new token.' };
+  }
+}

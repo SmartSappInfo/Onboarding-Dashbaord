@@ -15,6 +15,8 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   RevenueScenario,
   RevenueOsGovernance,
@@ -204,7 +206,7 @@ export async function seedRevenueOsWorkspace(
       success: false,
       seededScenarios: 0,
       seededRecommendations: 0,
-      error: error instanceof Error ? error.message : 'Failed to seed Revenue OS',
+      error: toClientErrorMessage('revenue-os.migration-protocol', error, undefined, 'Failed to seed Revenue OS'),
     };
   }
 }

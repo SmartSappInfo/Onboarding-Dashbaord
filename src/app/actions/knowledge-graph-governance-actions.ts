@@ -41,6 +41,8 @@ import {
 } from '@/lib/quick-notes-types';
 import { backfillCrmRelationsAction } from '@/lib/quick-notes-graph-actions';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 const GOVERNANCE_COLLECTION = 'knowledge_graph_governance';
 
@@ -122,7 +124,7 @@ export async function getKnowledgeGraphGovernanceAction(
     console.error('[getKnowledgeGraphGovernanceAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve governance configuration.',
+      error: toClientErrorMessage('actions.knowledge-graph-governance-actions', err, undefined, 'Failed to retrieve governance configuration.'),
       actionConfig: { path: '/backoffice', label: 'Backoffice Home' },
     };
   }
@@ -227,7 +229,7 @@ export async function updateKnowledgeGraphGovernanceAction(params: {
     console.error('[updateKnowledgeGraphGovernanceAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to update governance configuration.',
+      error: toClientErrorMessage('actions.knowledge-graph-governance-actions', err, undefined, 'Failed to update governance configuration.'),
       actionConfig: { path: '/backoffice/knowledge-graph', label: 'Retry Governance' },
     };
   }
@@ -266,7 +268,7 @@ export async function getKnowledgeGraphMetricsAction(
     console.error('[getKnowledgeGraphMetricsAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to compute graph metrics.',
+      error: toClientErrorMessage('actions.knowledge-graph-governance-actions', err, undefined, 'Failed to compute graph metrics.'),
     };
   }
 }
@@ -309,7 +311,7 @@ export async function triggerBackfillCrmRelationsAction(
     console.error('[triggerBackfillCrmRelationsAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'FER Migration runner encountered an error.',
+      error: toClientErrorMessage('actions.knowledge-graph-governance-actions', err, undefined, 'FER Migration runner encountered an error.'),
       actionConfig: { path: '/backoffice/knowledge-graph', label: 'Return to Migration Runner' },
     };
   }
@@ -354,7 +356,7 @@ export async function resetKnowledgeGraphGovernanceAction(
     console.error('[resetKnowledgeGraphGovernanceAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to reset governance configuration.',
+      error: toClientErrorMessage('actions.knowledge-graph-governance-actions', err, undefined, 'Failed to reset governance configuration.'),
     };
   }
 }

@@ -23,6 +23,8 @@ import type {
   ExperimentVariant,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId } from '@/lib/creative/creative-types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   calculateStatisticalSignificance,
   cloneDocumentForExperimentVariant,
@@ -112,7 +114,7 @@ export async function createCreativeExperimentAction(
     console.error('createCreativeExperimentAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to launch experiment.',
+      error: toClientErrorMessage('actions.creative-experiment-actions', err, undefined, 'Failed to launch experiment.'),
     };
   }
 }
@@ -185,7 +187,7 @@ export async function promoteWinningVariantAction(
     console.error('promoteWinningVariantAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Promotion failed.',
+      error: toClientErrorMessage('actions.creative-experiment-actions', err, undefined, 'Promotion failed.'),
     };
   }
 }

@@ -91,7 +91,8 @@ describe.skipIf(!emulatorRunning)('Industry-Specific Collection Security Rules',
 
     // Setup test users with different workspace access
     const adminContext = testEnv.authenticatedContext(SUPER_ADMIN_UID, {
-      email: 'admin@smartsapp.com',
+      // audit F8: platform admin is the signed custom claim, not an email address.
+      admin: true,
     });
 
     // Super admin

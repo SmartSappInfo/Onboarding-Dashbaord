@@ -26,6 +26,8 @@ import { detectContradictionsFlow } from '@/ai/flows/detect-contradictions-flow'
 import { detectDuplicatesFlow } from '@/ai/flows/detect-duplicates-flow';
 import { governanceAuditFlow } from '@/ai/flows/governance-audit-flow';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Knowledge Copilot, Insights & Governance Server Actions (Company Brain Phase 7).
@@ -83,7 +85,7 @@ export async function getWorkspaceInboxAction(
     return { success: true, data: filtered };
   } catch (err: unknown) {
     console.error('getWorkspaceInboxAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch inbox' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to fetch inbox') };
   }
 }
 
@@ -142,7 +144,7 @@ export async function reviewInboxItemAction(
     return { success: true, data: updated };
   } catch (err: unknown) {
     console.error('reviewInboxItemAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to review inbox item' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to review inbox item') };
   }
 }
 
@@ -169,7 +171,7 @@ export async function bulkReviewInboxAction(
     return { success: true, count };
   } catch (err: unknown) {
     console.error('bulkReviewInboxAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Bulk review failed' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Bulk review failed') };
   }
 }
 
@@ -277,7 +279,7 @@ export async function scanDuplicatesAction(
     return { success: true, duplicatesFound: written };
   } catch (err: unknown) {
     console.error('scanDuplicatesAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to scan duplicates' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to scan duplicates') };
   }
 }
 
@@ -384,7 +386,7 @@ export async function detectWorkspaceContradictionsAction(
     return { success: true, contradictionsFound: written };
   } catch (err: unknown) {
     console.error('detectWorkspaceContradictionsAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to detect contradictions' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to detect contradictions') };
   }
 }
 
@@ -451,7 +453,7 @@ export async function generateWorkspaceInsightsAction(
     return { success: true, insightsCount: written };
   } catch (err: unknown) {
     console.error('generateWorkspaceInsightsAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate insights' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to generate insights') };
   }
 }
 
@@ -516,7 +518,7 @@ export async function mergeDuplicateNotesAction(
     return { success: true, targetNoteId };
   } catch (err: unknown) {
     console.error('mergeDuplicateNotesAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Merge failed' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Merge failed') };
   }
 }
 
@@ -569,7 +571,7 @@ export async function convertInsightToIdeaAction(
     return { success: true, ideaId: newIdea.id };
   } catch (err: unknown) {
     console.error('convertInsightToIdeaAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to promote insight to idea' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to promote insight to idea') };
   }
 }
 
@@ -612,7 +614,7 @@ export async function convertInsightToTaskAction(
     return { success: true, taskId: taskRef.id };
   } catch (err: unknown) {
     console.error('convertInsightToTaskAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create task' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to create task') };
   }
 }
 
@@ -631,7 +633,7 @@ export async function getWorkspaceInsightsAction(
     return { success: true, data: filtered };
   } catch (err: unknown) {
     console.error('getWorkspaceInsightsAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to fetch insights' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to fetch insights') };
   }
 }
 
@@ -650,7 +652,7 @@ export async function deleteInsightAction(
     return { success: deleted };
   } catch (err: unknown) {
     console.error('deleteInsightAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete insight' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Failed to delete insight') };
   }
 }
 
@@ -682,6 +684,6 @@ export async function auditNoteGovernanceAction(
     return { success: true, data: result };
   } catch (err: unknown) {
     console.error('auditNoteGovernanceAction error:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Governance audit failed' };
+    return { success: false, error: toClientErrorMessage('quick-notes-insight-actions', err, undefined, 'Governance audit failed') };
   }
 }

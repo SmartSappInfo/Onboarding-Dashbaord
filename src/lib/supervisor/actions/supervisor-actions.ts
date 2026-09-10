@@ -29,6 +29,8 @@ import type {
 } from '../types';
 import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -127,7 +129,7 @@ export async function startSupervisorMissionAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to launch supervisor mission.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to launch supervisor mission.'),
       code: 'server_error',
     };
   }
@@ -172,7 +174,7 @@ export async function resumeSupervisorMissionAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to resume mission.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to resume mission.'),
       code: 'server_error',
     };
   }
@@ -217,7 +219,7 @@ export async function cancelSupervisorMissionAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to cancel mission.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to cancel mission.'),
       code: 'server_error',
     };
   }
@@ -268,7 +270,7 @@ export async function getSupervisorRunAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to load mission.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to load mission.'),
       code: 'server_error',
     };
   }
@@ -312,7 +314,7 @@ export async function listSupervisorRunsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list mission runs.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to list mission runs.'),
       code: 'server_error',
     };
   }
@@ -377,7 +379,7 @@ export async function executeProposedActionAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute proposed action.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to execute proposed action.'),
       code: 'server_error',
     };
   }
@@ -408,7 +410,7 @@ export async function listAgentDescriptorsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list agents.',
+      error: toClientErrorMessage('supervisor.actions.supervisor-actions', err, undefined, 'Failed to list agents.'),
       code: 'server_error',
     };
   }

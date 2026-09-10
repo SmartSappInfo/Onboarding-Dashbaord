@@ -171,7 +171,7 @@ export default function IssueTriage() {
                     author: {
                       userId: 'current',
                       name: 'Support Admin',
-                      email: 'admin@smartsapp.com',
+                      email: '',
                       role: 'support_admin',
                     },
                     text: newNoteText.trim(),

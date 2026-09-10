@@ -31,6 +31,8 @@ import { writeSendableWhatsAppDoc, autoEnableApprovedWhatsAppTemplate } from './
 import { mapWithConcurrency } from './utils/concurrency';
 import type { WhatsAppTemplate, WhatsAppTemplateStatus, WhatsAppTemplateCategory } from './whatsapp/whatsapp-types';
 import { APP_TEMPLATE_CATEGORIES } from './types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 type ActionResult<T> = { success: true; data: T } | { success: false; error: string };
 
@@ -42,7 +44,7 @@ type ActionResult<T> = { success: true; data: T } | { success: false; error: str
 const AUTO_ENABLE_CONCURRENCY = 5;
 
 function fail(error: unknown): { success: false; error: string } {
-  return { success: false, error: error instanceof Error ? error.message : 'Unexpected error' };
+  return { success: false, error: toClientErrorMessage('whatsapp-template-actions', error, undefined, 'Unexpected error') };
 }
 
 /** Pull templates from Meta and upsert the local mirror. */

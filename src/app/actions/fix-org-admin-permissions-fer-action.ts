@@ -14,7 +14,7 @@ import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
  * Seeded org "Administrator" roles also carried `system_admin`.
  *
  * This protocol strips those two platform tokens from:
- *  1. every user who is NOT a designated super admin (`admin@smartsapp.com`
+ *  1. every user who is NOT a designated super admin (see `system_config/super_admins`
  *     or listed in `system_config/super_admins`) — both top-level
  *     `permissions` and per-workspace `workspacePermissions`;
  *  2. every ORG-SCOPED role document carrying `system_admin` (replaced with
@@ -107,7 +107,12 @@ export async function executeFixOrgAdminPermissionsFerAction(
     const configDoc = await adminDb.collection('system_config').doc('super_admins').get();
     const allowEmails: string[] = (configDoc.exists ? configDoc.data()?.emails || [] : [])
       .map((e: string) => e.toLowerCase());
-    allowEmails.push('admin@smartsapp.com');
+    // SECURITY (audit F8): the allowlist comes from `system_config/super_admins` only.
+    // A hardcoded address used to be appended here, which meant this migration preserved
+    // platform-admin permissions for that account even after it was removed from config.
+    if (process.env.PLATFORM_SUPER_ADMIN_EMAIL) {
+      allowEmails.push(process.env.PLATFORM_SUPER_ADMIN_EMAIL.toLowerCase());
+    }
 
     // 1. Org-scoped roles carrying the platform token
     const rolesSnap = await adminDb.collection('roles')

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+import { extensionTokenMatches } from '@/lib/lead-intelligence/extension-token';
 import type { LeadIntelligenceSettings } from '@/lib/lead-intelligence/types';
 import fs from 'fs';
 import path from 'path';
@@ -9,7 +10,12 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const workspaceId = searchParams.get('workspaceId') || '';
-    const token = searchParams.get('token') || '';
+    // An <a download> cannot set headers, so the query parameter stays supported here —
+    // but the Authorization header is preferred and checked first.
+    const authHeader = request.headers.get('Authorization') || '';
+    const token = authHeader.startsWith('Bearer ')
+      ? authHeader.substring(7)
+      : (searchParams.get('token') || '');
 
     if (!workspaceId || !token) {
       return NextResponse.json(
@@ -30,8 +36,13 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const settings = settingsSnap.data() as LeadIntelligenceSettings;
-    if (settings.chromeExtensionToken !== token) {
+    const settings = settingsSnap.data() as LeadIntelligenceSettings & {
+      chromeExtensionTokenHash?: string;
+    };
+
+    // SECURITY (audit F6): compare against the stored hash in constant time. The previous
+    // `!==` on a plaintext value was both a plaintext-at-rest problem and a timing oracle.
+    if (!extensionTokenMatches(token, settings.chromeExtensionTokenHash)) {
       return NextResponse.json(
         { error: 'Unauthorized access token mismatch' },
         { status: 401 }

@@ -2,6 +2,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { generatePdfBuffer } from '@/lib/pdf-actions';
 import type { PDFForm, Submission } from '@/lib/types';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function GET(
   req: Request,
@@ -38,7 +40,7 @@ export async function GET(
     });
   } catch (error: any) {
     console.error('>>> [API:GEN] CRITICAL SERVER ERROR:', error);
-    return new Response(JSON.stringify({ error: error.message }), { 
+    return new Response(JSON.stringify({ error: toClientErrorMessage('api.pdfs.[pdfId].generate.[submissionId]', error, undefined, 'Internal server error') }), { 
         status: 500,
         headers: { 'Content-Type': 'application/json' }
     });

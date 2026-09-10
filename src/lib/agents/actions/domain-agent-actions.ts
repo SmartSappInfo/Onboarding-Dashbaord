@@ -29,6 +29,8 @@ import { zSwarmMissionRequest } from '../domain-types';
 import type { McpPayloadValue } from '@/lib/mcp/types';
 import { BaseDomainSpecialist } from '../specialists/base-domain-specialist';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ServerActionResponse<T> {
   success: boolean;
@@ -58,7 +60,7 @@ export async function listSpecialistsAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list domain specialists',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to list domain specialists'),
     };
   }
 }
@@ -101,7 +103,7 @@ export async function getSpecialistDetailsAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve specialist details',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to retrieve specialist details'),
     };
   }
 }
@@ -136,7 +138,7 @@ export async function updateSpecialistConfigAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save specialist configuration',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to save specialist configuration'),
     };
   }
 }
@@ -163,7 +165,7 @@ export async function startSwarmMissionAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to start swarm mission',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to start swarm mission'),
     };
   }
 }
@@ -186,7 +188,7 @@ export async function getSwarmRunAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch swarm run',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to fetch swarm run'),
     };
   }
 }
@@ -210,7 +212,7 @@ export async function listSwarmRunsAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list swarm runs',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to list swarm runs'),
     };
   }
 }
@@ -239,7 +241,7 @@ export async function resumeSwarmMissionAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to resume swarm mission',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to resume swarm mission'),
     };
   }
 }
@@ -293,7 +295,7 @@ export async function executeJointProposalAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute proposed action',
+      error: toClientErrorMessage('agents.actions.domain-agent-actions', err, undefined, 'Failed to execute proposed action'),
     };
   }
 }

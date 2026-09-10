@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { cleanupOldMigrationLogs } from '@/lib/migration-monitoring';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function POST(request: NextRequest) {
   // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('cleanup error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to cleanup logs' },
+      { error: toClientErrorMessage('api.migration.cleanup', error, undefined, 'Failed to cleanup logs') },
       { status: 500 }
     );
   }

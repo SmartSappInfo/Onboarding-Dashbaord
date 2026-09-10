@@ -22,6 +22,8 @@ import { McpGateway } from '../gateway';
 import { McpApiKeyService } from '../api-key-service';
 import { McpApprovalEngine } from '../approval-engine';
 import { McpAuditLogger } from '../audit-logger';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   McpToolDescriptor,
   McpApiKey,
@@ -101,7 +103,7 @@ export async function listMcpToolsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list MCP tools.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to list MCP tools.'),
       code: 'server_error',
     };
   }
@@ -163,7 +165,7 @@ export async function executeMcpToolAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute tool via MCP gateway.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to execute tool via MCP gateway.'),
       code: 'server_error',
     };
   }
@@ -204,7 +206,7 @@ export async function listPendingApprovalsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch pending approvals.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to fetch pending approvals.'),
       code: 'server_error',
     };
   }
@@ -253,7 +255,7 @@ export async function adjudicateApprovalAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to adjudicate approval.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to adjudicate approval.'),
       code: 'server_error',
     };
   }
@@ -293,7 +295,7 @@ export async function listMcpApiKeysAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list API keys.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to list API keys.'),
       code: 'server_error',
     };
   }
@@ -347,7 +349,7 @@ export async function createMcpApiKeyAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to generate MCP API key.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to generate MCP API key.'),
       code: 'server_error',
     };
   }
@@ -388,7 +390,7 @@ export async function revokeMcpApiKeyAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to revoke API key.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to revoke API key.'),
       code: 'server_error',
     };
   }
@@ -429,7 +431,7 @@ export async function listMcpAuditLogsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch MCP audit logs.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to fetch MCP audit logs.'),
       code: 'server_error',
     };
   }
@@ -483,7 +485,7 @@ export async function upsertMcpApprovalPolicyAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to update governance policy.',
+      error: toClientErrorMessage('mcp.actions.mcp-governance-actions', err, undefined, 'Failed to update governance policy.'),
       code: 'server_error',
     };
   }

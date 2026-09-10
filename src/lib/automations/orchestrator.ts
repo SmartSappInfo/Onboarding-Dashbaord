@@ -3,6 +3,9 @@ import { evaluateTriggerConfig } from '../automation-trigger-config';
 import { logAutomationEvent } from '../automation-log';
 import type { AutomationTrigger } from '../types';
 import { executeAutomation } from './executor';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 interface BufferedTriggerItem {
   trigger: AutomationTrigger;
@@ -21,7 +24,7 @@ function runAfter(fn: () => void | Promise<void>) {
   } catch {
     // Fallback: run asynchronously outside Next.js request scope (e.g. in tests)
     Promise.resolve().then(fn).catch(err => {
-      console.error("runAfter fallback execution failed:", err);
+      reportError('automations.orchestrator', err, { note: "runAfter fallback execution failed:" });
     });
   }
 }
@@ -146,12 +149,12 @@ async function enqueueBulkTriggers(
               workspaceId,
               organizationId,
               entityId: (item.payload.entityId as string) || null,
-            }).catch(e => console.error('[BulkTriggerWebhooks] Individual webhook dispatch error:', e))
+            }).catch(e => reportError('automations.orchestrator', e, { note: '[BulkTriggerWebhooks] Individual webhook dispatch error:' }))
           )
         );
       }
     } catch (err) {
-      console.error('[BulkTriggerWebhooks] Webhook dispatch error:', err);
+      reportError('automations.orchestrator', err, { note: '[BulkTriggerWebhooks] Webhook dispatch error:' });
     }
   });
 }
@@ -251,7 +254,7 @@ export async function triggerAutomationProtocolsBulk(
     },
     resolve: () => {},
     reject: (err) => {
-      console.error(`[triggerAutomationProtocolsBulk] Target reject for entity ${item.entityId}:`, err);
+      reportError('automations.orchestrator', err, { note: `[triggerAutomationProtocolsBulk] Target reject for entity ${item.entityId}:` });
     },
   }));
 

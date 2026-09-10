@@ -57,7 +57,8 @@ import {
   getIdentityCollisionsAction,
   getWorkspaceSignalsAction,
   getDailyRepBriefingAction,
-  getCreditLedgerSummaryAction
+  getCreditLedgerSummaryAction,
+  regenerateExtensionTokenAction
 } from '@/app/actions/lead-intelligence-actions';
 import type { 
   Prospect, 
@@ -199,10 +200,35 @@ export default function LeadIntelligenceClient() {
     }
   };
 
-  // Token Generation
-  const generateNewToken = () => {
-    const newToken = `tok_${Math.floor(Date.now() / 1000)}_${Math.random().toString(36).substring(2, 15)}`;
-    setSettings(prev => ({ ...prev, chromeExtensionToken: newToken }));
+  // Token Generation (audit F6)
+  //
+  // The token used to be built here, in the browser, from Math.random() — not a CSPRNG,
+  // and predictable from a few observed outputs. It is now generated server-side with
+  // crypto.randomBytes and stored only as a SHA-256 hash, so the plaintext is returned
+  // exactly once and shown to the operator to copy.
+  const [oneTimeToken, setOneTimeToken] = useState<string | null>(null);
+
+  const generateNewToken = async () => {
+    if (!activeWorkspaceId) return;
+    const res = await regenerateExtensionTokenAction(activeWorkspaceId, organizationId);
+    if (!res.success || !res.token) {
+      toast({
+        variant: 'destructive',
+        title: 'Token generation failed',
+        description: res.error || 'Could not generate a new token.',
+      });
+      return;
+    }
+    setOneTimeToken(res.token);
+    setSettings(prev => ({
+      ...prev,
+      chromeExtensionTokenHint: res.hint,
+      hasChromeExtensionToken: true,
+    }));
+    toast({
+      title: 'New token generated',
+      description: 'Copy it now — it cannot be shown again. The previous token no longer works.',
+    });
   };
 
   // Keyboard Shortcuts (intelligence_ui Section 82 & 83)

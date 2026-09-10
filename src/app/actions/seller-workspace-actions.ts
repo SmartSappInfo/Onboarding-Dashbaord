@@ -35,6 +35,8 @@ import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import type { SalesTarget, SalesPerformanceDaily } from '@/lib/sales-performance/types';
 import { calculateTargetAttainment } from '@/lib/sales-performance/performance-engine';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): opaque client message + server-side detail.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Server Action: Retrieve full "My Day" command surface payload for a seller.
@@ -790,7 +792,7 @@ export async function snoozeQueueItemAction(params: {
 
     return { success: true, message: `Snoozed for ${snoozeHours}h.` };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: toClientErrorMessage('actions.seller-workspace', err) };
   }
 }
 
@@ -821,6 +823,6 @@ export async function dismissQueueItemAction(params: {
 
     return { success: true, message: 'Item dismissed.' };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : String(err) };
+    return { success: false, error: toClientErrorMessage('actions.seller-workspace', err) };
   }
 }

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { after } from 'next/server';
 import { Webhook } from 'svix';
 import { processUnsubscribe } from '@/lib/services/unsubscribe-service';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { reportError, toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * POST /api/webhooks/email
@@ -49,7 +51,7 @@ export async function POST(req: Request) {
                   await processUnsubscribe(recipient, { emailStatus });
                 }
               } catch (e: any) {
-                console.error(`[EMAIL-WEBHOOK] Async processing failed:`, e.message);
+                reportError('api.webhooks.email', e, { note: `[EMAIL-WEBHOOK] Async processing failed:` });
               }
             });
           } catch (err) {
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
           }
         }
       } catch (err: any) {
-        console.error('[EMAIL-WEBHOOK] Svix verification failed:', err.message);
+        reportError('api.webhooks.email', err, { note: '[EMAIL-WEBHOOK] Svix verification failed:' });
         return NextResponse.json({ error: 'Invalid signature' }, { status: 400 });
       }
     } else {
@@ -85,7 +87,7 @@ export async function POST(req: Request) {
     
     return NextResponse.json({ received: true }, { status: 200 });
   } catch (error: any) {
-    console.error('[EMAIL-WEBHOOK] Error handling webhook:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    reportError('api.webhooks.email', error, { note: '[EMAIL-WEBHOOK] Error handling webhook:' });
+    return NextResponse.json({ error: toClientErrorMessage('api.webhooks.email', error, undefined, 'Internal server error') }, { status: 500 });
   }
 }

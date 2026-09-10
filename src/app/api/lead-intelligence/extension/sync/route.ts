@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
+// SECURITY (audit F6): tokens are stored as SHA-256 hashes, never plaintext.
+import { hashExtensionToken } from '@/lib/lead-intelligence/extension-token';
 import type { Prospect, LeadIntelligenceSettings } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
@@ -27,7 +29,7 @@ export async function POST(request: NextRequest) {
 
     // 1. Resolve workspace
     const settingsSnap = await adminDb.collection('system_settings')
-      .where('chromeExtensionToken', '==', token)
+      .where('chromeExtensionTokenHash', '==', hashExtensionToken(token))
       .limit(1)
       .get();
 

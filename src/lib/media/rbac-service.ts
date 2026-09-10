@@ -23,6 +23,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { MediaResourcePermission, MediaResourceRole } from '@/lib/types/media-2.0';
 import { logMediaAuditEventAction } from './audit-service';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// Audit actor for system-initiated writes. Not an authorisation check (audit F8).
+const SYSTEM_ACTOR_EMAIL = 'system@platform.internal';
 
 export const ROLE_HIERARCHY: Record<MediaResourceRole, number> = {
   ADMIN: 7,
@@ -128,7 +130,7 @@ export async function saveResourcePermissionAction(
     // Audit log entry
     await logMediaAuditEventAction(permission.workspaceId, {
       actorId,
-      actorEmail: 'admin@smartsapp.com',
+      actorEmail: SYSTEM_ACTOR_EMAIL,
       actorName: 'Permission Manager',
       action: 'GRANT_RESOURCE_PERMISSION',
       resourceType: 'GOVERNANCE',
@@ -203,7 +205,7 @@ export async function deleteResourcePermissionAction(
     // Audit log entry
     await logMediaAuditEventAction(workspaceId, {
       actorId,
-      actorEmail: 'admin@smartsapp.com',
+      actorEmail: SYSTEM_ACTOR_EMAIL,
       actorName: 'Permission Manager',
       action: 'REVOKE_RESOURCE_PERMISSION',
       resourceType: 'GOVERNANCE',

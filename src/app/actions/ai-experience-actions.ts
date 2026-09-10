@@ -11,6 +11,8 @@
 import { revalidatePath } from 'next/cache';
 import { AiExperienceService } from '@/lib/services/ai-experience-service';
 import type { AssessmentQuestion } from '@/lib/types/learning';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   GeneratedPortalScaffold,
   GeneratedCurriculum,
@@ -35,7 +37,7 @@ export async function generatePortalScaffoldAction(
     const scaffold = await AiExperienceService.generatePortalScaffold(input);
     return { success: true, data: scaffold };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate portal scaffold.' };
+    return { success: false, error: toClientErrorMessage('actions.ai-experience-actions', err, undefined, 'Failed to generate portal scaffold.') };
   }
 }
 
@@ -48,7 +50,7 @@ export async function generateCurriculumAction(
     const curriculum = await AiExperienceService.generateCurriculumStructure(input);
     return { success: true, data: curriculum };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate course curriculum.' };
+    return { success: false, error: toClientErrorMessage('actions.ai-experience-actions', err, undefined, 'Failed to generate course curriculum.') };
   }
 }
 
@@ -61,7 +63,7 @@ export async function generateQuizAction(
     const questions = await AiExperienceService.generateQuizQuestions(input);
     return { success: true, data: questions };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate assessment questions.' };
+    return { success: false, error: toClientErrorMessage('actions.ai-experience-actions', err, undefined, 'Failed to generate assessment questions.') };
   }
 }
 
@@ -80,7 +82,7 @@ export async function askAiTutorAction(
     }
     return { success: true, data: result };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to communicate with AI Tutor.' };
+    return { success: false, error: toClientErrorMessage('actions.ai-experience-actions', err, undefined, 'Failed to communicate with AI Tutor.') };
   }
 }
 
@@ -95,6 +97,6 @@ export async function getCoursePedagogyDiagnosticAction(
     const diagnostic = await AiExperienceService.diagnoseCoursePedagogy(portalId, courseId, courseTitle);
     return { success: true, data: diagnostic };
   } catch (err: unknown) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to generate course pedagogy diagnostic.' };
+    return { success: false, error: toClientErrorMessage('actions.ai-experience-actions', err, undefined, 'Failed to generate course pedagogy diagnostic.') };
   }
 }

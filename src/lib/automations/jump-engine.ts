@@ -6,6 +6,9 @@ import { logStepExecution } from './step-logger';
 import { cancelDelayTask } from '../gcp-tasks-client';
 import type { EntityType } from '../types';
 import { enrichPayloadWithLiveBehavioralData } from './payload-enricher';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export interface GoalConditionNode {
   id: string;
@@ -228,7 +231,7 @@ export async function evaluateContactJumps(entityId: string, workspaceId: string
               workspaceId: workspaceId ?? '',
             }).catch(() => {});
           } catch (e) {
-            console.error('[JUMP:ENGINE] Failed to notify automation completed:', e);
+            reportError('automations.jump-engine', e, { note: '[JUMP:ENGINE] Failed to notify automation completed:' });
           }
         }
 
@@ -430,7 +433,7 @@ export async function evaluateMilestoneNodeForParkedRuns(
               workspaceId: workspaceId ?? '',
             }).catch(() => {});
           } catch (e) {
-            console.error('[JUMP:RE-EVAL] Failed to notify automation completed:', e);
+            reportError('automations.jump-engine', e, { note: '[JUMP:RE-EVAL] Failed to notify automation completed:' });
           }
         }
       }

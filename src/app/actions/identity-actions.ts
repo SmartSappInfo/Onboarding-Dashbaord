@@ -38,6 +38,7 @@ import { sendSms } from '@/lib/mnotify-service';
 import { resolveAndRender } from '@/lib/template-resolver';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import crypto from 'crypto';
+import { hasPlatformAdminClaim, isPlatformSystemAdmin } from '@/lib/auth/platform-admin';
 
 interface CallerContext {
   uid: string;
@@ -69,7 +70,11 @@ async function verifyCallerContext(idToken: string, targetOrgId?: string): Promi
   // Load user profile
   const userDoc = await adminDb.collection('users').doc(uid).get();
   if (!userDoc.exists) {
-    if (email === 'admin@smartsapp.com') {
+    // SECURITY (audit F8): this used to fabricate a full system-admin identity for a
+    // token bearing a hardcoded address, even with no user record — so deactivating
+    // the account could not revoke it. Authority is now the signed `admin` claim, and
+    // a caller with no profile is refused like anyone else.
+    if (hasPlatformAdminClaim(decodedToken)) {
       return {
         uid,
         email,
@@ -82,12 +87,12 @@ async function verifyCallerContext(idToken: string, targetOrgId?: string): Promi
   }
 
   const profile = { id: userDoc.id, ...userDoc.data() } as UserProfile;
-  if (!profile.isAuthorized && email !== 'admin@smartsapp.com') {
+  if (!profile.isAuthorized && !hasPlatformAdminClaim(decodedToken)) {
     throw new Error('Forbidden: Account is inactive or pending approval.');
   }
 
   const isSystemAdmin = Boolean(
-    email === 'admin@smartsapp.com' || profile.permissions?.includes('system_admin')
+    isPlatformSystemAdmin(decodedToken, profile)
   );
 
   const permissionsList = (profile.permissions || []) as string[];

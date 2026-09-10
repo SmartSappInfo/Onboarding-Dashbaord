@@ -24,6 +24,8 @@ import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import { seedAiWorkforceWorkspace } from '@/lib/ai-sales-workforce/migration-protocol';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   evaluateAiApprovalDecision,
   calculateAiFleetMetrics,
@@ -159,7 +161,7 @@ export async function getAiWorkforceDashboardDataAction(params: {
     console.error('getAiWorkforceDashboardDataAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to fetch AI workforce data',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to fetch AI workforce data'),
     };
   }
 }
@@ -207,7 +209,7 @@ export async function updateAgentAutonomyLevelAction(params: {
     console.error('updateAgentAutonomyLevelAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update agent autonomy level',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to update agent autonomy level'),
     };
   }
 }
@@ -299,7 +301,7 @@ export async function executeAiRecommendationAction(params: {
     console.error('executeAiRecommendationAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to execute AI recommendation',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to execute AI recommendation'),
     };
   }
 }
@@ -380,7 +382,7 @@ export async function resolveAiApprovalAction(params: {
     console.error('resolveAiApprovalAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to resolve AI approval',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to resolve AI approval'),
     };
   }
 }
@@ -468,7 +470,7 @@ export async function runCrmHygieneScanAction(params: {
     return {
       success: false,
       detectedCount: 0,
-      error: error instanceof Error ? error.message : 'Hygiene scan failed',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Hygiene scan failed'),
     };
   }
 }
@@ -583,7 +585,7 @@ export async function executeCrmHygieneRepairAction(params: {
     console.error('executeCrmHygieneRepairAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to repair hygiene anomaly',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to repair hygiene anomaly'),
     };
   }
 }
@@ -624,7 +626,7 @@ export async function toggleAiMasterKillSwitchAction(params: {
     console.error('toggleAiMasterKillSwitchAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to toggle kill switch',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to toggle kill switch'),
     };
   }
 }
@@ -656,7 +658,7 @@ export async function reseedAiWorkforceDefaultsAction(params: {
     return {
       success: false,
       seededAgents: 0,
-      error: error instanceof Error ? error.message : 'Failed to reseed AI workforce',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to reseed AI workforce'),
     };
   }
 }
@@ -724,7 +726,7 @@ export async function updateAiGovernancePolicyAction(params: {
     console.error('updateAiGovernancePolicyAction error:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update governance policy',
+      error: toClientErrorMessage('actions.ai-sales-workforce-actions', error, undefined, 'Failed to update governance policy'),
     };
   }
 }

@@ -11,6 +11,8 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   AiAgentProfile,
   AiWorkforceGovernancePolicy,
@@ -322,7 +324,7 @@ export async function seedAiWorkforceWorkspace(
     return {
       success: false,
       seededAgents: 0,
-      error: error instanceof Error ? error.message : 'Failed to seed AI workforce',
+      error: toClientErrorMessage('ai-sales-workforce.migration-protocol', error, undefined, 'Failed to seed AI workforce'),
     };
   }
 }

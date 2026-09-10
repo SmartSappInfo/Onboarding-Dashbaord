@@ -9,6 +9,8 @@
 
 import { revalidatePath } from 'next/cache';
 import { ContentService } from '@/lib/services/content-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   ContentItem,
   CreateContentItemInput,
@@ -35,7 +37,7 @@ export async function createContentItemAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to create content item.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to create content item.'),
     };
   }
 }
@@ -55,7 +57,7 @@ export async function updateContentItemAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to update content item.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to update content item.'),
     };
   }
 }
@@ -74,7 +76,7 @@ export async function publishContentItemAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to publish content item.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to publish content item.'),
     };
   }
 }
@@ -93,7 +95,7 @@ export async function archiveContentItemAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to archive content item.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to archive content item.'),
     };
   }
 }
@@ -110,7 +112,7 @@ export async function deleteContentItemAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to delete content item.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to delete content item.'),
     };
   }
 }
@@ -126,7 +128,7 @@ export async function getContentItemBySlugAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to fetch content item.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to fetch content item.'),
     };
   }
 }
@@ -142,7 +144,7 @@ export async function searchPortalContentAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Search failed.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Search failed.'),
     };
   }
 }
@@ -157,7 +159,7 @@ export async function listContentItemsByPortalAction(
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list content items.',
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to list content items.'),
     };
   }
 }

@@ -24,6 +24,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { MediaRetentionPolicy } from '@/lib/types/media-2.0';
 import { logMediaAuditEventAction } from './audit-service';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// Audit actor for system-initiated writes. Not an authorisation check (audit F8).
+const SYSTEM_ACTOR_EMAIL = 'system@platform.internal';
 
 export const DEFAULT_RETENTION_POLICY: MediaRetentionPolicy = {
   workspaceId: '',
@@ -68,7 +70,7 @@ export async function getMediaRetentionPolicyAction(
 export async function saveMediaRetentionPolicyAction(
   policy: MediaRetentionPolicy,
   actorId: string = 'system',
-  actorEmail: string = 'admin@smartsapp.com'
+  actorEmail: string = SYSTEM_ACTOR_EMAIL
 ): Promise<{ success: boolean; error?: string }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
@@ -273,7 +275,7 @@ export async function eraseContactComplianceDataAction(
     // Write audit record
     await logMediaAuditEventAction(workspaceId, {
       actorId,
-      actorEmail: 'admin@smartsapp.com',
+      actorEmail: SYSTEM_ACTOR_EMAIL,
       actorName: 'Compliance Officer',
       action: 'GDPR_CONTACT_ERASURE',
       resourceType: 'RETENTION',

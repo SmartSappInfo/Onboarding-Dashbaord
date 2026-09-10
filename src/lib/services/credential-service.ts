@@ -7,6 +7,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { generateCertificateCode, normaliseCertificateCode } from './certificate-code';
 import type {
   CertificateTemplate,
   IssuedCertificate,
@@ -82,9 +83,10 @@ export class CredentialService {
 
     const docRef = adminDb.collection('issued_certificates').doc();
     const now = new Date().toISOString();
-    const year = new Date().getFullYear();
-    const randCode = Math.floor(1000 + Math.random() * 9000);
-    const verificationCode = `CERT-${year}-${randCode}`;
+    // SECURITY / INTEGRITY (audit F7): the code is CSPRNG-generated and its uniqueness is
+    // enforced structurally below by claiming it as a document id, so a duplicate write
+    // fails instead of silently producing a second match for the same code.
+    const verificationCode = await CredentialService.claimVerificationCode(docRef.id);
     const certificateNumber = `SB-${Date.now().toString().slice(-8)}`;
 
     const slug = portalSlug || 'academy';
@@ -166,6 +168,31 @@ export class CredentialService {
     return cert;
   }
 
+  /**
+   * Claims a unique verification code for a certificate (audit F7).
+   *
+   * Uses `.create()` on `certificate_codes/{code}`, which fails if the id already exists.
+   * That makes uniqueness a property of the database rather than of the generator, so it
+   * holds even if the code space is later shortened or the RNG changes.
+   */
+  private static async claimVerificationCode(certificateId: string): Promise<string> {
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const code = generateCertificateCode();
+      try {
+        await adminDb.collection('certificate_codes').doc(code).create({
+          certificateId,
+          createdAt: new Date().toISOString(),
+        });
+        return code;
+      } catch {
+        // ALREADY_EXISTS — astronomically unlikely at 60 bits, but retry rather than
+        // issue a colliding certificate.
+        continue;
+      }
+    }
+    throw new Error('Could not allocate a unique certificate verification code.');
+  }
+
   // ── 3. Public Verification Endpoint ─────────────────────────────────────────
 
   public static async verifyCertificate(verificationCode: string): Promise<{
@@ -173,21 +200,45 @@ export class CredentialService {
     certificate?: IssuedCertificate;
     message: string;
   }> {
-    const cleanCode = verificationCode.trim().toUpperCase();
-    const snap = await adminDb
-      .collection('issued_certificates')
-      .where('verificationCode', '==', cleanCode)
-      .limit(1)
-      .get();
+    const cleanCode = normaliseCertificateCode(verificationCode);
 
-    if (snap.empty) {
+    // INTEGRITY (audit F7): resolve through the code registry, which holds exactly one
+    // document per code. The old `.where(...).limit(1)` returned the FIRST match, so a
+    // collision showed the wrong person's credential as valid rather than failing.
+    const codeSnap = await adminDb.collection('certificate_codes').doc(cleanCode).get();
+
+    let cert: IssuedCertificate | undefined;
+    if (codeSnap.exists) {
+      const certificateId = codeSnap.data()?.certificateId as string | undefined;
+      if (certificateId) {
+        const certSnap = await adminDb.collection('issued_certificates').doc(certificateId).get();
+        if (certSnap.exists) cert = certSnap.data() as IssuedCertificate;
+      }
+    } else {
+      // Fall back to the legacy field for certificates issued before the registry existed.
+      // Deliberately fetches two so an unresolved historical collision is reported rather
+      // than silently resolved to whichever document happens to come back first.
+      const legacy = await adminDb
+        .collection('issued_certificates')
+        .where('verificationCode', '==', cleanCode)
+        .limit(2)
+        .get();
+      if (legacy.size > 1) {
+        console.error('[credential-service] Duplicate legacy verification code:', cleanCode);
+        return {
+          isValid: false,
+          message: 'This verification code is ambiguous. Please contact the issuer for a reissued certificate.',
+        };
+      }
+      if (!legacy.empty) cert = legacy.docs[0].data() as IssuedCertificate;
+    }
+
+    if (!cert) {
       return {
         isValid: false,
         message: 'No certificate found matching this verification code.',
       };
     }
-
-    const cert = snap.docs[0].data() as IssuedCertificate;
 
     if (cert.status === 'revoked') {
       return {

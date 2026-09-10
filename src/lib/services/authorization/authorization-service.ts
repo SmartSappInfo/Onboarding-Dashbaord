@@ -63,7 +63,7 @@ export class AuthorizationService {
     const profile = { id: userDoc.id, ...userDoc.data() } as UserProfile;
 
     // Super Admin Bypass
-    if (profile.email === 'admin@smartsapp.com' || profile.permissions?.includes('system_admin')) {
+    if (profile.permissions?.includes('system_admin')) {
       return {
         isAllowed: true,
         grantedByRoles: ['builtin-super-admin'],

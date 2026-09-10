@@ -12,6 +12,8 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   Survey,
   SurveyResponse,
@@ -93,7 +95,7 @@ export async function saveSurveyExperimentConfigAction(
     console.error('[survey-experiment-actions] saveSurveyExperimentConfigAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save experiment configuration',
+      error: toClientErrorMessage('surveys.survey-experiment-actions', err, undefined, 'Failed to save experiment configuration'),
     };
   }
 }
@@ -255,7 +257,7 @@ export async function getSurveyExperimentResultsAction(
       evaluatedVariants: [],
       totalImpressions: 0,
       totalCompletions: 0,
-      error: err instanceof Error ? err.message : 'Failed to retrieve experiment results',
+      error: toClientErrorMessage('surveys.survey-experiment-actions', err, undefined, 'Failed to retrieve experiment results'),
     };
   }
 }
@@ -321,7 +323,7 @@ export async function promoteWinningVariantAction(
     console.error('[survey-experiment-actions] promoteWinningVariantAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to promote winning variant',
+      error: toClientErrorMessage('surveys.survey-experiment-actions', err, undefined, 'Failed to promote winning variant'),
     };
   }
 }
@@ -447,7 +449,7 @@ Respond ONLY with valid JSON matching this exact structure:
     console.error('[survey-experiment-actions] suggestSurveyVariantCopyAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to generate variant suggestions',
+      error: toClientErrorMessage('surveys.survey-experiment-actions', err, undefined, 'Failed to generate variant suggestions'),
     };
   }
 }

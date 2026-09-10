@@ -4,6 +4,9 @@ import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
 import { logAutomationEvent } from '../automation-log';
 import { assertAutomationManagePermission } from '../automation-permissions';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export interface HealResult {
   success: boolean;
@@ -191,7 +194,7 @@ export async function healStrandedMessageContacts(
           result.failedCount++;
           const msg = jobErr instanceof Error ? jobErr.message : String(jobErr);
           result.errors.push(`Job ${job.id}: ${msg}`);
-          console.error(`[HEALING-PROTOCOL] Failed to heal job ${job.id}:`, jobErr);
+          reportError('automations.healing', jobErr, { note: `[HEALING-PROTOCOL] Failed to heal job ${job.id}:` });
         }
       }
 
@@ -211,7 +214,7 @@ export async function healStrandedMessageContacts(
     result.success = false;
     const msg = err instanceof Error ? err.message : String(err);
     result.errors.push(msg);
-    console.error('[HEALING-PROTOCOL] Fatal error during healing sweep:', err);
+    reportError('automations.healing', err, { note: '[HEALING-PROTOCOL] Fatal error during healing sweep:' });
   }
 
   return result;

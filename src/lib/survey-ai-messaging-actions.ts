@@ -25,6 +25,8 @@ import type {
 } from '@/ai/schemas/survey-messaging-schemas';
 import type { MessageTemplate } from '@/lib/types';
 import { requireAuth } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface GenerateAndSaveSurveyTemplatesParams {
   workspaceId: string;
@@ -264,7 +266,7 @@ export async function generateSurveyMessagingTemplatesAction(
     console.error('[generateSurveyMessagingTemplatesAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to generate survey messaging templates.',
+      error: toClientErrorMessage('survey-ai-messaging-actions', err, undefined, 'Failed to generate survey messaging templates.'),
     };
   }
 }
@@ -320,7 +322,7 @@ export async function quickSaveSurveyTemplateAction(
     console.error('[quickSaveSurveyTemplateAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save message template.',
+      error: toClientErrorMessage('survey-ai-messaging-actions', err, undefined, 'Failed to save message template.'),
     };
   }
 }

@@ -32,6 +32,8 @@ import {
   SAMPLE_CONTACTS,
 } from '@/lib/creative/creative-crm-engine';
 import { evaluateCreativeHealth } from '@/lib/creative/creative-health-engine';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ActionResponse<T> {
   success: boolean;
@@ -68,7 +70,7 @@ export async function linkCreativeToCrmCampaignAction(
     console.error('linkCreativeToCrmCampaignAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to link CRM campaign.',
+      error: toClientErrorMessage('actions.creative-crm-actions', err, undefined, 'Failed to link CRM campaign.'),
     };
   }
 }
@@ -267,7 +269,7 @@ export async function generateBatchPersonalizedCreativesAction(
     console.error('generateBatchPersonalizedCreativesAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Batch generation failed.',
+      error: toClientErrorMessage('actions.creative-crm-actions', err, undefined, 'Batch generation failed.'),
     };
   }
 }

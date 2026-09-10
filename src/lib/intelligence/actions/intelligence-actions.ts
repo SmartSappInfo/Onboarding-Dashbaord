@@ -22,6 +22,8 @@ import { SelfHealingEngine } from '../services/self-healing-engine';
 import { EnterpriseComplianceEngine } from '../services/enterprise-compliance-engine';
 import { WorkflowEngine } from '@/lib/workflows/services/workflow-engine';
 import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   ExecutiveIntelligenceSummary,
   ProactiveRecommendation,
@@ -120,7 +122,7 @@ export async function getExecutiveIntelligenceAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve executive intelligence.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to retrieve executive intelligence.'),
       code: 'server_error',
       actionConfig: { path: '/admin/companybrain/intelligence', label: 'Intelligence Hub' },
     };
@@ -168,7 +170,7 @@ export async function listRecommendationsAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list proactive recommendations.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to list proactive recommendations.'),
       code: 'server_error',
     };
   }
@@ -251,7 +253,7 @@ export async function adjudicateRecommendationAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to adjudicate recommendation.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to adjudicate recommendation.'),
       code: 'server_error',
     };
   }
@@ -312,7 +314,7 @@ export async function runObservationScanAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute observation scan.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to execute observation scan.'),
       code: 'server_error',
     };
   }
@@ -358,7 +360,7 @@ export async function getSelfHealingHealthAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve self-healing health audit.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to retrieve self-healing health audit.'),
       code: 'server_error',
     };
   }
@@ -440,7 +442,7 @@ export async function executeSelfHealingAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute self-healing actions.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to execute self-healing actions.'),
       code: 'server_error',
     };
   }
@@ -490,7 +492,7 @@ export async function generateComplianceExportAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to generate compliance export.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to generate compliance export.'),
       code: 'server_error',
     };
   }
@@ -549,7 +551,7 @@ export async function executeCryptographicDeletionAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to execute cryptographic deletion.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to execute cryptographic deletion.'),
       code: 'server_error',
     };
   }
@@ -592,7 +594,7 @@ export async function getFederatedBenchmarksAction(params: {
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve federated benchmarks.',
+      error: toClientErrorMessage('intelligence.actions.intelligence-actions', err, undefined, 'Failed to retrieve federated benchmarks.'),
       code: 'server_error',
     };
   }

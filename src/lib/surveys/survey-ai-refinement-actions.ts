@@ -1,3 +1,5 @@
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 /**
  * @fileOverview SmartSapp Survey Intelligence 2.0 — Survey AI Refinement Server Actions
  * 
@@ -48,7 +50,7 @@ export async function refineSurveyQuestionAction(
     console.error('>>> [SURVEY_AI_REFINEMENT] Error refining question:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to refine question with AI.',
+      error: toClientErrorMessage('surveys.survey-ai-refinement-actions', err, undefined, 'Failed to refine question with AI.'),
     };
   }
 }

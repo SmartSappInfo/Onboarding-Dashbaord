@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { createTaskAction, getTasksForContact } from '@/lib/task-server-actions';
 import type { Task } from '@/lib/types';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Tasks API endpoint with entityId support
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('[API:TASKS:GET] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: toClientErrorMessage('api.tasks', error, undefined, 'Internal server error') },
       { status: 500 }
     );
   }
@@ -144,7 +146,7 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('[API:TASKS:POST] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: toClientErrorMessage('api.tasks', error, undefined, 'Internal server error') },
       { status: 500 }
     );
   }

@@ -5,6 +5,8 @@ import { generatePdfBuffer } from '@/lib/pdf-actions';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import type { PDFForm } from '@/lib/types';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview Public submission handler for PDF Forms.
@@ -167,6 +169,6 @@ export async function POST(req: Request) {
     return Response.json({ submissionId });
   } catch (error: any) {
     console.error(">>> [API: SUBMIT] Error:", error);
-    return Response.json({ error: error.message }, { status: 500 });
+    return Response.json({ error: toClientErrorMessage('api.pdfs.submit', error, undefined, 'Internal server error') }, { status: 500 });
   }
 }

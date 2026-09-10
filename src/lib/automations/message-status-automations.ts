@@ -1,6 +1,9 @@
 import { adminDb } from '../firebase-admin';
 import { logAutomationEvent } from '../automation-log';
 import { FieldsVariablesService } from '../services/fields-variables-service-impl';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 import {
   normalizeMessageNodeConfig,
   type MessageDeliveryStatusEvent,
@@ -299,7 +302,7 @@ export async function executeMessageStatusAutomations(
         }
       } catch (actionErr: unknown) {
         const msg = actionErr instanceof Error ? actionErr.message : String(actionErr);
-        console.error(`[EVENT-AUTOMATION] Action ${action.type} failed:`, msg);
+        reportError('automations.message-status-automations', msg, { note: `[EVENT-AUTOMATION] Action ${action.type} failed:` });
       }
     }
 
@@ -325,7 +328,7 @@ export async function executeMessageStatusAutomations(
     return { success: true, executedCount };
   } catch (error: unknown) {
     const errMsg = error instanceof Error ? error.message : String(error);
-    console.error('[EVENT-AUTOMATION] Failed to execute message status automations:', errMsg);
+    reportError('automations.message-status-automations', errMsg, { note: '[EVENT-AUTOMATION] Failed to execute message status automations:' });
     return { success: false, executedCount: 0, error: errMsg };
   }
 }

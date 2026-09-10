@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { adminDb } from '@/lib/firebase-admin';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * @fileOverview SchoolId to EntityId mapping endpoint for API consumers
@@ -54,7 +56,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('[API:MIGRATION:MAPPING] Error:', error);
     return NextResponse.json(
-      { error: error.message || 'Internal server error' },
+      { error: toClientErrorMessage('api.migration.schoolid-to-entityid-mapping', error, undefined, 'Internal server error') },
       { status: 500 }
     );
   }

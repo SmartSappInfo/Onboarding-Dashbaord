@@ -24,6 +24,8 @@ import { GraphProjectionService } from '../pipeline/graph-projection-service';
 import { MEMORY_OBJECTS_COLLECTION } from '../memory-repository';
 import type { MemoryObject } from '../types';
 import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   explainGraphConnectionFlow,
   type ExplainGraphConnectionOutput,
@@ -99,7 +101,7 @@ export async function getWorkspaceGraphAction(params: {
     console.error('[getWorkspaceGraphAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to query workspace graph.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to query workspace graph.'),
       actionConfig: { path: '/admin/quick-notes/graph', label: 'Refresh Graph' },
     };
   }
@@ -152,7 +154,7 @@ export async function getEntitySubGraphAction(params: {
     console.error('[getEntitySubGraphAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to retrieve entity sub-graph.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to retrieve entity sub-graph.'),
     };
   }
 }
@@ -203,7 +205,7 @@ export async function findGraphPathAction(params: {
     console.error('[findGraphPathAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to calculate graph path.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to calculate graph path.'),
     };
   }
 }
@@ -314,7 +316,7 @@ export async function explainGraphConnectionAction(params: {
     console.error('[explainGraphConnectionAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to explain connection.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to explain connection.'),
     };
   }
 }
@@ -398,7 +400,7 @@ export async function createGraphEdgeAction(params: {
     console.error('[createGraphEdgeAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to create graph edge.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to create graph edge.'),
     };
   }
 }
@@ -447,7 +449,7 @@ export async function deleteGraphEdgeAction(params: {
     console.error('[deleteGraphEdgeAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to delete graph edge.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to delete graph edge.'),
     };
   }
 }
@@ -495,7 +497,7 @@ export async function getGraphTopologyMetricsAction(params: {
     console.error('[getGraphTopologyMetricsAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to calculate topology metrics.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to calculate topology metrics.'),
     };
   }
 }
@@ -716,7 +718,7 @@ export async function syncWorkspaceGraphMeshAction(params: {
     console.error('[syncWorkspaceGraphMeshAction] Error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to synchronize workspace graph mesh.',
+      error: toClientErrorMessage('memory.actions.graph-actions', err, undefined, 'Failed to synchronize workspace graph mesh.'),
     };
   }
 }

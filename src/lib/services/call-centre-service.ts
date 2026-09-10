@@ -24,6 +24,8 @@ import { sendEmail } from '../resend-service';
 import { logActivity } from '../activity-logger';
 import { after } from 'next/server';
 import { FieldsVariablesService } from './fields-variables-service-impl';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export class CallCentreService {
   // ─── Call Scripts ──────────────────────────────────────────────────────────
@@ -1106,7 +1108,7 @@ export class CallCentreService {
       return { success: true };
     } catch (error: unknown) {
       console.error('[CALL_CENTRE_SERVICE] Submit outcome failed:', error);
-      return { success: false, error: error instanceof Error ? error.message : 'Submit failed.' };
+      return { success: false, error: toClientErrorMessage('services.call-centre-service', error, undefined, 'Submit failed.') };
     }
   }
 
@@ -2075,7 +2077,7 @@ export class CallCentreService {
           return { success: false, unsupported: true, error: `Action type "${type}" is not supported yet.` };
       }
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'Action execution failed.' };
+      return { success: false, error: toClientErrorMessage('services.call-centre-service', err, undefined, 'Action execution failed.') };
     }
   }
 

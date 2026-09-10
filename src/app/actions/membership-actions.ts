@@ -12,6 +12,8 @@ import { PortalMembershipService } from '@/lib/services/portal-membership-servic
 import { PortalInvitationService } from '@/lib/services/portal-invitation-service';
 import { MembershipPlanService } from '@/lib/services/membership-plan-service';
 import { EntitlementService } from '@/lib/services/entitlement-service';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   PortalMembership,
   PortalInvitation,
@@ -47,7 +49,7 @@ export async function createMembershipAction(
     return { success: true, data: membership };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] createMembership failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create membership.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create membership.') };
   }
 }
 
@@ -63,7 +65,7 @@ export async function updateMembershipRoleAction(
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] updateRole failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update member role.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member role.') };
   }
 }
 
@@ -78,7 +80,7 @@ export async function suspendMembershipAction(
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] suspendMembership failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to suspend member.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to suspend member.') };
   }
 }
 
@@ -93,7 +95,7 @@ export async function reactivateMembershipAction(
     return { success: true, data: updated };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] reactivateMembership failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to reactivate member.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to reactivate member.') };
   }
 }
 
@@ -108,7 +110,7 @@ export async function deleteMembershipAction(
     return { success: true, data: true };
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] deleteMembership failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to delete member.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to delete member.') };
   }
 }
 
@@ -124,7 +126,7 @@ export async function createInvitationAction(
     return { success: true, data: invitation };
   } catch (err) {
     console.error('[INVITATION_ACTION] createInvitation failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create invitation.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create invitation.') };
   }
 }
 
@@ -151,7 +153,7 @@ export async function createBulkInvitationsAction(
     return { success: true, data: created };
   } catch (err) {
     console.error('[INVITATION_ACTION] createBulkInvitations failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create bulk invitations.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create bulk invitations.') };
   }
 }
 
@@ -167,7 +169,7 @@ export async function verifyInvitationTokenAction(
     return { success: true, data: res.invitation };
   } catch (err) {
     console.error('[INVITATION_ACTION] verifyToken failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Verification failed.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Verification failed.') };
   }
 }
 
@@ -191,7 +193,7 @@ export async function acceptInvitationAction(
     return { success: true, data: res.membership };
   } catch (err) {
     console.error('[INVITATION_ACTION] acceptInvitation failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to accept invitation.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to accept invitation.') };
   }
 }
 
@@ -206,7 +208,7 @@ export async function revokeInvitationAction(
     return { success: true, data: true };
   } catch (err) {
     console.error('[INVITATION_ACTION] revokeInvitation failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to revoke invitation.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to revoke invitation.') };
   }
 }
 
@@ -222,7 +224,7 @@ export async function createPlanAction(
     return { success: true, data: plan };
   } catch (err) {
     console.error('[PLAN_ACTION] createPlan failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to create plan.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to create plan.') };
   }
 }
 
@@ -238,7 +240,7 @@ export async function updatePlanAction(
     return { success: true, data: plan };
   } catch (err) {
     console.error('[PLAN_ACTION] updatePlan failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to update plan.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update plan.') };
   }
 }
 
@@ -253,7 +255,7 @@ export async function archivePlanAction(
     return { success: true, data: plan };
   } catch (err) {
     console.error('[PLAN_ACTION] archivePlan failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to archive plan.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to archive plan.') };
   }
 }
 
@@ -277,7 +279,7 @@ export async function checkEntitlementAction(
     return { success: true, data: result };
   } catch (err) {
     console.error('[ENTITLEMENT_ACTION] checkEntitlement failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Evaluation failed.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Evaluation failed.') };
   }
 }
 
@@ -291,7 +293,7 @@ export async function grantAccessAction(
     return { success: true, data: grant };
   } catch (err) {
     console.error('[ENTITLEMENT_ACTION] grantAccess failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to grant access.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to grant access.') };
   }
 }
 
@@ -306,7 +308,7 @@ export async function revokeAccessAction(
     return { success: true, data: true };
   } catch (err) {
     console.error('[ENTITLEMENT_ACTION] revokeAccess failed:', err);
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to revoke grant.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to revoke grant.') };
   }
 }
 
@@ -317,7 +319,7 @@ export async function listMembershipsByPortalAction(
     const members = await PortalMembershipService.listMembers(portalId);
     return { success: true, data: members };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list memberships.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list memberships.') };
   }
 }
 
@@ -328,7 +330,7 @@ export async function listInvitationsByPortalAction(
     const invitations = await PortalInvitationService.listInvitations(portalId);
     return { success: true, data: invitations };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list invitations.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list invitations.') };
   }
 }
 
@@ -339,6 +341,6 @@ export async function listPlansByPortalAction(
     const plans = await MembershipPlanService.listPortalPlans(portalId, true);
     return { success: true, data: plans };
   } catch (err) {
-    return { success: false, error: err instanceof Error ? err.message : 'Failed to list plans.' };
+    return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list plans.') };
   }
 }

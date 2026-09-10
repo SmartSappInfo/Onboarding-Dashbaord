@@ -19,6 +19,8 @@ import type {
 } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 /**
  * Executes automated data retention and PII sanitization across workspace surveys.
@@ -126,7 +128,7 @@ export async function executeSurveyDataRetentionAction(
       anonymizedCount: 0,
       purgedCount: 0,
       scannedSurveysCount: 0,
-      error: err instanceof Error ? err.message : 'Failed to execute retention policy',
+      error: toClientErrorMessage('surveys.survey-retention-actions', err, undefined, 'Failed to execute retention policy'),
     };
   }
 }
@@ -173,7 +175,7 @@ export async function getSystemResearchGovernanceAction(): Promise<{
         requireAuditLogging: true,
         maxActiveExperimentsPerWorkspace: 10,
       },
-      error: err instanceof Error ? err.message : 'Failed to load governance config',
+      error: toClientErrorMessage('surveys.survey-retention-actions', err, undefined, 'Failed to load governance config'),
     };
   }
 }
@@ -202,7 +204,7 @@ export async function saveSystemResearchGovernanceAction(
     console.error('[survey-retention-actions] saveSystemResearchGovernanceAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to save governance config',
+      error: toClientErrorMessage('surveys.survey-retention-actions', err, undefined, 'Failed to save governance config'),
     };
   }
 }

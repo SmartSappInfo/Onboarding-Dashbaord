@@ -28,6 +28,8 @@ import {
 } from '@/ai/schemas/survey-intelligence-schemas';
 import { computeResponseQualityMetrics, getResponseAnswer } from './survey-analytics-engine';
 import { requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean {
   if (survey.workspaceIds && survey.workspaceIds.length > 0) {
@@ -105,7 +107,7 @@ export async function auditSurveyQualityAction(
     console.error('Failed to audit survey quality:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Survey quality audit failed',
+      error: toClientErrorMessage('surveys.survey-ai-intelligence-actions', error, undefined, 'Survey quality audit failed'),
     };
   }
 }
@@ -226,7 +228,7 @@ export async function generateSurveyThematicInsightsAction(
     console.error('Failed to generate thematic insights:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Thematic synthesis failed',
+      error: toClientErrorMessage('surveys.survey-ai-intelligence-actions', error, undefined, 'Thematic synthesis failed'),
     };
   }
 }
@@ -293,7 +295,7 @@ export async function querySurveyResearchAssistantAction(
     console.error('Failed to query survey research assistant:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Research query failed',
+      error: toClientErrorMessage('surveys.survey-ai-intelligence-actions', error, undefined, 'Research query failed'),
     };
   }
 }
@@ -360,7 +362,7 @@ export async function applySurveyAiOptimizationAction(
     console.error('Failed to apply AI survey optimization:', error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to update question blueprint',
+      error: toClientErrorMessage('surveys.survey-ai-intelligence-actions', error, undefined, 'Failed to update question blueprint'),
     };
   }
 }

@@ -10,6 +10,9 @@
 import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { UserProfile } from '../types';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 const BUFFER_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
@@ -124,7 +127,7 @@ export async function flushAutomationNotificationBuffers(): Promise<void> {
     }
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[AUTO-NOTIFY] Buffer flush failed (non-fatal):', message);
+    reportError('automations.automation-lifecycle-notify', message, { note: '[AUTO-NOTIFY] Buffer flush failed (non-fatal):' });
   }
 }
 
@@ -159,7 +162,7 @@ export async function notifyAutomationStarted(params: {
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[AUTO-NOTIFY] notifyAutomationStarted failed (non-fatal):', message);
+    reportError('automations.automation-lifecycle-notify', message, { note: '[AUTO-NOTIFY] notifyAutomationStarted failed (non-fatal):' });
   }
 }
 
@@ -187,7 +190,7 @@ export async function notifyAutomationFailed(params: {
     });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[AUTO-NOTIFY] notifyAutomationFailed failed (non-fatal):', message);
+    reportError('automations.automation-lifecycle-notify', message, { note: '[AUTO-NOTIFY] notifyAutomationFailed failed (non-fatal):' });
   }
 }
 
@@ -220,6 +223,6 @@ export async function notifyAutomationCompleted(params: {
     );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : String(err);
-    console.error('[AUTO-NOTIFY] notifyAutomationCompleted failed (non-fatal):', message);
+    reportError('automations.automation-lifecycle-notify', message, { note: '[AUTO-NOTIFY] notifyAutomationCompleted failed (non-fatal):' });
   }
 }

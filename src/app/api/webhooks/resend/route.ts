@@ -4,6 +4,9 @@ import { messageTrackingService } from '@/lib/services/message-tracking-service'
 import { MessageProvider, MessageStatus, DeliveryState } from '@/lib/types/tracking';
 import { WebhookVerificationError } from '@/lib/errors/tracking-errors';
 import { adminDb } from '@/lib/firebase-admin';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 const RESEND_WEBHOOK_SECRET = process.env.RESEND_WEBHOOK_SECRET || '';
 
@@ -66,13 +69,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           await cancelPendingResendJobs(tracking.runId, tracking.nodeId);
         }
       } catch (err) {
-        console.error('[WEBHOOK_AFTER] Async webhook update failed:', err);
+        reportError('api.webhooks.resend', err, { note: '[WEBHOOK_AFTER] Async webhook update failed:' });
       }
     });
 
     return NextResponse.json({ received: true });
   } catch (err) {
-    console.error('[WEBHOOK_ENDPOINT] Failure:', err);
+    reportError('api.webhooks.resend', err, { note: '[WEBHOOK_ENDPOINT] Failure:' });
     return NextResponse.json({ error: 'Verification failed' }, { status: 400 });
   }
 }

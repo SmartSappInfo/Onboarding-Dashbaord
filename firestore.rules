@@ -15,7 +15,7 @@ service cloud.firestore {
 
     function isAuthorized() {
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (getUserData() != null && getUserData().get('isAuthorized', false) == true)
       );
     }
@@ -23,7 +23,7 @@ service cloud.firestore {
     function isSystemAdmin() {
       let data = getUserData();
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (data != null && data.get('isAuthorized', false) == true && 
          data.get('permissions', []).hasAny(['system_admin']))
       );
@@ -50,7 +50,7 @@ service cloud.firestore {
     function isOrgMatch(orgId) {
       let data = getUserData();
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (data != null && data.get('organizationId', '') == orgId)
       );
     }
@@ -58,7 +58,7 @@ service cloud.firestore {
     function hasPermission(perm) {
       let data = getUserData();
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (data != null && data.get('isAuthorized', false) == true && 
          (data.get('permissions', []).hasAny([perm]) || data.get('permissions', []).hasAny(['system_admin'])))
       );
@@ -67,7 +67,7 @@ service cloud.firestore {
     function canAccessWorkspace(targetWorkspaceIds) {
       let data = getUserData();
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (data != null && data.get('isAuthorized', false) == true && 
          (data.get('permissions', []).hasAny(['system_admin']) || 
           data.get('workspaceIds', []).hasAny(targetWorkspaceIds)))
@@ -85,7 +85,7 @@ service cloud.firestore {
     function hasWorkspaceAccess(workspaceId) {
       let data = getUserData();
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (data != null && data.get('isAuthorized', false) == true && 
          (data.get('permissions', []).hasAny(['system_admin']) || 
           workspaceId in data.get('workspaceIds', [])))
@@ -100,7 +100,7 @@ service cloud.firestore {
     function hasAnyWorkspaceIn(wsIds) {
       let data = getUserData();
       return isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         (data != null && data.get('isAuthorized', false) == true &&
          (data.get('permissions', []).hasAny(['system_admin']) ||
           wsIds.hasAny(data.get('workspaceIds', []))))
@@ -445,8 +445,8 @@ service cloud.firestore {
 
     match /workspaces/{workspaceId} {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
-      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
-      allow write: if isAuthorized() && (request.auth.token.email == 'admin@smartsapp.com' || isSystemAdmin());
+      allow list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
+      allow write: if isAuthorized() && (request.auth.token.admin == true || isSystemAdmin());
     }
 
     // --- Operational Layer (Workspace Shared Array) ---
@@ -861,7 +861,7 @@ service cloud.firestore {
     }
 
     match /custom_meeting_templates/{templateId} {
-      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow get, list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
@@ -1231,7 +1231,7 @@ service cloud.firestore {
 
     match /media/{mediaId} {
       allow get: if true; // Public access for reading shared, embedded, or public media assets
-      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || canAccessWorkspace(resource.data.workspaceIds));
     }
@@ -1245,7 +1245,7 @@ service cloud.firestore {
 
     match /media_categories/{categoryId} {
       allow get: if true; // Public access for reading category details on shared media
-      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow create: if isAuthorized();
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
@@ -1420,7 +1420,7 @@ service cloud.firestore {
 
     match /thumbnail_designs/{designId} {
       allow get: if true; // Public access for rendering thumbnail designs on shared media
-      allow list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow create: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId));
       allow update, delete: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
     }
@@ -1757,8 +1757,8 @@ service cloud.firestore {
 
     // --- Message Audiences ---
     match /message_audiences/{audienceId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
-      allow write: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId))));
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
+      allow write: if isSignedIn() && (request.auth.token.admin == true || (isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(request.resource.data.workspaceId))));
     }
 
     // --- In-App Notifications ---
@@ -2039,58 +2039,58 @@ service cloud.firestore {
     }
 
     match /leadScores/{contactId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /leadScoreHistory/{historyId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /effortScoringLedger/{ledgerId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /effortEvents/{eventId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /salesPerformanceDaily/{dailyId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /salesTargets/{targetId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /salesAgents/{agentId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /sellerWorkQueues/{itemId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side writes only
     }
 
     match /slaPolicies/{policyId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
     }
 
     // --- Phase 3: Manager Command Center & Team Governance ---
     match /salesTeams/{teamId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if isSystemAdmin() || (isAuthorized() && hasWorkspaceAccess(request.resource.data.workspaceId));
     }
 
     match /managerInterventions/{interventionId} {
-      allow read: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow read: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if false; // Server-side atomic actions only via adminDb
     }
 
@@ -2865,22 +2865,22 @@ service cloud.firestore {
     // --- App Fields / Variable Registry ---
     match /app_fields/{fieldId} {
       allow read: if true; // Public field schema registry required for client-facing form rendering
-      allow create: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || (isAuthorized() && (
+      allow create: if isSignedIn() && (request.auth.token.admin == true || (isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && hasWorkspaceAccess(request.resource.data.workspaceId))
       )));
-      allow update: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || (isAuthorized() && (
+      allow update: if isSignedIn() && (request.auth.token.admin == true || (isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && hasWorkspaceAccess(resource.data.workspaceId))
       )));
-      allow delete: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || (isAuthorized() && (
+      allow delete: if isSignedIn() && (request.auth.token.admin == true || (isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && hasWorkspaceAccess(resource.data.workspaceId))
       )));
     }
 
     match /field_groups/{groupId} {
-      allow get, list: if isSignedIn() && (request.auth.token.email == 'admin@smartsapp.com' || isAuthorized());
+      allow get, list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow create: if isAuthorized() && (
         isSystemAdmin() ||
         (hasPermission('studios_edit') && hasWorkspaceAccess(request.resource.data.workspaceId))
@@ -2928,7 +2928,7 @@ service cloud.firestore {
 
     match /entities/{entityId} {
       // Admin bypass - check first to avoid expensive getUserData() calls
-      allow read, write: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      allow read, write: if request.auth != null && request.auth.token.admin == true;
       
       allow get: if true;
       allow list: if isAuthorized();
@@ -3415,14 +3415,14 @@ service cloud.firestore {
       
       // Unified read: allows both get and list without permission conflicts.
       // Application-layer queries already filter by workspaceId.
-      // Special case: admin@smartsapp.com always has access
-      allow read: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      // Special case: the platform super admin (custom claim `admin: true`) always has access
+      allow read: if request.auth != null && request.auth.token.admin == true;
       allow read: if isAuthorized();
       allow get: if true;
       
       // Allow create if user has schools_edit permission and workspace access
       // Enforce ScopeGuard: entity.entityType must match workspace.contactScope
-      allow create: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      allow create: if request.auth != null && request.auth.token.admin == true;
       allow create: if isSystemAdmin() ||
         (isAuthorized() &&
          hasPermission('schools_edit') &&
@@ -3432,7 +3432,7 @@ service cloud.firestore {
       
       // Allow update if user has schools_edit permission and workspace access
       // Requirement 29.3: Verify user permissions for entity updates
-      allow update: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      allow update: if request.auth != null && request.auth.token.admin == true;
       allow update: if isSystemAdmin() ||
         (isAuthorized() &&
          hasPermission('schools_edit') &&
@@ -3443,7 +3443,7 @@ service cloud.firestore {
          hasWorkspaceAccess(request.resource.data.workspaceId));
       
       // Allow delete if user has schools_edit permission and workspace access
-      allow delete: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      allow delete: if request.auth != null && request.auth.token.admin == true;
       allow delete: if isSystemAdmin() ||
         (isAuthorized() &&
          hasPermission('schools_edit') &&
@@ -3470,7 +3470,7 @@ service cloud.firestore {
     // (Admin SDK, which bypasses rules) so client writes are denied. Reads mirror
     // workspace_entities; application-layer queries already filter by workspaceId.
     match /workspace_contacts/{contactDocId} {
-      allow read: if request.auth != null && request.auth.token.email == 'admin@smartsapp.com';
+      allow read: if request.auth != null && request.auth.token.admin == true;
       allow read: if isAuthorized();
       allow write: if false;
     }
@@ -3904,7 +3904,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_codes/{qrId} {
       allow read, write: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );
@@ -3912,7 +3912,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_code_templates/{templateId} {
       allow read, write: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );
@@ -3920,7 +3920,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_templates/{templateId} {
       allow read, write: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );
@@ -3928,7 +3928,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_scan_events/{eventId} {
       allow read: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );
@@ -3937,7 +3937,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_batch_jobs/{jobId} {
       allow read, write: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );
@@ -3945,7 +3945,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_campaigns/{campaignId} {
       allow read, write: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );
@@ -3953,7 +3953,7 @@ service cloud.firestore {
 
     match /organizations/{orgId}/workspaces/{wsId}/qr_custom_domains/{domainId} {
       allow read, write: if isSignedIn() && (
-        request.auth.token.email == 'admin@smartsapp.com' ||
+        request.auth.token.admin == true ||
         isSystemAdmin() ||
         hasWorkspaceAccess(wsId)
       );

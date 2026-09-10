@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMigrationDashboardSummary } from '@/lib/migration-monitoring';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function GET(request: NextRequest) {
   // SECURITY (audit F3): migration endpoints mutate and expose cross-tenant
@@ -28,7 +30,7 @@ export async function GET(request: NextRequest) {
   } catch (error: any) {
     console.error('dashboard error:', error);
     return NextResponse.json(
-      { error: error.message || 'Failed to fetch dashboard summary' },
+      { error: toClientErrorMessage('api.migration.dashboard', error, undefined, 'Failed to fetch dashboard summary') },
       { status: 500 }
     );
   }

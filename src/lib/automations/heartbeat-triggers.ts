@@ -2,6 +2,9 @@ import { adminDb } from '../firebase-admin';
 import { triggerAutomationProtocols } from '../automation-processor';
 import { buildAutomationPayload } from '../automation-payload';
 import type { Automation, AutomationTrigger } from '../types';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export async function evaluateHeartbeatTriggers() {
   try {
@@ -26,7 +29,7 @@ export async function evaluateHeartbeatTriggers() {
       await evaluateEntityInactive(inactiveAutos);
     }
   } catch (err) {
-    console.error('Error in evaluateHeartbeatTriggers:', err);
+    reportError('automations.heartbeat-triggers', err, { note: 'Error in evaluateHeartbeatTriggers:' });
   }
 }
 

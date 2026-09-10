@@ -24,6 +24,9 @@ import { logActivity } from '../activity-logger';
 import { revalidatePath } from 'next/cache';
 import type { AutomationDeadLetter } from '../types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 /**
  * Generates a deterministic idempotency key for an automation step execution
@@ -56,7 +59,7 @@ export async function checkIdempotency(key: string): Promise<boolean> {
     }
     return false;
   } catch (err: unknown) {
-    console.error('[DeadLetterService] Error checking idempotency key:', err);
+    reportError('automations.dead-letter-service', err, { note: '[DeadLetterService] Error checking idempotency key:' });
     return false; // Fail open to allow execution on key check error
   }
 }
@@ -82,7 +85,7 @@ export async function markIdempotencyComplete(
       metadata: metadata || {},
     });
   } catch (err: unknown) {
-    console.error('[DeadLetterService] Error setting idempotency complete:', err);
+    reportError('automations.dead-letter-service', err, { note: '[DeadLetterService] Error setting idempotency complete:' });
   }
 }
 
@@ -137,7 +140,7 @@ export async function recordDeadLetter(params: {
     await dlqRef.set(record);
     return dlqId;
   } catch (err: unknown) {
-    console.error('[DeadLetterService] Failed to record dead-letter entry:', err);
+    reportError('automations.dead-letter-service', err, { note: '[DeadLetterService] Failed to record dead-letter entry:' });
     return '';
   }
 }

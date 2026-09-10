@@ -15,6 +15,9 @@ import {
 } from '@/lib/whatsapp/whatsapp-webhook';
 import { parseTemplateStatusEvents, type TemplateStatusEvent } from '@/lib/whatsapp/whatsapp-domain';
 import type { WhatsAppConnection } from '@/lib/whatsapp/whatsapp-types';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 // AES-GCM + Admin SDK need full Node crypto (spec R4).
 export const runtime = 'nodejs';
@@ -130,7 +133,7 @@ async function processTemplateStatusEvents(events: TemplateStatusEvent[]) {
         const wa = await WhatsAppTemplateRepository.getByMetaTemplateId(ev.metaTemplateId);
         if (wa) await autoEnableApprovedWhatsAppTemplate(wa);
       } catch (err) {
-        console.error('[whatsapp-webhook] auto-enable failed:', err);
+        reportError('api.webhooks.whatsapp', err, { note: '[whatsapp-webhook] auto-enable failed:' });
       }
     }
   }
@@ -313,7 +316,7 @@ async function handleStatus(conn: WhatsAppConnection, ev: StatusEvent) {
         }
       }
     } catch (scoringErr) {
-      console.error('>>> [WEBHOOK] WhatsApp message scoring trigger failed:', scoringErr);
+      reportError('api.webhooks.whatsapp', scoringErr, { note: '>>> [WEBHOOK] WhatsApp message scoring trigger failed:' });
     }
   }
 

@@ -3,6 +3,9 @@ import type { Automation, AutomationTriggerDef } from '../types';
 import { logAutomationEvent } from '../automation-log';
 import type { ExecutionContext } from './execution-types';
 import { traverseNodes } from './nodes/traverse';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 import {
   notifyAutomationStarted,
   notifyAutomationCompleted,
@@ -135,9 +138,9 @@ export async function executeAutomation(
       entityType: context.entityType,
       workspaceId: context.workspaceId,
       startedAt: timestamp,
-    }).catch((e) => console.error('Failed to trigger AUTOMATION_ENTERED protocols:', e));
+    }).catch((e) => reportError('automations.executor', e, { note: 'Failed to trigger AUTOMATION_ENTERED protocols:' }));
   } catch (err) {
-    console.error('Failed to import triggerAutomationProtocols:', err);
+    reportError('automations.executor', err, { note: 'Failed to import triggerAutomationProtocols:' });
   }
 
   try {

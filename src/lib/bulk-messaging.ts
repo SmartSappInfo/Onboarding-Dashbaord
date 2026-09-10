@@ -12,6 +12,9 @@ import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
 import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle, MessageCampaign } from './types';
 import { requireAuth } from '@/lib/auth/require-auth';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 
@@ -20,7 +23,7 @@ function safeAfter(fn: () => Promise<void>) {
     after(fn);
   } catch (e) {
     fn().catch(err => {
-      console.error('[BULK-BG] SafeAfter fallback execution failed:', err.message);
+      reportError('bulk-messaging', err, { note: '[BULK-BG] SafeAfter fallback execution failed:' });
     });
   }
 }
@@ -115,7 +118,7 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
     return { jobId: jobRef.id };
 
   } catch (error: any) {
-    console.error(">>> [BULK] JOB CREATION FAILED:", error.message);
+    reportError('bulk-messaging', error, { note: ">>> [BULK] JOB CREATION FAILED:" });
     throw error;
   }
 }
@@ -460,7 +463,7 @@ export async function processBulkJobChunk(jobId: string) {
     };
 
   } catch (error: any) {
-    console.error(">>> [BULK] CHUNK PROCESSING FAILED:", error.message);
+    reportError('bulk-messaging', error, { note: ">>> [BULK] CHUNK PROCESSING FAILED:" });
     throw error;
   }
 }
@@ -722,7 +725,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
           }
         }
         if (result.error) {
-          console.error('>>> [BULK-BG] Batch send error:', result.error);
+          reportError('bulk-messaging', result.error, { note: '>>> [BULK-BG] Batch send error:' });
           // Mark remaining un-processed tasks as failed
           for (const payload of batchPayload) {
             failedIncrement++;
@@ -730,7 +733,7 @@ export async function processJobChunkBackground(jobId: string): Promise<void> {
           }
         }
       } catch (e: any) {
-        console.error('>>> [BULK-BG] Batch send API call crashed:', e.message);
+        reportError('bulk-messaging', e, { note: '>>> [BULK-BG] Batch send API call crashed:' });
         failedIncrement = batchPayload.length;
         for (const payload of batchPayload) {
           await payload.taskDocRef.update({ status: 'failed', error: e.message });

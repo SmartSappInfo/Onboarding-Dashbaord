@@ -7,6 +7,8 @@ import { resendFailedMessage } from '@/lib/automations/run-management';
 export const dynamic = 'force-dynamic';
 
 import { isAuthorizedCloudTaskRequest } from '@/lib/security/cloud-tasks-auth';
+// SECURITY (audit F9): report the detail server-side, return an opaque message.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export async function POST(request: NextRequest) {
   try {
@@ -154,6 +156,6 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: any) {
     console.error('[BULK-RESEND-WORKER] Fatal error processing webhook:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json({ error: toClientErrorMessage('api.automations.messages.bulk-resend', error, undefined, 'Internal server error') }, { status: 500 });
   }
 }

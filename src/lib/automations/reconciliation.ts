@@ -3,6 +3,9 @@ import { getSmsStatus, MNotifyResponse } from '../mnotify-service';
 import { incrementMessageNodeStat } from '../messaging/message-node-stats';
 import { assertAutomationManagePermission } from '../automation-permissions';
 import type { MessageLog } from '../types';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 function cleanPhoneSuffix(phone: string): string {
   const digits = phone.replace(/\D/g, '');
@@ -28,7 +31,7 @@ async function resolveMnotifyApiKey(organizationId?: string): Promise<string | u
     }
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(">>> [RECONCILIATION] Failed to resolve custom API key:", message);
+    reportError('automations.reconciliation', message, { note: ">>> [RECONCILIATION] Failed to resolve custom API key:" });
   }
   return undefined;
 }

@@ -34,7 +34,7 @@ const runAfter = (fn: () => void | Promise<void>) => {
     after(fn);
   } catch {
     Promise.resolve().then(fn).catch((err) => {
-      console.error('runAfter fallback execution failed:', err);
+      reportError('automations.service', err, { note: 'runAfter fallback execution failed:' });
     });
   }
 };
@@ -500,6 +500,9 @@ export async function deleteAllArchivedAutomations(
 
 import type { AudienceFilter } from '../types';
 import type { ConditionGroup } from '../automation-condition';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 export interface EnrollContactsOptions {
   contactScope?: 'primary' | 'signatories' | 'roles' | 'all' | 'custom';
@@ -705,7 +708,7 @@ export async function enrollContactsInAutomation(
               await executeAutomation(automation, enrichedPayload);
             } catch (err: unknown) {
               const errMsg = err instanceof Error ? err.message : String(err);
-              console.error(`[AUTOMATION-DIRECT-ENROLL] Error executing automation ${automationId} for entity ${target.entityId}:`, errMsg);
+              reportError('automations.service', errMsg, { note: `[AUTOMATION-DIRECT-ENROLL] Error executing automation ${automationId} for entity ${target.entityId}:` });
             }
           })
         );

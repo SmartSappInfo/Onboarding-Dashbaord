@@ -16,6 +16,8 @@
  */
 
 import { getAdminFirestore } from '@/lib/firebase-admin';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   CreativeConcept,
   CopyVariation,
@@ -72,7 +74,7 @@ export async function generateCreativeConceptsAction(
     console.error('generateCreativeConceptsAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to generate creative concepts.',
+      error: toClientErrorMessage('actions.creative-ai-actions', err, undefined, 'Failed to generate creative concepts.'),
     };
   }
 }
@@ -102,7 +104,7 @@ export async function listProjectConceptsAction(
     console.error('listProjectConceptsAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to list concepts.',
+      error: toClientErrorMessage('actions.creative-ai-actions', err, undefined, 'Failed to list concepts.'),
     };
   }
 }
@@ -132,7 +134,7 @@ export async function executeAiCanvasCommandAction(
     console.error('executeAiCanvasCommandAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to process canvas command.',
+      error: toClientErrorMessage('actions.creative-ai-actions', err, undefined, 'Failed to process canvas command.'),
     };
   }
 }
@@ -160,7 +162,7 @@ export async function generateCopyVariationsAction(
     console.error('generateCopyVariationsAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to generate copy variations.',
+      error: toClientErrorMessage('actions.creative-ai-actions', err, undefined, 'Failed to generate copy variations.'),
     };
   }
 }

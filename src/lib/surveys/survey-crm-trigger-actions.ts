@@ -18,6 +18,8 @@ import { sendMessage } from '@/lib/messaging-engine';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { logActivity } from '@/lib/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface ActiveSurveyOption {
   id: string;
@@ -128,7 +130,7 @@ export async function getWorkspaceActiveSurveysAction(
     return {
       success: false,
       surveys: [],
-      error: err instanceof Error ? err.message : 'Failed to fetch active surveys',
+      error: toClientErrorMessage('surveys.survey-crm-trigger-actions', err, undefined, 'Failed to fetch active surveys'),
     };
   }
 }
@@ -235,7 +237,7 @@ export async function getEntitySurveyHistoryAction(
     return {
       success: false,
       data: { responses: [], totalCount: 0, averageScore: 0 },
-      error: err instanceof Error ? err.message : 'Failed to retrieve entity survey history',
+      error: toClientErrorMessage('surveys.survey-crm-trigger-actions', err, undefined, 'Failed to retrieve entity survey history'),
     };
   }
 }
@@ -353,7 +355,7 @@ export async function sendSurveyToContactAction(
     console.error('[survey-crm-trigger] sendSurveyToContactAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Failed to dispatch survey invitation',
+      error: toClientErrorMessage('surveys.survey-crm-trigger-actions', err, undefined, 'Failed to dispatch survey invitation'),
     };
   }
 }

@@ -22,6 +22,8 @@ import type {
   ConnectedChannel,
 } from '@/lib/creative/creative-types';
 import { makeUniqueId } from '@/lib/creative/creative-types';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
   normalizeTargetIdentifier,
   SAMPLE_CONNECTED_CHANNELS,
@@ -100,7 +102,7 @@ export async function publishCreativeToChannelAction(
     console.error('publishCreativeToChannelAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Publishing failed.',
+      error: toClientErrorMessage('actions.creative-publishing-actions', err, undefined, 'Publishing failed.'),
     };
   }
 }
@@ -156,7 +158,7 @@ export async function scheduleCreativePublicationAction(
     console.error('scheduleCreativePublicationAction error:', err);
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Scheduling failed.',
+      error: toClientErrorMessage('actions.creative-publishing-actions', err, undefined, 'Scheduling failed.'),
     };
   }
 }

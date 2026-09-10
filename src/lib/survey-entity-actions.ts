@@ -21,6 +21,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { canUser } from '@/lib/workspace-permissions';
 import { requireAuth } from '@/lib/auth/require-auth';
+// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
+import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface BulkApplyTagsToSurveyEntitiesParams {
   workspaceId: string;
@@ -126,7 +128,7 @@ export async function bulkApplyTagsToSurveyEntitiesAction(
     return {
       success: false,
       updatedCount,
-      error: err instanceof Error ? err.message : 'Failed to update entity tags.',
+      error: toClientErrorMessage('survey-entity-actions', err, undefined, 'Failed to update entity tags.'),
     };
   }
 }
@@ -212,7 +214,7 @@ export async function bulkMoveSurveyEntitiesStageAction(
     return {
       success: false,
       updatedCount,
-      error: err instanceof Error ? err.message : 'Failed to update pipeline stage.',
+      error: toClientErrorMessage('survey-entity-actions', err, undefined, 'Failed to update pipeline stage.'),
     };
   }
 }

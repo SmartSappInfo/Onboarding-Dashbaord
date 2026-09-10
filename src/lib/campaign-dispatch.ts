@@ -8,6 +8,9 @@ import { CHANNEL_REGISTRY, contactResolutionChannel } from './messaging/channel-
 import type { MessageCampaign } from './types';
 import { after } from 'next/server';
 import { requireWorkspace } from './auth/require-auth';
+// SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
+// and never reached Sentry.
+import { reportError } from '@/lib/errors/report-error';
 
 /**
  * Dispatches a campaign: resolves audience, creates job, triggers processing.
@@ -175,7 +178,7 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
         } catch (e) {
           console.warn('[DISPATCH] next/server after() called outside request context, running asynchronously:', (e as Error).message);
           processJobChunkBackground(jobResult.jobId).catch(err => {
-            console.error('[DISPATCH] Background processing error:', err.message);
+            reportError('campaign-dispatch', err, { note: '[DISPATCH] Background processing error:' });
           });
         }
         
@@ -241,7 +244,7 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
       } catch (e) {
         console.warn('[DISPATCH] next/server after() called outside request context, running asynchronously:', (e as Error).message);
         processJobChunkBackground(jobResult.jobId).catch(err => {
-          console.error('[DISPATCH] Background processing error:', err.message);
+          reportError('campaign-dispatch', err, { note: '[DISPATCH] Background processing error:' });
         });
       }
 
@@ -284,7 +287,7 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
     } catch (e) {
       console.warn('[DISPATCH] next/server after() called outside request context, running asynchronously:', (e as Error).message);
       processJobChunkBackground(jobResult.jobId).catch(err => {
-        console.error('[DISPATCH] Background processing error:', err.message);
+        reportError('campaign-dispatch', err, { note: '[DISPATCH] Background processing error:' });
       });
     }
 
@@ -300,7 +303,7 @@ export async function dispatchCampaignCore(campaignId: string): Promise<{
     } catch (rollbackErr) {
       console.error('[DISPATCH] Rollback failed:', (rollbackErr as Error).message);
     }
-    console.error('[DISPATCH] Campaign dispatch failed:', error.message);
+    reportError('campaign-dispatch', error, { note: '[DISPATCH] Campaign dispatch failed:' });
     return { success: false, error: error.message };
   }
 }
@@ -368,13 +371,13 @@ export async function resendToFailed(campaignId: string): Promise<{
     } catch (e) {
       console.warn('[RESEND] next/server after() called outside request context, running asynchronously:', (e as Error).message);
       processJobChunkBackground(jobResult.jobId).catch(err => {
-        console.error('[RESEND] Background processing error:', err.message);
+        reportError('campaign-dispatch', err, { note: '[RESEND] Background processing error:' });
       });
     }
 
     return { success: true, jobId: jobResult.jobId };
   } catch (error: any) {
-    console.error('[RESEND] Failed:', error.message);
+    reportError('campaign-dispatch', error, { note: '[RESEND] Failed:' });
     return { success: false, error: error.message };
   }
 }

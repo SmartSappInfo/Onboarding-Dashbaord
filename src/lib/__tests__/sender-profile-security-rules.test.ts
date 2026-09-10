@@ -72,7 +72,7 @@ describe.skipIf(!emulatorRunning)('sender_profiles Security Rules (org isolation
       firestore: { rules, host: 'localhost', port: 8080 },
     });
 
-    const admin = testEnv.authenticatedContext('seed', { email: 'admin@smartsapp.com' });
+    const admin = testEnv.authenticatedContext('seed', { admin: true });
     await admin.firestore().collection('users').doc(ORG_A_ADMIN).set({
       isAuthorized: true, permissions: ['studios_edit'], organizationId: ORG_A, workspaceIds: [WS_A],
     });
