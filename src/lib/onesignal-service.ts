@@ -1,4 +1,8 @@
 import { getErrorMessage } from '@/lib/errors/report-error';
+// SECURITY (backoffice isolation, R2): a non-client deployment shares production
+// Firestore and can resolve PER-ORGANIZATION provider keys, so it can message real
+// customers unless stopped here. This is the last point before the network call.
+import { assertOutboundAllowed } from '@/lib/platform/outbound-guard';
 export interface OneSignalResponse {
   id?: string;
   recipients?: number;
@@ -11,6 +15,10 @@ export async function sendPushNotification(
   message: string,
   data?: Record<string, any>
 ): Promise<OneSignalResponse | null> {
+  // Guarded BEFORE the missing-credentials early return below, so a blocked send is loud
+  // rather than indistinguishable from "OneSignal is not configured".
+  await assertOutboundAllowed('push');
+
   const appId = process.env.ONESIGNAL_APP_ID;
   const apiKey = process.env.ONESIGNAL_REST_API_KEY;
 

@@ -1,5 +1,9 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
+// src/test/setup.ts stubs this module for the rest of the suite. This file tests the real
+// implementation, so opt out.
+vi.unmock('@/lib/platform/outbound-guard');
+
 const mockGet = vi.fn();
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: { collection: () => ({ doc: () => ({ get: mockGet }) }) },

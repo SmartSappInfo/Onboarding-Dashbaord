@@ -10,6 +10,10 @@
 
 import type { MessageTemplate } from '@/lib/types';
 import { getTemplateRuntimeNeeds, hasRuntimeNeeds, toPositionalBody } from './whatsapp-domain';
+// SECURITY (backoffice isolation, R2): a non-client deployment shares production
+// Firestore and can resolve PER-ORGANIZATION provider keys, so it can message real
+// customers unless stopped here. This is the last point before the network call.
+import { assertOutboundAllowed } from '@/lib/platform/outbound-guard';
 
 const WINDOW_HOURS = 24;
 
@@ -287,6 +291,8 @@ export interface SendWhatsAppResult {
  * surfaces it the same way as the SMS hygiene block).
  */
 export async function sendWhatsApp(input: SendWhatsAppInput): Promise<SendWhatsAppResult> {
+  await assertOutboundAllowed('whatsapp');
+
   const { organizationId, template, resolvedBody, variables } = input;
 
   const [{ WhatsAppCredentialRepository }, { WhatsAppTemplateRepository }, { MetaCloudApiClient }, { adminDb }] =

@@ -4,6 +4,10 @@
  */
 
 import { loadEnvFallback } from './resend-service';
+// SECURITY (backoffice isolation, R2): a non-client deployment shares production
+// Firestore and can resolve PER-ORGANIZATION provider keys, so it can message real
+// customers unless stopped here. This is the last point before the network call.
+import { assertOutboundAllowed } from '@/lib/platform/outbound-guard';
 
 const BASE_URL = 'https://api.mnotify.com/api';
 const getApiKey = () => loadEnvFallback('MNOTIFY_API_KEY');
@@ -89,6 +93,8 @@ export async function sendSms(params: {
   scheduleDate?: Date;
   apiKey?: string;
 }) {
+  await assertOutboundAllowed('sms');
+
   const recipients = Array.isArray(params.recipient) 
     ? params.recipient.map(normalizePhoneNumber) 
     : [normalizePhoneNumber(params.recipient)];

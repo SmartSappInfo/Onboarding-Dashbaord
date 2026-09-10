@@ -95,3 +95,21 @@ vi.mock('@/lib/auth/require-auth', () => {
     requireOrganization: vi.fn(async () => ({ ...ctx, organizationId: 'test-org' })),
   };
 });
+
+// Default mock for the outbound messaging kill switch (backoffice isolation).
+//
+// The guard reads platform_config/messaging_controls before every send. Suites that mock
+// adminDb by call ORDER (mockResolvedValueOnce chains) would otherwise have that extra
+// read consume one of their queued responses. Defaulting the guard to "allowed" keeps
+// existing messaging tests testing what they were written to test.
+//
+// A test that wants to assert the switch should override this locally, as
+// src/lib/platform/__tests__/outbound-boundaries.test.ts does.
+vi.mock('@/lib/platform/outbound-guard', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/platform/outbound-guard')>();
+  return {
+    ...actual,
+    assertOutboundAllowed: vi.fn(async () => undefined),
+    isOutboundAllowed: vi.fn(async () => true),
+  };
+});

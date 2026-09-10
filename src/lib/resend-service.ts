@@ -1,5 +1,9 @@
 import fs from 'fs';
 import path from 'path';
+// SECURITY (backoffice isolation, R2): a non-client deployment shares production
+// Firestore and can resolve PER-ORGANIZATION provider keys, so it can message real
+// customers unless stopped here. This is the last point before the network call.
+import { assertOutboundAllowed } from '@/lib/platform/outbound-guard';
 
 /**
  * @fileOverview Server-side service for interacting with the Resend Email API.
@@ -186,6 +190,8 @@ export async function sendEmail(params: {
   domain?: string;
   headers?: Record<string, string>;
 }) {
+  await assertOutboundAllowed('email');
+
   const domain = params.domain || getDomain();
   const payload: Record<string, unknown> = {
     from: params.from || `SmartSapp <notifications@${domain}>`,
@@ -218,6 +224,8 @@ export async function sendBatchEmails(
   apiKey?: string,
   domain?: string
 ): Promise<BatchEmailsResponse> {
+  await assertOutboundAllowed('email');
+
   const defaultDomain = domain || getDomain();
   const payload = emails.map(email => ({
     from: email.from || `SmartSapp <notifications@${defaultDomain}>`,

@@ -162,7 +162,7 @@ Design constraints (mobile-first, per ground rule 4):
 - Motion is limited to a short cross-fade on state change. No animation on the status pill
   itself: an operator checking status during an incident should not have to wait for it.
 
-**Authority model:** the page is gated by `authorizeBackofficeSession('operations', 'edit')`,
+**Authority model:** the page is gated by `authorizeBackofficeSession('settings', 'edit')`,
 so it follows the existing backoffice role matrix. The env var remains a hard floor the UI
 cannot override (AD-3), so this page can pause sending but can never enable it on staging.
 
@@ -308,7 +308,7 @@ because the switch defaults to *allow* and no surface variable is set there yet.
 - Create: `src/lib/platform/app-surface.ts`
 - Test: `src/lib/platform/__tests__/app-surface.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, it, expect, afterEach } from 'vitest';
@@ -348,12 +348,12 @@ describe('getPublicAppOrigin', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run src/lib/platform/__tests__/app-surface.test.ts`
 Expected: FAIL — cannot find module `../app-surface`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 /**
@@ -391,11 +391,11 @@ export function getPublicAppOrigin(): string {
 }
 ```
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
 Run: `npx vitest run src/lib/platform/__tests__/app-surface.test.ts`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/platform/app-surface.ts src/lib/platform/__tests__/app-surface.test.ts
@@ -408,7 +408,7 @@ git commit -m "feat(platform): add app surface and public origin resolver"
 - Create: `src/lib/platform/outbound-guard.ts`
 - Test: `src/lib/platform/__tests__/outbound-guard.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
@@ -469,12 +469,12 @@ describe('assertOutboundAllowed', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run src/lib/platform/__tests__/outbound-guard.test.ts`
 Expected: FAIL — cannot find module `../outbound-guard`.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 ```ts
 /**
@@ -589,11 +589,11 @@ export async function assertOutboundAllowed(channel: OutboundChannel): Promise<v
 }
 ```
 
-- [ ] **Step 4: Run tests — expect PASS (6 tests)**
+- [x] **Step 4: Run tests — expect PASS (6 tests)**
 
 Run: `npx vitest run src/lib/platform/__tests__/outbound-guard.test.ts`
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/platform/outbound-guard.ts src/lib/platform/__tests__/outbound-guard.test.ts
@@ -1252,9 +1252,9 @@ import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 beforeEach(() => { vi.clearAllMocks(); mockGet.mockResolvedValue({ exists: false }); });
 
 describe('setOutboundPausedAction', () => {
-  it('requires operations:edit', async () => {
+  it('requires settings:edit (super_admin only)', async () => {
     await setOutboundPausedAction(true, 'incident').catch(() => undefined);
-    expect(authorizeBackofficeSession).toHaveBeenCalledWith('operations', 'edit');
+    expect(authorizeBackofficeSession).toHaveBeenCalledWith('settings', 'edit');
   });
 
   it('records who paused it, from the session and not the caller', async () => {
@@ -1273,7 +1273,7 @@ describe('setOutboundPausedAction', () => {
 
   it('refuses when the caller is not authorised, and writes nothing', async () => {
     (authorizeBackofficeSession as unknown as { mockRejectedValueOnce: (e: Error) => void })
-      .mockRejectedValueOnce(new Error('Forbidden: operations:edit'));
+      .mockRejectedValueOnce(new Error('Forbidden: settings:edit'));
     await expect(setOutboundPausedAction(true, 'x')).rejects.toThrow('Forbidden');
     expect(mockSet).not.toHaveBeenCalled();
   });
@@ -1313,7 +1313,7 @@ export interface PlatformControlsView {
 }
 
 export async function getPlatformControlsAction(): Promise<PlatformControlsView> {
-  await authorizeBackofficeSession('operations', 'view');
+  await authorizeBackofficeSession('settings', 'view');
 
   const snap = await adminDb.collection('platform_config').doc('messaging_controls').get();
   const data = snap.exists ? snap.data() : undefined;
@@ -1332,7 +1332,8 @@ export async function setOutboundPausedAction(
   paused: boolean,
   reason: string,
 ): Promise<{ success: boolean; error?: string }> {
-  const actor = await authorizeBackofficeSession('operations', 'edit');
+  // D-3: settings:edit is super_admin only. See ROLE_MATRIX in backoffice-rbac.ts.
+  const actor = await authorizeBackofficeSession('settings', 'edit');
 
   try {
     await adminDb.collection('platform_config').doc('messaging_controls').set(
@@ -1434,13 +1435,21 @@ firebase deploy --only firestore:indexes --project <prod-project-id>
 
 ---
 
-## Open questions for the owner
+## Decisions (settled with the owner)
 
-1. **Should the staging URL serve public pages at all?** It shares production data, so a
-   form submitted there writes real records. Locking public routes to the client surface
-   only would prevent that, at the cost of not being able to test them on staging.
-2. **Does `goadmin.smartsapp.com` need IP allowlisting?** The control plane is
-   authenticated, but restricting it to office egress would remove it from the public
-   internet entirely.
-3. **Who holds the pause switch?** Currently `operations:edit`, which is broader than
-   `super_admin`. Narrow it if pausing customer messaging should be a smaller circle.
+**D-1 — Staging does not serve public pages.** It shares production Firestore, so a form
+submitted there would write a real record. Public routes are blocked when `APP_ENV=staging`
+(Task A6). Trade-off accepted: public pages cannot be exercised on staging. Reversible by
+clearing `APP_ENV`.
+
+**D-2 — `goadmin.smartsapp.com` is IP-allowlisted.** An authenticated control plane is
+still better off not reachable from the open internet. Implemented as an allowlist checked
+in the proxy (Task B6), configured by `BACKOFFICE_IP_ALLOWLIST`. Empty means no
+restriction, so nothing changes until the value is set.
+
+**D-3 — The pause switch is `settings:edit`, which is super_admin only.**
+Checked against `ROLE_MATRIX`: for `settings`, only `super_admin` holds `edit`; every other
+role has `view`. `operations:execute` was rejected because `support_admin` and
+`migration_admin` also hold it, and pausing all customer messaging platform-wide is too
+broad for either. Reading status stays at `settings:view` so any backoffice role can see
+posture during an incident without being able to change it.
