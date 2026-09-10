@@ -410,8 +410,7 @@ export default function OrganizationManagementDialog({
                 emailKeyMode,
                 resendApiKey: resendApiKey.trim(),
                 resendDomain: resendDomain.trim()
-            },
-            user.uid
+            }
         );
 
         if (result.success) {

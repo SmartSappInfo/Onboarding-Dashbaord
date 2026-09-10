@@ -94,7 +94,7 @@ export default function SettingsClient() {
         updates['settings.defaultLanguage'] = seed.language.toLowerCase();
       }
       if (Object.keys(updates).length > 0) {
-        await saveOrganizationAction(activeOrganization.id, updates, user.uid);
+        await saveOrganizationAction(activeOrganization.id, updates);
       }
     } catch (err: unknown) {
       const errorMsg = err instanceof Error ? err.message : 'An unexpected error occurred.';
@@ -108,8 +108,7 @@ export default function SettingsClient() {
     try {
       const result = await saveOrganizationAction(
         activeOrganization.id,
-        { logoUrl: url },
-        user.uid
+        { logoUrl: url }
       );
 
       if (result.success) {

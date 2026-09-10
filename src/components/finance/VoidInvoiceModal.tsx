@@ -78,12 +78,9 @@ export const VoidInvoiceModal: React.FC<VoidInvoiceModalProps> = ({
 
     setIsSubmitting(true);
 
-    const res = await voidInvoiceAction(
-      invoice.id, 
-      voidReason.trim(), 
-      user.uid,
-      user.displayName || user.email || 'Staff'
-    );
+    // Identity and display name both come from the verified session now (audit F2) —
+    // the void audit trail must not record a name the caller chose.
+    const res = await voidInvoiceAction(invoice.id, voidReason.trim());
 
     if (res.success) {
       if (res.data?.requiresApproval) {

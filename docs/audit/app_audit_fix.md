@@ -828,6 +828,62 @@ of the fix rather than a regression, but it does mean the auto-trigger is no lon
 
 ---
 
+### Batch 4b — complete
+
+Billing, credentials, org settings, payments and user/permission surfaces. **63 / 316.**
+
+**The worst finding in this batch was not an invoice.** `updateUserAiPreferencesAction(userId,
+preferences)` spread the whole `preferences` object into `.update()` on the user document named by
+the caller:
+
+```ts
+await adminDb.collection('users').doc(userId).update({ ...preferences, updatedAt });
+```
+
+Server Actions receive unvalidated JSON — the TypeScript parameter type constrains nothing at
+runtime — so any caller could write arbitrary fields onto **any** account, including
+`isAuthorized: true` and `permissions: ['system_admin']`. That is a one-call privilege escalation to
+platform admin, not a preferences bug. Both halves are fixed: the target is now the verified caller,
+and only the two known preference fields are written. **Treat this as the reason to finish 4c-4e** —
+the same shape (spreading a caller-supplied object into an update on a caller-named document) may
+exist elsewhere and is worth grepping for directly.
+
+Also closed: `generateApiKey` minted live `sk_live_` credentials for any workspace with no check
+(the backoffice page recorded the literal string `'backoffice-admin'` as the creator);
+`revokeApiKey` disabled any key by id; the unscoped `listApiKeys()` returned every active key on the
+platform; `voidInvoiceAction` accepted both the acting uid **and** the display name written to the
+void audit trail; `getWorkspaceTeamMembersAction` returned staff names and emails for any workspace
+id; and `createBookingPaymentIntentAction` / `processBookingRefundAction` moved real money
+unauthenticated.
+
+`getPublicInvoiceAction` was deliberately left unauthenticated — tokenised public invoice viewing is
+a supported flow and `/invoice` is a public route.
+
+**Two structural corrections to the plan's measurement.**
+
+*The denominator was inflated.* The progress script greps for the substring `use server`, which also
+matches files whose comments explain why they are deliberately **not** Server Actions - e.g.
+`job-execution.ts`: "Exporting these from a 'use server' module would make (jobId, actor) a public
+endpoint with a spoofable actor." Seven such files were being counted as unmigrated work. Match the
+directive on its own line instead of the bare substring. The real total is **316**, not 327.
+
+*Three files were public endpoints purely by accident.* `permissions.ts` and `tag-permissions.ts`
+are permission helpers - their `userId` parameter is the *subject* of the question, not a claim of
+identity, so it correctly stays - but the `'use server'` directive published them as HTTP endpoints
+for no reason, and no client imports them. `workspace-permissions-example.ts` is
+documentation-by-example that nothing imports, and it was publishing five Server Actions each taking
+a caller-supplied `userId`. The directive was removed from all three. Example code should not be
+deployable surface area.
+
+**A new dual-path helper: `authorizeWorkspaceOrBackoffice(workspaceId, module, action)`.** Several
+actions are reachable both from the tenant admin UI (where the caller belongs to the workspace) and
+from the backoffice (where an operator legitimately acts on a workspace they are not a member of).
+Requiring membership alone breaks the backoffice; requiring backoffice roles alone breaks the tenant
+UI. The API-key actions use it.
+
+
+---
+
 ## Phase 5 — Credential and Observability Hardening
 
 **Findings:** F6, F7, F8, F9 · **Window:** Week 3–6, parallel with Phase 4

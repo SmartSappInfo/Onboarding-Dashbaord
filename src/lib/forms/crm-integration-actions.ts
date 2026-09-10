@@ -9,6 +9,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { COLLECTIONS } from '@/lib/collection-constants';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type { 
   WorkspacePipeline, 
   WorkspacePipelineStage, 
@@ -23,6 +24,9 @@ export async function getWorkspacePipelinesAction(workspaceId: string): Promise<
   if (!workspaceId) return [];
 
   try {
+    // SECURITY (audit F2): scoped to the workspace being read.
+    await requireWorkspace(workspaceId);
+
     const [byWorkspaceIdSnap, byArrayContainsSnap] = await Promise.all([
       adminDb.collection('pipelines')
         .where('workspaceId', '==', workspaceId)
@@ -70,6 +74,10 @@ export async function getWorkspaceTeamMembersAction(workspaceId: string): Promis
   if (!workspaceId) return [];
 
   try {
+    // SECURITY (audit F2): returns user records — name, email — for a workspace. Without
+    // this check any caller could enumerate another tenant's staff by guessing an id.
+    await requireWorkspace(workspaceId);
+
     const usersSnap = await adminDb.collection('users')
       .where('workspaceIds', 'array-contains', workspaceId)
       .limit(100)
@@ -106,6 +114,13 @@ export async function saveFormCrmSettingsAction(
     if (!formSnap.exists) {
       return { success: false, error: 'Form not found' };
     }
+
+    // SECURITY (audit F2): the workspace is taken from the stored form, never the caller.
+    const formWorkspaceId = formSnap.data()?.workspaceId;
+    if (!formWorkspaceId) {
+      return { success: false, error: 'Form is not attached to a workspace.' };
+    }
+    await requireWorkspace(formWorkspaceId);
 
     const currentActions = formSnap.data()?.actions || {};
 

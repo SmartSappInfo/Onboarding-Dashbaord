@@ -102,8 +102,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                         instagram: instagram.trim() || undefined,
                         youtube: youtube.trim() || undefined,
                     },
-                },
-                user.uid,
+                }
             );
 
             if (result.success) {

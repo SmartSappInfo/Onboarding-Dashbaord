@@ -98,7 +98,7 @@ export default function OrganizationsClient() {
 
     const handleDelete = async (org: Organization) => {
         if (!user || !isSuperAdmin) return;
-        const result = await deleteOrganizationAction(org.id, user.uid);
+        const result = await deleteOrganizationAction(org.id);
         
         if (result.success) {
             toast({ title: 'Organization Deleted' });
@@ -114,7 +114,7 @@ export default function OrganizationsClient() {
 
     const handleArchive = async (org: Organization) => {
         if (!user || !isSuperAdmin) return;
-        const result = await archiveOrganizationAction(org.id, org.status !== 'archived', user.uid);
+        const result = await archiveOrganizationAction(org.id, org.status !== 'archived');
         if (result.success) {
             toast({ title: org.status === 'archived' ? 'Organization Restored' : 'Organization Archived' });
         }

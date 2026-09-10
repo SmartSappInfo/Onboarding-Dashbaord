@@ -121,8 +121,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                     defaultCountryCode,
                     defaultRoleId,
                     departments: departments.length > 0 ? departments : ['General']
-                },
-                user.uid
+                }
             );
 
             if (result.success) {

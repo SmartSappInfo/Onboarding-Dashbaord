@@ -19,6 +19,7 @@ import {
   calculateUpfrontCharge,
   calculateCancellationRefund,
 } from '@/lib/meetings/payment-calculation-service';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -46,6 +47,10 @@ export async function createBookingPaymentIntentAction(payload: {
   error?: string;
 }> {
   try {
+    // SECURITY (audit F2): creates a real payment intent against a workspace's provider
+    // credentials. Previously reachable by anyone who could guess a workspace id.
+    await requireWorkspace(payload.workspaceId);
+
     const {
       workspaceId,
       bookingId,
@@ -107,6 +112,9 @@ export async function processBookingRefundAction(payload: {
 }): Promise<{ success: boolean; refundAmount?: number; reason?: string; error?: string }> {
   try {
     const { workspaceId, bookingId, scheduledStart, refundPolicy } = payload;
+
+    // SECURITY (audit F2): issues a refund — moves money — and was unauthenticated.
+    await requireWorkspace(workspaceId);
 
     // Fetch successful transactions for this booking
     const txSnap = await adminDb

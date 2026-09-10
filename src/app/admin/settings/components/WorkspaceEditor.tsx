@@ -271,7 +271,7 @@ export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWor
 
     const handleSetDefault = async (workspaceId: string) => {
         if (!user || !activeOrganizationId) return;
-        const result = await setOrganizationDefaultWorkspaceAction(activeOrganizationId, workspaceId, user.uid);
+        const result = await setOrganizationDefaultWorkspaceAction(activeOrganizationId, workspaceId);
         if (result.success) {
             toast({ title: 'Default Workspace Updated' });
         } else {

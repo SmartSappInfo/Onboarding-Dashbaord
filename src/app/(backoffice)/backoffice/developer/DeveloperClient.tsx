@@ -53,8 +53,9 @@ export default function DeveloperClient({ workspaces }: { workspaces: WorkspaceI
     const ws = workspaces.find(w => w.id === selectedWorkspace);
     if (!ws) return;
 
-    // Use a fixed identity for the backoffice creator
-    const res = await generateApiKey(ws.id, ws.organizationId, newKeyName, 'backoffice-admin');
+    // Creator identity comes from the session (audit F2) — this previously recorded the
+    // literal string 'backoffice-admin' as the creator of a live credential.
+    const res = await generateApiKey(ws.id, ws.organizationId, newKeyName);
     
     if (res.success && res.key && res.record) {
       toast({ title: 'Success', description: 'API Key generated successfully' });

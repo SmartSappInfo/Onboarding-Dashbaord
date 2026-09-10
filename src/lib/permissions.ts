@@ -1,4 +1,12 @@
-'use server';
+// NOTE: intentionally NOT 'use server' (audit F2).
+//
+// These are permission *helpers*: they answer "does user X hold permission Y" and are
+// called by Server Actions that have already verified the caller. The uid parameter is
+// correct here — it is the subject of the question, not a claim of identity.
+//
+// The directive was removed because it made every helper a public HTTP endpoint. No
+// client component imports this module, so nothing depends on the directive; the only
+// thing it added was reachability.
 
 import type { IndustryVertical } from './types';
 import { getWorkspaceIndustry } from './industry-cache';

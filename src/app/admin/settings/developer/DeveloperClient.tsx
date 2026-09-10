@@ -48,11 +48,11 @@ export default function DeveloperClient() {
   const handleCreate = async () => {
     if (!newKeyName || !activeWorkspaceId || !activeWorkspace?.organizationId || !user) return;
     
+    // Creator identity comes from the session (audit F2).
     const res = await generateApiKey(
       activeWorkspaceId, 
       activeWorkspace.organizationId, 
-      newKeyName, 
-      user.uid
+      newKeyName
     );
     
     if (res.success && res.key && res.record) {

@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { authorizeBackofficeSession } from './backoffice/backoffice-auth';
 
 /**
  * Migrates existing global roles, modules, and zones to all current organizations.
@@ -8,6 +9,9 @@ import { adminDb } from './firebase-admin';
  * and can then edit them independently.
  */
 export async function migrateGlobalSettingsToAllOrgsAction(): Promise<{ success: boolean; stats?: any; error?: string }> {
+    // SECURITY (audit F2): writes settings into every organization on the platform.
+    await authorizeBackofficeSession('settings', 'execute');
+
     try {
         const stats = {
             organizationsProcessed: 0,

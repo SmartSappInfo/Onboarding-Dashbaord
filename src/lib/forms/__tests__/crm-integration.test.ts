@@ -240,6 +240,16 @@ describe('SmartSapp Forms 2.0: CRM Integration Studio & Automated Actions', () =
           taskId: 'task_888',
         }),
       }));
+
+// The settings actions now derive identity from the session (audit F2), so the guard is
+// stubbed here. `requireWorkspace` is also asserted on, to prove the workspace boundary
+// is enforced server-side rather than trusted from the caller.
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuth: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false })),
+  requireWorkspace: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false })),
+  requireSystemAdmin: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: true })),
+}));
+
     });
   });
 });

@@ -33,6 +33,16 @@ vi.mock('../firebase-admin', () => ({
   },
 }));
 
+// The settings actions now derive identity from the session (audit F2), so the guard is
+// stubbed here. `requireWorkspace` is also asserted on, to prove the workspace boundary
+// is enforced server-side rather than trusted from the caller.
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuth: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false })),
+  requireWorkspace: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false })),
+  requireSystemAdmin: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: true })),
+}));
+
+
 describe('Settings Module Unit Tests (Task 20.3)', () => {
   beforeEach(() => {
     vi.clearAllMocks();

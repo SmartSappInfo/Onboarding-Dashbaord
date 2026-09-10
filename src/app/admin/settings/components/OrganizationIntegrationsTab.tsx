@@ -72,8 +72,7 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
                     zoomClientSecret: zoomClientSecret.trim(),
                     microsoftClientId: microsoftClientId.trim(),
                     microsoftClientSecret: microsoftClientSecret.trim()
-                },
-                user.uid
+                }
             );
 
             if (result.success) {

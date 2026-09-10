@@ -210,11 +210,11 @@ export default function InvoicesClient() {
         }
 
         setIsGenerating(true);
+        // Identity is derived server-side from the session (audit F2).
         const result = await generateInvoiceAction(
             selectedEntityId, 
             selectedPeriodId, 
             selectedProfileId, 
-            user.uid,
             activeWorkspaceId
         );
 
@@ -245,7 +245,7 @@ export default function InvoicesClient() {
             variant: 'destructive' 
         }))) return;
 
-        const result = await deleteInvoiceAction(invoice.id, invoice.invoiceNumber, user.uid);
+        const result = await deleteInvoiceAction(invoice.id, invoice.invoiceNumber);
         if (result.success) {
             toast({ title: 'Draft Removed' });
         } else {

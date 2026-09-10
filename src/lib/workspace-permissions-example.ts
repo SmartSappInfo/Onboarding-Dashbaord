@@ -1,4 +1,11 @@
-'use server';
+// NOTE: intentionally NOT 'use server' (audit F2).
+//
+// This file is documentation-by-example — nothing imports it. With the directive it
+// published five Server Actions, each taking a caller-supplied userId, as live public
+// endpoints reachable over HTTP. Example code should not be deployable surface area.
+//
+// If you are here to copy a pattern from it, derive identity with requireAuth() instead
+// of accepting a userId parameter; see docs/audit/app_audit_fix.md (F2).
 
 /**
  * @fileOverview Example usage of workspace-scoped permission checks.

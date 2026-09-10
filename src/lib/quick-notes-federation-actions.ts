@@ -427,11 +427,11 @@ export async function generateIngestionWebhookKeyAction(params: {
   curlSnippet: string;
 }>> {
   try {
+    // generateApiKey derives the creating identity from the session itself (audit F2).
     const res = await generateApiKey(
       params.workspaceId,
       params.organizationId,
-      `Knowledge Ingestion - ${params.name}`,
-      params.userId
+      `Knowledge Ingestion - ${params.name}`
     );
 
     if (!res.success || !res.key) {

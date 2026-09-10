@@ -5,6 +5,7 @@ import type { Organization, AppPermissionId } from './types';
 import { getFullAdminPermissions } from './permissions-engine';
 import { migrateToPermissionsSchema } from './permissions-migration';
 import { assertUserTenantPermission } from './organization-utils';
+import { requireAuth } from './auth/require-auth';
 
 /**
  * Generate a random 4-character hex string for slug entropy
@@ -20,10 +21,14 @@ function generateEntropy(): string {
  */
 export async function saveOrganizationAction(
     organizationId: string | null,
-    data: Partial<Organization>,
-    userId: string
+    data: Partial<Organization>
 ): Promise<{ success: boolean; error?: string; organizationId?: string }> {
     try {
+        // SECURITY (audit F2): the caller supplied the userId that the tenant permission
+        // check was run against, so anyone could pass an administrator's uid and act as
+        // them. Identity now comes from the verified session.
+        const { uid: userId } = await requireAuth();
+
         const timestamp = new Date().toISOString();
 
         if (organizationId) {
@@ -122,10 +127,14 @@ export async function saveOrganizationAction(
  * Note: This should check for dependencies (workspaces, users, etc.)
  */
 export async function deleteOrganizationAction(
-    organizationId: string,
-    userId: string
+    organizationId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // SECURITY (audit F2): the caller supplied the userId that the tenant permission
+        // check was run against, so anyone could pass an administrator's uid and act as
+        // them. Identity now comes from the verified session.
+        const { uid: userId } = await requireAuth();
+
         // Assert Admin permissions for this specific tenant (prevent parameter tampering IDOR)
         await assertUserTenantPermission(userId, organizationId, 'administrator');
 
@@ -172,10 +181,14 @@ export async function deleteOrganizationAction(
  */
 export async function archiveOrganizationAction(
     organizationId: string,
-    archive: boolean,
-    userId: string
+    archive: boolean
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // SECURITY (audit F2): the caller supplied the userId that the tenant permission
+        // check was run against, so anyone could pass an administrator's uid and act as
+        // them. Identity now comes from the verified session.
+        const { uid: userId } = await requireAuth();
+
         // Assert Admin permissions
         await assertUserTenantPermission(userId, organizationId, 'administrator');
 
@@ -196,10 +209,14 @@ export async function archiveOrganizationAction(
  */
 export async function setOrganizationDefaultWorkspaceAction(
     organizationId: string,
-    workspaceId: string,
-    userId: string
+    workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        // SECURITY (audit F2): the caller supplied the userId that the tenant permission
+        // check was run against, so anyone could pass an administrator's uid and act as
+        // them. Identity now comes from the verified session.
+        const { uid: userId } = await requireAuth();
+
         // Assert Admin permissions
         await assertUserTenantPermission(userId, organizationId, 'administrator');
 

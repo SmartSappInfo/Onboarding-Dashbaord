@@ -12,6 +12,7 @@ import type { Invoice, BillingProfile, BillingPeriod } from './types';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { canUser } from './workspace-permissions';
+import { requireAuth, requireWorkspace } from './auth/require-auth';
 
 import { FinancialAccountService } from './services/financial-account-service';
 import { FinancialEventService } from './services/financial-event-service';
@@ -70,6 +71,10 @@ export async function getPublicInvoiceAction(id: string): Promise<ActionResponse
 export async function getInvoicesByEntityAction(entityId: string, workspaceId: string): Promise<ActionResponse> {
     try {
         if (!entityId || !workspaceId) return { success: true, invoices: [] };
+
+        // SECURITY (audit F2): without this, any caller could read another tenant's
+        // invoices by guessing a workspace id.
+        await requireWorkspace(workspaceId);
         
         const snap = await adminDb.collection('invoices')
             .where('entityId', '==', entityId)
@@ -92,17 +97,19 @@ export async function getInvoicesByEntityAction(entityId: string, workspaceId: s
  * @param contactId - Target contact/entity ID
  * @param periodId - Billing cycle ID
  * @param profileId - Billing profile ID
- * @param userId - Requesting user UID
  * @param activeWorkspaceId - Active workspace ID
  */
 export async function generateInvoiceAction(
     contactId: string, 
     periodId: string, 
     profileId: string, 
-    userId: string, 
     activeWorkspaceId: string
 ): Promise<ActionResponse> {
     try {
+        // SECURITY (audit F2): the caller used to state its own identity, so anyone
+        // could pass a finance manager's uid and act as them. Derived server-side now.
+        const { uid: userId } = await requireWorkspace(activeWorkspaceId);
+
         // 0. Permission Check
         const permission = await canUser(userId, 'finance', 'invoices', 'create', activeWorkspaceId);
         if (!permission.granted) {
@@ -242,10 +249,13 @@ export async function generateInvoiceAction(
  */
 export async function updateInvoiceAction(
     id: string, 
-    updates: Partial<Invoice>, 
-    userId: string
+    updates: Partial<Invoice>
 ): Promise<ActionResponse> {
     try {
+        // SECURITY (audit F2): the caller used to state its own identity, so anyone
+        // could pass a finance manager's uid and act as them. Derived server-side now.
+        const { uid: userId } = await requireAuth();
+
         const existingDoc = await adminDb.collection('invoices').doc(id).get();
         if (!existingDoc.exists) throw new Error('Invoice not found');
         
@@ -318,11 +328,16 @@ export async function updateInvoiceAction(
  */
 export async function voidInvoiceAction(
     invoiceId: string,
-    voidReason: string,
-    userId: string,
-    userName: string = 'Authorized Staff'
+    voidReason: string
 ): Promise<ActionResponse<{ requiresApproval?: boolean }>> {
     try {
+        // SECURITY (audit F2): the caller used to state its own identity, so anyone
+        // could pass a finance manager's uid and act as them. Derived server-side now.
+        // The display name is written to the approval and audit records, so it is read
+        // from the verified profile rather than accepted from the caller.
+        const { uid: userId, profile } = await requireAuth();
+        const userName = profile.displayName || profile.name || profile.email || 'Authorized Staff';
+
         const invSnap = await adminDb.collection('invoices').doc(invoiceId).get();
         if (!invSnap.exists) return { success: false, error: 'Invoice not found' };
 
@@ -406,10 +421,13 @@ export async function voidInvoiceAction(
  */
 export async function disputeInvoiceAction(
     invoiceId: string,
-    disputeReason: string,
-    userId: string
+    disputeReason: string
 ): Promise<ActionResponse> {
     try {
+        // SECURITY (audit F2): the caller used to state its own identity, so anyone
+        // could pass a finance manager's uid and act as them. Derived server-side now.
+        const { uid: userId } = await requireAuth();
+
         const invSnap = await adminDb.collection('invoices').doc(invoiceId).get();
         if (!invSnap.exists) return { success: false, error: 'Invoice not found' };
 
@@ -440,10 +458,13 @@ export async function disputeInvoiceAction(
  */
 export async function deleteInvoiceAction(
     id: string, 
-    invoiceNumber: string, 
-    userId: string
+    invoiceNumber: string
 ): Promise<ActionResponse> {
     try {
+        // SECURITY (audit F2): the caller used to state its own identity, so anyone
+        // could pass a finance manager's uid and act as them. Derived server-side now.
+        const { uid: userId } = await requireAuth();
+
         const docSnap = await adminDb.collection('invoices').doc(id).get();
         if (!docSnap.exists) throw new Error('Invoice not found');
         

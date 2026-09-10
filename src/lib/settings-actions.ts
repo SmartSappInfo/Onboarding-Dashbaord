@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { requireWorkspace } from './auth/require-auth';
 
 /**
  * Settings Actions
@@ -63,6 +64,10 @@ export async function loadSettings(
         return { success: false, error: 'entityId must be provided' };
     }
 
+    // SECURITY (audit F2): scoped to the workspace being read, so a caller cannot pull
+    // another tenant's settings by guessing ids.
+    await requireWorkspace(workspaceId);
+
     const snapshot = await adminDb
       .collection('settings')
       .where('workspaceId', '==', workspaceId)
@@ -108,6 +113,9 @@ export async function updateSettings(
     }
     
     const existingSettings = settingsDoc.data() as EntitySettings;
+
+    // SECURITY (audit F2): the workspace comes from the stored record, never the caller.
+    await requireWorkspace(existingSettings.workspaceId);
     
     // Preserve identifiers during update
     const updateData = {
@@ -144,6 +152,9 @@ export async function createSettings(
   }
 ): Promise<{ success: boolean; id?: string; error?: string }> {
   try {
+    // SECURITY (audit F2): a caller could otherwise create settings inside any tenant.
+    await requireWorkspace(input.workspaceId);
+
     const now = new Date().toISOString();
     
     const settings: Omit<EntitySettings, 'id'> = {

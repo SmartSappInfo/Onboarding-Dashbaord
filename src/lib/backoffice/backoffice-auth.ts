@@ -152,3 +152,34 @@ export async function authorizeBackofficeSession(
     role: roles[0] ?? 'readonly_auditor',
   };
 }
+
+/**
+ * Allow either a member of the workspace, or a backoffice operator acting on it.
+ *
+ * Several actions are reachable from two places: the tenant-facing admin UI, where the
+ * caller belongs to the workspace, and the backoffice, where an operator legitimately
+ * acts on a workspace they are not a member of. Requiring membership alone would break
+ * the backoffice; requiring backoffice roles alone would break the tenant UI.
+ *
+ * @returns the resolved uid, plus whether it was reached via backoffice authority.
+ */
+export async function authorizeWorkspaceOrBackoffice(
+  workspaceId: string,
+  module: BackofficeModule,
+  action: BackofficeAction = 'view'
+): Promise<{ uid: string; viaBackoffice: boolean }> {
+  const { requireWorkspace } = await import('@/lib/auth/require-auth');
+
+  try {
+    const ctx = await requireWorkspace(workspaceId);
+    return { uid: ctx.uid, viaBackoffice: false };
+  } catch (workspaceError) {
+    try {
+      const actor = await authorizeBackofficeSession(module, action);
+      return { uid: actor.userId, viaBackoffice: true };
+    } catch {
+      // Surface the tenant-path failure: it is the one the typical caller hit.
+      throw workspaceError;
+    }
+  }
+}

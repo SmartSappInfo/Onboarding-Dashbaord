@@ -158,7 +158,7 @@ export default function InvoiceStudioClient() {
                 vatAmount: totals.vatAmount,
                 totalPayable: totals.totalPayable,
                 status: statusOverride || invoice.status
-            }, user.uid);
+            });
 
             if (res.success) {
                 toast({
