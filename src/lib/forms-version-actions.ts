@@ -13,6 +13,7 @@ import type { Form } from './types';
 import type { FormVersion, FormPage, FormComponent } from './forms/form-types';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const REVALIDATION_PATH = '/admin/forms';
 
@@ -24,6 +25,9 @@ export async function getFormWithVersionAction(id: string): Promise<{
   version: FormVersion | null;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const formDoc = await adminDb.collection(COLLECTIONS.FORMS).doc(id).get();
     if (!formDoc.exists) {
@@ -64,6 +68,9 @@ export async function saveFormDraftVersionAction(
   pages: FormPage[],
   metadata?: Partial<Form>
 ): Promise<{ success: boolean; versionId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const formRef = adminDb.collection(COLLECTIONS.FORMS).doc(formId);
     const formDoc = await formRef.get();

@@ -2,6 +2,7 @@
 
 import { adminDb } from '../firebase-admin';
 import type { Automation, AutomationTriggerDef } from '../types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 interface TagAutomationMatch {
   automationId: string;
@@ -21,6 +22,9 @@ export async function checkTagAutomations(
   tagIds: string[],
   workspaceId: string
 ): Promise<TagAutomationMatch[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (tagIds.length === 0 || !workspaceId) return [];
 
   const snap = await adminDb

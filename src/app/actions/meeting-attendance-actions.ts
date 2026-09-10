@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 interface AttendanceResult {
   success: boolean;
@@ -24,6 +25,9 @@ export async function logMeetingAttendance(
     childrenNames?: string[];
   }
 ): Promise<AttendanceResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const now = new Date().toISOString();
 
@@ -112,6 +116,9 @@ export async function validateRegistrantToken(
     registrationData: Record<string, any>;
   };
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const registrantsRef = adminDb
       .collection('meetings')

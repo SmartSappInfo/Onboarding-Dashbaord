@@ -21,6 +21,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { canUser } from '@/lib/workspace-permissions';
 import { logActivity } from '@/lib/activity-logger';
 import { revalidatePath } from 'next/cache';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import {
   type DealSavedView,
   SYSTEM_SAVED_VIEW_PRESETS,
@@ -53,6 +54,9 @@ export async function createDealSavedViewAction(
   userId: string,
   userName?: string
 ): Promise<{ success: boolean; view?: DealSavedView; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!input.name?.trim() || !input.workspaceId || !userId) {
       return { success: false, error: 'Missing required parameters for saved view.' };
@@ -120,6 +124,9 @@ export async function updateDealSavedViewAction(
   updates: Partial<DealSavedView>,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('deal_saved_views').doc(viewId);
     const snap = await docRef.get();
@@ -163,6 +170,9 @@ export async function deleteDealSavedViewAction(
   viewId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('deal_saved_views').doc(viewId);
     const snap = await docRef.get();
@@ -197,6 +207,9 @@ export async function listDealSavedViewsAction(
   workspaceId: string,
   userId: string
 ): Promise<{ success: boolean; views?: DealSavedView[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'WorkspaceId is required.' };

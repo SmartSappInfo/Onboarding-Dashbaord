@@ -17,10 +17,14 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { BrandKit } from '@/lib/creative/creative-types';
 import { DEFAULT_BRAND_KIT } from '@/lib/creative/brand-intelligence';
 import type { ActionResult } from './creative-project-actions';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function getWorkspaceBrandKitAction(
   workspaceId: string
 ): Promise<ActionResult<BrandKit>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };
@@ -53,6 +57,9 @@ export async function saveWorkspaceBrandKitAction(
   workspaceId: string,
   kit: Partial<BrandKit>
 ): Promise<ActionResult<BrandKit>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };

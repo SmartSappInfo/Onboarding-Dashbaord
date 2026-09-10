@@ -30,6 +30,7 @@ import type {
 import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
 import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 interface ExecuteSurveyCrmSyncParams {
   survey: Survey;
@@ -576,6 +577,9 @@ export async function saveSurveyCrmConfigAction(
   workspaceId: string,
   crmConfig: SurveyCrmConfig
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) return { success: false, error: 'Missing surveyId or workspaceId' };
 
@@ -611,6 +615,9 @@ export async function getSystemCrmFieldMappingTemplatesAction(): Promise<{
   templates?: SystemCrmFieldMappingTemplate[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('system_settings').doc('crm_field_mapping_templates');
     const snap = await docRef.get();
@@ -685,6 +692,9 @@ export async function getSystemCrmFieldMappingTemplatesAction(): Promise<{
 export async function saveSystemCrmFieldMappingTemplatesAction(
   templates: SystemCrmFieldMappingTemplate[]
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('system_settings').doc('crm_field_mapping_templates');
     await docRef.set({

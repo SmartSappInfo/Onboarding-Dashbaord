@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { PDFForm, Submission } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Query helpers for PDF forms with entityId/entityId fallback support.
@@ -18,6 +19,9 @@ export async function getPdfsByContact(params: {
   workspaceId?: string;
   status?: 'draft' | 'published' | 'archived';
 }): Promise<PDFForm[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { entityId, workspaceId, status } = params;
 
   // Prefer entityId when both are provided (Requirement 22.1)
@@ -53,6 +57,9 @@ export async function getSubmissionsByContact(params: {
   schoolId?: string | null;
   status?: 'submitted' | 'partial';
 }): Promise<Submission[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { pdfId, entityId, status } = params;
 
   // Prefer entityId when both are provided (Requirement 22.1)
@@ -88,6 +95,9 @@ export async function getPdfsForWorkspace(params: {
   status?: 'draft' | 'published' | 'archived';
   limit?: number;
 }): Promise<PDFForm[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, entityId, status, limit = 100 } = params;
 
   let query = adminDb
@@ -115,6 +125,9 @@ export async function getPdfsForWorkspace(params: {
  * Get a single PDF by ID.
  */
 export async function getPdfById(pdfId: string): Promise<PDFForm | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const doc = await adminDb.collection('pdfs').doc(pdfId).get();
   if (!doc.exists) return null;
   return { id: doc.id, ...doc.data() } as PDFForm;
@@ -127,6 +140,9 @@ export async function getSubmissionById(
   pdfId: string,
   submissionId: string
 ): Promise<Submission | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const doc = await adminDb
     .collection('pdfs')
     .doc(pdfId)

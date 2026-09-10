@@ -9,6 +9,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   BulkReschedulePayload,
   BulkCancelPayload,
@@ -32,6 +33,9 @@ export async function bulkRescheduleMeetingsAction(
   workspaceId: string,
   payload: BulkReschedulePayload
 ): Promise<BulkOperationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const { meetingIds, minuteOffsetDelta } = payload;
   const result: BulkOperationResult = {
     totalRequested: meetingIds.length,
@@ -97,6 +101,9 @@ export async function bulkCancelMeetingsAction(
   workspaceId: string,
   payload: BulkCancelPayload
 ): Promise<BulkOperationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const { meetingIds, reason } = payload;
   const result: BulkOperationResult = {
     totalRequested: meetingIds.length,
@@ -142,6 +149,9 @@ export async function overrideSeriesInstanceAction(
   workspaceId: string,
   override: SeriesInstanceOverride
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const overrideId = `override_${override.seriesId}_${override.originalStart.replace(/[:.]/g, '-')}`;
     const docRef = adminDb.collection('series_instance_overrides').doc(overrideId);

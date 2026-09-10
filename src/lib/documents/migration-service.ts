@@ -17,6 +17,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { FlipbookConfig, FlipbookPage } from '@/lib/types/flipbook-types';
 import type { DocumentPage } from '@/lib/types/document-types';
 import { flipbookToDocumentAggregate, flipbookPageToDocumentPage } from '@/lib/documents/document-adapter';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface MigrationSummary {
   workspaceId: string;
@@ -37,6 +38,9 @@ export async function migrateWorkspaceFlipbooks(
   limitCount = 50,
   startAfterDocId?: string
 ): Promise<MigrationSummary> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const summary: MigrationSummary = {
     workspaceId,
     totalFlipbooks: 0,
@@ -86,6 +90,9 @@ export async function migrateWorkspaceFlipbooks(
  * Migrates a single legacy Flipbook document and its associated pages to the Document model.
  */
 export async function migrateSingleFlipbook(flipbookId: string): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('flipbooks').doc(flipbookId);
     const snap = await docRef.get();

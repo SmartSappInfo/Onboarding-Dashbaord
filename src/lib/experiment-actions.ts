@@ -14,6 +14,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Experiment } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Saves or updates an Experiment definition in Firestore.
@@ -23,6 +24,9 @@ export async function saveExperimentAction(experiment: Experiment): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (
       !experiment.id ||
@@ -58,6 +62,9 @@ export async function saveExperimentAction(experiment: Experiment): Promise<{
 export async function fetchPageExperimentsAction(
   pageId: string,
 ): Promise<{ success: boolean; experiments?: Experiment[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };
@@ -85,6 +92,9 @@ export async function promoteWinnerVariantAction(
   experimentId: string,
   winnerVariantId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!experimentId || !winnerVariantId) {
       return { success: false, error: 'Missing required promotion parameters' };

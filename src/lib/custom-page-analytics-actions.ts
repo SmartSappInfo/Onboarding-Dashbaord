@@ -4,6 +4,7 @@
 import { revalidatePath } from 'next/cache';
 
 import { adminDb, FieldValue } from './firebase-admin';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   PageEventType,
   PageEventChannel,
@@ -71,6 +72,9 @@ export async function recordCustomPageEvent(params: {
   sessionId: string;
   channel: PageEventChannel;
 }): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { slug, type, entityId, sessionId, channel } = params;
 
   const pageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(slug);
@@ -167,6 +171,9 @@ export interface CustomPageAnalyticsResult {
  * so this is always a constant-time read regardless of total event volume.
  */
 export async function getCustomPageAnalytics(slug: string): Promise<CustomPageAnalyticsResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const pageRef = adminDb.collection(ANALYTICS_COLLECTION).doc(slug);
 
   const [pageSnap, eventsSnap] = await Promise.all([
@@ -213,6 +220,9 @@ export async function getCustomPageAnalytics(slug: string): Promise<CustomPageAn
 export async function listTrackedPages(): Promise<
   { slug: string; stats: CustomPageStats; updatedAt: string; pageId?: string | null; workspaceIds?: string[] }[]
 > {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const [snap, pagesSnap] = await Promise.all([
     adminDb
       .collection(ANALYTICS_COLLECTION)
@@ -318,6 +328,9 @@ export async function assignCustomPageWorkspaceAction(
   workspaceId: string,
   organizationId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const existingSnap = await adminDb
       .collection('campaign_pages')

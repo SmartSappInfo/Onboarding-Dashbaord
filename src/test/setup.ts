@@ -59,3 +59,39 @@ vi.mock('@/lib/firebase-admin', () => ({
     verifyIdToken: vi.fn().mockResolvedValue({ uid: 'test-uid' }),
   },
 }));
+
+// Default mock for the server-side session guard (audit F2, Phase 4).
+//
+// Server Actions now resolve the caller with requireAuth()/requireWorkspace(), which read
+// the `__session` cookie via next/headers. In unit tests there is no request scope, so
+// `cookies()` throws. Defaulting the guard to an authenticated caller keeps existing tests
+// testing what they were written to test.
+//
+// A test that wants to assert the guard itself should override this locally, e.g.
+//   vi.mock('@/lib/auth/require-auth', () => ({ requireWorkspace: vi.fn().mockRejectedValue(...) }))
+// and then assert that no write occurred.
+const testProfile = {
+  id: 'test-user',
+  name: 'Test User',
+  displayName: 'Test User',
+  email: 'test@example.com',
+  organizationId: 'test-org',
+  workspaceIds: ['test-workspace'],
+  permissions: [] as string[],
+  isAuthorized: true,
+};
+
+vi.mock('@/lib/auth/require-auth', () => {
+  class UnauthorizedError extends Error {}
+  class ForbiddenError extends Error {}
+  const ctx = { uid: 'test-user', profile: testProfile, isSystemAdmin: false };
+  return {
+    SESSION_COOKIE_NAME: '__session',
+    UnauthorizedError,
+    ForbiddenError,
+    requireAuth: vi.fn(async () => ctx),
+    requireWorkspace: vi.fn(async () => ctx),
+    requireSystemAdmin: vi.fn(async () => ({ ...ctx, isSystemAdmin: true })),
+    requireOrganization: vi.fn(async () => ({ ...ctx, organizationId: 'test-org' })),
+  };
+});

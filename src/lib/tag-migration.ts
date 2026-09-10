@@ -13,6 +13,7 @@
 import { adminDb } from './firebase-admin';
 import type { Entity, School } from './types';
 import { getOrganizationId } from './organization-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Classification rules for determining if a tag should be global or workspace-scoped.
@@ -71,6 +72,9 @@ interface MigrationResult {
  * @param dryRun - If true, only logs what would be done without making changes
  */
 export async function migrateSchoolTagsAction(dryRun: boolean = false): Promise<MigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const result: MigrationResult = {
     success: true,
     processed: 0,
@@ -234,6 +238,9 @@ export async function classifyTagManuallyAction(
   scope: 'global' | 'workspace',
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // This would be used in a UI to manually override the automatic classification
     // For now, we'll just validate the inputs

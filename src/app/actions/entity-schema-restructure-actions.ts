@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 
 import { FieldValue } from 'firebase-admin/firestore';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface MigrationResult {
   total: number;
@@ -13,6 +14,9 @@ export interface MigrationResult {
 }
 
 export async function fetchEntitiesForSchemaRestructure(organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     
     
@@ -55,6 +59,9 @@ export async function fetchEntitiesForSchemaRestructure(organizationId: string) 
 }
 
 export async function enrichEntitiesWithNewSchema(organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     
     
@@ -228,6 +235,9 @@ export async function enrichEntitiesWithNewSchema(organizationId: string) {
 }
 
 export async function restoreEntitySchemaRestructure(organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     
     
@@ -279,6 +289,9 @@ export async function restoreEntitySchemaRestructure(organizationId: string) {
 }
 
 export async function rollbackEntitySchemaRestructure(organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   // A simple rollback that restores 'companySize', 'features' and clears financeData.
   // Full reconstruction of institutionData is complex because it was originally scattered.
   // This serves as a safety hatch if requested.

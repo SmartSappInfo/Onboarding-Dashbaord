@@ -13,6 +13,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   EntityPredictiveHealth,
   WorkspacePredictiveOverview,
@@ -42,6 +43,9 @@ export async function calculateEntityPredictiveHealthAction(
   entityId: string,
   workspaceId: string
 ): Promise<{ success: boolean; health?: EntityPredictiveHealth; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!entityId || !workspaceId) {
       return { success: false, error: 'Missing entityId or workspaceId' };
@@ -432,6 +436,9 @@ export async function getSystemPredictiveWeightsAction(): Promise<{
   config: SystemPredictiveWeightsConfig;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const doc = await adminDb.collection('system_config').doc('predictive_weights').get();
     if (!doc || !doc.exists) {
@@ -449,6 +456,9 @@ export async function getSystemPredictiveWeightsAction(): Promise<{
 export async function saveSystemPredictiveWeightsAction(
   config: SystemPredictiveWeightsConfig
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     await adminDb.collection('system_config').doc('predictive_weights').set(
       {

@@ -27,6 +27,7 @@ import type {
   WorkflowNodeConfig,
 } from '../types';
 import type { McpPayloadValue } from '@/lib/mcp/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -106,6 +107,9 @@ export async function listWorkflowsAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<WorkflowDefinition[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
 
   if (!userId) {
@@ -159,6 +163,9 @@ export async function getWorkflowAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<WorkflowDefinition>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workflowId, workspaceId, userId } = params;
 
   if (!userId) {
@@ -216,6 +223,9 @@ export async function saveWorkflowAction(params: {
   workflow: WorkflowDefinition;
   userId: string;
 }): Promise<ActionResult<WorkflowDefinition>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workflow, userId } = params;
 
   if (!userId) {
@@ -305,6 +315,9 @@ export async function toggleWorkflowAction(params: {
   status: 'active' | 'paused';
   userId: string;
 }): Promise<ActionResult<{ status: 'active' | 'paused' }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workflowId, workspaceId, status, userId } = params;
 
   if (!userId) {
@@ -371,6 +384,9 @@ export async function startWorkflowRunAction(params: {
   userId: string;
   initialPayload?: Record<string, McpPayloadValue>;
 }): Promise<ActionResult<WorkflowRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workflowId, workspaceId, userId, initialPayload } = params;
 
   if (!userId) {
@@ -431,6 +447,9 @@ export async function getWorkflowRunAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<WorkflowRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { runId, workspaceId, userId } = params;
 
   if (!userId) {
@@ -489,6 +508,9 @@ export async function listWorkflowRunsAction(params: {
   workflowId?: string;
   limit?: number;
 }): Promise<ActionResult<WorkflowRun[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, workflowId, limit = 20 } = params;
 
   if (!userId) {
@@ -549,6 +571,9 @@ export async function resumeWorkflowRunAction(params: {
   adjudication: 'approved' | 'rejected';
   userId: string;
 }): Promise<ActionResult<WorkflowRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { runId, workspaceId, approvalId, adjudication, userId } = params;
 
   if (!userId) {
@@ -592,6 +617,9 @@ export async function simulateWorkflowAction(params: {
   userId: string;
   simulatedPayload: Record<string, McpPayloadValue>;
 }): Promise<ActionResult<WorkflowSimulationResult>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workflow, workspaceId, userId, simulatedPayload } = params;
 
   if (!userId) {
@@ -640,6 +668,9 @@ export async function installBlueprintAction(params: {
   organizationId: string;
   userId: string;
 }): Promise<ActionResult<WorkflowDefinition>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { blueprintId, workspaceId, organizationId, userId } = params;
 
   if (!userId) {

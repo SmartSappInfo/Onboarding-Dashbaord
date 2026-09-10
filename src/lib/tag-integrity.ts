@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface OrphanedReference {
   contactId: string;
@@ -23,6 +24,9 @@ export async function validateTagReferences(
   contactId: string,
   contactType: 'school' | 'prospect'
 ): Promise<{ valid: boolean; orphanedTagIds: string[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const collection = contactType === 'school' ? 'schools' : 'prospects';
   const contactSnap = await adminDb.collection(collection).doc(contactId).get();
 
@@ -64,6 +68,9 @@ export async function validateTagReferences(
  * Requirements: NFR4.2
  */
 export async function detectOrphanedTagReferences(): Promise<IntegrityReport> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   // Fetch all existing tag IDs
   const tagsSnap = await adminDb.collection('tags').get();
   const existingTagIds = new Set(tagsSnap.docs.map(d => d.id));
@@ -107,6 +114,9 @@ export async function detectOrphanedTagReferences(): Promise<IntegrityReport> {
 export async function cleanupOrphanedTagReferences(
   report?: IntegrityReport
 ): Promise<{ cleanedContacts: number; removedRefs: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { orphanedReferences } = report ?? (await detectOrphanedTagReferences());
 
   if (orphanedReferences.length === 0) {

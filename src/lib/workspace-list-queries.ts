@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { WorkspaceEntity, Entity } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Optimized workspace list queries.
@@ -58,6 +59,9 @@ export interface WorkspaceListQueryOptions {
 export async function queryWorkspaceContacts(
   options: WorkspaceListQueryOptions
 ): Promise<{ items: WorkspaceListItem[]; total: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // Read 1: Query workspace_entities with filters
     let query = adminDb
@@ -167,6 +171,9 @@ export async function countWorkspaceContacts(
     assignedTo?: string;
   }
 ): Promise<number> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let query = adminDb
       .collection('workspace_entities')

@@ -28,6 +28,7 @@ import type {
 import { zSwarmMissionRequest } from '../domain-types';
 import type { McpPayloadValue } from '@/lib/mcp/types';
 import { BaseDomainSpecialist } from '../specialists/base-domain-specialist';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface ServerActionResponse<T> {
   success: boolean;
@@ -41,6 +42,9 @@ export interface ServerActionResponse<T> {
 export async function listSpecialistsAction(
   workspaceId: string
 ): Promise<ServerActionResponse<SpecialistDescriptor[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const agents = globalAgentRegistry.listAgents();
     const domainAgents = agents.filter((a) => a instanceof BaseDomainSpecialist) as BaseDomainSpecialist[];
@@ -66,6 +70,9 @@ export async function getSpecialistDetailsAction(
   workspaceId: string,
   specialistId: DomainSpecialistId
 ): Promise<ServerActionResponse<{ descriptor: SpecialistDescriptor; config: SpecialistWorkspaceConfig | null }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const agent = globalAgentRegistry.getAgent(specialistId);
     if (!agent || !(agent instanceof BaseDomainSpecialist)) {
@@ -106,6 +113,9 @@ export async function getSpecialistDetailsAction(
 export async function updateSpecialistConfigAction(
   config: SpecialistWorkspaceConfig
 ): Promise<ServerActionResponse<boolean>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!adminDb) {
       return { success: true, data: true };
@@ -137,6 +147,9 @@ export async function updateSpecialistConfigAction(
 export async function startSwarmMissionAction(
   request: SwarmMissionRequest
 ): Promise<ServerActionResponse<SwarmRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // Validate request schema
     zSwarmMissionRequest.parse(request);
@@ -161,6 +174,9 @@ export async function startSwarmMissionAction(
 export async function getSwarmRunAction(
   swarmRunId: string
 ): Promise<ServerActionResponse<SwarmRun | null>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const run = await SwarmOrchestrator.getSwarmRun(swarmRunId);
     return {
@@ -182,6 +198,9 @@ export async function listSwarmRunsAction(
   workspaceId: string,
   limitCount: number = 20
 ): Promise<ServerActionResponse<SwarmRun[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const runs = await SwarmOrchestrator.listSwarmRuns(workspaceId, limitCount);
     return {
@@ -204,6 +223,9 @@ export async function resumeSwarmMissionAction(params: {
   approvalId: string;
   userId: string;
 }): Promise<ServerActionResponse<SwarmRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const run = await SwarmOrchestrator.resumeSwarmMission(
       params.swarmRunId,
@@ -232,6 +254,9 @@ export async function executeJointProposalAction(params: {
   toolName: string;
   parameters: Record<string, McpPayloadValue>;
 }): Promise<ServerActionResponse<Record<string, McpPayloadValue>>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const rpcResponse = await McpGateway.handleRequest(
       {

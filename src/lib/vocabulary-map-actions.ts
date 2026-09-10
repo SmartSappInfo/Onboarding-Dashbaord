@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import { after } from 'next/server';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Updates the workspace-specific vocabulary map when a user corrects an AI mapping.
@@ -46,6 +47,9 @@ export async function updateWorkspaceVocabularyAction(workspaceId: string, mappi
  * Used during AI generation to provide "context" for entity mapping.
  */
 export async function getWorkspaceVocabulary(workspaceId: string): Promise<Record<string, string>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const vocabRef = adminDb.collection('workspaces').doc(workspaceId).collection('vocabulary_map').doc('current');
         const vocabSnap = await vocabRef.get();

@@ -5,6 +5,7 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import type { Perspective } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server-side actions for Perspective Management.
@@ -15,6 +16,9 @@ import type { Perspective } from './types';
  * Creates or updates a Perspective.
  */
 export async function savePerspectiveAction(id: string | null, data: Partial<Perspective>, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const timestamp = new Date().toISOString();
         const slug = data.name?.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -67,6 +71,9 @@ export async function savePerspectiveAction(id: string | null, data: Partial<Per
  * Rejects if data (Schools, Tasks, Pipelines) is associated with it.
  */
 export async function deletePerspectiveAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const db = adminDb;
         
@@ -104,6 +111,9 @@ export async function deletePerspectiveAction(id: string, userId: string) {
  * Archives a perspective to remove it from selection while preserving data links.
  */
 export async function archivePerspectiveAction(id: string, archive: boolean) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         await adminDb.collection('perspectives').doc(id).update({
             status: archive ? 'archived' : 'active',

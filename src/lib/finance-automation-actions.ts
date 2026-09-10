@@ -16,12 +16,16 @@ import {
   ReminderCycleResult 
 } from './services/finance-automation-service';
 import { adminDb } from './firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function runReminderCycleAction(
   workspaceId: string,
   userId: string,
   userName: string
 ): Promise<ActionResponse & { result?: ReminderCycleResult }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -52,6 +56,9 @@ export async function sendInvoiceReminderAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { log?: FinanceReminderLog }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -76,6 +83,9 @@ export async function getReminderLogsAction(
   userId: string,
   limitCount: number = 50
 ): Promise<ActionResponse & { logs?: FinanceReminderLog[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'view', workspaceId);
     if (!permission.granted) {

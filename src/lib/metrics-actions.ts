@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { EntityType } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Metrics Actions for Requirement 21: Reporting — Distinct Metrics
@@ -54,6 +55,9 @@ export async function getUniqueEntityMetrics(
   organizationId: string,
   entityType?: EntityType
 ): Promise<EntityMetrics> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   let query = adminDb
     .collection('entities')
     .where('organizationId', '==', organizationId)
@@ -95,6 +99,9 @@ export async function getWorkspaceMembershipMetrics(
   workspaceId?: string,
   entityType?: EntityType
 ): Promise<WorkspaceMembershipMetrics[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   // First, get all workspaces for the organization
   const workspacesSnap = await adminDb
     .collection('workspaces')
@@ -162,6 +169,9 @@ export async function getPipelineMetrics(
   workspaceId?: string,
   entityType?: EntityType
 ): Promise<PipelineMetrics[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   // Get all workspaces
   const workspacesSnap = await adminDb
     .collection('workspaces')
@@ -233,6 +243,9 @@ export async function getSharedContactMetrics(
   organizationId: string,
   entityType?: EntityType
 ): Promise<SharedContactMetrics[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   // Query all workspace_entities
   let query = adminDb
     .collection('workspace_entities')

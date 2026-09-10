@@ -28,6 +28,7 @@ import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { sendEmail } from '@/lib/resend-service';
 import { generateIcsContent } from '@/lib/meetings/ics-helpers';
 import type { Meeting } from '@/lib/types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -414,6 +415,9 @@ export async function bulkImportParticipantsAction(input: {
     contactId?: string;
   }>;
 }): Promise<{ success: boolean; importedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(input.workspaceId);
+
   try {
     const { meetingId, workspaceId, organizationId, participants } = input;
     const now = new Date().toISOString();

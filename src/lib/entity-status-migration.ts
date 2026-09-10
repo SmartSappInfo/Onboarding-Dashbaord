@@ -12,12 +12,16 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { logWorkspaceEntityUpdated } from './entity-audit';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Bulk restores all documents in 'entities' and 'workspace_entities' to 'active' status.
  * This ensures they appear in the modernized admin hubs.
  */
 export async function restoreAllEntitiesToActiveAction(userId: string, userName: string, userEmail: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const timestamp = new Date().toISOString();
         let entityCount = 0;

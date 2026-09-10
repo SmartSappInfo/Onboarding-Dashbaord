@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { SystemMigrationLog, EntityContact, WorkspaceEntity } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const BATCH_SIZE = 400;
 
@@ -18,6 +19,9 @@ export async function enrichWorkspaceEntitiesContactsAction(userId: string): Pro
   message: string;
   details: EnrichStats;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const migrationId = 'fer_enrich_workspace_entities_contacts';
   const now = new Date().toISOString();
 

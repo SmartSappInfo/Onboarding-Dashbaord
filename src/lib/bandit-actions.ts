@@ -15,6 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { BanditPolicy } from '@/lib/types';
 import { recalculatePolicyWeights } from '@/lib/page-builder/adaptive-traffic-engine';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Saves or updates a Multi-Armed Bandit Policy definition in Firestore.
@@ -24,6 +25,9 @@ export async function saveBanditPolicyAction(policy: BanditPolicy): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (
       !policy.id ||
@@ -56,6 +60,9 @@ export async function recordBanditRewardAction(
   armId: string,
   isConversion: boolean,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!policyId || !armId) {
       return { success: false, error: 'Missing required reward parameters' };
@@ -105,6 +112,9 @@ export async function recordBanditRewardAction(
 export async function fetchBanditPolicyAction(
   pageId: string,
 ): Promise<{ success: boolean; policy?: BanditPolicy; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };

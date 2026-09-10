@@ -14,6 +14,7 @@ import { LedgerService } from './services/ledger-service';
 import { PaymentService, RecordPaymentInput } from './services/payment-service';
 import { FinancialEventService } from './services/financial-event-service';
 import { revalidatePath } from 'next/cache';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface FinanceActionResponse<T = unknown> {
   success: boolean;
@@ -31,6 +32,9 @@ export async function getOrCreateFinancialAccountAction(
   entityName?: string,
   currency?: string
 ): Promise<FinanceActionResponse<FinancialAccount>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!entityId || !workspaceId) {
       return { success: false, error: 'Entity ID and Workspace ID are required' };
@@ -58,6 +62,9 @@ export async function recordPaymentAction(
   input: RecordPaymentInput,
   userId: string
 ): Promise<FinanceActionResponse<{ paymentId: string }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) {
       return { success: false, error: 'User must be authenticated' };
@@ -102,6 +109,9 @@ export async function getAccountLedgerAction(
   accountId: string,
   workspaceId: string
 ): Promise<FinanceActionResponse<FinancialTransaction[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!accountId) {
       return { success: false, error: 'Account ID is required' };
@@ -121,6 +131,9 @@ export async function getAccountLedgerAction(
 export async function getPaymentsForAccountAction(
   accountId: string
 ): Promise<FinanceActionResponse<Payment[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!accountId) {
       return { success: false, error: 'Account ID is required' };
@@ -160,6 +173,9 @@ export async function getUnpaidInvoicesForEntityAction(
   entityId: string,
   workspaceId: string
 ): Promise<FinanceActionResponse<Invoice[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!entityId || !workspaceId) {
       return { success: false, error: 'Entity ID and Workspace ID are required' };

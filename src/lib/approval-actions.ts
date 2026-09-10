@@ -16,11 +16,15 @@ import {
   CreateApprovalRequestInput 
 } from './services/financial-approval-service';
 import { adminDb } from './firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function getPendingApprovalsAction(
   workspaceId: string,
   userId: string
 ): Promise<ActionResponse & { requests?: FinancialApprovalRequest[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'view', workspaceId);
     if (!permission.granted) {
@@ -52,6 +56,9 @@ export async function submitApprovalRequestAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { request?: FinancialApprovalRequest }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -80,6 +87,9 @@ export async function decideApprovalRequestAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { request?: FinancialApprovalRequest }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -105,6 +115,9 @@ export async function getApprovalPolicyAction(
   workspaceId: string,
   userId: string
 ): Promise<ActionResponse & { policy?: FinancialApprovalPolicy }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'view', workspaceId);
     if (!permission.granted) {
@@ -124,6 +137,9 @@ export async function saveApprovalPolicyAction(
   workspaceId: string,
   userId: string
 ): Promise<ActionResponse & { policy?: FinancialApprovalPolicy }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'settings', 'edit', workspaceId);
     if (!permission.granted) {

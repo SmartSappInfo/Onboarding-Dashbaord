@@ -11,6 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   Survey,
   SurveyResponse,
@@ -62,6 +63,9 @@ export async function saveSurveyExperimentConfigAction(
   config: SurveyExperimentConfig,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'Missing surveyId or workspaceId' };

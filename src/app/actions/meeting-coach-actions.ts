@@ -12,6 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { SpeechCoachingScorecard } from '@/lib/meetings/types/speech-coach';
 import type { TranscriptSegment, TranscriptSpeaker } from '@/lib/meetings/types/intelligence';
 import { analyzeConversationDynamics } from '@/lib/meetings/speech-coach-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -28,6 +29,9 @@ export async function analyzeMeetingSpeechCoachingAction(payload: {
   segments: TranscriptSegment[];
   speakers: TranscriptSpeaker[];
 }): Promise<{ success: boolean; scorecard?: SpeechCoachingScorecard; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(payload.workspaceId);
+
   try {
     const { meetingId, workspaceId, segments, speakers } = payload;
     const scorecard = analyzeConversationDynamics(segments, speakers, meetingId, workspaceId);
@@ -47,6 +51,9 @@ export async function analyzeMeetingSpeechCoachingAction(payload: {
 export async function getMeetingSpeechCoachingAction(
   meetingId: string
 ): Promise<{ success: boolean; scorecard?: SpeechCoachingScorecard; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const doc = await adminDb.collection('meeting_speech_coaching').doc(meetingId).get();
     if (!doc.exists) {

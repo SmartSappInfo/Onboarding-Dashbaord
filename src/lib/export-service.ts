@@ -19,6 +19,7 @@ import type {
   PersonData,
 } from './types';
 import type { ExportOptions, ExportResult } from './import-export-types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Exports entities from a workspace to CSV
@@ -29,6 +30,9 @@ import type { ExportOptions, ExportResult } from './import-export-types';
  * @returns Export result with CSV content
  */
 export async function exportContactsAction(options: ExportOptions): Promise<ExportResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // 1. Query workspace_entities for the workspace
     const workspaceEntitiesSnap = await adminDb

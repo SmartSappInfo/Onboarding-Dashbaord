@@ -18,6 +18,7 @@ import type {
   SystemResearchGovernanceConfig,
 } from '@/lib/types';
 import { logActivity } from '@/lib/activity-logger';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Executes automated data retention and PII sanitization across workspace surveys.
@@ -32,6 +33,9 @@ export async function executeSurveyDataRetentionAction(
   scannedSurveysCount: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, anonymizedCount: 0, purgedCount: 0, scannedSurveysCount: 0, error: 'Missing workspaceId' };
@@ -135,6 +139,9 @@ export async function getSystemResearchGovernanceAction(): Promise<{
   config: SystemResearchGovernanceConfig;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('system_settings').doc('survey_research_governance');
     const docSnap = await docRef.get();
@@ -177,6 +184,9 @@ export async function getSystemResearchGovernanceAction(): Promise<{
 export async function saveSystemResearchGovernanceAction(
   config: SystemResearchGovernanceConfig
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('system_settings').doc('survey_research_governance');
     await docRef.set(

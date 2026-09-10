@@ -14,6 +14,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Audience, ExperienceRule } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Saves or updates an Audience definition in Firestore.
@@ -23,6 +24,9 @@ export async function saveAudienceAction(audience: Audience): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!audience.id || !audience.organizationId || !audience.name || !audience.createdBy) {
       return { success: false, error: 'Unauthorized or missing required audience parameters' };
@@ -44,6 +48,9 @@ export async function saveAudienceAction(audience: Audience): Promise<{
 export async function fetchAudiencesAction(
   organizationId: string,
 ): Promise<{ success: boolean; audiences?: Audience[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!organizationId) {
       return { success: false, error: 'Organization ID is required' };
@@ -72,6 +79,9 @@ export async function saveExperienceRuleAction(rule: ExperienceRule): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!rule.id || !rule.pageId || !rule.audienceId || !rule.createdBy || !rule.organizationId) {
       return { success: false, error: 'Unauthorized or missing required experience rule parameters' };
@@ -101,6 +111,9 @@ export async function saveExperienceRuleAction(rule: ExperienceRule): Promise<{
 export async function fetchPageExperienceRulesAction(
   pageId: string,
 ): Promise<{ success: boolean; rules?: ExperienceRule[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };

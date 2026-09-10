@@ -25,6 +25,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import { seedRevenueOsWorkspace } from '@/lib/revenue-os/migration-protocol';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import {
   simulateRevenueScenario,
   calculateTeamCapacity,
@@ -73,6 +74,9 @@ export async function getExecutiveBoardroomDataAction(params: {
   data?: BoardroomDataPayload;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -353,6 +357,9 @@ export async function simulateRevenueScenarioAction(params: {
   scenario?: RevenueScenario;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, actorId, baseline, parameters, name, description } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -392,6 +399,9 @@ export async function saveRevenueScenarioAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, scenario } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -470,6 +480,9 @@ export async function deleteRevenueScenarioAction(params: {
   actorId: string;
   scenarioId: string;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, actorId, scenarioId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -513,6 +526,9 @@ export async function applyStrategicRecommendationAction(params: {
   actorName: string;
   recId: string;
 }): Promise<{ success: boolean; pointsAwarded?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, recId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -589,6 +605,9 @@ export async function updateRevenueOsGovernanceAction(params: {
   rampModel?: 'standard_3month' | 'enterprise_6month';
   executiveAiModel?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -649,6 +668,9 @@ export async function reseedRevenueOsDefaultsAction(params: {
   organizationId: string;
   actorId: string;
 }): Promise<{ success: boolean; seededScenarios: number; seededRecommendations: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);

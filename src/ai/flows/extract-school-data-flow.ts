@@ -8,6 +8,7 @@ import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'genkit';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const ExtractSchoolDataInputSchema = z.object({
   text: z.string().describe('The raw text containing school information.'),
@@ -135,5 +136,8 @@ const extractSchoolDataFlow = ai.defineFlow(
 );
 
 export async function extractSchoolData(input: ExtractSchoolDataInput): Promise<ExtractSchoolDataOutput> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return extractSchoolDataFlow(input);
 }

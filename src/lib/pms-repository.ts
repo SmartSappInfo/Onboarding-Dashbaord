@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { GlobalPrompt, TenantPromptOverride } from './pms-types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const REVALIDATION_PATH = '/admin/ai-prompts';
 
@@ -10,6 +11,9 @@ const REVALIDATION_PATH = '/admin/ai-prompts';
  * Fetch all global prompts from backoffice.
  */
 export async function getGlobalPrompts(): Promise<{ success: boolean; data?: GlobalPrompt[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const snap = await adminDb.collection('global_prompts').get();
     const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as GlobalPrompt));
@@ -28,6 +32,9 @@ export async function getTenantOverrides(
   organizationId: string,
   workspaceId?: string
 ): Promise<{ success: boolean; data?: TenantPromptOverride[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     let query = adminDb.collection('prompts').where('organizationId', '==', organizationId);
     if (workspaceId) {
@@ -47,6 +54,9 @@ export async function getTenantOverrides(
  * Get a specific global prompt by its ID (flowName).
  */
 export async function getGlobalPromptById(id: string): Promise<{ success: boolean; data?: GlobalPrompt; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const snap = await adminDb.collection('global_prompts').doc(id).get();
     if (!snap.exists) {
@@ -63,6 +73,9 @@ export async function getGlobalPromptById(id: string): Promise<{ success: boolea
  * Get a specific override by its ID.
  */
 export async function getTenantOverrideById(id: string): Promise<{ success: boolean; data?: TenantPromptOverride; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const snap = await adminDb.collection('prompts').doc(id).get();
     if (!snap.exists) {
@@ -103,6 +116,9 @@ export async function saveGlobalPrompt(
   promptData: Omit<GlobalPrompt, 'id' | 'updatedAt' | 'version' | 'updatedBy'>,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const validation = validatePromptVariables(promptData.systemPrompt, promptData.userPromptTemplate, promptData.variables);
     if (!validation.valid) {
@@ -145,6 +161,9 @@ export async function saveTenantOverride(
   overrideData: Omit<TenantPromptOverride, 'id' | 'updatedAt' | 'version' | 'updatedBy'>,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // 1. Enforce ID matching sanity gate
     const expectedId = `${overrideData.organizationId}_${overrideData.workspaceId || 'global'}_${overrideData.flowName}`;
@@ -192,6 +211,9 @@ export async function saveTenantOverride(
  * Deletes a tenant prompt override (reverting back to the Global subscription).
  */
 export async function deleteTenantOverride(id: string): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     await adminDb.collection('prompts').doc(id).delete();
     revalidatePath(REVALIDATION_PATH);

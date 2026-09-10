@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { APP_FEATURES, type AppFeatureId, type FeatureToggleMap } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server actions for the Feature Toggle system.
@@ -17,6 +18,9 @@ export async function updateOrganizationFeaturesAction(
   orgId: string,
   features: FeatureToggleMap
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!orgId) throw new Error('Organization ID required');
 
@@ -49,6 +53,9 @@ export async function updateWorkspaceFeaturesAction(
   workspaceId: string,
   features: FeatureToggleMap
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) throw new Error('Workspace ID required');
 

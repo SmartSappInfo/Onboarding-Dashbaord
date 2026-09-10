@@ -32,6 +32,7 @@ import type {
 } from '@/lib/deals/deal-types';
 import type { OnboardingStage } from '@/lib/types';
 import { nanoid } from 'nanoid';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export type AssignmentStrategy = 'direct' | 'round-robin' | 'value-based' | 'unassigned';
 
@@ -536,6 +537,9 @@ export async function updateDealProbabilityAction(
     probability: number,
     userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
@@ -730,6 +734,9 @@ export async function updateDealDetailsAction(
         customFields?: Record<string, unknown>;
     }
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
@@ -768,6 +775,9 @@ export async function addDealContactAction(
     entityId: string, 
     role: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
@@ -820,6 +830,9 @@ export async function removeDealContactAction(
     dealId: string, 
     entityId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const dealRef = adminDb.collection('deals').doc(dealId);
         const dealSnap = await dealRef.get();
@@ -863,6 +876,9 @@ export async function clearStageDealsAction(
     workspaceId: string,
     userId: string
 ): Promise<{ success: boolean; error?: string; count?: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const permission = await canUser(userId, 'operations', 'pipeline', 'edit', workspaceId);
         if (!permission.granted) {
@@ -930,6 +946,9 @@ export async function deleteDealAction(
     workspaceId: string,
     userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealId || !workspaceId) {
             return { success: false, error: 'Missing dealId or workspaceId' };
@@ -985,6 +1004,9 @@ export async function cleanLegacyDealNamesAction(params?: {
     workspaceId?: string;
     userId?: string;
 }): Promise<{ success: boolean; totalChecked: number; updatedCount: number; errors?: string[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const { workspaceId, userId } = params || {};
         
@@ -1097,6 +1119,9 @@ export async function updateStageOrdersAction(
     workspaceId?: string,
     userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!pipelineId || !orderedStageIds || orderedStageIds.length === 0) {
             return { success: false, error: 'Pipeline ID and stage IDs are required.' };
@@ -1138,6 +1163,9 @@ export async function updateDealAction(
     workspaceId: string,
     userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealId || !workspaceId) {
             return { success: false, error: 'Missing dealId or workspaceId' };
@@ -1205,6 +1233,9 @@ export async function bulkUpdateDealsStageAction(
     workspaceId: string,
     userId?: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealIds || dealIds.length === 0 || !targetStageId || !workspaceId) {
             return { success: false, updatedCount: 0, error: 'Missing required parameters' };
@@ -1345,6 +1376,9 @@ export async function bulkAssignDealsAction(
     workspaceId: string,
     userId?: string
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealIds || dealIds.length === 0 || !workspaceId) {
             return { success: false, updatedCount: 0, error: 'Missing required parameters' };
@@ -1414,6 +1448,9 @@ export async function bulkDeleteDealsAction(
     workspaceId: string,
     userId?: string
 ): Promise<{ success: boolean; deletedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealIds || dealIds.length === 0 || !workspaceId) {
             return { success: false, deletedCount: 0, error: 'Missing required parameters' };
@@ -1484,6 +1521,9 @@ export async function duplicateDealAction(
     options?: DealDuplicateOptions,
     userId?: string
 ): Promise<{ success: boolean; newDealId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!dealId) {
             return { success: false, error: 'Deal ID is required' };
@@ -1616,6 +1656,9 @@ export async function archiveDealAction(
     dealId: string,
     userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!dealId) return { success: false, error: 'Deal ID is required' };
 
@@ -1661,6 +1704,9 @@ export async function unarchiveDealAction(
     dealId: string,
     userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!dealId) return { success: false, error: 'Deal ID is required' };
 
@@ -1707,6 +1753,9 @@ export async function bulkArchiveDealsAction(
     workspaceId: string,
     userId?: string
 ): Promise<{ success: boolean; archivedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealIds || dealIds.length === 0 || !workspaceId) {
             return { success: false, archivedCount: 0, error: 'Missing required parameters' };
@@ -1783,6 +1832,9 @@ export async function mergeDealsAction(
     workspaceId: string,
     userId?: string
 ): Promise<DealMergeResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const { masterDealId, secondaryDealId } = options;
         if (!masterDealId || !secondaryDealId || masterDealId === secondaryDealId) {
@@ -1997,6 +2049,9 @@ export async function mergeDealsAction(
 export async function convertLeadToDealAction(
     options: LeadConversionOptions
 ): Promise<LeadConversionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const {
             leadEntityId,
@@ -2222,6 +2277,9 @@ export async function logDealInteractionAction(
     userId: string,
     workspaceId: string
 ): Promise<DealInteractionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         if (!dealId || !interactionData || !userId || !workspaceId) {
             return { success: false, error: 'Missing required parameters for logging deal interaction.' };

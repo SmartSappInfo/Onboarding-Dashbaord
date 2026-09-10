@@ -14,6 +14,7 @@ import {
 import { WhatsAppTemplateRepository } from '@/lib/whatsapp/whatsapp-template-repository';
 import { toWhatsAppTemplateName } from '@/app/admin/messaging/templates/lib/unified-template';
 import type { WhatsAppTemplate, WhatsAppTemplateCategory } from '@/lib/whatsapp/whatsapp-types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /** A skeleton that could not be pushed — surfaced per item so one bad template
  *  never hides the rest of the batch. */
@@ -84,6 +85,9 @@ export async function bulkPushWhatsAppSkeletonsAction(
   organizationId: string,
   skeletonIds: string[]
 ): Promise<BulkPushResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const failed: BulkPushFailure[] = [];
   const skipped: BulkPushSkip[] = [];
   let pushed = 0;

@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { PageBlock, PageSection, CampaignPageVersion } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface MigrationResult {
   total: number;
@@ -121,6 +122,9 @@ function hasTestimonialBlock(block: PageBlock): boolean {
 }
 
 export async function fetchOutdatedCampaignPages(): Promise<string[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const versionsSnapshot = await adminDb.collection('page_versions').get();
     const outdatedVersionIds: string[] = [];
@@ -147,6 +151,9 @@ export async function fetchOutdatedCampaignPages(): Promise<string[]> {
 export async function migrateLegacyTestimonialBlocksAction(
   versionIds?: string[]
 ): Promise<MigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const result: MigrationResult = {
     total: 0,
     succeeded: 0,

@@ -6,6 +6,10 @@
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 
+// src/test/setup.ts installs a default mock of this module so the rest of the suite can
+// call guarded actions. This file tests the real implementation, so opt out of that.
+vi.unmock('@/lib/auth/require-auth');
+
 const mockGet = vi.fn();
 const mockVerifySessionCookie = vi.fn();
 const mockUserGet = vi.fn();

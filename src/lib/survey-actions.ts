@@ -21,6 +21,7 @@ import { processLeadCaptureAction } from './lead-actions';
 import { getWorkspaceIndustry } from './industry-cache';
 import { splitFileUrls } from './survey-file-utils';
 import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import {
   extractFileNameFromStorageUrl,
   isGenericChoiceValue,
@@ -83,6 +84,9 @@ export async function syncSurveyUploadedFilesToMedia(
   surveyTitle: string,
   entityId?: string | null
 ): Promise<string[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const registeredUrls: string[] = [];
   if (!workspaceId || !Array.isArray(answers) || answers.length === 0) return registeredUrls;
 
@@ -162,6 +166,9 @@ export async function sanitizeEntityPayloadForUpdate(
     existingEntityName?: string | null;
   }
 ): Promise<EntityMutationPayload> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const sanitized: EntityMutationPayload = { ...payload };
 
   const isExistingNameGeneric = options.existingEntityName
@@ -186,6 +193,9 @@ export async function getSurveysForContact(
   entityId: string,
   workspaceId: string
 ): Promise<Survey[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let query = adminDb.collection('surveys')
       .where('workspaceIds', 'array-contains', workspaceId);
@@ -214,6 +224,9 @@ export async function getSurveyResponsesForContact(
   surveyId: string,
   entityId: string
 ): Promise<SurveyResponse[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     let query = adminDb.collection('surveys').doc(surveyId).collection('responses');
 
@@ -455,6 +468,9 @@ export async function resolveOrMatchWorkspaceEntity(
     name?: string | null;
   }
 ): Promise<EntityMatchResult | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return null;
 
   const dedupeBase = adminDb.collection('workspace_entities').where('workspaceId', '==', workspaceId);
@@ -1760,6 +1776,9 @@ export async function executeSurveyPipelineAndAutomations(params: {
   entityName?: string | null;
   outcomeId?: string | null;
 }): Promise<{ outcomeMovedDeal: boolean; workbenchMovedDeal: boolean }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { surveyData, responseId, responseData, workspaceId, organizationId, entityId, entityName, outcomeId } = params;
 
   let outcomeMovedDeal = false;
@@ -2526,6 +2545,9 @@ export interface PipelineRouteParams {
 }
 
 export async function addOrMoveEntityInPipeline(params: PipelineRouteParams): Promise<{ success: boolean; dealId?: string; action?: 'created' | 'moved'; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { entityId, entityName, workspaceId, organizationId, pipelineId, stageId, scoreDetails } = params;
     if (!entityId || !workspaceId || !pipelineId || !stageId) {

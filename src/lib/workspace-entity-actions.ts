@@ -15,6 +15,7 @@ import {
 import type { Entity, Workspace, WorkspaceEntity } from './types';
 import { extractPrimaryContactFields } from './entity-contact-helpers';
 import { filterAndSortEntities, type FilterStateInput } from './utils/entity-filter-util';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server actions for workspace-entity relationship management.
@@ -310,6 +311,9 @@ interface UnlinkEntityFromWorkspaceInput {
  * Requirements: 3
  */
 export async function unlinkEntityFromWorkspaceAction(input: UnlinkEntityFromWorkspaceInput) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const timestamp = new Date().toISOString();
 
@@ -534,6 +538,9 @@ export interface ArchiveEntityInput {
  * If archiveAllWorkspaces is true, archives all workspace_entities for this entity ID within the organization.
  */
 export async function archiveEntityAction(input: ArchiveEntityInput) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const timestamp = new Date().toISOString();
     const weRef = adminDb.collection('workspace_entities').doc(input.workspaceEntityId);
@@ -665,6 +672,9 @@ export interface DeleteEntityPermanentlyInput {
  * Otherwise, deletes only the specified workspace entity record.
  */
 export async function deleteEntityPermanentlyAction(input: DeleteEntityPermanentlyInput) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const timestamp = new Date().toISOString();
 
@@ -1103,6 +1113,9 @@ export async function getFilteredEntityIdsAction(
   tagFilteredIdsArray: string[] | null | undefined,
   sortConfig: { key: string; direction: 'asc' | 'desc' } | null
 ): Promise<{ success: boolean; data?: string[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let q = adminDb.collection('workspace_entities')
       .where('workspaceId', '==', workspaceId);

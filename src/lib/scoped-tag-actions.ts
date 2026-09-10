@@ -17,6 +17,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import type { Entity, WorkspaceEntity } from './types';
 import { syncContactProjectionForEntityWorkspace } from './contacts/contact-projection-writer';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Applies tags to an entity, automatically determining scope from tag definitions
@@ -196,6 +197,15 @@ export async function removeTagAction(
   workspaceId: string | null,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  // workspaceId is nullable here, so scope to it when present and otherwise just
+  // establish identity.
+  if (workspaceId) {
+    await requireWorkspace(workspaceId);
+  } else {
+    await requireAuth();
+  }
+
   try {
     // Validate inputs
     if (!entityId || !tagIds || tagIds.length === 0 || !userId) {
@@ -349,6 +359,9 @@ export async function getEntityTagsAction(
   workspaceTags?: string[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // Get entity global tags
     const entityRef = adminDb.collection('entities').doc(entityId);

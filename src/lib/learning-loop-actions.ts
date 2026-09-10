@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { after } from 'next/server';
 import type { LearningSignal } from './types';
 import { calculateJsonDiff } from './json-diff';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Creates a new learning signal record when AI generates content.
@@ -140,6 +141,9 @@ export async function deleteLearningSignalsBySurveyAction(surveyId: string) {
  * @returns Array of highly-rated or zero-edit-distance final states
  */
 export async function getGoldStandardExamples(organizationId: string, limit: number = 2) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     if (!organizationId) return [];
 
     try {

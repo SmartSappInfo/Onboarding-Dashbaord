@@ -8,6 +8,7 @@ import { canUser } from './workspace-permissions';
 import { COLLECTIONS } from './collection-constants';
 import { submissionsToCSV } from './forms-utils';
 import { normalizeFormEntityCapture } from './tracking-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server-side actions for the Form Builder.
@@ -479,6 +480,9 @@ export async function getPublicFormDefinitionAction(
   } | null;
   appFields: Record<string, AppField>;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!formId) return { form: null, appFields: {} };
 
   try {

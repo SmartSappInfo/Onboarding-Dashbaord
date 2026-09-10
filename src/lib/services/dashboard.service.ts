@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { DashboardLayoutConfig } from '@/lib/types/dashboard';
 import { DashboardTemplates } from '@/lib/config/dashboard-templates';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Fetches the dashboard configuration for a workspace and entity type.
@@ -13,6 +14,9 @@ export async function getDashboardConfig(
   industry: string = 'saas',
   entityType?: string
 ): Promise<DashboardLayoutConfig> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   // Get the default template for the industry
   const template = DashboardTemplates[industry] || DashboardTemplates['saas'];
   let config = template.defaultLayout;
@@ -47,6 +51,9 @@ export async function saveDashboardLayout(
   layouts: DashboardLayoutConfig['layouts'],
   entityType?: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   // Note: Authentication and authorization checks should happen here 
   // or at the route handler level before invoking this service.
   

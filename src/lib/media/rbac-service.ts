@@ -22,6 +22,7 @@ import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import type { MediaResourcePermission, MediaResourceRole } from '@/lib/types/media-2.0';
 import { logMediaAuditEventAction } from './audit-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export const ROLE_HIERARCHY: Record<MediaResourceRole, number> = {
   ADMIN: 7,
@@ -43,6 +44,9 @@ export async function checkMediaPermissionAction(
   resourceId: string,
   requiredRole: MediaResourceRole
 ): Promise<{ granted: boolean; effectiveRole?: MediaResourceRole; reason?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !userId || !resourceId) {
       return { granted: false, reason: 'Missing required parameters.' };
@@ -106,6 +110,9 @@ export async function saveResourcePermissionAction(
   permissionData: Omit<MediaResourcePermission, 'id' | 'createdAt'>,
   actorId: string = 'admin'
 ): Promise<{ success: boolean; permission?: MediaResourcePermission; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const id = `perm_${crypto.randomUUID()}`;
     const timestamp = new Date().toISOString();
@@ -145,6 +152,9 @@ export async function listResourcePermissionsAction(
   workspaceId: string,
   resourceId: string
 ): Promise<{ success: boolean; permissions?: MediaResourcePermission[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !resourceId) {
       return { success: false, error: 'Workspace ID and Resource ID are required.' };
@@ -172,6 +182,9 @@ export async function deleteResourcePermissionAction(
   workspaceId: string,
   actorId: string = 'admin'
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('media_resource_permissions').doc(permissionId);
     const snap = await docRef.get();

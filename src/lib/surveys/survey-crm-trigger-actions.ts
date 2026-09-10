@@ -17,6 +17,7 @@ import { encryptToken } from '@/lib/crypto';
 import { sendMessage } from '@/lib/messaging-engine';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { logActivity } from '@/lib/activity-logger';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface ActiveSurveyOption {
   id: string;
@@ -139,6 +140,9 @@ export async function getEntitySurveyHistoryAction(
   entityId: string,
   workspaceId: string
 ): Promise<{ success: boolean; data: EntitySurveyHistorySummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!entityId || !workspaceId) {
       return {
@@ -242,6 +246,9 @@ export async function getEntitySurveyHistoryAction(
 export async function sendSurveyToContactAction(
   params: SendSurveyToContactParams
 ): Promise<{ success: boolean; surveyUrl?: string; messageId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const {
       surveyId,
@@ -366,6 +373,9 @@ export async function executeCrmInboundSurveyTriggerAction(params: {
   pipelineId?: string;
   stageId?: string;
 }): Promise<{ success: boolean; triggeredCount: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { event, workspaceId, entityId, contactId, recipientName, recipientEmail, recipientPhone } = params;
     if (!workspaceId || !entityId) return { success: true, triggeredCount: 0 };

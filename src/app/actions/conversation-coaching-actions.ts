@@ -46,6 +46,7 @@ import {
   getDefaultPracticeLabScenarios,
 } from '@/lib/conversation-coaching/migration-protocol';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Server Action: Retrieve full coaching workspace context for a rep/manager.
@@ -64,6 +65,9 @@ export async function getCoachingWorkspaceAction(params: {
   recentCalls: CallConversation[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, repId = 'usr_default', repName = 'Sales Representative' } = params;
     if (!workspaceId || !organizationId) {
@@ -190,6 +194,9 @@ export async function getCallIntelligenceDetailAction(params: {
   reviews?: CallScorecardReview[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, callId } = params;
     if (!workspaceId || !callId) {
@@ -252,6 +259,9 @@ export async function submitManualScorecardReviewAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -372,6 +382,9 @@ export async function startRoleplaySessionAction(params: {
   session?: RoleplaySession;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, repId, repName, scenarioId } = params;
     if (!workspaceId || !repId || !scenarioId) {
@@ -444,6 +457,9 @@ export async function submitRoleplayTurnAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, sessionId, repMessage } = params;
     if (!workspaceId || !sessionId || !repMessage.trim()) {
@@ -623,6 +639,9 @@ export async function assignCoachingDrillAction(params: {
   drillId?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -712,6 +731,9 @@ export async function getTeamCoachingOverviewAction(params: {
   overview?: TeamCoachingOverview;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId } = params;
     if (!workspaceId) {
@@ -855,6 +877,9 @@ export async function saveScorecardTemplateAction(params: {
   templateId?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, template } = params;
     if (!workspaceId || !template.name) {
@@ -900,6 +925,9 @@ export async function savePracticeScenarioAction(params: {
   scenarioId?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, scenario } = params;
     if (!workspaceId || !scenario.title || !scenario.initialPrompt) {
@@ -936,5 +964,8 @@ export async function runCoachingMigrationAction(params: {
   repName?: string;
   seedCalls?: boolean;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   return executeCoachingMigration(params);
 }

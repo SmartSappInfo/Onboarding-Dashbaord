@@ -25,6 +25,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface CustomDataCleanupResult {
     total: number;             // Total entities scanned
@@ -41,6 +42,9 @@ export interface CustomDataCleanupResult {
 export async function fetchEntitiesWithCustomData(
     organizationId: string
 ): Promise<{ success: boolean; data?: CustomDataCleanupResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const snap = await adminDb
             .collection('entities')
@@ -81,6 +85,9 @@ export async function fetchEntitiesWithCustomData(
 export async function cleanupEntityCustomData(
     organizationId: string
 ): Promise<{ success: boolean; data?: CustomDataCleanupResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const snap = await adminDb
             .collection('entities')
@@ -146,6 +153,9 @@ export async function cleanupEntityCustomData(
 export async function validateCustomDataCleanup(
     organizationId: string
 ): Promise<{ success: boolean; data?: CustomDataCleanupResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const snap = await adminDb
             .collection('entities')

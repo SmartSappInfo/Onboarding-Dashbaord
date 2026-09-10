@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { EntityContact, EntityType } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Profile Update Actions
@@ -115,6 +116,9 @@ export async function updateEntityIdentity(
     globalTags?: string[];
   }
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const entityRef = adminDb.collection('entities').doc(entityId);
     await entityRef.update({
@@ -151,6 +155,9 @@ export async function updateWorkspaceEntityOperations(
     workspaceTags?: string[];
   }
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     // Find workspace_entity record
     const weQuery = await adminDb

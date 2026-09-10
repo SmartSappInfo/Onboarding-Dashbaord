@@ -12,6 +12,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { ContactTypeEntry, EntityType } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
     resolveContactTypes,
     getContactTypeTemplateId,
@@ -92,6 +93,9 @@ export async function saveContactTypeOverrides(
     types: ContactTypeEntry[],
     updatedBy?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const docId = getContactTypeTemplateId(scopeType, entityType, scopeId);
         await adminDb.collection('contact_type_templates').doc(docId).set({

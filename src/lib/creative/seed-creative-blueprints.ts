@@ -14,6 +14,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CreativeTemplate } from '@/lib/creative/creative-types';
 import { FORMAT_PRESETS } from '@/lib/creative/creative-types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export const GLOBAL_BLUEPRINT_TEMPLATES: CreativeTemplate[] = [
   {
@@ -219,6 +220,9 @@ export async function seedGlobalCreativeBlueprintsAction(): Promise<{
   seededCount: number;
   message: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const batch = adminDb.batch();
     let seededCount = 0;

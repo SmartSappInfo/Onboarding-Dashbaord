@@ -12,6 +12,7 @@ import { AgreementSequenceService } from './services/agreement-sequence-service'
 import { FinancialAccountService } from './services/financial-account-service';
 import { RecurringBillingService } from './services/recurring-billing-service';
 import { logActivity } from './activity-logger';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateAgreementInput {
   organizationId?: string;
@@ -36,6 +37,9 @@ export interface CreateAgreementInput {
 export async function createAgreementAction(
   input: CreateAgreementInput
 ): Promise<ActionResponse & { agreement?: BillingAgreement }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, userId, entityId, entityName, productId, productName, quantity, ratePerUnit, currency, billingFrequency, billingProfileId, startDate } = input;
 
@@ -125,6 +129,9 @@ export async function updateAgreementAction(
   userId: string,
   updates: Partial<BillingAgreement>
 ): Promise<ActionResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -182,6 +189,9 @@ export async function executeRecurringBillingAction(
   userId: string,
   autoIssue: boolean = false
 ): Promise<ActionResponse & { batchResult?: RecurringBillingBatchResult }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'create', workspaceId);
     if (!permission.granted) {
@@ -223,6 +233,9 @@ export async function getAgreementsByEntityAction(
   entityId: string,
   workspaceId: string
 ): Promise<ActionResponse & { agreements?: BillingAgreement[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('billing_agreements')

@@ -31,6 +31,7 @@ import type {
 import type { FlipbookConfig, FlipbookPage } from '@/lib/types/flipbook-types';
 import { hashPasscode, verifyPasscode } from '@/lib/documents/access-service';
 import { ingestDocumentEvent, IngestEventPayload } from '@/lib/documents/event-collector';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateDocumentPayload {
   workspaceId: string;
@@ -70,6 +71,9 @@ export interface UpdateDocumentPayload {
  * Creates a new Document with Version 1, Source, ViewerExperience, and Pages.
  */
 export async function createDocumentAction(payload: CreateDocumentPayload): Promise<{ success: boolean; documentId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!payload.workspaceId || !payload.title || !payload.sourceFileUrl) {
       return { success: false, error: 'Required fields missing' };
@@ -306,6 +310,9 @@ export async function createDocumentAction(payload: CreateDocumentPayload): Prom
  * Updates an existing Document and its associated experience and access policies.
  */
 export async function updateDocumentAction(payload: UpdateDocumentPayload): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!payload.documentId || !payload.workspaceId) {
       return { success: false, error: 'Document ID and workspace ID required' };
@@ -398,6 +405,9 @@ export async function updateDocumentAction(payload: UpdateDocumentPayload): Prom
  * Deletes a Document and all its child pages and entities in chunked batches.
  */
 export async function deleteDocumentAction(documentId: string, workspaceId: string): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('documents').doc(documentId);
     const legacyRef = adminDb.collection('flipbooks').doc(documentId);

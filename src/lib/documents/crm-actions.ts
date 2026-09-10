@@ -13,6 +13,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { ContactDocumentInsightsSummary } from '@/lib/types/document-types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import {
   getContactDocumentEngagements,
   associateVisitorWithContact,
@@ -24,6 +25,9 @@ export async function getContactDocumentInsightsAction(
   workspaceId: string,
   contactId: string
 ): Promise<{ success: boolean; insights?: ContactDocumentInsightsSummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !contactId) {
       return { success: false, error: 'Workspace ID and Contact ID are required.' };
@@ -44,6 +48,9 @@ export async function linkContactDocumentSessionAction(params: {
   visitorId?: string;
   contactName?: string;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, sessionId, contactId, visitorId, contactName } = params;
 
@@ -97,6 +104,9 @@ export async function awardContactScoreAction(params: {
   documentId: string;
   documentTitle: string;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const success = await awardContactDocumentScore(params);
     return { success };

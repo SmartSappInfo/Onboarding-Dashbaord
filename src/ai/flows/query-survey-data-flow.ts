@@ -12,6 +12,7 @@
 
 import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
   SurveyResearchAssistantInputSchema,
   SurveyResearchAssistantOutputSchema,
@@ -145,6 +146,9 @@ export async function querySurveyData(input: {
   provider?: string;
   modelId?: string;
 }): Promise<SurveyResearchAssistantOutput> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return querySurveyDataFlow({
     surveyTitle: input.survey.title,
     elementsJson: JSON.stringify(input.survey.elements, null, 2),

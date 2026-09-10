@@ -15,6 +15,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { ThumbnailDesign } from '@/lib/thumbnail/thumbnail-types';
 import { thumbnailDesignToCreativeProject } from '@/lib/creative/creative-types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface FERMigrationResult {
   success: boolean;
@@ -25,6 +26,9 @@ export interface FERMigrationResult {
 }
 
 export async function migrateLegacyThumbnailsFERAction(): Promise<FERMigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const result: FERMigrationResult = {
     success: true,
     totalFetched: 0,

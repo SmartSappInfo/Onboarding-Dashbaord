@@ -3,6 +3,7 @@
 import { decryptToken } from '@/lib/crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import type { EntityContact } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 interface DecryptResult {
   success: boolean;
@@ -13,6 +14,9 @@ interface DecryptResult {
 }
 
 export async function decryptRecipientAction(token: string): Promise<DecryptResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const decrypted = decryptToken(token);
     if (!decrypted) {

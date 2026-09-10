@@ -6,6 +6,7 @@ import { logActivity } from './activity-logger';
 import type { Workspace } from './types';
 import { resolveTerminologyFromWorkspace } from './terminology';
 import { createDefaultPipelineForIndustry } from './pipeline-actions';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server-side actions for Workspace Management.
@@ -15,6 +16,9 @@ import { createDefaultPipelineForIndustry } from './pipeline-actions';
  * Resolves terminology for a workspace (Server Action for public portals)
  */
 export async function getTerminologyAction(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     if (!workspaceId) return resolveTerminologyFromWorkspace(null);
     try {
         const snap = await adminDb.collection('workspaces').doc(workspaceId).get();
@@ -30,6 +34,9 @@ export async function getTerminologyAction(workspaceId: string) {
  * Creates or updates a Workspace.
  */
 export async function saveWorkspaceAction(id: string | null, data: Partial<Workspace>, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const timestamp = new Date().toISOString();
         const slug = data.name?.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -153,6 +160,9 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
  * Attempts to delete a workspace. 
  */
 export async function deleteWorkspaceAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const db = adminDb;
         
@@ -189,6 +199,9 @@ export async function deleteWorkspaceAction(id: string, userId: string) {
  * Archives a workspace.
  */
 export async function archiveWorkspaceAction(id: string, archive: boolean) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         await adminDb.collection('workspaces').doc(id).update({
             status: archive ? 'archived' : 'active',
@@ -210,6 +223,9 @@ export async function updateWorkspaceScopeAction(
     newContactScope: 'institution' | 'family' | 'person',
     userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         // Validate contactScope
         if (!['institution', 'family', 'person'].includes(newContactScope)) {
@@ -287,6 +303,9 @@ export async function migrateLegacyWorkspaceScopesAction(
     organizationId: string,
     userId: string
 ): Promise<{ success: boolean; count: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!organizationId) {
             return { success: false, count: 0, error: 'Organization ID is required' };

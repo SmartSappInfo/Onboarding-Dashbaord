@@ -11,6 +11,7 @@ import { sendMessage } from './messaging-engine';
 import { triggerInternalNotification } from './notification-engine';
 import { format } from 'date-fns';
 import { getBaseUrl } from './utils/url-helpers';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server actions for the Institutional Contract Lifecycle.
@@ -428,6 +429,9 @@ export async function finalizeAgreementAction(
 }
 
 export async function createPdfForm(data: Partial<PDFForm> & { size?: number; mimeType?: string; originalFileName?: string }, userId: string, workspaceIds: string[]): Promise<{ success: boolean; id?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!Array.isArray(workspaceIds) || workspaceIds.length === 0 || workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
     return { success: false, error: 'A PDF Form must be associated with at least one valid workspace.' };
   }
@@ -494,6 +498,9 @@ export async function createPdfForm(data: Partial<PDFForm> & { size?: number; mi
 }
 
 export async function clonePdfForm(pdfId: string, userId: string): Promise<{ success: boolean; id?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const pdfRef = adminDb.collection('pdfs').doc(pdfId);
     const pdfSnap = await pdfRef.get();
@@ -527,6 +534,9 @@ export async function clonePdfForm(pdfId: string, userId: string): Promise<{ suc
 }
 
 export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     if (data.workspaceIds !== undefined) {
         if (!Array.isArray(data.workspaceIds) || data.workspaceIds.length === 0 || data.workspaceIds.some(id => typeof id !== 'string' || !id.trim())) {
             throw new Error('A PDF Form must be associated with at least one valid workspace.');
@@ -554,6 +564,9 @@ export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
 }
 
 export async function updatePdfFormStatus(pdfId: string, status: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const pdfRef = adminDb.collection('pdfs').doc(pdfId);
     const pdfSnap = await pdfRef.get();
     if (!pdfSnap.exists) return { error: 'Document not found.' };
@@ -564,6 +577,9 @@ export async function updatePdfFormStatus(pdfId: string, status: string, userId:
 }
 
 export async function deletePdfForm(pdfId: string, storagePath: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     await adminDb.collection('pdfs').doc(pdfId).delete();
     try { if (storagePath) await adminStorage.file(storagePath).delete(); } catch (e) {}
     revalidatePath('/admin/pdfs');
@@ -571,6 +587,9 @@ export async function deletePdfForm(pdfId: string, storagePath: string, userId: 
 }
 
 export async function deleteSubmissions(pdfId: string, submissionIds: string[], userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const batch = adminDb.batch();
     const pdfRef = adminDb.collection('pdfs').doc(pdfId);
     for (const id of submissionIds) batch.delete(pdfRef.collection('submissions').doc(id));
@@ -588,6 +607,9 @@ export async function purgeContractAction(
     submissionIds: string[],
     userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const db = adminDb;
         const batch = db.batch();
@@ -661,6 +683,9 @@ export async function purgeContractAction(
  * Updates sharing settings for a PDF's results portal.
  */
 export async function updatePdfResultsSharing(pdfId: string, options: { shared: boolean; password?: string }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         await adminDb.collection('pdfs').doc(pdfId).update({
             resultsShared: options.shared,
@@ -678,6 +703,9 @@ export async function updatePdfResultsSharing(pdfId: string, options: { shared: 
  * Updates core form mapping and metadata.
  */
 export async function updatePdfFormMapping(pdfId: string, data: Partial<PDFForm>) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         await adminDb.collection('pdfs').doc(pdfId).update({
             ...data,

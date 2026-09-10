@@ -18,6 +18,7 @@
 import { adminDb } from '../firebase-admin';
 import type { WorkspaceEntity } from '../types';
 import { flattenEntityContacts } from './contact-projection-domain';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const PAGE_SIZE = 100; // WEs per page — each fans out into N contact docs
 const MAX_BATCH = 450; // stay under Firestore's 500 writes/commit limit
@@ -34,6 +35,9 @@ export async function backfillWorkspaceContacts(opts?: {
   workspaceId?: string;
   afterId?: string;
 }): Promise<ContactsBackfillResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   let q = adminDb.collection('workspace_entities') as FirebaseFirestore.Query;
   if (opts?.workspaceId) q = q.where('workspaceId', '==', opts.workspaceId);
   q = q.orderBy('__name__').limit(PAGE_SIZE);

@@ -20,6 +20,7 @@ import { developIdeaFlow } from '@/ai/flows/develop-idea-flow';
 import { challengeIdeaAssumptionsFlow } from '@/ai/flows/challenge-idea-assumptions-flow';
 import { decomposeIdeaCanvasFlow } from '@/ai/flows/decompose-idea-canvas-flow';
 import { adminDb } from './firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Quick Notes Idea Intelligence Server Actions (Company Brain Phase 6).
@@ -89,6 +90,9 @@ export async function createIdeaAction(
   authorId: string,
   authorName = 'User'
 ): Promise<ActionResponse<Idea>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !authorId || !payload.title?.trim()) {
     return { success: false, error: 'workspaceId, authorId, and title are required' };
   }
@@ -190,6 +194,9 @@ export async function updateIdeaAction(
   updates: UpdateIdeaPayload,
   userId: string
 ): Promise<ActionResponse<Idea>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !userId) {
     return { success: false, error: 'workspaceId, ideaId, and userId are required' };
   }
@@ -220,6 +227,9 @@ export async function deleteIdeaAction(
   ideaId: string,
   userId: string
 ): Promise<ActionResponse<boolean>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !userId) {
     return { success: false, error: 'workspaceId, ideaId, and userId are required' };
   }
@@ -243,6 +253,9 @@ export async function transitionIdeaStageAction(
   userId: string,
   options: { strictValidationGate?: boolean; minEvidenceForApproval?: number } = {}
 ): Promise<ActionResponse<Idea>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !nextStage) {
     return { success: false, error: 'workspaceId, ideaId, and nextStage are required' };
   }
@@ -290,6 +303,9 @@ export async function developRawIdeaAiAction(
     customDirectives?: string;
   } = {}
 ): Promise<ActionResponse<IdeaAiDeconstructionResult>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !rawText?.trim() || !userId) {
     return { success: false, error: 'workspaceId, rawText, and userId are required' };
   }
@@ -322,6 +338,9 @@ export async function challengeIdeaAssumptionsAiAction(
   ideaId: string,
   userId: string
 ): Promise<ActionResponse<IdeaAssumptionChallengeResult>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !userId) {
     return { success: false, error: 'workspaceId, ideaId, and userId are required' };
   }
@@ -371,6 +390,9 @@ export async function decomposeIdeaCanvasAiAction(
   },
   userId: string
 ): Promise<ActionResponse<{ suggestedNodes: Array<{ type: string; title: string; description: string; relationLabel: string; color?: string }>; explanation: string }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !userId) {
     return { success: false, error: 'workspaceId, ideaId, and userId are required' };
   }
@@ -410,6 +432,9 @@ export async function saveIdeaCanvasLayoutAction(
   layout: IdeaCanvasLayout,
   userId: string
 ): Promise<ActionResponse<boolean>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !userId) {
     return { success: false, error: 'workspaceId, ideaId, and userId are required' };
   }
@@ -437,6 +462,9 @@ export async function convertIdeaToTaskAction(
     assignedTo?: string;
   }
 ): Promise<ActionResponse<{ taskId: string }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !ideaId || !userId) {
     return { success: false, error: 'workspaceId, ideaId, and userId are required' };
   }

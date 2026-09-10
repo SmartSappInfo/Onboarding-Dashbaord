@@ -1,12 +1,16 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * SEED: System Maintenance Template
  * Specifically requested for SMS alerts during maintenance windows.
  */
 export async function seedMaintenanceTemplate() {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const timestamp = new Date().toISOString();
         const templateId = 'global_general_maintenance_sms';

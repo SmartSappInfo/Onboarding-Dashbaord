@@ -43,6 +43,7 @@ import { executeSalesTeamMigration, type MigrationResult } from '@/lib/manager-c
 import type { SalesTarget, SalesAgent, SalesPerformanceDaily } from '@/lib/sales-performance/types';
 import type { PerformancePolicy as PolicyStudioPolicy } from '@/lib/policy-studio/types';
 import { DEFAULT_PERFORMANCE_POLICY } from '@/lib/sales-performance/performance-engine';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Server Action: Retrieve complete Manager Command Center overview payload.
@@ -52,6 +53,9 @@ export async function getManagerCommandOverviewAction(params: {
   organizationId: string;
   teamId?: string;
 }): Promise<{ success: boolean; data?: ManagerCommandOverview; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, teamId } = params;
     if (!workspaceId || !organizationId) {
@@ -419,6 +423,9 @@ export async function getManagerCommandOverviewAction(params: {
 export async function executeManagerInterventionAction(
   payload: ManagerInterventionPayload
 ): Promise<{ success: boolean; interventionId?: string; message?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const {
       workspaceId,
@@ -561,6 +568,9 @@ export async function rebalanceTeamWorkloadAction(params: {
   managerId: string;
   proposals: WorkloadRebalanceProposal[];
 }): Promise<{ success: boolean; reassignedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, managerId, proposals } = params;
     if (!workspaceId || proposals.length === 0) {
@@ -628,6 +638,9 @@ export async function generateRepCoachingBriefAction(params: {
   organizationId: string;
   repId: string;
 }): Promise<{ success: boolean; data?: CoachingBrief1on1; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, repId } = params;
 
@@ -756,6 +769,9 @@ export async function runSalesTeamMigrationAction(params: {
   actorId: string;
   seedSampleDataIfEmpty?: boolean;
 }): Promise<MigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   return executeSalesTeamMigration(params);
 }
 
@@ -778,6 +794,9 @@ export async function getBackofficeSalesTeamsAction(params: {
   agents?: SalesAgent[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId } = params;
     if (!workspaceId) {
@@ -828,6 +847,9 @@ export async function saveSalesTeamConfigAction(params: {
     maxOpenDeals: number;
   };
 }): Promise<{ success: boolean; teamId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, teamId, name, description, managerIds = [], memberIds = [] } = params;
     if (!workspaceId || !name) {
@@ -875,6 +897,9 @@ export async function updateAgentCapacityAction(params: {
     maxOpenDeals: number;
   };
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { agentDocId, capacity } = params;
     if (!agentDocId || !capacity) {

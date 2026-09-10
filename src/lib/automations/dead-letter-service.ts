@@ -23,6 +23,7 @@ import { canUser } from '../workspace-permissions';
 import { logActivity } from '../activity-logger';
 import { revalidatePath } from 'next/cache';
 import type { AutomationDeadLetter } from '../types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Generates a deterministic idempotency key for an automation step execution
@@ -33,6 +34,9 @@ export async function generateStepIdempotencyKey(
   nodeId: string,
   eventId?: string
 ): Promise<string> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const cleanEvent = eventId ? `_${eventId}` : '';
   return `idem_${automationId}_${runId}_${nodeId}${cleanEvent}`;
 }
@@ -41,6 +45,9 @@ export async function generateStepIdempotencyKey(
  * Checks whether an idempotency key has already been processed successfully
  */
 export async function checkIdempotency(key: string): Promise<boolean> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('automation_idempotency_keys').doc(key);
     const snap = await docRef.get();
@@ -62,6 +69,9 @@ export async function markIdempotencyComplete(
   workspaceId: string,
   metadata?: Record<string, unknown>
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('automation_idempotency_keys').doc(key);
     await docRef.set({
@@ -95,6 +105,9 @@ export async function recordDeadLetter(params: {
   payload: Record<string, unknown>;
   maxAttempts?: number;
 }): Promise<string> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const dlqId = `dlq_${params.runId}_${params.nodeId || 'step'}_${Date.now()}`;
     const dlqRef = adminDb.collection('automation_dead_letters').doc(dlqId);
@@ -136,6 +149,9 @@ export async function listAutomationDeadLettersAction(
   workspaceId: string,
   statusFilter?: 'pending' | 'resolved' | 'dismissed' | 'all'
 ): Promise<{ success: boolean; items?: AutomationDeadLetter[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let query: FirebaseFirestore.Query = adminDb
       .collection('automation_dead_letters')
@@ -162,6 +178,9 @@ export async function retryAutomationDeadLetterAction(
   deadLetterId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const dlqRef = adminDb.collection('automation_dead_letters').doc(deadLetterId);
     const snap = await dlqRef.get();
@@ -237,6 +256,9 @@ export async function dismissAutomationDeadLetterAction(
   deadLetterId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const dlqRef = adminDb.collection('automation_dead_letters').doc(deadLetterId);
     const snap = await dlqRef.get();

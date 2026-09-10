@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { Role, UserProfile } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Workspace access synchronization utilities.
@@ -36,6 +37,9 @@ import type { Role, UserProfile } from './types';
  * Requirements: 9.5
  */
 export async function syncUserWorkspaceAccess(userId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     console.log(`>>> [WORKSPACE_ACCESS_SYNC] Syncing workspace access for user ${userId}`);
 
@@ -99,6 +103,9 @@ export async function syncUserWorkspaceAccess(userId: string): Promise<void> {
  * Requirements: 9.5
  */
 export async function syncRoleMembersWorkspaceAccess(roleId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     console.log(`>>> [WORKSPACE_ACCESS_SYNC] Syncing workspace access for role ${roleId} members`);
 
@@ -151,6 +158,9 @@ export async function syncRoleMembersWorkspaceAccess(roleId: string): Promise<vo
  * Requirements: 9.5
  */
 export async function syncOrganizationWorkspaceAccess(organizationId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     console.log(
       `>>> [WORKSPACE_ACCESS_SYNC] Syncing workspace access for all users in organization ${organizationId}`
@@ -194,6 +204,9 @@ export async function syncOrganizationWorkspaceAccess(organizationId: string): P
  * Requirements: 9.5
  */
 export async function handleUserRemovedFromRole(userId: string, roleId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   console.log(`>>> [WORKSPACE_ACCESS_SYNC] User ${userId} removed from role ${roleId}`);
   await syncUserWorkspaceAccess(userId);
 }
@@ -210,6 +223,9 @@ export async function handleUserRemovedFromRole(userId: string, roleId: string):
  * Requirements: 9.5
  */
 export async function handleUserAddedToRole(userId: string, roleId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   console.log(`>>> [WORKSPACE_ACCESS_SYNC] User ${userId} added to role ${roleId}`);
   await syncUserWorkspaceAccess(userId);
 }
@@ -229,6 +245,9 @@ export async function handleRoleWorkspaceIdsChanged(
   roleId: string,
   workspaceId: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   console.log(
     `>>> [WORKSPACE_ACCESS_SYNC] Role ${roleId} workspace access changed (workspace ${workspaceId})`
   );

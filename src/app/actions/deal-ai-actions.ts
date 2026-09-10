@@ -22,6 +22,7 @@ import { canUser } from '@/lib/workspace-permissions';
 import { dealIntelligenceFlow } from '@/ai/flows/deal-intelligence-flow';
 import { calculateDaysInStage } from '@/lib/deals/deal-health-engine';
 import type { Deal } from '@/lib/types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface DealAiInsightsResult {
   success: boolean;
@@ -56,6 +57,9 @@ export async function generateDealAiInsightsAction(
   workspaceId: string,
   userId?: string
 ): Promise<DealAiInsightsResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const dealRef = adminDb.collection('deals').doc(dealId);
     const dealSnap = await dealRef.get();

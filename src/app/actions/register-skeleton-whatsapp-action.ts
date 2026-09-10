@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { requireOrgAdmin } from '@/lib/auth/require-org-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function registerSkeletonWhatsAppAction(
   idToken: string,
@@ -11,6 +12,9 @@ export async function registerSkeletonWhatsAppAction(
   whatsappLanguage: string,
   paramMap: string[]
 ): Promise<{ success: boolean }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   await requireOrgAdmin(idToken, organizationId);
   await adminDb.collection('message_templates').doc(skeletonId).update({
     whatsappTemplateName,

@@ -8,6 +8,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { AvailabilityProfile, AvailabilityRule } from '@/lib/meetings/types';
 import { DEFAULT_WEEKLY_RULES } from '@/lib/meetings/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Helper to safely extract error message without using any.
@@ -84,6 +85,9 @@ export async function createAvailabilityProfileAction(
   organizationId: string,
   data: Partial<AvailabilityProfile>
 ): Promise<{ success: boolean; profileId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const now = new Date().toISOString();
     const docRef = adminDb.collection('availability_profiles').doc();
@@ -149,6 +153,9 @@ export async function updateAvailabilityProfileAction(
 export async function deleteAvailabilityProfileAction(
   profileId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('availability_profiles').doc(profileId);
     const snap = await docRef.get();

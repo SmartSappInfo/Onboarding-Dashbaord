@@ -14,6 +14,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { TagFilterQuery } from './types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Queries entities by tag filter with workspace-aware logic
@@ -31,6 +32,9 @@ export async function getEntitiesByTagsAction(
   filter: TagFilterQuery,
   scope: 'global' | 'workspace' = 'workspace'
 ): Promise<{ success: boolean; data?: string[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const { tagIds, logic } = filter;
 
@@ -247,6 +251,9 @@ export async function getCombinedEntityTagsAction(
   workspaceTags?: Array<{ id: string; name: string; scope: 'workspace' }>;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     // Get entity global tags
     const entitySnap = await adminDb.collection('entities').doc(entityId).get();

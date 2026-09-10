@@ -21,6 +21,7 @@ import { AutonomousObservationEngine } from '../services/autonomous-observation-
 import { SelfHealingEngine } from '../services/self-healing-engine';
 import { EnterpriseComplianceEngine } from '../services/enterprise-compliance-engine';
 import { WorkflowEngine } from '@/lib/workflows/services/workflow-engine';
+import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
 import type {
   ExecutiveIntelligenceSummary,
   ProactiveRecommendation,
@@ -78,6 +79,9 @@ export async function getExecutiveIntelligenceAction(params: {
     trends: ObservationTrend[];
   }>
 > {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
 
   if (!userId) {
@@ -131,6 +135,9 @@ export async function listRecommendationsAction(params: {
   userId: string;
   statusFilter?: RecommendationStatus;
 }): Promise<ActionResult<ProactiveRecommendation[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, statusFilter } = params;
 
   if (!userId) {
@@ -183,6 +190,9 @@ export async function adjudicateRecommendationAction(params: {
     spawnedWorkflowRunId?: string;
   }>
 > {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, recommendationId, decision, notes, launchWorkflow } = params;
 
   if (!userId) {
@@ -260,6 +270,9 @@ export async function runObservationScanAction(params: {
     recommendations: ProactiveRecommendation[];
   }>
 > {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, forceFresh = true } = params;
 
   if (!userId) {
@@ -312,6 +325,9 @@ export async function getSelfHealingHealthAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<BrainHealthAudit>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
 
   if (!userId) {
@@ -365,6 +381,9 @@ export async function executeSelfHealingAction(params: {
     actionsExecuted?: number;
   }>
 > {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, auditId } = params;
   const targetActionIds = params.actionIds ?? params.actionItemIds ?? [];
 
@@ -436,6 +455,9 @@ export async function generateComplianceExportAction(params: {
   subjectId?: string;
   subjectType?: string;
 }): Promise<ActionResult<ComplianceAuditReport>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, subjectId, subjectType } = params;
 
   if (!userId) {
@@ -488,6 +510,9 @@ export async function executeCryptographicDeletionAction(params: {
   legalBasis?: string;
   jurisdiction?: 'GDPR_ARTICLE_17' | 'CCPA' | 'SOC2_DATA_RETENTION';
 }): Promise<ActionResult<CryptographicDeletionCertificate>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, jurisdiction } = params;
   const targetSubjectId = params.targetSubjectId ?? params.subjectId ?? '';
   const targetSubjectType = params.targetSubjectType ?? params.subjectType ?? 'contact';
@@ -537,6 +562,9 @@ export async function getFederatedBenchmarksAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<FederatedBenchmarkMetric[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
 
   if (!userId) {

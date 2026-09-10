@@ -15,6 +15,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   Document,
   DocumentPage,
@@ -34,6 +35,9 @@ export async function generateDocumentSummaryAction(
   workspaceId: string,
   documentId: string
 ): Promise<{ success: boolean; summary?: DocumentAiSummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId) {
       return { success: false, error: 'Workspace ID and Document ID are required.' };
@@ -74,6 +78,9 @@ export async function recommendDocumentHotspotsAction(
   workspaceId: string,
   documentId: string
 ): Promise<{ success: boolean; recommendations?: DocumentAiCtaRecommendation[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId) {
       return { success: false, error: 'Workspace ID and Document ID are required.' };
@@ -119,6 +126,9 @@ export async function askDocumentQuestionAction(
   question: string,
   history: DocumentAiMessage[] = []
 ): Promise<{ success: boolean; response?: DocumentAiQaResponse; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId || !question.trim()) {
       return { success: false, error: 'Invalid parameters.' };
@@ -168,6 +178,9 @@ export async function applyAiRecommendedHotspotAction(
   documentId: string,
   recommendation: DocumentAiCtaRecommendation
 ): Promise<{ success: boolean; layerId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId || !recommendation) {
       return { success: false, error: 'Invalid recommendation parameters.' };
@@ -238,6 +251,9 @@ export async function saveAiSummaryToDocumentMetadataAction(
   documentId: string,
   summary: DocumentAiSummary
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('documents').doc(documentId);
     const docSnap = await docRef.get();

@@ -17,6 +17,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { QuestionBankItem } from './survey-v2-types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface QuestionBankFilterOptions {
   category?: string;
@@ -137,6 +138,9 @@ export async function saveQuestionToBankAction(
   organizationId: string,
   itemData: Omit<QuestionBankItem, 'id' | 'createdAt' | 'updatedAt' | 'workspaceId' | 'organizationId'>
 ): Promise<QuestionBankResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !itemData.title.trim()) {
       return { success: false, error: 'workspaceId and title are required.' };

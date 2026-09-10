@@ -8,6 +8,7 @@ import { revalidatePath as nextRevalidatePath } from 'next/cache';
 import type { Tag, TagCategory, TagAuditLog, EntityType } from './types';
 import { logActivity } from './activity-logger';
 import { userHasTagPermission } from './tag-permissions';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 
 import {
@@ -187,6 +188,9 @@ export async function updateTagAction(
   userId: string,
   userName?: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const parsed = UpdateTagSchema.safeParse(updates);
   if (!parsed.success) {
     return { success: false, error: parsed.error.errors[0].message };
@@ -277,6 +281,9 @@ export async function deleteTagAction(
   userId: string,
   userName?: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // Permission check: requires tags_manage
     const canManage = await userHasTagPermission(userId, 'tags_manage');
@@ -372,6 +379,9 @@ export async function mergeTagsAction(
   userId: string,
   userName?: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const parsed = MergeTagsSchema.safeParse({ sourceTagIds, targetTagId, userId });
   if (!parsed.success) {
     return { success: false, error: parsed.error.errors[0].message };
@@ -526,6 +536,9 @@ export async function mergeTagsAction(
  * Gets all tags for a workspace
  */
 export async function getTagsAction(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const tagsSnap = await adminDb
       .collection('tags')
@@ -550,6 +563,9 @@ export async function getTagsAction(workspaceId: string) {
  * Gets a single tag by ID
  */
 export async function getTagAction(tagId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const tagSnap = await adminDb.collection('tags').doc(tagId).get();
     
@@ -910,6 +926,9 @@ export async function bulkApplyTagsAction(
   partialFailures?: string[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const parsed = BulkTagSchema.safeParse({ contactIds, contactType, tagIds, userId });
   if (!parsed.success) {
     return { success: false, error: parsed.error.errors[0].message };
@@ -1229,6 +1248,9 @@ export async function bulkRemoveTagsAction(
   partialFailures?: string[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const parsed = BulkTagSchema.safeParse({ contactIds, contactType, tagIds, userId });
   if (!parsed.success) {
     return { success: false, error: parsed.error.errors[0].message };
@@ -1500,6 +1522,9 @@ export async function getContactsByTagsAction(
   workspaceId: string,
   filter: import('./types').TagFilterQuery
 ): Promise<{ success: boolean; data?: string[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const { tagIds, logic, categoryFilter } = filter;
 
@@ -1602,6 +1627,9 @@ export async function getTagUsageStatsAction(workspaceId: string): Promise<{
   data?: import('./types').TagUsageStats[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const tagsSnap = await adminDb
       .collection('tags')
@@ -1732,6 +1760,9 @@ export async function bulkDeleteUnusedTagsAction(
   userId: string,
   userName?: string
 ): Promise<{ success: boolean; deletedCount?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const unusedSnap = await adminDb
       .collection('tags')
@@ -1791,6 +1822,9 @@ export async function getTagAuditLogsAction(
     limit?: number;
   }
 ): Promise<{ success: boolean; data?: TagAuditLog[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let q = adminDb
       .collection('tag_audit_logs')

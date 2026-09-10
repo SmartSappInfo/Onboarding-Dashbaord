@@ -6,6 +6,7 @@ import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
 import { ensureAbsoluteUrl, getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 import { resolveActiveTemplate } from '@/lib/template-resolver';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -754,6 +755,9 @@ export async function submitRsvpResponseAction(
   token: string,
   responseStatus: 'going' | 'not_going' | 'later'
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
     const qSnap = await registrantsRef.where('token', '==', token).limit(1).get();

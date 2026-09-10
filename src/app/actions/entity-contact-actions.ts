@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Entity, EntityContact, WorkspaceEntity } from '@/lib/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Returns the canonical contacts (`entityContacts`) for an entity.
@@ -14,6 +15,9 @@ import type { Entity, EntityContact, WorkspaceEntity } from '@/lib/types';
  * callers can render an empty state without special-casing errors.
  */
 export async function getEntityContactsAction(entityId: string): Promise<EntityContact[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!entityId) return [];
     const snap = await adminDb.collection('entities').doc(entityId).get();
@@ -47,6 +51,9 @@ export async function getEntityDealDefaultsAction(
   entityId: string,
   workspaceId: string
 ): Promise<EntityDealDefaults> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!entityId || !workspaceId) return { contacts: [], assignedTo: null };
   try {
     const [entitySnap, wsSnap] = await Promise.all([
@@ -110,6 +117,9 @@ export async function searchEntitiesForDealAction({
   search = '',
   limit: maxResults = 30,
 }: SearchEntitiesForDealParams): Promise<SearchedEntityResult[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!workspaceId) return [];
 

@@ -23,6 +23,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { MediaRetentionPolicy } from '@/lib/types/media-2.0';
 import { logMediaAuditEventAction } from './audit-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export const DEFAULT_RETENTION_POLICY: MediaRetentionPolicy = {
   workspaceId: '',
@@ -41,6 +42,9 @@ export const DEFAULT_RETENTION_POLICY: MediaRetentionPolicy = {
 export async function getMediaRetentionPolicyAction(
   workspaceId: string
 ): Promise<{ success: boolean; policy: MediaRetentionPolicy; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, policy: DEFAULT_RETENTION_POLICY, error: 'Workspace ID required.' };
@@ -66,6 +70,9 @@ export async function saveMediaRetentionPolicyAction(
   actorId: string = 'system',
   actorEmail: string = 'admin@smartsapp.com'
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!policy.workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };
@@ -110,6 +117,9 @@ export async function saveMediaRetentionPolicyAction(
 export async function purgeExpiredMediaTelemetryAction(
   workspaceId: string
 ): Promise<{ success: boolean; purgedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const policyRes = await getMediaRetentionPolicyAction(workspaceId);
     if (!policyRes.success || !policyRes.policy) {
@@ -178,6 +188,9 @@ export async function exportContactComplianceDataAction(
   workspaceId: string,
   contactId: string
 ): Promise<{ success: boolean; dataBundle?: Record<string, unknown>; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !contactId) {
       return { success: false, error: 'Workspace ID and Contact ID are required.' };
@@ -223,6 +236,9 @@ export async function eraseContactComplianceDataAction(
   contactId: string,
   actorId: string = 'admin'
 ): Promise<{ success: boolean; anonymizedSessionsCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !contactId) {
       return { success: false, anonymizedSessionsCount: 0, error: 'Workspace ID and Contact ID required.' };

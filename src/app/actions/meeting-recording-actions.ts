@@ -13,6 +13,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { MeetingRecording } from '@/lib/meetings/types/intelligence';
 import { generateRecordingShareToken, isValidMediaFormat } from '@/lib/meetings/recording-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -121,6 +122,9 @@ export async function deleteMeetingRecordingAction(
   recordingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('meeting_recordings').doc(recordingId);
     const snap = await docRef.get();
@@ -148,6 +152,9 @@ export async function generateRecordingPlaybackUrlAction(
   recordingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; playbackUrl?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb.collection('meeting_recordings').doc(recordingId).get();
     if (!snap.exists) {

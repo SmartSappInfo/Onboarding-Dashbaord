@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { PageSectionTemplate, PageSection } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Saves a page section as a reusable template.
@@ -16,6 +17,9 @@ export async function saveSectionAction(
     industry?: string;
   }
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(data.workspaceId);
+
   try {
     const sectionId = adminDb.collection('campaign_page_sections').doc().id;
     const template: PageSectionTemplate = {
@@ -37,6 +41,9 @@ export async function saveSectionAction(
  * Fetches all reusable section templates for a workspace/organization.
  */
 export async function getSectionTemplatesAction(organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const snap = await adminDb.collection('campaign_page_sections')
             .where('organizationId', '==', organizationId)

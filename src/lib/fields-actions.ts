@@ -7,6 +7,7 @@ import { STATIC_VARIABLES } from './template-variable-registry-data';
 import { listPlatformIndustryFieldGroupsInternal } from './backoffice/backoffice-field-actions';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server-side actions for the Fields & Variables Manager.
@@ -61,6 +62,9 @@ export async function createFieldGroupAction(data: Omit<FieldGroup, 'id' | 'crea
  * Updates an existing field group.
  */
 export async function updateFieldGroupAction(id: string, data: Partial<FieldGroup>, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const ref = adminDb.collection('field_groups').doc(id);
     const snap = await ref.get();
@@ -93,6 +97,9 @@ export async function updateFieldGroupAction(id: string, data: Partial<FieldGrou
  * Deletes a field group (if custom) and moves orphaned fields.
  */
 export async function deleteFieldGroupAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const ref = adminDb.collection('field_groups').doc(id);
     const snap = await ref.get();
@@ -138,6 +145,9 @@ export async function deleteFieldGroupAction(id: string, userId: string) {
  * Reorders field groups.
  */
 export async function reorderFieldGroupsAction(updates: { id: string; order: number }[], workspaceId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'management', 'fields', 'edit', workspaceId);
     if (!permission.granted) return { success: false, error: permission.reason };
@@ -165,6 +175,9 @@ export async function reorderFieldGroupsAction(updates: { id: string; order: num
  * Moves a field to a new group.
  */
 export async function moveFieldToGroupAction(fieldId: string, targetGroupId: string, workspaceId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'management', 'fields', 'edit', workspaceId);
     if (!permission.granted) return { success: false, error: permission.reason };
@@ -229,6 +242,9 @@ export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' 
  * Updates an existing field. Native fields can only have limited updates (label, helpText, status).
  */
 export async function updateFieldAction(id: string, data: Partial<AppField>, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const ref = adminDb.collection('app_fields').doc(id);
     const snap = await ref.get();
@@ -283,6 +299,9 @@ export async function updateFieldAction(id: string, data: Partial<AppField>, use
  * Deletes a custom field. Native fields cannot be deleted.
  */
 export async function deleteFieldAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const ref = adminDb.collection('app_fields').doc(id);
     const snap = await ref.get();
@@ -337,6 +356,9 @@ export async function seedNativeFieldsAction(
   userId: string,
   bypassPermissionCheck = false
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!bypassPermissionCheck) {
       // 0. Permission Check (SuperAdmin only)
@@ -479,6 +501,9 @@ export async function seedNativeFieldsAction(
  * Fetches all field groups for a workspace with field counts.
  */
 export async function getFieldGroupsForWorkspace(workspaceId: string): Promise<{ success: boolean; groups?: FieldGroup[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('field_groups')
@@ -522,6 +547,9 @@ export async function getWorkspaceVariablesAction(workspaceId: string): Promise<
   variables?: any[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     // 1. Fetch workspace enabled features
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
@@ -620,6 +648,9 @@ export async function listIndustryPredefinedGroupsAction(industry: IndustryVerti
   data?: any[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     return await listPlatformIndustryFieldGroupsInternal(industry);
   } catch (error: any) {
@@ -634,6 +665,9 @@ export async function installPredefinedIndustryGroupsAction(
   groupSlugs: string[],
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     // 0. Permission check
     const permission = await canUser(userId, 'management', 'fields', 'create', workspaceId);

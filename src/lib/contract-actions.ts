@@ -6,6 +6,7 @@ import { logActivity } from './activity-logger';
 import { sendMessage } from './messaging-engine';
 import type { ContractStatus } from './types';
 import { canUser } from './workspace-permissions';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server actions for the Contract Lifecycle.
@@ -30,6 +31,9 @@ export async function upsertContractAction(data: {
     userId: string;
     workspaceId: string;
 }): Promise<ContractActionResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(data.workspaceId);
+
     try {
         // 0. Permission Check
         const permission = await canUser(data.userId, 'finance', 'agreements', 'create', data.workspaceId);
@@ -89,6 +93,9 @@ export async function sendContractAction(input: {
     publicUrl: string;
     workspaceId?: string;
 }): Promise<ContractActionResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const { 
             contractId, 
@@ -207,6 +214,9 @@ export async function deleteContractAction(
     entityId: string,
     userId: string
 ): Promise<ContractActionResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const contractSnap = await adminDb.collection('contracts').doc(contractId).get();
         if (!contractSnap.exists) throw new Error('Contract not found.');

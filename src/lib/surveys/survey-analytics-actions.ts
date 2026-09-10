@@ -34,6 +34,7 @@ import { extractResponseContactDetails, sanitizeForCsv } from '@/lib/survey-resp
 import { resolveMultipleContacts } from '@/lib/contact-adapter';
 import { format } from 'date-fns';
 import { parseDateSafe } from '@/lib/forms-utils';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface SurveyAnalyticsOverviewResult {
   success: boolean;
@@ -85,6 +86,9 @@ export async function getSurveyAnalyticsOverviewAction(
   surveyId: string,
   workspaceId: string
 ): Promise<SurveyAnalyticsOverviewResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return {
@@ -187,6 +191,9 @@ export async function getSurveyCrossTabsAction(
   rowQuestionId: string,
   colQuestionId: string
 ): Promise<{ success: boolean; data?: CrossTabMatrixResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId || !rowQuestionId || !colQuestionId) {
       return { success: false, error: 'Missing required parameters for cross-tabulation' };

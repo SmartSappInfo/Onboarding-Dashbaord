@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import type { Pipeline, IndustryVertical } from './types';
 import { canUser } from './workspace-permissions';
 import { INDUSTRY_CONFIG } from './industry-config';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server-side actions for Pipeline management.
@@ -15,6 +16,9 @@ import { INDUSTRY_CONFIG } from './industry-config';
  * Updates an existing pipeline or initializes a new one.
  */
 export async function savePipelineAction(id: string | null, data: Partial<Pipeline>, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         // 0. Permission Check
         const permission = await canUser(userId, 'operations', 'pipeline', id ? 'edit' : 'create', data.workspaceIds?.[0]);
@@ -52,6 +56,9 @@ export async function savePipelineAction(id: string | null, data: Partial<Pipeli
  * Automatically unsets any existing default in that same workspace.
  */
 export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const db = adminDb;
         const batch = db.batch();
@@ -86,6 +93,9 @@ export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId
 }
 
 export async function deletePipelineAction(id: string, userId: string): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
         if (!docSnap.exists) throw new Error("Pipeline not found.");
@@ -144,6 +154,9 @@ export async function deletePipelineAction(id: string, userId: string): Promise<
  * Archives or restores a pipeline blueprint.
  */
 export async function archivePipelineAction(id: string, isArchived: boolean, userId: string): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
         if (!docSnap.exists) throw new Error("Pipeline not found.");
@@ -178,6 +191,9 @@ export async function clonePipelineAction(
     userId: string,
     customName?: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!pipelineId || !userId) {
             throw new Error("Pipeline ID and User ID are required.");
@@ -293,6 +309,9 @@ export async function createDefaultPipelineForIndustry(
     workspaceId: string,
     industry: IndustryVertical
 ): Promise<{ success: boolean; id?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const db = adminDb;
         const timestamp = new Date().toISOString();

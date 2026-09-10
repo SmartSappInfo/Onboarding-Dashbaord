@@ -25,6 +25,7 @@ import { generateWorkspaceInsightsFlow } from '@/ai/flows/generate-workspace-ins
 import { detectContradictionsFlow } from '@/ai/flows/detect-contradictions-flow';
 import { detectDuplicatesFlow } from '@/ai/flows/detect-duplicates-flow';
 import { governanceAuditFlow } from '@/ai/flows/governance-audit-flow';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Knowledge Copilot, Insights & Governance Server Actions (Company Brain Phase 7).
@@ -71,6 +72,9 @@ export async function getWorkspaceInboxAction(
   workspaceId: string,
   options?: InboxFilterOptions
 ): Promise<{ success: boolean; data?: KnowledgeInboxItem[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) return { success: false, error: 'Missing workspaceId' };
 
@@ -93,6 +97,9 @@ export async function reviewInboxItemAction(
   patch?: SuggestedPatch,
   userId = 'system'
 ): Promise<{ success: boolean; data?: KnowledgeInboxItem; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !itemId) return { success: false, error: 'Missing parameters' };
 
@@ -148,6 +155,9 @@ export async function bulkReviewInboxAction(
   resolution: 'accept' | 'dismiss',
   userId = 'system'
 ): Promise<{ success: boolean; count?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !itemIds || itemIds.length === 0) {
       return { success: false, error: 'No items selected' };
@@ -175,6 +185,9 @@ export async function scanDuplicatesAction(
   targetNoteId: string,
   userId = 'system'
 ): Promise<{ success: boolean; duplicatesFound?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const rate = checkRateLimit(userId);
   if (!rate.allowed) return { success: false, error: rate.reason };
 
@@ -276,6 +289,9 @@ export async function detectWorkspaceContradictionsAction(
   targetNoteId: string,
   userId = 'system'
 ): Promise<{ success: boolean; contradictionsFound?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const rate = checkRateLimit(userId);
   if (!rate.allowed) return { success: false, error: rate.reason };
 
@@ -379,6 +395,9 @@ export async function generateWorkspaceInsightsAction(
   workspaceId: string,
   userId = 'system'
 ): Promise<{ success: boolean; insightsCount?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const rate = checkRateLimit(userId);
   if (!rate.allowed) return { success: false, error: rate.reason };
 
@@ -446,6 +465,9 @@ export async function mergeDuplicateNotesAction(
   strategy: MergeStrategy = 'concatenate',
   _userId = 'system'
 ): Promise<{ success: boolean; targetNoteId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !sourceNoteId || !targetNoteId) {
       return { success: false, error: 'Missing merge parameters' };
@@ -506,6 +528,9 @@ export async function convertInsightToIdeaAction(
   insightId: string,
   userId = 'system'
 ): Promise<{ success: boolean; ideaId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const insights = await KnowledgeInboxRepository.getWorkspaceInsights(workspaceId);
     const insight = insights.find((i) => i.id === insightId);
@@ -557,6 +582,9 @@ export async function convertInsightToTaskAction(
   userId: string,
   payload: { title: string; priority?: 'low' | 'medium' | 'high' | 'urgent' }
 ): Promise<{ success: boolean; taskId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const taskRef = adminDb.collection('tasks').doc();
     const now = new Date().toISOString();
@@ -614,6 +642,9 @@ export async function deleteInsightAction(
   workspaceId: string,
   insightId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const deleted = await KnowledgeInboxRepository.deleteInsight(workspaceId, insightId);
     return { success: deleted };
@@ -630,6 +661,9 @@ export async function auditNoteGovernanceAction(
   workspaceId: string,
   noteId: string
 ): Promise<{ success: boolean; data?: unknown; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const note = await QuickNotesRepository.getById(noteId);
     if (!note || note.workspaceId !== workspaceId) {

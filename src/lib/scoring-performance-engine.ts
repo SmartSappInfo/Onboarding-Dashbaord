@@ -5,6 +5,7 @@ import { syncContactProjectionForWE } from './contacts/contact-projection-writer
 import type { EntityContact, WorkspaceEntity, Entity } from './types';
 import type { PerformancePolicy } from '@/lib/policy-studio/types';
 import { evaluateEventUnderPolicy } from '@/lib/policy-studio/policy-engine';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 // Re-export strict TypeScript types (types are erased at runtime by TS compiler)
 export type {
@@ -32,6 +33,9 @@ import {
  * Seeding default effort rules into Firestore for a workspace.
  */
 export async function seedDefaultRules(organizationId: string, workspaceId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const collectionRef = adminDb.collection('effortRules');
   const snap = await collectionRef
     .where('workspaceId', '==', workspaceId)
@@ -231,6 +235,9 @@ export async function adjustLeadScoreAction(params: {
  * Evaluates effort events and adds salesperson stats.
  */
 export async function evaluateEffortEvent(event: ScoringEvent): Promise<{ pointsAwarded: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { organizationId, workspaceId, eventType, entityType, entityId, actorType, actorId, metadata, durationSeconds } = event;
     if (!workspaceId || !actorId || actorId === 'system-scoring-engine') return { pointsAwarded: 0 };
@@ -457,6 +464,9 @@ export async function resolveEngagementRuleKey(
   eventType: string,
   metadata?: Record<string, string | number | boolean>
 ): Promise<string> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (eventType === 'campaign_event' && metadata) {
     const channel = String(metadata.channel || '').toLowerCase();
     const event = String(metadata.event || '').toLowerCase();
@@ -558,6 +568,9 @@ export async function emitScoringEvent(event: ScoringEvent): Promise<void> {
  * Fetch leaderboard performance details.
  */
 export async function getLeaderboardAction(organizationId: string, workspaceId?: string): Promise<UserProfileEffort[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const usersSnap = await adminDb
       .collection('users')
@@ -620,6 +633,9 @@ export async function getLeaderboardAction(organizationId: string, workspaceId?:
  * Server Action: Retrieve effort rules for a workspace.
  */
 export async function getEffortRulesAction(organizationId: string, workspaceId: string): Promise<EffortRuleDoc[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     await seedDefaultRules(organizationId, workspaceId);
     const snap = await adminDb.collection('effortRules')
@@ -647,6 +663,9 @@ export async function saveEffortRuleAction(
   points: number,
   enabled: boolean
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const ruleRef = adminDb.collection('effortRules').doc(ruleId);
     const snap = await ruleRef.get();
@@ -679,6 +698,9 @@ export async function resetEffortRulesToDefaultsAction(
   organizationId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const collectionRef = adminDb.collection('effortRules');
     const snap = await collectionRef
@@ -712,6 +734,9 @@ export async function bulkAdjustScoresAction(params: {
   actorId: string;
   actorType: 'User' | 'Automation' | 'API' | 'System';
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { organizationId: _organizationId, workspaceId, contactRefs, value, operation, actorId, actorType } = params;
 
@@ -884,6 +909,9 @@ export async function bulkAssignEntitiesAction(
   userName: string | null,
   userEmail: string | null
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const timestamp = new Date().toISOString();
     const batch = adminDb.batch();

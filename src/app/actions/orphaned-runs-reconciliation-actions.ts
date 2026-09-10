@@ -15,6 +15,7 @@ import type { Automation, AutomationRun } from '@/lib/types';
 import { assertAutomationManagePermission } from '@/lib/automation-permissions';
 import { logAutomationEvent } from '@/lib/automation-log';
 import type { ExecutionContext } from '@/lib/automations/execution-types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface OrphanedRunInfo {
   runId: string;
@@ -60,6 +61,9 @@ export async function scanOrphanedRunsAction(
   userId: string,
   automationId?: string
 ): Promise<ScanOrphanedRunsResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || !workspaceId) {
       throw new Error('Workspace ID and User ID are required.');
@@ -149,6 +153,9 @@ export async function scanOrphanedRunsAction(
 export async function reconcileOrphanedRunsAction(
   options: ReconcileOrphanedRunsOptions
 ): Promise<ReconcileOrphanedRunsResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, strategy, runIds, automationId } = options;
 
   try {
@@ -336,6 +343,9 @@ export interface RecoverFailedRunsResult {
 export async function recoverFailedRunsAction(
   options: RecoverFailedRunsOptions
 ): Promise<RecoverFailedRunsResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, automationId, userId } = options;
 
   try {

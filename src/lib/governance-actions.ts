@@ -14,6 +14,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { ApprovalRequest, PageAuditLog } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Appends an immutable audit log record to Firestore.
@@ -23,6 +24,9 @@ export async function recordAuditLogAction(log: PageAuditLog): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (
       !log.id ||
@@ -53,6 +57,9 @@ export async function submitApprovalRequestAction(request: ApprovalRequest): Pro
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (
       !request.id ||
@@ -85,6 +92,9 @@ export async function reviewApprovalRequestAction(
   approverEmail: string,
   notes?: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!requestId || !approverId || !status) {
       return { success: false, error: 'Missing required review parameters' };
@@ -140,6 +150,9 @@ export async function reviewApprovalRequestAction(
 export async function fetchPageAuditLogsAction(
   pageId: string,
 ): Promise<{ success: boolean; logs?: PageAuditLog[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };

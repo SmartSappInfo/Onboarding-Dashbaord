@@ -23,6 +23,7 @@ import { KnowledgeGraphService } from '../services/knowledge-graph-service';
 import { GraphProjectionService } from '../pipeline/graph-projection-service';
 import { MEMORY_OBJECTS_COLLECTION } from '../memory-repository';
 import type { MemoryObject } from '../types';
+import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
 import {
   explainGraphConnectionFlow,
   type ExplainGraphConnectionOutput,
@@ -59,6 +60,9 @@ export async function getWorkspaceGraphAction(params: {
   userId: string;
   filters?: GraphQueryFilter;
 }): Promise<ActionResult<{ nodes: CompanyBrainGraphNode[]; edges: CompanyBrainGraphEdge[] }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, filters = {} } = params;
 
   if (!userId) {
@@ -110,6 +114,9 @@ export async function getEntitySubGraphAction(params: {
   entityId: string;
   depth?: number;
 }): Promise<ActionResult<{ nodes: CompanyBrainGraphNode[]; edges: CompanyBrainGraphEdge[] }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, entityId, depth = 2 } = params;
 
   if (!userId) {
@@ -160,6 +167,9 @@ export async function findGraphPathAction(params: {
   targetNodeId: string;
   maxHops?: number;
 }): Promise<ActionResult<GraphPath | null>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, startNodeId, targetNodeId, maxHops = 4 } = params;
 
   if (!userId) {
@@ -207,6 +217,9 @@ export async function explainGraphConnectionAction(params: {
   startNodeId: string;
   targetNodeId: string;
 }): Promise<ActionResult<ExplainGraphConnectionOutput>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, startNodeId, targetNodeId } = params;
 
   if (!userId) {
@@ -324,6 +337,9 @@ export async function createGraphEdgeAction(params: {
   sourceType?: GraphSourceType;
   metadata?: Record<string, string | number | boolean>;
 }): Promise<ActionResult<CompanyBrainGraphEdge>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const {
     workspaceId,
     organizationId,
@@ -395,6 +411,9 @@ export async function deleteGraphEdgeAction(params: {
   userId: string;
   edgeId: string;
 }): Promise<ActionResult<{ deleted: boolean }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, edgeId } = params;
 
   if (!userId) {
@@ -440,6 +459,9 @@ export async function getGraphTopologyMetricsAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<GraphTopologyMetrics>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
 
   if (!userId) {
@@ -485,6 +507,9 @@ export async function syncWorkspaceGraphMeshAction(params: {
   workspaceId: string;
   userId: string;
 }): Promise<ActionResult<{ nodesUpserted: number; edgesUpserted: number }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
 
   if (!userId) {

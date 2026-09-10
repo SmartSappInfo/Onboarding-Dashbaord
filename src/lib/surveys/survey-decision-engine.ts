@@ -29,6 +29,7 @@ import type {
 import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
 import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import {
   type SurveyDecisionContext,
   evaluateCondition,
@@ -62,6 +63,9 @@ export async function executeSingleDecisionAction(
   action: SurveyDecisionAction,
   ctx: SurveyDecisionContext
 ): Promise<{ success: boolean; actionType: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, organizationId, contactId, entityId, contactName, survey, score } = ctx;
     const cleanEntityId = entityId ? entityId.replace(/^[a-zA-Z0-9_-]+_/, '') : null;
@@ -406,6 +410,9 @@ export async function getSurveyDecisionConfigAction(
   surveyId: string,
   workspaceId: string
 ): Promise<{ success: boolean; config?: SurveyDecisionConfig; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const surveyDoc = await adminDb.collection('surveys').doc(surveyId).get();
     if (!surveyDoc.exists) {
@@ -435,6 +442,9 @@ export async function saveSurveyDecisionConfigAction(
   config: SurveyDecisionConfig,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const surveyRef = adminDb.collection('surveys').doc(surveyId);
     const surveyDoc = await surveyRef.get();
@@ -597,6 +607,9 @@ export async function getSystemDecisionPlaybooksAction(): Promise<{
 export async function saveSystemDecisionPlaybooksAction(
   playbooks: SystemDecisionPlaybook[]
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     await adminDb.collection('system_settings').doc('survey_decision_playbooks').set(
       {

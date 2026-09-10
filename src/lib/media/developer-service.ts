@@ -22,6 +22,7 @@
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import type { MediaApiKey, MediaApiKeyScope } from '@/lib/types/media-2.0';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface ApiKeyGenerationResult {
   success: boolean;
@@ -50,6 +51,9 @@ export async function generateMediaApiKeyAction(
   expiresInDays?: number,
   userId: string = 'system'
 ): Promise<ApiKeyGenerationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !name.trim()) {
       return { success: false, error: 'Workspace ID and key name are required.' };
@@ -110,6 +114,9 @@ export async function generateMediaApiKeyAction(
 export async function listMediaApiKeysAction(
   workspaceId: string
 ): Promise<{ success: boolean; keys?: MediaApiKey[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };
@@ -136,6 +143,9 @@ export async function revokeMediaApiKeyAction(
   apiKeyId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!apiKeyId || !workspaceId) {
       return { success: false, error: 'API key ID and workspace ID are required.' };

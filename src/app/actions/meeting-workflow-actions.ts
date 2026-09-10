@@ -17,6 +17,7 @@ import type {
 } from '@/lib/meetings/types/polls';
 import { evaluateWorkflowEligibility } from '@/lib/meetings/workflow-execution-engine';
 import { FieldsVariablesService } from '@/lib/services/fields-variables-service-impl';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -111,6 +112,9 @@ export async function triggerMeetingLifecycleWorkflowsAction(payload: {
     eventStartAt?: string;
   };
 }): Promise<{ success: boolean; executedRulesCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(payload.workspaceId);
+
   try {
     const { eventTypeId, workspaceId, trigger, context } = payload;
     const now = new Date().toISOString();

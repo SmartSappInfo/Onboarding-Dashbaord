@@ -14,6 +14,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { AIInsight } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Saves or updates an AIInsight in Firestore.
@@ -23,6 +24,9 @@ export async function saveInsightAction(insight: AIInsight): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (
       !insight.id ||
@@ -51,6 +55,9 @@ export async function saveInsightAction(insight: AIInsight): Promise<{
 export async function fetchPageInsightsAction(
   pageId: string,
 ): Promise<{ success: boolean; insights?: AIInsight[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };
@@ -79,6 +86,9 @@ export async function dismissInsightAction(
   insightId: string,
   pageId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!insightId || !pageId) {
       return { success: false, error: 'Missing required dismissal parameters' };

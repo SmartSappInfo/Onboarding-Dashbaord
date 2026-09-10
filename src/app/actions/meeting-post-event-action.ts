@@ -3,6 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Meeting, MeetingMessagingConfig } from '@/lib/types';
 import { schedulePostEventMessages } from '@/lib/reminder-actions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ---------------------------------------------------------------------------
 // endMeetingAction
@@ -63,6 +64,9 @@ export async function scheduleMeetingPostEvent(
   meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
   orgId: string,
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   await schedulePostEventMessages(meeting, orgId);
 }
 
@@ -75,6 +79,9 @@ export async function scheduleMeetingPostEvent(
  * Used when the meeting is rescheduled or the post-event config changes.
  */
 export async function cancelMeetingPostEvent(meetingId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const snap = await adminDb
     .collection('scheduled_messages')
     .where('sourceEventId', '==', meetingId)

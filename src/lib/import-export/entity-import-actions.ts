@@ -23,6 +23,7 @@ import type {
   ExecutionSummary,
 } from '@/app/admin/contacts/import/types';
 import { normalizePhoneNumber } from '../phone-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -78,6 +79,9 @@ export async function validateImportBatch(
   workspaceId?: string,
   organizationId?: string
 ): Promise<ValidationSummary> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const errors: ValidationSummary['errors'] = [];
   const duplicates: ValidationSummary['duplicates'] = [];
   const previewRows: any[] = [];
@@ -296,6 +300,9 @@ export async function executeImportBatch(
     forceImportDuplicates?: boolean;
   }
 ): Promise<ExecutionSummary & { createdIds?: string[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const uid = userId || 'system-import';
   const wsId = workspaceId || '';
   const orgId = organizationId || 'smartsapp-hq';

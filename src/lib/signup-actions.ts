@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { createEntityAction } from './entity-actions';
 import type { InstitutionData, EntityContact } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server actions for signup flow using unified entity architecture.
@@ -61,6 +62,9 @@ export interface SignupInput {
  * - 10.5: Log activity with entityId reference
  */
 export async function handleSignupAction(input: SignupInput) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const timestamp = new Date().toISOString();
     

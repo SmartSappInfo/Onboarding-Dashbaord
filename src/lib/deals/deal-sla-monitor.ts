@@ -24,6 +24,7 @@ import { adminDb } from '../firebase-admin';
 import { calculateDaysInStage, calculateDealHealth } from './deal-health-engine';
 import { emitDealDomainEvent } from './deal-event-bus';
 import type { Deal, OnboardingStage } from '../types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface SlaEvaluationResult {
   success: boolean;
@@ -44,6 +45,9 @@ export async function evaluateWorkspaceDealSlasAction(
   workspaceId: string,
   options?: { forceAlert?: boolean; now?: string }
 ): Promise<SlaEvaluationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const fixedNow = options?.now ? new Date(options.now) : new Date();
     const nowIso = fixedNow.toISOString();

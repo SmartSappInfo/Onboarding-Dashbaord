@@ -16,6 +16,7 @@
 
 import { FieldPath } from 'firebase-admin/firestore';
 import { adminDb } from '../firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import {
   contactSegmentToQuerySpec,
   matchesInvitationFilter,
@@ -81,6 +82,9 @@ function toRecipient(d: ContactDoc, channel: ContactChannel): RecipientRef {
 
 /** Total recipients a segment matches — the number "Select All Match" selects. */
 export async function countSegment(workspaceId: string, segment: AudienceSegment): Promise<number> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return 0;
   const spec = contactSegmentToQuerySpec(workspaceId, segment);
   const q = applySpec(adminDb.collection(COLLECTION), spec);
@@ -98,6 +102,9 @@ export async function pageSegmentRecipients(
   cursor?: SegmentCursor,
   pageSize: number = SEND_PAGE,
 ): Promise<{ recipients: RecipientRef[]; nextCursor: SegmentCursor | null }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { recipients: [], nextCursor: null };
   const spec = contactSegmentToQuerySpec(workspaceId, segment);
 
@@ -131,6 +138,9 @@ export async function resolveSegmentRecipients(
   segment: AudienceSegment,
   opts?: { cap?: number },
 ): Promise<{ recipients: RecipientRef[]; truncated: boolean }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const cap = opts?.cap ?? RESOLVE_CAP;
   const all: RecipientRef[] = [];
   let cursor: SegmentCursor | undefined;

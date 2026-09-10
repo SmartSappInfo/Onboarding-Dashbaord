@@ -34,6 +34,7 @@ import {
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import type { SalesTarget, SalesPerformanceDaily } from '@/lib/sales-performance/types';
 import { calculateTargetAttainment } from '@/lib/sales-performance/performance-engine';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Server Action: Retrieve full "My Day" command surface payload for a seller.
@@ -43,6 +44,9 @@ export async function getMyDayOverviewAction(params: {
   organizationId: string;
   repId: string;
 }): Promise<{ success: boolean; data?: MyDayOverview; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, repId } = params;
     if (!workspaceId || !organizationId || !repId) {
@@ -653,6 +657,9 @@ export async function getMyDayOverviewAction(params: {
 export async function executeQuickActionAction(
   payload: QuickActionPayload
 ): Promise<QuickActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { itemId, actionType, workspaceId, organizationId, actorId } = payload;
     if (!itemId || !workspaceId || !actorId) {
@@ -764,6 +771,9 @@ export async function snoozeQueueItemAction(params: {
   itemId: string;
   snoozeHours: number;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { itemId, snoozeHours } = params;
     const cleanId = itemId.startsWith('sig_') || itemId.startsWith('meet_') ? null : itemId;
@@ -791,6 +801,9 @@ export async function dismissQueueItemAction(params: {
   workspaceId: string;
   itemId: string;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { itemId } = params;
     if (itemId.startsWith('sig_')) {

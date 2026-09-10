@@ -44,6 +44,7 @@ import {
 } from '@/lib/revenue-forecasting/forecasting-engine';
 import { executeRevenueForecastingMigration } from '@/lib/revenue-forecasting/migration-protocol';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
+import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Internal helper to verify tenant access safely.
@@ -99,6 +100,9 @@ export async function getRevenueForecastOverviewAction(params: {
   governance?: RevenueForecastingGovernance;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -329,6 +333,9 @@ export async function reassignForecastCategoryAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { dealId, workspaceId, organizationId, newCategory, actorId, actorName, notes } = params;
     if (!dealId || !workspaceId) {
@@ -416,6 +423,9 @@ export async function recalculateDealAttributionAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { dealId, workspaceId, organizationId, model, actorId, actorName } = params;
     if (!dealId || !workspaceId) {
@@ -547,6 +557,9 @@ export async function saveRevenueGovernanceAction(params: {
   governance?: RevenueForecastingGovernance;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, governance: inputGov, actorId, actorName } = params;
     if (!workspaceId || !organizationId) {
@@ -593,6 +606,9 @@ export async function executeRevenueMigrationAction(params: {
   actorId?: string;
   actorName?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, organizationId, actorId = 'system', actorName = 'Admin' } = params;
   return executeRevenueForecastingMigration(workspaceId, organizationId, actorId, actorName);
 }

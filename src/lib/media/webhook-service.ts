@@ -23,6 +23,7 @@
 
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   MediaWebhookEndpoint,
   MediaWebhookDeliveryLog,
@@ -86,6 +87,9 @@ export async function createWebhookEndpointAction(
   url: string,
   subscribedEvents: MediaWebhookEventType[]
 ): Promise<{ success: boolean; endpoint?: MediaWebhookEndpoint; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !name.trim() || !url.trim()) {
       return { success: false, error: 'Workspace ID, endpoint name, and destination URL are required.' };
@@ -134,6 +138,9 @@ export async function createWebhookEndpointAction(
 export async function listWebhookEndpointsAction(
   workspaceId: string
 ): Promise<{ success: boolean; endpoints?: MediaWebhookEndpoint[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };
@@ -160,6 +167,9 @@ export async function deleteWebhookEndpointAction(
   webhookId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!webhookId || !workspaceId) {
       return { success: false, error: 'Webhook ID and workspace ID are required.' };
@@ -192,6 +202,9 @@ export async function rotateWebhookSecretAction(
   webhookId: string,
   workspaceId: string
 ): Promise<{ success: boolean; newSecret?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('media_webhooks').doc(webhookId);
     const snap = await docRef.get();
@@ -364,6 +377,9 @@ export async function testWebhookEndpointAction(
   webhookId: string,
   workspaceId: string
 ): Promise<{ success: boolean; log?: MediaWebhookDeliveryLog; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('media_webhooks').doc(webhookId);
     const snap = await docRef.get();
@@ -401,6 +417,9 @@ export async function listWebhookDeliveryLogsAction(
   webhookId?: string,
   limitCount: number = 50
 ): Promise<{ success: boolean; logs?: MediaWebhookDeliveryLog[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let q = adminDb
       .collection('media_webhook_logs')
@@ -427,6 +446,9 @@ export async function replayWebhookDeliveryAction(
   logId: string,
   workspaceId: string
 ): Promise<{ success: boolean; newLog?: MediaWebhookDeliveryLog; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const logSnap = await adminDb.collection('media_webhook_logs').doc(logId).get();
     if (!logSnap.exists) {

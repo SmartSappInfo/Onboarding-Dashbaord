@@ -2,6 +2,7 @@
 
 import { requireOrgAdmin } from '@/lib/auth/require-org-admin';
 import type { Channel } from '@/lib/messaging/sender-resolution';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface SetDefaultSenderInput {
   organizationId: string;
@@ -30,6 +31,9 @@ export async function setDefaultSenderProfileAction(
   idToken: string,
   input: SetDefaultSenderInput,
 ): Promise<SetDefaultSenderResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     await requireOrgAdmin(idToken, input.organizationId);
 
@@ -75,6 +79,9 @@ export async function clearWorkspaceDefaultSenderAction(
   idToken: string,
   input: { organizationId: string; workspaceId: string; channel: Channel },
 ): Promise<SetDefaultSenderResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(input.workspaceId);
+
   try {
     await requireOrgAdmin(idToken, input.organizationId);
     const { adminDb } = await import('@/lib/firebase-admin');

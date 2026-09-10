@@ -26,6 +26,7 @@ import type {
   CreativeProjectObjective,
 } from '@/lib/creative/creative-types';
 import { FORMAT_PRESETS, makeUniqueId } from '@/lib/creative/creative-types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateProjectInput {
   workspaceId: string;
@@ -50,6 +51,9 @@ export interface ActionResult<T> {
 export async function createCreativeProjectAction(
   input: CreateProjectInput
 ): Promise<ActionResult<{ project: CreativeProject; document: CreativeDocument }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!input.workspaceId || !input.name?.trim()) {
       return { success: false, error: 'Workspace ID and Project Name are required.' };
@@ -119,6 +123,9 @@ export async function updateCreativeProjectAction(
   workspaceId: string,
   patch: Partial<CreativeProject>
 ): Promise<ActionResult<CreativeProject>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!projectId || !workspaceId) {
       return { success: false, error: 'Project ID and Workspace ID are required.' };
@@ -158,6 +165,9 @@ export async function getCreativeProjectWithDocumentAction(
   projectId: string,
   workspaceId?: string
 ): Promise<ActionResult<{ project: CreativeProject; document: CreativeDocument }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!projectId) {
       return { success: false, error: 'Project ID is required.' };
@@ -249,6 +259,9 @@ export async function saveCreativeDocumentAction(
     snapshotNote?: string;
   }
 ): Promise<ActionResult<CreativeDocument>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!documentId || !projectId || !workspaceId) {
       return { success: false, error: 'Document ID, Project ID, and Workspace ID are required.' };
@@ -340,6 +353,9 @@ export async function createVersionSnapshotAction(
   note?: string,
   createdBy: string = 'user'
 ): Promise<ActionResult<CreativeVersion>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const versionsQuery = await adminDb
       .collection('creative_versions')
@@ -381,6 +397,9 @@ export async function createVersionSnapshotAction(
 export async function listCreativeVersionsAction(
   documentId: string
 ): Promise<ActionResult<CreativeVersion[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!documentId) {
       return { success: false, error: 'Document ID is required.' };
@@ -406,6 +425,9 @@ export async function deleteCreativeProjectAction(
   projectId: string,
   workspaceId: string
 ): Promise<ActionResult<{ deleted: boolean }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!projectId || !workspaceId) {
       return { success: false, error: 'Project ID and Workspace ID are required.' };

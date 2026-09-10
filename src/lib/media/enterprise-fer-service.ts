@@ -20,6 +20,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { EnterprisePlatformGovernanceConfig, MediaRetentionPolicy } from '@/lib/types/media-2.0';
 import { DEFAULT_RETENTION_POLICY } from './retention-service';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export const DEFAULT_ENTERPRISE_GOVERNANCE: EnterprisePlatformGovernanceConfig = {
   workspaceId: '',
@@ -37,6 +38,9 @@ export const DEFAULT_ENTERPRISE_GOVERNANCE: EnterprisePlatformGovernanceConfig =
 export async function bootstrapEnterprisePlatformAction(
   targetWorkspaceId?: string
 ): Promise<{ success: boolean; processedWorkspaces: number; bootstrappedConfigs: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // 1. FETCH
     let workspaceIds: string[] = [];

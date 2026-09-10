@@ -19,6 +19,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { DocumentPage } from '@/lib/types/document-types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 const BATCH_SIZE_LIMIT = 150;
 
@@ -30,6 +31,9 @@ export async function reorderDocumentPagesAction(
   documentId: string,
   orderedPageIds: string[]
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId || !Array.isArray(orderedPageIds) || orderedPageIds.length === 0) {
       return { success: false, error: 'Invalid parameters for page reordering.' };
@@ -93,6 +97,9 @@ export async function duplicateDocumentPageAction(
   documentId: string,
   pageId: string
 ): Promise<{ success: boolean; newPageId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId || !pageId) {
       return { success: false, error: 'Workspace ID, Document ID, and Page ID are required.' };
@@ -201,6 +208,9 @@ export async function deleteDocumentPageAction(
   documentId: string,
   pageId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId || !pageId) {
       return { success: false, error: 'Workspace ID, Document ID, and Page ID are required.' };

@@ -22,6 +22,7 @@
 import crypto from 'crypto';
 import { adminDb } from '@/lib/firebase-admin';
 import type { MediaAuditLog, MediaAuditResourceType } from '@/lib/types/media-2.0';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface AuditLogQueryOptions {
   resourceType?: MediaAuditResourceType;
@@ -37,6 +38,9 @@ export async function logMediaAuditEventAction(
   workspaceId: string,
   entry: Omit<MediaAuditLog, 'id' | 'workspaceId' | 'timestamp'>
 ): Promise<{ success: boolean; logId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !entry.action || !entry.resourceType) {
       return { success: false, error: 'Workspace ID, action, and resource type are required.' };
@@ -68,6 +72,9 @@ export async function listMediaAuditLogsAction(
   workspaceId: string,
   options?: AuditLogQueryOptions
 ): Promise<{ success: boolean; logs?: MediaAuditLog[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };
@@ -103,6 +110,9 @@ export async function exportMediaAuditLogsCsvAction(
   workspaceId: string,
   options?: AuditLogQueryOptions
 ): Promise<{ success: boolean; csv?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const result = await listMediaAuditLogsAction(workspaceId, { ...options, limitCount: 500 });
     if (!result.success || !result.logs) {

@@ -7,6 +7,7 @@ import type { FormSubmission, WorkspaceEntity, Entity, CampaignPage, SurveyRespo
 import crypto from 'crypto';
 import { applyTagAction } from './scoped-tag-actions';
 import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Lead Actions for Phase 5: CRM Integration
@@ -52,6 +53,9 @@ interface RawSurveyResponseDoc {
  * `responses` subcollection uses collectionGroup queries.
  */
 export async function getLeadsForPageAction(pageId: string): Promise<{ success: boolean; data?: LeadSummary[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         if (!pageId || typeof pageId !== 'string') {
             return { success: false, error: 'Invalid page ID provided' };

@@ -3,6 +3,7 @@
 import { getMetricStats, getPipelineStats, getUpcomingMeetings, getLatestSurveys, getRecentActivities } from '@/lib/dashboard-server';
 import { adminDb } from '@/lib/firebase-admin';
 import { cache } from 'react';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * We use `cache` to deduplicate requests across different widgets during the same render pass.
@@ -31,6 +32,9 @@ const fetchSaasMetrics = cache(async (workspaceId: string) => {
 });
 
 export async function getSaasMetrics(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return fetchSaasMetrics(workspaceId);
 }
 
@@ -39,6 +43,9 @@ const fetchPipelineData = cache(async (workspaceId: string) => {
 });
 
 export async function getPipelineData(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return fetchPipelineData(workspaceId);
 }
 
@@ -47,6 +54,9 @@ const fetchUpcomingMeetingsData = cache(async (workspaceId: string) => {
 });
 
 export async function getUpcomingMeetingsData(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return fetchUpcomingMeetingsData(workspaceId);
 }
 
@@ -55,6 +65,9 @@ const fetchLatestSurveysData = cache(async (workspaceId: string) => {
 });
 
 export async function getLatestSurveysData(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return fetchLatestSurveysData(workspaceId);
 }
 
@@ -63,5 +76,8 @@ const fetchRecentActivitiesData = cache(async (workspaceId: string) => {
 });
 
 export async function getRecentActivitiesData(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return fetchRecentActivitiesData(workspaceId);
 }

@@ -18,6 +18,7 @@ import type {
   FormSavedView,
 } from './form-response-types';
 import { sanitizeCsvCell } from './form-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Updates the qualification status of an individual submission.
@@ -202,6 +203,9 @@ export async function getSubmissionNotesAction(
 export async function saveFormSavedViewAction(
   view: Omit<FormSavedView, 'id' | 'createdAt'> & { id?: string }
 ): Promise<{ success: boolean; viewId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const now = new Date().toISOString();
     if (view.id) {
@@ -230,6 +234,9 @@ export async function saveFormSavedViewAction(
 export async function getFormSavedViewsAction(
   formId: string
 ): Promise<FormSavedView[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!formId) return [];
     const snap = await adminDb.collection('form_saved_views')
@@ -251,6 +258,9 @@ export async function getFormSavedViewsAction(
 export async function deleteFormSavedViewAction(
   viewId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!viewId) return { success: false, error: 'viewId is required' };
     await adminDb.collection('form_saved_views').doc(viewId).delete();

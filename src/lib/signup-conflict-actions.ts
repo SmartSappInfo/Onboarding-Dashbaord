@@ -23,6 +23,7 @@ import { logActivity } from './activity-logger';
 import { extractPrimaryContactFields, enforceContactConstraints } from './entity-contact-helpers';
 import type { EntityContact } from './types';
 import type { SignupInput } from './signup-actions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Detailed duplicate match object passed to the frontend resolution UI.
@@ -55,6 +56,9 @@ export interface SignupDuplicateCheckResult {
 export async function checkSignupDuplicatesAction(
   input: SignupInput
 ): Promise<SignupDuplicateCheckResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { primaryEmail, primaryPhone } = extractPrimaryContactFields({
       entityContacts: input.entityContacts || [],
@@ -150,6 +154,9 @@ export async function mergeSignupIntoEntityAction(
   targetEntityId: string,
   input: SignupInput
 ): Promise<{ success: boolean; entityId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const timestamp = new Date().toISOString();
 

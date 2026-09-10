@@ -7,8 +7,12 @@
 
 import { adminDb } from './firebase-admin';
 import ghanaData from '@/data/ghana_regions_districts.json';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function seedGhanaLocationsAction(organizationId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!organizationId) {
       return { success: false, error: 'Organization ID is required to seed locations.' };

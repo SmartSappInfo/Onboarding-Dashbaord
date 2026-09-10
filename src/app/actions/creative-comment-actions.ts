@@ -16,6 +16,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { CreativeComment } from '@/lib/creative/creative-types';
 import { makeUniqueId } from '@/lib/creative/creative-types';
 import type { ActionResult } from './creative-project-actions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface AddCommentInput {
   authorName: string;
@@ -29,6 +30,9 @@ export interface AddCommentInput {
 export async function listProjectCommentsAction(
   projectId: string
 ): Promise<ActionResult<CreativeComment[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!projectId) {
       return { success: false, error: 'Project ID is required.' };
@@ -53,6 +57,9 @@ export async function addProjectCommentAction(
   projectId: string,
   input: AddCommentInput
 ): Promise<ActionResult<CreativeComment>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!projectId || !input.text?.trim()) {
       return { success: false, error: 'Project ID and Comment Text are required.' };
@@ -89,6 +96,9 @@ export async function resolveProjectCommentAction(
   commentId: string,
   resolved: boolean
 ): Promise<ActionResult<{ resolved: boolean }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!commentId) {
       return { success: false, error: 'Comment ID is required.' };
@@ -111,6 +121,9 @@ export async function resolveProjectCommentAction(
 export async function deleteProjectCommentAction(
   commentId: string
 ): Promise<ActionResult<{ deleted: boolean }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!commentId) {
       return { success: false, error: 'Comment ID is required.' };

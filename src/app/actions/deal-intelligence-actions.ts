@@ -43,6 +43,7 @@ import {
 } from '@/lib/deal-intelligence/deal-intelligence-engine';
 import { executeDealIntelligenceMigration } from '@/lib/deal-intelligence/migration-protocol';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
+import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Internal helper to verify tenant access safely.
@@ -74,6 +75,9 @@ export async function getDealIntelligenceOverviewAction(params: {
   governance?: DealIntelligenceGovernance;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, userId = 'system', userName = 'User' } = params;
     if (!workspaceId || !organizationId) {
@@ -186,6 +190,9 @@ export async function getDealHealthDetailAction(params: {
   timeline?: UnifiedTimelineEvent[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { dealId, workspaceId, userId = 'system' } = params;
     if (!dealId || !workspaceId) {
@@ -290,6 +297,9 @@ export async function actionBuyerSignalAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { signalId, workspaceId, organizationId, actorId, actorName, notes } = params;
     if (!signalId || !workspaceId) {
@@ -377,6 +387,9 @@ export async function saveStakeholderMapAction(params: {
   stakeholderMap?: StakeholderMap;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { dealId, dealName, workspaceId, organizationId, stakeholders, dealValue = 10000, userId = 'system' } = params;
     if (!dealId || !workspaceId) {
@@ -425,6 +438,9 @@ export async function getMeetingBriefAction(params: {
   brief?: MeetingBrief;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { meetingId, workspaceId, userId = 'system' } = params;
     if (!meetingId || !workspaceId) {
@@ -486,6 +502,9 @@ export async function submitPostMeetingIntelligenceAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       meetingId,
@@ -643,6 +662,9 @@ export async function saveDealIntelligenceGovernanceAction(params: {
   governance?: DealIntelligenceGovernance;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, governance: inputGov, actorId, actorName } = params;
     if (!workspaceId || !organizationId) {
@@ -689,6 +711,9 @@ export async function executeDealIntelligenceMigrationAction(params: {
   actorId?: string;
   actorName?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, organizationId, actorId = 'system', actorName = 'Admin' } = params;
   return executeDealIntelligenceMigration(workspaceId, organizationId, actorId, actorName);
 }

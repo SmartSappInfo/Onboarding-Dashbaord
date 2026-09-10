@@ -18,6 +18,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { SurveyProject, Survey } from '@/lib/types';
 import { hydrateSurveyDocument } from './survey-hydration-adapter';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateSurveyProjectInput {
   name: string;
@@ -168,6 +169,9 @@ export async function getSurveyProjectByIdAction(
   workspaceId: string,
   projectId: string
 ): Promise<SurveyProjectResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !projectId) {
       return { success: false, error: 'workspaceId and projectId are required.' };
@@ -218,6 +222,9 @@ export async function updateSurveyProjectAction(
   projectId: string,
   updates: Partial<SurveyProject>
 ): Promise<SurveyProjectResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !projectId) {
       return { success: false, error: 'workspaceId and projectId are required.' };
@@ -255,6 +262,9 @@ export async function assignSurveysToProjectAction(
   projectId: string,
   surveyIds: string[]
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !projectId) {
       return { success: false, error: 'workspaceId and projectId are required.' };
@@ -298,6 +308,9 @@ export async function getProjectAnalyticsSummaryAction(
   workspaceId: string,
   projectId: string
 ): Promise<{ success: boolean; summary?: ProjectAnalyticsSummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const projectRes = await getSurveyProjectByIdAction(workspaceId, projectId);
     if (!projectRes.success || !projectRes.project) {

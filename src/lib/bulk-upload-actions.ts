@@ -20,6 +20,7 @@ import { getBaseUrl } from './utils/url-helpers';
 import { isDealImportConfig, type DealImportConfig, type IngestBatchOptions, type NotificationConfig } from './import-types';
 import { buildDealDocument, resolveDealName } from './deal-writer';
 import { calculateExpectedCloseDate } from '../app/admin/pipeline/utils/deal-expected-close';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -156,6 +157,9 @@ export interface BatchResult {
 export async function ingestBatchAction(
     options: IngestBatchOptions
 ): Promise<{ importLogId: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const {
         rows,
         mapping,
@@ -266,6 +270,9 @@ export async function ingestBatchAction(
  * - Intra-batch dedup: local maps catch duplicates within the same chunk.
  */
 export async function processImportChunkBackground(importLogId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
     try {
         const importLogSnap = await importLogRef.get();
@@ -1058,6 +1065,9 @@ export async function ingestSchoolRowAction(
     organizationId: string = 'smartsapp-hq',
     entityType: string = 'institution'
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     const result = await ingestBatchAction({
         rows: [rawData],
         mapping,
@@ -1074,6 +1084,9 @@ export async function ingestSchoolRowAction(
 // ─── Imports Auditing Logs & TTL Cleanup ─────────────────────────────────────
 
 export async function getImportsLogsListAction(workspaceId: string, limitCount = 50) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     const snap = await adminDb.collection('import_logs')
         .where('workspaceId', '==', workspaceId)
         .orderBy('startedAt', 'desc')
@@ -1088,6 +1101,9 @@ export async function getImportsLogsListAction(workspaceId: string, limitCount =
  * Only deletes the heavy payloads, keeping the core analytics document.
  */
 export async function purgeExpiredFailedImportsAction(workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     const ttlThreshold = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
     
     // We sort on the primary field. Missing index risk is low if we filter by rawFieldsCleared.
@@ -1121,6 +1137,9 @@ export async function purgeExpiredFailedImportsAction(workspaceId: string) {
 }
 
 export async function getFailedRowsAction(importLogId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const snap = await adminDb.collection('import_logs').doc(importLogId).collection('failed_rows')
         .orderBy('createdAt', 'desc')
         .limit(100)
@@ -1137,6 +1156,9 @@ export async function getFailedRowsAction(importLogId: string) {
 }
 
 export async function updateFailedRowAction(importLogId: string, rowId: string, updatedPayload: any) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     await adminDb.collection('import_logs').doc(importLogId).collection('failed_rows').doc(rowId).update({
         rawPayload: updatedPayload,
         updatedAt: FieldValue.serverTimestamp()
@@ -1145,6 +1167,9 @@ export async function updateFailedRowAction(importLogId: string, rowId: string, 
 }
 
 export async function resolveFailedRowAction(importLogId: string, rowId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
     const failedRowRef = importLogRef.collection('failed_rows').doc(rowId);
 
@@ -1172,6 +1197,9 @@ export async function resolveFailedRowAction(importLogId: string, rowId: string)
 }
 
 export async function getDuplicateRowsAction(importLogId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const snap = await adminDb.collection('import_logs')
         .doc(importLogId)
         .collection('duplicate_rows')
@@ -1290,6 +1318,9 @@ export async function resolveDuplicatesAction(
     resolutions: { duplicateRowId: string; strategy: DuplicateStrategy; tagIds?: string[]; customPayload?: any; customExistingData?: any }[],
     globalTagIds: string[] = []
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
     const importLogSnap = await importLogRef.get();
     if (!importLogSnap.exists) {
@@ -1573,6 +1604,9 @@ export async function resolveDuplicatesAction(
  * Updates the status to 'cancelled' so the background worker stops processing chunks.
  */
 export async function cancelBulkUploadAction(importLogId: string): Promise<{ success: boolean; message?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
     const snap = await importLogRef.get();
     if (!snap.exists) return { success: false, message: 'Import log not found' };
@@ -1595,6 +1629,9 @@ export async function cancelBulkUploadAction(importLogId: string): Promise<{ suc
  * Sets the status to 'queued' and triggers the background worker to pick up the remaining pending rows.
  */
 export async function resumeBulkUploadAction(importLogId: string): Promise<{ success: boolean; message?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     const importLogRef = adminDb.collection('import_logs').doc(importLogId);
     const snap = await importLogRef.get();
     if (!snap.exists) return { success: false, message: 'Import log not found' };

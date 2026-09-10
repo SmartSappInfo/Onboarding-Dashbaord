@@ -11,6 +11,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { DealAdvancementRule, DealAdvancementResult } from '@/lib/meetings/types/deal-advancer';
 import { evaluateDealAdvancement } from '@/lib/meetings/deal-advancer-service';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -27,6 +28,9 @@ export async function evaluateAndAdvanceDealOnMeetingAction(payload: {
   trigger: 'meeting_completed' | 'proposal_requested' | 'high_intent_detected' | 'no_show';
   rules: DealAdvancementRule[];
 }): Promise<{ success: boolean; result?: DealAdvancementResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { dealId, meetingId, trigger, rules } = payload;
     const dealRef = adminDb.collection('deals').doc(dealId);

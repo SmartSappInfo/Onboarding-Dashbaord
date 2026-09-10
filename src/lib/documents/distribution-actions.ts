@@ -16,6 +16,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { DocumentDistribution, DistributionType } from '@/lib/types/document-types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { 
   createSignedDistributionToken, 
   verifySignedDistributionToken, 
@@ -50,6 +51,9 @@ export interface DistributionActionResult {
 export async function createDocumentDistributionAction(
   input: CreateDistributionInput
 ): Promise<DistributionActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!input.workspaceId || !input.documentId || !input.type) {
       return { success: false, error: 'Workspace ID, Document ID, and Distribution Type are required.' };
@@ -114,6 +118,9 @@ export async function listDocumentDistributionsAction(
   workspaceId: string,
   documentId: string
 ): Promise<{ success: boolean; distributions?: DocumentDistribution[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !documentId) {
       return { success: false, error: 'Workspace ID and Document ID are required.' };
@@ -144,6 +151,9 @@ export async function revokeDocumentDistributionAction(
   workspaceId: string,
   distributionId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId || !distributionId) {
       return { success: false, error: 'Workspace ID and Distribution ID are required.' };
@@ -178,6 +188,9 @@ export async function resolveDistributionTokenAction(token: string): Promise<{
   distribution?: DocumentDistribution;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const verified = verifySignedDistributionToken(token);
     if (!verified.valid || !verified.payload) {

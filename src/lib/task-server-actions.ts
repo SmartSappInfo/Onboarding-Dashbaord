@@ -5,6 +5,7 @@ import type { Task, EntityType } from './types';
 import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
 import { canUser } from './workspace-permissions';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Server action to create a task with workspace awareness and entity support.
@@ -243,6 +244,9 @@ export async function getTasksForContact(
  * Bulk updates multiple tasks.
  */
 export async function bulkUpdateTasksAction(taskIds: string[], updates: Partial<Task>, userId: string, workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const permission = await canUser(userId, 'operations', 'tasks', 'edit', workspaceId);
         if (!permission.granted) {
@@ -270,6 +274,9 @@ export async function bulkUpdateTasksAction(taskIds: string[], updates: Partial<
  * Bulk deletes multiple tasks.
  */
 export async function bulkDeleteTasksAction(taskIds: string[], userId: string, workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
     try {
         const permission = await canUser(userId, 'operations', 'tasks', 'delete', workspaceId);
         if (!permission.granted) {

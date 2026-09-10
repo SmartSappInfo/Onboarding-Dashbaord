@@ -46,6 +46,7 @@ import {
   executeSalesOrchestrationMigration,
 } from '@/lib/sales-orchestration/migration-protocol';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Internal helper to verify tenant access safely.
@@ -74,6 +75,9 @@ export async function getSalesOrchestrationDataAction(params: {
   data?: OrchestrationDashboardData;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId } = params;
     if (!workspaceId) {
@@ -208,6 +212,9 @@ export async function saveSalesPlayAction(params: {
   playId?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, play } = params;
     if (!workspaceId || !play.id || !play.title) {
@@ -264,6 +271,9 @@ export async function toggleSalesPlayStatusAction(params: {
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, playId, actorId, enabled } = params;
     if (!workspaceId || !playId) {
@@ -320,6 +330,9 @@ export async function executePlayStepAction(params: {
   newStatus?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -433,6 +446,9 @@ export async function resolveApprovalRequestAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -537,6 +553,9 @@ export async function resolveEscalationIncidentAction(params: {
   pointsAwarded?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, incidentId, resolutionNote } = params;
     if (!workspaceId || !incidentId) {
@@ -616,6 +635,9 @@ export async function triggerSalesPlayManuallyAction(params: {
   executionId?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -692,6 +714,9 @@ export async function saveRoutingRuleAction(params: {
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, rule } = params;
     const hasAccess = await verifyCallerAccess(actorId, workspaceId);
@@ -730,6 +755,9 @@ export async function saveEscalationRuleAction(params: {
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, rule } = params;
     const hasAccess = await verifyCallerAccess(actorId, workspaceId);
@@ -768,6 +796,9 @@ export async function saveOrchestrationGovernanceAction(params: {
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, governance } = params;
     const hasAccess = await verifyCallerAccess(actorId, workspaceId);
@@ -812,6 +843,9 @@ export async function executeOrchestrationMigrationAction(params: {
   approvalsCreated?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName } = params;
     const hasAccess = await verifyCallerAccess(actorId, workspaceId);

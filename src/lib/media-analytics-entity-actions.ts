@@ -18,6 +18,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface BulkApplyTagsParams {
   workspaceId: string;
@@ -44,6 +45,9 @@ export interface BulkActionResult {
 export async function bulkApplyTagsToMediaContactsAction(
   params: BulkApplyTagsParams
 ): Promise<BulkActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, contactIds, tagIds } = params;
 
   if (!workspaceId) {
@@ -123,6 +127,9 @@ export async function bulkApplyTagsToMediaContactsAction(
 export async function bulkMoveMediaContactsStageAction(
   params: BulkMoveStageParams
 ): Promise<BulkActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, contactIds, pipelineId, stageId } = params;
 
   if (!workspaceId) {

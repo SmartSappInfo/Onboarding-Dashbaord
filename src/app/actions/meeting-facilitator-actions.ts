@@ -6,6 +6,7 @@ import { resolveActiveTemplate } from '@/lib/template-resolver';
 import { getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import { buildMeetingBaseVariables, buildFacilitatorVariables } from '@/lib/meeting-variable-helpers';
 import { MeetingFacilitator, Meeting, MeetingMessagingConfig } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function resendFacilitatorLinksAction(
   meetingId: string,
@@ -128,6 +129,9 @@ export async function updateMeetingFacilitatorAction(
   facilitatorId: string,
   updates: { name: string; bio: string; image?: string }
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const meetingRef = adminDb.collection('meetings').doc(meetingId);
     const meetingSnap = await meetingRef.get();
@@ -167,6 +171,9 @@ export async function logFacilitatorAttendance(
     entityId?: string;
   }
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const now = new Date().toISOString();
     

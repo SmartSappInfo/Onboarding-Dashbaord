@@ -2,11 +2,15 @@
 
 import { adminDb } from './firebase-admin';
 import type { CampaignPageTheme } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Saves or updates a Campaign Page Theme.
  */
 export async function saveThemeAction(theme: CampaignPageTheme) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         await adminDb.collection('campaign_page_themes').doc(theme.id).set(theme, { merge: true });
         return { success: true };

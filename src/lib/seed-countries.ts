@@ -7,8 +7,12 @@
 
 import { adminDb } from './firebase-admin';
 import countriesData from '@/data/countries.json';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function seedCountriesAction() {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // Check if already seeded
     const existingSnap = await adminDb.collection('countries').limit(1).get();

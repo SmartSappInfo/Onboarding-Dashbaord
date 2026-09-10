@@ -22,6 +22,7 @@ import { applyIndustryDataDefaults } from './entity-utils';
 import { withEntitySearchFields } from './entities/entity-cache-domain';
 import { syncContactProjectionForWE } from './contacts/contact-projection-writer';
 import { zoneOrUnassigned } from './zone-constants';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Runs background contact verification for a primary contact.
@@ -68,6 +69,9 @@ export async function convertToOnboardingAction(
     targetPipelineId: string, 
     userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const timestamp = new Date().toISOString();
         
@@ -145,6 +149,9 @@ export async function lockWorkspaceScope(
   organizationId: string,
   userId: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const now = new Date().toISOString();
 
   await adminDb.collection('workspaces').doc(workspaceId).update({

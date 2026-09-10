@@ -11,6 +11,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { EntityAuditLog } from './types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Log an entity operation to the audit trail
@@ -19,6 +20,9 @@ import type { EntityAuditLog } from './types';
  * @returns Promise that resolves when log is written
  */
 export async function logEntityAudit(data: Omit<EntityAuditLog, 'id' | 'timestamp'>) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const auditRef = adminDb.collection('entity_audit_logs').doc();
     const auditLog: EntityAuditLog = {
@@ -49,6 +53,9 @@ export async function logEntityCreated(params: {
   ipAddress?: string;
   userAgent?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   await logEntityAudit({
     organizationId: params.organizationId,
     action: 'entity_created',
@@ -83,6 +90,9 @@ export async function logEntityUpdated(params: {
   ipAddress?: string;
   userAgent?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   await logEntityAudit({
     organizationId: params.organizationId,
     action: 'entity_updated',
@@ -117,6 +127,9 @@ export async function logEntityDeleted(params: {
   ipAddress?: string;
   userAgent?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   await logEntityAudit({
     organizationId: params.organizationId,
     action: 'entity_deleted',
@@ -148,6 +161,9 @@ export async function logEntityRead(params: {
   ipAddress?: string;
   userAgent?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   await logEntityAudit({
     organizationId: params.organizationId,
     action: 'entity_read',
@@ -285,6 +301,9 @@ export async function logWorkspaceEntityRead(params: {
   ipAddress?: string;
   userAgent?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   await logEntityAudit({
     organizationId: params.organizationId,
     workspaceId: params.workspaceId,
@@ -321,6 +340,9 @@ export async function getEntityAuditLogs(
     limit?: number;
   }
 ): Promise<{ success: boolean; data?: EntityAuditLog[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     let query = adminDb
       .collection('entity_audit_logs')

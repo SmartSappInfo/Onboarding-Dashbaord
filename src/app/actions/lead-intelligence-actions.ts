@@ -62,6 +62,7 @@ import { RevenueAttributionEngine, type BasicDealRecord } from '@/lib/lead-intel
 import { AutonomousSDREngine } from '@/lib/lead-intelligence/sdr';
 import { PredictiveIntelligenceEngine } from '@/lib/lead-intelligence/predictive';
 import { EnterpriseGovernanceEngine } from '@/lib/lead-intelligence/governance';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Utility helper to chunk arrays for Firestore batch operations.
@@ -78,6 +79,9 @@ function chunkArray<T>(items: T[], chunkSize = 250): T[][] {
  * Resolves API credentials and tokens for a workspace.
  */
 export async function getLeadSettingsAction(workspaceId: string): Promise<LeadIntelligenceSettings> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return {};
   try {
     const snap = await adminDb.collection('system_settings').doc(`keys_${workspaceId}`).get();
@@ -104,6 +108,9 @@ export async function saveLeadSettingsAction(
   organizationId: string,
   settings: LeadIntelligenceSettings
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'workspaceId is required' };
   try {
     const dataToSave = {
@@ -126,6 +133,9 @@ export async function saveLeadSettingsAction(
 export async function parseNaturalLanguageQueryAction(
   prompt: string
 ): Promise<{ success: boolean; result?: NaturalLanguageQueryResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const result = await LeadIntelligenceEngine.parseNaturalLanguageQuery(prompt);
     return { success: true, result };
@@ -145,6 +155,9 @@ export async function searchProspectsAction(
   filters: SearchFilters,
   preferredSource?: DiscoverySourceType
 ): Promise<{ success: boolean; prospects?: Prospect[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const settings = await getLeadSettingsAction(workspaceId);
     const prospects = await LeadIntelligenceEngine.searchProspects(
@@ -180,6 +193,9 @@ export async function searchProspectsAction(
 export async function enrichProspectAction(
   prospect: Prospect
 ): Promise<{ success: boolean; prospect?: Prospect; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const settings = await getLeadSettingsAction(prospect.workspaceId);
     const enriched = await LeadIntelligenceEngine.enrichProspect(prospect, settings);
@@ -200,6 +216,9 @@ export async function enrichProspectAction(
 export async function batchEnrichProspectsAction(
   prospects: Prospect[]
 ): Promise<{ success: boolean; enrichedProspects: Prospect[]; errors?: string[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!prospects || prospects.length === 0) {
     return { success: true, enrichedProspects: [] };
   }
@@ -237,6 +256,9 @@ export async function importProspectsFromCSVAction(
   csvText: string,
   defaultIndustry?: string
 ): Promise<{ success: boolean; prospects?: Prospect[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const provider = new CSVImportProvider();
     const prospects = provider.parseCSVText(csvText, organizationId, workspaceId, defaultIndustry);
@@ -269,6 +291,9 @@ export async function importProspectsFromCSVAction(
 export async function syncProspectToCRMAction(
   prospect: Prospect
 ): Promise<{ success: boolean; entityId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const entityId = `entity_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const wsEntityId = `${prospect.workspaceId}_${entityId}`;
@@ -403,6 +428,9 @@ export async function syncProspectToCRMAction(
 export async function batchSyncProspectsAction(
   prospects: Prospect[]
 ): Promise<{ success: boolean; syncedCount: number; failedCount: number; errors?: string[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   let syncedCount = 0;
   let failedCount = 0;
   const errors: string[] = [];
@@ -429,6 +457,9 @@ export async function batchSyncProspectsAction(
  * Retrieves recently scanned prospects in the workspace.
  */
 export async function getRecentProspectsAction(workspaceId: string): Promise<Prospect[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return [];
   try {
     const snap = await adminDb.collection('prospects')
@@ -457,6 +488,9 @@ export async function saveSearchAction(
   name: string,
   filters: SearchFilters
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const id = `search_${Date.now()}`;
     const newSearch: SavedSearch = {
@@ -480,6 +514,9 @@ export async function saveSearchAction(
  * Retrieves saved search configurations for a workspace.
  */
 export async function getSavedSearchesAction(workspaceId: string): Promise<SavedSearch[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return [];
   try {
     const snap = await adminDb.collection('saved_searches')
@@ -508,6 +545,9 @@ export async function createLeadListAction(
   description?: string,
   prospectIds: string[] = []
 ): Promise<{ success: boolean; list?: LeadList; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const id = `list_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
     const now = new Date().toISOString();
@@ -535,6 +575,9 @@ export async function createLeadListAction(
  * Retrieves all lead lists for a workspace.
  */
 export async function getLeadListsAction(workspaceId: string): Promise<LeadList[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return [];
   try {
     const snap = await adminDb.collection('lead_lists')
@@ -561,6 +604,9 @@ export async function addProspectsToListAction(
   prospectIds: string[],
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const listRef = adminDb.collection('lead_lists').doc(listId);
     const snap = await listRef.get();
@@ -596,6 +642,9 @@ export async function deleteLeadListAction(
   listId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const listRef = adminDb.collection('lead_lists').doc(listId);
     const snap = await listRef.get();
@@ -628,6 +677,9 @@ export async function previewEnrichmentCostAction(
   estimatedCredits: number;
   breakdown: { emailCredits: number; techCredits: number; aiCredits: number };
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const includeEmails = options?.includeEmails ?? true;
   const includeTech = options?.includeTech ?? true;
   const includeAI = options?.includeAI ?? true;
@@ -657,6 +709,9 @@ export async function saveViewAction(
   organizationId: string,
   viewData: Omit<import('@/lib/lead-intelligence/types').SavedViewConfig, 'id' | 'workspaceId' | 'organizationId' | 'createdAt' | 'updatedAt'>
 ): Promise<{ success: boolean; view?: import('@/lib/lead-intelligence/types').SavedViewConfig; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const viewId = `view_${workspaceId}_${Date.now()}`;
     const now = new Date().toISOString();
@@ -684,6 +739,9 @@ export async function saveViewAction(
 export async function getSavedViewsAction(
   workspaceId: string
 ): Promise<import('@/lib/lead-intelligence/types').SavedViewConfig[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return [];
   try {
     const snap = await adminDb.collection('saved_views')
@@ -709,6 +767,9 @@ export async function deleteSavedViewAction(
   viewId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('saved_views').doc(viewId);
     const snap = await docRef.get();
@@ -740,6 +801,9 @@ export async function getIdentityCollisionsAction(
   workspaceId: string,
   status: import('@/lib/lead-intelligence/types').CollisionStatus = 'pending_review'
 ): Promise<import('@/lib/lead-intelligence/types').IdentityCollisionRecord[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return [];
   try {
     const snap = await adminDb.collection('identity_collisions')
@@ -767,6 +831,9 @@ export async function getIdentityCollisionsAction(
 export async function scanWorkspaceForCollisionsAction(
   workspaceId: string
 ): Promise<{ createdCount: number; collisions: import('@/lib/lead-intelligence/types').IdentityCollisionRecord[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { createdCount: 0, collisions: [] };
   try {
     // 1. Fetch unregistered prospects
@@ -874,6 +941,9 @@ export async function executeIdentityMergeAction(
   workspaceId: string,
   payload: import('@/lib/lead-intelligence/types').CanonicalMergePayload
 ): Promise<import('@/lib/lead-intelligence/types').MergeExecutionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !payload.prospectId || !payload.entityId) {
     return { success: false, entityId: '', mergedContactsCount: 0, mergedTechnologiesCount: 0, error: 'Invalid payload' };
   }
@@ -981,6 +1051,9 @@ export async function dismissCollisionAction(
   workspaceId: string,
   resolution: 'keep_separate' | 'dismissed'
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!collisionId || !workspaceId) return { success: false, error: 'Invalid parameters' };
   try {
     const docRef = adminDb.collection('identity_collisions').doc(collisionId);
@@ -1018,6 +1091,9 @@ export async function probeDomainSubdomainsAction(
   domain: string,
   workspaceId: string
 ): Promise<import('@/lib/lead-intelligence/types').SubdomainProbeResult[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!domain || !workspaceId) return [];
   const { SubdomainProberService } = await import('@/lib/lead-intelligence/scraper/SubdomainProberService');
   return SubdomainProberService.probeDomain(domain);
@@ -1036,6 +1112,9 @@ export async function enrichTechnographicsDeepAction(
   dimensions?: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore;
   error?: string 
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1119,6 +1198,9 @@ export async function getEnrichmentDimensionsAction(
   prospectId: string,
   workspaceId: string
 ): Promise<import('@/lib/lead-intelligence/types').EnrichmentDimensionScore> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const defaultScore: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore = {
     companyScore: 50,
     techScore: 50,
@@ -1159,6 +1241,9 @@ export async function verifyProspectEmailAction(
   dimensions?: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !email || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1228,6 +1313,9 @@ export async function bulkVerifyProspectEmailsAction(
   dimensions?: import('@/lib/lead-intelligence/types').EnrichmentDimensionScore;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, verifiedCount: 0, results: [], error: 'Invalid parameters' };
   }
@@ -1309,6 +1397,9 @@ export async function generateAIResearchDossierAction(
   dossier?: import('@/lib/lead-intelligence/types').AIResearchDossier;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1355,6 +1446,9 @@ export async function getAIResearchDossierAction(
   dossier?: import('@/lib/lead-intelligence/types').AIResearchDossier;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1400,6 +1494,9 @@ export async function getWorkspaceSignalsAction(
   unreadCount?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) {
     return { success: false, error: 'Workspace ID is required' };
   }
@@ -1459,6 +1556,9 @@ export async function getProspectSignalsAction(
   signals?: import('@/lib/lead-intelligence/types').LeadSignal[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1502,6 +1602,9 @@ export async function getAccountMonitoringConfigAction(
   config?: import('@/lib/lead-intelligence/types').AccountMonitoringConfig;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1545,6 +1648,9 @@ export async function saveAccountMonitoringConfigAction(
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!config.prospectId || !config.workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1575,6 +1681,9 @@ export async function markSignalReadAction(
   signalId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!signalId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1597,6 +1706,9 @@ export async function dismissSignalAction(
   signalId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!signalId || !workspaceId) {
     return { success: false, error: 'Invalid parameters' };
   }
@@ -1624,6 +1736,9 @@ export async function triggerProspectDeltaScanAction(
   signals?: import('@/lib/lead-intelligence/types').LeadSignal[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) {
     return { success: false, newSignalsCount: 0, error: 'Invalid parameters' };
   }
@@ -1742,6 +1857,9 @@ export async function getWorkspaceScoringModelAction(workspaceId: string): Promi
   success: boolean;
   model: ScoringModelConfig;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) {
     return {
       success: true,
@@ -1806,6 +1924,9 @@ export async function saveWorkspaceScoringModelAction(
   weights: ScoringDimensionWeightConfig,
   name = 'Custom Scoring Model'
 ): Promise<{ success: boolean; model?: ScoringModelConfig; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   // Validate that weights sum to exactly 100%
@@ -1853,6 +1974,9 @@ export async function simulateScoringModelAction(
   newCriticalCount: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) {
     return { success: false, results: [], gainersCount: 0, droppersCount: 0, unchangedCount: 0, newCriticalCount: 0, error: 'Workspace ID required' };
   }
@@ -1923,6 +2047,9 @@ export async function recalculateWorkspaceScoresAction(
   recalculatedCount: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, recalculatedCount: 0, error: 'Workspace ID required' };
 
   try {
@@ -2022,6 +2149,9 @@ export async function getProspectScoreHistoryAction(
   success: boolean;
   history: ScoreMovementEvent[];
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) return { success: false, history: [] };
 
   try {
@@ -2056,6 +2186,9 @@ export async function checkProspectCRMMatchAction(
   match?: CRMMatchCandidate;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) return { success: false, error: 'Prospect ID and Workspace ID required' };
 
   try {
@@ -2095,6 +2228,9 @@ export async function enrichExistingCRMRecordAction(
   newContactsAddedCount?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!payload.prospectId || !payload.targetEntityId || !workspaceId) {
     return { success: false, error: 'Invalid enrichment parameters' };
   }
@@ -2206,6 +2342,9 @@ export async function getUnifiedActivityTimelineAction(
   success: boolean;
   activities: UnifiedActivityItem[];
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) return { success: false, activities: [] };
 
   try {
@@ -2259,6 +2398,9 @@ export async function getWorkspaceSegmentsAction(
   success: boolean;
   segments: DynamicSegment[];
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, segments: [] };
 
   try {
@@ -2295,6 +2437,9 @@ export async function saveDynamicSegmentAction(
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!segment.id || !segment.workspaceId) return { success: false, error: 'Invalid segment parameters' };
 
   try {
@@ -2323,6 +2468,9 @@ export async function deleteDynamicSegmentAction(
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!segmentId || !workspaceId) return { success: false, error: 'Invalid segmentId' };
 
   try {
@@ -2345,6 +2493,9 @@ export async function evaluateSegmentCountAction(
   count: number;
   total: number;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, count: 0, total: 0 };
 
   try {
@@ -2377,6 +2528,9 @@ export async function getProspectingCampaignsAction(
   success: boolean;
   campaigns: ProspectingCampaign[];
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, campaigns: [] };
 
   try {
@@ -2402,6 +2556,9 @@ export async function saveProspectingCampaignAction(
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!campaign.id || !campaign.workspaceId) return { success: false, error: 'Invalid campaign' };
 
   try {
@@ -2433,6 +2590,9 @@ export async function launchProspectingCampaignAction(
   dealsCreated?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!campaignId || !workspaceId) return { success: false, error: 'Campaign ID and Workspace ID required' };
 
   try {
@@ -2570,6 +2730,9 @@ export async function getRevenueAttributionReportAction(
   report?: RevenueAttributionReport;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -2613,6 +2776,9 @@ export async function executeDataRemediationAction(
   remediatedCount?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -2680,6 +2846,9 @@ export async function getDailyRepBriefingAction(
   priorityProspects?: Prospect[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -2718,6 +2887,9 @@ export async function getPriorityQueueItemAction(
   item?: PriorityQueueItem;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) return { success: false, error: 'Prospect and Workspace ID required' };
 
   try {
@@ -2749,6 +2921,9 @@ export async function executeProspectActivationAction(
   taskId?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) return { success: false, error: 'Prospect and Workspace ID required' };
 
   try {
@@ -2845,6 +3020,9 @@ export async function generateAIOutreachDraftAction(
   draft?: AIOutreachDraft;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!prospectId) return { success: false, error: 'Prospect ID required' };
 
   try {
@@ -2880,6 +3058,9 @@ export async function getIntelligenceInboxAction(
   stats?: InboxSummaryStats;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -2927,6 +3108,9 @@ export async function markInboxItemReadAction(
   itemId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!itemId || !workspaceId) return { success: false, error: 'Item and Workspace ID required' };
 
   try {
@@ -2956,6 +3140,9 @@ export async function getPredictiveConversionAction(
   likelihood?: PredictiveConversionLikelihood;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!prospectId || !workspaceId) return { success: false, error: 'Prospect and Workspace ID required' };
 
   try {
@@ -2993,6 +3180,9 @@ export async function getEnterpriseGovernanceConfigAction(
   config?: EnterpriseGovernanceConfig;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -3019,6 +3209,9 @@ export async function saveEnterpriseGovernanceConfigAction(
   workspaceId: string,
   config: EnterpriseGovernanceConfig
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !config) return { success: false, error: 'Workspace ID and Config required' };
 
   try {
@@ -3045,6 +3238,9 @@ export async function getProviderHealthStatusAction(
   providers?: ProviderHealthRecord[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -3120,6 +3316,9 @@ export async function getCreditLedgerSummaryAction(
   ledger?: CreditLedgerSummary;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return { success: false, error: 'Workspace ID required' };
 
   try {
@@ -3161,6 +3360,9 @@ export async function executeEnterpriseDataImportAction(
   importedCount?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId || !rows || rows.length === 0) {
     return { success: false, error: 'Workspace ID and non-empty rows required' };
   }

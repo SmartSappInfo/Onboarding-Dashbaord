@@ -21,6 +21,7 @@ import { PromiseToPayService } from './services/promise-to-pay-service';
 import { PaymentPlanService } from './services/payment-plan-service';
 import { CollectionActivityService } from './services/collection-activity-service';
 import { adminDb } from './firebase-admin';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function createOrUpdateCollectionCaseAction(
   entityId: string,
@@ -28,6 +29,9 @@ export async function createOrUpdateCollectionCaseAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { collectionCase?: CollectionCase }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -55,6 +59,9 @@ export async function updateCaseStageAction(
   userName: string,
   notes?: string
 ): Promise<ActionResponse & { collectionCase?: CollectionCase }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -83,6 +90,9 @@ export async function assignCaseAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -115,6 +125,9 @@ export async function recordPromiseToPayAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { promise?: PromiseToPay }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -140,6 +153,9 @@ export async function evaluatePromisesAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { brokenCount?: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -173,6 +189,9 @@ export async function createPaymentPlanAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { plan?: PaymentPlan }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -208,6 +227,9 @@ export async function logCollectionActivityAction(
   userId: string,
   userName: string
 ): Promise<ActionResponse & { activity?: CollectionActivity }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -238,6 +260,9 @@ export async function getCollectionCaseDetailsAction(
   paymentPlans?: PaymentPlan[];
   activities?: CollectionActivity[];
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'view', workspaceId);
     if (!permission.granted) {

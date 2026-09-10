@@ -3,11 +3,15 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { CampaignPage, CampaignPageVersion, CampaignPageStructure } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Clones a Campaign Page and its latest content version.
  */
 export async function duplicatePageAction(pageId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const pageRef = adminDb.collection('campaign_pages').doc(pageId);
     const pageSnap = await pageRef.get();
@@ -96,6 +100,9 @@ export async function updatePageStatusAction(
   status: 'published' | 'archived' | 'draft',
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   // js-early-exit: validate inputs before hitting Firestore
   if (!pageId || !userId) {
     return { success: false, error: 'Invalid arguments.' };
@@ -152,6 +159,9 @@ export async function deletePageAction(
   pageId: string,
   userId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!pageId || !userId) {
     return { success: false, error: 'Invalid arguments.' };
   }

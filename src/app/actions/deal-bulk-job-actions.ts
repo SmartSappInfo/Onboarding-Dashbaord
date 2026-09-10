@@ -26,6 +26,7 @@ import { logActivity } from '@/lib/activity-logger';
 import { updateDealStageAction } from './deal-actions';
 import type { DealBulkJob } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 const BATCH_SIZE = 350; // Strict margin under 500-op Firestore ceiling (Rule 8)
 
@@ -50,6 +51,9 @@ export async function createDealBulkJobAction(
   userId: string,
   userName?: string
 ): Promise<{ success: boolean; jobId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!dealIds || dealIds.length === 0) {
       return { success: false, error: 'No deals specified for bulk operation.' };
@@ -105,6 +109,9 @@ export async function processDealBulkJob(
   workspaceId: string,
   userId: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const jobRef = adminDb.collection('deal_bulk_jobs').doc(jobId);
 
   try {
@@ -239,6 +246,9 @@ export async function getDealBulkJobStatusAction(
   jobId: string,
   workspaceId: string
 ): Promise<{ success: boolean; job?: DealBulkJob; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const jobSnap = await adminDb.collection('deal_bulk_jobs').doc(jobId).get();
     if (!jobSnap.exists) {

@@ -6,6 +6,7 @@ import { adminDb, FieldValue } from './firebase-admin';
 import type { CallOutcomeAutomation } from './types';
 import type { MediaExperiment, ExperimentStatus } from './types/media-2.0';
 import { calculateStatisticalSignificance } from './media/experiment-service';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 // ─── Types & Interfaces ──────────────────────────────────────────────────────
 
@@ -443,6 +444,9 @@ export async function recordMediaPageEventAction(params: {
 export async function listMediaSharesWithStatsAction(
   workspaceId: string
 ): Promise<{ shareId: string; customSlug?: string; title: string; assetName: string; type: string; stats: MediaPageStats; updatedAt: string }[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!workspaceId) return [];
 
   try {
@@ -528,6 +532,9 @@ export async function getMediaShareDrilldownAction(
   shareId: string,
   workspaceId: string
 ): Promise<MediaAnalyticsResult | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!shareId || !workspaceId) return null;
 
   try {
@@ -814,6 +821,9 @@ export async function recordExperimentEventServerAction(params: {
   eventType: 'impression' | 'conversion';
   revenueAmount?: number;
 }): Promise<{ success: boolean }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   const { experimentId, variantId, eventType, revenueAmount = 0 } = params;
   if (!experimentId || !variantId) return { success: false };
 

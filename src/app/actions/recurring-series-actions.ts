@@ -12,6 +12,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { RecurringSeries, RecurrenceFrequency } from '@/lib/meetings/types/intelligence';
 import { expandRecurringDates } from '@/lib/meetings/recurrence-service';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -33,6 +34,9 @@ export async function createRecurringSeriesAction(payload: {
   untilDate?: string;
   count?: number;
 }): Promise<{ success: boolean; seriesId?: string; expandedDates?: string[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(payload.workspaceId);
+
   try {
     const { workspaceId, organizationId, eventTypeId, frequency, interval = 1, daysOfWeek, startDate, untilDate, count } = payload;
     const now = new Date().toISOString();
@@ -84,6 +88,9 @@ export async function getRecurringSeriesAction(
   seriesId: string,
   workspaceId: string
 ): Promise<{ success: boolean; series?: RecurringSeries; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const doc = await adminDb.collection('recurring_series').doc(seriesId).get();
     if (!doc.exists) {
@@ -108,6 +115,9 @@ export async function cancelRecurringSeriesAction(
   seriesId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('recurring_series').doc(seriesId);
     const doc = await docRef.get();

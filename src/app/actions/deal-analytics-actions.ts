@@ -23,6 +23,7 @@ import { canUser } from '@/lib/workspace-permissions';
 import { logActivity } from '@/lib/activity-logger';
 import { revalidatePath } from 'next/cache';
 import type { PipelineTarget } from '@/lib/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface SavePipelineTargetInput {
   workspaceId: string;
@@ -39,6 +40,9 @@ export async function savePipelineTargetAction(
   input: SavePipelineTargetInput,
   userId: string
 ): Promise<{ success: boolean; target?: PipelineTarget; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!input.workspaceId || !input.period || !userId) {
       return { success: false, error: 'Missing required parameters (workspaceId, period, userId).' };
@@ -169,6 +173,9 @@ export async function getPipelineTargetsAction(
   workspaceId: string,
   pipelineId?: string | null
 ): Promise<{ success: boolean; targets?: PipelineTarget[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'workspaceId is required.' };
@@ -217,6 +224,9 @@ export async function deletePipelineTargetAction(
   workspaceId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!targetId || !workspaceId || !userId) {
       return { success: false, error: 'targetId, workspaceId, and userId are required.' };

@@ -15,6 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { EdgeCacheStatus, SystemObservabilitySummary } from '@/lib/types';
 import { evaluateEdgeCacheStatus, evaluatePlatformHealth } from '@/lib/page-builder/observability-engine';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Fetches real-time platform observability metrics and health summary.
@@ -24,6 +25,9 @@ export async function fetchPlatformObservabilityAction(): Promise<{
   summary?: SystemObservabilitySummary;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const countSnap = await adminDb.collection('custom_pages').count().get();
     const activePagesCount = countSnap.data().count;
@@ -43,6 +47,9 @@ export async function fetchPlatformObservabilityAction(): Promise<{
 export async function purgeEdgeCacheAction(
   pageId: string,
 ): Promise<{ success: boolean; status?: EdgeCacheStatus; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };

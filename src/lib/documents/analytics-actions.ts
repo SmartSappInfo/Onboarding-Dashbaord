@@ -17,6 +17,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { DocumentAnalyticsSummary, DocumentEvent, ViewerSession } from '@/lib/types/document-types';
 import { aggregateTelemetryData } from './analytics-service';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface GetAnalyticsOptions {
   workspaceId: string;
@@ -27,6 +28,9 @@ export interface GetAnalyticsOptions {
 export async function getDocumentAnalyticsAction(
   options: GetAnalyticsOptions
 ): Promise<{ success: boolean; analytics?: DocumentAnalyticsSummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, documentId, period = 'all_time' } = options;
 

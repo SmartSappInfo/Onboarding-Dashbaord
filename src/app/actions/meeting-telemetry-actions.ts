@@ -9,6 +9,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   WebVitalsMetric,
   ProviderLatencyMetric,
@@ -32,6 +33,9 @@ export async function recordMeetingTelemetryAction(payload: {
   webVital?: WebVitalsMetric;
   providerLatency?: ProviderLatencyMetric;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(payload.workspaceId);
+
   try {
     const { workspaceId, webVital, providerLatency } = payload;
     const docRef = adminDb.collection('meeting_telemetry_logs').doc();

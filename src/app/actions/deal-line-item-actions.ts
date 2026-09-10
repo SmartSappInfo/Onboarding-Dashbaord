@@ -24,6 +24,7 @@ import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
 import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import type { Deal, DealLineItem, DealQuote } from '@/lib/types';
 import { nanoid } from 'nanoid';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface SaveLineItemsResponse {
   success: boolean;
@@ -45,6 +46,9 @@ export async function saveDealLineItemsAction(
   contractTermMonths?: number,
   priceBookId?: string | null
 ): Promise<SaveLineItemsResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const dealRef = adminDb.collection('deals').doc(dealId);
     const dealSnap = await dealRef.get();
@@ -172,6 +176,9 @@ export async function createDealQuoteAction(
   },
   userId?: string
 ): Promise<CreateQuoteResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const dealRef = adminDb.collection('deals').doc(dealId);
     const dealSnap = await dealRef.get();
@@ -274,6 +281,9 @@ export async function getDealQuotesAction(
   dealId: string,
   workspaceId?: string
 ): Promise<{ success: boolean; quotes?: DealQuote[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     let q = adminDb.collection('deal_quotes').where('dealId', '==', dealId);
     if (workspaceId) {
@@ -499,6 +509,9 @@ export async function convertQuoteToInvoiceAction(
   workspaceId: string,
   userId?: string
 ): Promise<{ success: boolean; invoiceId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const quoteRef = adminDb.collection('deal_quotes').doc(quoteId);
     const quoteSnap = await quoteRef.get();
@@ -595,6 +608,9 @@ export async function deleteDealQuoteAction(
   workspaceId: string,
   userId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const quoteRef = adminDb.collection('deal_quotes').doc(quoteId);
     const quoteSnap = await quoteRef.get();

@@ -54,6 +54,9 @@ export async function getZoomAuthUrlAction(
   workspaceId: string,
   orgId: string
 ): Promise<ActionResponse<string>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const url = await getZoomAuthUrl(workspaceId, orgId);
     return { success: true, data: url };
@@ -71,6 +74,9 @@ export async function getZoomAuthUrlAction(
 export async function disconnectConnectionAction(
   connectionId: string
 ): Promise<ActionResponse<void>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     await adminDb.collection('calendar_connections').doc(connectionId).delete();
     return { success: true };
@@ -384,5 +390,6 @@ export interface TimeSlot {
 
 import type { BookingPage, BookingResponse, WorkingDay, UserAvailability, Meeting } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 

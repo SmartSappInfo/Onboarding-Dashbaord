@@ -12,6 +12,7 @@ import {
   type GenerateConferenceSessionInput,
 } from '@/lib/meetings/conference-adapters';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -25,6 +26,9 @@ function getErrorMessage(error: unknown): string {
 export async function getConferenceSessionAction(
   meetingId: string
 ): Promise<{ success: boolean; session?: ConferenceSession; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const snap = await adminDb
       .collection('conference_sessions')

@@ -7,12 +7,16 @@ import { triggerAutomationProtocols } from './automation-processor';
 import { resolveContact } from './contact-adapter';
 import { buildAutomationPayload } from './automation-payload';
 import { resolveAutomationTrigger } from './automation-trigger-map';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // Cache for organization logging status to prevent Firestore read flooding
 const orgLoggingDisabledCache = new Map<string, { disabled: boolean; timestamp: number }>();
 const CACHE_TTL_MS = 60 * 1000; // 60s cache
 
 export async function invalidateOrgLoggingCache(orgId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     orgLoggingDisabledCache.delete(orgId);
 }
 

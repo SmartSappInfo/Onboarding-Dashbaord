@@ -8,6 +8,7 @@ import { adminDb } from './firebase-admin';
 import { canUser } from './workspace-permissions';
 import { CreditNote, CreditNoteReason, ActionResponse } from './types';
 import { CreditNoteService } from './services/credit-note-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateCreditNoteInput {
   workspaceId: string;
@@ -23,6 +24,9 @@ export interface CreateCreditNoteInput {
 export async function createCreditNoteAction(
   input: CreateCreditNoteInput
 ): Promise<ActionResponse & { creditNote?: CreditNote }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, userId, accountId, amount, reason, reasonDetails, invoiceId, organizationId } = input;
 
@@ -54,6 +58,9 @@ export async function getCreditNotesByAccountAction(
   workspaceId: string,
   userId: string
 ): Promise<ActionResponse & { creditNotes?: CreditNote[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'view', workspaceId);
     if (!permission.granted) {

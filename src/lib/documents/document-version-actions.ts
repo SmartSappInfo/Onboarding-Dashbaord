@@ -20,6 +20,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Document, DocumentVersion, DocumentPage } from '@/lib/types/document-types';
 import type { FlipbookPage } from '@/lib/types/flipbook-types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateVersionPayload {
   documentId: string;
@@ -46,6 +47,9 @@ export async function createDocumentVersionAction(payload: CreateVersionPayload)
   versionNumber?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!payload.documentId || !payload.workspaceId) {
       return { success: false, error: 'Document ID and workspace ID are required' };
@@ -172,6 +176,9 @@ export async function promoteDocumentVersionAction(
   versionId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!documentId || !versionId || !workspaceId) {
       return { success: false, error: 'Document ID, version ID, and workspace ID are required' };
@@ -262,6 +269,9 @@ export async function archiveDocumentVersionAction(
   versionId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const versionRef = adminDb.collection('document_versions').doc(versionId);
     const versionSnap = await versionRef.get();
@@ -293,6 +303,9 @@ export async function getDocumentVersionsAction(
   documentId: string,
   workspaceId: string
 ): Promise<{ success: boolean; versions?: DocumentVersion[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb.collection('document_versions')
       .where('documentId', '==', documentId)

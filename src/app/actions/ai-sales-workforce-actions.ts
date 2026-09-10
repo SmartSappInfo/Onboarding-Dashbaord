@@ -23,6 +23,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { checkWorkspaceAccess } from '@/lib/workspace-permissions';
 import { evaluateEffortEvent } from '@/lib/scoring-performance-engine';
 import { seedAiWorkforceWorkspace } from '@/lib/ai-sales-workforce/migration-protocol';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import {
   evaluateAiApprovalDecision,
   calculateAiFleetMetrics,
@@ -62,6 +63,9 @@ export async function getAiWorkforceDashboardDataAction(params: {
   };
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -170,6 +174,9 @@ export async function updateAgentAutonomyLevelAction(params: {
   agentId: string;
   newLevel: AiAutonomyLevel;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, actorId, agentId, newLevel } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -216,6 +223,9 @@ export async function executeAiRecommendationAction(params: {
   actorName: string;
   recommendationId: string;
 }): Promise<{ success: boolean; pointsAwarded?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, recommendationId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -306,6 +316,9 @@ export async function resolveAiApprovalAction(params: {
   decision: 'approved' | 'rejected' | 'escalated';
   reviewNote?: string;
 }): Promise<{ success: boolean; pointsAwarded?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, approvalId, decision, reviewNote } =
       params;
@@ -380,6 +393,9 @@ export async function runCrmHygieneScanAction(params: {
   organizationId: string;
   actorId: string;
 }): Promise<{ success: boolean; detectedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -468,6 +484,9 @@ export async function executeCrmHygieneRepairAction(params: {
   issueId: string;
   repairNote?: string;
 }): Promise<{ success: boolean; pointsAwarded?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId, actorName, issueId, repairNote } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -578,6 +597,9 @@ export async function toggleAiMasterKillSwitchAction(params: {
   actorId: string;
   killSwitchActive: boolean;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, actorId, killSwitchActive } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -615,6 +637,9 @@ export async function reseedAiWorkforceDefaultsAction(params: {
   organizationId: string;
   actorId: string;
 }): Promise<{ success: boolean; seededAgents: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId } = params;
     const access = await checkWorkspaceAccess(actorId, workspaceId);
@@ -649,6 +674,9 @@ export async function updateAiGovernancePolicyAction(params: {
   tokenMonthlyBudget?: number;
   maxCascadeDepth?: number;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,

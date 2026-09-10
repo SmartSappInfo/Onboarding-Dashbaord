@@ -17,11 +17,15 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Document, DocumentEvent, ViewerSession, WorkspaceAdvancedAnalyticsSummary } from '@/lib/types/document-types';
 import { aggregateWorkspaceAdvancedAnalytics } from './advanced-analytics-service';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function getWorkspaceAdvancedAnalyticsAction(
   workspaceId: string,
   period: 'last_7_days' | 'last_30_days' | 'all_time' = 'last_30_days'
 ): Promise<{ success: boolean; analytics?: WorkspaceAdvancedAnalyticsSummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };

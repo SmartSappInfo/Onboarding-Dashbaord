@@ -22,6 +22,7 @@ import { MEMORY_OBJECTS_COLLECTION } from '../memory-repository';
 import type { QdrantClusterHealth } from '../semantic-types';
 import type { MemoryObject } from '../types';
 import type { MemoryActionResult } from './memory-actions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 async function verifyBackofficeAdmin(userId: string): Promise<boolean> {
   if (!userId) return false;
@@ -60,6 +61,9 @@ export interface BackofficeCompanyBrainHealth {
 export async function getCompanyBrainHealthAction(
   userId: string
 ): Promise<MemoryActionResult<BackofficeCompanyBrainHealth>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!userId) {
     return { success: false, error: 'Unauthenticated caller.' };
   }
@@ -117,6 +121,9 @@ export async function triggerCompanyBrainReindexAction(
   userId: string,
   workspaceId?: string
 ): Promise<MemoryActionResult<{ total: number; indexed: number; failed: number }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!userId) {
     return { success: false, error: 'Unauthenticated caller.' };
   }
@@ -158,6 +165,9 @@ export async function triggerCompanyBrainReindexAction(
 export async function clearEmbeddingCacheAction(
   userId: string
 ): Promise<MemoryActionResult<{ cleared: boolean }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!userId) {
     return { success: false, error: 'Unauthenticated caller.' };
   }

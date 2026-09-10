@@ -29,6 +29,7 @@ import type {
 } from '@/lib/sales-performance/types';
 import type { EffortEventDoc, UserEffortSummaryDoc } from '@/lib/scoring-performance-engine';
 import type { PerformancePolicy as PolicyStudioPolicy } from '@/lib/policy-studio/types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import {
   calculatePerformanceIndex,
   calculateTargetAttainment,
@@ -80,6 +81,9 @@ export async function getPerformanceOverviewAction(params: {
   customStartDate?: string;
   customEndDate?: string;
 }): Promise<{ success: boolean; data?: PerformanceOverviewData; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, timeRange, customStartDate, customEndDate } = params;
     if (!workspaceId || !organizationId) {
@@ -412,6 +416,9 @@ export async function getRepAuditLedgerAction(params: {
   repId: string;
   limitCount?: number;
 }): Promise<{ success: boolean; data?: EffortEventDoc[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, repId, limitCount = 50 } = params;
     if (!workspaceId || !repId) {
@@ -472,6 +479,9 @@ export async function getRepPerformanceDetailAction(params: {
   whyExplanation?: WhyExplanation;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, repId } = params;
 
@@ -547,6 +557,9 @@ export async function getRepPerformanceDetailAction(params: {
 export async function listWorkspaceTargetsAction(
   workspaceId: string
 ): Promise<{ success: boolean; data?: SalesTarget[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) return { success: false, error: 'Missing workspaceId' };
 
@@ -584,6 +597,9 @@ export async function createOrUpdateTargetAction(params: {
   targetData: Omit<SalesTarget, 'id' | 'createdAt' | 'updatedAt' | 'attainmentPercent' | 'requiredDailyPace' | 'paceStatus'>;
   targetId?: string;
 }): Promise<{ success: boolean; targetId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, targetData, targetId } = params;
     if (!workspaceId || !organizationId) {
@@ -620,6 +636,9 @@ export async function deleteTargetAction(params: {
   workspaceId: string;
   targetId: string;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, targetId } = params;
     const docRef = adminDb.collection('salesTargets').doc(targetId);

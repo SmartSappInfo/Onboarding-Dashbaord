@@ -17,6 +17,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { WorkspaceAiService } from '@/lib/ai/services/workspace-ai-service';
 import type { WorkspaceAiSettings } from '@/lib/types';
 import type { AiProviderId } from '@/lib/ai/model-registry';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface WorkspaceAiActionResult {
   success: boolean;
@@ -72,6 +73,9 @@ export async function getWorkspaceAiSettingsAction(
   workspaceId: string,
   userId?: string
 ): Promise<WorkspaceAiActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return {
@@ -111,6 +115,9 @@ export async function getWorkspaceAiSettingsAction(
 export async function updateWorkspaceAiSettingsAction(
   params: UpdateWorkspaceAiParams
 ): Promise<WorkspaceAiActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, userId, actorId, ...settings } = params;
     if (!workspaceId) {

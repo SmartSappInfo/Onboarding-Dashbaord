@@ -40,6 +40,7 @@ import {
   type UnifiedNote,
 } from '@/lib/quick-notes-types';
 import { backfillCrmRelationsAction } from '@/lib/quick-notes-graph-actions';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 const GOVERNANCE_COLLECTION = 'knowledge_graph_governance';
 
@@ -64,6 +65,9 @@ export async function getKnowledgeGraphGovernanceAction(
   workspaceId: string,
   actorId: string
 ): Promise<ActionResult<KnowledgeGraphGovernanceConfig>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!actorId) {
       return {
@@ -129,6 +133,9 @@ export async function updateKnowledgeGraphGovernanceAction(params: {
   actorName: string;
   config: Partial<KnowledgeGraphGovernanceConfig>;
 }): Promise<ActionResult<KnowledgeGraphGovernanceConfig>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, actorId, actorName, config } = params;
 
@@ -225,6 +232,9 @@ export async function getKnowledgeGraphMetricsAction(
   workspaceId: string,
   actorId: string
 ): Promise<ActionResult<{ metrics: GraphMetrics; totalRelations: number }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!actorId) return { success: false, error: 'Not authenticated.', code: 'unauthenticated' };
     if (!workspaceId) return { success: false, error: 'No workspace selected.' };
@@ -261,6 +271,9 @@ export async function triggerBackfillCrmRelationsAction(
   actorId: string,
   actorName: string
 ): Promise<ActionResult<{ backfilledCount: number }>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const result = await backfillCrmRelationsAction(workspaceId, actorId, actorName);
 
@@ -302,6 +315,9 @@ export async function resetKnowledgeGraphGovernanceAction(
   actorId: string,
   actorName: string
 ): Promise<ActionResult<KnowledgeGraphGovernanceConfig>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const now = new Date().toISOString();
     const baselineConfig: KnowledgeGraphGovernanceConfig = {

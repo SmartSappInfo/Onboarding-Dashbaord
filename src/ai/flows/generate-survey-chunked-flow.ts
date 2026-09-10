@@ -459,6 +459,7 @@ export async function generateSurveyLogic(input: LogicInput): Promise<LogicOutpu
 // The merge function lives in a separate non-'use server' file because
 // it's a pure synchronous utility that runs client-side.
 import { mergeSurveyPhases } from '@/ai/utils/merge-survey-phases';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ══════════════════════════════════════════════════════════
 // ORCHESTRATOR — Called by the UI
@@ -475,6 +476,9 @@ export async function generateSurveyChunked(input: {
   provider?: string;
   modelId?: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const sourceText = await resolveSourceText(input);
   const provider = input.provider || 'openrouter';
   const modelId = input.modelId || 'gemini-3.5-flash';

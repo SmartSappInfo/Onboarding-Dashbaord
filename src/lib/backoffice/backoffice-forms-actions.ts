@@ -12,6 +12,7 @@ import { adminDb } from '../firebase-admin';
 import { COLLECTIONS } from '../collection-constants';
 import type { Form, IndustryVertical } from '../types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Runs the Forms FER audit across a workspace or all workspaces.
@@ -20,6 +21,9 @@ export async function runFormsFerAuditAction(
   workspaceId?: string,
   autoRepair = false
 ): Promise<{ success: boolean; report?: FormHealthReport; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const report = await executeFormsFerAudit(workspaceId, autoRepair);
     revalidatePath('/admin/forms');
@@ -38,6 +42,9 @@ export async function seedIndustryFormTemplatesAction(
   organizationId: string,
   vertical: IndustryVertical
 ): Promise<{ success: boolean; createdCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const timestamp = new Date().toISOString();
     const formsCol = adminDb.collection(COLLECTIONS.FORMS);

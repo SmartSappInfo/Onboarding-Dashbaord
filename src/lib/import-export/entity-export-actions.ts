@@ -4,6 +4,7 @@ import { adminDb } from '../firebase-admin';
 import { exportEntitiesToCSV } from './export-service';
 import { logActivity } from '../activity-logger';
 import type { Entity, WorkspaceEntity } from '../types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function exportEntitiesToCSVAction(
   workspaceEntityIds: string[],
@@ -11,6 +12,9 @@ export async function exportEntitiesToCSVAction(
   organizationId: string,
   userId: string
 ): Promise<{ success: boolean; data?: string; count?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceEntityIds || workspaceEntityIds.length === 0) {
       return { success: true, data: '', count: 0 };

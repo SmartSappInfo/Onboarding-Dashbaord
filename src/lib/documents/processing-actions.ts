@@ -23,6 +23,7 @@ import type {
   DocumentSourceType
 } from '@/lib/types/document-types';
 import { executeDocumentProcessingPipeline, validateSourceUrl } from './processing-pipeline';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface QueueProcessingJobPayload {
   workspaceId: string;
@@ -121,6 +122,9 @@ export async function getProcessingJobStatusAction(
   jobId: string,
   workspaceId: string
 ): Promise<ProcessingJobActionResult & { job?: DocumentProcessingJob }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!jobId || !workspaceId) {
       return { success: false, error: 'Job ID and Workspace ID are required.' };
@@ -160,6 +164,9 @@ export async function retryFailedProcessingJobAction(
   sourceUrl: string,
   sourceType?: DocumentSourceType
 ): Promise<ProcessingJobActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!jobId || !workspaceId) {
       return { success: false, error: 'Job ID and Workspace ID are required.' };

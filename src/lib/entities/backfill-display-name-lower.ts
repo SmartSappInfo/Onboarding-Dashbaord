@@ -12,6 +12,7 @@
 
 import { adminDb } from '../firebase-admin';
 import { toSearchKey } from './entity-cache-domain';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const PAGE_SIZE = 400; // under Firestore's 500 writes/batch limit
 
@@ -25,6 +26,9 @@ export async function backfillDisplayNameLower(opts?: {
   workspaceId?: string;
   afterId?: string;
 }): Promise<BackfillResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   let q = adminDb.collection('workspace_entities') as FirebaseFirestore.Query;
   if (opts?.workspaceId) q = q.where('workspaceId', '==', opts.workspaceId);
   q = q.orderBy('__name__').limit(PAGE_SIZE);

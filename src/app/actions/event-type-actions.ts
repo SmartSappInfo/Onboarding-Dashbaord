@@ -7,6 +7,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { EventType } from '@/lib/meetings/types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Helper to safely extract error message without using any.
@@ -37,6 +38,9 @@ export async function getUniqueEventTypeSlug(
   baseSlug: string,
   excludeId?: string
 ): Promise<string> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const normalized = slugify(baseSlug) || 'meeting';
   let candidate = normalized;
   let attempt = 1;

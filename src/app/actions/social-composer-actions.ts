@@ -3,6 +3,7 @@
 import { getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
 import type { BrandVoiceProfile, SocialPost, SocialInboxItem, SocialInboxItemReply, SocialListeningRule } from '@/lib/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 interface GenerateOptions {
   basePrompt: string;
@@ -38,6 +39,9 @@ interface PublishOptions {
  * Integrates directly with active Brand Voice Profiles in Firestore and calls Gemini via Genkit.
  */
 export async function generateSocialVariationAction(options: GenerateOptions): Promise<{ success: boolean; text?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { basePrompt, platform, workspaceId, orgId } = options;
 
@@ -123,6 +127,9 @@ Rewrite the caption for ${platform}. Return ONLY the final caption copy. Do not 
  * Supports drafts, scheduled posts, and immediate publishing simulation.
  */
 export async function createSocialPostAction(options: PublishOptions): Promise<{ success: boolean; postId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, orgId, campaignId, title, baseCaption, mediaUrls, variations, status } = options;
 
@@ -189,6 +196,9 @@ export async function updatePostScheduleAction(
   platform: string,
   newScheduledTime: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const postRef = adminDb.collection('socialPosts').doc(postId);
     const docSnap = await postRef.get();
@@ -235,6 +245,9 @@ export async function recommendBestTimeAction(
   workspaceId: string,
   orgId: string
 ): Promise<{ success: boolean; time?: string; reason?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     // 1. Fetch up to 30 published posts for the active workspace to aggregate metrics
     const postsSnap = await adminDb.collection('socialPosts')
@@ -338,6 +351,9 @@ export async function simulateInboundMessageAction(
   workspaceId: string,
   orgId: string
 ): Promise<{ success: boolean; threadId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const mockInquiries = [
       {
@@ -487,6 +503,9 @@ export async function generateInboxReplyAction(
   workspaceId: string,
   orgId: string
 ): Promise<{ success: boolean; text?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const threadDoc = await adminDb.collection('socialInbox').doc(threadId).get();
     if (!threadDoc.exists) {
@@ -552,6 +571,9 @@ export async function sendInboxManualReplyAction(
   messageContent: string,
   senderName: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const threadRef = adminDb.collection('socialInbox').doc(threadId);
     const threadDoc = await threadRef.get();
@@ -591,6 +613,9 @@ export async function linkInboxToCRMAction(
   threadId: string,
   crmContactId: string | null
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const threadRef = adminDb.collection('socialInbox').doc(threadId);
     await threadRef.update({
@@ -615,6 +640,9 @@ export async function simulateSocialConversionsAction(
   orgId: string,
   postId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const postRef = adminDb.collection('socialPosts').doc(postId);
     const postSnap = await postRef.get();
@@ -722,6 +750,9 @@ export async function simulateListeningMentionAction(
   workspaceId: string,
   orgId: string
 ): Promise<{ success: boolean; alertId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const mockMentions = [
       { author: 'CompetitiveSchool Fan', platform: 'x', content: 'Vibe Academy is charging too much for preschool tuition. Switched my son to competitor yesterday.', sentiment: 'negative' as const, matchingKeyword: 'tuition' },

@@ -28,6 +28,7 @@ import type {
   AgentDescriptor,
 } from '../types';
 import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface ActionResult<T> {
   success: boolean;
@@ -75,6 +76,9 @@ export async function startSupervisorMissionAction(params: {
   executionMode?: 'autonomous' | 'step_by_step';
   maxSteps?: number;
 }): Promise<ActionResult<AgentRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, organizationId, userId, objective, subjectId, subjectType, executionMode, maxSteps } = params;
 
   if (!userId) {
@@ -138,6 +142,9 @@ export async function resumeSupervisorMissionAction(params: {
   runId: string;
   approvalId: string;
 }): Promise<ActionResult<AgentRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, runId, approvalId } = params;
 
   if (!userId) {
@@ -180,6 +187,9 @@ export async function cancelSupervisorMissionAction(params: {
   runId: string;
   reason?: string;
 }): Promise<ActionResult<AgentRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, runId, reason } = params;
 
   if (!userId) {
@@ -221,6 +231,9 @@ export async function getSupervisorRunAction(params: {
   userId: string;
   runId: string;
 }): Promise<ActionResult<AgentRun>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, runId } = params;
 
   if (!userId) {
@@ -269,6 +282,9 @@ export async function listSupervisorRunsAction(params: {
   userId: string;
   limit?: number;
 }): Promise<ActionResult<AgentRun[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, limit = 20 } = params;
 
   if (!userId) {
@@ -311,6 +327,9 @@ export async function executeProposedActionAction(params: {
   userId: string;
   action: AgentActionProposal;
 }): Promise<ActionResult<McpJsonRpcResponse>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, organizationId, userId, action } = params;
 
   if (!userId) {
@@ -370,6 +389,9 @@ export async function executeProposedActionAction(params: {
 export async function listAgentDescriptorsAction(params: {
   userId: string;
 }): Promise<ActionResult<AgentDescriptor[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { userId } = params;
   if (!userId) {
     return {

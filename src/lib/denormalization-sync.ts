@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { toSearchKey } from './entities/entity-cache-domain';
 import type { Entity } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Denormalization sync utilities for workspace_entities.
@@ -33,6 +34,9 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
   entityId: string,
   updates: DenormalizedFields
 ): Promise<{ success: boolean; updatedCount: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const timestamp = new Date().toISOString();
 
@@ -111,6 +115,9 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
  * FER-01: Now resolves primary contact from entityContacts via helpers.
  */
 export async function extractDenormalizedFields(entity: Entity): Promise<DenormalizedFields> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { extractPrimaryContactFields } = await import('./entity-contact-helpers');
   
   const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields(entity);

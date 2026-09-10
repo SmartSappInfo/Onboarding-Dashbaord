@@ -16,6 +16,7 @@ import type {
   MeetingResourceType,
 } from '@/lib/meetings/types/resources';
 import { detectResourceCollision } from '@/lib/meetings/resource-collision-service';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -138,6 +139,9 @@ export async function reservePhysicalResourceAction(payload: {
   reservedByUserId: string;
   reservedByName?: string;
 }): Promise<{ success: boolean; reservationId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(payload.workspaceId);
+
   try {
     const {
       workspaceId,

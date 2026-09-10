@@ -19,6 +19,7 @@ import type {
   UnifiedNote,
 } from './quick-notes-types';
 import { adminDb } from './firebase-admin';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Company Brain (Knowledge 2.0) — Search & RAG Server Actions (Phase 4).
@@ -62,6 +63,9 @@ export interface SemanticSearchParams {
  * Legacy vector search action (retained for backward compatibility).
  */
 export async function semanticSearchNotes(params: SemanticSearchParams): Promise<SearchResult<NoteIndexRow[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId } = params;
   if (!userId) return { success: false, error: 'Not authenticated.', code: 'unauthenticated' };
   if (!workspaceId) return { success: false, error: 'No workspace selected.' };
@@ -104,6 +108,9 @@ export async function semanticSearchNotes(params: SemanticSearchParams): Promise
 export async function hybridSearchKnowledgeAction(
   options: HybridSearchOptions
 ): Promise<SearchResult<HybridSearchResult[]>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, query } = options;
   if (!userId) return { success: false, error: 'Not authenticated.', code: 'unauthenticated' };
   if (!workspaceId) return { success: false, error: 'No workspace selected.' };
@@ -176,6 +183,9 @@ export interface AskKnowledgeParams {
 export async function askSmartSappKnowledgeAction(
   params: AskKnowledgeParams
 ): Promise<SearchResult<AskKnowledgeResponse>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, userId, query, entityId, entityName } = params;
   if (!userId) return { success: false, error: 'Not authenticated.', code: 'unauthenticated' };
   if (!workspaceId) return { success: false, error: 'No workspace selected.' };
@@ -370,6 +380,9 @@ export async function reindexWorkspaceKnowledgeAction(
   workspaceId: string,
   userId: string
 ): Promise<{ success: boolean; indexedCount?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   if (!userId) return { success: false, error: 'Not authenticated.' };
   if (!workspaceId) return { success: false, error: 'No workspace provided.' };
 

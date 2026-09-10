@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { logActivity } from '@/lib/activity-logger';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function clearAllImportLogsAction(userId: string): Promise<{
     success: boolean;
@@ -9,6 +10,9 @@ export async function clearAllImportLogsAction(userId: string): Promise<{
     deletedSubdocsCount: number;
     error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         let deletedLogsCount = 0;
         let deletedSubdocsCount = 0;

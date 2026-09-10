@@ -17,6 +17,7 @@ import {
 } from './automations/service';
 import { testAutomationFlow } from './automations/test-flow';
 import type { TestAutomationFlowInput } from './automations/test-flow';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Thin server-action boundary — business logic lives in `automations/service.ts`.
@@ -30,22 +31,37 @@ export async function saveAutomationAction(
 }
 
 export async function deleteAutomationAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return removeAutomation(id, userId);
 }
 
 export async function archiveAutomationAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return archiveAutomation(id, userId);
 }
 
 export async function restoreAutomationAction(id: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return restoreAutomation(id, userId);
 }
 
 export async function deleteAllArchivedAutomationsAction(workspaceId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return deleteAllArchivedAutomations(workspaceId, userId);
 }
 
 export async function toggleAutomationStatusAction(id: string, active: boolean, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return setAutomationStatus(id, active, userId);
 }
 
@@ -54,6 +70,9 @@ export async function seedDefaultAutomationsAction(
   organizationId: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   return seedDefaultDealAutomation(workspaceId, organizationId, userId);
 }
 
@@ -62,6 +81,9 @@ export async function testAutomationFlowAction(
   userId: string,
   input: TestAutomationFlowInput
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return testAutomationFlow(automationId, userId, input);
 }
 
@@ -72,51 +94,81 @@ export async function testAutomationStepAction(
   nodeDataOverride: Record<string, unknown>,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { testAutomationStep } = await import('./automations/test-step');
   return testAutomationStep(automationId, nodeId, entityId, nodeDataOverride, userId);
 }
 
 export async function pulseAutomationEngineAction() {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { processScheduledJobsAction } = await import('./automations/processor');
   return processScheduledJobsAction();
 }
 
 export async function manuallyReleaseWaitJobAction(jobId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return manuallyReleaseWaitJob(jobId, userId);
 }
 
 export async function manuallyEndAutomationRunAction(runId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return manuallyEndAutomationRun(runId, userId);
 }
 
 // ── Run Management Actions ──────────────────────────────────────────────────────
 
 export async function restartRunAction(runId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { restartAutomationRun } = await import('./automations/run-management');
   return restartAutomationRun(runId, userId);
 }
 
 export async function retryFailedStepAction(runId: string, nodeId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { retryFailedStep } = await import('./automations/run-management');
   return retryFailedStep(runId, nodeId, userId);
 }
 
 export async function forceEndRunAction(runId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { forceEndRun } = await import('./automations/run-management');
   return forceEndRun(runId, userId);
 }
 
 export async function forceAdvanceRunAction(runId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { forceAdvanceRun } = await import('./automations/run-management');
   return forceAdvanceRun(runId, userId);
 }
 
 export async function pauseRunAction(runId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { pauseRun } = await import('./automations/run-management');
   return pauseRun(runId, userId);
 }
 
 export async function resumeRunAction(runId: string, userId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { resumePausedRun } = await import('./automations/run-management');
   return resumePausedRun(runId, userId);
 }
@@ -171,6 +223,9 @@ function sanitizeServerActionData<T>(data: unknown): T {
  * the message step and the inspector statistics tab.
  */
 export async function getMessageNodeStatsAction(automationId: string, nodeId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!automationId || !nodeId) return null;
     const { readMessageNodeStats } = await import('./messaging/message-node-stats');
@@ -189,6 +244,9 @@ export async function resendFailedMessagesAction(
   logIds?: string[],
   resendAll?: boolean
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const { scheduleBulkResendMessagesTask } = await import('./gcp-tasks-client');
   return scheduleBulkResendMessagesTask({
     automationId,
@@ -204,6 +262,9 @@ export async function resendFailedMessagesAction(
  * Fetches via equality constraints and sorts on the client to avoid composite index overhead.
  */
 export async function getMessageNodeLogsAction(automationId: string, nodeId: string): Promise<MessageLog[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!automationId || !nodeId) return [];
     const { adminDb } = await import('./firebase-admin');
@@ -236,6 +297,9 @@ export async function getMessageNodeLogsAction(automationId: string, nodeId: str
 // ── Portability Export / Import Actions ──────────────────────────────────────────
 
 export async function exportAutomationAction(automationId: string): Promise<AutomationExportEnvelope> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { buildAutomationExport } = await import('./automations/portability');
   return buildAutomationExport(automationId);
 }
@@ -268,6 +332,9 @@ export async function cleanContactEmailAction(
   mode: 'correct' | 'archive' | 'delete',
   replacementValue?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { adminDb } = await import('./firebase-admin');
     const { removeSuppression } = await import('./suppression-service');
@@ -400,6 +467,9 @@ export async function deleteContactAction(
   entityId: string,
   email: string
 ): Promise<{ success: boolean; deletedEntity: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { adminDb } = await import('./firebase-admin');
 
@@ -458,6 +528,9 @@ export async function verifySingleContactAction(
   recipient: string,
   type: 'email' | 'phone'
 ): Promise<{ success: boolean; result?: { valid: boolean; score: number; status: string }; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { adminDb } = await import('./firebase-admin');
     const cleanRecipient = recipient.toLowerCase().trim();
@@ -550,6 +623,9 @@ export async function bulkCleanContactsAction(
   contactsToClean: Array<{ entityId: string; email?: string; phone?: string }>,
   mode: 'archive' | 'delete'
 ): Promise<{ success: boolean; count: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { adminDb } = await import('./firebase-admin');
     const { removeSuppression } = await import('./suppression-service');
@@ -699,6 +775,9 @@ export async function healStrandedMessageContactsAction(
   workspaceId?: string,
   userId?: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { healStrandedMessageContacts } = await import('./automations/healing');
   return healStrandedMessageContacts(workspaceId, userId);
 }
@@ -709,6 +788,9 @@ export async function manuallyReleaseAllWaitJobsAction(
   userId: string,
   workspaceId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const { manuallyReleaseAllWaitJobs } = await import('./automations/service');
   return manuallyReleaseAllWaitJobs(automationId, nodeId, userId, workspaceId);
 }
@@ -718,6 +800,9 @@ export async function cancelAutomationRunAction(
   entityId: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required and must be a string.');
@@ -764,6 +849,9 @@ export async function reconcilePendingSmsLogsAction(
   userId: string,
   workspaceId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required and must be a string.');
@@ -782,6 +870,9 @@ export async function bulkRetryRunsAction(
   userId: string,
   workspaceId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -815,6 +906,9 @@ export async function bulkForceAdvanceRunsAction(
   userId: string,
   workspaceId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -847,6 +941,9 @@ export async function jumpRunToStepAction(
   targetNodeId: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -872,6 +969,9 @@ export async function rescheduleWaitJobAction(
   newExecuteAtIso: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -897,6 +997,9 @@ export async function updateRunPayloadAction(
   updatedPayload: Record<string, unknown>,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -923,6 +1026,9 @@ export async function cleanAndVerifyRunContactAction(
   updatedPhone: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -951,6 +1057,9 @@ export async function createContactFollowupTaskAction(
   description: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -980,6 +1089,9 @@ export async function executeMessageStatusAutomationsAction(
   recipient?: string,
   runId?: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -1012,6 +1124,9 @@ export async function resendFailedMessageAction(
   logId: string,
   userId: string
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');
@@ -1044,6 +1159,9 @@ export async function bulkResendFailedMessagesAction(
   logIds?: string[],
   resendAll?: boolean
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId || typeof userId !== 'string') {
       throw new Error('UserId is required.');

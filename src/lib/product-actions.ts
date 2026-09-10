@@ -8,6 +8,7 @@ import { adminDb } from './firebase-admin';
 import { canUser } from './workspace-permissions';
 import { FinanceProduct, FinancePricingPlan, ActionResponse } from './types';
 import { logActivity } from './activity-logger';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateProductInput {
   workspaceId: string;
@@ -25,6 +26,9 @@ export interface CreateProductInput {
 export async function createProductAction(
   input: CreateProductInput
 ): Promise<ActionResponse & { product?: FinanceProduct }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, userId, name, sku, category, unitName, currency } = input;
     if (!workspaceId || !userId || !name || !sku) {
@@ -78,6 +82,9 @@ export async function updateProductAction(
   userId: string,
   updates: Partial<FinanceProduct>
 ): Promise<ActionResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const permission = await canUser(userId, 'finance', 'invoices', 'edit', workspaceId);
     if (!permission.granted) {
@@ -102,6 +109,9 @@ export async function updateProductAction(
 export async function createPricingPlanAction(
   input: Omit<FinancePricingPlan, 'id' | 'createdAt' | 'updatedAt'> & { userId: string; workspaceId: string }
 ): Promise<ActionResponse & { plan?: FinancePricingPlan }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(input.workspaceId);
+
   try {
     const { userId, workspaceId, productId, name, rate, currency, billingFrequency, pricingModel } = input;
     const permission = await canUser(userId, 'finance', 'invoices', 'create', workspaceId);

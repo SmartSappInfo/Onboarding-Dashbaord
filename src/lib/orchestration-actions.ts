@@ -15,6 +15,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { CampaignOrchestration, PageEvent } from '@/lib/types';
 import { orchestrateCampaignEvent } from '@/lib/page-builder/orchestration-engine';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Saves or updates a CampaignOrchestration definition in Firestore.
@@ -22,6 +23,9 @@ import { revalidatePath } from 'next/cache';
 export async function saveCampaignOrchestrationAction(
   orchestration: CampaignOrchestration,
 ): Promise<{ success: boolean; id?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (
       !orchestration.id ||
@@ -52,6 +56,9 @@ export async function triggerCrossChannelSyncAction(
   pageId: string,
   event: PageEvent,
 ): Promise<{ success: boolean; triggersCount?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId || !event) {
       return { success: false, error: 'Missing required sync parameters' };
@@ -93,6 +100,9 @@ export async function triggerCrossChannelSyncAction(
 export async function fetchCampaignOrchestrationsAction(
   pageId: string,
 ): Promise<{ success: boolean; orchestrations?: CampaignOrchestration[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };

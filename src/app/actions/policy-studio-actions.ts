@@ -36,6 +36,7 @@ import {
   buildDefaultPerformancePolicy,
 } from '@/lib/policy-studio/migration-protocol';
 import type { SalesPerformanceDaily } from '@/lib/sales-performance/types';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Server Action: Retrieve the active PerformancePolicy for a workspace.
@@ -52,6 +53,9 @@ export async function getWorkspacePolicyAction(params: {
   isInitialProvision?: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, actorId = 'system', actorName = 'System Administrator' } = params;
     if (!workspaceId || !organizationId) {
@@ -107,6 +111,9 @@ export async function simulatePolicyImpactAction(params: {
   simulation?: PolicySimulationResult;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, proposedPolicy } = params;
     if (!workspaceId || !organizationId) {
@@ -214,6 +221,9 @@ export async function saveAndPublishPolicyAction(params: {
   diff?: PolicyChangeDiff;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const {
       workspaceId,
@@ -322,6 +332,9 @@ export async function getPolicyVersionHistoryAction(params: {
   versions?: PolicyVersionRecord[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId } = params;
     if (!workspaceId) {
@@ -367,6 +380,9 @@ export async function rollbackPolicyVersionAction(params: {
   newVersion?: number;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, targetVersion, authorId, authorName } = params;
     if (!workspaceId || !targetVersion) {
@@ -447,6 +463,9 @@ export async function resetPolicyToDefaultsAction(params: {
   success: boolean;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   try {
     const { workspaceId, organizationId, authorId, authorName } = params;
     const res = await executePolicyMigration({
@@ -485,6 +504,9 @@ export async function getBackofficePoliciesListAction(): Promise<{
   }>;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const snap = await adminDb.collection('performancePolicies').limit(50).get();
     const policies: Array<{

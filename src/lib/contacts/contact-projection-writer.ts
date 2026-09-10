@@ -20,6 +20,7 @@
 
 import { adminDb } from '../firebase-admin';
 import type { WorkspaceEntity } from '../types';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
   flattenEntityContacts,
   diffContactDocs,
@@ -163,6 +164,9 @@ export async function reconcileWorkspaceContacts(opts?: {
   workspaceId?: string;
   afterId?: string;
 }): Promise<ReconcileResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   let q = adminDb.collection('workspace_entities') as FirebaseFirestore.Query;
   if (opts?.workspaceId) q = q.where('workspaceId', '==', opts.workspaceId);
   q = q.orderBy('__name__').limit(RECONCILE_PAGE);

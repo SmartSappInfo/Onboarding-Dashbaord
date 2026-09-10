@@ -15,6 +15,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { AIChangeSet } from '@/lib/types';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Persists a new AIChangeSet to Firestore.
@@ -24,6 +25,9 @@ export async function createChangeSetAction(changeSet: AIChangeSet): Promise<{
   id?: string;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!changeSet.pageId || !changeSet.createdBy) {
       return { success: false, error: 'Unauthorized: missing page or user identity' };
@@ -54,6 +58,9 @@ export async function updateChangeSetStatusAction(
   status: AIChangeSet['status'],
   pageId: string,
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!changeSetId || !pageId) {
       return { success: false, error: 'Invalid parameters for status update' };
@@ -86,6 +93,9 @@ export async function fetchPageChangeSetsAction(
   pageId: string,
   limitCount = 20,
 ): Promise<{ success: boolean; changeSets?: AIChangeSet[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!pageId) {
       return { success: false, error: 'Page ID is required' };

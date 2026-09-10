@@ -17,12 +17,16 @@ import type {
   DocumentPermission,
 } from '@/lib/types/document-types';
 import { verifyDocumentPermission } from './enterprise-security-service';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export async function checkDocumentPermissionAction(
   workspaceId: string,
   role: DocumentRole,
   permission: DocumentPermission
 ): Promise<{ success: boolean; allowed: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, allowed: false, error: 'Workspace ID is required.' };
@@ -48,6 +52,9 @@ export async function auditWorkspaceSecurityPostureAction(
   };
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) {
       return { success: false, error: 'Workspace ID is required.' };

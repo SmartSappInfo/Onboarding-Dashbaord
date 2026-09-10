@@ -17,6 +17,7 @@ import { logActivity } from './activity-logger';
 import { validateScopeMatch } from './scope-guard';
 import { parseCSV, inferEntityType } from './csv-parser';
 import { validateRequiredFields } from './import-templates';
+import { requireAuth } from '@/lib/auth/require-auth';
 import type {
   Entity,
   InstitutionData,
@@ -52,6 +53,9 @@ interface ImportContactsInput {
  * @returns Import result with success/error counts
  */
 export async function importContactsAction(input: ImportContactsInput): Promise<ImportResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const timestamp = new Date().toISOString();
   const errors: ImportValidationError[] = [];
   const createdEntityIds: string[] = [];

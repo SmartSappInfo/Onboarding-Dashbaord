@@ -5,6 +5,7 @@ import type { School, Entity, WorkspaceEntity, EntityType, ResolvedContact } fro
 import { resolveEntityContacts } from './entity-contact-helpers';
 import { zoneDisplayName, type ZoneRef } from './zone-constants';
 import { ensureEntitySharedToWorkspace } from './workspace-entity-actions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // Re-export ResolvedContact for test compatibility
 export type { ResolvedContact } from './types';
@@ -360,6 +361,9 @@ function inferCustomerTier(school: School): 'basic' | 'pro' | 'enterprise' | und
  * @returns Entity mapped from the legacy school, or null if not found
  */
 export async function readFromLegacySchools(legacySchoolId: string): Promise<Entity | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const schoolRef = adminDb.collection('schools').doc(legacySchoolId);
     const schoolSnap = await schoolRef.get();
@@ -386,6 +390,9 @@ export async function readFromLegacySchools(legacySchoolId: string): Promise<Ent
  * @returns Entity from the entities collection, or null if not found
  */
 export async function readFromEntities(entityId: string): Promise<Entity | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const entityRef = adminDb.collection('entities').doc(entityId);
     const entitySnap = await entityRef.get();
@@ -418,6 +425,9 @@ export async function getEntity(
   entityId: string,
   migrationStatus?: 'legacy' | 'migrated' | 'dual-write'
 ): Promise<Entity | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!entityId) return null;
 
   try {

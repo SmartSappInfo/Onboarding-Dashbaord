@@ -19,6 +19,7 @@ import { canUser } from '@/lib/workspace-permissions';
 import { logActivity } from '@/lib/activity-logger';
 import type { Product, ProductCategory, PriceBook, PriceBookItem } from '@/lib/types';
 import { nanoid } from 'nanoid';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 // ==========================================
 // 1. PRODUCT CATALOG ACTIONS
@@ -44,6 +45,9 @@ export async function createProductAction(
   workspaceId: string,
   organizationId: string = 'default'
 ): Promise<{ success: boolean; product?: Product; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!input.name?.trim()) {
       return { success: false, error: 'Product name is required.' };
@@ -112,6 +116,9 @@ export async function updateProductAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; product?: Product; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const productRef = adminDb.collection('products').doc(productId);
     const snap = await productRef.get();
@@ -169,6 +176,9 @@ export async function deleteProductAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const productRef = adminDb.collection('products').doc(productId);
     const snap = await productRef.get();
@@ -205,6 +215,9 @@ export async function listProductsAction(
   workspaceId: string,
   includeInactive: boolean = false
 ): Promise<{ success: boolean; products?: Product[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) return { success: true, products: [] };
 
@@ -235,6 +248,9 @@ export async function createProductCategoryAction(
   workspaceId: string,
   organizationId: string = 'default'
 ): Promise<{ success: boolean; category?: ProductCategory; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!input.name?.trim()) {
       return { success: false, error: 'Category name is required.' };
@@ -270,6 +286,9 @@ export async function createProductCategoryAction(
 export async function listProductCategoriesAction(
   workspaceId: string
 ): Promise<{ success: boolean; categories?: ProductCategory[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) return { success: true, categories: [] };
 
@@ -297,6 +316,9 @@ export async function createPriceBookAction(
   workspaceId: string,
   organizationId: string = 'default'
 ): Promise<{ success: boolean; priceBook?: PriceBook; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!input.name?.trim()) {
       return { success: false, error: 'Price book name is required.' };
@@ -335,6 +357,9 @@ export async function createPriceBookAction(
 export async function listPriceBooksAction(
   workspaceId: string
 ): Promise<{ success: boolean; priceBooks?: PriceBook[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) return { success: true, priceBooks: [] };
 
@@ -359,6 +384,9 @@ export async function savePriceBookItemsAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const pbSnap = await adminDb.collection('price_books').doc(priceBookId).get();
     if (!pbSnap.exists) {
@@ -402,6 +430,9 @@ export async function deleteProductCategoryAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const catRef = adminDb.collection('product_categories').doc(categoryId);
     const snap = await catRef.get();
@@ -430,6 +461,9 @@ export async function updateProductCategoryAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const catRef = adminDb.collection('product_categories').doc(categoryId);
     const snap = await catRef.get();
@@ -460,6 +494,9 @@ export async function deletePriceBookAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const pbRef = adminDb.collection('price_books').doc(priceBookId);
     const snap = await pbRef.get();
@@ -491,6 +528,9 @@ export async function updatePriceBookAction(
   userId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const pbRef = adminDb.collection('price_books').doc(priceBookId);
     const snap = await pbRef.get();

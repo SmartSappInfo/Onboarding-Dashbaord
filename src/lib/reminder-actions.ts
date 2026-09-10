@@ -10,6 +10,7 @@ import { REMINDER_OFFSETS } from './types';
 import { calculateChannelTriggerTime } from './invitation-utils';
 import { getBaseUrl, getRequestBaseUrl } from './utils/url-helpers';
 import { getPersonalizedMeetingUrl } from './meeting-tokens';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ---------------------------------------------------------------------------
 // Internal helpers
@@ -212,6 +213,9 @@ export async function scheduleMeetingInvitations(
   orgId: string,
   meetingTimeChanged = false
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const config = meeting.messagingConfig;
   if (!config?.invitationsEnabled || !config.invitationSeries || config.invitationSeries.length === 0 || !meeting.meetingTime) {
     return;
@@ -390,6 +394,9 @@ export async function scheduleFormReminders(
   orgId: string,
   recipientEntityIds: string[],
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!deadline || recipientEntityIds.length === 0) return;
 
   const FORM_REMINDER_OFFSETS: Array<{ type: string; offsetMinutes: number }> = [
@@ -612,6 +619,9 @@ export async function scheduleMessagingConfigReminders(
   meeting: Meeting & { messagingConfig?: MeetingMessagingConfig },
   orgId: string,
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const config = meeting.messagingConfig;
   if (!config?.reminders?.length || !meeting.meetingTime) return;
 
@@ -705,6 +715,9 @@ export async function scheduleRegistrationAck(
   registrantPhone: string | undefined,
   orgId: string,
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const config = meeting.messagingConfig;
   if (!config?.registrationAckEnabled) return;
 
@@ -756,6 +769,9 @@ export async function scheduleFacilitatorAlerts(
   orgId: string,
   alertType: 'pre_event' | 'post_event',
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const config = meeting.messagingConfig;
   const facilitators = meeting.facilitators || [];
   if (!facilitators.length || !config) return;

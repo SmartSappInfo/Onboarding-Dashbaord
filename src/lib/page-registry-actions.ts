@@ -5,6 +5,7 @@ import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { CampaignPage } from './types';
 import { getBaseUrl } from './utils/url-helpers';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -43,6 +44,9 @@ interface RegisterCustomPageResult {
 export async function registerCustomCodedPage(
   params: RegisterCustomPageParams
 ): Promise<RegisterCustomPageResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { slug, name, organizationId, workspaceId, description } = params;
 
   try {
@@ -141,6 +145,9 @@ export async function seedKnownCustomPages(params: {
   organizationId: string;
   workspaceId: string;
 }): Promise<{ results: RegisterCustomPageResult[] }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(params.workspaceId);
+
   const knownPages: (Omit<RegisterCustomPageParams, 'organizationId' | 'workspaceId'> & { workspaceId?: string })[] = [
     {
       slug: 'collecting-fees-without-delays-and-parental-confrontations',
