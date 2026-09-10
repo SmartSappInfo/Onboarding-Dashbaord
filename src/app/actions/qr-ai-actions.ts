@@ -21,6 +21,7 @@ import type {
   QRCodeType,
 } from '@/lib/types';
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface ActionResponse<T> {
   success: boolean;
@@ -36,6 +37,9 @@ export async function generateQRFromPromptAction(
   organizationId?: string,
   workspaceId?: string
 ): Promise<ActionResponse<AiGeneratedQRConfig>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     if (!prompt || !prompt.trim()) {
       return { success: false, error: 'Prompt cannot be empty.' };
@@ -72,6 +76,9 @@ export async function generateContextualCopyAction(
   type: QRCodeType,
   tone: 'promo' | 'b2b' | 'friendly' | 'luxury' = 'friendly'
 ): Promise<ActionResponse<ContextualCopyResult>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const copy = await generateContextualCopy(qrName, destinationUrl, type, tone);
     return { success: true, data: copy };
@@ -87,6 +94,9 @@ export async function generateContextualCopyAction(
 export async function transformCanvasThemeAction(
   prompt: string
 ): Promise<ActionResponse<CanvasThemeTransformResult>> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const theme = await transformCanvasTheme(prompt);
     return { success: true, data: theme };

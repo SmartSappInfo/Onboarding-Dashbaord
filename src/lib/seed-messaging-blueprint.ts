@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 import type { 
     MessageTemplate, 
     MessageStyle, 
@@ -108,6 +109,9 @@ function getBlueprint(category: TemplateCategory, recipientType: RecipientType):
  * Seeds the global messaging blueprint.
  */
 export async function seedGlobalMessagingBlueprint(): Promise<{ success: boolean; templates: number; styles: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const batch = adminDb.batch();
         const timestamp = new Date().toISOString();

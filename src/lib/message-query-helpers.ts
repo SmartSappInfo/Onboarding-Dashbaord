@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageLog } from './types';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 /**
  * Query message logs by contact identifier (entityId or schoolId)
@@ -15,6 +16,9 @@ export async function getMessagesForContact(params: {
   workspaceId: string;
   limit?: number;
 }): Promise<MessageLog[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(params.workspaceId);
+
   const { entityId, schoolId, workspaceId, limit: queryLimit = 50 } = params;
 
   try {
@@ -57,6 +61,9 @@ export async function getMessagesForEntities(params: {
   workspaceId: string;
   limit?: number;
 }): Promise<MessageLog[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(params.workspaceId);
+
   const { entityIds, workspaceId, limit: queryLimit = 100 } = params;
 
   if (entityIds.length === 0) return [];
@@ -107,6 +114,9 @@ export async function countMessagesForContact(params: {
   schoolId?: string;
   workspaceId: string;
 }): Promise<number> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(params.workspaceId);
+
   const { entityId, schoolId, workspaceId } = params;
 
   try {

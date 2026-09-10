@@ -5,8 +5,12 @@ import type { ScheduledMessage, MessageTemplate, MessageStyle } from '@/lib/type
 import { buildVariableMap } from '@/lib/template-resolver';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
 import { sendRawMessage } from '@/lib/messaging-engine';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function renderScheduledMessageAction(messageId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const msgSnap = await adminDb.collection('scheduled_messages').doc(messageId).get();
     if (!msgSnap.exists) {
@@ -127,6 +131,9 @@ export async function sendTestMessageAction(
   subject?: string,
   workspaceIds: string[] = ['onboarding']
 ) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     if (!recipient) {
       throw new Error('Test recipient is required');
@@ -156,6 +163,9 @@ export async function sendTestMessageAction(
 }
 
 export async function rescheduleMessageAction(id: string, dateIsoString: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     await ScheduledMessageRepository.updateSchedule(id, new Date(dateIsoString));
@@ -167,6 +177,9 @@ export async function rescheduleMessageAction(id: string, dateIsoString: string)
 }
 
 export async function cancelMessageAction(id: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     await ScheduledMessageRepository.cancel(id);
@@ -178,6 +191,9 @@ export async function cancelMessageAction(id: string) {
 }
 
 export async function sendMessageNowAction(id: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     return await ScheduledMessageRepository.sendNow(id);
@@ -188,6 +204,9 @@ export async function sendMessageNowAction(id: string) {
 }
 
 export async function updateScheduledMessageContentAction(id: string, subject: string | null, body: string | null) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const { ScheduledMessageRepository } = await import('@/lib/scheduled-message-repository');
     await ScheduledMessageRepository.updateContent(id, subject, body);

@@ -9,6 +9,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { MessageTemplate, TemplateCategory, RecipientType, MessageChannel } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 interface FilterOptions {
     category: TemplateCategory | 'all';
@@ -39,6 +40,9 @@ function standardizeCategory(cat: string | undefined): string {
  * Fetches templates matching strict criteria and applies Org > Global resolution.
  */
 export async function getFilteredTemplatesAction(filters: FilterOptions): Promise<MessageTemplate[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
     const { category, recipientType, channel, workspaceId, organizationId } = filters;
 
     try {

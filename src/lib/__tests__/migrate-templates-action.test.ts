@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest';
 
 // ---------------------------------------------------------------------------
 // Shared state & Mock setup
@@ -68,6 +68,15 @@ vi.mock('../../lib/firebase-admin', () => {
 
 // Import the action under test after mocking firebase-admin
 import { migrateTemplatesAction } from '../../app/actions/migrate-templates-action';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+
+// The migration now authorises against the backoffice role matrix (audit F2).
+vi.mock('@/lib/backoffice/backoffice-auth', () => ({
+  authorizeBackofficeSession: vi.fn(async () => ({ userId: 'admin-1', name: 'Admin', email: 'a@e.com', role: 'super_admin' })),
+  authorizeBackoffice: vi.fn(async () => ({ userId: 'admin-1', name: 'Admin', email: 'a@e.com', role: 'super_admin' })),
+  authorizeWorkspaceOrBackoffice: vi.fn(async () => ({ uid: 'admin-1', viaBackoffice: true })),
+}));
+
 
 describe('migrateTemplatesAction', () => {
   beforeEach(() => {
@@ -77,20 +86,31 @@ describe('migrateTemplatesAction', () => {
     batchCommitsCount = 0;
   });
 
-  it('returns errors if user profile does not exist', async () => {
-    const result = await migrateTemplatesAction('missing-user-id');
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('User profile not found');
+  // These two cases used to pass a userId and assert on the action's own admin check.
+  // That check read the profile of whatever uid the CALLER supplied, so it could be
+  // satisfied by naming any known administrator (audit F2). The parameter is gone;
+  // authority now comes from the session, and these assert that instead.
+
+  it('refuses to run when the caller is not authorised', async () => {
+    (authorizeBackofficeSession as unknown as Mock).mockRejectedValueOnce(
+      new Error('Forbidden: operations:execute')
+    );
+
+    await expect(migrateTemplatesAction()).rejects.toThrow('Forbidden');
   });
 
-  it('returns errors if user is not a system_admin', async () => {
-    mockDocs['users/user-1'] = {
-      permissions: ['contacts_view'],
-    };
+  it('does not touch any template before authorisation succeeds', async () => {
+    (authorizeBackofficeSession as unknown as Mock).mockRejectedValueOnce(
+      new Error('Forbidden: operations:execute')
+    );
 
-    const result = await migrateTemplatesAction('user-1');
-    expect(result.errors.length).toBeGreaterThan(0);
-    expect(result.errors[0]).toContain('Only system administrators can run this template migration');
+    await migrateTemplatesAction().catch(() => undefined);
+    expect(batchCommitsCount).toBe(0);
+  });
+
+  it('demands operations:execute specifically', async () => {
+    await migrateTemplatesAction().catch(() => undefined);
+    expect(authorizeBackofficeSession).toHaveBeenCalledWith('operations', 'execute');
   });
 
   it('successfully executes migration and processes templates', async () => {
@@ -151,7 +171,7 @@ describe('migrateTemplatesAction', () => {
     };
 
     // 3. Execute migration
-    const result = await migrateTemplatesAction('admin-1');
+    const result = await migrateTemplatesAction();
 
     // 4. Validate output statistics
     expect(result.total).toBe(3);

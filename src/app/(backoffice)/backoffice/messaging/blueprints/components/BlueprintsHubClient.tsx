@@ -131,7 +131,7 @@ export default function BlueprintsHubClient() {
     }
     setIsMigratingTemplates(true);
     try {
-      const result = await migrateTemplatesAction(profile.id);
+      const result = await migrateTemplatesAction();
       if (result.migrated > 0) {
         toast({
           title: 'Migration Successful',

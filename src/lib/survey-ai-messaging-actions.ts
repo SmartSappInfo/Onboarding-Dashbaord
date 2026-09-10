@@ -24,6 +24,7 @@ import type {
   GenerateSurveyMessagingOutput,
 } from '@/ai/schemas/survey-messaging-schemas';
 import type { MessageTemplate } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface GenerateAndSaveSurveyTemplatesParams {
   workspaceId: string;
@@ -83,6 +84,9 @@ function extractDeclaredVariables(content: string): string[] {
 export async function generateSurveyMessagingTemplatesAction(
   params: GenerateAndSaveSurveyTemplatesParams
 ): Promise<GenerateAndSaveSurveyTemplatesResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const {
     workspaceId,
     organizationId,
@@ -271,6 +275,9 @@ export async function generateSurveyMessagingTemplatesAction(
 export async function quickSaveSurveyTemplateAction(
   params: QuickSaveSurveyTemplateParams
 ): Promise<{ success: boolean; templateId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const { workspaceId, organizationId, userId, templateData, templateId } = params;
 
   if (!workspaceId || !organizationId) {

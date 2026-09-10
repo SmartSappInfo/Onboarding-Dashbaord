@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageTemplate, MessageBlock } from './types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * Parses plain text or HTML legacy content into blocks for the rich builder.
@@ -126,6 +127,9 @@ function parsePlainTextToBlocks(text: string, timestamp: number): MessageBlock[]
  * Runs the migration for all legacy email templates across all workspaces.
  */
 export async function migrateLegacyTemplatesToBlocks(): Promise<{ success: boolean; migrated: number; total: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await authorizeBackofficeSession('operations', 'execute');
+
     try {
         const templatesSnap = await adminDb.collection('message_templates').get();
         let migratedCount = 0;

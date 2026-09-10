@@ -14,6 +14,7 @@ import { nanoid } from 'nanoid';
 import { hashPasscode, verifyPasscode, evaluateSecurityRules } from '@/lib/qr-helpers';
 import type { QRCustomDomain, QRCode } from '@/lib/types';
 import DOMPurify from 'isomorphic-dompurify';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function qrCustomDomainsCollection(orgId: string, wsId: string) {
   return adminDb
@@ -27,9 +28,17 @@ function qrCustomDomainsCollection(orgId: string, wsId: string) {
 export async function addCustomDomain(
   orgId: string,
   wsId: string,
-  rawDomain: string,
-  createdBy: { userId: string; name: string; email: string }
+  rawDomain: string
 ): Promise<QRCustomDomain> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone, and
+  // the creator identity was supplied by the caller. Both come from the session now.
+  const { profile } = await requireWorkspace(wsId);
+  const createdBy = {
+    userId: profile.id,
+    name: profile.displayName || profile.name || 'User',
+    email: profile.email || '',
+  };
+
   const domain = rawDomain.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '');
 
   if (!domain || !/^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)+$/.test(domain)) {
@@ -68,6 +77,9 @@ export async function verifyCustomDomain(
   wsId: string,
   domainId: string
 ): Promise<{ verified: boolean; status: 'verified' | 'failed'; message: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCustomDomainsCollection(orgId, wsId);
   const doc = await col.doc(domainId).get();
   if (!doc.exists) throw new Error('Domain record not found.');
@@ -109,6 +121,9 @@ export async function setDefaultCustomDomain(
   wsId: string,
   domainId: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCustomDomainsCollection(orgId, wsId);
   const snapshot = await col.get();
   const batch = adminDb.batch();
@@ -130,11 +145,17 @@ export async function deleteCustomDomain(
   wsId: string,
   domainId: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCustomDomainsCollection(orgId, wsId);
   await col.doc(domainId).delete();
 }
 
 export async function getCustomDomains(orgId: string, wsId: string): Promise<QRCustomDomain[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCustomDomainsCollection(orgId, wsId);
   const snapshot = await col.orderBy('createdAt', 'desc').get();
 

@@ -20,6 +20,7 @@ import type { SurveyDistributionCampaign, SurveyDeployment } from './survey-v2-t
 import { generateTrackingToken, buildSurveyAttributionUrl } from './survey-attribution';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { sendMessage } from '@/lib/messaging-engine';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateDistributionCampaignInput {
   surveyId: string;
@@ -48,6 +49,9 @@ export interface DispatchCampaignResult {
 export async function createSurveyDistributionCampaignAction(
   input: CreateDistributionCampaignInput
 ): Promise<{ success: boolean; campaignId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(input.workspaceId);
+
   try {
     if (!input.surveyId || !input.deploymentId || !input.workspaceId) {
       return { success: false, error: 'Missing required surveyId, deploymentId, or workspaceId' };
@@ -103,6 +107,9 @@ export async function dispatchSurveyDistributionCampaignAction(
   campaignId: string,
   workspaceId: string
 ): Promise<DispatchCampaignResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!campaignId || !workspaceId) {
       return { success: false, dispatchedCount: 0, failedCount: 0, error: 'Missing campaignId or workspaceId' };
@@ -256,6 +263,9 @@ export async function estimateAudienceSizeAction(
   filterTagIds?: string[],
   entityTypes?: string[]
 ): Promise<{ count: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!workspaceId) return { count: 0 };
 

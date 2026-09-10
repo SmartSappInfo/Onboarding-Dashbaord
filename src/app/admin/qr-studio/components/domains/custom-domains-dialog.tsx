@@ -92,15 +92,11 @@ export default function CustomDomainsDialog({ open, onOpenChange }: CustomDomain
 
     setIsAdding(true);
     try {
+      // Creator identity is derived server-side from the session (audit F2).
       const created = await addCustomDomain(
         activeOrganizationId,
         activeWorkspaceId,
-        newDomainInput.trim(),
-        {
-          userId: user.uid,
-          name: user.displayName || 'User',
-          email: user.email || '',
-        }
+        newDomainInput.trim()
       );
       setDomains((prev) => [created, ...prev]);
       setNewDomainInput('');

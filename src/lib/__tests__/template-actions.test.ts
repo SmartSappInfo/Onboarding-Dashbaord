@@ -440,6 +440,15 @@ describe('template-actions', () => {
     it('unarchives template back to active', async () => {
       seedDoc('message_templates', 'tpl-1', baseTemplate({ status: 'archived', isActive: false }));
 
+// These actions now derive identity from the session (audit F2); stub the guard.
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuth: vi.fn(async () => ({ uid: 'test-user', profile: { id: 'test-user', name: 'Test', email: 't@e.com' }, isSystemAdmin: false })),
+  requireWorkspace: vi.fn(async () => ({ uid: 'test-user', profile: { id: 'test-user', name: 'Test', email: 't@e.com' }, isSystemAdmin: false })),
+  requireOrganization: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false, organizationId: 'org-1' })),
+  requireSystemAdmin: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: true })),
+}));
+
+
       await unarchiveTemplate('tpl-1', 'user-1');
 
       const updated = mockDocs['message_templates/tpl-1'];

@@ -934,12 +934,44 @@ That is a design change, not a parameter removal, and it is the single largest r
 piece of F2. Until it lands, `sendMessage` and `sendRawMessage` remain public endpoints that
 will send a message with an arbitrary body to an arbitrary recipient.
 
-**Still outstanding in 4c** (unchanged, all still unguarded): `messaging-actions.ts` (12
-actions), `bulk-messaging.ts`, `notification-engine.ts`, `scheduled-message-actions.ts`,
-`template-actions.ts` (14), `qr-campaign-actions.ts` (7), `campaign-analytics.ts` (7),
-`survey-campaign-actions.ts`, `campaign-events.ts`, `campaign-post-send.ts`,
-`form-notification-actions.ts`, `meeting-notification-actions.ts` and the template
-migration/helper files.
+**Second pass — 15 more files, 52 actions guarded. 81 / 316.**
+
+Before guarding anything else, reachability was computed properly rather than guessed. A
+direct-caller scan is not enough: the cron reaches dispatch through `await import()`, which
+a `from '...'` grep misses entirely. Following both static and dynamic imports transitively
+from every session-less root — API routes, cron, the automation engine, public route
+handlers — split the remaining work cleanly:
+
+*Guarded (not reachable from any session-less root):* `template-actions.ts` (14),
+`qr-campaign-actions.ts` (7), `scheduled-message-actions.ts` (6),
+`qr-domain-security-actions.ts` (5), `survey-campaign-actions.ts` (3),
+`message-query-helpers.ts` (3), `qr-ai-actions.ts` (3), `survey-ai-messaging-actions.ts` (2),
+`meeting-notification-actions.ts` (2), `meeting-template-actions.ts` (2),
+`get-filtered-templates-action.ts`, and the four template/messaging migration + seed files
+(backoffice-gated, as in 4a).
+
+*Left alone (transitively reachable from a session-less root, so a naive guard would break
+production):* `bulk-messaging.ts` and `campaign-post-send.ts` (reached from the automation
+engine via `campaign-automation-jobs.ts`), `forms/form-notification-actions.ts` (reached
+from a form API route), and `template-variable-registry.ts` (reached from `/api/pdfs`).
+These need the same core/wrapper treatment as `dispatchCampaign`, or a redesign.
+
+**More client-supplied identity removed.** `activateTemplate(id, activatedBy)`,
+`archiveTemplate(id, archivedBy)` and `unarchiveTemplate(id, unarchivedBy)` wrote whatever
+name the caller passed into the template audit log. `addCustomDomain(..., createdBy)` took a
+whole `{ userId, name, email }` object from the browser. All now derive from the session.
+
+**One authorization check turned out to be decorative.** `migrateTemplatesAction(userId)`
+already looked up the profile and required `system_admin` — but against the uid the *caller*
+supplied, so naming any known administrator satisfied it. The parameter and the check are
+gone, replaced by the backoffice guard. Its two unit tests asserted on that spoofable
+behaviour and were rewritten to assert the real one: the migration refuses, and commits
+nothing, when authorisation fails.
+
+**Still outstanding in 4c:** `messaging-engine.ts` (the design work described above),
+`messaging-actions.ts` (12), `campaign-analytics.ts` (7), `notification-engine.ts`,
+`campaign-events.ts`, `campaign-automation-jobs.ts`, `qr-actions.ts` (27), `qr-scan-actions.ts`,
+`template-resolver.ts`, plus the four session-less-reachable files listed above.
 
 ---
 

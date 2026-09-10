@@ -9,6 +9,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   NotificationDispatchJob,
   NotificationChannel,
@@ -36,6 +37,9 @@ export async function scheduleMeetingRemindersAction(payload: {
   recipientPhone?: string;
   channels?: NotificationChannel[];
 }): Promise<{ success: boolean; scheduledJobsCount?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(payload.workspaceId);
+
   try {
     const {
       meetingId,
@@ -93,6 +97,9 @@ export async function getMeetingReminderJobsAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; jobs?: NotificationDispatchJob[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('meeting_reminder_jobs')

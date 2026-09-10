@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from '@/lib/firebase-admin';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 /**
  * @fileOverview One-time migration script for Phase 1: Template Taxonomy & Dynamic Branding.
@@ -30,6 +31,9 @@ interface MigrationResult {
 }
 
 export async function migrateTemplatesTaxonomy(): Promise<MigrationResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: MigrationResult = {
     total: 0,
     updated: 0,

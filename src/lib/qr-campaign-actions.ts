@@ -29,6 +29,7 @@ import type {
   QRCode,
 } from '@/lib/types';
 import DOMPurify from 'isomorphic-dompurify';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function qrCampaignsCollection(orgId: string, wsId: string) {
   return adminDb
@@ -59,6 +60,9 @@ export interface CreateQRCampaignInput {
 }
 
 export async function createQRCampaign(input: CreateQRCampaignInput): Promise<QRCampaign> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(input.workspaceId);
+
   const id = `cmp-${nanoid(10)}`;
   const now = new Date().toISOString();
 
@@ -118,6 +122,9 @@ export async function updateQRCampaign(
   campaignId: string,
   patch: Partial<Omit<QRCampaign, 'id' | 'organizationId' | 'workspaceId' | 'createdAt'>>
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCampaignsCollection(orgId, wsId);
   const cleanPatch: Record<string, unknown> = {
     ...patch,
@@ -135,6 +142,9 @@ export async function updateQRCampaign(
 }
 
 export async function deleteQRCampaign(orgId: string, wsId: string, campaignId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCampaignsCollection(orgId, wsId);
   const doc = await col.doc(campaignId).get();
 
@@ -169,6 +179,9 @@ export async function addQRCodesToCampaign(
   campaignId: string,
   qrIdsToAdd: string[]
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   if (!qrIdsToAdd.length) return;
 
   const col = qrCampaignsCollection(orgId, wsId);
@@ -205,6 +218,9 @@ export async function removeQRCodeFromCampaign(
   campaignId: string,
   qrIdToRemove: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCampaignsCollection(orgId, wsId);
   const doc = await col.doc(campaignId).get();
   if (!doc.exists) throw new Error('Campaign not found.');
@@ -230,6 +246,9 @@ export async function removeQRCodeFromCampaign(
 }
 
 export async function getQRCampaigns(orgId: string, wsId: string): Promise<QRCampaign[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCampaignsCollection(orgId, wsId);
   const snapshot = await col.orderBy('createdAt', 'desc').get();
 
@@ -245,6 +264,9 @@ export async function getCampaignAnalytics(
   wsId: string,
   campaignId: string
 ): Promise<CampaignAnalytics> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCampaignsCollection(orgId, wsId);
   const doc = await col.doc(campaignId).get();
   if (!doc.exists) throw new Error('Campaign not found.');

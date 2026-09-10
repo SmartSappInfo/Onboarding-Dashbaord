@@ -12,6 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { MeetingTemplate } from '@/lib/meetings/types/templates';
 import type { EventType, MeetingLocationType, ConferenceProvider } from '@/lib/meetings/types';
 import { STANDARD_MEETING_TEMPLATES } from '@/lib/meetings/templates-catalog';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function mapProviderToLocationType(provider: ConferenceProvider): MeetingLocationType {
   switch (provider) {
@@ -35,6 +36,9 @@ function getErrorMessage(error: unknown): string {
 export async function getMeetingTemplatesAction(
   workspaceId: string
 ): Promise<{ success: boolean; templates?: MeetingTemplate[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(workspaceId);
+
   try {
     const customSnap = await adminDb
       .collection('meeting_templates')
@@ -63,6 +67,9 @@ export async function deployMeetingTemplateAction(
   templateId: string,
   customName?: string
 ): Promise<{ success: boolean; eventType?: EventType; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(workspaceId);
+
   try {
     const template = STANDARD_MEETING_TEMPLATES.find(t => t.id === templateId);
     if (!template) {

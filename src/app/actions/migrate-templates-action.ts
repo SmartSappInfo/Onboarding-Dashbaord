@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { MessageBlock, MessageTemplate } from '@/lib/types';
+import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 
 export interface MigrateTemplatesResult {
   total: number;
@@ -53,7 +54,12 @@ function migrateBlock(block: MessageBlock): MessageBlock {
   return newBlock;
 }
 
-export async function migrateTemplatesAction(userId: string): Promise<MigrateTemplatesResult> {
+export async function migrateTemplatesAction(): Promise<MigrateTemplatesResult> {
+  // SECURITY (audit F2): this DID check for system_admin — but against a userId supplied
+  // by the caller, which any caller could set to a known admin's uid. The check below was
+  // therefore decorative. Identity and permission now both come from the session.
+  await authorizeBackofficeSession('operations', 'execute');
+
   const result: MigrateTemplatesResult = {
     total: 0,
     migrated: 0,
@@ -63,24 +69,8 @@ export async function migrateTemplatesAction(userId: string): Promise<MigrateTem
   };
 
   try {
-    // 1. Authorization Check (Must be system_admin)
-    if (!userId) {
-      throw new Error('Authentication required: userId is missing.');
-    }
-
-    const userSnap = await adminDb.collection('users').doc(userId).get();
-    if (!userSnap.exists) {
-      throw new Error(`Authorization error: User profile not found for ID ${userId}.`);
-    }
-
-    const userData = userSnap.data();
-    const isSystemAdmin = userData?.permissions?.includes('system_admin');
+    // Fetch all templates
     
-    if (!isSystemAdmin) {
-      throw new Error('Unauthorized access: Only system administrators can run this template migration.');
-    }
-
-    // 2. Fetch all templates
     const snapshot = await adminDb.collection('message_templates').get();
     result.total = snapshot.size;
 

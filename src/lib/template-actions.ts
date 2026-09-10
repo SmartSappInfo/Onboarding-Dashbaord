@@ -5,6 +5,7 @@ import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
 import type { MessageTemplate, TemplateCategory, TemplateTarget, ContentMode, VariableContext, MessageChannel } from './types';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ---------------------------------------------------------------------------
 // Supporting types
@@ -121,6 +122,9 @@ async function deactivateOtherGlobalTemplates(
 export async function createGlobalTemplate(
   data: CreateTemplateInput,
 ): Promise<MessageTemplate> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const ref = adminDb.collection('message_templates').doc();
   const now = nowIso();
 
@@ -176,6 +180,9 @@ export async function updateGlobalTemplate(
   data: Partial<Omit<MessageTemplate, 'id' | 'scope' | 'version' | 'createdAt' | 'createdBy'>>,
   updatedBy: string,
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const ref = adminDb.collection('message_templates').doc(id);
   const snap = await ref.get();
 
@@ -221,6 +228,9 @@ export async function updateGlobalTemplate(
  * Fails if any pending scheduled messages reference this template.
  */
 export async function deleteGlobalTemplate(id: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   await assertNoScheduledMessagesReference(id);
 
   const ref = adminDb.collection('message_templates').doc(id);
@@ -245,6 +255,9 @@ export async function deleteGlobalTemplate(id: string): Promise<void> {
 export async function listGlobalTemplates(
   filters?: TemplateFilters,
 ): Promise<MessageTemplate[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   let q = adminDb
     .collection('message_templates')
     .where('scope', '==', 'global') as FirebaseFirestore.Query;
@@ -264,6 +277,9 @@ export async function listGlobalTemplates(
  * Gets adoption statistics for a blueprint across all organizations.
  */
 export async function getBlueprintAdoptionStats(templateType: string): Promise<{ activeOverrides: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const overridesQuery = adminDb
     .collection('message_templates')
     .where('scope', '==', 'organization')
@@ -287,6 +303,9 @@ export async function createOrgOverride(
   overrideData: Partial<Omit<MessageTemplate, 'id' | 'scope' | 'organizationId' | 'globalTemplateId' | 'version' | 'createdAt'>>,
   createdBy: string,
 ): Promise<MessageTemplate> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   // Fetch the global template to copy from
   const globalSnap = await adminDb
     .collection('message_templates')
@@ -337,6 +356,9 @@ export async function updateOrgTemplate(
   data: Partial<Omit<MessageTemplate, 'id' | 'scope' | 'organizationId' | 'version' | 'createdAt' | 'createdBy'>>,
   updatedBy: string,
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const ref = adminDb.collection('message_templates').doc(id);
   const snap = await ref.get();
 
@@ -368,6 +390,9 @@ export async function updateOrgTemplate(
  * Deletes the org override, reverting to the global template.
  */
 export async function revertToGlobal(orgTemplateId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const ref = adminDb.collection('message_templates').doc(orgTemplateId);
   const snap = await ref.get();
 
@@ -393,6 +418,9 @@ export async function listTemplates(
   orgId: string,
   filters?: TemplateFilters,
 ): Promise<MessageTemplate[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   // Fetch org overrides
   let orgQuery = adminDb
     .collection('message_templates')
@@ -441,7 +469,11 @@ export async function listTemplates(
  * Activates a template (draft/archived → active).
  * Makes the template available in all consumer selectors.
  */
-export async function activateTemplate(id: string, activatedBy: string): Promise<void> {
+export async function activateTemplate(id: string): Promise<void> {
+  // SECURITY (audit F2): the acting identity was a parameter, so the audit trail
+  // recorded whoever the caller named. Derived from the session instead.
+  const { uid: activatedBy } = await requireAuth();
+
   const ref = adminDb.collection('message_templates').doc(id);
   const snap = await ref.get();
 
@@ -476,7 +508,11 @@ export async function activateTemplate(id: string, activatedBy: string): Promise
  * template selectors (Composer, Survey, Meeting, Automation) but remain
  * visible in the Templates management page for easy unarchiving.
  */
-export async function archiveTemplate(id: string, archivedBy: string): Promise<void> {
+export async function archiveTemplate(id: string): Promise<void> {
+  // SECURITY (audit F2): the acting identity was a parameter, so the audit trail
+  // recorded whoever the caller named. Derived from the session instead.
+  const { uid: archivedBy } = await requireAuth();
+
   const ref = adminDb.collection('message_templates').doc(id);
   const snap = await ref.get();
 
@@ -510,14 +546,20 @@ export async function archiveTemplate(id: string, archivedBy: string): Promise<v
  * Unarchives a template back to active status.
  * Single-click action, no confirmation needed.
  */
-export async function unarchiveTemplate(id: string, unarchivedBy: string): Promise<void> {
-  return activateTemplate(id, unarchivedBy);
+export async function unarchiveTemplate(id: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
+  return activateTemplate(id);
 }
 
 /**
  * Fetches a single template by ID (for client-side use)
  */
 export async function getTemplateById(id: string): Promise<MessageTemplate | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const snap = await adminDb.collection('message_templates').doc(id).get();
   if (!snap.exists) return null;
   return { id: snap.id, ...snap.data() } as MessageTemplate;
@@ -535,6 +577,9 @@ export interface SendTestMessageInput {
  * Bypasses the full messaging engine to avoid needing a real template ID.
  */
 export async function sendTestMessage(input: SendTestMessageInput): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   if (input.channel === 'email') {
     const { sendEmail } = await import('./resend-service');
     await sendEmail({
