@@ -16,6 +16,7 @@
 
 import { adminDb } from './firebase-admin';
 import { createHmac } from 'crypto';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -145,6 +146,9 @@ export async function verifyWebhookSignature(
   signatureHeader: string | undefined,
   secret: string,
 ): Promise<boolean> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!signatureHeader) return false;
   const expected = `sha256=${createHmac('sha256', secret).update(rawBody).digest('hex')}`;
   // Constant-time comparison to prevent timing attacks

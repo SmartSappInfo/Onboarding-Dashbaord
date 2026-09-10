@@ -20,6 +20,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { canUser } from '@/lib/workspace-permissions';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface BulkApplyTagsToSurveyEntitiesParams {
   workspaceId: string;
@@ -48,6 +49,9 @@ export interface SurveyEntityActionResult {
 export async function bulkApplyTagsToSurveyEntitiesAction(
   params: BulkApplyTagsToSurveyEntitiesParams
 ): Promise<SurveyEntityActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, entityIds, tagIds, userId } = params;
 
   if (!workspaceId) {
@@ -133,6 +137,9 @@ export async function bulkApplyTagsToSurveyEntitiesAction(
 export async function bulkMoveSurveyEntitiesStageAction(
   params: BulkMoveSurveyEntitiesStageParams
 ): Promise<SurveyEntityActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { workspaceId, entityIds, pipelineId, stageId, userId } = params;
 
   if (!workspaceId) {

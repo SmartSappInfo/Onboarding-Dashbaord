@@ -2,6 +2,7 @@
 
 import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server actions for media asset mutations.
@@ -12,6 +13,9 @@ import { revalidatePath } from 'next/cache';
  * This does NOT rename the physical file in storage, ensuring URLs remain valid.
  */
 export async function updateMediaName(assetId: string, newName: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!assetId || !newName.trim()) {
     return { success: false, error: 'Invalid asset ID or name.' };
   }
@@ -33,6 +37,9 @@ export async function updateMediaName(assetId: string, newName: string) {
  * Permanently deletes a media asset from Firestore and Storage.
  */
 export async function deleteMediaAsset(assetId: string, storagePath?: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!assetId) {
     return { success: false, error: 'Invalid asset ID.' };
   }
@@ -67,6 +74,9 @@ export async function saveImageToMediaLibrary(params: {
   workspaceId: string;
   userId: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { name, dataUri, workspaceId, userId } = params;
   if (!dataUri || !workspaceId || !userId) {
     return { success: false, error: 'Missing required parameters.' };

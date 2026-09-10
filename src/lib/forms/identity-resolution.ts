@@ -20,6 +20,7 @@ import { logActivity } from '@/lib/activity-logger';
 import { applyTagsAction } from '@/lib/tag-actions';
 import { createEntityAction, updateEntityAction } from '@/lib/entity-actions';
 import { normalizeEmail, normalizePhone } from './form-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface IdentityResolutionResult {
   matched: boolean;
@@ -58,6 +59,9 @@ export async function resolveAndEnrichCrmEntity({
   appliedTags?: string[];
   metadata?: Record<string, unknown>;
 }): Promise<IdentityResolutionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     let resolvedEntityId: string | null = null;
     let matchKey: 'entityId' | 'email' | 'phone' | 'taxId' | 'created_new' | undefined = undefined;

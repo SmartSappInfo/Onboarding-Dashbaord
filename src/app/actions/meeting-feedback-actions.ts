@@ -10,6 +10,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   MeetingFeedbackResponse,
   MeetingFeedbackSummary,
@@ -100,6 +101,9 @@ export async function getMeetingFeedbackSummaryAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; summary?: MeetingFeedbackSummary; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('meeting_feedback')

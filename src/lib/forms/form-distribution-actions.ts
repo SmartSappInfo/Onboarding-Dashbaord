@@ -17,6 +17,7 @@ import type {
   UtmParameters,
 } from './form-distribution-types';
 import { buildDistributionUrl, generateEmbedSnippet } from './form-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Validates and updates a form's custom public URL slug.
@@ -25,6 +26,9 @@ export async function updateFormSlugAction(
   formId: string,
   newSlug: string
 ): Promise<{ success: boolean; slug?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!formId || !newSlug) {
       return { success: false, error: 'Form ID and slug are required' };
@@ -63,6 +67,9 @@ export async function updateFormSlugAction(
 export async function createDistributionLinkAction(
   payload: CreateDistributionLinkPayload
 ): Promise<{ success: boolean; link?: FormDistributionLink; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, workspaceId, name, channel, utmSource, utmMedium, utmCampaign, utmTerm, utmContent } = payload;
     if (!formId || !name?.trim()) {
@@ -138,6 +145,9 @@ export async function createDistributionLinkAction(
 export async function getFormDistributionsAction(
   formId: string
 ): Promise<{ success: boolean; links: FormDistributionLink[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!formId) return { success: true, links: [] };
 
@@ -163,6 +173,9 @@ export async function getFormDistributionsAction(
 export async function deleteDistributionLinkAction(
   distributionId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!distributionId) return { success: false, error: 'distributionId is required' };
     await adminDb.collection('form_distributions').doc(distributionId).delete();

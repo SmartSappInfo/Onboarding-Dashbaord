@@ -2,6 +2,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { sendRawMessage } from '@/lib/messaging-engine';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 interface AssigneeDetails {
   userId: string;
@@ -12,6 +13,9 @@ interface AssigneeDetails {
 }
 
 export async function getAssigneeDetails(userIds: string[]): Promise<{ success: boolean; assignees?: AssigneeDetails[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userIds || userIds.length === 0) {
       return { success: true, assignees: [] };
@@ -54,6 +58,9 @@ export async function sendSurveyLinkToAssignee(
   channel: 'email' | 'sms',
   surveyId?: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     // Fetch user details
     const userSnap = await adminDb.collection('users').doc(userId).get();

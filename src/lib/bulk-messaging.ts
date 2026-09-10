@@ -11,6 +11,7 @@ import { resolveOrgBrandingVars } from './messaging-branding';
 import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
 import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import type { MessageJob, MessageTask, MessageTemplate, SenderProfile, MessageStyle, MessageCampaign } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 
@@ -37,6 +38,9 @@ interface BulkJobInput {
  * Creates a new bulk message job and fans out the individual tasks.
  */
 export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { templateId, senderProfileId, recipients, userId } = input;
 
   try {
@@ -120,6 +124,9 @@ export async function createBulkMessageJob(input: BulkJobInput): Promise<{ jobId
  * Processes a single chunk of tasks for a given job.
  */
 export async function processBulkJobChunk(jobId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const jobRef = adminDb.collection('message_jobs').doc(jobId);
     const jobSnap = await jobRef.get();
@@ -470,6 +477,9 @@ export async function processBulkJobChunk(jobId: string) {
  * - **SDK error handling**: Checks Resend { data, error } explicitly (no try/catch).
  */
 export async function processJobChunkBackground(jobId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const jobRef = adminDb.collection('message_jobs').doc(jobId);
   const jobSnap = await jobRef.get();
 

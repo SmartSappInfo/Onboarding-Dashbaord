@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Analytics Actions for Requirement 15.10: Performance Tracking
@@ -66,6 +67,9 @@ export async function recordInteractionAction(pageId: string, blockId?: string) 
  * Typically called from within other server actions.
  */
 export async function recordConversion(pageId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     try {
         const pageRef = adminDb.collection('campaign_pages').doc(pageId);
         await pageRef.update({

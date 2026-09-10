@@ -22,6 +22,7 @@ import type {
   FormMetricsDaily,
 } from './form-analytics-types';
 import { safePercentage, formatDurationSeconds } from './form-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 export { formatDurationSeconds };
 
 /**
@@ -123,6 +124,9 @@ export async function getFormAnalyticsAction(
   customFrom?: string,
   customTo?: string
 ): Promise<FormAnalyticsSummary | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!formId) return null;
 
@@ -423,6 +427,9 @@ export async function exportAnalyticsDataAsCsvAction(
   formId: string,
   preset: AnalyticsDateRangePreset = '30d'
 ): Promise<{ success: boolean; csvContent?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const summary = await getFormAnalyticsAction(formId, preset);
     if (!summary) return { success: false, error: 'No analytics data available to export' };

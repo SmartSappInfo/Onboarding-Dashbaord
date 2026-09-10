@@ -16,6 +16,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { SurveyDeployment } from './survey-v2-types';
 import { hydrateSurveyDocument } from './survey-hydration-adapter';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface CreateDeploymentInput {
   name: string;
@@ -42,6 +43,9 @@ export async function createSurveyDeploymentAction(
   workspaceId: string,
   input: CreateDeploymentInput
 ): Promise<DeploymentResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId || !input.name.trim()) {
       return { success: false, error: 'surveyId, workspaceId, and name are required.' };
@@ -112,6 +116,9 @@ export async function getSurveyDeploymentsAction(
   surveyId: string,
   workspaceId: string
 ): Promise<DeploymentResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'surveyId and workspaceId are required.' };
@@ -164,6 +171,9 @@ export async function updateDeploymentStatusAction(
   workspaceId: string,
   status: SurveyDeployment['status']
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!deploymentId || !workspaceId) {
       return { success: false, error: 'deploymentId and workspaceId are required.' };

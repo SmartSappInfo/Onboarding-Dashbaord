@@ -23,6 +23,7 @@ import type {
   FormOptimizationRecommendation,
 } from './form-optimization-types';
 import { calculateStatisticalSignificance } from './form-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Computes 7-dimensional Form Health Scorecard.
@@ -31,6 +32,9 @@ export async function computeFormHealthScoreAction(params: {
   formId: string;
   forceRefresh?: boolean;
 }): Promise<{ success: boolean; healthScore?: FormHealthScore; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, forceRefresh = false } = params;
 
@@ -240,6 +244,9 @@ export async function computeFormHealthScoreAction(params: {
 export async function scanFormAnomaliesAction(params: {
   formId: string;
 }): Promise<{ success: boolean; anomalies: FormAnomalyAlert[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId } = params;
 
@@ -287,6 +294,9 @@ export async function scanFormAnomaliesAction(params: {
 export async function getFormExperimentsAction(params: {
   formId: string;
 }): Promise<{ success: boolean; experiments: FormExperiment[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId } = params;
 
@@ -313,6 +323,9 @@ export async function createFormExperimentAction(params: {
   hypothesis?: string;
   challengerVariant: Partial<FormVariant>;
 }): Promise<{ success: boolean; experiment?: FormExperiment; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, name, hypothesis, challengerVariant } = params;
 
@@ -394,6 +407,9 @@ export async function updateExperimentStatusAction(params: {
   experimentId: string;
   status: ExperimentStatus;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, experimentId, status } = params;
 
@@ -430,6 +446,9 @@ export async function promoteWinningVariantAction(params: {
   experimentId: string;
   winningVariantId: string;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, experimentId, winningVariantId } = params;
 

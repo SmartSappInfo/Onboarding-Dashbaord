@@ -10,6 +10,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   CRMContactContext,
   MeetingDealAttribution,
@@ -34,6 +35,9 @@ export async function getMeetingCRMContextAction(
   contactEmail?: string,
   contactId?: string
 ): Promise<{ success: boolean; context?: CRMContactContext; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!contactEmail && !contactId) {
       throw new Error('Contact email or contact ID is required.');
@@ -152,6 +156,9 @@ export async function associateMeetingDealAction(payload: {
   dealStage: string;
   attributionModel?: 'first_touch' | 'last_touch' | 'linear';
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const {
       meetingId,

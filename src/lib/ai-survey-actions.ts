@@ -6,6 +6,7 @@ import { logActivity } from './activity-logger';
 import type { Survey, SurveyResultPage } from './types';
 import { canUser } from './workspace-permissions';
 import { prepareSurveyForFirestore, applySurveyDefaults } from './firestore-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 interface CreateSurveyFromAiInput {
     surveyData: Partial<Survey>;
@@ -30,6 +31,9 @@ export async function createSurveyFromAiAction({ surveyData, resultPages, worksp
     id?: string;
     error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     console.log(`>>> [AI-SAVE] Persisting AI-generated blueprint for workspace: ${workspaceId}`);
     try {
         // 0. Workspace & Permission Check

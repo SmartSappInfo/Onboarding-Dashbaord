@@ -16,6 +16,7 @@ import type { Booking, EventType } from '@/lib/meetings/types';
 import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
 import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -30,6 +31,9 @@ export async function getCalendarConnectionsAction(
   workspaceId: string,
   userId?: string
 ): Promise<{ success: boolean; connections?: CalendarConnection[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     let query = adminDb
       .collection('calendar_connections')
@@ -64,6 +68,9 @@ export async function disconnectCalendarConnectionAction(
   connectionId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('calendar_connections').doc(connectionId);
     const snap = await docRef.get();
@@ -91,6 +98,9 @@ export async function toggleCalendarConflictCheckAction(
   connectionId: string,
   checkConflicts: boolean
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     await adminDb.collection('calendar_connections').doc(connectionId).update({
       checkConflicts,
@@ -110,6 +120,9 @@ export async function setPrimarySyncCalendarAction(
   workspaceId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const batch = adminDb.batch();
 
@@ -141,6 +154,9 @@ export async function setPrimarySyncCalendarAction(
 export async function syncBookingToExternalCalendarAction(
   bookingId: string
 ): Promise<CalendarSyncResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const bookingDoc = await adminDb.collection('bookings').doc(bookingId).get();
     if (!bookingDoc.exists) {
@@ -234,6 +250,9 @@ export async function getGoogleAuthUrlAction(
   workspaceId: string,
   organizationId: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const { getGoogleAuthUrl } = await import('@/lib/services/integrations/google-calendar');
     const url = await getGoogleAuthUrl(workspaceId, organizationId);
@@ -251,6 +270,9 @@ export async function getMicrosoftAuthUrlAction(
   organizationId?: string,
   userId?: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const { getMicrosoftAuthUrl } = await import('@/lib/services/integrations/microsoft-calendar');
     const url = await getMicrosoftAuthUrl(workspaceId, organizationId, userId);

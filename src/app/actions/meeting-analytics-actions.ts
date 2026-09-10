@@ -10,6 +10,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import {
   aggregateMeetingKPIs,
   computePeakBookingHours,
@@ -56,6 +57,9 @@ export interface OperationalOverviewResult {
 export async function getMeetingsOperationalOverviewAction(
   workspaceId: string
 ): Promise<{ success: boolean; data?: OperationalOverviewResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     // 1. Fetch meetings
     const meetingsSnap = await adminDb

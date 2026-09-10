@@ -10,6 +10,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth } from '@/lib/auth/require-auth';
 import type {
   SuggestedBookingSlot,
 } from '@/lib/meetings/types/ai-assistant';
@@ -37,6 +38,9 @@ export async function parseAndSuggestSlotsAction(payload: {
   suggestions?: SuggestedBookingSlot[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, prompt, hostUserId } = payload;
     if (!prompt.trim()) throw new Error('Prompt cannot be empty.');
@@ -103,6 +107,9 @@ export async function confirmAIScheduledBookingAction(payload: {
   attendeeEmail: string;
   attendeeName?: string;
 }): Promise<{ success: boolean; meetingId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const {
       workspaceId,

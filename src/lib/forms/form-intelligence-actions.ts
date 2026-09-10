@@ -12,6 +12,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import { COLLECTIONS } from '@/lib/collection-constants';
 import { revalidatePath } from 'next/cache';
 import type { Form, FormSubmission } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
   classifyFormSubmissionFlow,
   clusterFormTopicsFlow,
@@ -32,6 +33,9 @@ export async function classifySubmissionAction(params: {
   formId: string;
   submissionId: string;
 }): Promise<ClassifySubmissionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, submissionId } = params;
 
@@ -154,6 +158,9 @@ export async function batchClassifySubmissionsAction(params: {
   formId: string;
   submissionIds: string[];
 }): Promise<BatchClassifyResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { formId, submissionIds } = params;
 
   if (!formId || !submissionIds || submissionIds.length === 0) {
@@ -210,6 +217,9 @@ export async function getOrGenerateFormTopicClustersAction(params: {
   formId: string;
   forceRefresh?: boolean;
 }): Promise<TopicClusterResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, forceRefresh = false } = params;
 
@@ -347,6 +357,9 @@ export async function executeRecommendedAction(params: {
   action: RecommendedAction;
   userId: string;
 }): Promise<{ success: boolean; message: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, submissionId, action, userId } = params;
 

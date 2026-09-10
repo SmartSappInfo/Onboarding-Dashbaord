@@ -9,6 +9,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   CompliancePolicy,
   AuditExportRecord,
@@ -31,6 +32,9 @@ function getErrorMessage(error: unknown): string {
 export async function getWorkspaceCompliancePolicyAction(
   workspaceId: string
 ): Promise<{ success: boolean; policy?: CompliancePolicy; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('meeting_compliance_policies').doc(workspaceId);
     const snap = await docRef.get();
@@ -58,6 +62,9 @@ export async function getWorkspaceCompliancePolicyAction(
 export async function saveWorkspaceCompliancePolicyAction(
   policy: CompliancePolicy
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('meeting_compliance_policies').doc(policy.workspaceId);
     await docRef.set({
@@ -76,6 +83,9 @@ export async function saveWorkspaceCompliancePolicyAction(
 export async function exportMeetingAuditLogsAction(
   workspaceId: string
 ): Promise<{ success: boolean; csvContent?: string; totalRecords?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const meetingsSnap = await adminDb
       .collection('meetings')
@@ -112,6 +122,9 @@ export async function evaluateRetentionPurgeAction(
   workspaceId: string,
   retentionDays: number
 ): Promise<{ success: boolean; result?: RetentionEvaluationResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const meetingsSnap = await adminDb
       .collection('meetings')

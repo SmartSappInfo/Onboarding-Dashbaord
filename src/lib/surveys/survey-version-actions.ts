@@ -20,6 +20,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type { Survey } from '@/lib/types';
 import type { SurveyVersion } from './survey-v2-types';
 import { computeSurveyChecksum, hydrateSurveyDocument, synthesizeVersionSnapshot } from './survey-hydration-adapter';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 export interface VersionActionResult {
   success: boolean;
@@ -37,6 +38,9 @@ export async function createDraftVersionAction(
   userId: string,
   userName?: string
 ): Promise<VersionActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'surveyId and workspaceId are required.' };
@@ -108,6 +112,9 @@ export async function publishSurveyVersionAction(
   userName?: string,
   changeLog?: string
 ): Promise<VersionActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !versionId || !workspaceId) {
       return { success: false, error: 'surveyId, versionId, and workspaceId are required.' };
@@ -199,6 +206,9 @@ export async function getSurveyVersionHistoryAction(
   surveyId: string,
   workspaceId: string
 ): Promise<VersionActionResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'surveyId and workspaceId are required.' };

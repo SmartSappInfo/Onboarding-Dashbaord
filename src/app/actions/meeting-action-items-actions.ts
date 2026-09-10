@@ -11,6 +11,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { AIActionItemDraft } from '@/lib/meetings/types/ai-assistant';
 import { extractActionItemsFromTranscript } from '@/lib/meetings/action-items-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -26,6 +27,9 @@ export async function extractAndSaveMeetingActionItemsAction(payload: {
   workspaceId: string;
   transcriptText: string;
 }): Promise<{ success: boolean; items?: AIActionItemDraft[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { meetingId, workspaceId, transcriptText } = payload;
 
@@ -51,6 +55,9 @@ export async function getMeetingActionItemsAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; items?: AIActionItemDraft[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('meeting_action_items')
@@ -78,6 +85,9 @@ export async function approveAndSyncActionItemAction(payload: {
   itemId: string;
   workspaceId: string;
 }): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { itemId, workspaceId } = payload;
     const docRef = adminDb.collection('meeting_action_items').doc(itemId);

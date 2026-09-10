@@ -7,6 +7,7 @@ import type { Automation, AutomationRun, MessageLog, TraversalContext } from '..
 import { traverseNodes } from './nodes/traverse';
 import type { ExecutionContext } from './execution-types';
 import { cancelDelayTask, scheduleDelayTask, parseQueueChannel } from '../gcp-tasks-client';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 interface RunManagementResult {
   success: boolean;
@@ -63,6 +64,9 @@ export async function restartAutomationRun(
   runId: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     const { data: run } = await assertRunExists(runId);
@@ -340,6 +344,9 @@ export async function forceEndRun(
   runId: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     const { data: run } = await assertRunExists(runId);
@@ -520,6 +527,9 @@ export async function pauseRun(
   runId: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     const { ref, data: run } = await assertRunExists(runId);
@@ -582,6 +592,9 @@ export async function resumePausedRun(
   runId: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     const { ref, data: run } = await assertRunExists(runId);
@@ -659,6 +672,9 @@ export async function jumpRunToStep(
   targetNodeId: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     if (!targetNodeId) throw new Error('Target node ID is required.');
@@ -726,6 +742,9 @@ export async function rescheduleWaitJob(
   newExecuteAtIso: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     if (!newExecuteAtIso) throw new Error('New execution time is required.');
@@ -797,6 +816,9 @@ export async function updateRunPayload(
   updatedPayload: Record<string, unknown>,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     const { ref: runRef, data: run } = await assertRunExists(runId);
@@ -832,6 +854,9 @@ export async function cleanAndVerifyRunContact(
   updatedPhone: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     if (!userId) throw new Error('User ID is required.');
     const { ref: runRef, data: run } = await assertRunExists(runId);
@@ -889,6 +914,9 @@ export async function createContactFollowupTask(
   description: string,
   userId: string
 ): Promise<RunManagementResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!userId) throw new Error('User ID is required.');
     if (!workspaceId || !contactId || !title) {

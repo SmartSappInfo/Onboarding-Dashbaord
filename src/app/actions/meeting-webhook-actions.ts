@@ -20,6 +20,7 @@ import {
   buildWebhookEventPayload,
 } from '@/lib/meetings/webhook-signer-service';
 import { randomBytes } from 'crypto';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -33,6 +34,9 @@ function getErrorMessage(error: unknown): string {
 export async function getMeetingWebhooksAction(
   workspaceId: string
 ): Promise<{ success: boolean; endpoints?: MeetingWebhookEndpoint[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('meeting_webhooks')
@@ -63,6 +67,9 @@ export async function saveMeetingWebhookAction(payload: {
   subscribedEvents: MeetingWebhookEvent[];
   enabled?: boolean;
 }): Promise<{ success: boolean; endpointId?: string; secretKey?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { id, workspaceId, url, description, subscribedEvents, enabled = true } = payload;
     const now = new Date().toISOString();
@@ -116,6 +123,9 @@ export async function deleteMeetingWebhookAction(
   endpointId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('meeting_webhooks').doc(endpointId);
     const snap = await docRef.get();
@@ -138,6 +148,9 @@ export async function testDispatchWebhookAction(
   workspaceId: string,
   eventType: MeetingWebhookEvent = 'booking.created'
 ): Promise<{ success: boolean; statusCode?: number; responseBody?: string; durationMs?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   const startTime = Date.now();
   try {
     const docRef = adminDb.collection('meeting_webhooks').doc(endpointId);
@@ -255,6 +268,9 @@ export async function getWebhookDeliveryLogsAction(
   endpointId: string,
   workspaceId: string
 ): Promise<{ success: boolean; logs?: WebhookDeliveryLog[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('webhook_delivery_logs')

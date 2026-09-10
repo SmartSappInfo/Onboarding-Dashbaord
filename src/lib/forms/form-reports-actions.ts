@@ -13,6 +13,7 @@ import { revalidatePath } from 'next/cache';
 import type { Form, FormSubmission } from '@/lib/types';
 import type { FormMetricsDaily } from './form-analytics-types';
 import { getOrGenerateFormTopicClustersAction } from './form-intelligence-actions';
+import { requireAuth } from '@/lib/auth/require-auth';
 import type {
   WorkspaceExecutiveReportData,
   FormReportConfig,
@@ -40,6 +41,9 @@ export async function getWorkspaceFormsExecutiveReportAction(params: {
   workspaceId: string;
   dateRange?: ReportDateRange;
 }): Promise<{ success: boolean; data?: WorkspaceExecutiveReportData; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, dateRange = '30d' } = params;
 
@@ -222,6 +226,9 @@ export async function generateFormCustomReportAction(params: {
   preset?: FormReportPreset;
   dateRange?: ReportDateRange;
 }): Promise<{ success: boolean; report?: FormReportData; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, preset = 'executive_summary', dateRange = '30d' } = params;
 
@@ -358,6 +365,9 @@ export async function generateFormCustomReportAction(params: {
 export async function saveScheduledReportConfigAction(params: {
   config: ScheduledFormReportConfig;
 }): Promise<{ success: boolean; message?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { config } = params;
 
@@ -395,6 +405,9 @@ export async function saveScheduledReportConfigAction(params: {
 export async function getScheduledReportConfigAction(params: {
   formId: string;
 }): Promise<{ success: boolean; config?: ScheduledFormReportConfig; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId } = params;
 
@@ -426,6 +439,9 @@ export async function sendTestReportEmailAction(params: {
   targetEmail: string;
   preset?: FormReportPreset;
 }): Promise<{ success: boolean; message: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { formId, targetEmail, preset = 'executive_summary' } = params;
 

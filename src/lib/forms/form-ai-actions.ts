@@ -15,6 +15,7 @@ import type { FormVersion, FormPage, FormComponent, FieldSemanticType } from './
 import type { FormLogicRule, LogicComparisonOperator, LogicActionType } from './form-logic-types';
 import { detectLogicCycles } from './logic-engine';
 import { generateFormWithAi } from '@/ai/flows/generate-form-flow';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
   suggestQuestionsFlow,
   auditFormFrictionFlow,
@@ -85,6 +86,9 @@ function mapFieldTypeToSemantic(type: string): FieldSemanticType {
 export async function generateFormWithAiAction(
   payload: GenerateFormActionPayload
 ): Promise<GeneratedFormResponse> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { prompt, workspaceId, organizationId, userId, purpose, audienceMode, tone, pageMode, enableScoring } = payload;
 
@@ -348,6 +352,9 @@ export async function suggestFormQuestionsAction(params: {
   existingQuestions: Array<{ id: string; label: string; type: string }>;
   contextPrompt?: string;
 }): Promise<{ success: boolean; suggestions: QuestionSuggestion[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const result = await suggestQuestionsFlow(params);
     return {
@@ -368,6 +375,9 @@ export async function optimizeFormWithAiAction(params: {
   pagesCount: number;
   questions: Array<{ id: string; label: string; type: string; isRequired: boolean }>;
 }): Promise<{ success: boolean; report?: FormFrictionReport; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const report = await auditFormFrictionFlow(params);
     return {
@@ -388,6 +398,9 @@ export async function generateFormLogicWithAiAction(params: {
   availableFields: Array<{ id: string; label: string; type: string; options?: Array<{ label: string; value: string }> }>;
   availablePages?: Array<{ id: string; title: string }>;
 }): Promise<{ success: boolean; result?: SynthesizedLogicResult; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const res = await synthesizeLogicRuleFlow(params);
     const rules: FormLogicRule[] = (res.rules || []).map((r, rIdx) => ({
@@ -436,6 +449,9 @@ export async function rewriteQuestionCopyAction(params: {
   helpText?: string;
   targetTone: 'professional' | 'friendly' | 'concise' | 'accessible';
 }): Promise<{ success: boolean; refined?: QuestionCopyRefinement; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const refined = await rewriteQuestionCopyFlow(params);
     return {

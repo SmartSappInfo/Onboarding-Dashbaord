@@ -23,6 +23,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { CallOutcomeAutomation, MediaAsset } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface TransferMediaAutomationsParams {
   sourceAssetId: string;
@@ -46,6 +47,9 @@ const BATCH_SIZE = 150;
 export async function transferMediaAutomationsAction(
   params: TransferMediaAutomationsParams
 ): Promise<TransferMediaAutomationsResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const { sourceAssetId, targetAssetIds, scopeMode, workspaceId, automationRules } = params;
 
   if (!sourceAssetId || !workspaceId) {

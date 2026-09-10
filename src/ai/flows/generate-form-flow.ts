@@ -11,6 +11,7 @@
 import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
   GenerateFormInputSchema,
   GenerateFormOutputSchema,
@@ -181,5 +182,8 @@ export const generateFormFlow = ai.defineFlow(
  * Public execution wrapper for generateFormFlow.
  */
 export async function generateFormWithAi(input: GenerateFormInput): Promise<GenerateFormOutput> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   return generateFormFlow(input);
 }

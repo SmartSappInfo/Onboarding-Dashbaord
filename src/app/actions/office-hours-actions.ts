@@ -20,6 +20,7 @@ import {
   filterActiveQueueEntries,
 } from '@/lib/meetings/queue-state-service';
 import { randomBytes } from 'crypto';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -35,6 +36,9 @@ export async function getOfficeHoursRoomAction(
   hostUserId: string,
   hostName: string
 ): Promise<{ success: boolean; room?: OfficeHoursRoom; queue?: OfficeHoursQueueEntry[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('office_hours_rooms')
@@ -108,6 +112,9 @@ export async function updateHostOfficeHoursStatusAction(
   workspaceId: string,
   status: OfficeHoursStatus
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('office_hours_rooms').doc(roomId);
     const snap = await docRef.get();
@@ -245,6 +252,9 @@ export async function admitNextVisitorAction(
   workspaceId: string,
   queueEntryId: string
 ): Promise<{ success: boolean; visitor?: OfficeHoursQueueEntry; joinUrl?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const now = new Date().toISOString();
     const entryRef = adminDb.collection('office_hours_queue').doc(queueEntryId);

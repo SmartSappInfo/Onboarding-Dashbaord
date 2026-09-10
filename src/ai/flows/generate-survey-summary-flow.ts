@@ -8,6 +8,7 @@ import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'genkit';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 const GenerateSurveySummaryInputSchema = z.object({
   survey: z.unknown().describe('The survey object, including title, description, and elements array.'),
@@ -164,5 +165,8 @@ const generateSurveySummaryFlow = ai.defineFlow(
 );
 
 export async function generateSurveySummary(input: GenerateSurveySummaryInput): Promise<GenerateSurveySummaryOutput> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     return generateSurveySummaryFlow(input);
 }

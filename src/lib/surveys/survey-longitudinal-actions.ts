@@ -11,6 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   SurveyProject,
   Survey,
@@ -77,6 +78,9 @@ export async function getProjectLongitudinalAnalyticsAction(
   thematicDrift: ThematicDriftItem[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!projectId || !workspaceId) {
       return {
@@ -376,6 +380,9 @@ export async function createSurveyWaveAction(
   },
   workspaceId: string
 ): Promise<{ success: boolean; waveId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const projectRef = adminDb.collection('survey_projects').doc(projectId);
     const projectDoc = await projectRef.get();
@@ -431,6 +438,9 @@ export async function concludeSurveyWaveAction(
   waveId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const projectRef = adminDb.collection('survey_projects').doc(projectId);
     const projectDoc = await projectRef.get();

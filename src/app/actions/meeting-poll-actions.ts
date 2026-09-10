@@ -10,6 +10,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   MeetingPoll,
   MeetingPollSlot,
@@ -41,6 +42,9 @@ export async function createMeetingPollAction(payload: {
   durationMinutes: number;
   proposedSlots: Array<{ startAt: string; endAt: string }>;
 }): Promise<{ success: boolean; pollId?: string; slug?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const { workspaceId, organizationId, title, description, hostUserId, hostName, hostEmail, durationMinutes, proposedSlots } = payload;
     const now = new Date().toISOString();
@@ -97,6 +101,9 @@ export async function createMeetingPollAction(payload: {
 export async function getMeetingPollsAction(
   workspaceId: string
 ): Promise<{ success: boolean; polls?: MeetingPoll[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('meeting_polls')
@@ -226,6 +233,9 @@ export async function finalizeMeetingPollAction(
   workspaceId: string,
   winningSlotId: string
 ): Promise<{ success: boolean; bookingId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const now = new Date().toISOString();
     const pollRef = adminDb.collection('meeting_polls').doc(pollId);

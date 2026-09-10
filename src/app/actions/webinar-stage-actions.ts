@@ -11,6 +11,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   WebinarStageState,
   WebinarPresenter,
@@ -35,6 +36,9 @@ export async function getWebinarStageStateAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; state?: WebinarStageState; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
     if (!meetingDoc.exists) throw new Error('Meeting not found.');
@@ -132,6 +136,9 @@ export async function togglePresenterStageStatusAction(
   userId: string,
   newStatus: PresenterStageStatus
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('meeting_participants')
@@ -162,6 +169,9 @@ export async function postWebinarQuestionAction(
   participantName: string,
   questionText: string
 ): Promise<{ success: boolean; questionId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!questionText.trim()) throw new Error('Question text is required.');
 
@@ -193,6 +203,9 @@ export async function upvoteWebinarQuestionAction(
   questionId: string,
   participantId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const docRef = adminDb.collection('webinar_questions').doc(questionId);
     const snap = await docRef.get();
@@ -229,6 +242,9 @@ export async function promoteWaitlistRegistrantsAction(
   workspaceId: string,
   capacityLimit: number
 ): Promise<{ success: boolean; promotedCount?: number; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const participantsSnap = await adminDb
       .collection('meeting_participants')

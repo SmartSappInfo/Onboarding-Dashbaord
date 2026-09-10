@@ -27,6 +27,7 @@ import {
   type SurveyResearchAssistantOutput,
 } from '@/ai/schemas/survey-intelligence-schemas';
 import { computeResponseQualityMetrics, getResponseAnswer } from './survey-analytics-engine';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function isAuthorizedForWorkspace(survey: Survey, workspaceId: string): boolean {
   if (survey.workspaceIds && survey.workspaceIds.length > 0) {
@@ -53,6 +54,9 @@ export async function auditSurveyQualityAction(
     draftDescription?: string;
   }
 ): Promise<{ success: boolean; data?: SurveyQualityAuditOutput; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'Missing required surveyId or workspaceId' };
@@ -119,6 +123,9 @@ export async function generateSurveyThematicInsightsAction(
   anomalies?: SurveyAnomalyDetectionOutput;
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId) {
       return { success: false, error: 'Missing required parameters' };
@@ -233,6 +240,9 @@ export async function querySurveyResearchAssistantAction(
   userQuery: string,
   options?: { provider?: string; modelId?: string }
 ): Promise<{ success: boolean; data?: SurveyResearchAssistantOutput; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId || !userQuery) {
       return { success: false, error: 'Missing required parameters' };
@@ -299,6 +309,9 @@ export async function applySurveyAiOptimizationAction(
   improvedDescription?: string,
   improvedOptions?: string[]
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     if (!surveyId || !workspaceId || !questionId || !improvedTitle) {
       return { success: false, error: 'Missing required parameters' };

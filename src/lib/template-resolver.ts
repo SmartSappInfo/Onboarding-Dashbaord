@@ -5,6 +5,7 @@ import type { MessageTemplate, TemplateCategory, VariableContext, MessageChannel
 import { renderTemplate } from './template-utils';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
 import { FieldsVariablesService } from './services/fields-variables-service-impl';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -95,6 +96,9 @@ export async function resolveActiveTemplate(
   orgId: string,
   channel?: MessageChannel,
 ): Promise<MessageTemplate> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   const trigger = MESSAGING_TRIGGERS.find(t => t.id === triggerKey);
   if (!trigger) {
     throw new Error(`Unknown trigger: ${triggerKey}`);

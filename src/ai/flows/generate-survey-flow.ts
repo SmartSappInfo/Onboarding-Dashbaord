@@ -13,6 +13,7 @@ import { ai, getModel } from '@/ai/genkit';
 import { adminDb } from '@/lib/firebase-admin';
 import { z } from 'genkit';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ------ Zod Schemas for the Result Structure ------
 
@@ -255,5 +256,8 @@ const generateSurveyFlow = ai.defineFlow(
 );
 
 export async function generateSurvey(input: GenerateSurveyInput): Promise<GenerateSurveyOutput> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
     return generateSurveyFlow(input);
 }

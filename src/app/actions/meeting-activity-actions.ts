@@ -7,6 +7,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { MeetingActivity } from '@/lib/meetings/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -21,6 +22,9 @@ export async function getMeetingActivitiesAction(
   meetingId: string,
   limitCount: number = 50
 ): Promise<{ success: boolean; activities?: MeetingActivity[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const snap = await adminDb
       .collection('meeting_activities')

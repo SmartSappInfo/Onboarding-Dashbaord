@@ -13,6 +13,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { RoutingForm, RoutingSubmission, RoutingEvaluationResult } from '@/lib/meetings/types/routing';
 import { evaluateRoutingRules } from '@/lib/meetings/routing-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -26,6 +27,9 @@ function getErrorMessage(error: unknown): string {
 export async function getRoutingFormsAction(
   workspaceId: string
 ): Promise<{ success: boolean; forms?: RoutingForm[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const snap = await adminDb
       .collection('routing_forms')
@@ -78,6 +82,9 @@ export async function getRoutingFormBySlugAction(
 export async function createOrUpdateRoutingFormAction(
   payload: Partial<RoutingForm> & { workspaceId: string; name: string; slug: string }
 ): Promise<{ success: boolean; formId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const now = new Date().toISOString();
 
@@ -152,6 +159,9 @@ export async function deleteRoutingFormAction(
   formId: string,
   workspaceId: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('routing_forms').doc(formId);
     const snap = await docRef.get();

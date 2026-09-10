@@ -23,6 +23,7 @@ import {
   parseIntelligenceStructuredOutput,
 } from '@/lib/meetings/ai-intelligence-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -40,6 +41,9 @@ export async function generateMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const now = new Date().toISOString();
 
@@ -166,6 +170,9 @@ export async function getMeetingIntelligenceAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; intelligence?: MeetingIntelligence; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const doc = await adminDb.collection('meeting_intelligence').doc(meetingId).get();
     if (!doc.exists) {
@@ -191,6 +198,9 @@ export async function convertActionItemToCrmTaskAction(
   workspaceId: string,
   actionItemId: string
 ): Promise<{ success: boolean; crmTaskId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const docRef = adminDb.collection('meeting_intelligence').doc(meetingId);
     const snap = await docRef.get();
@@ -259,6 +269,9 @@ export async function generateMeetingPrepBriefAction(
   meetingId: string,
   workspaceId: string
 ): Promise<{ success: boolean; brief?: MeetingPrepBrief; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const meetingDoc = await adminDb.collection('meetings').doc(meetingId).get();
     if (!meetingDoc.exists) {

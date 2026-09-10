@@ -4,6 +4,7 @@
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import type { Activity } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Query activities for a contact with fallback pattern (Requirements 4.2, 22.1, 22.3)
@@ -45,6 +46,9 @@ export async function getActivitiesForContact(
  * @param newContent The new content for the note.
  */
 export async function updateNote(activityId: string, newContent: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!activityId || !newContent.trim()) {
     return { error: 'Invalid input provided.' };
   }
@@ -69,6 +73,9 @@ export async function updateNote(activityId: string, newContent: string) {
  * @param activityId The ID of the activity (note) to delete.
  */
 export async function deleteNote(activityId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   if (!activityId) {
     return { error: 'Activity ID is required.' };
   }

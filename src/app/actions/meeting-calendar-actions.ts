@@ -16,6 +16,7 @@ import type {
   CalendarEventSourceType,
 } from '@/lib/meetings/types/calendar-view';
 import { detectGridCollision } from '@/lib/meetings/calendar-view-service';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -32,6 +33,9 @@ export async function getWorkspaceCalendarEventsAction(
   endIso: string,
   hostUserIds?: string[]
 ): Promise<{ success: boolean; events?: CalendarGridEvent[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireWorkspace(workspaceId);
+
   try {
     const events: CalendarGridEvent[] = [];
 
@@ -123,6 +127,9 @@ export async function quickScheduleMeetingAction(payload: {
   contactEmail?: string;
   forceSchedule?: boolean;
 }): Promise<{ success: boolean; meetingId?: string; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  await requireAuth();
+
   try {
     const {
       workspaceId,
