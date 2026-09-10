@@ -17,6 +17,8 @@ vi.mock('../firebase-admin', () => {
   const doc = vi.fn((id: string) => ({ id }));
   const collection = vi.fn(() => ({ doc, where }));
 
+
+
   // Expose mocks on the module so tests can access them
   return {
     adminDb: { batch, collection },
@@ -34,6 +36,15 @@ import {
 } from '../template-variable-registry';
 import { getVariablesForContext } from '../template-variable-utils';
 import * as firebaseAdmin from '../firebase-admin';
+
+// These actions now derive identity from the session (audit F2); stub the guard.
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuth: vi.fn(async () => ({ uid: 'test-user', profile: { id: 'test-user', name: 'Test', displayName: 'Test', email: 't@e.com' }, isSystemAdmin: false })),
+  requireWorkspace: vi.fn(async () => ({ uid: 'test-user', profile: { id: 'test-user', name: 'Test', displayName: 'Test', email: 't@e.com' }, isSystemAdmin: false })),
+  requireOrganization: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false, organizationId: 'org-1' })),
+  requireSystemAdmin: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: true })),
+}));
+
 
 // Helpers to access the mocks exposed by the factory
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

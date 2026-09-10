@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { resolveContact } from './contact-adapter';
 import type { MessageCampaign, PostSendTagRule, MessageTask } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ── Shared tag utility (R3 fix: extracted from automation-processor.ts) ──────
 
@@ -26,6 +27,9 @@ export async function applyTagsToEntity(
   tagIds: string[],
   action: 'add_tags' | 'remove_tags' = 'add_tags'
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   if (!tagIds.length) return;
 
   const contact = await resolveContact(entityId, workspaceId);

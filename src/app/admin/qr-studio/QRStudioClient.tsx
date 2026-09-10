@@ -352,7 +352,8 @@ export default function QRStudioClient() {
   const handleDuplicate = async (qr: QRCodeType) => {
     if (!activeOrganizationId || !activeWorkspaceId) return;
     try {
-      await duplicateQRCode(activeOrganizationId, activeWorkspaceId, qr.id, qr.createdBy);
+      // Identity is derived server-side from the session (audit F2).
+      await duplicateQRCode(activeOrganizationId, activeWorkspaceId, qr.id);
       toast({ title: 'QR Code duplicated', description: `Copy of ${qr.name} created.` });
       fetchData();
     } catch {

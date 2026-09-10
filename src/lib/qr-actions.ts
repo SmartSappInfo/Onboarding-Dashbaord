@@ -28,6 +28,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { nanoid } from 'nanoid';
 import { normalizeQRCode, validateSafeUrl, generateSlug } from '@/lib/qr-helpers';
+import { requireWorkspace } from '@/lib/auth/require-auth';
 import type {
   QRCode,
   QRCodeMode,
@@ -129,6 +130,9 @@ export interface CreateQRCodeInput {
 }
 
 export async function createQRCode(input: CreateQRCodeInput): Promise<{ id: string; shortPath?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(input.workspaceId);
+
   // Validate destination safety
   if (input.type === 'url' && input.destination?.url) {
     validateSafeUrl(input.destination.url);
@@ -217,6 +221,9 @@ export async function batchCreateQRCodes(
   createdBy: { userId: string; name: string; email: string },
   jobName?: string
 ): Promise<{ count: number; batchJobId: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   // Bounded chunk size to stay safely within Firestore 500-op limits (25 items = 50 writes)
   const CHUNK_SIZE = 25;
   const col = qrCodesCollection(orgId, wsId);
@@ -334,6 +341,9 @@ export async function generateQRsForAudienceAction(
   createdBy: { userId: string; name: string; email: string },
   campaignName?: string
 ): Promise<{ count: number; batchJobId: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const items: BatchQRItem[] = contacts.map((contact) => ({
     name: contact.name,
     destinationUrl: contact.destinationUrl,
@@ -358,6 +368,9 @@ export async function bulkTagQRCodesAction(
   qrIds: string[],
   tags: string[]
 ): Promise<{ success: boolean; updatedCount: number }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCodesCollection(orgId, wsId);
   const CHUNK_SIZE = 25;
   let updatedCount = 0;
@@ -399,6 +412,9 @@ export async function getQRCodeByUrl(
   wsId: string,
   url: string
 ): Promise<QRCode | null> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const snapshot = await qrCodesCollection(orgId, wsId)
     .where('destination.url', '==', url)
     .limit(1)
@@ -420,6 +436,9 @@ export async function listQRCodes(
   wsId: string,
   filters?: ListQRCodesFilter
 ): Promise<QRCode[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   let query: FirebaseFirestore.Query = qrCodesCollection(orgId, wsId);
 
   if (filters?.status) {
@@ -469,6 +488,9 @@ export async function updateQRCode(
     >
   >
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   if (updates.destination?.url) {
     validateSafeUrl(updates.destination.url);
   }
@@ -488,6 +510,9 @@ export async function updateQRDesign(
   qrId: string,
   design: QRDesign
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await updateQRCode(orgId, wsId, qrId, { design });
 }
 
@@ -497,6 +522,9 @@ export async function updateQRDestination(
   qrId: string,
   destination: QRDestination
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await updateQRCode(orgId, wsId, qrId, { destination });
 }
 
@@ -506,6 +534,9 @@ export async function updateQRLifecycle(
   qrId: string,
   lifecycleConfig: QRLifecycleConfig
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const current = await getQRCode(orgId, wsId, qrId);
   if (!current) throw new Error('QR Code not found');
 
@@ -530,6 +561,9 @@ export async function updateQRSecurity(
   qrId: string,
   securityConfig: QRSecurityConfig
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await updateQRCode(orgId, wsId, qrId, { securityConfig });
 }
 
@@ -541,6 +575,9 @@ export async function scheduleQRCode(
   expiresAt?: string,
   fallbackUrl?: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const lifecycleConfig: QRLifecycleConfig = {
     startAt,
     expiresAt,
@@ -550,20 +587,32 @@ export async function scheduleQRCode(
 }
 
 export async function expireQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await updateQRCode(orgId, wsId, qrId, { status: 'expired' });
 }
 
 export async function pauseQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await updateQRCode(orgId, wsId, qrId, { status: 'paused' });
 }
 
 export async function resumeQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const current = await getQRCode(orgId, wsId, qrId);
   const isScheduled = current?.lifecycleConfig?.startAt && new Date(current.lifecycleConfig.startAt) > new Date();
   await updateQRCode(orgId, wsId, qrId, { status: isScheduled ? 'scheduled' : 'active' });
 }
 
 export async function archiveQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await updateQRCode(orgId, wsId, qrId, { status: 'archived' });
 }
 
@@ -573,6 +622,9 @@ export async function updateQRShortPath(
   qrId: string,
   newShortPath: string
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   try {
     const sanitized = newShortPath.trim();
     if (!/^[a-zA-Z0-9-]+$/.test(sanitized)) {
@@ -625,6 +677,9 @@ export async function bulkQRAction(
   qrIds: string[],
   action: 'pause' | 'resume' | 'archive' | 'delete' | 'expire'
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCodesCollection(orgId, wsId);
   const CHUNK_SIZE = 500;
 
@@ -652,9 +707,17 @@ export async function bulkQRAction(
 export async function duplicateQRCode(
   orgId: string,
   wsId: string,
-  qrId: string,
-  user: { userId: string; name: string; email: string }
+  qrId: string
 ): Promise<{ id: string }> {
+  // SECURITY (audit F2): ran for anyone, and the "duplicated by" identity was passed in
+  // by the caller. Both now come from the session.
+  const { profile } = await requireWorkspace(wsId);
+  const user = {
+    userId: profile.id,
+    name: profile.displayName || profile.name || 'User',
+    email: profile.email || '',
+  };
+
   const original = await getQRCode(orgId, wsId, qrId);
   if (!original) throw new Error('QR code not found');
 
@@ -677,6 +740,9 @@ export async function duplicateQRCode(
 }
 
 export async function deleteQRCode(orgId: string, wsId: string, qrId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCodesCollection(orgId, wsId);
   const doc = await col.doc(qrId).get();
   if (doc.exists) {
@@ -699,6 +765,9 @@ export async function saveQRTemplate(
   wsId: string,
   data: { name: string; category: string; design: QRDesign; createdBy: string; sourceTemplateId?: string }
 ): Promise<{ id: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrTemplatesCollection(orgId, wsId);
   const id = nanoid(12);
   const now = new Date().toISOString();
@@ -727,6 +796,9 @@ export async function updateQRTemplate(
   templateId: string,
   updates: { name?: string; category?: string; design?: QRDesign }
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrTemplatesCollection(orgId, wsId);
   await col.doc(templateId).update(
     stripUndefined({
@@ -740,6 +812,9 @@ export async function listQRTemplates(
   orgId: string,
   wsId: string
 ): Promise<QRCodeTemplate[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const snapshot = await qrTemplatesCollection(orgId, wsId)
     .orderBy('createdAt', 'desc')
     .get();
@@ -751,6 +826,9 @@ export async function deleteQRTemplate(
   wsId: string,
   templateId: string
 ): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   await qrTemplatesCollection(orgId, wsId).doc(templateId).delete();
 }
 
@@ -783,6 +861,9 @@ export async function getQRStudioStats(
   expiredCount: number;
   totalScans: number;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireWorkspace(wsId);
+
   const col = qrCodesCollection(orgId, wsId);
 
   const [totalSnap, activeDynamicSnap, scheduledSnap, pausedSnap, expiredSnap, allCodes] = await Promise.all([

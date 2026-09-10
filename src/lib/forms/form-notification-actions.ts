@@ -18,6 +18,7 @@ import type {
   AutoResponderRule,
 } from './form-notification-types';
 import { evaluateAutoResponderCondition } from './form-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Persists 3-tier notification configuration onto the form document.
@@ -26,6 +27,9 @@ export async function saveFormNotificationSettingsAction(
   formId: string,
   settings: FormNotificationSettings
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     if (!formId) return { success: false, error: 'formId is required' };
 
@@ -47,6 +51,9 @@ export async function saveFormNotificationSettingsAction(
 export async function getWorkspaceNotificationTemplatesAction(
   workspaceId: string
 ): Promise<{ success: boolean; templates: MessageTemplate[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     if (!workspaceId) return { success: true, templates: [] };
 
@@ -72,6 +79,9 @@ export async function getWorkspaceNotificationTemplatesAction(
 export async function sendTestFormNotificationAction(
   payload: TestNotificationPayload
 ): Promise<{ success: boolean; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const { channel: _channel, templateId, recipient, workspaceId, organizationId, formTitle, sampleAnswers } = payload;
     if (!recipient?.trim() || !templateId) {

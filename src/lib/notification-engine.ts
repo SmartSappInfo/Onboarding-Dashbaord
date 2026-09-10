@@ -5,6 +5,7 @@ import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 import type { UserProfile } from './types';
 import { resolveActiveChannels } from './notification-channel-utils';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 interface InternalNotificationOptions {
   triggerKey?: string;
@@ -256,6 +257,9 @@ export async function triggerInternalNotification(options: InternalNotificationO
  * Resolves contacts at a specific campus/entity and dispatches alerts.
  */
 export async function triggerExternalNotification(options: ExternalNotificationOptions) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const { entityId, contactTypes, emailTemplateId, smsTemplateId, whatsappTemplateId, variables } = options;
   const activeChannels = new Set(resolveActiveChannels(options));
 

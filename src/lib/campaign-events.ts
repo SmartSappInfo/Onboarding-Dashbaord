@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageCampaign, MessageTask, AutomationTrigger } from './types';
 import { resolveContact } from './contact-adapter';
+import { requireAuth } from '@/lib/auth/require-auth';
 import {
   buildCampaignAutomationJobPayload,
   campaignAutomationJobDocId,
@@ -19,6 +20,9 @@ export async function logCampaignEventToTimeline(params: {
   details?: string;
   error?: string;
 }): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const { workspaceId, organizationId, entityId, campaignId, campaignName, event, channel, details, error } = params;
   
   const docId = `camp_${entityId}_${campaignId}_${event}`;

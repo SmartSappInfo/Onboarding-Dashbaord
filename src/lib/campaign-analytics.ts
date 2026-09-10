@@ -2,6 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageJob, MessageTask, MessageCampaign } from './types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * Gets campaign stats by aggregating from the job's tasks subcollection.
@@ -23,6 +24,9 @@ export async function getCampaignStats(campaignId: string): Promise<{
   };
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     // Find the linked job
     const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
@@ -77,6 +81,9 @@ export async function getCampaignRecipientBreakdown(campaignId: string): Promise
   recipients?: { recipient: string; displayName: string; status: string; sentAt?: string; error?: string }[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
     if (!campaignSnap.exists) return { success: false, error: 'Campaign not found' };
@@ -116,6 +123,9 @@ export async function getFailedRecipients(campaignId: string): Promise<{
   failed?: { recipient: string; displayName: string; error?: string; variables: Record<string, any> }[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
     if (!campaignSnap.exists) return { success: false, error: 'Campaign not found' };
@@ -203,6 +213,9 @@ export async function getCampaignEngagementTimeline(campaignId: string): Promise
   timeline?: { timestamp: string; sent: number; opened: number; clicked: number }[];
   error?: string;
 }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
     if (!campaignSnap.exists) return { success: false, error: 'Campaign not found' };

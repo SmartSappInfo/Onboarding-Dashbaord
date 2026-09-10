@@ -52,6 +52,15 @@ vi.mock('@/lib/messaging-engine', () => ({
   sendMessage: (...args: unknown[]) => mockSendMessage(...args),
 }));
 
+// These actions now derive identity from the session (audit F2); stub the guard.
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuth: vi.fn(async () => ({ uid: 'test-user', profile: { id: 'test-user', name: 'Test', displayName: 'Test', email: 't@e.com' }, isSystemAdmin: false })),
+  requireWorkspace: vi.fn(async () => ({ uid: 'test-user', profile: { id: 'test-user', name: 'Test', displayName: 'Test', email: 't@e.com' }, isSystemAdmin: false })),
+  requireOrganization: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: false, organizationId: 'org-1' })),
+  requireSystemAdmin: vi.fn(async () => ({ uid: 'test-user', profile: {}, isSystemAdmin: true })),
+}));
+
+
 describe('SmartSapp Forms 2.0: 3-Tier Notification & Auto-Responder Engine', () => {
   beforeEach(() => {
     vi.clearAllMocks();

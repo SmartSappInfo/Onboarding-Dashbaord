@@ -5,6 +5,7 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
 import { FieldValue } from 'firebase-admin/firestore';
 import type { QRScanEvent } from '@/lib/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ─────────────────────────────────────────────────
 // Collection helpers
@@ -147,6 +148,9 @@ export async function getQRAnalytics(
   qrCodeId: string,
   days: number = 30
 ): Promise<ScanAnalytics> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const cutoff = new Date();
   cutoff.setDate(cutoff.getDate() - days);
 

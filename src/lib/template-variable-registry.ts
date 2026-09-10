@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { TemplateVariable } from './types';
 import { STATIC_VARIABLES } from './template-variable-registry-data';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 // ---------------------------------------------------------------------------
 // Minimal input types for dynamic variable registration
@@ -65,6 +66,9 @@ export async function registerFormVariables(formId: string, fields: FormField[])
  * Called when a survey is created or its elements are updated.
  */
 export async function registerSurveyVariables(surveyId: string, elements: SurveyElement[]): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const batch = adminDb.batch();
 
   for (const element of elements) {
@@ -97,6 +101,9 @@ export async function registerSurveyVariables(surveyId: string, elements: Survey
  * Fetches dynamic variables for a specific form or survey from Firestore.
  */
 export async function getDynamicVariables(formId: string): Promise<TemplateVariable[]> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const snapshot = await adminDb
     .collection('template_variables')
     .where('sourceFormId', '==', formId)

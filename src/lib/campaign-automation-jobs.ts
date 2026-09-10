@@ -3,6 +3,7 @@
 import { adminDb } from './firebase-admin';
 import type { MessageCampaign } from './types';
 import { FieldValue } from 'firebase-admin/firestore';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?: 'A' | 'B'): Promise<void> {
   const campaignRef = adminDb.collection('message_campaigns').doc(campaignId);
@@ -196,6 +197,9 @@ export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?
 }
 
 export async function selectCampaignWinnerManual(campaignId: string, winningVariantId: 'A' | 'B'): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const pendingJobs = await adminDb.collection('automation_jobs')
     .where('payload.campaignId', '==', campaignId)
     .where('targetNodeId', '==', '__campaign_ab_evaluate__')
@@ -210,6 +214,9 @@ export async function selectCampaignWinnerManual(campaignId: string, winningVari
 }
 
 export async function cancelCampaignABTest(campaignId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const campaignRef = adminDb.collection('message_campaigns').doc(campaignId);
   
   await adminDb.runTransaction(async (transaction) => {
@@ -241,6 +248,9 @@ export async function cancelCampaignABTest(campaignId: string): Promise<void> {
 }
 
 export async function resumeCampaignABTest(campaignId: string): Promise<void> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const campaignRef = adminDb.collection('message_campaigns').doc(campaignId);
   
   await adminDb.runTransaction(async (transaction) => {

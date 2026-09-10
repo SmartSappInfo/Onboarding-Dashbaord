@@ -12,6 +12,7 @@ import { getContactVariables, getRecipientContactVariables } from './entity-cont
 import { evaluateConditionNode } from './automation-condition';
 import { getBaseUrl } from './utils/url-helpers';
 import { getPersonalizedMeetingUrl } from './meeting-tokens';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Server-side actions for the Variable Registry.
@@ -25,6 +26,9 @@ import { getPersonalizedMeetingUrl } from './meeting-tokens';
  * This ensures that Survey questions and PDF fields are available for messaging and forms.
  */
 export async function syncVariableRegistry() {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const fieldsCol = adminDb.collection('app_fields');
     const timestamp = new Date().toISOString();
@@ -127,6 +131,9 @@ export async function syncVariableRegistry() {
  * Upgraded to include 'scheduled' messages that should have fired by now.
  */
 export async function syncAllLogStatuses() {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const logsCol = adminDb.collection('message_logs');
     const now = new Date().toISOString();
@@ -245,6 +252,9 @@ export async function upsertConstantVariable(data: {
   label: string;
   value: string;
 }) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const id = `const_${data.key}`;
     const timestamp = new Date().toISOString();
@@ -275,6 +285,9 @@ export async function upsertConstantVariable(data: {
  * Updates the global visibility of a field.
  */
 export async function updateVariableVisibility(id: string, hidden: boolean) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     await adminDb.collection('app_fields').doc(id).update({
       status: hidden ? 'inactive' : 'active',
@@ -291,6 +304,9 @@ export async function updateVariableVisibility(id: string, hidden: boolean) {
  * Deletes a manual constant field.
  */
 export async function deleteVariable(id: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     await adminDb.collection('app_fields').doc(id).delete();
     revalidatePath('/admin/settings/fields');
@@ -308,6 +324,9 @@ export async function deleteVariable(id: string) {
  * Updated to use Contact Adapter for School entity (Requirement 25.4)
  */
 export async function fetchContextualData(entity: string, id: string, parentId?: string, workspaceId?: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     let data: any = null;
     if (entity === 'Meeting') {
@@ -348,6 +367,9 @@ export async function fetchContextualData(entity: string, id: string, parentId?:
  * Deletes all harvested variables for a specific source.
  */
 export async function clearVariablesForSource(sourceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   const variablesCol = adminDb.collection('messaging_variables');
   const querySnap = await variablesCol.where('sourceId', '==', sourceId).get();
 
@@ -1215,6 +1237,9 @@ export async function resolveRecipientContacts(params: {
  * Called automatically after a message is successfully sent to track CRM activity.
  */
 export async function updateEntityLastContactedAt(entityId: string, workspaceId: string) {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const weSnap = await adminDb
       .collection('workspace_entities')
@@ -1250,6 +1275,9 @@ export async function getSimulationVariablesAction(params: {
   pdfId?: string;
   recipientContact?: string;
 }): Promise<{ success: boolean; variables?: Record<string, any>; contacts?: any[]; error?: string }> {
+  // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
+  await requireAuth();
+
   try {
     const variables: Record<string, any> = {};
     const resolvedWorkspaceId = params.workspaceId || 'onboarding';
