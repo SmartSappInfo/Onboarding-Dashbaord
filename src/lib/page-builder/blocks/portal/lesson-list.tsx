@@ -75,7 +75,7 @@ registerBlock({
   }),
   schema,
   render: (props: LessonListProps, _block, ctx) => {
-    const isDark = ctx.themeMode === 'dark';
+    const _isDark = ctx.themeMode === 'dark';
 
     return (
       <section className="py-6 space-y-4 w-full">

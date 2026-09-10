@@ -1,7 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { EntityContact, EntityType } from './types';
+import type { EntityContact } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 

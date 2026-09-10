@@ -18,7 +18,6 @@ import {
     CalendarClock,
     BarChart3,
     TrendingUp,
-    CheckCircle2,
     XCircle,
     Info,
     Layers,
@@ -37,7 +36,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { fetchSmsBalanceAction, fetchSmsReportsAction } from '@/lib/mnotify-actions';
 import { getWhatsAppConnection } from '@/lib/whatsapp-actions';
 import type { WhatsAppConnectionPublic } from '@/lib/whatsapp/whatsapp-types';
-import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from '@/components/ui/chart';
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis, ResponsiveContainer, Cell } from 'recharts';

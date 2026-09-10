@@ -34,19 +34,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import {
-  Link as LinkIcon,
   QrCode,
   Code,
   Plus,
   Copy,
   ExternalLink,
-  ShieldAlert,
   Calendar,
   Sparkles,
   Download,
   Share2,
   CheckCircle2,
-  Trash2,
   Globe,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';

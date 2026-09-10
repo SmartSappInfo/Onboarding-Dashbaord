@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Play, Settings2, Mail, Clock, Building, Zap, ArrowRight, MousePointer2, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare, CheckSquare, Building2, DollarSign, UserPlus, PhoneCall, StopCircle, Globe } from 'lucide-react';
+import { Mail, Zap, Bell, BellOff, Smartphone, Plus, Sparkles, StickyNote, MessageSquare, CheckSquare, Building2, DollarSign, UserPlus, PhoneCall, StopCircle, Globe } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -81,7 +81,7 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
     const actionType = data.actionType || '';
     const config = (data.config || {}) as Record<string, any>;
 
-    const { users, stages, pipelines } = useWorkspaceScopedQueries();
+    const { users, stages, pipelines: _pipelines } = useWorkspaceScopedQueries();
     const { automationId } = useAutomationMeta();
 
     const getIcon = () => {
@@ -137,7 +137,7 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
     const Icon = getIcon();
     const stepName = formatActionName(actionType);
 
-    const getResourceDetail = () => {
+    const _getResourceDetail = () => {
         if (!actionType) return 'Action';
         if (actionType === 'SEND_MESSAGE' || actionType?.startsWith('SEND_NOTIFICATION_')) {
             return config.templateName || (config.templateId ? 'Active Template' : 'Select Template');

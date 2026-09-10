@@ -3,8 +3,8 @@
 
 import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, orderBy, doc, updateDoc, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { collection, query, orderBy, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { format } from 'date-fns';
 import Link from 'next/link';
 
@@ -41,11 +41,9 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
-import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, CopyPlus, Signature, PlusCircle } from 'lucide-react';
-import UploadPDFButton from './components/UploadPDFButton';
+import { MoreHorizontal, Edit, Trash2, Loader2, FileText, Copy, ExternalLink, Eye, EyeOff, BarChart2, Search, CopyPlus, PlusCircle } from 'lucide-react';
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import SubmissionCount from './components/SubmissionCount';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -108,7 +106,7 @@ export default function PdfsClient() {
         } else {
             toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
         }
-    } catch (e: unknown) {
+    } catch (_e: unknown) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete duplication.' });
     } finally {
         setCloningId(null);
@@ -362,7 +360,7 @@ export default function PdfsClient() {
                     <AlertDialogHeader>
                         <AlertDialogTitle className="font-semibold">Delete Document?</AlertDialogTitle>
                         <AlertDialogDescription className="text-sm font-medium">
-                            This will permanently remove the document <span className="font-bold text-foreground">"{formToDelete?.name}"</span> and its associated file. Public signing links will be broken.
+                            This will permanently remove the document <span className="font-bold text-foreground">&quot;{formToDelete?.name}&quot;</span> and its associated file. Public signing links will be broken.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter>

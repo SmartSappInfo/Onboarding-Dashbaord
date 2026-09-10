@@ -17,9 +17,7 @@ import { useState, useEffect } from 'react';
 import { getCreativeProjectWithDocumentAction } from '@/app/actions/creative-project-actions';
 import type { CreativeProject, CreativeDocument } from '@/lib/creative/creative-types';
 import ThumbnailCanvas from '@/components/shared/thumbnail-designer/ThumbnailCanvas';
-import { Button } from '@/components/ui/button';
-import { Sparkles, CheckCircle2, Globe, Clock, Loader2, MessageSquare } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { CheckCircle2, Globe, Loader2 } from 'lucide-react';
 
 interface SharedCreativeClientProps {
   shareId: string;

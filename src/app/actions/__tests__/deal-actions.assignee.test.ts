@@ -84,7 +84,7 @@ vi.mock('@/lib/firebase-admin', () => {
               return { id: 'deal-123' };
             }),
             where: vi.fn((field1, op1, uid) => ({
-              where: vi.fn((field2, op2, val2) => ({
+              where: vi.fn((_field2, _op2, _val2) => ({
                 get: vi.fn().mockImplementation(async () => {
                   let size = 0;
                   let dealsList: any[] = [];

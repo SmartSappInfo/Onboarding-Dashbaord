@@ -23,10 +23,8 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import {
   Sparkles,
-  TrendingUp,
   AlertTriangle,
   CheckCircle2,
-  HelpCircle,
   ShieldCheck,
   Search,
   ArrowUpRight,
@@ -37,7 +35,6 @@ import {
 } from 'lucide-react';
 import type {
   ForecastCategory,
-  ForecastDealItem,
   RevenueForecastOverview,
 } from '@/lib/revenue-forecasting/types';
 import { reassignForecastCategoryAction } from '@/app/actions/revenue-forecasting-actions';

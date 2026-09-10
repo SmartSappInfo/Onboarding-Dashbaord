@@ -16,7 +16,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,19 +28,15 @@ import {
   TrendingUp,
   Layers,
   Sliders,
-  Clock,
   Save,
   Loader2,
   Database,
   CheckCircle2,
-  AlertTriangle,
   BarChart3,
-  Flame,
   ShieldCheck,
 } from 'lucide-react';
 import type {
   AttributionModelType,
-  CustomStageAttributionWeights,
   RevenueForecastingGovernance,
 } from '@/lib/revenue-forecasting/types';
 import {

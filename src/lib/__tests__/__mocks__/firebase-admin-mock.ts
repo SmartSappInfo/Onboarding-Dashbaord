@@ -84,7 +84,7 @@ export const createMockStore = (): MockStore => {
 };
 
 // Helper to resolve FieldValue.increment
-function resolveFieldValue(oldVal: any, newVal: any) {
+function _resolveFieldValue(oldVal: any, newVal: any) {
   // If newVal is a FieldValue.increment representation
   // in firebase-admin it is typically an object or class. We can detect if it has a signature/property
   if (newVal && typeof newVal === 'object' && newVal.constructor?.name === 'NumericIncrementTransform') {
@@ -244,7 +244,7 @@ export const createFirebaseAdminMock = (mockStore: MockStore) => {
 
               // Apply filters
               for (const filter of filters) {
-                docs = docs.filter(({ id, data }) => {
+                docs = docs.filter(({ _id, data }) => {
                   const val = data[filter.field];
                   if (filter.op === '==') return val === filter.value;
                   if (filter.op === 'in') return Array.isArray(filter.value) && filter.value.includes(val);

@@ -21,7 +21,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
   X,
@@ -31,10 +30,8 @@ import {
   BookOpen,
   ArrowRight,
   RefreshCw,
-  ExternalLink,
-  MessageSquare,
 } from 'lucide-react';
-import type { DocumentAiMessage, DocumentAiCitation } from '@/lib/types/document-types';
+import type { DocumentAiMessage } from '@/lib/types/document-types';
 import { askDocumentQuestionAction } from '@/lib/documents/ai-document-actions';
 import { useToast } from '@/hooks/use-toast';
 

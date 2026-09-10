@@ -26,7 +26,6 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Zap, 
-  CheckCircle2, 
   Briefcase, 
   Mail, 
   MessageSquare, 
@@ -64,7 +63,7 @@ export const ProspectActivationModal: React.FC<ProspectActivationModalProps> = (
   const [items, setItems] = useState<ActivationRecommendationItem[]>([]);
   const [selectedActionTypes, setSelectedActionTypes] = useState<Set<ActivationActionType>>(new Set());
   const [isExecuting, setIsExecuting] = useState(false);
-  const [assignedRep, setAssignedRep] = useState('rep_kwame');
+  const [assignedRep, _setAssignedRep] = useState('rep_kwame');
 
   useEffect(() => {
     if (prospect) {

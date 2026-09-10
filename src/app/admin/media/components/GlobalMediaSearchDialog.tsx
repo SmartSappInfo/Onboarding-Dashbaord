@@ -22,8 +22,6 @@ import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -36,9 +34,7 @@ import {
   Music,
   Layers,
   Package as PackageIcon,
-  Sparkles,
   ExternalLink,
-  Send,
   Loader2,
   X,
   Command,

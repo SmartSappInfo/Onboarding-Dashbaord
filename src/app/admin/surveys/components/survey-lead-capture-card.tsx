@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Database, Plus, Search, Check, PlusCircle, ListTree, Trash2, Eye, EyeOff, User, Mail, Phone, Building2, HelpCircle, Layout as LayoutIcon } from 'lucide-react';
+import { Database, Plus, Search, Check, PlusCircle, ListTree, Trash2, Eye, EyeOff, User, Mail, Phone, Building2, Layout as LayoutIcon } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -12,7 +12,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
@@ -371,7 +370,7 @@ export default function SurveyLeadCaptureCard() {
                                                     ))}
                                                 </SelectContent>
                                             </Select>
-                                            <p className="text-[9px] font-bold text-muted-foreground/50 italic ml-1 leading-tight">Usually "Business Name" or "Organization".</p>
+                                            <p className="text-[9px] font-bold text-muted-foreground/50 italic ml-1 leading-tight">Usually &quot;Business Name&quot; or &quot;Organization&quot;.</p>
                                         </div>
                                     )}
                                 />

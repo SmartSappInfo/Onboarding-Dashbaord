@@ -155,7 +155,7 @@ export class IdeaRepository {
   /**
    * Convenience method to list ideas by workspace.
    */
-  static async listByWorkspace(workspaceId: string, limit = 250): Promise<Idea[]> {
+  static async listByWorkspace(workspaceId: string, _limit = 250): Promise<Idea[]> {
     return this.listIdeas(workspaceId);
   }
 

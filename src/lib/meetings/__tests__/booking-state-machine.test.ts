@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import type { Booking, BookingHold, BookingStatus } from '../types';
+import type { BookingHold, BookingStatus } from '../types';
 
 describe('Booking Lifecycle State Machine Transitions', () => {
   const mockHold: BookingHold = {

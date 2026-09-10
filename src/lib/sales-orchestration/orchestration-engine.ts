@@ -27,9 +27,7 @@ import type {
   RoutingRule,
   RepRoutingConfig,
   EscalationRule,
-  EscalationIncident,
   ApprovalRequest,
-  ApprovalStatus,
   SalesOrchestrationGovernance,
   PlayTriggerType,
 } from './types';

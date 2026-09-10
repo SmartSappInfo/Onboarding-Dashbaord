@@ -53,7 +53,7 @@ export class GovernanceSpecialist extends BaseDomainSpecialist {
 
   protected async runDomainAnalysis(
     request: AgentRequest,
-    config: SpecialistWorkspaceConfig | null
+    _config: SpecialistWorkspaceConfig | null
   ): Promise<AgentResult> {
     const toolCallsCollector: AgentToolCall[] = [];
     const sourcesCollector: ContextSourceCitation[] = [];

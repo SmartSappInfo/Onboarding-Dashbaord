@@ -10,9 +10,8 @@ import { CompressorDropzone } from './compressor-dropzone';
 import { CompressorStats } from './compressor-stats';
 import { compressPdf } from '@/lib/pdf-compressor';
 import { CompressionResult } from '@/lib/pdf-compressor.types';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft, Layers, ShieldAlert, Cpu } from 'lucide-react';
+import { Loader2, ArrowLeft, ShieldAlert, Cpu } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 

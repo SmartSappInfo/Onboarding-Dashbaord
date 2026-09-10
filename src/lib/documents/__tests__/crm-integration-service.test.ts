@@ -14,7 +14,7 @@ const mockBatchCommit = vi.fn().mockResolvedValue(undefined);
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: (colName: string) => ({
+    collection: (_colName: string) => ({
       doc: (docId: string) => ({
         id: docId,
         set: mockSet,

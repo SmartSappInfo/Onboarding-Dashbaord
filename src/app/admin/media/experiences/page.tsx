@@ -20,7 +20,7 @@ import { listExperiencesAction } from '@/lib/media/media-experience-service';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Layout, Palette, Sparkles, Loader2, PlayCircle, Eye } from 'lucide-react';
+import { Plus, Layout, Sparkles, Loader2 } from 'lucide-react';
 
 export default function MediaExperiencesPage() {
   const firestore = useFirestore();

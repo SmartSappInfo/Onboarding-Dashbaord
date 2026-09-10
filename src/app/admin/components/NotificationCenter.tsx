@@ -1,14 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { BellDot, MailOpen, AlertCircle, Info, Calendar, FileText, Settings, X, Check, MessageSquareWarning } from 'lucide-react';
+import { BellDot, MailOpen, Info, Calendar, FileText, Settings, Check, MessageSquareWarning } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuItem,
     DropdownMenuTrigger,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -16,7 +13,6 @@ import { collection, query, where, orderBy, limit, doc, updateDoc } from 'fireba
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { InAppNotification } from '@/lib/types';
 import DOMPurify from 'isomorphic-dompurify';

@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getFeatureDetail, updateFeatureRolloutRules, toggleFeatureKillSwitch } from '@/lib/backoffice/backoffice-feature-actions';
 import { useBackoffice } from '../../context/BackofficeProvider';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
@@ -311,7 +310,7 @@ export default function FeatureDetailClient({ featureId }: { featureId: string }
                       <div className="text-center py-12 bg-accent/20 rounded-xl border border-border/30 border-dashed">
                           <Users className="h-8 w-8 text-slate-600 mx-auto mb-3" />
                           <p className="text-sm text-muted-foreground mb-1">No rollout rules configured.</p>
-                          <p className="text-xs text-slate-600">The feature uses the 'Default State' for all organizations without manual overrides.</p>
+                          <p className="text-xs text-slate-600">The feature uses the &apos;Default State&apos; for all organizations without manual overrides.</p>
                       </div>
                   ) : (
                      rules.map((rule, idx) => (

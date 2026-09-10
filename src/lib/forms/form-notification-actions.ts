@@ -15,7 +15,6 @@ import type { Form, MessageTemplate } from '@/lib/types';
 import type {
   FormNotificationSettings,
   TestNotificationPayload,
-  AutoResponderRule,
 } from './form-notification-types';
 import { evaluateAutoResponderCondition } from './form-utils';
 import { requireAuth } from '@/lib/auth/require-auth';

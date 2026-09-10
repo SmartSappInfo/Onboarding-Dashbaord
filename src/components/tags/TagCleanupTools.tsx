@@ -5,7 +5,7 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Tag } from '@/lib/types';
-import { bulkDeleteUnusedTagsAction, deleteTagAction } from '@/lib/tag-actions';
+import { bulkDeleteUnusedTagsAction } from '@/lib/tag-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

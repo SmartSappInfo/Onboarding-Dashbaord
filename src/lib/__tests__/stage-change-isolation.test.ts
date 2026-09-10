@@ -29,7 +29,7 @@ vi.mock('../firebase-admin', () => ({
     collection: (name: string) => {
       if (name === 'workspace_entities') {
         return {
-          doc: (id: string) => ({
+          doc: (_id: string) => ({
             get: mockWorkspaceEntityGet,
             update: mockWorkspaceEntityUpdate,
           }),
@@ -37,7 +37,7 @@ vi.mock('../firebase-admin', () => ({
       }
       if (name === 'entities') {
         return {
-          doc: (id: string) => ({
+          doc: (_id: string) => ({
             get: mockEntityGet,
             update: mockEntityUpdate,
           }),
@@ -45,7 +45,7 @@ vi.mock('../firebase-admin', () => ({
       }
       if (name === 'stages') {
         return {
-          doc: (id: string) => ({
+          doc: (_id: string) => ({
             get: mockStageGet,
           }),
         };

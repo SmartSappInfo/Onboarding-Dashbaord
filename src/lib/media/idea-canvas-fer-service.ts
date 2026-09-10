@@ -17,7 +17,6 @@ import {
   setDoc,
   query,
   where,
-  writeBatch,
   type Firestore,
 } from 'firebase/firestore';
 import type { MediaIdeaCanvas } from '../types/media-2.0';

@@ -5,11 +5,11 @@ import Image from 'next/image';
 import type { MediaAsset } from '@/lib/types';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { ExternalLink, Pencil, Check, X, Loader2, FileText } from 'lucide-react';
+import { ExternalLink, Pencil, Check, X, Loader2 } from 'lucide-react';
 import { updateMediaName, deleteMediaAsset } from '@/lib/media-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
-import { cn, formatBytes } from '@/lib/utils';
+import { formatBytes } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 const getYouTubeEmbedUrl = (url: string) => {
@@ -19,7 +19,7 @@ const getYouTubeEmbedUrl = (url: string) => {
     if (match && match[1]) {
       return `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0`;
     }
-  } catch (e: unknown) {}
+  } catch (_e: unknown) {}
   return null;
 };
 
@@ -30,7 +30,7 @@ const getVimeoEmbedUrl = (url: string) => {
     if (match && match[1]) {
       return `https://player.vimeo.com/video/${match[1]}`;
     }
-  } catch (e) {}
+  } catch (_e) {}
   return null;
 };
 
@@ -40,7 +40,7 @@ const getLoomEmbedUrl = (url: string) => {
     if (match && match[1]) {
       return `https://www.loom.com/embed/${match[1]}`;
     }
-  } catch (e) {}
+  } catch (_e) {}
   return null;
 };
 

@@ -25,11 +25,8 @@ import {
   Tag,
   Clock,
   Users,
-  Layers,
-  ArrowRight,
   Plus,
   MousePointerClick,
-  FileText,
 } from 'lucide-react';
 import type {
   DocumentAiSummary,
@@ -252,7 +249,7 @@ export function DocumentAiIntelligenceTab({
           </div>
         ) : (
           <div className="py-8 text-center text-xs text-muted-foreground bg-muted/10 rounded-2xl border border-dashed">
-            Click "Generate Summary" above to have AI extract topics, audience classification, and highlights.
+            Click &quot;Generate Summary&quot; above to have AI extract topics, audience classification, and highlights.
           </div>
         )}
       </Card>
@@ -344,7 +341,7 @@ export function DocumentAiIntelligenceTab({
           </div>
         ) : (
           <div className="py-8 text-center text-xs text-muted-foreground bg-muted/10 rounded-2xl border border-dashed">
-            Click "Analyze CTAs" to automatically discover conversion hotspots and apply them in 1-click.
+            Click &quot;Analyze CTAs&quot; to automatically discover conversion hotspots and apply them in 1-click.
           </div>
         )}
       </Card>

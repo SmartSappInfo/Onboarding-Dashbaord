@@ -12,7 +12,6 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type {
-  Survey,
   SurveyResponse,
   SurveyRetentionPolicy,
   SystemResearchGovernanceConfig,

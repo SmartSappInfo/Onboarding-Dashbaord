@@ -262,7 +262,7 @@ function MessageContactRowDetails({ log, workspaceId, cachedContact }: MessageCo
             setContactPerson(log.displayName || '-');
           }
         }
-      } catch (error) {
+      } catch (_error) {
         if (isMounted) {
           setEntityName(log.entityName || log.displayName || '-');
           setContactPerson(log.displayName || '-');
@@ -328,7 +328,7 @@ export function MessageNodeLogsDialog({
   
   // Contact details parent resolution cache
   const [contactCache, setContactCache] = React.useState<Map<string, import('@/lib/types').ResolvedContact>>(new Map());
-  const [exportProgress, setExportProgress] = React.useState<{ current: number; total: number } | null>(null);
+  const [_exportProgress, setExportProgress] = React.useState<{ current: number; total: number } | null>(null);
 
   // Bulk clean state
   const [isBulkCleanConfirmOpen, setIsBulkCleanConfirmOpen] = React.useState(false);

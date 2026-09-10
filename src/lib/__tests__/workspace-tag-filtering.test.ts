@@ -42,12 +42,12 @@ vi.mock('../firebase-admin', () => {
                   let results = Array.from(entities.entries());
                   
                   if (field === 'globalTags' && op === 'array-contains-any') {
-                    results = results.filter(([id, data]) => {
+                    results = results.filter(([_id, data]) => {
                       const globalTags = data.globalTags || [];
                       return value.some((tag: string) => globalTags.includes(tag));
                     });
                   } else if (field === 'globalTags' && op === 'array-contains') {
-                    results = results.filter(([id, data]) => {
+                    results = results.filter(([_id, data]) => {
                       const globalTags = data.globalTags || [];
                       return globalTags.includes(value);
                     });

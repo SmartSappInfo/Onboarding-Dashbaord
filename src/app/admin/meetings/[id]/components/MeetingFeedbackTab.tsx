@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,7 +13,6 @@ import {
   Check,
   ExternalLink,
   MessageSquare,
-  Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -196,7 +195,7 @@ export function MeetingFeedbackTab({ meetingId }: MeetingFeedbackTabProps) {
 
                 {r.feedbackText && (
                   <p className="text-[11px] text-muted-foreground italic bg-background/50 p-2 rounded-lg border">
-                    "{r.feedbackText}"
+                    &quot;{r.feedbackText}&quot;
                   </p>
                 )}
               </div>

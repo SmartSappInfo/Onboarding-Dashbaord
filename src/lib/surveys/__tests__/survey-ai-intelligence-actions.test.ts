@@ -13,13 +13,13 @@ const mockAdd = vi.fn().mockResolvedValue({ id: 'sum_1' });
 const mockOrderBy = vi.fn().mockReturnThis();
 const mockLimit = vi.fn().mockReturnThis();
 
-const mockCollection = vi.fn((name: string) => ({
-  doc: vi.fn((id?: string) => ({
+const mockCollection = vi.fn((_name: string) => ({
+  doc: vi.fn((_id?: string) => ({
     get: mockGet,
     set: mockSet,
     update: mockUpdate,
-    collection: (subName: string) => ({
-      doc: vi.fn((subId?: string) => ({
+    collection: (_subName: string) => ({
+      doc: vi.fn((_subId?: string) => ({
         get: mockGet,
         set: mockSet,
       })),

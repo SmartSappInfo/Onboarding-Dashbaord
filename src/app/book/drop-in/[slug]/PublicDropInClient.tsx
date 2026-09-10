@@ -8,16 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Users,
   Video,
   Clock,
-  Radio,
   CheckCircle2,
-  AlertCircle,
-  Loader2,
   LogIn,
   LogOut,
-  ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -43,7 +38,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
 
   const [visitorName, setVisitorName] = React.useState('');
   const [visitorEmail, setVoterEmail] = React.useState('');
-  const [visitorPhone, setVisitorPhone] = React.useState('');
+  const [visitorPhone, _setVisitorPhone] = React.useState('');
   const [topic, setTopic] = React.useState('');
 
   const [isJoining, setIsJoining] = React.useState(false);
@@ -190,7 +185,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
                 <Clock className="h-10 w-10 mx-auto text-muted-foreground opacity-40" />
                 <h3 className="text-sm font-bold text-foreground">Host is currently offline</h3>
                 <p className="text-xs text-muted-foreground">
-                  {room.hostName}'s drop-in office hours are closed right now. Please check back during open hours.
+                  {room.hostName}&apos;s drop-in office hours are closed right now. Please check back during open hours.
                 </p>
               </div>
             ) : status === 'waiting' ? (
@@ -248,7 +243,7 @@ export function PublicDropInClient({ room }: PublicDropInClientProps) {
                 <div className="h-16 w-16 rounded-full bg-emerald-500/10 text-emerald-600 flex items-center justify-center mx-auto">
                   <CheckCircle2 className="h-10 w-10" />
                 </div>
-                <h3 className="text-base font-bold text-foreground">You've been admitted!</h3>
+                <h3 className="text-base font-bold text-foreground">You&apos;ve been admitted!</h3>
                 <p className="text-xs text-muted-foreground">
                   Click the button below if your browser did not automatically open the meeting room.
                 </p>

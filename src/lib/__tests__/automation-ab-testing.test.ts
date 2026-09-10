@@ -59,7 +59,7 @@ import { evaluateCampaignABTest } from '../campaign-automation-jobs';
 
 const dbMocks = () => (firebaseAdmin as any).__mocks;
 const messagingMocks = () => (messagingActions as any).__mocks;
-const bulkMocks = () => (bulkMessaging as any).__mocks;
+const _bulkMocks = () => (bulkMessaging as any).__mocks;
 
 describe('A/B Testing Hashing & Sticky Splits', () => {
   it('assigns sticky path deterministically based on split ratio', () => {

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import type { BookingPage } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion } from 'framer-motion';
@@ -32,7 +32,7 @@ interface BookingSlotsClientProps {
   preloadedVariables?: Record<string, string>;
 }
 
-export default function BookingSlotsClient({ bookingPage, initialDate, initialSlots, preloadedVariables }: BookingSlotsClientProps) {
+export default function BookingSlotsClient({ bookingPage, initialDate, initialSlots, preloadedVariables: _preloadedVariables }: BookingSlotsClientProps) {
   const router = useRouter();
   const [selectedDate, setSelectedDate] = React.useState<string>(initialDate);
   const [slots, setSlots] = React.useState<TimeSlot[]>(initialSlots);

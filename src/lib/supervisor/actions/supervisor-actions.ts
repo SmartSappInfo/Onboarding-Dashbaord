@@ -18,7 +18,6 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { SupervisorEngine } from '../services/supervisor-engine';
-import { globalMcpRegistry } from '@/lib/mcp/registry';
 import { McpGateway } from '@/lib/mcp/gateway';
 import { globalAgentRegistry } from '../agent-registry';
 import type {
@@ -27,8 +26,8 @@ import type {
   AgentActionProposal,
   AgentDescriptor,
 } from '../types';
-import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
-import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import type { McpJsonRpcResponse } from '@/lib/mcp/types';
+import { requireAuth } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 

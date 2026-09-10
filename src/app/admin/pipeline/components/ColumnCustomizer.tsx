@@ -16,7 +16,6 @@
 import * as React from 'react';
 import {
   Columns,
-  Check,
   RotateCcw,
   Sliders,
   Search,

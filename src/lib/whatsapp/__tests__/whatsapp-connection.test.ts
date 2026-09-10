@@ -116,7 +116,7 @@ describe('buildConnectionRecord', () => {
     expect(withSecret.appSecret).toBeDefined();
     expect(decrypt(withSecret.appSecret!)).toBe('app-secret-xyz');
 
-    const { appSecret, ...rest } = input;
+    const { appSecret: _appSecret, ...rest } = input;
     const without = buildConnectionRecord(rest, { now: 'NOW', webhookVerifyToken: 'vt' });
     expect(without.appSecret).toBeUndefined();
   });

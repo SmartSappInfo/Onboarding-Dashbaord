@@ -17,7 +17,6 @@ import type {
   CampaignPageStructure,
   ExperienceRule,
   PageBlock,
-  PageSection,
   ResolvedPageExperience,
   VisitorContext,
 } from '@/lib/types';

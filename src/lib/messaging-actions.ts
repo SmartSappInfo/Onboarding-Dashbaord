@@ -1,14 +1,14 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { VariableDefinition, Survey, PDFForm, SurveyQuestion, MessageLog, EntityContact } from './types';
+import type { Survey, PDFForm, SurveyQuestion, MessageLog, EntityContact } from './types';
 import { revalidatePath } from 'next/cache';
 import { fetchSmsStatusAction } from './mnotify-actions';
 import { fetchEmailStatusAction } from './resend-actions';
 import { resolveContact } from './contact-adapter';
 import { getContactEmail, getContactPhone } from './migration-status-utils';
 import { buildMeetingBaseVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
-import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
+import { getContactVariables } from './entity-contact-helpers';
 import { evaluateConditionNode } from './automation-condition';
 import { getBaseUrl } from './utils/url-helpers';
 import { getPersonalizedMeetingUrl } from './meeting-tokens';
@@ -230,7 +230,7 @@ export async function syncAllLogStatuses() {
             });
           }
         }
-      } catch (e) {
+      } catch (_e) {
         console.error(`Status sync failed for log ${log.id}`);
       }
     }

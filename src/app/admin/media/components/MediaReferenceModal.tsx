@@ -41,16 +41,14 @@ import {
   Share2,
   Video,
   FileText,
-  Music,
   Copy,
   Check,
   Search,
-  ExternalLink,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useFirestore } from '@/lib/firestore-context';
 import { collection, getDocs, query, where, limit } from 'firebase/firestore';
-import type { MediaReference, MediaAsset } from '@/lib/types/media-2.0';
+import type { MediaReference } from '@/lib/types/media-2.0';
 
 export interface MediaReferenceModalProps {
   open: boolean;

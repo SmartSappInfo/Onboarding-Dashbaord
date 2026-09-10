@@ -9,7 +9,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { doc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +42,6 @@ import {
   ExternalLink,
   Save,
   Loader2,
-  Info,
   Clock,
   Layers,
   MapPin,
@@ -54,8 +53,6 @@ import {
   Trash2,
   Check,
   Globe,
-  Video,
-  Phone,
   Users,
   type LucideIcon,
 } from 'lucide-react';
@@ -106,7 +103,7 @@ const COLOR_OPTIONS = [
 const DURATION_OPTIONS = [15, 20, 30, 45, 60, 90, 120];
 
 export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorClientProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
@@ -783,7 +780,7 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
                       {teamHosts.length === 0 ? (
                         <div className="p-8 text-center border-dashed border rounded-xl text-muted-foreground">
                           <Users className="h-8 w-8 mx-auto opacity-30 mb-2" />
-                          <p className="text-xs">No team hosts added yet. Click "Add Team Member" above.</p>
+                          <p className="text-xs">No team hosts added yet. Click &quot;Add Team Member&quot; above.</p>
                         </div>
                       ) : (
                         teamHosts.map((host, hIdx) => (
@@ -1128,7 +1125,7 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
                           </div>
                           {rule.config.customMessage && (
                             <p className="text-xs text-muted-foreground italic">
-                              "{rule.config.customMessage}"
+                              &quot;{rule.config.customMessage}&quot;
                             </p>
                           )}
                           {rule.config.scoreDelta && (

@@ -7,7 +7,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { ScopeLabel, ScopeSelector, ScopeMismatchError, ScopeBadge } from '@/app/admin/contacts/components/ScopeBadge';
-import type { ContactScope, EntityType } from '@/lib/types';
+import type { EntityType } from '@/lib/types';
 
 describe('Task 38: Explicit UI Language for Scope Rules', () => {
   describe('38.1: Workspace settings page copy', () => {

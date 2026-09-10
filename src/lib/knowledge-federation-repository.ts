@@ -15,8 +15,6 @@ import { adminDb } from './firebase-admin';
 import {
   KNOWLEDGE_SPACES_COLLECTION,
   type FederatedKnowledgeSpace,
-  type KnowledgeSpaceAccessLevel,
-  type KnowledgeFederationPolicy,
 } from './quick-notes-types';
 
 const MAX_BATCH_SIZE = 450;

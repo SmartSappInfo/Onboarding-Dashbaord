@@ -20,7 +20,7 @@ vi.mock('@/lib/firebase-admin', () => ({
     collection: vi.fn((colName: string) => {
       if (colName === 'forms') {
         return {
-          doc: vi.fn((formId: string) => ({
+          doc: vi.fn((_formId: string) => ({
             get: mockFormGet,
             collection: vi.fn((subCol: string) => {
               if (subCol === 'intelligence') {
@@ -38,7 +38,7 @@ vi.mock('@/lib/firebase-admin', () => ({
       }
       if (colName === 'form_submissions') {
         return {
-          doc: vi.fn((subId: string) => ({
+          doc: vi.fn((_subId: string) => ({
             get: mockSubGet,
             update: mockSubUpdate,
           })),
@@ -68,7 +68,7 @@ vi.mock('@/lib/firebase-admin', () => ({
 
 // Mock AI Flows
 vi.mock('@/ai/flows/form-intelligence-flow', () => ({
-  classifyFormSubmissionFlow: vi.fn(async (input) => ({
+  classifyFormSubmissionFlow: vi.fn(async (_input) => ({
     sentiment: 'positive',
     sentimentScore: 0.85,
     intent: 'High Purchase Intent',
@@ -99,7 +99,7 @@ vi.mock('@/ai/flows/form-intelligence-flow', () => ({
     confidence: 0.94,
     needsHumanReview: false,
   })),
-  clusterFormTopicsFlow: vi.fn(async (input) => ({
+  clusterFormTopicsFlow: vi.fn(async (_input) => ({
     totalSubmissionsAnalyzed: 10,
     sentimentDistribution: {
       positiveCount: 7,

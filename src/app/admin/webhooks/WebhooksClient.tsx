@@ -58,7 +58,7 @@ const TRIGGER_LABELS: Record<string, string> = {
 
 export default function WebhooksClient() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user: _user } = useUser();
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
 
@@ -412,7 +412,7 @@ export default function WebhooksClient() {
               <AlertDialogHeader>
                 <AlertDialogTitle className="text-xl font-bold">Delete Webhook?</AlertDialogTitle>
                 <AlertDialogDescription className="text-sm font-medium">
-                  This will permanently remove <span className="font-bold text-foreground">"{webhookToDelete?.name}"</span>.
+                  This will permanently remove <span className="font-bold text-foreground">&quot;{webhookToDelete?.name}&quot;</span>.
                   Any external systems relying on this endpoint will stop receiving data.
                 </AlertDialogDescription>
               </AlertDialogHeader>

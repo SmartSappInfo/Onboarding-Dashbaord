@@ -13,7 +13,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   CalendarGridEvent,
-  CalendarEventSourceType,
 } from '@/lib/meetings/types/calendar-view';
 import { detectGridCollision } from '@/lib/meetings/calendar-view-service';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';

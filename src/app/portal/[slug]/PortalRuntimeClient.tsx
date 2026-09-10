@@ -40,7 +40,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import {
   GraduationCap,
-  BookOpen,
   Users,
   Award,
   Search,
@@ -51,18 +50,14 @@ import {
   Menu,
   X,
   ExternalLink,
-  ChevronRight,
   FileCode,
   FolderArchive,
   Newspaper,
   Compass,
-  CheckCircle2,
-  Sparkles,
   Loader2,
   LayoutDashboard,
   LogOut,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { validatePortalPasswordAction } from '@/app/actions/portal-actions';
 import {
   getPortalRadiusCss,
@@ -73,8 +68,6 @@ import { PortalSearchModal } from './components/PortalSearchModal';
 import { PortalAuthModal } from './components/PortalAuthModal';
 import type {
   Portal,
-  PortalNavItem,
-  PortalMode,
 } from '@/lib/types/portal';
 
 interface PortalRuntimeClientProps {
@@ -92,7 +85,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
   const [isPasswordUnlocked, setIsPasswordUnlocked] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState<string | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [_searchQuery, _setSearchQuery] = React.useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
 

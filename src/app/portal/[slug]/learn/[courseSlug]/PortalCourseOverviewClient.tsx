@@ -12,11 +12,9 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   Accordion,
@@ -34,16 +32,9 @@ import {
   ArrowRight,
   PlayCircle,
   BookOpen,
-  HelpCircle,
   Layers,
   Clock,
   Award,
-  Check,
-  CheckCircle2,
-  Sparkles,
-  User,
-  ShieldCheck,
-  Lock,
   Loader2,
 } from 'lucide-react';
 import { PortalAuthModal } from '../../components/PortalAuthModal';

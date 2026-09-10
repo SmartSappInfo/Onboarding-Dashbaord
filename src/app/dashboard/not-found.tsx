@@ -8,7 +8,7 @@ export default function DashboardNotFound() {
         <h2 className="text-4xl font-bold tracking-tight mb-2 text-primary">404</h2>
         <h3 className="text-xl font-semibold mb-2">Dashboard Not Found</h3>
         <p className="text-muted-foreground mb-6">
-          The dashboard or entity view you are looking for does not exist or you don't have access to it.
+          The dashboard or entity view you are looking for does not exist or you don&apos;t have access to it.
         </p>
         <Button asChild>
           <Link href="/dashboard">Return to Main Dashboard</Link>

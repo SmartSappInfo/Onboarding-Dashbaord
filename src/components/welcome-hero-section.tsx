@@ -27,12 +27,12 @@ export default function WelcomeHeroSection() {
           Welcome to the <span className="text-primary">SmartSapp</span> Family
         </h1>
         <p className="mb-4 text-lg leading-relaxed text-foreground/80">
-          Your child's school has signed up on SmartSapp.
+          Your child&apos;s school has signed up on SmartSapp.
           <br />
           Here is a quick video to help you understand what it means for you as a parent.
         </p>
         <p className="mb-10 text-lg font-semibold text-foreground">
-          Please watch the full video. It's super important!
+          Please watch the full video. It&apos;s super important!
         </p>
         <div className="mx-auto w-full md:max-w-[60%]">
             <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />

@@ -17,7 +17,7 @@ export default function MeetingNotFound() {
         {RiveComponent ? <RiveComponent /> : <Ghost className="h-20 w-20 text-muted-foreground/20 animate-pulse" />}
       </div>
       <h1 className="mt-8 text-3xl font-black tracking-tighter sm:text-4xl">
-        Sorry! We can't find your meeting!
+        Sorry! We can&apos;t find your meeting!
       </h1>
       <p className="mt-4 text-lg text-muted-foreground font-medium max-w-md mx-auto leading-relaxed">
         The meeting link might have expired or is incorrect. Please check the URL and try again.

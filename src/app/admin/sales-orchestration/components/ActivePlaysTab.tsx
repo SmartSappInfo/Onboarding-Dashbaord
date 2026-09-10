@@ -37,9 +37,6 @@ import {
   User,
   Zap,
   ArrowRight,
-  AlertCircle,
-  Play,
-  RotateCw,
 } from 'lucide-react';
 import type { PlayExecutionInstance } from '@/lib/sales-orchestration/types';
 import { executePlayStepAction } from '@/app/actions/sales-orchestration-actions';

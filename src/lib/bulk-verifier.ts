@@ -40,7 +40,7 @@ export class BulkVerificationService {
     }
 
     // 2. Process each domain bucket in parallel, but serialize requests WITHIN the same domain
-    const domainPromises = Array.from(domainMap.entries()).map(async ([domain, domainEmails]) => {
+    const domainPromises = Array.from(domainMap.entries()).map(async ([_domain, domainEmails]) => {
       for (const email of domainEmails) {
         let needsUpdate = true;
         let finalResult: VerifyEmailResult | null = null;

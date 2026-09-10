@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { scheduleDelayTask, cancelDelayTask, rescheduleDelayTask } from '../gcp-tasks-client';
+import { scheduleDelayTask, cancelDelayTask } from '../gcp-tasks-client';
 import { adminDb } from '../firebase-admin';
 
 // Mock Firestore admin db

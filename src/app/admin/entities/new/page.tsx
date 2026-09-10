@@ -26,7 +26,7 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Image as ImageIcon, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Phone as PhoneIcon, Sparkles, Database, ChevronDown } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Layout, Camera, AlertTriangle, Share2, Globe, Hash, Network, Sparkles, Database, ChevronDown } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import dynamic from 'next/dynamic';
@@ -49,7 +49,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
@@ -71,7 +71,6 @@ import { LocationCascade } from '@/components/location/LocationCascade';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { PageContainer } from '@/components/ui/page-container';
 
 // Deal opportunity integration
 import { DealOpportunityCard, type DealConfig } from '../components/DealOpportunityCard';

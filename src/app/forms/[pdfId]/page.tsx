@@ -1,5 +1,5 @@
 import { adminDb } from '@/lib/firebase-admin';
-import type { PDFForm, WorkspaceEntity, Entity, Contract, Submission } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity, Entity, Contract } from '@/lib/types';
 import PdfFormRenderer from './components/PdfFormRenderer';
 import { notFound } from 'next/navigation';
 import PasswordGatedForm from './components/PasswordGatedForm';

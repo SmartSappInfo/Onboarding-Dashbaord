@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { InvitationLifecycleService } from '../invitation-lifecycle-service';
-import { DepartmentService } from '../department-service';
 
 describe('Workforce 2.0 Canonical Services Suite', () => {
   describe('InvitationLifecycleService Cryptographic Hashing', () => {

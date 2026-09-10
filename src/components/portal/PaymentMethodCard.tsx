@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { CheckCircle2, Landmark, Smartphone, ArrowRight } from 'lucide-react';
+import { CheckCircle2, Landmark, Smartphone } from 'lucide-react';
 
 interface PaymentMethodCardProps {
     type: 'bank' | 'procedure';
@@ -22,7 +22,7 @@ export function PaymentMethodCard({
     steps,
     imageUrl,
     backgroundColor = 'bg-white',
-    accentColor = 'text-primary',
+    accentColor: _accentColor = 'text-primary',
     className
 }: PaymentMethodCardProps) {
     return (

@@ -4,8 +4,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { collection, orderBy, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { cloneSurvey, deleteSurveyAction, updateSurveyStatusAction } from '@/lib/survey-actions';
@@ -18,10 +18,10 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList, Code, FolderGit2, Layers } from 'lucide-react';
+import { MoreHorizontal, ExternalLink, Edit, Trash2, BarChart2, PlusCircle, Sparkles, Copy, Eye, EyeOff, Trophy, CopyPlus, Loader2, Search, ClipboardList, Code, FolderGit2 } from 'lucide-react';
 import { getSurveyProjectsAction } from '@/lib/surveys/survey-project-actions';
 import { hydrateSurveyDocument } from '@/lib/surveys/survey-hydration-adapter';
-import type { SurveyProject, SurveyType } from '@/lib/types';
+import type { SurveyProject } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -50,7 +50,6 @@ import { format } from 'date-fns';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { RainbowButton } from '@/components/ui/rainbow-button';
-import { cn } from '@/lib/utils';
 import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -174,7 +173,7 @@ export default function SurveysClient() {
       } else {
         toast({ variant: 'destructive', title: 'Clone Failed', description: result.error });
       }
-    } catch (e: unknown) {
+    } catch (_e: unknown) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to complete cloning operation.' });
     } finally {
       setCloningId(null);
@@ -221,7 +220,7 @@ export default function SurveysClient() {
           });
           setAssigneeModalOpen(false);
         }
-      } catch (error) {
+      } catch (_error) {
         toast({
           variant: 'destructive',
           title: 'Error',
@@ -597,7 +596,7 @@ export default function SurveysClient() {
           <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold">Delete Survey?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium">
- This will permanently remove the survey <span className="font-bold text-foreground">"{surveyToDelete?.internalName || surveyToDelete?.title}"</span> and all gathered response data.
+ This will permanently remove the survey <span className="font-bold text-foreground">&quot;{surveyToDelete?.internalName || surveyToDelete?.title}&quot;</span> and all gathered response data.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

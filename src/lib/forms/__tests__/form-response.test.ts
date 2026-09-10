@@ -57,7 +57,7 @@ vi.mock('@/lib/firebase-admin', () => {
     })),
   }));
 
-  const collectionMock = vi.fn((colName: string) => ({
+  const collectionMock = vi.fn((_colName: string) => ({
     doc: docMock,
     add: vi.fn().mockResolvedValue({ id: 'saved_view_123' }),
     where: vi.fn().mockReturnValue({

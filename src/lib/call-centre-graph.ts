@@ -1,4 +1,4 @@
-import type { BranchingScriptGraph, ScriptNode, ScriptNodeType, Entity, EntityContact, CallOutcomeAutomation, CallActionParams } from './types';
+import type { BranchingScriptGraph, ScriptNode, Entity, EntityContact, CallOutcomeAutomation, CallActionParams } from './types';
 
 // ─── Rich-text (formatted) script body helpers ───────────────────────────────
 // Node `data.text` (and the legacy text-builder string) may contain inline HTML

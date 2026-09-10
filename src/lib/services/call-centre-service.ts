@@ -12,12 +12,12 @@ import type {
   CallOutcomeAutomation,
   MeetingFacilitator
 } from '../types';
-import { previewCampaignAudience, resolveRecipientContacts } from '../messaging-actions';
+import { previewCampaignAudience } from '../messaging-actions';
 import { updateEntityAction } from '../entity-actions';
 import { PortalInvitationService } from './portal-invitation-service';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { MEETING_TYPES } from '../types';
-import { parseGraph, getOutcomeAutomations, resolveScriptVariables } from '../call-centre-graph';
+import { parseGraph, getOutcomeAutomations } from '../call-centre-graph';
 import { createTaskAction } from '../task-server-actions';
 import { sendSms } from '../mnotify-service';
 import { sendEmail } from '../resend-service';
@@ -648,7 +648,7 @@ export class CallCentreService {
     campaignId: string,
     queueItemIds: string[],
     workspaceId: string,
-    userId: string
+    _userId: string
   ): Promise<{ success: boolean; count: number; error?: string }> {
     try {
       if (!queueItemIds || queueItemIds.length === 0) {

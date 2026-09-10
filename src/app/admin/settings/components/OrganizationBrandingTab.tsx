@@ -16,7 +16,6 @@ import {
     Save,
     Sparkles,
     Globe,
-    CheckCircle2,
     XCircle,
     Info,
     RefreshCw,
@@ -139,7 +138,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
             }
 
             setSeedResult(data.result as AISeedResult);
-        } catch (err: unknown) {
+        } catch (_err: unknown) {
             setScrapeError('Network error. Please check your connection and try again.');
         } finally {
             setIsScraping(false);
@@ -209,7 +208,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground/80 flex items-start gap-1.5">
                         <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-violet-400" />
-                        Enter your organization's website URL and let AI automatically extract your brand colors, logo, and localization settings.
+                        Enter your organization&apos;s website URL and let AI automatically extract your brand colors, logo, and localization settings.
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-6 space-y-4">
@@ -301,7 +300,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                         Brand & Aesthetics
                     </CardTitle>
                     <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                        Customize your institution's theme colors, fonts, and email footer compliance copies
+                        Customize your institution&apos;s theme colors, fonts, and email footer compliance copies
                     </CardDescription>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
@@ -507,7 +506,7 @@ export default function OrganizationBrandingTab({ organization, onSeedApplied }:
                                     <div className="flex flex-col items-center justify-center h-full gap-2 text-muted-foreground/60">
                                         <XCircle className="h-8 w-8 text-muted-foreground/40" />
                                         <p className="text-xs font-semibold">Footer is currently disabled</p>
-                                        <p className="text-[10px] text-muted-foreground/40">Toggle "Always Appended" to enable and preview</p>
+                                        <p className="text-[10px] text-muted-foreground/40">Toggle &quot;Always Appended&quot; to enable and preview</p>
                                     </div>
                                 )}
                             </div>

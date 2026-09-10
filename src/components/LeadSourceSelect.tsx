@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
-import { Search, Plus, Loader2, Check } from 'lucide-react';
+import { Search, Plus, Loader2 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface LeadSourceSelectProps {

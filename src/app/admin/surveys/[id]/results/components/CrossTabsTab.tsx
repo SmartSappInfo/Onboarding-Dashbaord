@@ -23,9 +23,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { computeCrossTabulation, type CrossTabMatrixResult } from '@/lib/surveys/survey-analytics-engine';
-import { Table, Sparkles, SlidersHorizontal, BarChart3, CheckCircle2, AlertCircle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { computeCrossTabulation } from '@/lib/surveys/survey-analytics-engine';
+import { Table, Sparkles, AlertCircle } from 'lucide-react';
 
 export interface CrossTabsTabProps {
   survey: Survey;

@@ -9,20 +9,61 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
-import { 
-    Trash2, PlusCircle, ArrowUp, ArrowDown, Bot, Check, ChevronsUpDown, X, Star, Clock, 
-    Upload, Pilcrow, Baseline, CheckCircle2, ListChecks, ChevronDownSquare, CheckCircle, 
-    Type, Copy, Eye, EyeOff, Heading1, Image as ImageIcon, Video as VideoIcon, 
-    AudioWaveform, FileText, Code, Minus, Text as TextIcon, MoreVertical, 
-    Calendar as CalendarIcon, GripVertical, Layers, Bold, Italic, Underline,
-    AlignLeft, AlignCenter, AlignRight, Zap, Asterisk, Trophy as TrophyIcon,
-    AlignJustify, Database, Mail, Phone, Hash, Link as LinkIcon, Settings, PenTool
+import {
+  AlignCenter,
+  AlignJustify,
+  AlignLeft,
+  AlignRight,
+  ArrowDown,
+  ArrowUp,
+  Asterisk,
+  AudioWaveform,
+  Baseline,
+  Bold,
+  Bot,
+  Calendar as CalendarIcon,
+  Check,
+  CheckCircle,
+  CheckCircle2,
+  ChevronDownSquare,
+  ChevronsUpDown,
+  Clock,
+  Code,
+  Copy,
+  Database,
+  Eye,
+  EyeOff,
+  FileText,
+  GripVertical,
+  Hash,
+  Heading1,
+  Image as ImageIcon,
+  Italic,
+  Layers,
+  Link as LinkIcon,
+  ListChecks,
+  Mail,
+  Minus,
+  MoreVertical,
+  PenTool,
+  Phone,
+  Pilcrow,
+  PlusCircle,
+  Settings,
+  Star,
+  Text as TextIcon,
+  Trash2,
+  Type,
+  Underline,
+  Upload,
+  Video as VideoIcon,
+  X,
 } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset, TemplateVariable } from '@/lib/types';
 import * as React from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
-import { FormMessage, FormItem, FormLabel } from '@/components/ui/form';
+import { FormMessage } from '@/components/ui/form';
 import { useFieldArray } from 'react-hook-form';
 import { useSlashAutocomplete, convertToCleanHtml } from '@/hooks/use-slash-autocomplete';
 import { sanitizeHtml } from '@/lib/survey-variable-utils';
@@ -46,7 +87,6 @@ import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, type DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { Separator } from '@/components/ui/separator';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
@@ -135,7 +175,7 @@ const RichTextEditor = ({
 
     const {
       showAutocomplete,
-      autocompleteCoords,
+      autocompleteCoords: _autocompleteCoords,
       autocompleteIndex,
       filteredVars,
       handleKeyDown: hookKeyDown,
@@ -365,7 +405,7 @@ const getMediaFilterType = (type: SurveyElement['type']): 'image' | 'video' | 'a
       return undefined;
 }
 
-function FormattingToolbar({ fieldName, alignValue, onAlignChange, minimal }: { 
+function _FormattingToolbar({ fieldName: _fieldName, alignValue, onAlignChange, minimal }: { 
     fieldName: string;
     alignValue?: 'left' | 'center' | 'right' | 'justify';
     onAlignChange?: (val: 'left' | 'center' | 'right' | 'justify') => void;
@@ -1041,7 +1081,7 @@ function OptionsEditor({ questionIndex }: { questionIndex: number }) {
               />
             )}
           />
- <Label htmlFor={`allowOther-${questionIndex}`} className="text-sm font-semibold">Allow "Other" option</Label>
+ <Label htmlFor={`allowOther-${questionIndex}`} className="text-sm font-semibold">Allow &quot;Other&quot; option</Label>
         </div>
       )}
       {questionType === 'checkboxes' && (
@@ -1408,7 +1448,7 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     onSelect: (id: string, isMulti: boolean, isRange: boolean) => void;
     isAccordion: boolean;
 }) {
-  const { watch, control, setValue, getValues, formState: { errors } } = useFormContext();
+  const { watch, control, setValue, getValues: _getValues, formState: { errors } } = useFormContext();
   const element = watch(`elements.${index}`);
   const isSelected = selectedBlockIds.includes(element?.id);
   const isPrimaryActive = selectedBlockIds.length === 1 && isSelected;

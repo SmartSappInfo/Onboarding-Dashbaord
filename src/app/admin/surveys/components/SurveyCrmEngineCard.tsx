@@ -15,7 +15,7 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -173,7 +173,7 @@ export function SurveyCrmEngineCard() {
 
   // 3. Data Fetching
   const [availableCrmFields, setAvailableCrmFields] = React.useState<SurveyCrmFieldDefinition[]>([]);
-  const [isLoadingFields, setIsLoadingFields] = React.useState(true);
+  const [_isLoadingFields, setIsLoadingFields] = React.useState(true);
 
   const loadCrmFields = React.useCallback(async () => {
     if (!activeWorkspaceId) return;

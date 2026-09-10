@@ -3,16 +3,16 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Globe, AlertCircle, ShieldCheck, Zap, Layout, Link2, Copy, Check, QrCode, Eye, RotateCcw, Code } from 'lucide-react';
+import { Globe, AlertCircle, Zap, Layout, Link2, Copy, QrCode, Eye, RotateCcw, Code } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
@@ -140,7 +140,7 @@ export default function Step4Publish() {
                     <div className="flex-1 space-y-1">
                         <h4 className="text-sm font-black uppercase tracking-tight text-amber-700">Incomplete Workflows Detected</h4>
                         <p className="text-[10px] font-bold text-amber-600/80 leading-relaxed italic">
-                            You've selected {draftAutomations.length} automation(s) that are still in "Draft" mode. 
+                            You&apos;ve selected {draftAutomations.length} automation(s) that are still in &quot;Draft&quot; mode. 
                             These will <span className="font-black underline italic uppercase">not execute</span> until you finalize their node logic.
                         </p>
                         <div className="flex flex-wrap gap-2 mt-3 text-[10px]">

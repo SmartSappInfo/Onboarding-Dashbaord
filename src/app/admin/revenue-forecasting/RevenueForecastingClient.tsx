@@ -37,8 +37,6 @@ import {
   RefreshCw,
   Loader2,
   AlertTriangle,
-  CheckCircle2,
-  Sparkles,
 } from 'lucide-react';
 import type { RevenueForecastOverview } from '@/lib/revenue-forecasting/types';
 import { getRevenueForecastOverviewAction } from '@/app/actions/revenue-forecasting-actions';

@@ -22,14 +22,12 @@ import {
   ShieldAlert, 
   Search, 
   RefreshCw, 
-  Filter, 
   ExternalLink, 
   Eye, 
-  CheckCircle2, 
   Loader2,
   Radio
 } from 'lucide-react';
-import type { LeadSignal, LeadSignalCategory, Prospect } from '@/lib/lead-intelligence/types';
+import type { LeadSignal, LeadSignalCategory } from '@/lib/lead-intelligence/types';
 import { getWorkspaceSignalsAction } from '@/app/actions/lead-intelligence-actions';
 import { SignalDetailModal } from './SignalDetailModal';
 import { cn } from '@/lib/utils';
@@ -42,7 +40,7 @@ interface SignalsFeedTabProps {
 
 export const SignalsFeedTab: React.FC<SignalsFeedTabProps> = ({
   workspaceId,
-  onSelectProspect,
+  onSelectProspect: _onSelectProspect,
   onCreateTask
 }) => {
   const [signals, setSignals] = useState<LeadSignal[]>([]);

@@ -14,7 +14,7 @@ vi.mock('@/lib/activity-logger', () => ({
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: (colName: string) => ({
+    collection: (_colName: string) => ({
       doc: (docId: string) => ({
         id: docId,
         update: mockSessionUpdate,

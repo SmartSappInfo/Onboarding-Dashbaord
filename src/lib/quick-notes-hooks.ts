@@ -31,8 +31,6 @@ import {
   type KnowledgeSpace,
   type KnowledgeCollection,
   type KnowledgeTemplate,
-  type KnowledgeTemplateCreateInput,
-  type KnowledgeTemplateUpdateInput,
   type KnowledgeType,
   type KnowledgeStatus,
   type KnowledgeVisibility,

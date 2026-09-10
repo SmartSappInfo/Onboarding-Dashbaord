@@ -8,7 +8,6 @@ import {
   evaluateEventUnderPolicy,
   simulatePolicyImpact,
   generatePolicyChangeDiff,
-  calculateDefaultDimensionWeights,
 } from '../policy-engine';
 import type { PerformancePolicy, PolicyScoringRule } from '../types';
 import type { SalesPerformanceDaily } from '@/lib/sales-performance/types';

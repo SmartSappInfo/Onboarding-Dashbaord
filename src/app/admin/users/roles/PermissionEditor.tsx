@@ -19,17 +19,15 @@ import {
   AppFeatureId 
 } from '@/lib/types';
 import { Switch } from '@/components/ui/switch';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useFeatures } from '@/hooks/use-features';
 import { featureToCoordinates } from '@/lib/permissions-engine';
 import { PermissionRegistryService } from '@/lib/services/authorization/permission-registry-service';
-import { Search, CheckCheck, X, ShieldAlert } from 'lucide-react';
+import { Search, CheckCheck, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface PermissionEditorProps {

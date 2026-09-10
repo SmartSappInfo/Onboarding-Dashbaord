@@ -23,7 +23,6 @@ import {
   ShieldCheck, 
   Users, 
   Target, 
-  Zap, 
   Clock 
 } from 'lucide-react';
 import type { Prospect, LeadSignal, ExplainableScoreBreakdown } from '@/lib/lead-intelligence/types';

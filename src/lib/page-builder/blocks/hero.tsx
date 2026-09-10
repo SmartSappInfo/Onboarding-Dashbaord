@@ -6,7 +6,7 @@ import { Zap } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
-import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
+import { RawDebouncedInput } from '@/components/page-builder/DebouncedInputs';
 import VideoEmbed from '@/components/video-embed';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 

@@ -9,7 +9,6 @@ import {
   X,
   FileText,
   Phone,
-  Calendar,
   ListTodo,
   CheckCircle2,
   Lightbulb,
@@ -218,7 +217,7 @@ export function KnowledgeSearchRibbon({
           <span>Showing {totalResultsCount} matching record{totalResultsCount === 1 ? '' : 's'}</span>
           {searchQuery && (
             <span className="text-violet-600 dark:text-violet-400 font-medium">
-              Tip: Press ⌘K or click "Ask Brain" to synthesize answers
+              Tip: Press ⌘K or click &quot;Ask Brain&quot; to synthesize answers
             </span>
           )}
         </div>

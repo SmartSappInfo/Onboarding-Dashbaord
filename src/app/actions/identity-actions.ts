@@ -16,7 +16,6 @@
 
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import type {
-  Person,
   IdentityAccount,
   OrganizationMembership,
   WorkspaceMembership,

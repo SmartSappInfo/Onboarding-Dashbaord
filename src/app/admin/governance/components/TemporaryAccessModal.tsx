@@ -26,7 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import { Clock, ShieldAlert, Loader2 } from 'lucide-react';
+import { Clock, Loader2 } from 'lucide-react';
 import type { PersonDetailView, Role, Workspace } from '@/lib/types';
 import { grantTemporaryAccessAction } from '@/app/actions/governance-actions';
 

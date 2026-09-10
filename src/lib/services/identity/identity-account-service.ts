@@ -15,7 +15,7 @@
  */
 
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
-import type { IdentityAccount, AccountStatus, AuthProviderType } from '@/lib/types';
+import type { IdentityAccount, AccountStatus } from '@/lib/types';
 
 export class IdentityAccountService {
   private static COLLECTION = 'accounts';

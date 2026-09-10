@@ -57,7 +57,7 @@ import * as firebaseAdmin from '../firebase-admin';
 import { buildVariableMap } from '../template-resolver';
 
 // Helper to access mocks
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mocks = () => (firebaseAdmin as any).__mocks as {
   get: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;

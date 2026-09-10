@@ -28,9 +28,6 @@ import { Badge } from '@/components/ui/badge';
 import {
   FlaskConical,
   Play,
-  CheckCircle2,
-  XCircle,
-  Clock,
   Loader2,
   ShieldAlert,
   Sparkles,

@@ -17,7 +17,6 @@ import { createOfflineMutationJob } from '../quick-notes-domain';
 import type {
   QuickNote,
   NoteDocument,
-  OfflineMutationType,
 } from '../quick-notes-types';
 
 export function useOfflineKnowledgeSync(workspaceId: string) {

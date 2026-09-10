@@ -3,11 +3,10 @@
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, orderBy, doc, addDoc } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Form, AppField } from '@/lib/types';
-import type { FormFieldDef } from '@/components/page-builder/embeds/FormView';
 import { createFormAction, deleteFormAction, cloneFormAction, toggleFormStatusAction } from '@/lib/forms-actions';
 import { FormSubmissionCount } from './components/FormSubmissionCount';
 import { useToast } from '@/hooks/use-toast';
@@ -65,9 +64,7 @@ import {
   ClipboardSignature,
   Hash,
   FileText,
-  BarChart2,
   Archive,
-  Code,
   BarChart3,
   Inbox,
   Share2,
@@ -75,8 +72,6 @@ import {
   Split,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
-import { EntityAvatar } from '../components/EntityAvatar';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 import { PageContainer } from '@/components/ui/page-container';
 import ShareEmbedDialog from '@/components/share-embed-dialog';

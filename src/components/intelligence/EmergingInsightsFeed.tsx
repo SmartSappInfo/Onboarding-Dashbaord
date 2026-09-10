@@ -24,7 +24,6 @@ import {
   X,
   CheckCircle2,
   Clock,
-  ExternalLink,
 } from 'lucide-react';
 import type { ProactiveRecommendation } from '@/lib/intelligence/types';
 import { Button } from '@/components/ui/button';

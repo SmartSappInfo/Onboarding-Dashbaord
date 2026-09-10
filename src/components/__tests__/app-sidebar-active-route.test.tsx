@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { AppSidebar } from '../app-sidebar';
 import * as IndustryContext from '@/context/IndustryContext';
 import type { IndustryContextType } from '@/context/IndustryContext';
@@ -21,7 +21,7 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarGroupLabel: ({ children }: any) => <div data-testid="sidebar-group-label">{children}</div>,
   SidebarMenu: ({ children }: any) => <ul data-testid="sidebar-menu">{children}</ul>,
   SidebarMenuItem: ({ children }: any) => <li data-testid="sidebar-menu-item">{children}</li>,
-  SidebarMenuButton: ({ children, isActive, tooltip, asChild }: any) => (
+  SidebarMenuButton: ({ children, isActive, tooltip, _asChild }: any) => (
     <div 
       data-testid="sidebar-menu-button" 
       data-active={isActive ? 'true' : 'false'} 

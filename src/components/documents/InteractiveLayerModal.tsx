@@ -59,7 +59,7 @@ function getEmbedVideoUrl(url?: string): string {
 export function InteractiveLayerModal({
   hotspot,
   onClose,
-  onPageJump,
+  onPageJump: _onPageJump,
   onSubmitLead,
 }: InteractiveLayerModalProps) {
   const { toast } = useToast();

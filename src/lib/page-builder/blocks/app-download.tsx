@@ -23,7 +23,7 @@ const schema = z.object({
 type AppDownloadProps = z.infer<typeof schema>;
 
 // Module-level static SVGs for variants (rerender-no-inline-components)
-const ParallaxThumbnail = (
+const _ParallaxThumbnail = (
   <svg viewBox="0 0 100 75" className="w-full h-full text-slate-700 fill-current opacity-70">
     <rect x="0" y="0" width="100" height="75" rx="4" className="text-slate-850" />
     <circle cx="20" cy="20" r="6" className="text-emerald-500/20" />
@@ -34,7 +34,7 @@ const ParallaxThumbnail = (
   </svg>
 );
 
-const FlatCardThumbnail = (
+const _FlatCardThumbnail = (
   <svg viewBox="0 0 100 75" className="w-full h-full text-slate-700 fill-current opacity-70">
     <rect x="8" y="12" width="84" height="51" rx="3.5" className="text-slate-800" />
     <circle cx="50" cy="24" r="5" className="text-slate-700" />
@@ -73,7 +73,7 @@ interface AppDownloadBlockProps {
   ctx: BlockRenderContext;
 }
 
-const AppDownloadBlock = ({ props, block, ctx }: AppDownloadBlockProps) => {
+const AppDownloadBlock = ({ props, block: _block, ctx }: AppDownloadBlockProps) => {
   const isEdit = ctx.mode === 'edit';
   const [mounted, setMounted] = useState(false);
 

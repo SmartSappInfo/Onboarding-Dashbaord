@@ -41,7 +41,7 @@ export default function ForgotPasswordPage() {
   const router = useRouter();
   const auth = useAuth();
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [method, setMethod] = React.useState<'email' | 'phone'>('email');
+  const [_method, setMethod] = React.useState<'email' | 'phone'>('email');
 
   const emailForm = useForm<z.infer<typeof emailSchema>>({
     resolver: zodResolver(emailSchema),

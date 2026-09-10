@@ -43,7 +43,7 @@ export function GraphViewport({
   selectedNodeId,
   onSelectNode,
   highlightedPath = [],
-  mode = 'explore',
+  mode: _mode = 'explore',
   physicsEnabled = true,
   searchQuery = '',
 }: GraphViewportProps) {

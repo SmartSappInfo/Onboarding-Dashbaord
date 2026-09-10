@@ -17,7 +17,7 @@ import { useFirestore } from '@/lib/firestore-context';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { ContentDecayMetric } from '@/lib/types/media-2.0';
 import { detectContentDecayAction } from '@/lib/media/predictive-service';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -34,7 +34,6 @@ import {
   FileText,
   Music,
   ArrowUpRight,
-  ShieldCheck,
   CheckCircle2,
   Activity,
 } from 'lucide-react';

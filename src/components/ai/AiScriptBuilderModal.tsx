@@ -9,9 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import { AiAssistantModalHeader } from '@/components/ai/AiAssistantModalHeader';
-import { createLearningSignalAction, finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
+import { createLearningSignalAction } from '@/lib/learning-loop-actions';
 import { generateScript } from '@/ai/flows/generate-script-flow';
-import { Loader2, Sparkles, MessageSquare } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { getErrorMessage } from '@/lib/errors/report-error';
 

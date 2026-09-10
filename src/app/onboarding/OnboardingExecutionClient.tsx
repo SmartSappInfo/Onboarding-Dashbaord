@@ -16,7 +16,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc } from 'firebase/firestore';
 import { useTenant } from '@/context/TenantContext';
 import { Card } from '@/components/ui/card';
-import { Loader2, AlertTriangle, Layers } from 'lucide-react';
+import { Loader2, AlertTriangle } from 'lucide-react';
 import type { OnboardingInstance } from '@/lib/types';
 import {
   getMemberOnboardingInstanceAction,

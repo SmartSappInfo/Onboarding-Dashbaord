@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { useFirestore, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useCampaigns, createCampaign, archiveCampaign, deleteCampaign, cloneCampaign } from '@/lib/campaign-hooks';
+import { useCampaigns, archiveCampaign, deleteCampaign, cloneCampaign } from '@/lib/campaign-hooks';
 import { useToast } from '@/hooks/use-toast';
 import type { MessageCampaign } from '@/lib/types';
 import { CampaignList } from './components/campaign-list';
@@ -32,7 +32,7 @@ const CampaignAnalytics = dynamic(
 export default function CampaignsPage() {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+    const { activeWorkspaceId, _activeOrganizationId } = useWorkspace() as any;
     const { toast } = useToast();
     const searchParams = useSearchParams();
 

@@ -18,7 +18,6 @@ import type {
   AccessReviewDecision,
   AccessReviewFrequency,
   AccessReviewStatus,
-  PersonDetailView,
 } from '@/lib/types';
 import { PersonService } from '@/lib/services/identity/person-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';

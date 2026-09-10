@@ -71,7 +71,7 @@ const getYouTubeThumbnail = (url: string) => {
     if (match && match[1]) {
       return `https://img.youtube.com/vi/${match[1]}/hqdefault.jpg`;
     }
-  } catch (e: unknown) {}
+  } catch (_e: unknown) {}
   return null;
 };
 
@@ -82,7 +82,7 @@ const getVimeoThumbnail = (url: string) => {
     if (match && match[1]) {
       return `https://vumbnail.com/${match[1]}.jpg`;
     }
-  } catch (e: unknown) {}
+  } catch (_e: unknown) {}
   return null;
 };
 
@@ -92,7 +92,7 @@ const getLoomThumbnail = (url: string) => {
     if (match && match[1]) {
       return `https://cdn.loom.com/sessions/thumbnails/${match[1]}-with-play.gif`;
     }
-  } catch (e: unknown) {}
+  } catch (_e: unknown) {}
   return null;
 };
 
@@ -187,7 +187,7 @@ export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfig
       .then(() => {
         toast({ title: 'Asset Purged', description: `${asset.name} has been removed from all repositories.` });
       })
-      .catch((error) => {
+      .catch((_error) => {
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete',
@@ -513,7 +513,7 @@ export default function MediaAssetCard({ asset, onCardClick, onInspect, isConfig
             </div>
  <AlertDialogTitle className="font-semibold tracking-tight text-center">Purge Asset Globally?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium text-center">
- Removing <span className="font-bold text-foreground">"{asset.name}"</span> will delete it from the library and storage bucket. This will break visibility in all {asset.workspaceIds?.length || 1} associated workspaces.
+ Removing <span className="font-bold text-foreground">&quot;{asset.name}&quot;</span> will delete it from the library and storage bucket. This will break visibility in all {asset.workspaceIds?.length || 1} associated workspaces.
             </AlertDialogDescription>
           </AlertDialogHeader>
  <AlertDialogFooter className="sm:justify-center gap-3 mt-4">

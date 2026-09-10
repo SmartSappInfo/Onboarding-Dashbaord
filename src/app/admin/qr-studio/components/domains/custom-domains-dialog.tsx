@@ -21,8 +21,6 @@ import {
   RefreshCw,
   Copy,
   Check,
-  ShieldCheck,
-  ExternalLink,
   Loader2,
   Info,
 } from 'lucide-react';

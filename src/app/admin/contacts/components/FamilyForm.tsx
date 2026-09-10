@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, FormProvider, Controller, useFieldArray } from 'react-hook-form';
+import { useForm, FormProvider, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Users, UserPlus, Baby, Plus, Trash2 } from 'lucide-react';
-import type { Entity, Guardian, Child } from '@/lib/types';
+import type { Entity } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -13,12 +13,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 
 const familyFormSchema = z.object({
   familyName: z.string().min(2, { message: 'Family name must be at least 2 characters.' }),
@@ -51,7 +49,7 @@ interface FamilyFormProps {
   showAdmissions?: boolean; // Based on workspace capabilities.admissions
 }
 
-export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true, showAdmissions = true }: FamilyFormProps) {
+export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true, showAdmissions: _showAdmissions = true }: FamilyFormProps) {
   const methods = useForm<FamilyFormValues>({
     resolver: zodResolver(familyFormSchema),
     defaultValues: {
@@ -275,7 +273,7 @@ export function FamilyForm({ entity, onSubmit, isSubmitting, showChildren = true
  <CardContent className="p-6 space-y-6">
               {childFields.length === 0 ? (
  <p className="text-sm text-muted-foreground italic text-center py-4">
-                  No children added yet. Click "Add Child" to begin.
+                  No children added yet. Click &quot;Add Child&quot; to begin.
                 </p>
               ) : (
                 childFields.map((field, index) => (

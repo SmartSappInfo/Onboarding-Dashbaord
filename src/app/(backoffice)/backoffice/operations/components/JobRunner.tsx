@@ -88,7 +88,7 @@ function ClientDate({ iso }: { iso: string }) {
 // ─────────────────────────────────────────────────
 
 export default function JobRunner() {
-  const { can, profile } = useBackoffice();
+  const { can, profile: _profile } = useBackoffice();
   const confirm = useConfirm();
   const auth = useAuth();
   const [jobs, setJobs] = React.useState<PlatformJob[]>([]);

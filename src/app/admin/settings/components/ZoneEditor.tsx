@@ -44,7 +44,7 @@ export default function ZoneEditor() {
       });
       setNewZoneName('');
       toast({ title: 'Zone Added', description: `"${newZoneName}" has been added.` });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to add zone.' });
     } finally {
       setIsAdding(false);
@@ -60,7 +60,7 @@ export default function ZoneEditor() {
       await updateDoc(doc(firestore, 'zones', id), { name: name.trim() });
       setEditingZoneId(null);
       toast({ title: 'Zone Renamed' });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to rename zone.' });
     }
   };
@@ -70,7 +70,7 @@ export default function ZoneEditor() {
     try {
       await deleteDoc(doc(firestore, 'zones', zoneToDelete.id));
       toast({ title: 'Zone Deleted' });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete zone.' });
     } finally {
       setZoneToDelete(null);
@@ -150,7 +150,7 @@ export default function ZoneEditor() {
           <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold">Delete Zone?</AlertDialogTitle>
  <AlertDialogDescription className="font-medium">
- Are you sure you want to delete <span className="font-bold text-foreground">"{zoneToDelete?.name}"</span>? 
+ Are you sure you want to delete <span className="font-bold text-foreground">&quot;{zoneToDelete?.name}&quot;</span>? 
               <br/><br/>
               Schools assigned to this zone will need to be manually reassigned. This action cannot be undone.
             </AlertDialogDescription>

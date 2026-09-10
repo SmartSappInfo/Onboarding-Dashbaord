@@ -51,7 +51,7 @@ vi.mock('next/cache', () => ({
 import { adminDb } from '../firebase-admin';
 import { resolveContact } from '../contact-adapter';
 import { logActivity } from '../activity-logger';
-import type { Meeting, EntityType } from '../types';
+import type { Meeting } from '../types';
 import { MEETING_TYPES } from '../types';
 
 // Mock meeting actions (these would be imported from actual implementation)
@@ -107,8 +107,8 @@ const createMeetingAction = async (
 const updateMeetingAction = async (
   meetingId: string,
   updates: Partial<Meeting>,
-  userId: string,
-  workspaceId: string
+  _userId: string,
+  _workspaceId: string
 ): Promise<{ success: boolean; meeting?: Meeting; error?: string }> => {
   try {
     const mockGet = vi.mocked(adminDb.collection('meetings').doc(meetingId).get);
@@ -139,7 +139,7 @@ const updateMeetingAction = async (
 
 const getMeetingsForContactAction = async (
   entityId: string,
-  workspaceId?: string
+  _workspaceId?: string
 ): Promise<{ success: boolean; meetings?: Meeting[]; error?: string }> => {
   try {
     if (!entityId) {
@@ -158,7 +158,7 @@ const getMeetingsForContactAction = async (
 };
 
 const resolveMeetingBySlugAction = async (
-  slug: string
+  _slug: string
 ): Promise<{ success: boolean; meeting?: Meeting; contact?: any; error?: string }> => {
   try {
     // This simulates the actual query logic

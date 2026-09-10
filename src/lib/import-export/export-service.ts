@@ -31,7 +31,7 @@ function escapeCSVValue(val: unknown): string {
  */
 export function serializeInstitutionEntity(
   entity: Entity,
-  workspaceEntity?: WorkspaceEntity
+  _workspaceEntity?: WorkspaceEntity
 ): InstitutionImportRow {
   const contacts = entity.entityContacts || [];
   const primaryContact = contacts[0];
@@ -54,7 +54,7 @@ export function serializeInstitutionEntity(
  */
 export function serializeFamilyEntity(
   entity: Entity,
-  workspaceEntity?: WorkspaceEntity
+  _workspaceEntity?: WorkspaceEntity
 ): FamilyImportRow {
   const guardian = entity.familyData?.guardians[0];
   const child = entity.familyData?.children[0];
@@ -76,7 +76,7 @@ export function serializeFamilyEntity(
  */
 export function serializePersonEntity(
   entity: Entity,
-  workspaceEntity?: WorkspaceEntity
+  _workspaceEntity?: WorkspaceEntity
 ): PersonImportRow {
   const contacts = entity.entityContacts || [];
   const contact = contacts[0];

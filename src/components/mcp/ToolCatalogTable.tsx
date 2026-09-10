@@ -27,7 +27,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Search, Play, Shield, ShieldAlert, Cpu, SlidersHorizontal } from 'lucide-react';
+import { Search, Play, Cpu } from 'lucide-react';
 import type { GovernedToolInfo } from '@/lib/mcp/actions/mcp-governance-actions';
 import type { McpCategory, McpRiskLevel } from '@/lib/mcp/types';
 

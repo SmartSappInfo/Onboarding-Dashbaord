@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, orderBy, where, addDoc, or } from 'firebase/firestore';
-import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, Meeting, Survey, PDFForm } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
@@ -104,7 +104,7 @@ export function TemplateWorkshopSheet({
                         } else {
                             toast({ variant: 'destructive', title: 'Error', description: 'Template not found.' });
                         }
-                    } catch (e) {
+                    } catch (_e) {
                         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template.' });
                     } finally {
                         setIsLoadingTemplate(false);
@@ -130,7 +130,7 @@ export function TemplateWorkshopSheet({
                         } else {
                             toast({ variant: 'destructive', title: 'Error', description: 'Source template not found.' });
                         }
-                    } catch (e) {
+                    } catch (_e) {
                         toast({ variant: 'destructive', title: 'Error', description: 'Failed to load template to clone.' });
                     } finally {
                         setIsLoadingTemplate(false);
@@ -160,7 +160,7 @@ export function TemplateWorkshopSheet({
     const surveysQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'surveys'), where('status', '==', 'published')) : null, [firestore]);
     const pdfsQuery = useMemoFirebase(() => firestore ? query(collection(firestore, 'pdfs'), where('status', '==', 'published')) : null, [firestore]);
 
-    const { data: firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
+    const { data: _firestoreVariables } = useCollection<VariableDefinition>(varsQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: surveys } = useCollection<Survey>(surveysQuery);

@@ -1,9 +1,8 @@
 'use client';
 
-import { CheckCircle2, FileText, ArrowRight, Download, Save, RefreshCw } from 'lucide-react';
+import { CheckCircle2, FileText, Download, Save, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { motion } from 'framer-motion';
 
 interface CompressorStatsProps {
   fileName: string;

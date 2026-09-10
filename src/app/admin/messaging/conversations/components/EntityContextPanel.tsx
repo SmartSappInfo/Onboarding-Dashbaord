@@ -3,7 +3,7 @@ import { useDoc } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { WorkspaceEntity } from '@/lib/types';
 import { useFirestore } from '@/firebase';
-import { Mail, Phone, ExternalLink, Activity, Users, MapPin, Tag } from 'lucide-react';
+import { Mail, Phone, ExternalLink, Users, MapPin } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

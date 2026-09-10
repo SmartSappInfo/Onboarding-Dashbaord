@@ -2,7 +2,6 @@
 
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
-import { revalidatePath } from 'next/cache';
 import { requireAuth } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -44,7 +43,7 @@ export async function recordPageViewAction(pageId: string, isUnique: boolean) {
  * @param pageId The campaign page ID
  * @param blockId (Optional) The specific block ID interacted with
  */
-export async function recordInteractionAction(pageId: string, blockId?: string) {
+export async function recordInteractionAction(pageId: string, _blockId?: string) {
     try {
         const pageRef = adminDb.collection('campaign_pages').doc(pageId);
         

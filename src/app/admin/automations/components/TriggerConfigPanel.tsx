@@ -4,7 +4,6 @@ import {
   Copy, 
   Check, 
   Tag, 
-  X, 
   Database, 
   Play, 
   Target, 
@@ -21,7 +20,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import type { Tag as TagType, Pipeline, OnboardingStage, AutomationTrigger, Automation } from '@/lib/types';
-import { MultiSelect } from '@/components/ui/multi-select';
 import { TagSelector } from '@/components/tags';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore } from '@/firebase';
@@ -31,7 +29,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { Switch } from '@/components/ui/switch';
-import { createTagAction } from '@/lib/tag-actions';
 
 interface TriggerConfigPanelProps {
   /** Stable ID of the AutomationTriggerDef this panel is configuring. */
@@ -62,8 +59,8 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
   automations = [],
 }: TriggerConfigPanelProps) {
   const { toast } = useToast();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as { activeWorkspaceId?: string; activeOrganizationId?: string };
-  const { user } = useUser();
+  const { activeWorkspaceId, activeOrganizationId: _activeOrganizationId } = useWorkspace() as { activeWorkspaceId?: string; activeOrganizationId?: string };
+  const { user: _user } = useUser();
   const [hasCopied, setHasCopied] = React.useState(false);
 
   const firestore = useFirestore();
@@ -134,13 +131,13 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
 
 
 
-  const tagOptions = React.useMemo(() => {
+  const _tagOptions = React.useMemo(() => {
     return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
   }, [allTags]);
 
   const renderValSyntax = (val: unknown) => {
     if (typeof val === 'string') {
-      return <span className="text-emerald-800 dark:text-emerald-400 font-mono">"{String(val)}"</span>;
+      return <span className="text-emerald-800 dark:text-emerald-400 font-mono">&quot;{String(val)}&quot;</span>;
     }
     if (typeof val === 'number') {
       return <span className="text-amber-800 dark:text-amber-400 font-mono font-bold">{String(val)}</span>;

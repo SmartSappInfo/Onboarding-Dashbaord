@@ -7,7 +7,7 @@
 // client component imports this module, so removing it costs nothing.
 import { adminDb } from './firebase-admin';
 import { sendMessage } from './messaging-engine';
-import { MeetingRegistrant, Meeting, MeetingInvitationSlot } from './types';
+import { MeetingRegistrant, Meeting } from './types';
 
 import { getInvitationOffsetMinutes, calculateChannelTriggerTime } from './invitation-utils';
 

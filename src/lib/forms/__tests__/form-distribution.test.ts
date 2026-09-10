@@ -28,7 +28,7 @@ vi.mock('@/lib/firebase-admin', () => {
     delete: deleteMock,
   }));
 
-  const collectionMock = vi.fn((colName: string) => ({
+  const collectionMock = vi.fn((_colName: string) => ({
     doc: docMock,
     add: addMock,
     where: vi.fn((field: string, _op: string, val: string) => ({

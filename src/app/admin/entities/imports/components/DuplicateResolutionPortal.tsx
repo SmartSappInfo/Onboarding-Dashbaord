@@ -11,7 +11,6 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { CheckCircle2, ChevronRight, ChevronDown, ChevronUp, AlertTriangle, Edit2, Mail, Phone, User, Building2, Loader2, ShieldCheck, ShieldAlert, Shield, Search, Globe, Map, Compass, Home, Box, Tag, Info, Banknote } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { resolveDuplicatesAction } from '@/lib/bulk-upload-actions';
-import { createTagAction } from '@/lib/tag-actions';
 import { resolveFieldStorageBucket } from '@/lib/field-storage-utils';
 import { useToast } from '@/hooks/use-toast';
 import { evaluateFormula } from '@/lib/formula-parser';
@@ -21,7 +20,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, collection, where, orderBy } from 'firebase/firestore';
 import { TagSelector } from '@/components/tags';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { getErrorMessage, getErrorName } from '@/lib/errors/report-error';
@@ -315,7 +313,7 @@ const EmailVerificationBadge = ({
 export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRows, onResolved }: DuplicateResolutionPortalProps) {
     const { toast } = useToast();
     const { activeWorkspace } = useWorkspace();
-    const { user } = useUser();
+    const { user: _user } = useUser();
     const firestore = useFirestore();
 
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -537,7 +535,7 @@ export function DuplicateResolutionPortal({ importLogId, importLog, duplicateRow
             ? query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspace.id), orderBy('name'))
             : null,
     [firestore, activeWorkspace?.id]);
-    const { data: tagsList } = useCollection<any>(tagsQuery);
+    const { data: _tagsList } = useCollection<any>(tagsQuery);
 
     const requiresTags = (strategy: DuplicateStrategy) => 
         ['ADD_TAG_ONLY', 'UPDATE_MISSING_FIELDS_AND_TAG', 'UPDATE_FIELDS_AND_TAG', 'KEEP_AND_MERGE', 'REPLACE_AND_MERGE'].includes(strategy);

@@ -19,7 +19,6 @@
 
 import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
-import type { ConflictType } from '@/lib/memory/orchestrator-types';
 
 export const memoryStatementSchema = z.object({
   id: z.string(),

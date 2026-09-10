@@ -1,19 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Pipeline, Automation } from '@/lib/types';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
-import type { AudienceFilter, AudienceFilterField, Tag } from '@/lib/types';
+import type { AudienceFilter, AudienceFilterField } from '@/lib/types';
 import { ConditionsBuilder } from '@/app/admin/automations/components/ConditionsBuilder';
 import type { ConditionGroup } from '@/lib/automation-condition';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { TagSelector } from '@/components/tags';
-import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 
 // ─── Field + Operator Config ──────────────────────────────────────────────────
 

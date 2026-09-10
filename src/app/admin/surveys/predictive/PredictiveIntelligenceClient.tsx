@@ -20,27 +20,20 @@ import {
 } from '@/lib/surveys/survey-predictive-actions';
 import Link from 'next/link';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Activity,
-  AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
   ExternalLink,
   Flame,
-  HeartPulse,
-  Layers,
-  Lightbulb,
   Loader2,
   RefreshCw,
   Sparkles,
   TrendingUp,
-  Users,
   Zap,
 } from 'lucide-react';
 

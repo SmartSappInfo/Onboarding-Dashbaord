@@ -178,7 +178,7 @@ export function Inspector() {
  <div className="p-4 rounded-xl bg-orange-50 border border-orange-100 flex flex-col items-center text-center gap-2">
  <AlertCircle className="h-5 w-5 text-orange-600" />
  <p className="text-[9px] font-semibold text-orange-800 leading-tight">No Entity Associated</p>
- <p className="text-[8px] font-bold text-orange-700/60 tracking-tighter">Please bind this document to an entity in "Step 1: Setup" to use variables.</p>
+ <p className="text-[8px] font-bold text-orange-700/60 tracking-tighter">Please bind this document to an entity in &quot;Step 1: Setup&quot; to use variables.</p>
                             </div>
                         )}
                     </div>

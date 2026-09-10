@@ -2,33 +2,20 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { collection, query, orderBy, doc } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
-import type { Meeting, Attendee, School } from '@/lib/types';
+import { useFirestore } from '@/firebase';
 import { useMeetingContext } from '../layout';
 import {
     Users,
     Baby,
     Clock,
-    ArrowLeft,
-    ChevronLeft,
-    Download,
-    ShieldCheck,
-    TrendingUp,
-    LayoutList,
     Building,
-    Calendar,
     Target,
     BarChart3,
     CheckCircle2,
     CalendarCheck,
     Contact,
-    ChevronRight,
     FileSpreadsheet,
     Zap,
-    RotateCcw,
-    Settings2,
     Loader2,
     ArrowRight,
     AlertCircle
@@ -39,19 +26,16 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { format, formatDistanceToNow } from 'date-fns';
+import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { Separator } from '@/components/ui/separator';
 import {
-    BarChart,
-    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip as ChartTooltip,
     ResponsiveContainer,
-    Cell,
     LineChart,
     Line
 } from 'recharts';
@@ -62,15 +46,15 @@ import {
  */
 export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?: string }) {
     const params = useParams();
-    const router = useRouter();
+    const _router = useRouter();
     const { toast } = useToast();
-    const firestore = useFirestore();
+    const _firestore = useFirestore();
     const meetingId = meetingIdProp || (params.id as string);
 
     const [isExporting, setIsExporting] = React.useState(false);
 
     // Consume shared workspace context
-    const { meeting, registrants, attendees, isLoading } = useMeetingContext();
+    const { meeting, registrants: _registrants, attendees, isLoading } = useMeetingContext();
     const isLoadingMeeting = isLoading;
     const isLoadingAttendees = isLoading;
     const meetingError = null;
@@ -116,7 +100,7 @@ export default function ResultsClient({ meetingId: meetingIdProp }: { meetingId?
             link.click();
             document.body.removeChild(link);
             toast({ title: 'Report Exported', description: 'Attendance ledger is ready.' });
-        } catch (e) {
+        } catch (_e) {
             toast({ variant: 'destructive', title: 'Export Failed' });
         } finally {
             setIsExporting(false);

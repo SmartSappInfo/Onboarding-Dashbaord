@@ -10,7 +10,6 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { MembershipPlanService } from '@/lib/services/membership-plan-service';
-import { PortalMembershipService } from '@/lib/services/portal-membership-service';
 import { PortalInvitationService } from '@/lib/services/portal-invitation-service';
 
 export async function seedPortalMemberships(targetOrgId: string = 'smartsapp-hq') {

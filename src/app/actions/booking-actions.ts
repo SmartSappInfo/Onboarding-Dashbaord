@@ -24,10 +24,9 @@ import type {
   HostPublicProfile,
 } from '@/lib/meetings/types';
 import { getAvailableSlotsForRange, isSlotConflicting } from '@/lib/meetings/scheduling-engine';
-import { generateIcsContent, getGoogleCalendarUrl, getOutlookCalendarUrl } from '@/lib/meetings/ics-helpers';
+import { generateIcsContent } from '@/lib/meetings/ics-helpers';
 import { createEntityFromRegistration } from '@/app/actions/meeting-lead-capture-action';
 import { sendEmail } from '@/lib/resend-service';
-import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 
 /**
  * Helper to compute SHA-256 hash of a string.

@@ -10,28 +10,19 @@
  */
 
 import * as React from 'react';
-import Link from 'next/link';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { PageContainerFluid } from '@/components/ui/page-container';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
-  CalendarDays,
   CalendarCheck,
   CheckCircle2,
   AlertTriangle,
   Clock,
   TrendingUp,
-  Plus,
-  Flame,
-  Layers,
-  ArrowRight,
 } from 'lucide-react';
-import { MeetingsNavigation } from './components/MeetingsNavigation';
 import { MyDayTimeline } from './components/MyDayTimeline';
 import { NeedsAttentionPanel } from './components/NeedsAttentionPanel';
 import { UpcomingSessionsCard } from './components/UpcomingSessionsCard';

@@ -13,7 +13,6 @@ import {
     addMonths, 
     subMonths,
     isToday,
-    isPast,
     addWeeks,
     subWeeks,
     addDays,
@@ -26,8 +25,6 @@ import {
     Clock, 
     ShieldAlert, 
     AlertTriangle,
-    Building,
-    Layers
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -296,7 +293,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         const onPointerUp = async (upEvent: PointerEvent) => {
             try {
                 handle.releasePointerCapture(upEvent.pointerId);
-            } catch (err) {}
+            } catch (_err) {}
             handle.removeEventListener('pointermove', onPointerMove);
             handle.removeEventListener('pointerup', onPointerUp);
             handle.removeEventListener('pointercancel', onPointerCancel);
@@ -333,7 +330,7 @@ export default function TaskCalendar({ tasks, onTaskClick, userMap, onTaskUpdate
         const onPointerCancel = (cancelEvent: PointerEvent) => {
             try {
                 handle.releasePointerCapture(cancelEvent.pointerId);
-            } catch (err) {}
+            } catch (_err) {}
             handle.removeEventListener('pointermove', onPointerMove);
             handle.removeEventListener('pointerup', onPointerUp);
             handle.removeEventListener('pointercancel', onPointerCancel);

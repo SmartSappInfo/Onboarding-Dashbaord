@@ -7,7 +7,6 @@ import {
   purgeAllPendingJobsForAutomation,
 } from '../automations/reschedule';
 import { manuallyReleaseAllWaitJobs } from '../automations/service';
-import { adminDb } from '../firebase-admin';
 import { rescheduleDelayTask, cancelDelayTask } from '../gcp-tasks-client';
 import { resumeAutomationRun } from '../automations/resume';
 

@@ -17,17 +17,9 @@ import { PortalAccessService } from './portal-access-service';
 import type {
   Portal,
   PortalMode,
-  PortalStatus,
-  PortalVisibility,
   PortalModePreset,
   CreatePortalInput,
   UpdatePortalInput,
-  PortalThemeConfig,
-  PortalNavigationConfig,
-  PortalAccessPolicy,
-  PortalFeatureToggles,
-  PortalSeoConfig,
-  PortalBranding,
 } from '../types/portal';
 
 import {

@@ -10,10 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 import { useParams } from 'next/navigation';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * TagConditionNode — visual node for the automation canvas.
@@ -56,7 +53,7 @@ export function TagConditionNode({ id, data, selected }: TagConditionNodeProps) 
   const [isHovered, setIsHovered] = React.useState(false);
   const logic: string = data.logic || '';
   const tagIds: string[] = data.tagIds || [];
-  const params = useParams();
+  const _params = useParams();
   const { countsBySourceNodeId } = usePendingJobs();
   const waitingCount = countsBySourceNodeId[id] || 0;
 

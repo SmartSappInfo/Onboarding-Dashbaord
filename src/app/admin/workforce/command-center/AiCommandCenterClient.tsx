@@ -20,7 +20,6 @@ import {
   Terminal,
   Sparkles,
   Users,
-  Shield,
   RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';

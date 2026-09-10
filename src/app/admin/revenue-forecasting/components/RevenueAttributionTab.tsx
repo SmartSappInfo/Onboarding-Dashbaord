@@ -23,7 +23,6 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import {
   Layers,
-  Sparkles,
   CheckCircle2,
   Users,
   Calendar,
@@ -35,7 +34,6 @@ import {
   Clock,
   RefreshCw,
   Loader2,
-  ArrowRight,
   Award,
 } from 'lucide-react';
 import type {
@@ -43,7 +41,6 @@ import type {
   RevenueAttributionRecord,
   RevenueForecastOverview,
   TouchpointChannel,
-  TouchpointType,
 } from '@/lib/revenue-forecasting/types';
 import { recalculateDealAttributionAction } from '@/app/actions/revenue-forecasting-actions';
 
@@ -293,7 +290,7 @@ export function RevenueAttributionTab({
 
         <CardContent className="p-6">
           <div className="relative border-l-2 border-primary/20 ml-4 pl-6 space-y-6">
-            {activeRecord.touchpointSplits.map((touch, idx) => (
+            {activeRecord.touchpointSplits.map((touch, _idx) => (
               <div key={touch.touchpointId} className="relative group">
                 {/* Node marker */}
                 <div className="absolute -left-[31px] top-1.5 w-4 h-4 rounded-full bg-background border-2 border-primary group-hover:scale-125 transition-transform flex items-center justify-center">

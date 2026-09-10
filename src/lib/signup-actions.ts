@@ -67,7 +67,7 @@ export async function handleSignupAction(input: SignupInput) {
   await requireAuth();
 
   try {
-    const timestamp = new Date().toISOString();
+    const _timestamp = new Date().toISOString();
     
     // Generate unique entityId using format entity_<random_id>
     // Using Firestore's auto-generated ID as the random component (Requirement 10.4)

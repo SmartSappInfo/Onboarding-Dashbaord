@@ -20,10 +20,8 @@ import {
   updateMilestoneStatus,
   getMilestonesForEngagement,
   createOutcome,
-  updateOutcome,
   getOutcomesForEngagement,
   createRetainer,
-  updateRetainer,
   getRetainersForEntity,
 } from '../consultancy-actions';
 import type { Workspace, Entity, Discovery, Engagement, Milestone, Retainer } from '../types';

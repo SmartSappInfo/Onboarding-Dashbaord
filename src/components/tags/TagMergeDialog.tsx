@@ -258,7 +258,7 @@ export function TagMergeDialog({ open, onOpenChange, onComplete }: TagMergeDialo
         {canMerge && (
           <div className="p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-xl text-xs">
             <p className="font-bold text-amber-800 dark:text-amber-300">
-              Merge summary: {sourceTagIds.length} tag(s) → "{targetTag?.name}"
+              Merge summary: {sourceTagIds.length} tag(s) → &quot;{targetTag?.name}&quot;
             </p>
             <p className="text-amber-700 dark:text-amber-400 mt-0.5">
               ~{affectedContactCount} contact(s) affected. Source tags will be permanently deleted.

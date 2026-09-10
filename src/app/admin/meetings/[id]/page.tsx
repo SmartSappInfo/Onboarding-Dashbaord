@@ -9,7 +9,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { endMeetingAction } from '@/app/actions/meeting-post-event-action';
-import type { ScheduledMessage, QRCode, MeetingReminderSlot } from '@/lib/types';
+import type { QRCode, MeetingReminderSlot } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -30,8 +30,6 @@ import {
   Mail,
   MessageSquare,
   Loader2,
-  X,
-  Check,
   Edit
 } from 'lucide-react';
 import { format } from 'date-fns';
@@ -66,7 +64,7 @@ function getErrorMessage(error: unknown): string {
 
 export default function MeetingDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const meetingId = params.id as string;
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();

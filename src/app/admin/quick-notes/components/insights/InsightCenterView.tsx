@@ -10,14 +10,10 @@ import {
   Search,
   RefreshCw,
   Loader2,
-  CheckCircle2,
-  ExternalLink,
   ChevronDown,
   ChevronUp,
   Trash2,
   CheckSquare,
-  ShieldCheck,
-  Plus,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,7 +56,7 @@ export function InsightCenterView({
   const [isScanningAi, setIsScanningAi] = React.useState(false);
   const [activeType, setActiveType] = React.useState<KnowledgeInsightType | 'all'>('all');
   const [severityFilter, setSeverityFilter] = React.useState<KnowledgeInsightSeverity | 'all'>('all');
-  const [statusFilter, setStatusFilter] = React.useState<KnowledgeInsightStatus | 'all'>('active');
+  const [statusFilter, _setStatusFilter] = React.useState<KnowledgeInsightStatus | 'all'>('active');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [expandedEvidenceIds, setExpandedEvidenceIds] = React.useState<Set<string>>(new Set());
 
@@ -382,7 +378,7 @@ export function InsightCenterView({
             <div className="space-y-1">
               <h3 className="text-sm font-bold text-foreground">No insights match your criteria</h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Click "⚡ Run AI Intelligence Scan" to analyze workspace notes and discover emerging patterns.
+                Click &quot;⚡ Run AI Intelligence Scan&quot; to analyze workspace notes and discover emerging patterns.
               </p>
             </div>
           </div>
@@ -449,7 +445,7 @@ export function InsightCenterView({
                               <span className="font-bold text-foreground">{ev.title}</span>
                               <span className="text-[10px] text-muted-foreground font-mono">{ev.date}</span>
                             </div>
-                            <p className="text-[11px] italic text-muted-foreground">"{ev.quote}"</p>
+                            <p className="text-[11px] italic text-muted-foreground">&quot;{ev.quote}&quot;</p>
                           </div>
                         ))}
                       </div>

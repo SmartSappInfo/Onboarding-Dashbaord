@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useRouter, useParams, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { collection, doc, updateDoc, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { collection, doc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';
@@ -15,10 +15,7 @@ import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { 
     Loader2, 
     Save, 
-    Settings2, 
-    Globe, 
     Calendar,
-    Building, 
     Video,
     Eye,
     EyeOff,
@@ -31,16 +28,12 @@ import {
     Sparkles,
     Palette,
     LayoutTemplate,
-    Bell,
     ClipboardCheck,
     Clock,
     MessageSquare,
-    Zap,
     Rocket, 
     Copy, 
-    QrCode, 
     Link2, 
-    Users, 
     Webhook,
     Pencil,
     X,
@@ -50,7 +43,7 @@ import ShareEmbedDialog from '@/components/share-embed-dialog';
 
 import type { WorkspaceEntity, Meeting, MeetingType, MeetingRegistrationField, SeoConfig } from '@/lib/types';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
-import { MEETING_TYPES, REMINDER_OFFSETS, getDefaultMeetingMessagingConfig } from '@/lib/types';
+import { MEETING_TYPES, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -59,32 +52,26 @@ import {
   FormLabel,
   FormMessage,
   FormDescription,
-  Form,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useFirestore, useCollection, useDoc, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser } from '@/firebase';
+import { useFirestore, useDoc, useMemoFirebase, useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../../components/brochure-select';
 import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
-import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
-import { triggerInternalNotification } from '@/lib/notification-engine';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
-import { format } from 'date-fns';
 import { MediaSelect } from '../../../entities/components/media-select';
-import { getMeetingHeroDefaults } from '@/lib/meeting-hero-defaults';
 import { getDefaultRegistrationFields } from '@/lib/meeting-tokens';
 import RegistrationFieldBuilder from '../../components/registration-field-builder';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { rescheduleRemindersForMeeting } from '@/lib/reminder-actions';
-import { Checkbox } from '@/components/ui/checkbox';
 import MeetingLeadCaptureSection from '../../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../../components/MeetingMessagingTab';
 import { MeetingFacilitatorsSection } from '../../components/MeetingFacilitatorsSection';
@@ -220,7 +207,7 @@ const stepIndex = (id: string) => WIZARD_STEPS.findIndex(s => s.id === id);
 export default function EditMeetingPage() {
   const params = useParams();
   const meetingId = params.id as string;
-  const pathname = usePathname();
+  const _pathname = usePathname();
   const { toast } = useToast();
   const router = useRouter();
   const firestore = useFirestore();
@@ -293,7 +280,7 @@ export default function EditMeetingPage() {
     },
   });
 
-  const { setValue, watch } = form;
+  const { setValue, watch: _watch } = form;
   const watchedType = form.watch('type');
   const watchedEntity = form.watch('entity');
   const watchedSlug = form.watch('meetingSlug');

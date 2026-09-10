@@ -38,7 +38,7 @@ export function ContradictionBanner({
             {contradiction.explanation || `Thesis "${contradiction.thesis?.claim || contradiction.thesisClaim || 'Target Note'}" conflicts with "${contradiction.antithesis?.claim || contradiction.antithesisClaim || 'Candidate Note'}".`}
           </p>
           <div className="text-[11px] text-foreground font-semibold">
-            Conflicting record: <em>"{contradiction.antithesis?.sourceTitle || contradiction.conflictTopic || 'Other Note'}"</em>
+            Conflicting record: <em>&quot;{contradiction.antithesis?.sourceTitle || contradiction.conflictTopic || 'Other Note'}&quot;</em>
           </div>
         </div>
       </div>

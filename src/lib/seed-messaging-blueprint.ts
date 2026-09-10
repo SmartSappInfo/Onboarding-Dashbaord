@@ -4,14 +4,8 @@ import { adminDb } from './firebase-admin';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import type { 
-    MessageTemplate, 
-    MessageStyle, 
     TemplateCategory, 
     RecipientType, 
-    MessageChannel, 
-    TemplateTarget, 
-    ContentMode, 
-    TemplateStatus 
 } from './types';
 
 /**

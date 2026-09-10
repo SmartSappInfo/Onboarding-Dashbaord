@@ -19,8 +19,6 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { Separator } from '@/components/ui/separator';
-import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 
 interface StepFinishProps {
     formState: WorkspaceFormState;

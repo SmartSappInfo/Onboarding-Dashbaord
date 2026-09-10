@@ -53,7 +53,7 @@ function SignupContent() {
   const firestore = useFirestore();
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
-  const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [_isSubmitting, setIsSubmitting] = React.useState(false);
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),

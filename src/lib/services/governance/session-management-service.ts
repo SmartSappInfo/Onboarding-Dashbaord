@@ -12,7 +12,7 @@
  */
 
 import { adminDb, adminAuth } from '@/lib/firebase-admin';
-import type { UserSession, SecurityPolicyConfig, MFAEnforcementLevel } from '@/lib/types';
+import type { UserSession, SecurityPolicyConfig } from '@/lib/types';
 import { SecurityAuditService } from './security-audit-service';
 
 export class SessionManagementService {
@@ -69,7 +69,7 @@ export class SessionManagementService {
   static async revokeAllUserSessions(
     organizationId: string,
     personId: string,
-    revokedBy: string
+    _revokedBy: string
   ): Promise<{ revokedCount: number }> {
     const snap = await adminDb
       .collection(this.sessionsCollection)

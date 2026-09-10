@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { Entity, WorkspaceEntity, EntityType } from '@/lib/types';
+import type { Entity, WorkspaceEntity } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,6 @@ import NotesSection from '@/app/admin/components/NotesSection';
 import ActivityTimeline from '@/app/admin/components/ActivityTimeline';
 import KnowledgeTimeline from '@/app/admin/quick-notes/components/timeline/KnowledgeTimeline';
 import { ContactMediaTab } from './ContactMediaTab';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface ContactDetailPageProps {
   entity: Entity;

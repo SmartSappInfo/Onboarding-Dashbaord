@@ -10,7 +10,7 @@
 'use client';
 
 import * as React from 'react';
-import { Mail, Send, CheckCircle2, AlertTriangle, Loader2 } from 'lucide-react';
+import { Send, CheckCircle2, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

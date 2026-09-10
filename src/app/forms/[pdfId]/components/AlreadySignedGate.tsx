@@ -3,12 +3,9 @@
 import * as React from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { SmartSappIcon } from '@/components/icons';
-import { ShieldCheck, Eye, X, CheckCircle2, Clock } from 'lucide-react';
-import { format } from 'date-fns';
+import { ShieldCheck, Eye, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
-import { cn } from '@/lib/utils';
 
 interface AlreadySignedGateProps {
     entityName?: string | null;
@@ -56,7 +53,7 @@ export default function AlreadySignedGate({ entityName, logoUrl, pdfName, onView
 
                     <div className="space-y-2 text-center sm:text-left">
                         <p className="text-sm text-muted-foreground font-medium leading-relaxed">
-                            Our records indicate that the <span className="font-black text-foreground">"{pdfName}"</span> for this campus has been legally signed and submitted. No further modifications are permitted at this time.
+                            Our records indicate that the <span className="font-black text-foreground">&quot;{pdfName}&quot;</span> for this campus has been legally signed and submitted. No further modifications are permitted at this time.
                         </p>
                     </div>
 

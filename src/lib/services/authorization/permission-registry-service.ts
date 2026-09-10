@@ -17,11 +17,7 @@
 import type {
   PermissionsSchema,
   PermissionDefinition,
-  PermissionRiskLevel,
-  AppPermissionAction,
-  AppPermissionId,
 } from '@/lib/types';
-import { getBlankPermissions } from '@/lib/permissions-engine';
 
 /**
  * 100+ Fine-grained canonical platform permissions with risk classifications and dependency chains.
@@ -927,7 +923,7 @@ export class PermissionRegistryService {
 
       let sectionHasEnabledFeature = false;
 
-      Object.entries(section.features).forEach(([featKey, actions]) => {
+      Object.entries(section.features).forEach(([_featKey, actions]) => {
         if (!actions) return;
 
         // If any mutate action is enabled, view MUST be true

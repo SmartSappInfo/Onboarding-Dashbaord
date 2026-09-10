@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -27,14 +27,10 @@ import {
   Video,
   Users,
   PlayCircle,
-  Sparkles,
-  ArrowRight,
   ArrowLeft,
   ExternalLink,
-  CheckCircle2,
   CalendarPlus,
   Loader2,
-  Share2,
 } from 'lucide-react';
 
 interface PortalEventDetailClientProps {

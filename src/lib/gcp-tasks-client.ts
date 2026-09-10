@@ -1,6 +1,6 @@
 import type { CloudTasksClient } from '@google-cloud/tasks';
 import { adminDb } from './firebase-admin';
-import { getErrorCode, getErrorNumericCode, getErrorStatus } from '@/lib/errors/report-error';
+import { getErrorNumericCode, getErrorStatus } from '@/lib/errors/report-error';
 
 // Configurations
 const PROJECT = process.env.GCP_PROJECT || process.env.GOOGLE_CLOUD_PROJECT || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || process.env.FIREBASE_PROJECT_ID || '';

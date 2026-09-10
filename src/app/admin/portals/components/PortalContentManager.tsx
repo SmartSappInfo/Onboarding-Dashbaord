@@ -11,7 +11,7 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -34,13 +34,11 @@ import {
   Trash2,
   ExternalLink,
   Copy,
-  BookOpen,
   FolderArchive,
   Sparkles,
   Share2,
   Video,
   Globe,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { ContentEditorDrawer } from './ContentEditorDrawer';
 import {
@@ -137,7 +135,7 @@ export function PortalContentManager({
     });
   }, [effectiveItems, searchTerm, selectedType]);
 
-  const handleOpenCreate = (type: ContentItemType = 'article') => {
+  const handleOpenCreate = (_type: ContentItemType = 'article') => {
     setEditingItem(null);
     setIsEditorOpen(true);
   };

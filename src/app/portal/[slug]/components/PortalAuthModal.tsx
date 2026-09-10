@@ -246,7 +246,7 @@ export function PortalAuthModal({
         <div className="pt-3 border-t border-border text-center text-xs text-muted-foreground space-y-1">
           {mode === 'signin' ? (
             <p>
-              Don't have an account yet?{' '}
+              Don&apos;t have an account yet?{' '}
               <button
                 type="button"
                 onClick={() => setMode('signup')}

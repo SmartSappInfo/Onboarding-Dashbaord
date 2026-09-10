@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { IngestionDeduplicator } from '../IngestionDeduplicator';
-import type { DuplicateStrategy } from '../../import-types';
 
 describe('IngestionDeduplicator', () => {
     const existingEntity = {

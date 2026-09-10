@@ -12,9 +12,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Users,
-  BarChart3,
   ExternalLink,
-  Plus,
   Play,
   TrendingUp,
 } from 'lucide-react';
@@ -29,7 +27,7 @@ import Link from 'next/link';
 
 export function OverviewClient() {
   const { activeWorkspaceId } = useWorkspace();
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
 
   const [data, setData] = React.useState<OperationalOverviewResult | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -139,7 +137,7 @@ export function OverviewClient() {
               <div>
                 <CardTitle className="text-base font-bold flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
-                  Today's Schedule & Action Roster
+                  Today&apos;s Schedule & Action Roster
                 </CardTitle>
                 <CardDescription className="text-xs">
                   {format(new Date(), 'EEEE, MMMM d, yyyy')}

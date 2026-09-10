@@ -35,7 +35,7 @@ type TenantContextType = {
   getPermissionsSchemaForWorkspace: (workspaceId: string) => import('@/lib/types').PermissionsSchema | undefined;
   isLoading: boolean;
 };
-function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+function _withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
   return new Promise((resolve) => {
     const timer = setTimeout(() => {
       console.warn(`Promise timed out after ${ms}ms`);

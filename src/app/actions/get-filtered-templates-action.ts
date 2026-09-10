@@ -43,7 +43,7 @@ export async function getFilteredTemplatesAction(filters: FilterOptions): Promis
   // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
   await requireAuth();
 
-    const { category, recipientType, channel, workspaceId, organizationId } = filters;
+    const { category: _category, recipientType, channel, workspaceId, organizationId } = filters;
 
     try {
         let queryRef: any = adminDb.collection('message_templates');

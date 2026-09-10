@@ -15,14 +15,11 @@
 
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
   Users,
   Play,
   RotateCw,
-  Sliders,
-  CheckCircle2,
   BookOpen,
   TrendingUp,
   Calendar,

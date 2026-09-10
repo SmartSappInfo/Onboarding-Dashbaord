@@ -10,7 +10,7 @@
 'use client';
 
 import * as React from 'react';
-import { ShieldAlert, Trash2, CheckCircle, CheckCircle2, Loader2, Globe } from 'lucide-react';
+import { Trash2, CheckCircle, CheckCircle2, Loader2, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {

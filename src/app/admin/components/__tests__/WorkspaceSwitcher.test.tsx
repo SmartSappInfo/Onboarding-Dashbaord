@@ -8,7 +8,7 @@ import type { Workspace } from '@/lib/types';
 // Mock the TenantContext
 vi.mock('@/context/TenantContext');
 
-const mockUseTenant = useTenant as ReturnType<typeof vi.fn>;
+const _mockUseTenant = useTenant as ReturnType<typeof vi.fn>;
 
 describe('WorkspaceSwitcher - Scope Badges', () => {
   const mockWorkspaces: Workspace[] = [

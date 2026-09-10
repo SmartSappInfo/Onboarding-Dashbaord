@@ -16,9 +16,6 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import {
   XCircle,
-  Calendar,
-  Clock,
-  ArrowLeft,
   Loader2,
   CheckCircle2,
 } from 'lucide-react';
@@ -33,7 +30,7 @@ function getErrorMessage(error: unknown): string {
 export default function CancelBookingPage() {
   const params = useParams();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const _router = useRouter();
   const { toast } = useToast();
 
   const slug = params.slug as string;

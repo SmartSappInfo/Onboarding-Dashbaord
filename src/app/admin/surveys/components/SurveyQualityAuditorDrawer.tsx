@@ -33,8 +33,6 @@ import {
   AlertTriangle,
   Clock,
   ThumbsUp,
-  ArrowRight,
-  ShieldCheck,
   Zap,
   RotateCcw,
 } from 'lucide-react';

@@ -21,7 +21,7 @@ const docMock = (id?: string) => ({
   get: mockGet,
   set: mockSet,
   update: mockUpdate,
-  collection: vi.fn((subName: string) => ({
+  collection: vi.fn((_subName: string) => ({
     doc: vi.fn((subId?: string) => ({
       id: subId || 'sub_auto_1',
       get: mockGet,
@@ -34,7 +34,7 @@ const docMock = (id?: string) => ({
   })),
 });
 
-const mockCollection = vi.fn((name: string) => ({
+const mockCollection = vi.fn((_name: string) => ({
   doc: vi.fn((id?: string) => docMock(id)),
   where: vi.fn().mockReturnValue(queryMock),
   limit: vi.fn().mockReturnValue(queryMock),

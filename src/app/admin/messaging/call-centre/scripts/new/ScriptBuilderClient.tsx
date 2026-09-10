@@ -22,7 +22,7 @@ import { getActionMeta } from '@/lib/call-action-types';
 import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -67,7 +67,6 @@ import type { SearchedEntity } from '@/hooks/use-entity-search';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 import type { Node, Edge, NodeChange } from 'reactflow';
 import { addEdge, useNodesState, useEdgesState } from 'reactflow';
-import { ScriptPlaybookView } from '../components/ScriptPlaybookView';
 import { LegacyScriptEditor } from '../components/LegacyScriptEditor';
 import type { LegacyScriptEditorHandle, VariableGroup } from '../components/LegacyScriptEditor';
 import { ScriptBodyDisplay } from '../components/ScriptBodyDisplay';
@@ -1170,7 +1169,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
   };
 
   // Variable selector clicked — delegates to the correct rich editor via ref
-  const handleInsertVariable = (variable: string) => {
+  const _handleInsertVariable = (variable: string) => {
     if (editorTab === 'text') {
       legacyEditorRef.current?.insertVariable(variable);
     } else if (selectedNode) {
@@ -2522,7 +2521,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                   <Card className="border border-border bg-card rounded-2xl flex flex-col justify-between flex-grow overflow-hidden">
                     <div className="p-4 border-b border-border bg-muted/30 flex items-center justify-between shrink-0">
                       <div className="min-w-0">
-                        <h3 className="text-xs font-bold text-foreground truncate">Config node: "{selectedNode.data.label}"</h3>
+                        <h3 className="text-xs font-bold text-foreground truncate">Config node: &quot;{selectedNode.data.label}&quot;</h3>
                         <p className="text-[8px] font-mono text-muted-foreground uppercase tracking-widest mt-0.5">ID: {selectedNode.id}</p>
                       </div>
                       <div className="flex items-center gap-2">
@@ -2774,7 +2773,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                   <div className="p-4 border-b border-border bg-muted/20 flex items-center justify-between shrink-0">
                     <div className="min-w-0">
                       <h3 className="text-xs font-black text-foreground uppercase tracking-wider truncate">
-                        Step Properties: "{selectedNode.data?.label || 'Untitled Step'}"
+                        Step Properties: &quot;{selectedNode.data?.label || 'Untitled Step'}&quot;
                       </h3>
                       <p className="text-[8px] font-mono text-muted-foreground uppercase tracking-widest mt-0.5">
                         Node ID: {selectedNode.id}
@@ -3391,7 +3390,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                           : [
                               { id: 'c1', name: entity.displayName || 'Primary Contact', isPrimary: true, phone: entity.primaryPhone || '', email: entity.primaryEmail || '', typeKey: 'primary', order: 0, isSignatory: false }
                             ];
-                        const { interests, ...cleanEntity } = entity;
+                        const { interests: _interests, ...cleanEntity } = entity;
                         setSimulatedEntityData({
                           ...cleanEntity,
                           name: entity.displayName || 'Unknown Entity',
@@ -3615,7 +3614,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                 Clone Step
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground leading-normal">
-                How would you like to clone the step <strong>"{nodeToClone.data.label}"</strong>? You can clone only this step or duplicate the entire downstream conversation branch.
+                How would you like to clone the step <strong>&quot;{nodeToClone.data.label}&quot;</strong>? You can clone only this step or duplicate the entire downstream conversation branch.
               </DialogDescription>
             </DialogHeader>
 
@@ -3662,7 +3661,7 @@ export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilde
                 Delete Step
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground leading-normal">
-                How would you like to delete the step <strong>"{nodeToDelete.data.label}"</strong>? Choose whether to delete only this step or to recursively delete this step and all its downstream branches.
+                How would you like to delete the step <strong>&quot;{nodeToDelete.data.label}&quot;</strong>? Choose whether to delete only this step or to recursively delete this step and all its downstream branches.
               </DialogDescription>
             </DialogHeader>
 

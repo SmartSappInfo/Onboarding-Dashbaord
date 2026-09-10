@@ -7,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { collection, query, orderBy, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { WorkspaceEntity, UserProfile, Activity, Zone } from '@/lib/types';
+import type { UserProfile, Activity, Zone } from '@/lib/types';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
-import { X, Building, User, Tag, MapPin, Activity as ActivityIcon } from 'lucide-react';
+import { X, Building, User, Tag, MapPin } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -23,7 +23,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
  */
 export default function ActivitiesClient() {
     const firestore = useFirestore();
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
+    const { activeWorkspaceId: _activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const { singular, plural } = useTerminology();
     
     const [entityId, setEntityId] = React.useState<string | null>('all');

@@ -15,7 +15,7 @@ import * as React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useFirestore, useUser } from '@/firebase';
+import { useFirestore } from '@/firebase';
 import type { Survey, SurveyResponse, SurveySummary } from '@/lib/types';
 import { doc, deleteDoc } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -44,7 +44,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +57,6 @@ import {
   Send,
   HelpCircle,
   Quote,
-  TrendingUp,
   Zap,
 } from 'lucide-react';
 

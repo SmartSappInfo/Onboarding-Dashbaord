@@ -1,9 +1,8 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import { createBulkMessageJob, processBulkJobChunk, processJobChunkBackground } from './bulk-messaging';
+import { createBulkMessageJob, processJobChunkBackground } from './bulk-messaging';
 import { previewCampaignAudience, resolveRecipientContacts } from './messaging-actions';
-import { syncCampaignStats } from './campaign-analytics';
 import { CHANNEL_REGISTRY, contactResolutionChannel } from './messaging/channel-registry';
 import type { MessageCampaign } from './types';
 import { after } from 'next/server';

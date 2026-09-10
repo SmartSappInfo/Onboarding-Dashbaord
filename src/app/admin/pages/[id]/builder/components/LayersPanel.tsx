@@ -6,7 +6,7 @@ import {
     Copy, ArrowUp, ArrowDown, ChevronRight, ChevronDown, 
     Type, Image, Play, Settings, Layers, Box, Tag, Edit3, Check
 } from 'lucide-react';
-import type { CampaignPageVersion, PageSection, PageBlock } from '@/lib/types';
+import type { CampaignPageVersion, PageBlock } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface LayersPanelProps {

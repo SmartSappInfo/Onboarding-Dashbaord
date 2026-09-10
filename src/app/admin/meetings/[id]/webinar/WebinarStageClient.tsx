@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -13,13 +13,6 @@ import {
   MessageSquare,
   ThumbsUp,
   UserPlus,
-  Play,
-  Mic,
-  MicOff,
-  Video as VideoIcon,
-  VideoOff,
-  CheckCircle2,
-  Sparkles,
   ArrowLeft,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -33,8 +26,6 @@ import {
 } from '@/app/actions/webinar-stage-actions';
 import type {
   WebinarStageState,
-  WebinarPresenter,
-  WebinarQuestion,
 } from '@/lib/meetings/types/webinar-stage';
 import Link from 'next/link';
 

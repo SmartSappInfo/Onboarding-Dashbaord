@@ -13,7 +13,7 @@ interface MeetingThemeProviderProps {
  * while maintaining flexibility for other meeting types.
  */
 export function MeetingThemeProvider({ children, forceDark }: MeetingThemeProviderProps) {
-  const { setTheme, resolvedTheme } = useTheme();
+  const { setTheme, resolvedTheme: _resolvedTheme } = useTheme();
 
   React.useEffect(() => {
     if (forceDark) {

@@ -15,7 +15,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   AiWorkforceRecommendation,
-  AiRecommendationType,
   AiRecommendationPriority,
   AiRecommendationStatus,
 } from '@/lib/types';

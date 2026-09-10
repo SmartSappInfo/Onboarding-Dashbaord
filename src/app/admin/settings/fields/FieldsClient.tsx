@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
@@ -63,7 +62,7 @@ const COMMON_GROUP_ICONS = [
   'Monitor', 'Smartphone', 'Mail', 'Calendar', 'BriefcaseMedical', 'ShieldAlert'
 ];
 
-const SCOPE_OPTIONS = [
+const _SCOPE_OPTIONS = [
   { value: 'common', label: 'Common (All)' },
   { value: 'institution', label: 'Institution/Company' },
   { value: 'family', label: 'Family' },
@@ -264,7 +263,7 @@ function SortableGroupAccordionItem({
 
 export default function FieldsClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId, activeOrganizationId, isSuperAdmin } = useTenant();
+  const { activeWorkspaceId, activeOrganizationId, isSuperAdmin: _isSuperAdmin } = useTenant();
   const { user } = useUser();
   const { toast } = useToast();
 
@@ -1140,7 +1139,7 @@ export default function FieldsClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Group?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the "{deletingGroup?.name}" group? Any fields inside it will be moved to a default system group.
+              Are you sure you want to delete the &quot;{deletingGroup?.name}&quot; group? Any fields inside it will be moved to a default system group.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1155,7 +1154,7 @@ export default function FieldsClient() {
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Field?</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete the "{deletingField?.label}" field? This variable will stop resolving in templates.
+              Are you sure you want to delete the &quot;{deletingField?.label}&quot; field? This variable will stop resolving in templates.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

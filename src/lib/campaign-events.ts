@@ -105,7 +105,7 @@ export async function logCampaignEventToTimeline(params: {
  */
 
 /** Map of campaign engagement cohorts to automation triggers */
-const COHORT_TRIGGER_MAP: Record<string, AutomationTrigger> = {
+const _COHORT_TRIGGER_MAP: Record<string, AutomationTrigger> = {
   delivered: 'CAMPAIGN_DELIVERED',
   failed: 'CAMPAIGN_FAILED',
   not_delivered: 'CAMPAIGN_NOT_DELIVERED',

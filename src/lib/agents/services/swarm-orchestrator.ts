@@ -29,7 +29,6 @@ import type {
   SwarmMissionRequest,
   SwarmRun,
   SwarmConsensus,
-  DomainSpecialistId,
 } from '../domain-types';
 import type {
   AgentRequest,

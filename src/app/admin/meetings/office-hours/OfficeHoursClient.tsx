@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -13,12 +13,9 @@ import {
   Copy,
   Check,
   ExternalLink,
-  Play,
   Clock,
   Radio,
   CheckCircle2,
-  AlertCircle,
-  PhoneCall,
   UserCheck,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -276,7 +273,7 @@ export function OfficeHoursClient() {
                         <p className="text-[11px] text-muted-foreground">{entry.visitorEmail}</p>
                         {entry.topic && (
                           <p className="text-xs text-primary font-medium italic pt-0.5">
-                            "{entry.topic}"
+                            &quot;{entry.topic}&quot;
                           </p>
                         )}
                         <p className="text-[10px] text-muted-foreground">

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useParams } from 'next/navigation';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, updateDoc } from 'firebase/firestore';
 import { useCollection, useMemoFirebase, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
@@ -13,7 +13,7 @@ import { resendFacilitatorLinksAction } from '@/app/actions/meeting-facilitator-
 import { getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -21,7 +21,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { 
   Users, 
-  Plus, 
   Camera, 
   Pencil, 
   Check, 
@@ -34,7 +33,6 @@ import {
   MoreHorizontal,
   Mail,
   Smartphone,
-  Info,
   Loader2
 } from 'lucide-react';
 import { 
@@ -58,7 +56,7 @@ export default function MeetingFacilitatorsPage() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const params = useParams();
-  const meetingId = params.id as string;
+  const _meetingId = params.id as string;
 
   const { meeting, meetingDocRef } = useMeetingContext();
 
@@ -78,7 +76,7 @@ export default function MeetingFacilitatorsPage() {
     );
   }, [firestore, activeOrganizationId]);
 
-  const { data: teamUsers, isLoading: isLoadingUsers } = useCollection<any>(usersQuery);
+  const { data: teamUsers, isLoading: _isLoadingUsers } = useCollection<any>(usersQuery);
 
   // Derived: Available team members not yet added
   const availableTeamUsers = React.useMemo(() => {

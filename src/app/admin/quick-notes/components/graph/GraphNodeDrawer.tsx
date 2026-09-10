@@ -8,7 +8,6 @@ import {
   Focus,
   Plus,
   Sparkles,
-  Link2,
   Trash2,
   ArrowRight,
   ArrowLeft,
@@ -19,13 +18,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   getNodeTypeColor,
-  getRelationDisplayLabel,
   getRelationEdgeColor,
 } from '@/lib/quick-notes-domain';
 import type {
   GraphNode,
   GraphEdge,
-  KnowledgeRelation,
 } from '@/lib/quick-notes-types';
 
 interface GraphNodeDrawerProps {
@@ -183,7 +180,7 @@ export function GraphNodeDrawer({
             <div className="space-y-2">
               {outgoingEdges.map((edge) => {
                 const targetNode = nodesMap.get(edge.target);
-                const targetColor = targetNode ? getNodeTypeColor(targetNode.type) : null;
+                const _targetColor = targetNode ? getNodeTypeColor(targetNode.type) : null;
 
                 return (
                   <div

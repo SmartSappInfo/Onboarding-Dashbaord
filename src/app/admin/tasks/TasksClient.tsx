@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Task, UserProfile, School, TaskPriority, TaskCategory, TaskStatus, WorkspaceEntity } from '@/lib/types';
+import type { Task, UserProfile, TaskPriority, TaskCategory, TaskStatus } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { format, isToday, isPast, differenceInCalendarDays, addDays, startOfWeek, endOfWeek, endOfMonth, addMonths, addWeeks, startOfDay, endOfDay } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
@@ -14,56 +14,35 @@ import {
     Clock, 
     AlertTriangle, 
     ShieldAlert, 
-    Building2, 
     Phone, 
     MapPin, 
     FileText, 
     GraduationCap,
-    MoreHorizontal,
     MoreVertical,
     Trash2,
     Calendar,
-    Plus,
-    Loader2,
     Search,
     Pencil,
-    ArrowRight,
     X,
     CheckSquare,
     ListChecks,
     Zap,
     Layers,
-    Bell,
     User as UserIcon,
-    ShieldCheck,
-    Square,
     MessageSquare,
     Paperclip,
-    Filter,
-    ArrowUpDown,
     EyeOff,
     ChevronDown,
     ChevronLeft,
     ChevronRight,
     Target,
-    TrendingUp,
     LayoutList
 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-    completeTaskNonBlocking, 
-    deleteTaskNonBlocking, 
-    updateTaskNonBlocking,
-    createTaskNonBlocking,
-    bulkCompleteTasks,
-    getTaskInterlinkUrl
-} from '@/lib/task-actions';
 import { 
     createTaskAction, 
     updateTaskAction, 
@@ -99,15 +78,12 @@ import TaskBoard from './components/TaskBoard';
 import TaskCalendar from './components/TaskCalendar';
 import { getProgressValue } from './components/task-utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import Link from 'next/link';
 import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
@@ -125,7 +101,7 @@ const PRIORITY_CONFIG: Record<TaskPriority, { label: string, color: string, icon
     low: { label: 'Low', color: 'text-slate-500 bg-muted/100/10 border-slate-200/20', icon: Circle }
 };
 
-const CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: string }> = {
+const _CATEGORY_MAP: Record<TaskCategory, { label: string, icon: any, color: string }> = {
     call: { label: 'Phone Call', icon: Phone, color: 'text-orange-500 bg-orange-500/10' },
     visit: { label: 'Site Visit', icon: MapPin, color: 'text-blue-500 bg-blue-500/10' },
     document: { label: 'Documentation', icon: FileText, color: 'text-emerald-500 bg-emerald-500/10' },
@@ -162,7 +138,7 @@ export default function TasksClient() {
     const [statusFilter, setStatusFilter] = React.useState<string>('all');
     const [priorityFilter, setPriorityFilter] = React.useState<string>('all');
     const [searchTerm, setSearchTerm] = React.useState('');
-    const [smartFilter, setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
+    const [smartFilter, _setSmartFilter] = React.useState<'none' | 'today' | 'overdue'>('none');
     const [isSimpleView, setIsSimpleView] = React.useState(true);
 
     // Date Interval Filter States
@@ -639,7 +615,7 @@ export default function TasksClient() {
         }
     };
 
-    const handleQuickCategorySelect = (category: TaskCategory) => {
+    const _handleQuickCategorySelect = (category: TaskCategory) => {
         setEditingTask({
             id: '',
             title: `Process ${category} protocol`,
@@ -1714,7 +1690,7 @@ export default function TasksClient() {
                         <div className="space-y-2">
                             <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Resolve Task?</AlertDialogTitle>
                             <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming execution of <span className="font-bold text-foreground">"{taskToComplete?.title}"</span>. This will move the record to the archive.
+                                Confirming execution of <span className="font-bold text-foreground">&quot;{taskToComplete?.title}&quot;</span>. This will move the record to the archive.
                             </AlertDialogDescription>
                         </div>
                     </div>
@@ -1737,7 +1713,7 @@ export default function TasksClient() {
                         <div className="space-y-2">
                             <AlertDialogTitle className="text-2xl font-semibold tracking-tight">Delete Task?</AlertDialogTitle>
                             <AlertDialogDescription className="text-sm font-medium text-muted-foreground px-4">
-                                Confirming permanent deletion of <span className="font-bold text-foreground">"{taskToDelete?.title}"</span>. This action cannot be undone.
+                                Confirming permanent deletion of <span className="font-bold text-foreground">&quot;{taskToDelete?.title}&quot;</span>. This action cannot be undone.
                             </AlertDialogDescription>
                         </div>
                     </div>

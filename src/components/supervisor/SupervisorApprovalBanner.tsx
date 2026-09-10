@@ -23,7 +23,6 @@ import {
   XCircle,
   Loader2,
   Wrench,
-  AlertTriangle,
 } from 'lucide-react';
 import type { SupervisorPlanStep } from '@/lib/supervisor/types';
 
@@ -37,7 +36,7 @@ export interface SupervisorApprovalBannerProps {
 
 export function SupervisorApprovalBanner({
   pausedStep,
-  pendingApprovalId,
+  pendingApprovalId: _pendingApprovalId,
   onApprove,
   onCancel,
   isAdjudicating,

@@ -23,7 +23,6 @@ import {
   XCircle,
   Loader2,
   Clock,
-  ExternalLink,
 } from 'lucide-react';
 import type { WorkflowRun, WorkflowStepResult } from '@/lib/workflows/types';
 

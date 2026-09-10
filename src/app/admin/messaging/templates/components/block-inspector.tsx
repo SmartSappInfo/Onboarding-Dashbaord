@@ -8,28 +8,16 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { 
-    Bold, 
-    Italic, 
-    Underline, 
     AlignLeft, 
     AlignCenter, 
     AlignRight, 
     AlignJustify,
     Type,
-    List as ListIcon,
-    ListOrdered,
     Link as LinkIcon,
-    FileText,
-    Settings,
     ChevronDown,
-    Plus,
     Palette,
     Layers,
-    Database,
-    Zap,
     X,
     Code2
 } from 'lucide-react';
@@ -1216,7 +1204,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                 )}
 
                                 <div className="space-y-2 border-t border-slate-100/50 pt-3">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Going" Button Label</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">&quot;Going&quot; Button Label</Label>
                                     <SlashInput 
                                         value={block.goingLabel || 'Going'} 
                                         onChange={val => onUpdate({ goingLabel: val })} 
@@ -1226,7 +1214,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Later" Button Label</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">&quot;Later&quot; Button Label</Label>
                                     <SlashInput 
                                         value={block.laterLabel || 'Later'} 
                                         onChange={val => onUpdate({ laterLabel: val })} 
@@ -1236,7 +1224,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">"Not Going" Button Label</Label>
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">&quot;Not Going&quot; Button Label</Label>
                                     <SlashInput 
                                         value={block.declinedLabel || 'Not Going'} 
                                         onChange={val => onUpdate({ declinedLabel: val })} 

@@ -42,7 +42,7 @@ export async function resolveContactClient(
         limit(1)
       );
       
-      const weSnapshot = await getDocs(weQuery);
+      const _weSnapshot = await getDocs(weQuery);
       
       return {
         id: entityDoc.id,

@@ -8,7 +8,7 @@ import type { Node, Edge } from 'reactflow';
  */
 export function getPrimarySourceHandle(
   type: string | undefined,
-  data: Record<string, unknown>
+  _data: Record<string, unknown>
 ): string | null {
   if (type === 'question') {
     return 'option-0';

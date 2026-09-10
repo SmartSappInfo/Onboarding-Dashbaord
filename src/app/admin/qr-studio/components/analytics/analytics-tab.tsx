@@ -11,19 +11,7 @@
 
 import * as React from 'react';
 import {
-  BarChart3,
-  TrendingUp,
-  Users,
-  Smartphone,
-  Globe,
-  Loader2,
-  Calendar,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
   Activity,
-  Download,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -36,7 +24,7 @@ interface AnalyticsTabProps {
 }
 
 export default function AnalyticsTab({ qrCodes }: AnalyticsTabProps) {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const [timeframe, setTimeframe] = React.useState<'7d' | '30d' | '90d' | 'all'>('7d');
 
   const totalScans = React.useMemo(
@@ -176,7 +164,7 @@ export default function AnalyticsTab({ qrCodes }: AnalyticsTabProps) {
             {topQRs.length === 0 ? (
               <p className="text-xs text-muted-foreground py-8 text-center">No recent scan events.</p>
             ) : (
-              topQRs.map((qr, i) => (
+              topQRs.map((qr, _i) => (
                 <div
                   key={qr.id}
                   className="flex items-center justify-between p-2.5 rounded-xl border border-border bg-muted/20 text-xs"

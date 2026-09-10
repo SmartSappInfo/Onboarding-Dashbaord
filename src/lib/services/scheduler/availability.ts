@@ -17,7 +17,7 @@ interface InternalBusyInterval {
  * Normalizes a date-time to a specific IANA timezone offset for local calculations,
  * without using the Temporal API if not available.
  */
-function getLocalDateInTimezone(date: Date, timezone: string): string {
+function _getLocalDateInTimezone(date: Date, timezone: string): string {
   const formatter = new Intl.DateTimeFormat('en-US', {
     timeZone: timezone,
     year: 'numeric',

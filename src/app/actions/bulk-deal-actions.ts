@@ -2,7 +2,6 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { Deal, Pipeline, WorkspaceEntity, DealFocalContact } from '@/lib/types';
-import { FieldValue } from 'firebase-admin/firestore';
 import { calculateExpectedCloseDate } from '../admin/pipeline/utils/deal-expected-close';
 
 export interface BulkDealCreationData {

@@ -35,8 +35,6 @@ import {
   Plus,
   Trash2,
   AlertTriangle,
-  CheckCircle2,
-  RefreshCw,
   Loader2,
   Scan,
 } from 'lucide-react';
@@ -61,7 +59,7 @@ export function SoDRulesManager({ roles }: SoDRulesManagerProps) {
 
   const [rules, setRules] = React.useState<SeparationOfDutyRule[]>([]);
   const [conflicts, setConflicts] = React.useState<SoDConflict[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [_isLoading, setIsLoading] = React.useState(false);
   const [isScanning, setIsScanning] = React.useState(false);
 
   // Modal State

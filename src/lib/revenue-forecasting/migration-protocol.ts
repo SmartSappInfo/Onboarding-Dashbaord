@@ -17,7 +17,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   RevenueForecastingGovernance,
-  RevenueAttributionRecord,
   AttributionTouchpoint,
   ForecastDealItem,
   TargetAttainmentPacing,

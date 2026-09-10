@@ -1,6 +1,6 @@
 'use client';
 
-import * as React from 'react';
+import * as _React from 'react';
 import { collection, query, where, orderBy, doc, addDoc, updateDoc, deleteDoc, getDocs, writeBatch } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MessageCampaign, CampaignStatus } from '@/lib/types';

@@ -18,10 +18,7 @@ import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
   Sparkles,
-  RefreshCw,
-  Shield,
   Users,
-  Briefcase,
   Loader2,
 } from 'lucide-react';
 import Link from 'next/link';

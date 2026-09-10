@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -22,11 +22,9 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   ListOrdered,
   CheckCircle2,
-  Circle,
   Clock,
   ExternalLink,
   Award,
-  Sparkles,
   Loader2,
 } from 'lucide-react';
 

@@ -128,7 +128,7 @@ export function safeDecodeURI(str: string): string {
   if (!str) return '';
   try {
     return decodeURIComponent(str);
-  } catch (e) {
+  } catch (_e) {
     console.error(`[safeDecodeURI] Failed to decode string: "${str}"`);
     return str;
   }

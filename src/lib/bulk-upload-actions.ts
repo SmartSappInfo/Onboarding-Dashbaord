@@ -9,7 +9,6 @@ import type { DuplicateStrategy } from './import-types';
 import { IngestionDeduplicator } from './services/IngestionDeduplicator';
 import { after } from 'next/server';
 import type { EntityContact, Workspace } from './types';
-import { revalidatePath } from 'next/cache';
 import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
 import { resolveFieldStorageBucket } from './field-storage-utils';
 import { cleanBatch, cleanValueByKey, type CleaningStats } from './import-data-cleaner';
@@ -17,7 +16,7 @@ import { UNASSIGNED_ZONE } from './zone-constants';
 import { evaluateFormula } from './formula-parser';
 import { buildTagDocument } from './tag-schemas';
 import { getBaseUrl } from './utils/url-helpers';
-import { isDealImportConfig, type DealImportConfig, type IngestBatchOptions, type NotificationConfig } from './import-types';
+import { isDealImportConfig, type IngestBatchOptions, type NotificationConfig } from './import-types';
 import { buildDealDocument, resolveDealName } from './deal-writer';
 import { calculateExpectedCloseDate } from '../app/admin/pipeline/utils/deal-expected-close';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
@@ -748,7 +747,7 @@ async function processRow(
     const slug = name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
     const companyValue = getValue('company');
     const sourceForInitials = companyValue ? String(companyValue).trim() : name;
-    const _initials = getValue('initials') || sourceForInitials.split(' ').map(w => w[0]).join('').toUpperCase();
+    const initials = getValue('initials') || sourceForInitials.split(' ').map(w => w[0]).join('').toUpperCase();
 
     // Fuzzy matching Locations
     const selectedRegion = fuzzyMatch(context.regions, String(getValue('locationRegion') || ''));

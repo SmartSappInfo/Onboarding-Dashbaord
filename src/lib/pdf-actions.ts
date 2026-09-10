@@ -4,7 +4,7 @@ import { adminDb, adminStorage } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
 import { logActivity } from './activity-logger';
 import { resolveContact } from './contact-adapter';
-import type { PDFForm, PDFFormField, School, Contract, Submission } from './types';
+import type { PDFForm, School } from './types';
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 import { toTitleCase } from './utils';
 import { sendMessage } from './messaging-engine';
@@ -200,7 +200,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                     });
                 }
             }
-        } catch (err) {}
+        } catch (_err) {}
     }
 
     return await pdfDoc.save();
@@ -367,7 +367,7 @@ export async function finalizeAgreementAction(
                         filename: `${pdfData.name}-Executed.pdf`,
                         type: 'application/pdf'
                     });
-                } catch (err) {}
+                } catch (_err) {}
 
                 const baseUrl = getBaseUrl();
                 const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
@@ -565,7 +565,7 @@ export async function savePdfForm(pdfId: string, data: Partial<PDFForm>) {
     return { success: true };
 }
 
-export async function updatePdfFormStatus(pdfId: string, status: string, userId: string) {
+export async function updatePdfFormStatus(pdfId: string, status: string, _userId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 
@@ -578,17 +578,17 @@ export async function updatePdfFormStatus(pdfId: string, status: string, userId:
     return { success: true };
 }
 
-export async function deletePdfForm(pdfId: string, storagePath: string, userId: string) {
+export async function deletePdfForm(pdfId: string, storagePath: string, _userId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 
     await adminDb.collection('pdfs').doc(pdfId).delete();
-    try { if (storagePath) await adminStorage.file(storagePath).delete(); } catch (e) {}
+    try { if (storagePath) await adminStorage.file(storagePath).delete(); } catch (_e) {}
     revalidatePath('/admin/pdfs');
     return { success: true };
 }
 
-export async function deleteSubmissions(pdfId: string, submissionIds: string[], userId: string) {
+export async function deleteSubmissions(pdfId: string, submissionIds: string[], _userId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 

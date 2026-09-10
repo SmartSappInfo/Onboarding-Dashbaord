@@ -300,7 +300,7 @@ async function resolvePageSerialAndType(urlStr: string): Promise<{ pageSerial: n
         }
       }
     }
-  } catch (err) {
+  } catch (_err) {
     // URL parsing failed or Firestore query failed
   }
   return null;

@@ -19,7 +19,6 @@ import { useFirestore } from '@/lib/firestore-context';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type {
   CopilotPersonaType,
-  DerivativeType,
   MediaDerivative,
   CopilotSession,
 } from '@/lib/types/media-2.0';
@@ -32,7 +31,6 @@ import {
   deleteDerivativeAction,
   exportDerivativeAction,
 } from '@/lib/media/repurposing-service';
-import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -50,16 +48,8 @@ import {
   Copy,
   Check,
   Download,
-  Trash2,
   Search,
   RefreshCw,
-  FileText,
-  Mail,
-  Share2,
-  Scissors,
-  Quote,
-  Briefcase,
-  Sliders,
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
@@ -131,7 +121,7 @@ export default function MediaCopilotStudioPage() {
   const [selectedDerivativeFilter, setSelectedDerivativeFilter] = React.useState<string>('ALL');
   const [derivativeSearch, setDerivativeSearch] = React.useState('');
   const [activeDerivative, setActiveDerivative] = React.useState<MediaDerivative | null>(null);
-  const [isLoadingDerivatives, setIsLoadingDerivatives] = React.useState(true);
+  const [_isLoadingDerivatives, setIsLoadingDerivatives] = React.useState(true);
 
   // Mobile View Switcher (Chat vs Derivatives)
   const [mobileTab, setMobileTab] = React.useState<'chat' | 'derivatives'>('chat');

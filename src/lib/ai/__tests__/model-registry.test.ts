@@ -13,9 +13,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   AiModelRegistry,
-  ACTIVE_AI_MODELS,
-  AI_PROVIDERS_CONFIG,
-  type AiModelDefinition,
 } from '../model-registry';
 import { WorkspaceAiService } from '../services/workspace-ai-service';
 

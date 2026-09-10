@@ -8,7 +8,6 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Entity, SaaSInstitutionData, InstitutionData } from '@/lib/types';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -176,7 +175,7 @@ export async function enrichSchoolsWithSaaSIndustry(): Promise<IndustryMigration
             if (pkgDoc.exists) {
               planType = pkgDoc.data()?.name || 'Standard';
             }
-          } catch (err) {
+          } catch (_err) {
             console.warn(`⚠️ Could not fetch subscription package for entity ${entityId}`);
           }
         }

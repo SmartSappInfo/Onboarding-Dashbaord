@@ -44,8 +44,6 @@ import {
   Sliders, 
   Users, 
   Send, 
-  BarChart3, 
-  CheckCircle2, 
   ArrowLeft, 
   ArrowRight,
   Loader2
@@ -91,7 +89,7 @@ export const ProspectingCampaignWizardModal: React.FC<ProspectingCampaignWizardM
   const [campaignName, setCampaignName] = useState('Q4 Educational Acquisition');
   const [targetRegion, setTargetRegion] = useState('Greater Accra, Ghana');
   const [targetIndustry, setTargetIndustry] = useState('Private K-12 Schools');
-  const [minRating, setMinRating] = useState(4.0);
+  const [minRating, _setMinRating] = useState(4.0);
 
   const [sourceType, setSourceType] = useState<'places' | 'list' | 'all_discovered'>('places');
   const [sourceListId, setSourceListId] = useState<string>('');
@@ -106,7 +104,7 @@ export const ProspectingCampaignWizardModal: React.FC<ProspectingCampaignWizardM
   const [assignmentType, setAssignmentType] = useState<'round_robin' | 'specific_rep' | 'unassigned'>('round_robin');
   const [createDeals, setCreateDeals] = useState(true);
   const [enrollInCadence, setEnrollInCadence] = useState(true);
-  const [channel, setChannel] = useState<'email' | 'whatsapp' | 'call_script'>('email');
+  const [channel, _setChannel] = useState<'email' | 'whatsapp' | 'call_script'>('email');
 
   const handleNext = () => {
     if (currentStep < 8) setCurrentStep(currentStep + 1);

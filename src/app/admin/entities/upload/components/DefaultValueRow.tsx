@@ -40,9 +40,9 @@ export const DefaultValueRow = React.memo(({
     districtsList,
     packagesList,
     modulesList,
-    workspaceStatuses = [],
+    workspaceStatuses: _workspaceStatuses = [],
     parentRegionValue,
-    customLeadSources,
+    customLeadSources: _customLeadSources,
     appFieldsList
 }: DefaultValueRowProps) => {
     const firestore = useFirestore();

@@ -17,7 +17,6 @@ import type {
   XApiStatement,
   CreateCertificateTemplateInput,
   IssueCertificateInput,
-  CertificateStatus,
   BadgeCriteriaType,
 } from '@/lib/types/credentials';
 

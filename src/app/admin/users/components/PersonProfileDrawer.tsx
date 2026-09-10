@@ -27,7 +27,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
 import {
   Dialog,
   DialogContent,
@@ -56,19 +55,16 @@ import {
   Clock,
   Ban,
   Lock,
-  Layers,
   Star,
   Loader2,
   Save,
-  RotateCcw,
   Copy,
   HelpCircle,
   ArrowRightLeft,
 } from 'lucide-react';
-import type { UserProfile, Role, Workspace, PersonDetailView, MembershipStatus, CrmWorkloadSummary, MemberRiskScore } from '@/lib/types';
+import type { UserProfile, Role, Workspace, PersonDetailView, CrmWorkloadSummary, MemberRiskScore } from '@/lib/types';
 import {
   updatePersonProfileAction,
-  updateMembershipStatusAction,
 } from '@/app/actions/identity-actions';
 import { adminResetUserPasswordAction } from '@/lib/user-invite-actions';
 import { AccessExplainerModal } from '@/app/admin/users/roles/components/AccessExplainerModal';

@@ -21,7 +21,7 @@ import { AutonomousObservationEngine } from '../services/autonomous-observation-
 import { SelfHealingEngine } from '../services/self-healing-engine';
 import { EnterpriseComplianceEngine } from '../services/enterprise-compliance-engine';
 import { WorkflowEngine } from '@/lib/workflows/services/workflow-engine';
-import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
+import { requireAuth } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {

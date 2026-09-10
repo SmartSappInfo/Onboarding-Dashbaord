@@ -1,6 +1,6 @@
 import { revalidatePath } from 'next/cache';
 import { after } from 'next/server';
-import type { Automation, EntityContact, Entity, AutomationJob } from '../types';
+import type { Automation, EntityContact, AutomationJob } from '../types';
 import { serializeBlueprint } from '../automation-blueprint';
 import { validateAutomationBlueprint } from '../automation-validation';
 import { assertAutomationManagePermission } from '../automation-permissions';

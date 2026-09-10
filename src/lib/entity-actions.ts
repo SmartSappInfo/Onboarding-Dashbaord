@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
-import type { School, OnboardingStage, EntityType, EntityContact, IndustryVertical, Tag } from './types';
+import type { EntityType, EntityContact, Tag } from './types';
 import crypto from 'crypto';
 import {
   enforceContactConstraints,
@@ -232,7 +232,7 @@ export async function createEntityAction(
       if (orgSnap.exists) {
         defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
       }
-    } catch (err) {}
+    } catch (_err) {}
 
     const timestamp = new Date().toISOString();
     const entityId = `entity_${crypto.randomUUID()}`;
@@ -496,7 +496,7 @@ export async function createEntityAction(
           defaultCountry: defaultCountryCode,
           context: 'create',
         }));
-      } catch (err) {
+      } catch (_err) {
         console.warn('[autoVerify] next/server after() was called outside Next.js request context (likely in test). Skipping.');
       }
     }
@@ -554,7 +554,7 @@ export async function updateEntityAction(
 
     // 2. FER-01: Convert incoming contacts to EntityContact format if contacts are provided
     let entityContacts: EntityContact[] | undefined;
-    let legacyContacts: any[] | undefined;
+    let _legacyContacts: any[] | undefined;
 
     if (data.contacts || data.entityContacts) {
       const rawContacts: EntityContact[] = (data.entityContacts || data.contacts || []).map(
@@ -821,7 +821,7 @@ export async function updateEntityAction(
             context: 'update',
           });
         });
-      } catch (err) {
+      } catch (_err) {
         console.warn('[autoVerify] next/server after() was called outside Next.js request context (likely in test). Skipping.');
       }
     }
@@ -836,7 +836,7 @@ export async function updateEntityAction(
           console.error('[fieldChangedTrigger] Background evaluation failed:', getErrorMessage(err));
         }
       });
-    } catch (err) {
+    } catch (_err) {
       // fallback if after() is called outside request context
       await checkEntityFieldChangedTrigger(entityId, oldEntityData, data, workspaceId, organizationId).catch(() => {});
     }

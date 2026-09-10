@@ -18,11 +18,7 @@ import { adminDb } from '@/lib/firebase-admin';
 import type {
   Survey,
   SurveyElement,
-  SurveyQuestion,
   SurveyCrmConfig,
-  SurveyCrmFieldMapping,
-  SurveyCrmTaskRule,
-  SurveyCrmDealRule,
   SurveyCrmFieldDefinition,
   SurveyActivityTimelinePayload,
   SystemCrmFieldMappingTemplate,

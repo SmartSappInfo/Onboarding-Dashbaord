@@ -79,7 +79,7 @@ export function useViewerGestures({
   }, []);
 
   // Double-tap zoom toggle (1x <-> 2x)
-  const handleDoubleTap = useCallback((clientX: number, clientY: number) => {
+  const handleDoubleTap = useCallback((_clientX: number, _clientY: number) => {
     if (zoomScale > 1.05) {
       resetZoom();
     } else {

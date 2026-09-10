@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import * as React from 'react';
 import { renderHtmlWithVariablePills } from '../visual-block';
 import { render } from '@testing-library/react';
-import { convertToVisualHtml, convertToCleanHtml, cleanContainerHtml, SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
+import { convertToVisualHtml, convertToCleanHtml, SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { sanitizeBlocksContainerHtml } from '../template-workshop';
 import { renderBlocksToHtml } from '@/lib/messaging-utils';
 import type { MessageBlock } from '@/lib/types';

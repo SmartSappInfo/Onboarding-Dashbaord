@@ -42,8 +42,6 @@ import { ScriptPlaybookView } from '../../scripts/components/ScriptPlaybookView'
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { getActionMeta } from '@/lib/call-action-types';
-import { Textarea } from '@/components/ui/textarea';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import dynamic from 'next/dynamic';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -149,14 +147,14 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
     return query(collection(firestore, 'onboardingStages'), where('workspaceId', '==', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
   const { data: stagesData } = useCollection<{ id: string; name: string }>(stagesQuery);
-  const stages = stagesData || [];
+  const _stages = stagesData || [];
 
   const templatesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
     return query(collection(firestore, 'message_templates'), where('workspaceIds', 'array-contains', activeWorkspaceId));
   }, [firestore, activeWorkspaceId]);
   const { data: templatesData } = useCollection<MessageTemplate>(templatesQuery);
-  const templates = templatesData || [];
+  const _templates = templatesData || [];
 
   const meetingsQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -166,7 +164,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
   const meetings = meetingsData || [];
 
   const { data: workspaceUsersData } = useWorkspaceUsers(activeWorkspaceId);
-  const workspaceUsers = workspaceUsersData || [];
+  const _workspaceUsers = workspaceUsersData || [];
 
   // ─── Fetch Edit Campaign ───────────────────────────────────────────────────
 

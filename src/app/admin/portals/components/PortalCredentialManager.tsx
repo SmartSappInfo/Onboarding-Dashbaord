@@ -8,7 +8,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -42,18 +42,15 @@ import type {
 } from '@/lib/types/credentials';
 import {
   Award,
-  ShieldCheck,
   Medal,
   Activity,
   Plus,
   Copy,
   ExternalLink,
   Ban,
-  CheckCircle2,
   AlertTriangle,
   Loader2,
   Layers,
-  Sparkles,
   FileCheck,
 } from 'lucide-react';
 
@@ -83,7 +80,7 @@ export function PortalCredentialManager({
 
   // Issued Certificates State
   const [issuedCerts, setIssuedCerts] = React.useState<IssuedCertificate[]>([]);
-  const [isLoadingCerts, setIsLoadingCerts] = React.useState(false);
+  const [_isLoadingCerts, setIsLoadingCerts] = React.useState(false);
   const [revokeCertId, setRevokeCertId] = React.useState<string | null>(null);
   const [revokeReason, setRevokeReason] = React.useState('');
   const [isRevoking, setIsRevoking] = React.useState(false);
@@ -95,8 +92,8 @@ export function PortalCredentialManager({
   const [badgeDescription, setBadgeDescription] = React.useState('');
   const [badgeIcon, setBadgeIcon] = React.useState('🏅');
   const [badgeCriteria, setBadgeCriteria] = React.useState<BadgeCriteriaType>('course_completion');
-  const [badgeThreshold, setBadgeThreshold] = React.useState(1);
-  const [badgePoints, setBadgePoints] = React.useState(100);
+  const [badgeThreshold, _setBadgeThreshold] = React.useState(1);
+  const [badgePoints, _setBadgePoints] = React.useState(100);
   const [isSavingBadge, setIsSavingBadge] = React.useState(false);
 
   // xAPI Statements State

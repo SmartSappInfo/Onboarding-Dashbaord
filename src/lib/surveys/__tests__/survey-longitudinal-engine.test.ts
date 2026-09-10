@@ -144,7 +144,7 @@ vi.mock('@/lib/firebase-admin', () => ({
               id: sId,
               data: () => (sId === 's_wave_1' ? mockSurvey1 : mockSurvey2),
             }),
-            collection: (subCol: string) => ({
+            collection: (_subCol: string) => ({
               get: vi.fn().mockResolvedValue({
                 forEach: (cb: (doc: { id: string; data: () => unknown }) => void) => {
                   const items = surveyResponsesMap[sId || ''] || [];

@@ -20,7 +20,7 @@ vi.mock('@/components/ui/sidebar', () => ({
   SidebarGroupLabel: ({ children }: any) => <div data-testid="sidebar-group-label">{children}</div>,
   SidebarMenu: ({ children }: any) => <ul data-testid="sidebar-menu">{children}</ul>,
   SidebarMenuItem: ({ children }: any) => <li data-testid="sidebar-menu-item">{children}</li>,
-  SidebarMenuButton: ({ children, isActive, tooltip, asChild }: any) => (
+  SidebarMenuButton: ({ children, isActive, tooltip, _asChild }: any) => (
     <div data-testid="sidebar-menu-button" data-active={isActive} data-tooltip={tooltip}>
       {children}
     </div>
@@ -364,7 +364,7 @@ describe('AppSidebar', () => {
           name: 'Pipeline',
           stages: [],
         },
-        sidebarItems: expectedItems.map((label, index) => ({
+        sidebarItems: expectedItems.map((label, _index) => ({
           key: label.toLowerCase(),
           label,
           icon: 'Building2',

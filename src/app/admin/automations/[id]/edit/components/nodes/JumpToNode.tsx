@@ -10,9 +10,6 @@ import { cn } from '@/lib/utils';
 import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge, type ExecutionStatus } from './ExecutionOverlay';
 import { Badge } from '@/components/ui/badge';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface JumpToNodeConfig {
     groups?: Record<string, unknown>[];
@@ -53,7 +50,7 @@ interface JumpToNodeProps {
  */
 export function JumpToNode({ id, data, selected }: JumpToNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
-    const params = useParams();
+    const _params = useParams();
     const { countsBySourceNodeId } = usePendingJobs();
     const waitingCount = countsBySourceNodeId[id] || 0;
     const isWaitBehavior = data.config?.sequentialBehavior === 'wait';

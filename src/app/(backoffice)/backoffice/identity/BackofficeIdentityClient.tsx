@@ -19,16 +19,10 @@ import {
   Shield,
   Building2,
   RefreshCw,
-  AlertTriangle,
   CheckCircle2,
-  Lock,
-  Layers,
-  Sparkles,
   Loader2,
   Search,
-  ExternalLink,
   Ban,
-  Clock,
   Grid3X3,
   ShieldAlert,
   Mail,
@@ -65,7 +59,7 @@ export function BackofficeIdentityClient() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { user: authUser } = useUser();
-  const { isSuperAdmin } = useBackoffice();
+  const { isSuperAdmin: _isSuperAdmin } = useBackoffice();
 
   const [activeTab, setActiveTab] = React.useState<'people' | 'roles' | 'invitations'>('people');
   const [organizations, setOrganizations] = React.useState<Organization[]>([]);
@@ -248,7 +242,7 @@ export function BackofficeIdentityClient() {
   };
 
   // Revoke invitation
-  const handleRevokeInvite = async (invId: string, email: string) => {
+  const handleRevokeInvite = async (invId: string, _email: string) => {
     if (!authUser || !selectedOrgId) return;
     try {
       const idToken = await authUser.getIdToken();

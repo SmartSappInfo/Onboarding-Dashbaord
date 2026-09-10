@@ -16,19 +16,15 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ShieldCheck,
-  AlertTriangle,
   RotateCw,
   CheckCircle2,
   Wrench,
-  Sparkles,
   Building2,
-  Calendar,
-  Users,
 } from 'lucide-react';
 import type {
   AiCrmHygieneIssue,

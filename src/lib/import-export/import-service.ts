@@ -6,7 +6,7 @@
  */
 
 import { parse } from 'csv-parse/sync';
-import type { Entity, EntityType, ContactScope, Workspace } from '../types';
+import type { Entity, EntityType, Workspace } from '../types';
 import { validateScopeMatch } from '../scope-guard';
 import type { InstitutionImportRow } from './institution-template';
 import type { FamilyImportRow } from './family-template';
@@ -168,9 +168,9 @@ export function validateImportRow(
  * Requirement 20: Idempotent import
  */
 export async function checkEntityExists(
-  name: string,
-  organizationId: string,
-  entityType: EntityType
+  _name: string,
+  _organizationId: string,
+  _entityType: EntityType
 ): Promise<string | null> {
   // This would query Firestore to check if entity exists
   // Returns entityId if found, null otherwise

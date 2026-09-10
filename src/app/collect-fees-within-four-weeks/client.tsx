@@ -18,14 +18,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
-import { Phone, Play, Loader2 } from 'lucide-react';
+import { Play, Loader2 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import AnimatedHeroShapes from '@/components/animated-hero-shapes';
 import { SmartSappLogo as Logo } from '@/components/icons';
 import assetsJson from './assets.json';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
-import type { PageEventChannel } from '@/lib/types';
 
 // ─── Assets (uploaded to Firebase Storage from the Kartra page backup) ────────
 
@@ -38,7 +37,7 @@ type AssetKey =
 
 const ASSETS = assetsJson as Record<AssetKey, string>;
 
-const TRIAL_URL = 'https://smartsapp.com/features/automatic-fee-collection/';
+const _TRIAL_URL = 'https://smartsapp.com/features/automatic-fee-collection/';
 const OFFER_END = new Date('2026-07-31T00:00:00');
 
 // ─── Video player — poster with play overlay, swaps to native video ──────────

@@ -6,12 +6,10 @@ import { doc, collection, query, where, orderBy, updateDoc, addDoc } from 'fireb
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Form, FormFieldInstance, AppField, FieldGroup, FormThemeConfig, FormSubmissionActions, SeoConfig, UserProfile, FormEntityCaptureSettings } from '@/lib/types';
-import type { FormFieldDef } from '@/components/page-builder/embeds/FormView';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
-import { FormNotificationSettings } from '../../components/form-notification-settings';
 import SaveStatusIndicator, { type SaveStatus } from './components/SaveStatusIndicator';
 import { updateFormAction } from '@/lib/forms-actions';
 import { publishFormVersionAction } from '@/lib/forms-version-actions';
@@ -20,13 +18,12 @@ import { useFormHistory } from '@/hooks/use-form-history';
 import FieldsSidebar, { SYSTEM_CONSTANT_FIELDS } from './components/FieldsSidebar';
 import PropertiesSidebar from './components/PropertiesSidebar';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { TagSelector } from '@/components/tags/TagSelector';
 import { createTagAction } from '@/lib/tag-actions';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { LinkPicker } from '@/app/admin/messaging/templates/components/link-picker';
 import { normalizeSuccessBehavior, normalizeFormEntityCapture } from '@/lib/tracking-utils';
-import { PlusCircle, Search as SearchIcon, Tags, ZapOff, Trash2, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, UserPlus, Sparkles, Building2, User, Home, Rocket, GitBranch, Split } from 'lucide-react';
+import { PlusCircle, Globe, AlertCircle, RotateCcw, Users, CheckCircle2, Link, Sparkles, Rocket, GitBranch, Split } from 'lucide-react';
 import BuilderCanvas from './components/BuilderCanvas';
 import LogicStudio from './components/LogicStudio';
 import PageManager from './components/PageManager';
@@ -53,7 +50,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Select,
   SelectContent,
@@ -168,7 +164,7 @@ export default function EditFormPage() {
   const [isSaving, setIsSaving] = React.useState(false);
   const [saveStatus, setSaveStatus] = React.useState<SaveStatus>('idle');
   const [hasInitialized, setHasInitialized] = React.useState(false);
-  const [isMounted, setIsMounted] = React.useState(false);
+  const [_isMounted, setIsMounted] = React.useState(false);
   const [selectedFieldId, setSelectedFieldId] = React.useState<string | null>(null);
   const [viewportSize, setViewportSize] = React.useState<ViewportSize>('desktop');
   const [sandboxMode, setSandboxMode] = React.useState<'edit' | 'sandbox'>('edit');
@@ -503,7 +499,7 @@ export default function EditFormPage() {
         updatedAt: new Date().toISOString(),
       });
       toast({ title: '✓ Changes Saved', description: 'Form updated successfully.' });
-    } catch (err) {
+    } catch (_err) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save form changes.' });
     } finally {
       setIsSaving(false);
@@ -1188,8 +1184,8 @@ export default function EditFormPage() {
 
             {/* ── Step 4: Actions ── */}
             {step === 4 && (() => {
-              const normalizedEntityCapture = normalizeFormEntityCapture(formData.formType || 'global', formData.actions);
-              const updateEntityCapture = (patch: Partial<FormEntityCaptureSettings>) => {
+              const _normalizedEntityCapture = normalizeFormEntityCapture(formData.formType || 'global', formData.actions);
+              const _updateEntityCapture = (patch: Partial<FormEntityCaptureSettings>) => {
                 const currentActions = (formData.actions || { tags: [], automations: [], webhooks: [] }) as FormSubmissionActions;
                 const currentCapture = normalizeFormEntityCapture(formData.formType || 'global', currentActions);
                 const updatedCapture: FormEntityCaptureSettings = {

@@ -1,37 +1,30 @@
 'use client';
 
 import * as React from 'react';
-import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
+import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, writeBatch } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageStyle, MessageTemplate } from '@/lib/types';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { 
     Palette, 
     Plus, 
     Trash2, 
-    Code,
     Eye,
-    X,
     Loader2,
     Sparkles,
     Check,
     Pencil,
     Save,
-    Layout,
     ShieldAlert,
-    ShieldCheck,
-    ChevronDown,
     Building,
     Globe,
-    Filter,
     BarChart3,
-    FileText,
     Search,
     Layers,
     AlertCircle
@@ -40,7 +33,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { PageContainerFluid } from '@/components/ui/page-container';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateVisualStyle } from '@/ai/flows/generate-visual-style-flow';
 import { MediaSelect } from '../../../entities/components/media-select';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -50,7 +42,6 @@ import { TemplatePreviewModal } from '../../../messaging/templates/components/te
 import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -66,14 +57,14 @@ export default function StylesClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
     const confirm = useConfirm();
-    const { user } = useUser();
+    const { user: _user } = useUser();
     const router = useRouter();
     
     // Deletion prevention state
     const [styleInUseToDelete, setStyleInUseToDelete] = React.useState<MessageStyle | null>(null);
     
     // ─── UI State ────────────────────────────────────────────────────────────
-    const [isAdding, setIsAdding] = React.useState(false);
+    const [_isAdding, setIsAdding] = React.useState(false);
     const [isAiGenerating, setIsAiGenerating] = React.useState(false);
     const [previewStyle, setPreviewStyle] = React.useState<MessageStyle | null>(null);
 
@@ -122,11 +113,11 @@ export default function StylesClient() {
     const [editingStyle, setEditingStyle] = React.useState<MessageStyle | null>(null);
     const [editName, setEditName] = React.useState('');
     const [editHtml, setEditHtml] = React.useState('');
-    const [isUpdating, setIsUpdating] = React.useState(false);
+    const [_isUpdating, setIsUpdating] = React.useState(false);
 
     // Manual Create State
     const [name, setName] = React.useState('');
-    const [htmlWrapper, setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">\n    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">\n      <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">\n        <img src="{{org_logo_url}}" alt="{{org_name}}" style="height: 40px; width: auto;" />\n      </div>\n      <div style="padding: 32px;">\n        {{content}}\n      </div>\n      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">\n        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>\n        <p style="margin: 4px 0 0;">{{org_address}}</p>\n      </div>\n    </div>\n  </body>\n</html>');
+    const [htmlWrapper, _setHtmlWrapper] = React.useState('<html>\n  <body style="font-family: sans-serif; padding: 20px; background: #f8fafc;">\n    <div style="max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #e2e8f0;">\n      <div style="padding: 24px; border-bottom: 1px solid #e2e8f0;">\n        <img src="{{org_logo_url}}" alt="{{org_name}}" style="height: 40px; width: auto;" />\n      </div>\n      <div style="padding: 32px;">\n        {{content}}\n      </div>\n      <div style="padding: 24px; border-top: 1px solid #e2e8f0; text-align: center; font-size: 11px; color: #94a3b8;">\n        <p style="margin: 0;">© {{current_year}} {{org_name}}</p>\n        <p style="margin: 4px 0 0;">{{org_address}}</p>\n      </div>\n    </div>\n  </body>\n</html>');
     const [isSubmitting, setIsSubmitting] = React.useState(false);
 
     // AI Generation State
@@ -253,7 +244,7 @@ export default function StylesClient() {
 
     // ─── Handlers ────────────────────────────────────────────────────────────
 
-    const handleAdd = async (e: React.FormEvent) => {
+    const _handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!firestore || !name || !htmlWrapper) return;
         
@@ -284,13 +275,13 @@ export default function StylesClient() {
         }
     };
 
-    const handleEditClick = (style: MessageStyle) => {
+    const _handleEditClick = (style: MessageStyle) => {
         setEditingStyle(style);
         setEditName(style.name);
         setEditHtml(style.htmlWrapper || '');
     };
 
-    const handleUpdate = async (e: React.FormEvent) => {
+    const _handleUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!firestore || !editingStyle || !editName || !editHtml) return;
 
@@ -725,7 +716,7 @@ export default function StylesClient() {
                         <div className="space-y-2 text-center">
                             <AlertDialogTitle className="font-semibold text-lg tracking-tight">Deletion Blocked</AlertDialogTitle>
                             <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                                The style blueprint <span className="font-bold text-foreground">"{styleInUseToDelete?.name}"</span> is currently being used by <span className="font-bold text-foreground">{styleInUseTemplates.length} template{styleInUseTemplates.length !== 1 ? 's' : ''}</span>. 
+                                The style blueprint <span className="font-bold text-foreground">&quot;{styleInUseToDelete?.name}&quot;</span> is currently being used by <span className="font-bold text-foreground">{styleInUseTemplates.length} template{styleInUseTemplates.length !== 1 ? 's' : ''}</span>. 
                                 To delete this style blueprint, you must first change the style wrapper of those templates.
                             </AlertDialogDescription>
                         </div>

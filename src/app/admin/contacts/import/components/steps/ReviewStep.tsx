@@ -1,7 +1,7 @@
 import React from 'react';
 import { ImportState } from '../../types';
 import { Button } from '@/components/ui/button';
-import { CheckCircle2, Download, AlertCircle, RefreshCcw, ArrowRight, XCircle, SkipForward, AlertTriangle } from 'lucide-react';
+import { CheckCircle2, Download, AlertCircle, RefreshCcw, ArrowRight, XCircle, AlertTriangle } from 'lucide-react';
 import Papa from 'papaparse';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';

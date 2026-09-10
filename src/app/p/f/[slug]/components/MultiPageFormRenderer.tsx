@@ -27,8 +27,6 @@ import {
   Bookmark,
   CheckCircle2,
   Clock,
-  Sparkles,
-  AlertCircle,
   Copy,
   Check,
 } from 'lucide-react';

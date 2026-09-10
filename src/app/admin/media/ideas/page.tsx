@@ -29,11 +29,8 @@ import type {
 } from '@/lib/types/media-2.0';
 import {
   listIdeaCanvasesAction,
-  getIdeaCanvasAction,
   createIdeaCanvasAction,
   saveIdeaCanvasAction,
-  deleteIdeaCanvasAction,
-  DEFAULT_CANVAS_NODES,
 } from '@/lib/media/idea-canvas-service';
 import { IdeaNodeCard } from './components/IdeaNodeCard';
 import { IdeaAiAssistPanel } from './components/IdeaAiAssistPanel';
@@ -41,7 +38,6 @@ import { IdeaConversionModal } from './components/IdeaConversionModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -60,23 +56,16 @@ import {
 import {
   Sparkles,
   Plus,
-  Save,
   Check,
   Loader2,
-  Trash2,
-  Layers,
   FileText,
   Users,
   Hash,
   Anchor,
   MousePointerClick,
-  Send,
   HelpCircle,
   Lightbulb,
-  Bookmark,
   Share2,
-  Maximize2,
-  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
@@ -99,9 +88,9 @@ export default function MediaIdeaCanvasPage() {
   const [newAudience, setNewAudience] = useState('');
 
   // Sync state
-  const [isSaving, setIsSaving] = useState(false);
+  const [_isSaving, _setIsSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<'saved' | 'saving' | 'idle'>('saved');
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, _startTransition] = useTransition();
 
   // Load Canvases
   const loadCanvases = useCallback(async () => {

@@ -1,5 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { UserProfile, Role, PermissionsSchema } from '@/lib/types';
+import { describe, it, expect } from 'vitest';
 import { getBlankPermissions, getFullAdminPermissions, normalizePermissionsSchema } from '@/lib/permissions-engine';
 import { OrganizationMembershipService } from '../organization-membership-service';
 import { WorkspaceMembershipService } from '../workspace-membership-service';

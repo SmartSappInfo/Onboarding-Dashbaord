@@ -22,9 +22,9 @@ export default function ThumbnailDesignerDialog({
   onOpenChange,
   workspaceId = '',
   initialDesign,
-  initialTitle,
-  initialSubtitle,
-  contextName,
+  initialTitle: _initialTitle,
+  initialSubtitle: _initialSubtitle,
+  contextName: _contextName,
   onSave,
   onApply,
 }: ThumbnailDesignerDialogProps) {

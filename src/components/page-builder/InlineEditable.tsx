@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useContext, useMemo } from 'react';
-import { sanitizeHtml } from '@/lib/page-builder/sanitize';
 import { WorkspaceContext } from './WorkspaceContext';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import type { UnifiedVariable } from '@/lib/types/variables';
@@ -268,7 +267,7 @@ export const InlineEditable: React.FC<InlineEditableProps> = ({
                 });
               }
             }
-          } catch (e) {
+          } catch (_e) {
             setMenuCoords({ top: 24, left: 0 });
           }
           setShowMenu(true);

@@ -47,7 +47,6 @@ import {
   TrendingUp, 
   RefreshCw, 
   Layers, 
-  DollarSign, 
   CheckCircle2, 
   AlertTriangle, 
   PieChart 

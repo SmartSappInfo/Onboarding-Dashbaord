@@ -5,15 +5,12 @@ import Link from 'next/link';
 import {
   Network,
   Globe,
-  Share2,
   Download,
-  Upload,
   Webhook,
   Key,
   Building,
   Plus,
   Search,
-  Filter,
   Layers,
   ShieldCheck,
   CheckCircle2,
@@ -21,11 +18,7 @@ import {
   Loader2,
   ArrowLeft,
   Sparkles,
-  Sliders,
-  ExternalLink,
   Users,
-  Copy,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,7 +56,7 @@ export function FederationHubView() {
 
   const [activeTab, setActiveTab] = React.useState<'spaces' | 'feed' | 'webhooks' | 'migration'>('spaces');
   const [searchQuery, setSearchQuery] = React.useState('');
-  const [selectedSpaceFilter, setSelectedSpaceFilter] = React.useState<string>('all');
+  const [selectedSpaceFilter, _setSelectedSpaceFilter] = React.useState<string>('all');
 
   // Spaces state
   const [ownedSpaces, setOwnedSpaces] = React.useState<FederatedKnowledgeSpace[]>([]);

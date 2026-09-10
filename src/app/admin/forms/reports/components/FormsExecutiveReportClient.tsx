@@ -9,7 +9,6 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
 import {
   FileText,
   TrendingUp,
@@ -19,10 +18,8 @@ import {
   Briefcase,
   Sparkles,
   ArrowUpRight,
-  ArrowDownRight,
   Calendar,
   Download,
-  Filter,
   Layers,
   ChevronRight,
   ArrowLeft,

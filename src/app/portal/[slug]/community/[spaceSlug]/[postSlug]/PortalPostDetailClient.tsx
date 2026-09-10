@@ -12,13 +12,12 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,8 +28,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   createCommentAction,
   deleteCommentAction,
-  castPollVoteAction,
-  toggleReactionAction,
   reportContentAction,
 } from '@/app/actions/community-actions';
 import type { Portal } from '@/lib/types/portal';
@@ -38,25 +35,17 @@ import type {
   CommunitySpace,
   CommunityPost,
   CommunityComment,
-  ReactionType,
 } from '@/lib/types/community';
 import {
   ArrowLeft,
   MessageSquare,
-  Pin,
   ThumbsUp,
-  Heart,
-  Flame,
   MessageCircle,
   MoreVertical,
   Flag,
   Reply,
   Trash2,
-  Share2,
-  Sparkles,
-  Send,
   Loader2,
-  Check,
 } from 'lucide-react';
 import { PortalAuthModal } from '../../../components/PortalAuthModal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -74,7 +63,7 @@ export default function PortalPostDetailClient({
 }: PortalPostDetailClientProps) {
   const firestore = useFirestore();
   const { user } = useUser();
-  const router = useRouter();
+  const _router = useRouter();
   const { toast } = useToast();
 
   const [commentText, setCommentText] = React.useState('');
@@ -295,7 +284,7 @@ export default function PortalPostDetailClient({
     );
   }
 
-  const theme = portal.theme;
+  const _theme = portal.theme;
   const brandTitle = portal.branding?.brandName || portal.name;
 
   return (

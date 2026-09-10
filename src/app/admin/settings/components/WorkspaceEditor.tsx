@@ -13,9 +13,7 @@ import {
     Pencil, 
     ShieldCheck, 
     Archive, 
-    Info,
     Check,
-    Briefcase,
     Building2,
     Users,
     User,
@@ -24,8 +22,6 @@ import {
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -53,7 +49,6 @@ import { useToast } from '@/hooks/use-toast';
 import { saveWorkspaceAction, deleteWorkspaceAction, archiveWorkspaceAction } from '@/lib/workspace-actions';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
-import { Separator } from '@/components/ui/separator';
 import { setOrganizationDefaultWorkspaceAction } from '@/lib/organization-actions';
 import { getEnabledIndustries } from '@/lib/industry-config';
 import { INDUSTRY_METADATA } from '@/lib/industry-field-registry';
@@ -70,7 +65,7 @@ interface WorkspaceEditorProps {
     onSelectWorkspace: (scope: string) => void;
 }
 
-export default function WorkspaceEditor({ workspaces, selectedScope, onSelectWorkspace }: WorkspaceEditorProps) {
+export default function WorkspaceEditor({ workspaces, selectedScope: _selectedScope, onSelectWorkspace }: WorkspaceEditorProps) {
     const { toast } = useToast();
     const { user } = useUser();
     const { activeOrganizationId, activeOrganization } = useTenant();

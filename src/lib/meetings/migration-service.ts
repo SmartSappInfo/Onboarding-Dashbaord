@@ -11,13 +11,12 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   MeetingParticipant,
-  ConferenceSession,
   ParticipantRole,
   ParticipantAttendanceStatus,
 } from './types';
 import { hashParticipantToken } from './participant-service';
 import { generateConferenceSession } from './conference-adapters';
-import type { Meeting, MeetingRegistrant, MeetingFacilitator, Attendee } from '@/lib/types';
+import type { Meeting, MeetingRegistrant, MeetingFacilitator } from '@/lib/types';
 
 export interface MigrationSummary {
   meetingId: string;

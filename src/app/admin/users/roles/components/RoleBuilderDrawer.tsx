@@ -31,7 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import { Shield, Sparkles, Save, Loader2, Copy, Check } from 'lucide-react';
+import { Shield, Sparkles, Save, Loader2, Check } from 'lucide-react';
 import type { Role, PermissionsSchema } from '@/lib/types';
 import { PermissionEditor } from '../PermissionEditor';
 import { CANONICAL_ROLE_BLUEPRINTS } from '@/lib/role-blueprint-presets';

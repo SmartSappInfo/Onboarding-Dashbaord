@@ -1,11 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import { Briefcase, Plus, Pencil, Trash2, ShieldAlert, Check, Layers, Users, FolderOpen, Save, X, HelpCircle, List } from 'lucide-react';
+import { Briefcase, Plus, Pencil, Trash2, ShieldAlert, Check, Layers, FolderOpen, Save, X, List } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';

@@ -4,7 +4,7 @@ import * as React from 'react';
 import type { PDFForm, Submission, PDFFormField, School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2, Lock, Clock, Building } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Lock } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -62,7 +62,7 @@ export default function SharedSubmissionView({ pdfForm, submission, school }: { 
           } else {
             localStorage.removeItem(storageKey);
           }
-        } catch (e) {
+        } catch (_e) {
           localStorage.removeItem(storageKey);
         }
       }

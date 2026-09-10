@@ -34,7 +34,7 @@ export default function WhatsAppSetupPage() {
             <MessageCircle className="h-6 w-6 text-primary" /> WhatsApp Business Setup
           </h1>
           <p className="text-sm text-muted-foreground max-w-2xl">
-            Connect your organization's own WhatsApp Business Account via the Meta Cloud API. Enter your
+            Connect your organization&apos;s own WhatsApp Business Account via the Meta Cloud API. Enter your
             credentials on the left; follow the guide on the right.
           </p>
         </div>

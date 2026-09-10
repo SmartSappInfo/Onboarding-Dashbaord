@@ -30,10 +30,7 @@ import {
   RefreshCw,
   Send,
   AlertCircle,
-  ExternalLink,
   ShieldCheck,
-  CheckCircle2,
-  Clock,
   Activity,
   Layers,
 } from 'lucide-react';
@@ -70,7 +67,6 @@ import {
   createWebhookEndpointAction,
   listWebhookEndpointsAction,
   deleteWebhookEndpointAction,
-  rotateWebhookSecretAction,
   testWebhookEndpointAction,
   listWebhookDeliveryLogsAction,
   replayWebhookDeliveryAction,
@@ -114,7 +110,7 @@ export default function MediaDeveloperConsolePage() {
   const [selectedEndpoint, setSelectedEndpoint] = useState<MediaWebhookEndpoint | null>(null);
   const [deliveryLogs, setDeliveryLogs] = useState<MediaWebhookDeliveryLog[]>([]);
   const [isLogsOpen, setIsLogsOpen] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
 
   // Create Key Modal State
   const [isCreateKeyOpen, setIsCreateKeyOpen] = useState(false);

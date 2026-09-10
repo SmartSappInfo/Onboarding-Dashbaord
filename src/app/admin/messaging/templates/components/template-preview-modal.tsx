@@ -8,7 +8,6 @@ import {
     Smartphone, 
     ArrowLeft, 
     Info, 
-    MoreHorizontal, 
     Phone,
     Video,
     Sparkles,

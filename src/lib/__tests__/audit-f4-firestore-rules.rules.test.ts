@@ -17,7 +17,7 @@
  * anonymous response creation) are asserted too, so tightening the rules again
  * cannot silently break respondents.
  */
-import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
+import { describe, it, beforeAll, afterAll, beforeEach } from 'vitest';
 import {
   initializeTestEnvironment,
   RulesTestEnvironment,
@@ -25,7 +25,7 @@ import {
   assertFails,
 } from '@firebase/rules-unit-testing';
 import {
-  doc, getDoc, setDoc, updateDoc, addDoc, collection, getDocs, query, where,
+  doc, getDoc, setDoc, updateDoc, addDoc, collection, getDocs, _query, _where,
 } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';

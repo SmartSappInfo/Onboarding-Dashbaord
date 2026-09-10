@@ -21,14 +21,10 @@ import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { INDUSTRY_METADATA } from '@/lib/industry-field-registry';
 import { 
     Building, 
-    Pencil, 
     ShieldCheck, 
     Info,
-    Check,
     Briefcase,
     Building2,
-    Users,
-    User,
     Lock,
     Settings2,
     Palette,
@@ -165,7 +161,7 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
     }
   };
 
-  const IndustryIcon = getIndustryIcon(workspace.industry || 'SaaS');
+  const _IndustryIcon = getIndustryIcon(workspace.industry || 'SaaS');
 
   return (
     <Card className="rounded-[2rem] border border-border shadow-sm bg-transparent overflow-hidden text-left">
@@ -414,7 +410,7 @@ export default function WorkspaceProfileTab({ workspace, onSaveSuccess, onBackTo
                 <SelectContent className="rounded-xl">
                   <SelectItem value="aida">AIDA (Attention, Interest, Desire, Action)</SelectItem>
                   <SelectItem value="pas">PAS (Problem, Agitation, Solution)</SelectItem>
-                  <SelectItem value="4us">4 U's (Urgency, Uniqueness, Specificity, Usefulness)</SelectItem>
+                  <SelectItem value="4us">4 U&apos;s (Urgency, Uniqueness, Specificity, Usefulness)</SelectItem>
                 </SelectContent>
               </Select>
             </div>

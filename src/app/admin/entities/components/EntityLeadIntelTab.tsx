@@ -3,16 +3,11 @@
 import * as React from 'react';
 import { query, collection, where, limit } from 'firebase/firestore';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
   Sparkles, 
-  Globe, 
-  Activity, 
-  TrendingUp, 
-  AlertTriangle, 
-  CheckCircle2, 
   Loader2,
   RefreshCw
 } from 'lucide-react';
@@ -52,7 +47,7 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
       } else {
         toast({ variant: 'destructive', title: 'Enrichment Failed', description: res.error });
       }
-    } catch (err: unknown) {
+    } catch (_err: unknown) {
       toast({ variant: 'destructive', title: 'Enrichment Failed', description: 'Failed to enrich prospect data.' });
     } finally {
       setIsEnriching(false);
@@ -197,14 +192,14 @@ export default function EntityLeadIntelTab({ entityId }: EntityLeadIntelTabProps
               <h4 className="font-bold text-blue-400 text-[10px] uppercase tracking-wider">Elevator Sales Pitch</h4>
               <span className="font-bold text-sky-400">Estimated Revenue Opportunity: ${prospect.aiInsights.estimatedRevenueOpportunity}/yr</span>
             </div>
-            <p className="italic text-muted-foreground leading-relaxed">"{prospect.aiInsights.recommendedPitch}"</p>
+            <p className="italic text-muted-foreground leading-relaxed">&quot;{prospect.aiInsights.recommendedPitch}&quot;</p>
 
             <div className="border-t border-border/20 pt-3 mt-3">
               <h4 className="font-bold text-rose-400 text-[10px] uppercase tracking-wider mb-2">Objection Helper</h4>
               <div className="space-y-3">
                 {prospect.aiInsights.objectionsAnswered.map((obj, i) => (
                   <div key={i} className="p-2.5 bg-background/50 border border-border/30 rounded-lg">
-                    <div className="font-bold text-foreground">Objection: "{obj.objection}"</div>
+                    <div className="font-bold text-foreground">Objection: &quot;{obj.objection}&quot;</div>
                     <div className="text-muted-foreground mt-1">Smart Counter: {obj.counter}</div>
                   </div>
                 ))}

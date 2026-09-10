@@ -23,9 +23,6 @@ import {
   History,
   Sparkles,
   RefreshCw,
-  ArrowLeft,
-  Loader2,
-  CheckCircle2,
 } from 'lucide-react';
 import { SupervisorMissionInput } from './SupervisorMissionInput';
 import { SupervisorPlanGraph } from './SupervisorPlanGraph';
@@ -37,7 +34,6 @@ import {
   startSupervisorMissionAction,
   resumeSupervisorMissionAction,
   cancelSupervisorMissionAction,
-  getSupervisorRunAction,
   listSupervisorRunsAction,
   executeProposedActionAction,
 } from '@/lib/supervisor/actions/supervisor-actions';

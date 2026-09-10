@@ -13,8 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
@@ -24,15 +23,12 @@ import {
   MapPin,
   Phone,
   Globe,
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Loader2,
   ArrowLeft,
   CheckCircle2,
-  AlertCircle,
   Timer,
-  User,
 } from 'lucide-react';
 import {
   format,
@@ -41,9 +37,7 @@ import {
   startOfMonth,
   endOfMonth,
   eachDayOfInterval,
-  isSameMonth,
   isSameDay,
-  isToday,
   isBefore,
   startOfDay,
 } from 'date-fns';
@@ -94,7 +88,7 @@ export default function PublicBookingClient({ initialData, prefill }: PublicBook
   const router = useRouter();
   const { toast } = useToast();
 
-  const { eventType, hostProfile, workspaceName, workspaceLogo } = initialData;
+  const { eventType, hostProfile, workspaceName, workspaceLogo: _workspaceLogo } = initialData;
 
   // Session ID generated per visitor tab to protect holds
   const sessionId = React.useMemo(() => {

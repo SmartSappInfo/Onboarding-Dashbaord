@@ -27,14 +27,12 @@ vi.mock('../firebase-admin', () => {
 import {
   resolveTemplateForOrg,
   buildVariableMap,
-  resolveAndRender,
-  type VariableResolutionContext,
 } from '../template-resolver';
 import { renderTemplate } from '../template-utils';
 import * as firebaseAdmin from '../firebase-admin';
 
 // Helper to access mocks exposed by the factory
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mocks = () => (firebaseAdmin as any).__mocks as {
   get: ReturnType<typeof vi.fn>;
   limit: ReturnType<typeof vi.fn>;

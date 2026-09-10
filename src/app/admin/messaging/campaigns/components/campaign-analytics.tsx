@@ -1,19 +1,18 @@
 'use client';
 
 import * as React from 'react';
-import { getCampaignStats, getCampaignRecipientBreakdown, getFailedRecipients, getCampaignEngagementTimeline } from '@/lib/campaign-analytics';
+import { getCampaignStats, getCampaignRecipientBreakdown, getCampaignEngagementTimeline } from '@/lib/campaign-analytics';
 import { resendToFailed } from '@/lib/campaign-dispatch';
 import { cloneCampaign } from '@/lib/campaign-hooks';
 import { useFirestore, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import type { MessageCampaign } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { selectCampaignWinnerManual, cancelCampaignABTest, resumeCampaignABTest } from '@/lib/campaign-automation-jobs';
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';

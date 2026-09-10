@@ -21,17 +21,14 @@ import {
   TrendingUp, 
   DollarSign, 
   Package, 
-  Layers, 
   Sparkles, 
-  ArrowUpRight, 
   Percent, 
   Repeat, 
   AlertTriangle,
   Lightbulb,
-  CheckCircle2,
   Tag
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';

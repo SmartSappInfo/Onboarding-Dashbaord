@@ -1,6 +1,5 @@
 import * as React from 'react';
 import type { MessagingTrigger, MessageTemplate, MessageChannel } from '@/lib/types';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
@@ -249,7 +248,7 @@ export function TriggerDetailPane({ trigger, activeTemplates, onCustomize, onRev
               <Eye className="h-12 w-12 text-muted-foreground/30 stroke-[1.5]" />
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">No template default set</p>
-                <p className="text-xs text-muted-foreground max-w-xs">There is currently no platform blueprint mapped to this trigger's channel.</p>
+                <p className="text-xs text-muted-foreground max-w-xs">There is currently no platform blueprint mapped to this trigger&apos;s channel.</p>
               </div>
               <Button 
                 variant="outline" 

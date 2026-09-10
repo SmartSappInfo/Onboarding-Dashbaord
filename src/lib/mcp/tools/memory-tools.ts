@@ -16,7 +16,7 @@
  */
 
 import { z } from 'zod';
-import { McpToolDefinition, McpPayloadValue } from '../types';
+import { McpToolDefinition } from '../types';
 import { OrganizationMemoryService } from '@/lib/memory/services/organization-memory-service';
 import { ConflictRepository } from '@/lib/memory/conflict-repository';
 import { ContextBuilderService } from '@/lib/memory/services/context-builder-service';

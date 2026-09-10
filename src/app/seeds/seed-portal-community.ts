@@ -8,7 +8,6 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import { CommunityService } from '@/lib/services/community-service';
 
 export async function seedPortalCommunity(targetOrgId: string = 'smartsapp-hq') {
   console.log(`\n🚀 [SEED] Starting Portal Community seed for org: ${targetOrgId}...`);

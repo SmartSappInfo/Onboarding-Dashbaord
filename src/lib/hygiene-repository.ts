@@ -153,7 +153,7 @@ export class ContactHygieneRepository {
         ];
         workspaceRulesCache.set(workspaceId, rules);
         return rules;
-      } catch (err) {
+      } catch (_err) {
         return [
           { minScore: 90, scoreValue: 10 },
           { minScore: 40, scoreValue: 5 },

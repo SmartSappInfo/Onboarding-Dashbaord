@@ -33,7 +33,7 @@ describe('Survey Variable Resolution Engine', () => {
     });
 
     it('resolves question variable key aliases for survey answers', async () => {
-        const mockSurvey: Partial<Survey> = {
+        const _mockSurvey: Partial<Survey> = {
             id: 'survey_parents_1',
             title: 'Parents Survey - SmartSapp School A and B Campaign',
             elements: [
@@ -63,7 +63,7 @@ describe('Survey Variable Resolution Engine', () => {
             ],
         };
 
-        const mockResponse: Partial<SurveyResponse> = {
+        const _mockResponse: Partial<SurveyResponse> = {
             id: 'resp_alberta_1',
             surveyId: 'survey_parents_1',
             submittedAt: new Date().toISOString(),

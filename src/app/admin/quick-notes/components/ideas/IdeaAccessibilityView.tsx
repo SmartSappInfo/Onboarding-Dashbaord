@@ -9,14 +9,8 @@ import {
 } from '@/lib/quick-notes-domain';
 import {
   Search,
-  CheckCircle2,
-  AlertTriangle,
-  FileText,
-  ExternalLink,
-  TrendingUp,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface IdeaAccessibilityViewProps {

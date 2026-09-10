@@ -21,7 +21,6 @@ import type {
   AccessGrant,
   EntitlementCheckResult,
   CreateMembershipInput,
-  UpdateMembershipInput,
   CreateInvitationInput,
   CreatePlanInput,
   UpdatePlanInput,

@@ -15,7 +15,7 @@
  * 4. Strict Typing: Zero `any`, `any[]`, or `unknown`.
  */
 
-import React, { useState, useEffect, useTransition } from 'react';
+import React, { useState, useTransition } from 'react';
 import Link from 'next/link';
 import {
   Shield,
@@ -24,13 +24,11 @@ import {
   History,
   RefreshCw,
   CheckCircle2,
-  AlertTriangle,
   ArrowLeft,
   Sliders,
   RotateCcw,
   Zap,
   Activity,
-  Layers,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -46,11 +44,10 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { bootstrapEnterprisePlatformAction } from '@/lib/media/enterprise-fer-service';
-import { purgeExpiredMediaTelemetryAction } from '@/lib/media/retention-service';
 
 export default function BackofficeEnterpriseConsolePage() {
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
 
   // Platform Governance State
   const [globalRateLimit, setGlobalRateLimit] = useState<string>('60');

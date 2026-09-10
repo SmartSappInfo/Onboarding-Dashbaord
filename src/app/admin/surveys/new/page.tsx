@@ -5,8 +5,8 @@ import * as React from 'react';
 import { useForm, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { collection, addDoc, setDoc, doc, query, where, orderBy } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { collection, addDoc, setDoc, doc } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,21 +14,16 @@ import {
     Loader2, 
     ArrowLeft, 
     ArrowRight, 
-    Save, 
     Undo,
     Redo,
-    X,
-    Sparkles,
-    Zap,
     Share2,
     Settings2,
     Layout,
-    Eye,
     BarChart3
 } from 'lucide-react';
-import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School, type WorkspaceEntity } from '@/lib/types';
+import { type SurveyElement } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useUser } from '@/firebase';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -186,7 +181,7 @@ export default function NewSurveyPage() {
     const router = useRouter();
     const firestore = useFirestore();
     const { toast } = useToast();
-    const { user } = useUser();
+    const { user: _user } = useUser();
     const { activeWorkspaceId } = useWorkspace();
     
     const [step, setStep] = React.useState(1);
@@ -261,7 +256,7 @@ export default function NewSurveyPage() {
         },
     });
 
-    const { getValues, setValue, watch, trigger, reset } = form;
+    const { getValues, setValue, watch, trigger, reset: _reset } = form;
 
     const {
         state: historyState,
@@ -385,7 +380,7 @@ export default function NewSurveyPage() {
                 setIsErrorModalOpen(true);
                 
                 // Count different types of element errors
-                const elementIssues = elementErrors.reduce((acc, error) => {
+                const _elementIssues = elementErrors.reduce((acc, error) => {
                     if (error.blockTitle.includes('Element') || error.blockTitle.includes('Question')) {
                         acc.elements++;
                     }
@@ -498,7 +493,7 @@ export default function NewSurveyPage() {
     };
 
     // Helper function to get a comprehensive list of all required fields by step
-    const getRequiredFieldsByStep = () => {
+    const _getRequiredFieldsByStep = () => {
         return {
             1: [
                 { field: 'internalName', label: 'Internal Name', description: 'Used for internal organization (min 2 characters)' },

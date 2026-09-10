@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview High-fidelity Condition Node for Automation Canvas.
@@ -49,7 +48,7 @@ interface ConditionNodeProps {
 export function ConditionNode({ id, data, selected }: ConditionNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const config = data.config || {};
-    const params = useParams();
+    const _params = useParams();
     const { countsBySourceNodeId } = usePendingJobs();
     const waitingCount = countsBySourceNodeId[id] || 0;
 

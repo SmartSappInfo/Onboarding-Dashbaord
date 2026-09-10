@@ -16,7 +16,6 @@ import { requireAuth } from '@/lib/auth/require-auth';
 import {
   SurveyResearchAssistantInputSchema,
   SurveyResearchAssistantOutputSchema,
-  type SurveyResearchAssistantInput,
   type SurveyResearchAssistantOutput,
 } from '../schemas/survey-intelligence-schemas';
 

@@ -13,9 +13,8 @@
 import * as React from 'react';
 import type { Survey, SurveyResponse } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { computeResponseQualityMetrics, type ResponseQualityMetrics } from '@/lib/surveys/survey-analytics-engine';
+import { computeResponseQualityMetrics } from '@/lib/surveys/survey-analytics-engine';
 import { ShieldCheck, Zap, Clock, AlertTriangle, CheckCircle2, Award } from 'lucide-react';
 
 export interface ResponseQualityTabProps {
@@ -23,7 +22,7 @@ export interface ResponseQualityTabProps {
   responses: SurveyResponse[];
 }
 
-export function ResponseQualityTab({ survey, responses }: ResponseQualityTabProps) {
+export function ResponseQualityTab({ survey: _survey, responses }: ResponseQualityTabProps) {
   const quality = React.useMemo(() => {
     return computeResponseQualityMetrics(responses);
   }, [responses]);

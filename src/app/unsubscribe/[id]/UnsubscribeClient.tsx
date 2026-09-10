@@ -84,7 +84,7 @@ export default function UnsubscribeClient({
                 </div>
                 <CardTitle className="text-2xl font-bold text-slate-900">Preferences Updated</CardTitle>
                 <CardDescription className="text-slate-600 mt-2">
-                  We've successfully updated your communication preferences for <b>{displayName}</b>.
+                  We&apos;ve successfully updated your communication preferences for <b>{displayName}</b>.
                 </CardDescription>
               </CardHeader>
               <CardContent className="text-center text-sm text-slate-500 pb-8">

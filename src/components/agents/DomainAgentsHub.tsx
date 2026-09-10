@@ -20,10 +20,6 @@ import {
   Users,
   Sparkles,
   History,
-  Shield,
-  Bot,
-  Activity,
-  CheckCircle2,
 } from 'lucide-react';
 import type {
   SpecialistDescriptor,

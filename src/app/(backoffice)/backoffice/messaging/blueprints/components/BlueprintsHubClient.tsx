@@ -4,7 +4,7 @@ import * as React from 'react';
 import { MESSAGING_TRIGGERS } from '@/lib/messaging-triggers';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import type { MessageTemplate, VariableDefinition, WorkspaceEntity, Meeting, Survey, PDFForm, MessageChannel, MessagingTrigger } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageChannel, MessagingTrigger } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 

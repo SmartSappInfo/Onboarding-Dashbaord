@@ -8,30 +8,24 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
 import {
   FileText,
   Printer,
   Download,
   CheckCircle2,
   Sparkles,
-  TrendingUp,
   Briefcase,
   Layers,
   Zap,
   Quote,
-  Eye,
   DollarSign,
   Loader2,
-  Settings2,
   X,
 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
-import type { Form } from '@/lib/types';
 import type {
   FormReportPreset,
   FormReportData,
@@ -67,7 +61,7 @@ export default function ReportStudioModal({
   const [selectedPreset, setSelectedPreset] = useState<FormReportPreset>(initialPreset);
   const [reportData, setReportData] = useState<FormReportData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [widgets, setWidgets] = useState<ReportWidgetToggle>({
+  const [widgets, _setWidgets] = useState<ReportWidgetToggle>({
     kpiStrip: true,
     funnelProgression: true,
     submissionsTrend: true,

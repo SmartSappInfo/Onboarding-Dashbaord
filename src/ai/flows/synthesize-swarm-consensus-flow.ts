@@ -17,8 +17,7 @@
 
 import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
-import type { SwarmConsensus, SwarmDivergencePoint } from '@/lib/agents/domain-types';
-import type { AgentActionProposal } from '@/lib/supervisor/types';
+import type { SwarmDivergencePoint } from '@/lib/agents/domain-types';
 
 export const synthesizeSwarmInputSchema = z.object({
   workspaceId: z.string().optional(),

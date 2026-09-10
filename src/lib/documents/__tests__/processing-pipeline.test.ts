@@ -6,7 +6,6 @@ import {
 import { 
   queueDocumentProcessingAction, 
   getProcessingJobStatusAction, 
-  retryFailedProcessingJobAction 
 } from '../processing-actions';
 
 const mockStore: Record<string, Record<string, Record<string, unknown>>> = {

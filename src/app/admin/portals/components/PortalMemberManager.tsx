@@ -11,7 +11,7 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -33,13 +33,9 @@ import {
   Shield,
   CreditCard,
   Link2,
-  CheckCircle2,
-  ShieldAlert,
   Flame,
-  Award,
   Copy,
   Trash2,
-  RotateCcw,
   Sparkles,
 } from 'lucide-react';
 import { InviteMemberModal } from './InviteMemberModal';
@@ -87,7 +83,7 @@ export function PortalMemberManager({
   const [serverMembers, setServerMembers] = React.useState<PortalMembership[]>([]);
   const [serverInvitations, setServerInvitations] = React.useState<PortalInvitation[]>([]);
   const [serverPlans, setServerPlans] = React.useState<MembershipPlan[]>([]);
-  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+  const [_isLoadingServer, setIsLoadingServer] = React.useState(true);
 
   const fetchServerData = React.useCallback(async () => {
     if (!portalId) return;

@@ -13,16 +13,13 @@ import {
   Sparkles, 
   Calendar, 
   MessageSquare, 
-  Activity, 
-  Settings, 
   ChevronRight, 
-  Users, 
   TrendingUp, 
   Radio, 
   Loader2, 
   ArrowUpRight 
 } from 'lucide-react';
-import type { SocialPost, SocialInboxItem, SocialListeningRule } from '@/lib/types';
+import type { SocialPost, SocialInboxItem } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 interface SocialListeningAlert {
@@ -48,7 +45,7 @@ export default function SocialDashboardClient() {
     );
   }, [db, activeWorkspaceId]);
 
-  const { data: postsRaw, isLoading: isLoadingPosts } = useCollection<SocialPost>(postsQuery);
+  const { data: postsRaw, isLoading: _isLoadingPosts } = useCollection<SocialPost>(postsQuery);
   const posts = postsRaw || [];
   const scheduledCount = posts.filter(p => p.status === 'scheduled').length;
 

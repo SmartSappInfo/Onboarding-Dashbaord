@@ -22,7 +22,6 @@ import { emitDealDomainEvent } from '@/lib/deals/deal-event-bus';
 import { 
     validateStageTransition, 
     resolveStageTerminalStatus, 
-    isStageTerminal 
 } from '@/lib/deals/deal-stage-validation';
 import type { 
     LeadConversionOptions, 

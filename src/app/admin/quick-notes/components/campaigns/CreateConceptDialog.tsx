@@ -3,11 +3,8 @@
 import * as React from 'react';
 import {
   Sparkles,
-  Rocket,
   Loader2,
   Layers,
-  FileText,
-  Target,
 } from 'lucide-react';
 import {
   Dialog,

@@ -7,7 +7,7 @@ export class SimulatedSocialProvider implements ISocialProvider {
     this.platform = platform;
   }
 
-  async refreshToken(tokenData: Record<string, unknown>): Promise<{ accessToken: string; expiresAt?: number }> {
+  async refreshToken(_tokenData: Record<string, unknown>): Promise<{ accessToken: string; expiresAt?: number }> {
     return {
       accessToken: `simulated-access-token-${this.platform}-${Date.now()}`,
       expiresAt: Math.floor(Date.now() / 1000) + 3600,
@@ -40,7 +40,7 @@ export class SimulatedSocialProvider implements ISocialProvider {
     };
   }
 
-  async fetchInboxItems(accessToken: string, sinceId?: string): Promise<Record<string, unknown>[]> {
+  async fetchInboxItems(_accessToken: string, _sinceId?: string): Promise<Record<string, unknown>[]> {
     // Generate realistic inquiries for a school/organization
     const mockItems: Record<string, unknown>[] = [
       {

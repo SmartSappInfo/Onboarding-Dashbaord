@@ -5,14 +5,10 @@ import { Button } from '@/components/ui/button';
 import { 
     Dialog, 
     DialogContent, 
-    DialogHeader, 
     DialogTitle, 
-    DialogDescription 
 } from '@/components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Upload, Library, Pencil, X, ImageIcon } from 'lucide-react';
+import { Pencil, X, ImageIcon } from 'lucide-react';
 import MediaSelectorDialog from '../media/components/media-selector-dialog';
-import MediaUploader from '../media/components/media-uploader';
 import MediaLibraryBrowser from '../media/components/MediaLibraryBrowser';
 import type { MediaAsset } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -34,7 +30,7 @@ export default function MediaSelectorTrigger({
     value,
     onSelect,
     label = "Choose Image",
-    description = "Upload a new file or select from your library",
+    description: _description = "Upload a new file or select from your library",
     subLabel,
     className,
     previewClassName,
@@ -51,7 +47,7 @@ export default function MediaSelectorTrigger({
         setIsMenuOpen(false);
     };
 
-    const handleUploadSuccess = (asset?: MediaAsset) => {
+    const _handleUploadSuccess = (asset?: MediaAsset) => {
         if (asset) {
             onSelect(asset.url);
             setIsMenuOpen(false);

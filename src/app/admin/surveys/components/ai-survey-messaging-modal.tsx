@@ -38,13 +38,11 @@ import {
   MessageCircle,
   Check,
   Loader2,
-  ExternalLink,
   Pencil,
   Copy,
   Info,
   Layers,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';

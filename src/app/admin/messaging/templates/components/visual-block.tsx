@@ -11,27 +11,20 @@ import {
     ArrowDownToLine,
     Copy, 
     Trash2, 
-    Heading1, 
     Type, 
     Image as ImageIcon, 
     Video, 
-    MousePointer2, 
-    Quote, 
-    Square, 
-    List, 
-    Trophy,
-    Layout,
     Code2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { MessageBlock, TemplateVariable } from '@/lib/types';
 import { resolveVariables, sanitizeEmailCustomHtml } from '@/lib/messaging-utils';
 import { useDroppable } from '@dnd-kit/core';
 import { blockIcons } from './block-icons';
-import { SlashInput, SlashTextarea, cleanContainerHtml } from '@/components/messaging/SlashInput';
+import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 
 interface VisualBlockProps {
     block: MessageBlock;
@@ -421,7 +414,7 @@ export function VisualBlock({
     const s = block.style || {};
     const align = s.textAlign || 'left';
     
-    const resolvedTitle = resolveVariables(block.title || '', simulationVars);
+    const _resolvedTitle = resolveVariables(block.title || '', simulationVars);
     const resolvedContent = resolveVariables(block.content || '', simulationVars);
     const resolvedUrl = resolveVariables(block.url || '', simulationVars);
 
@@ -1252,7 +1245,7 @@ export function VisualBlock({
             const fName = resolveVariables('{{org_name}}', simulationVars);
             const fEmail = resolveVariables('{{org_email}}', simulationVars);
             const fPhone = resolveVariables('{{org_phone}}', simulationVars);
-            const fAddr = resolveVariables('{{org_address}}', simulationVars);
+            const _fAddr = resolveVariables('{{org_address}}', simulationVars);
             return (
                 <div className="w-full pt-6 mt-6 border-t border-border/30 text-center space-y-1.5">
                     <p className="text-xs font-bold text-muted-foreground/80">{fName.includes('{{') ? 'Organization Name' : fName}</p>

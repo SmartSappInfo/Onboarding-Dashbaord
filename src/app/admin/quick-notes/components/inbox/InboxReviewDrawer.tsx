@@ -6,13 +6,7 @@ import {
   Sparkles,
   Check,
   AlertTriangle,
-  GitMerge,
-  Link2,
-  Tag,
-  Clock,
-  Layers,
   ShieldCheck,
-  CheckSquare,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -86,13 +80,13 @@ export function InboxReviewDrawer({
                   <span className="text-[10px] font-bold text-primary block mb-0.5 uppercase">
                     Thesis ({item.contradictionDetails.thesis?.sourceTitle || 'Target Record'})
                   </span>
-                  <p className="text-xs italic text-foreground">"{item.contradictionDetails.thesis?.quote || item.contradictionDetails.thesisQuote || item.contradictionDetails.thesisClaim || ''}"</p>
+                  <p className="text-xs italic text-foreground">&quot;{item.contradictionDetails.thesis?.quote || item.contradictionDetails.thesisQuote || item.contradictionDetails.thesisClaim || ''}&quot;</p>
                 </div>
                 <div className="p-3 rounded-xl border border-border/70 bg-card">
                   <span className="text-[10px] font-bold text-destructive block mb-0.5 uppercase">
                     Antithesis ({item.contradictionDetails.antithesis?.sourceTitle || 'Candidate Record'})
                   </span>
-                  <p className="text-xs italic text-foreground">"{item.contradictionDetails.antithesis?.quote || item.contradictionDetails.antithesisQuote || item.contradictionDetails.antithesisClaim || ''}"</p>
+                  <p className="text-xs italic text-foreground">&quot;{item.contradictionDetails.antithesis?.quote || item.contradictionDetails.antithesisQuote || item.contradictionDetails.antithesisClaim || ''}&quot;</p>
                 </div>
               </div>
               {item.contradictionDetails.suggestedResolution && (
@@ -120,7 +114,7 @@ export function InboxReviewDrawer({
                         {ev.sourceType}
                       </Badge>
                     </div>
-                    <p className="text-[11px] italic text-muted-foreground">"{ev.textSnippet}"</p>
+                    <p className="text-[11px] italic text-muted-foreground">&quot;{ev.textSnippet}&quot;</p>
                   </div>
                 ))}
               </div>

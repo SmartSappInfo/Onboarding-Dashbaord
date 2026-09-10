@@ -26,7 +26,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { createEntityAction } from '../entity-actions';
 import { linkEntityToWorkspaceAction } from '../workspace-entity-actions';
 import { adminDb } from '../firebase-admin';
-import type { Entity, Workspace, WorkspaceEntity, EntityType } from '../types';
+import type { Workspace } from '../types';
 import crypto from 'crypto';
 
 // Mock Firebase Admin

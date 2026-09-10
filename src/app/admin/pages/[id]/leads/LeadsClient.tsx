@@ -4,16 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { 
     ChevronLeft, 
-    ArrowRight, 
     Mail, 
     Phone, 
-    Calendar, 
     User, 
     FileText, 
     ClipboardList,
-    ExternalLink,
     Search,
-    Filter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

@@ -18,16 +18,10 @@ import { getGoldStandardExamples } from '@/lib/learning-loop-actions';
 import { z } from 'genkit';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import {
-  questionSchema,
-  layoutBlockSchema,
   logicBlockSchema,
   elementSchema,
-  resultBlockSchema,
   resultPageSchema,
   resultRuleSchema,
-  QUESTION_TYPES,
-  HEADING_VARIANTS,
-  BACKGROUND_PATTERNS,
 } from '@/ai/schemas/survey-schemas';
 
 // ══════════════════════════════════════════════════════════
@@ -558,7 +552,7 @@ async function callAI<T>(params: {
       // OpenRouter bypass (same as generate-survey-flow.ts)
       if (provider === 'openrouter') {
         let apiKey: string | undefined;
-        let aiKeyMode: 'platform' | 'custom' = 'platform';
+        let _aiKeyMode: 'platform' | 'custom' = 'platform';
 
         if (input.organizationId) {
           const orgDoc = await adminDb.collection('organizations').doc(input.organizationId).get();

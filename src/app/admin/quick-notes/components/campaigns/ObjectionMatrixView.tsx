@@ -4,17 +4,11 @@ import * as React from 'react';
 import {
   ShieldAlert,
   Sparkles,
-  HelpCircle,
   Copy,
   Check,
-  RefreshCw,
   Search,
-  Filter,
   CheckCircle2,
-  ChevronRight,
   Loader2,
-  Layers,
-  ArrowUpRight,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -169,7 +163,7 @@ export function ObjectionMatrixView({
           </div>
           <h4 className="text-sm font-bold text-foreground">No Objection Battlecards Found</h4>
           <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4">
-            Click "Synthesize Battlecards with AI" to scan your workspace notes, call transcripts, and CRM feedback for recurring sales objections.
+            Click &quot;Synthesize Battlecards with AI&quot; to scan your workspace notes, call transcripts, and CRM feedback for recurring sales objections.
           </p>
           <Button
             type="button"
@@ -233,7 +227,7 @@ export function ObjectionMatrixView({
                     ❌ The Customer Objection
                   </span>
                   <p className="italic text-foreground font-medium">
-                    "{card.objection}"
+                    &quot;{card.objection}&quot;
                   </p>
                 </div>
 
@@ -253,7 +247,7 @@ export function ObjectionMatrixView({
                     👉 The Killer Reframe Question
                   </span>
                   <p className="italic font-medium text-foreground">
-                    "{card.killerQuestion}"
+                    &quot;{card.killerQuestion}&quot;
                   </p>
                 </div>
 
@@ -278,7 +272,7 @@ export function ObjectionMatrixView({
                 {card.sourceQuotes && card.sourceQuotes.length > 0 && (
                   <div className="pt-2 border-t border-border/50 text-[11px] text-muted-foreground">
                     <span className="font-semibold text-foreground">Source Evidence: </span>
-                    <span>"{card.sourceQuotes[0]}"</span>
+                    <span>&quot;{card.sourceQuotes[0]}&quot;</span>
                   </div>
                 )}
               </div>

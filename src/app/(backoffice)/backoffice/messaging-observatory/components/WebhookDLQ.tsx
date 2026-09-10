@@ -12,13 +12,10 @@
 import * as React from 'react';
 import {
   RotateCcw,
-  AlertOctagon,
   CheckCircle2,
-  ExternalLink,
   Loader2,
   Search,
   Code,
-  Layers,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';

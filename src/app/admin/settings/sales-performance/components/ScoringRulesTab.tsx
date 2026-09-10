@@ -24,14 +24,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
   Search,
-  Filter,
   Sliders,
   Sparkles,
-  Award,
-  Layers,
-  CheckCircle2,
-  Clock,
-  TrendingUp,
 } from 'lucide-react';
 import type { PolicyScoringRule } from '@/lib/policy-studio/types';
 import type { SalesPerformanceDimension } from '@/lib/sales-performance/types';

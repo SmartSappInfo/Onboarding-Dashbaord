@@ -2,12 +2,12 @@
 
 import * as React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import type { Survey, OrgBranding, WorkspaceEntity, SurveyResponse, SurveyResultPage } from '@/lib/types';
+import type { Survey, OrgBranding, SurveyResponse, SurveyResultPage } from '@/lib/types';
 import Image from 'next/image';
 import SurveyForm from './survey-form';
 import { BackgroundPattern } from '../../components/survey-background-pattern';
 import { hexToHslString, getContrastTextColor } from '@/app/admin/surveys/components/inspector/contrast-utils';
-import { Building2, RotateCcw, Sun, Moon } from 'lucide-react';
+import { Building2, RotateCcw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { interpolateWithMap, interpolateWithMapForHtml } from '@/lib/survey-variable-utils';
 import { SurveyVariableProvider } from '../context/SurveyVariableContext';
@@ -98,7 +98,7 @@ export default function SurveyDisplay({
         channel,
         variableMap: preloadedVariables
     }), [respondentEntityId, resolvedRecipientContact, assignedUserId, channel, preloadedVariables]);
-    const [isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
+    const [_isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
 
     const isPreviewMode = searchParams?.get('preview') === 'true';
 
@@ -419,8 +419,8 @@ export default function SurveyDisplay({
         );
     }
 
-    const hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;
-    const showHeader = !!survey.showSurveyTitles;
+    const _hasCoverPage = !!survey.showCoverPage && survey.showSurveyTitles !== false;
+    const _showHeader = !!survey.showSurveyTitles;
 
     return (
         <SurveyVariableProvider surveySlug={survey.slug} initialIdentity={initialIdentity}>
@@ -829,7 +829,7 @@ function LeadCaptureFormView({
         }
     };
 
-    const handleSkip = async () => {
+    const _handleSkip = async () => {
         setIsSubmitting(true);
         try {
             const res = await finalizeSurveySubmission(survey.id, submissionId, workspaceId, outcomeId);

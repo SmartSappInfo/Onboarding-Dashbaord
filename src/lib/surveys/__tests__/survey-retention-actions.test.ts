@@ -4,7 +4,7 @@ import {
   getSystemResearchGovernanceAction,
   saveSystemResearchGovernanceAction,
 } from '../survey-retention-actions';
-import type { SurveyRetentionPolicy, SystemResearchGovernanceConfig } from '@/lib/types';
+import type { SurveyRetentionPolicy } from '@/lib/types';
 
 const mockGet = vi.fn();
 const mockSet = vi.fn().mockResolvedValue(undefined);
@@ -32,7 +32,7 @@ const mockCollection = vi.fn(() => ({
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: (name: string) => mockCollection(),
+    collection: (_name: string) => mockCollection(),
   },
 }));
 

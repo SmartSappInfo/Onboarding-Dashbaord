@@ -61,18 +61,11 @@ import {
   TrendingDown,
   Minus,
   Users,
-  Calendar,
   Sparkles,
   Plus,
-  CheckCircle2,
-  AlertCircle,
   BarChart3,
   Loader2,
-  RefreshCw,
-  Clock,
-  ArrowRight,
   BrainCircuit,
-  Zap,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
@@ -86,7 +79,7 @@ export function LongitudinalStudyView({ projectId, workspaceId }: LongitudinalSt
   const { toast } = useToast();
 
   const [isLoading, setIsLoading] = React.useState(true);
-  const [project, setProject] = React.useState<SurveyProject | null>(null);
+  const [_project, setProject] = React.useState<SurveyProject | null>(null);
   const [waves, setWaves] = React.useState<SurveyWave[]>([]);
   const [metrics, setMetrics] = React.useState<LongitudinalProjectMetrics | null>(null);
   const [questionDeltas, setQuestionDeltas] = React.useState<WaveDeltaComparison[]>([]);
@@ -193,7 +186,7 @@ export function LongitudinalStudyView({ projectId, workspaceId }: LongitudinalSt
     }
   };
 
-  const handleConcludeWave = async (waveId: string) => {
+  const _handleConcludeWave = async (waveId: string) => {
     try {
       const res = await concludeSurveyWaveAction(projectId, waveId, workspaceId);
       if (res.success) {

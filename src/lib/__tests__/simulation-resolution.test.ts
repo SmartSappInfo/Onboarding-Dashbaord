@@ -84,7 +84,7 @@ describe('getSimulationVariablesAction', () => {
     dbMocks().query.get.mockResolvedValue({
       empty: true,
       docs: [],
-      forEach: (cb) => {},
+      forEach: (_cb) => {},
     });
 
     const res = await getSimulationVariablesAction({ workspaceId: 'onboarding' });
@@ -119,7 +119,7 @@ describe('getSimulationVariablesAction', () => {
     dbMocks().query.get.mockResolvedValue({
       empty: true,
       docs: [],
-      forEach: (cb) => {},
+      forEach: (_cb) => {},
     });
 
     const res = await getSimulationVariablesAction({ workspaceId: 'onboarding' });
@@ -242,7 +242,7 @@ describe('getSimulationVariablesAction', () => {
     dbMocks().query.get.mockResolvedValue({
       empty: false,
       docs: [{ data: () => mockResponse }],
-      forEach: (cb) => {}
+      forEach: (_cb) => {}
     });
 
     const res = await getSimulationVariablesAction({ surveyId: 'survey-123', workspaceId: 'onboarding' });
@@ -268,7 +268,7 @@ describe('getSimulationVariablesAction', () => {
     dbMocks().query.get.mockResolvedValue({
       empty: false,
       docs: [{ data: () => mockSubmission }],
-      forEach: (cb) => {}
+      forEach: (_cb) => {}
     });
 
     const res = await getSimulationVariablesAction({ pdfId: 'pdf-123', workspaceId: 'onboarding' });

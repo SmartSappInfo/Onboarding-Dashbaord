@@ -6,20 +6,15 @@ import { CSS } from '@dnd-kit/utilities';
 import type { WorkspaceEntity } from '@/lib/types';
 import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
     ShieldCheck,
     MoreVertical,
-    Zap,
-    CheckCircle2,
     CalendarPlus,
     PlusCircle,
     Send,
     Eye,
     Users,
-    Building,
     MapPin,
-    Trophy,
     ArrowRight,
     Edit
 } from 'lucide-react';
@@ -54,8 +49,8 @@ interface EntityCardProps {
  */
 export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
   const { openCallModal } = useCallModal();
-    const { activeWorkspace } = useWorkspace();
-    const { singular } = useTerminology();
+    const { activeWorkspace: _activeWorkspace } = useWorkspace();
+    const { singular: _singular } = useTerminology();
 
     const {
         attributes,

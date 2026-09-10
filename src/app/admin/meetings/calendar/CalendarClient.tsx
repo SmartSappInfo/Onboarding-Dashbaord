@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -13,16 +13,9 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import {
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
   Plus,
-  Clock,
-  Video,
-  User,
-  AlertTriangle,
-  Layers,
-  Sparkles,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -34,7 +27,6 @@ import type {
 import {
   buildHourSlots,
   getCalendarGridDays,
-  calculateEventGridPosition,
 } from '@/lib/meetings/calendar-view-service';
 import { format } from 'date-fns';
 import { QuickScheduleModal } from '../components/QuickScheduleModal';

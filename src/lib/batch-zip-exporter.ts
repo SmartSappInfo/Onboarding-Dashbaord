@@ -12,7 +12,6 @@
 import JSZip from 'jszip';
 import type { QRCode as QRCodeType, QRDesign } from '@/lib/types';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
-import { renderBarcodeVector } from '@/lib/barcode-engine';
 
 export interface BatchExportProgress {
   current: number;

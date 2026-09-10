@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { Users, MessageSquare, ThumbsUp, Sparkles, ArrowRight } from 'lucide-react';
+import { Users, MessageSquare, ThumbsUp } from 'lucide-react';
 import { registerBlock } from '../../registry';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';

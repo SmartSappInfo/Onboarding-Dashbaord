@@ -1,7 +1,6 @@
 import * as React from "react";
 import { Suspense } from "react";
 import { getActiveWorkspace, getDashboardLayout, getWorkspacePipelines } from "@/lib/dashboard-server";
-import DashboardGrid from "./components/DashboardGrid";
 import { DashboardClientWrapper } from "./components/DashboardClientWrapper";
 import { DashboardCardSkeleton } from "@/components/dashboard/DashboardCardSkeleton";
 import { 
@@ -61,7 +60,7 @@ export default async function AdminDashboardPage({ searchParams }: AdminDashboar
         );
     }
 
-    const [activeWorkspace, layoutData, pipelines] = await Promise.all([
+    const [activeWorkspace, _layoutData, pipelines] = await Promise.all([
         getActiveWorkspace(activeWorkspaceId),
         getDashboardLayout(activeWorkspaceId),
         getWorkspacePipelines(activeWorkspaceId)

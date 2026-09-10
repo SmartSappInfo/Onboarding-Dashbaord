@@ -31,8 +31,6 @@ import {
     Clock,
     CalendarCheck,
     CalendarOff,
-    CheckCircle2,
-    AlertTriangle,
     Target,
     Copy,
     Archive,
@@ -90,7 +88,7 @@ interface DealCardProps {
 /**
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
-export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats }: DealCardProps) {
+export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: _taskStats }: DealCardProps) {
   const { openCallModal } = useCallModal();
   const { singular } = useTerminology();
   const confirm = useConfirm();

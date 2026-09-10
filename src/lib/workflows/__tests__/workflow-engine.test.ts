@@ -14,7 +14,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { WorkflowEngine } from '../services/workflow-engine';
 import { EventTriggerRouter } from '../services/event-trigger-router';
-import { DEAL_RESCUE_BLUEPRINT, LEAD_ACTIVATION_BLUEPRINT } from '../blueprints';
+import { DEAL_RESCUE_BLUEPRINT } from '../blueprints';
 import type { WorkflowDefinition, WorkflowNodeType } from '../types';
 
 // Mock Firebase Admin

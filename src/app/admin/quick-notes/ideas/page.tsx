@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Lightbulb, Sparkles, Sliders } from 'lucide-react';
+import { ArrowLeft, Lightbulb, Sliders } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';

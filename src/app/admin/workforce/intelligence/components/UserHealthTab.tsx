@@ -12,10 +12,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Activity, Sparkles, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { Activity } from 'lucide-react';
 import type { UserHealthScore, UserHealthStatus } from '@/lib/types';
 
 interface UserHealthTabProps {

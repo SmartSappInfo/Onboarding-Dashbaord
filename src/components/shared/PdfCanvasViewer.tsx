@@ -61,9 +61,9 @@ export function PdfCanvasViewer({
   autoHeight = false,
 }: PdfCanvasViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const renderTaskRef = useRef<any>(null);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const [pdfDoc, setPdfDoc] = useState<any>(null);
 
   const [currentPage, setCurrentPage] = useState(1);

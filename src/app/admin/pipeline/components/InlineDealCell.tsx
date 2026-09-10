@@ -17,12 +17,9 @@
 import * as React from 'react';
 import {
   Check,
-  X,
   Loader2,
-  Calendar,
   UserCircle2,
   ChevronDown,
-  Percent,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -166,7 +163,7 @@ export function InlineProbabilityCell({ deal, userId, onUpdated }: InlineProbabi
   const { toast } = useToast();
   const [isOpen, setIsOpen] = React.useState(false);
   const [prob, setProb] = React.useState<number>(deal.probability ?? 50);
-  const [isSaving, setIsSaving] = React.useState(false);
+  const [_isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
     setProb(deal.probability ?? 50);

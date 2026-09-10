@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Network, Loader2, Sparkles, Shield, Users } from 'lucide-react';
+import { Network, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { createFederatedSpaceAction } from '@/lib/quick-notes-federation-actions';
 import type {

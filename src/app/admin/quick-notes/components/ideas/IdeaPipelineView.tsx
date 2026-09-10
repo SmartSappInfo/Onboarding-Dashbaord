@@ -11,19 +11,10 @@ import {
   calculateIdeaValidationSummary,
 } from '@/lib/quick-notes-domain';
 import {
-  Lightbulb,
-  Sparkles,
-  ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
   ChevronRight,
   TrendingUp,
-  Tag as TagIcon,
-  Layers,
-  Search,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
 interface IdeaPipelineViewProps {
@@ -75,7 +66,7 @@ export function IdeaPipelineView({
       <div className="flex gap-4 overflow-x-auto pb-4 pt-1 snap-x scrollbar-thin">
         {ACTIVE_STAGES.map((stage) => {
           const stageIdeas = stageMap.get(stage) || [];
-          const { label, colorClass, badgeBg } = getLifecycleStageDisplayLabel(stage);
+          const { label, colorClass: _colorClass, badgeBg } = getLifecycleStageDisplayLabel(stage);
 
           return (
             <div

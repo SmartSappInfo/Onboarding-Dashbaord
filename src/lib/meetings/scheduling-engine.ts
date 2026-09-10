@@ -16,7 +16,6 @@ import type {
   AvailabilityProfile,
   EventType,
   AvailableSlot,
-  BookingHold,
 } from './types';
 
 // ── Time Utility Helpers ──────────────────────────────────────────────────

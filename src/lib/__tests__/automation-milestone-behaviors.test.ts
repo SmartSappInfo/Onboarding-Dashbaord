@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { traverseNodes } from '../automations/nodes/traverse';
 import { rescheduleMilestoneJobs } from '../automations/reschedule';
-import { adminDb } from '../firebase-admin';
 import { logStepExecution } from '../automations/step-logger';
 import { scheduleDelayTask, cancelDelayTask } from '../gcp-tasks-client';
 
@@ -32,9 +31,9 @@ vi.mock('../automations/actions', () => ({
 
 // Mock Firebase Admin Db
 vi.mock('../firebase-admin', () => {
-  const mockCollection = vi.fn().mockImplementation((colName: string) => {
+  const mockCollection = vi.fn().mockImplementation((_colName: string) => {
     return {
-      doc: vi.fn().mockImplementation((docId: string) => {
+      doc: vi.fn().mockImplementation((_docId: string) => {
         return {
           get: mockGet,
           update: mockUpdate,

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export function TaskCompletionKpi({ workspaceId }: { workspaceId: string }) {
+export function TaskCompletionKpi({ workspaceId: _workspaceId }: { workspaceId: string }) {
   // Mock data
   const completed = 45;
   const overdue = 12;

@@ -30,13 +30,8 @@ import {
   Users, 
   Plus, 
   Trash2, 
-  ShieldCheck, 
-  TrendingUp, 
-  Sparkles,
-  CheckCircle2
 } from 'lucide-react';
 import type { TerritoryRule } from '@/lib/lead-intelligence/types';
-import { cn } from '@/lib/utils';
 
 interface TerritoryRulesManagerModalProps {
   isOpen: boolean;

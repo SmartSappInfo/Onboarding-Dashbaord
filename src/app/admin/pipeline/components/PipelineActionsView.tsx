@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Zap, Plus, ExternalLink, ArrowRight, Play, CheckCircle2, ShieldAlert, Sparkles, Package } from 'lucide-react';
+import { Zap, Plus, ExternalLink, Sparkles } from 'lucide-react';
 import { isAutomationLinkedToStage } from '@/lib/automation-stage-helpers';
 import { toggleAutomationStatusAction } from '@/lib/automation-actions';
 import { useUser } from '@/firebase';
@@ -141,7 +141,7 @@ export default function PipelineActionsView({ pipeline, stages, automations = []
                                             </Badge>
                                         </div>
                                         <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                                            Triggers automatically when a deal enters "{stage.name}"
+                                            Triggers automatically when a deal enters &quot;{stage.name}&quot;
                                         </p>
                                     </div>
                                 </div>

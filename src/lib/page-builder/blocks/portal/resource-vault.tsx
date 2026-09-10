@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { FolderArchive, Download, FileText, FileSpreadsheet, FileCode, ArrowDownToLine } from 'lucide-react';
+import { FolderArchive, Download, FileText, FileSpreadsheet, ArrowDownToLine } from 'lucide-react';
 import { registerBlock } from '../../registry';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

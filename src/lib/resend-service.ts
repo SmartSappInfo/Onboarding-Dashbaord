@@ -123,7 +123,7 @@ async function resendRequest(
         if (text) {
           data = { message: text };
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore text read error
       }
     }

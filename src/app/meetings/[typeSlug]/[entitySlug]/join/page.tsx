@@ -1,7 +1,6 @@
 import type { Metadata } from 'next';
 import JoiningPageClient from '@/components/joining-page-client';
 import { adminDb } from '@/lib/firebase-admin';
-import { SmartSappLogo } from '@/components/icons';
 import { getOrgBranding } from '@/lib/org-branding';
 import Footer from '@/components/footer';
 

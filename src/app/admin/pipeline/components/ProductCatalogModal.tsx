@@ -17,17 +17,11 @@ import {
   Plus, 
   Pencil, 
   Trash2, 
-  Tag, 
-  DollarSign, 
-  Repeat, 
-  Percent, 
   Search, 
   Loader2, 
   Check, 
-  X, 
   Layers, 
   BookOpen,
-  Filter
 } from 'lucide-react';
 import { 
   Dialog, 
@@ -48,7 +42,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -115,7 +109,7 @@ export default function ProductCatalogModal({ open, onOpenChange }: ProductCatal
   const [pbName, setPbName] = React.useState('');
   const [pbDescription, setPbDescription] = React.useState('');
   const [pbCurrency, setPbCurrency] = React.useState('USD');
-  const [pbIsStandard, setPbIsStandard] = React.useState(false);
+  const [pbIsStandard, _setPbIsStandard] = React.useState(false);
   const [isSubmittingPriceBook, setIsSubmittingPriceBook] = React.useState(false);
 
   const loadData = React.useCallback(async () => {

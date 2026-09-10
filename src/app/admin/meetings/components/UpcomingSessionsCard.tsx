@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Video, Users, Share2, Sparkles, ExternalLink, ArrowRight } from 'lucide-react';
+import { Video, Users, Share2, ArrowRight } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 export function UpcomingSessionsCard() {

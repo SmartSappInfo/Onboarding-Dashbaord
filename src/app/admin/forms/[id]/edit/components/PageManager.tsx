@@ -9,7 +9,6 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,11 +28,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Layers,
-  ArrowUpDown,
-  FileText,
-  Copy,
 } from 'lucide-react';
-import type { FormPage, FormComponent } from '@/lib/forms/form-types';
+import type { FormPage } from '@/lib/forms/form-types';
 import type { FormFieldInstance, AppField } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -51,15 +47,15 @@ export default function PageManager({
   activePageId,
   onActivePageChange,
   onPagesChange,
-  fields,
-  getAppField,
+  fields: _fields,
+  getAppField: _getAppField,
 }: PageManagerProps) {
   const [editingPage, setEditingPage] = React.useState<FormPage | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = React.useState(false);
   const [pageTitle, setPageTitle] = React.useState('');
   const [pageDescription, setPageDescription] = React.useState('');
 
-  const activePageIndex = Math.max(0, pages.findIndex(p => p.id === activePageId));
+  const _activePageIndex = Math.max(0, pages.findIndex(p => p.id === activePageId));
 
   const handleAddPage = () => {
     const newPageId = `page_${Date.now().toString(36)}`;

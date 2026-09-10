@@ -21,7 +21,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { PortalModePresetPicker } from './PortalModePresetPicker';
 import { createPortalAction, verifyPortalSlugAvailabilityAction } from '@/app/actions/portal-actions';
@@ -213,7 +212,7 @@ export function CreatePortalModal({
                   </span>
                 ) : slugStatus.isAvailable === false ? (
                   <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
-                    Taken — will use "{slugStatus.suggestion}"
+                    Taken — will use &quot;{slugStatus.suggestion}&quot;
                   </span>
                 ) : null}
               </Label>

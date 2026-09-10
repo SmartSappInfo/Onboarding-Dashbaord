@@ -12,10 +12,7 @@
  */
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { 
-  ArrowRight, 
   Search, 
   UserCheck, 
   Briefcase, 
@@ -97,7 +94,7 @@ export const RevenueAttributionFunnel: React.FC<RevenueAttributionFunnelProps> =
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 pt-2">
         {steps.map((s, idx) => {
           const Icon = s.icon;
-          const isLast = idx === steps.length - 1;
+          const _isLast = idx === steps.length - 1;
           return (
             <div key={s.label} className="relative flex flex-col justify-between p-4 rounded-xl bg-muted/20 border border-border/60 space-y-3">
               <div className="space-y-2">

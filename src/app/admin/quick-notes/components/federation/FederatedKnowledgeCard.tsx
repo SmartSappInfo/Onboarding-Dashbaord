@@ -2,13 +2,10 @@
 
 import * as React from 'react';
 import {
-  Globe,
-  Lock,
   Copy,
   Check,
   Building,
   Bookmark,
-  Share2,
   Tag,
   Calendar,
   Layers,

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useFeatures } from '@/hooks/use-features';
-import { getAllWidgets, filterWidgetsByFeatures, STATIC_WIDGETS } from '@/lib/widget-registry';
+import { getAllWidgets, filterWidgetsByFeatures } from '@/lib/widget-registry';
 import type { Pipeline, WidgetDefinition } from '@/lib/types';
 import {
   Dialog,
@@ -13,7 +13,6 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import {
@@ -21,7 +20,6 @@ import {
   X,
   Check,
   Plus,
-  Minus,
   LayoutGrid,
   Workflow,
   CheckSquare,

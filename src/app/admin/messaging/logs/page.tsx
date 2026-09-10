@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { collection, query, orderBy, limit, doc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MessageLog } from '@/lib/types';
@@ -16,7 +15,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { 
     History, ArrowLeft, Mail, Smartphone, CheckCircle2, XCircle, 
     Eye, Search, Filter, Loader2, Info, Building, RefreshCw, AlertCircle, Clock, ShieldCheck,
@@ -56,7 +55,7 @@ import { getErrorMessage } from '@/lib/errors/report-error';
  */
 export default function MessageLogsPage() {
     const firestore = useFirestore();
-    const router = useRouter();
+    const _router = useRouter();
     const { toast } = useToast();
     const { activeWorkspaceId } = useWorkspace();
     const [searchTerm, setSearchTerm] = React.useState('');

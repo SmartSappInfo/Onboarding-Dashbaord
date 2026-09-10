@@ -16,14 +16,11 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { PageContainerFluid } from '@/components/ui/page-container';
-import { MeetingsNavigation } from '../components/MeetingsNavigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -46,28 +43,16 @@ import {
   Search,
   Download,
   Copy,
-  CopyCheck,
-  ExternalLink,
   MoreVertical,
   XCircle,
-  Clock,
   Video,
-  User,
-  Mail,
-  Phone,
   Calendar,
-  Eye,
-  Loader2,
-  CheckCircle2,
-  AlertCircle,
   LayoutList,
   Kanban,
   CalendarDays,
-  Plus,
   Sparkles,
-  ArrowRight,
 } from 'lucide-react';
-import { format, formatDistanceToNow, isAfter, isBefore } from 'date-fns';
+import { format, isAfter, isBefore } from 'date-fns';
 import type { Booking, BookingStatus } from '@/lib/meetings/types';
 import { cancelBookingAction } from '@/app/actions/booking-actions';
 import { BookingDetailDrawer } from './components/BookingDetailDrawer';
@@ -90,7 +75,7 @@ export default function BookingsClient() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState<string>('all');
   const [timeFilter, setTimeFilter] = React.useState<'all' | 'upcoming' | 'past'>('all');
-  const [copiedBookingId, setCopiedBookingId] = React.useState<string | null>(null);
+  const [_copiedBookingId, setCopiedBookingId] = React.useState<string | null>(null);
 
   // Selected booking for slide-over drawer
   const [selectedBooking, setSelectedBooking] = React.useState<Booking | null>(null);
@@ -361,7 +346,7 @@ export default function BookingsClient() {
             ) : (
               filteredBookings.map(bkg => {
                 const startDate = new Date(bkg.startAt);
-                const endDate = new Date(bkg.endAt);
+                const _endDate = new Date(bkg.endAt);
                 const isCancelled = bkg.status === 'cancelled';
                 const isCompleted = bkg.status === 'completed';
 

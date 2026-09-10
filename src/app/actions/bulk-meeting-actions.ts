@@ -3,8 +3,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
-import type { WorkspaceEntity, MeetingRegistrant } from '@/lib/types';
-import { getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
+import type { MeetingRegistrant } from '@/lib/types';
+import { getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface BulkMeetingInviteData {
@@ -47,7 +47,7 @@ export async function bulkRegisterParticipantsActionCore(data: BulkMeetingInvite
         typeSlug = meeting.type.id === 'parent' ? 'parent-engagement' : meeting.type.id;
       }
     }
-    const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
+    const _meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingSnap.id;
     const meetingTitle = meeting.title || 'Onboarding Session';
 
     const baseUrl = await getRequestBaseUrl();

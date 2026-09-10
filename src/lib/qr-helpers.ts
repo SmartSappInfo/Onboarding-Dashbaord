@@ -9,21 +9,18 @@
  */
 
 import crypto from 'crypto';
-import { DEFAULT_QR_DESIGN, DEFAULT_QR_LIFECYCLE_CONFIG, DEFAULT_QR_SECURITY_CONFIG } from '@/lib/qr-constants';
+import { DEFAULT_QR_LIFECYCLE_CONFIG, DEFAULT_QR_SECURITY_CONFIG } from '@/lib/qr-constants';
 import type {
   QRCode,
   QRCodeMode,
   QRCodeType,
   QRStatus,
-  QRDesign,
   QRLifecycleConfig,
   QRSecurityConfig,
   QRCampaign,
   QRCampaignObjective,
   QRCampaignStatus,
-  QRCustomDomain,
 } from '@/lib/types';
-import DOMPurify from 'isomorphic-dompurify';
 
 const PASSCODE_SALT = process.env.QR_SECURITY_SALT || 'smartsapp_qr_salt_2026';
 

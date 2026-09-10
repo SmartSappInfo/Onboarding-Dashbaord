@@ -6,7 +6,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { AvailabilityProfile, AvailabilityRule } from '@/lib/meetings/types';
+import type { AvailabilityProfile } from '@/lib/meetings/types';
 import { DEFAULT_WEEKLY_RULES } from '@/lib/meetings/types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 

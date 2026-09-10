@@ -38,7 +38,7 @@ export const TemplateTextarea = React.forwardRef<HTMLTextAreaElement, TemplateTe
     },
     ref
   ) => {
-    const [isFocused, setIsFocused] = React.useState(false);
+    const [_isFocused, setIsFocused] = React.useState(false);
     const highlightRef = React.useRef<HTMLDivElement>(null);
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 

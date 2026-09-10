@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Palette, Sparkles, ShieldCheck, Plus, Check, Eye, RefreshCw, Sliders, Layers } from 'lucide-react';
+import { Palette, Sparkles, ShieldCheck, Plus, Eye, Layers } from 'lucide-react';
 import { SURVEY_PALETTE_PRESETS } from '@/app/admin/surveys/components/inspector/theme-presets';
 import { calculateContrastScore } from '@/app/admin/surveys/components/inspector/contrast-utils';
 import { BackgroundPattern } from '@/app/surveys/components/survey-background-pattern';

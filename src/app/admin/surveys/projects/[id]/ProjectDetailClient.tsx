@@ -12,29 +12,24 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import type { SurveyProject, Survey } from '@/lib/types';
+import type { SurveyProject } from '@/lib/types';
 import { getSurveyProjectsAction } from '@/lib/surveys/survey-project-actions';
 import { LongitudinalStudyView } from '../components/LongitudinalStudyView';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 
 import { PageContainer } from '@/components/ui/page-container';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardDescription, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FolderGit2,
-  Layers,
   ArrowLeft,
-  Calendar,
-  Sparkles,
   BarChart3,
   Settings,
   Plus,
   Loader2,
-  FileQuestion,
-  ExternalLink,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -43,7 +38,7 @@ export interface ProjectDetailClientProps {
 }
 
 export default function ProjectDetailClient({ projectId }: ProjectDetailClientProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
 

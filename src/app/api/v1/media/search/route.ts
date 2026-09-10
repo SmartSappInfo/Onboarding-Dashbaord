@@ -9,7 +9,7 @@ import { authenticateApiRequest } from '../_utils/auth-rate-limit';
 import type { MediaTranscript, SemanticSearchHit } from '@/lib/types/media-2.0';
 
 export async function POST(req: NextRequest) {
-  const { auth, errorResponse } = await authenticateApiRequest(req, 'media:read');
+  const { auth: _auth, errorResponse } = await authenticateApiRequest(req, 'media:read');
   if (errorResponse) return errorResponse;
 
   try {

@@ -43,7 +43,6 @@ import {
     BarChart3,
     Brain,
     Network,
-    NotebookPen,
     Receipt,
     Package,
     Timer,

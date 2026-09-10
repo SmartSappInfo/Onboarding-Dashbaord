@@ -28,7 +28,7 @@ const SettingsPanel = React.memo(function SettingsPanel({
     onUpdateSeo,
     structure,
     onUpdateHeader,
-    onUpdateFooter
+    onUpdateFooter: _onUpdateFooter
 }: SettingsPanelProps) {
     // Accordion state
     const [openSection, setOpenSection] = useState<string>('behavior');
@@ -45,7 +45,7 @@ const SettingsPanel = React.memo(function SettingsPanel({
         navItems: []
     };
 
-    const footer: PageFooterSettings = structure.footer || {
+    const _footer: PageFooterSettings = structure.footer || {
         preset: 'org',
         overrideOrg: false
     };
@@ -55,7 +55,7 @@ const SettingsPanel = React.memo(function SettingsPanel({
     }, []);
 
     // ─── Header nav items mutation helpers ─────────────────────────
-    const handleAddNavItem = useCallback(() => {
+    const _handleAddNavItem = useCallback(() => {
         const newItem: HeaderNavItem = {
             id: `nav-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
             label: 'New Link',
@@ -67,13 +67,13 @@ const SettingsPanel = React.memo(function SettingsPanel({
         });
     }, [header.navItems, onUpdateHeader]);
 
-    const handleRemoveNavItem = useCallback((id: string) => {
+    const _handleRemoveNavItem = useCallback((id: string) => {
         onUpdateHeader({
             navItems: header.navItems.filter(item => item.id !== id)
         });
     }, [header.navItems, onUpdateHeader]);
 
-    const handleUpdateNavItem = useCallback((id: string, updates: Partial<HeaderNavItem>) => {
+    const _handleUpdateNavItem = useCallback((id: string, updates: Partial<HeaderNavItem>) => {
         onUpdateHeader({
             navItems: header.navItems.map(item => item.id === id ? { ...item, ...updates } : item)
         });

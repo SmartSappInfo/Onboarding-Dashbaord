@@ -28,17 +28,13 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import {
   Workflow,
-  Sliders,
   ShieldAlert,
   Clock,
   Save,
   Loader2,
   Database,
   CheckCircle2,
-  AlertTriangle,
   Zap,
-  Sparkles,
-  Scale,
 } from 'lucide-react';
 import {
   type SalesOrchestrationGovernance,

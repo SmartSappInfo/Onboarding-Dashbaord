@@ -1,5 +1,4 @@
 import { IndustryTemplate } from '../types/dashboard';
-import type { Layout } from 'react-grid-layout';
 
 export const SaasDashboardTemplate: IndustryTemplate = {
   industry: 'saas',

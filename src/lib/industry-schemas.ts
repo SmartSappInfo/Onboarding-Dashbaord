@@ -11,7 +11,7 @@
  */
 
 import { z } from 'zod';
-import type { IndustryVertical, IndustryData, Entity } from '@/lib/types';
+import type { IndustryVertical, IndustryData } from '@/lib/types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Shared primitives

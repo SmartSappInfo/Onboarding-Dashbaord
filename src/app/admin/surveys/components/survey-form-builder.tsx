@@ -4,14 +4,13 @@ import * as React from 'react';
 import { useFormContext, useFieldArray } from 'react-hook-form';
 import { useParams, useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import QuestionEditor from './question-editor';
 import BlockSettingsSidebar from './block-settings-sidebar';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Undo, Redo, PlusCircle, Eye, ShieldCheck, CloudUpload, Check, FoldVertical, UnfoldVertical, Layout, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, X, Sparkles, Bold, Columns, Library, History, Share2, FolderGit2 } from 'lucide-react';
+import { PlusCircle, CloudUpload, Settings, LayoutDashboard, PanelRightClose, PanelRightOpen, Sparkles } from 'lucide-react';
 import { useUser, useDoc, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import type { SurveyElement, SurveyQuestion, SurveySection, SurveyLayoutBlock, SurveyVersion, Survey } from '@/lib/types';
@@ -24,9 +23,6 @@ import { BulkActionsBar } from './BulkActionsBar';
 import SurveyForm from '../../../surveys/[slug]/components/survey-form';
 import { BackgroundPattern } from '../../../surveys/components/survey-background-pattern';
 import { hexToHslString, getContrastTextColor } from './inspector/contrast-utils';
-import { Separator } from '@/components/ui/separator';
-import AiChatEditor from './ai-chat-editor';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { autoSaveSurveyAction } from '@/lib/survey-actions';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -39,8 +35,6 @@ import { LogicStudioModal } from './LogicStudioModal';
 import { AiQuestionRefinementModal } from './AiQuestionRefinementModal';
 import { SurveyQualityAuditorDrawer } from './SurveyQualityAuditorDrawer';
 import { StudioDynamicIsland } from './StudioDynamicIsland';
-import { Badge } from '@/components/ui/badge';
-import { Split, FolderTree } from 'lucide-react';
 
 function isLayoutBlock(element: SurveyElement): element is SurveyLayoutBlock {
     const layoutTypes = ['heading', 'description', 'divider', 'image', 'video', 'audio', 'document', 'embed', 'section'];
@@ -56,7 +50,7 @@ export default function SurveyFormBuilder() {
     const { user } = useUser();
     
     const surveyId = (params?.id as string) || 'new-survey';
-    const storageKey = `survey-autosave-${surveyId}`;
+    const _storageKey = `survey-autosave-${surveyId}`;
     
     const { fields, append, remove, move, swap, insert } = useFieldArray({
       control,
@@ -222,7 +216,7 @@ export default function SurveyFormBuilder() {
         redo: redoHistory,
         canUndo,
         canRedo,
-        reset: resetHistory
+        reset: _resetHistory
     } = useUndoRedo<any>(getValues());
 
     const isProgrammaticChange = React.useRef(false);

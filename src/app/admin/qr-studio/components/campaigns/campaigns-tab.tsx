@@ -12,22 +12,15 @@
 
 import * as React from 'react';
 import {
-  FolderPlus,
   BarChart3,
   Search,
-  Filter,
   Plus,
   Play,
   Pause,
   Trash2,
   MoreVertical,
   Link,
-  Layers,
-  Calendar,
-  CheckCircle2,
-  TrendingUp,
   Target,
-  Sparkles,
   Loader2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

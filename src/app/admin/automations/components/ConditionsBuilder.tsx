@@ -8,10 +8,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash, Info, X, HelpCircle, CheckSquare, Play, Globe, Zap, ListFilter, Trash2 } from 'lucide-react';
+import { Plus, Trash, X, ListFilter, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
-import { MultiSelect } from '@/components/ui/multi-select';
 import { TagSelector } from '@/components/tags';
 import type { ConditionGroup, ConditionItem } from '@/lib/automation-condition';
 import type { Pipeline } from '@/lib/types';
@@ -260,7 +258,7 @@ export function ConditionsBuilder({
     if (!firestore || !activeWorkspaceId) return null;
     return query(collection(firestore, 'tags'), where('workspaceId', '==', activeWorkspaceId), orderBy('name', 'asc'));
   }, [firestore, activeWorkspaceId]);
-  const { data: allTags } = useCollection<any>(tagsQuery);
+  const { data: _allTags } = useCollection<any>(tagsQuery);
 
   const audiencesQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;

@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { Award, CheckCircle2, Download, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Award, Download, ShieldCheck } from 'lucide-react';
 import { registerBlock } from '../../registry';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

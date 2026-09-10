@@ -23,7 +23,6 @@ import {
   ShieldAlert,
   Activity,
   RefreshCw,
-  Sparkles,
   Users,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -62,7 +61,7 @@ interface LeastPrivilegeRoleReport {
 }
 
 export function PeopleAnalyticsClient() {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const { user: authUser } = useUser();
   const { activeOrganizationId } = useTenant();
 

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Loader2, Lock, Pencil, Trash2, MoreVertical, Copy, CheckCircle2 } from 'lucide-react';
+import { Loader2, Lock, Pencil, Trash2, MoreVertical, Copy } from 'lucide-react';
 import { listQRTemplates, saveQRTemplate, updateQRTemplate, deleteQRTemplate } from '@/lib/qr-actions';
 import { GLOBAL_QR_TEMPLATES } from '@/lib/qr-constants';
 import type { QRDesign, QRCodeTemplate } from '@/lib/types';
@@ -11,7 +11,6 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 interface TemplateControlsProps {
   orgId: string;
@@ -215,7 +214,7 @@ export default function TemplateControls({ orgId, wsId, currentDesign, updateDes
           {templates.length === 0 ? (
             <div className="p-6 border border-dashed border-border rounded-xl bg-muted/10 text-center">
               <p className="text-[11px] text-muted-foreground">
-                No custom templates yet. Use "Customize &amp; Save Copy" on a system preset, or click "Save as Template" after designing.
+                No custom templates yet. Use &quot;Customize &amp; Save Copy&quot; on a system preset, or click &quot;Save as Template&quot; after designing.
               </p>
             </div>
           ) : (

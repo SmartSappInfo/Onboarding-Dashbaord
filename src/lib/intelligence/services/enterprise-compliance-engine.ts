@@ -36,8 +36,8 @@ export class EnterpriseComplianceEngine {
    * Verifies mathematical tenant isolation across core Firestore and vector repositories.
    */
   public static async verifyTenantIsolation(
-    workspaceId: string,
-    organizationId: string
+    _workspaceId: string,
+    _organizationId: string
   ): Promise<{
     confirmed: boolean;
     auditedQueriesCount: number;

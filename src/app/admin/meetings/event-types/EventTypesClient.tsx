@@ -14,8 +14,6 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { PageContainerFluid } from '@/components/ui/page-container';
-import { MeetingsNavigation } from '../components/MeetingsNavigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -40,7 +38,6 @@ import {
   Clock,
   Video,
   MoreVertical,
-  Calendar,
   Sparkles,
   Phone,
   MapPin,

@@ -72,7 +72,7 @@ export function MemoryInspectorDrawer({
   onConfirm,
   onInvalidate,
   onUpdate,
-  isProcessing = false,
+  isProcessing: _isProcessing = false,
 }: MemoryInspectorDrawerProps) {
   const handleOpenChange = (newOpen: boolean) => {
     onOpenChange?.(newOpen);

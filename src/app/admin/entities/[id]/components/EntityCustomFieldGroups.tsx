@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useForm, Controller } from 'react-hook-form';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import { format } from 'date-fns';
 import * as LucideIcons from 'lucide-react';
 import { 
@@ -11,7 +11,7 @@ import {
 import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
 import { splitFileUrls } from '@/lib/survey-file-utils';
 
-import type { Entity, AppField, FieldGroup, AppPermissionId } from '@/lib/types';
+import type { Entity, AppField, FieldGroup } from '@/lib/types';
 import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';

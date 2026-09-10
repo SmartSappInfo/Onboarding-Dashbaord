@@ -8,13 +8,9 @@ import {
   Sparkles,
   ExternalLink,
   Info,
-  SlidersHorizontal,
-  CheckCircle2,
-  AlertCircle,
   ShieldCheck,
   FileText,
   Phone,
-  Calendar,
   ListTodo,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -336,7 +332,7 @@ export default function AskNotesDialog({
                                   </span>
                                 </div>
                                 <p className="text-[11px] text-muted-foreground italic line-clamp-2">
-                                  "{c.excerpt}"
+                                  &quot;{c.excerpt}&quot;
                                 </p>
                               </div>
                               <ExternalLink className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />

@@ -14,10 +14,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Sparkles, Loader2, ShieldAlert, CheckCircle2, ArrowRight } from 'lucide-react';
+import { Sparkles, Loader2, ShieldAlert } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import {
   developRawIdeaAiAction,
@@ -113,7 +112,7 @@ export function AiIdeaAssistantDialog({
                 className="text-xs font-semibold gap-1 text-purple-600 border-purple-500/30 hover:bg-purple-500/10"
               >
                 {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldAlert className="h-3 w-3" />}
-                Run Devil's Advocate
+                Run Devil&apos;s Advocate
               </Button>
             </div>
           ) : (

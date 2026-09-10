@@ -13,7 +13,6 @@ import type {
   CourseEnrollment,
   LearningProgress,
   CourseAssessment,
-  CourseAssignment,
   AssignmentSubmission,
   SubmitAssessmentInput,
   AssessmentResult,

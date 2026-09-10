@@ -16,11 +16,8 @@ import {
   Target,
   Clock,
   AlertCircle,
-  ChevronRight,
-  Info,
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 
 interface IdeaPrioritizationMatrixProps {
   ideas: Idea[];
@@ -32,7 +29,7 @@ export function IdeaPrioritizationMatrix({
   onSelectIdea,
 }: IdeaPrioritizationMatrixProps) {
   const [selectedQuadrant, setSelectedQuadrant] = React.useState<IceQuadrantType | 'all'>('all');
-  const [hoveredIdea, setHoveredIdea] = React.useState<Idea | null>(null);
+  const [_hoveredIdea, _setHoveredIdea] = React.useState<Idea | null>(null);
 
   // Group ideas into 4 quadrants
   const quadrantData = React.useMemo(() => {

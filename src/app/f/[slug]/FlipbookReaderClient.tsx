@@ -19,7 +19,7 @@
  *    Zero `any` or `any[]` types are permitted.
  */
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { FlipbookConfig, FlipbookPage, FlipbookHotspot } from '@/lib/types/flipbook-types';
@@ -44,12 +44,6 @@ import { ViewerAiAssistant } from '@/components/documents/viewer/ViewerAiAssista
 import { useViewerAudio } from '@/components/documents/viewer/useViewerAudio';
 import { useViewerGestures } from '@/components/documents/viewer/useViewerGestures';
 import { InteractiveLayerModal } from '@/components/documents/InteractiveLayerModal';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 
 interface FlipbookReaderClientProps {
@@ -70,7 +64,7 @@ export default function FlipbookReaderClient({ slug }: FlipbookReaderClientProps
 
   // PDF Canvas Renderer State
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [pdfDoc, setPdfDoc] = useState<PDFDocumentProxy | null>(null);
+  const [_pdfDoc, _setPdfDoc] = useState<PDFDocumentProxy | null>(null);
 
   // Viewer Engine 2.0 Modes & Customization
   const [viewerMode, setViewerMode] = useState<ViewerMode>('flipbook');

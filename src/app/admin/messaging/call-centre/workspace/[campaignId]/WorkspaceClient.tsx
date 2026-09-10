@@ -21,14 +21,13 @@ import { useToast } from '@/hooks/use-toast';
 import { logActivity } from '@/lib/activity-logger';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { Switch } from '@/components/ui/switch';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
-import type { ScriptNode, Entity, EntityContact, UserProfile, CallOutcomeAutomation, CallCampaign, CallQueueItem } from '@/lib/types';
+import type { ScriptNode, EntityContact, UserProfile, CallOutcomeAutomation, CallCampaign } from '@/lib/types';
 import {
   isJsonGraph,
   parseGraph,
@@ -44,7 +43,6 @@ import {
   ArrowLeft,
   ArrowRight,
   Phone, 
-  Mail, 
   Play, 
   Pause, 
   FileText, 
@@ -53,9 +51,7 @@ import {
   ChevronRight,
   RefreshCw,
   PhoneOff,
-  User,
   AlertTriangle,
-  FolderOpen,
   PanelLeftClose,
   PanelLeftOpen,
   PanelRightClose,
@@ -73,7 +69,6 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -174,7 +169,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
   }, [users, activeWorkspaceId]);
 
-  const { campaigns } = useCallCampaigns(activeWorkspaceId);
+  const { campaigns: _campaigns } = useCallCampaigns(activeWorkspaceId);
   const { queueItems, isLoading: queueLoading } = useCallQueueItems(campaignId);
 
   // Bulk fetch entities of all queue items to dynamically resolve contact names and roles
@@ -684,7 +679,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setEnteredObjectionFromChoice(false);
   }, [currentItem?.id, scriptGraph]);
 
-  const handleHistoryClick = (nodeId: string, index: number) => {
+  const _handleHistoryClick = (nodeId: string, index: number) => {
     setCurrentNodeId(nodeId);
     setPathHistory(prev => prev.slice(0, index));
     setSelectedSubObjectionIndex(null);
@@ -730,7 +725,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
             });
             return;
           }
-        } catch (e) {
+        } catch (_e) {
           console.error('[WORKSPACE_CLIENT] Invalid validation regex pattern:', qc.validationPattern);
         }
       }
@@ -799,7 +794,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
     setEnteredObjectionFromChoice(false);
   };
 
-  const handleObjectionClick = (nodeId: string) => {
+  const _handleObjectionClick = (nodeId: string) => {
     if (!currentNodeId) return;
     setPathHistory(prev => [...prev, currentNodeId]);
     setCurrentNodeId(nodeId);
@@ -2313,7 +2308,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                             <span>This contact is registered on the Do Not Call (DNC) list. Calling them may violate compliance regulations.</span>
                           )}
                           {currentNode?.data.startConfig?.checkTimezone && isOutsideTimezone && (
-                            <span>It is currently outside the allowed contact hours ({currentNode.data.startConfig.allowedHoursStart} - {currentNode.data.startConfig.allowedHoursEnd}) for this contact's timezone.</span>
+                            <span>It is currently outside the allowed contact hours ({currentNode.data.startConfig.allowedHoursStart} - {currentNode.data.startConfig.allowedHoursEnd}) for this contact&apos;s timezone.</span>
                           )}
                         </p>
                       </div>
@@ -2391,7 +2386,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                                   <div className="p-4 bg-purple-500/5 border border-purple-500/20 rounded-xl space-y-2">
                                     <h4 className="text-xs font-bold text-purple-400 uppercase tracking-wide">Outcome Step Reached</h4>
                                     <p className="text-xs text-foreground">
-                                      The conversation has reached the outcome: <span className="font-extrabold text-purple-600">"{currentNode.data.outcomeValue}"</span>.
+                                      The conversation has reached the outcome: <span className="font-extrabold text-purple-600">&quot;{currentNode.data.outcomeValue}&quot;</span>.
                                     </p>
                                   </div>
                                   <Button
@@ -2626,7 +2621,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                               </Button>
                             ) : currentNode?.type !== 'objection' && currentNode?.type !== 'start' && currentNode?.type !== 'end' && choices.length > 0 ? (
                               <div className="flex flex-wrap gap-2 justify-end items-center">
-                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer's Response:</span>
+                                <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest mr-1">Choose Customer&apos;s Response:</span>
                                 {choices.map((choice) => (
                                   <Button
                                     key={choice.edgeId}

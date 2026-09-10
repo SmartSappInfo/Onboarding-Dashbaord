@@ -8,7 +8,6 @@
  */
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   Split,
   Trophy,
@@ -17,13 +16,7 @@ import {
   Plus,
   ArrowUpRight,
   TrendingUp,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
-  Sparkles,
-  Sliders,
-  DollarSign,
-  Users,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +39,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import type { Form } from '@/lib/types';
-import type { FormExperiment, FormVariant } from '@/lib/forms/form-optimization-types';
+import type { FormExperiment } from '@/lib/forms/form-optimization-types';
 import {
   createFormExperimentAction,
   updateExperimentStatusAction,

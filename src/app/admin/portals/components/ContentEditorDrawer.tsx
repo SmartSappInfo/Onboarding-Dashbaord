@@ -28,7 +28,6 @@ import { sanitizeSlug } from '@/lib/utils/slug-utils';
 import {
   createContentItemAction,
   updateContentItemAction,
-  publishContentItemAction,
 } from '@/app/actions/content-actions';
 import type {
   ContentItem,
@@ -45,10 +44,7 @@ import {
   FileSpreadsheet,
   Globe,
   Share2,
-  Calendar,
-  Lock,
   Loader2,
-  Image,
   Sparkles,
 } from 'lucide-react';
 

@@ -15,12 +15,11 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  ShieldAlert,
   CheckCircle2,
   XCircle,
   Clock,
@@ -119,7 +118,7 @@ export function PendingApprovalsQueue({
             <CheckCircle2 className="w-8 h-8 text-emerald-500" />
             <p className="font-medium text-slate-800">Queue is Clear</p>
             <p className="text-xs text-slate-400">
-              No tool executions currently awaiting adjudication under "{activeFilter}".
+              No tool executions currently awaiting adjudication under &quot;{activeFilter}&quot;.
             </p>
           </div>
         </div>

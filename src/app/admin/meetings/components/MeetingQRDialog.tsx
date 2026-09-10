@@ -3,10 +3,8 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { 
-    Download, 
     Copy, 
     Check, 
-    X,
     QrCode,
     FileImage,
     FileCode,
@@ -21,7 +19,6 @@ import {
     DialogTitle,
 } from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 interface MeetingQRDialogProps {
     open: boolean;
@@ -117,7 +114,7 @@ export default function MeetingQRDialog({
                 title: "QR Code Downloaded",
                 description: `Successfully exported as ${extension.toUpperCase()}.`
             });
-        } catch (error) {
+        } catch (_error) {
             toast({
                 variant: "destructive",
                 title: "Download Failed",

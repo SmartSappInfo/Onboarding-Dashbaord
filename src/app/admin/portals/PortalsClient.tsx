@@ -18,7 +18,7 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Survey, PDFForm, Meeting, CampaignPage } from '@/lib/types';
-import type { Portal, PortalMode, PortalStatus } from '@/lib/types/portal';
+import type { Portal } from '@/lib/types/portal';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,10 +32,8 @@ import {
   FileText,
   Calendar,
   Zap,
-  LayoutList,
   Plus,
   Sparkles,
-  Layers,
   Rocket,
   SlidersHorizontal,
 } from 'lucide-react';

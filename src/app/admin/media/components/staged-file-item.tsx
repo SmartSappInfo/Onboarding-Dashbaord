@@ -6,7 +6,6 @@ import { File as FileIcon, X, CheckCircle, Loader2 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import Image from 'next/image';
 import type { ImageEditingState } from './ImageEditor';
 
 export interface FileState {

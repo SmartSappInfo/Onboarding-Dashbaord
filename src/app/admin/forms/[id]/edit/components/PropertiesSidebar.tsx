@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { X, Trash2, Sliders, Type, HelpCircle, EyeOff, Check } from 'lucide-react';
+import { X, Trash2, Sliders, Type, HelpCircle, EyeOff } from 'lucide-react';
 
 interface PropertiesSidebarProps {
   selectedInstance: FormFieldInstance | null;

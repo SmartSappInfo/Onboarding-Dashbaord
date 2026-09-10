@@ -19,14 +19,12 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { doc, collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { 
   Document, 
   DocumentVersion, 
   DocumentPage, 
-  ViewerExperience, 
-  AccessPolicy,
   DocumentType,
   ViewerMode
 } from '@/lib/types/document-types';
@@ -44,14 +42,13 @@ import { Card } from '@/components/ui/card';
 import Link from 'next/link';
 import { 
   ArrowLeft, Save, Sparkles, Sliders, Layers, 
-  ExternalLink, Plus, Trash2, Video, Link as LinkIcon, Eye,
+  ExternalLink, Plus, Trash2, Video, Link as _LinkIcon, Eye,
   History, Shield, Code, CheckCircle, RefreshCw, Copy, TrendingUp, Bot
 } from 'lucide-react';
 import { updateDocumentAction } from '@/lib/document-actions';
 import { 
   createDocumentVersionAction, 
   promoteDocumentVersionAction, 
-  archiveDocumentVersionAction, 
   getDocumentVersionsAction 
 } from '@/lib/documents/document-version-actions';
 import { queueDocumentProcessingAction } from '@/lib/documents/processing-actions';
@@ -110,24 +107,24 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
   const [isSaving, setIsSaving] = useState(false);
 
   // Experience Settings
-  const [backgroundColor, setBackgroundColor] = useState('#f1f5f9');
+  const [backgroundColor, _setBackgroundColor] = useState('#f1f5f9');
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [hardcover, setHardcover] = useState(false);
   const [enableDownloadPdf, setEnableDownloadPdf] = useState(true);
   const [enablePrint, setEnablePrint] = useState(true);
-  const [enableShare, setEnableShare] = useState(true);
-  const [enableSearch, setEnableSearch] = useState(true);
-  const [enableThumbnails, setEnableThumbnails] = useState(true);
+  const [enableShare, _setEnableShare] = useState(true);
+  const [enableSearch, _setEnableSearch] = useState(true);
+  const [enableThumbnails, _setEnableThumbnails] = useState(true);
 
   // Interactive Layers State
   const [hotspots, setHotspots] = useState<FlipbookHotspot[]>([]);
   const [selectedPage, setSelectedPage] = useState(1);
-  const [hotspotType, setHotspotType] = useState<HotspotType>('link');
+  const [hotspotType, _setHotspotType] = useState<HotspotType>('link');
   const [hotspotTitle, setHotspotTitle] = useState('');
   const [hotspotUrl, setHotspotUrl] = useState('');
 
   // Password & Access State
-  const [password, setPassword] = useState('');
+  const [password, _setPassword] = useState('');
 
   // Version History State
   const [versions, setVersions] = useState<DocumentVersion[]>([]);
@@ -209,7 +206,7 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
     }
   };
 
-  const handleAddHotspot = () => {
+  const _handleAddHotspot = () => {
     if (!hotspotUrl.trim()) {
       toast({ variant: 'destructive', title: 'URL Required', description: 'Enter a target URL or action link.' });
       return;
@@ -233,7 +230,7 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
     toast({ title: 'Layer Overlay Added', description: `Added ${hotspotType} overlay to page ${selectedPage}.` });
   };
 
-  const handleRemoveHotspot = (id: string) => {
+  const _handleRemoveHotspot = (id: string) => {
     setHotspots((prev) => prev.filter((h) => h.id !== id));
   };
 
@@ -290,7 +287,7 @@ export default function DocumentEditorClient({ documentId }: DocumentEditorClien
 
   const origin = typeof window !== 'undefined' ? window.location.origin : '';
   const publicUrl = `${origin}/d/${slug || documentId}`;
-  const iframeCode = `<iframe src="${publicUrl}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>`;
+  const _iframeCode = `<iframe src="${publicUrl}" width="100%" height="600px" frameborder="0" allowfullscreen></iframe>`;
 
   if (isDocLoading || !document) {
     return (

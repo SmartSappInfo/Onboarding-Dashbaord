@@ -224,7 +224,7 @@ export default function EntityAutomationsTab({ entityId }: EntityAutomationsTabP
                         {completedRuns.map((run: AutomationRun) => {
                             const isCompleted = run.status === 'completed';
                             const isCancelled = run.status === 'cancelled';
-                            const isFailed = run.status === 'failed';
+                            const _isFailed = run.status === 'failed';
                             const isExpanded = !!expandedRunIds[run.id];
 
                             return (

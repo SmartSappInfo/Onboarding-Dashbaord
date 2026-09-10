@@ -16,7 +16,7 @@ interface MarqueeSelectProps {
   itemSelector: string;
 }
 
-export function MarqueeSelect({ children, containerRef, onSelectionChange, itemSelector }: MarqueeSelectProps) {
+export function MarqueeSelect({ children, containerRef: _containerRef, onSelectionChange, itemSelector }: MarqueeSelectProps) {
   const [marquee, setMarquee] = React.useState<MarqueeState | null>(null);
   const wrapperRef = React.useRef<HTMLDivElement>(null);
   const startPos = React.useRef<{ x: number, y: number } | null>(null);

@@ -19,7 +19,6 @@ import * as React from 'react';
 import {
   Type,
   FileText,
-  CheckSquare,
   List,
   Star,
   Calendar,
@@ -44,9 +43,6 @@ import {
   Plus,
   FolderTree,
   EyeOff,
-  Sparkles,
-  Layers,
-  Folder,
   X,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -426,7 +422,7 @@ export function StructureNavigator({
 
           {filteredElements.length === 0 && (
             <div className="py-8 text-center text-xs text-muted-foreground">
-              No blocks matching "{searchQuery}"
+              No blocks matching &quot;{searchQuery}&quot;
             </div>
           )}
         </div>

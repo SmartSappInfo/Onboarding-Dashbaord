@@ -123,7 +123,7 @@ export default function SettingsClient() {
           description: result.error || "Failed to update logo.",
         });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Error",

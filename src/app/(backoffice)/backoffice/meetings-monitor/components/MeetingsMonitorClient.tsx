@@ -16,12 +16,11 @@ import {
   Send,
   UserCheck,
   RefreshCw,
-  Loader2,
   Radio,
   MailCheck,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import {

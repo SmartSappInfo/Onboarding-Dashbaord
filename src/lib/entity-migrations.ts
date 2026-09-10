@@ -178,7 +178,7 @@ export async function rollbackEntitiesMigration(firestore: Firestore): Promise<M
         
         for (const backupDoc of backupSnap.docs) {
             try {
-                const { backedUpAt, ...originalSchool } = backupDoc.data();
+                const { _backedUpAt, ...originalSchool } = backupDoc.data();
                 
                 // RESTORE: Original school
                 batch.set(doc(firestore, 'schools', backupDoc.id), originalSchool);
@@ -389,7 +389,7 @@ export async function rollbackContractsMigration(firestore: Firestore): Promise<
         
         for (const backupDoc of backupSnap.docs) {
             try {
-                const { backedUpAt, ...original } = backupDoc.data();
+                const { _backedUpAt, ...original } = backupDoc.data();
                 batch.set(doc(firestore, 'contracts', backupDoc.id), original);
                 batch.delete(backupDoc.ref);
                 operationCount += 2;
@@ -500,7 +500,7 @@ export async function rollbackSubmissionsMigration(firestore: Firestore): Promis
         
         for (const backupDoc of backupSnap.docs) {
             try {
-                const { backedUpAt, originalPath, ...original } = backupDoc.data();
+                const { _backedUpAt, originalPath, ...original } = backupDoc.data();
                 batch.set(doc(firestore, originalPath), original);
                 batch.delete(backupDoc.ref);
                 operationCount += 2;

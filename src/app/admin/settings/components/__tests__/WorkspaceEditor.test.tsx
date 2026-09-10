@@ -62,7 +62,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   };
 
   it('should display institution scope badge on workspace card', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="workspace-card">
         {mockInstitutionWorkspace.contactScope && (
           <span data-testid="scope-badge">
@@ -77,7 +77,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   });
 
   it('should display family scope badge on workspace card', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="workspace-card">
         {mockFamilyWorkspace.contactScope && (
           <span data-testid="scope-badge">
@@ -92,7 +92,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   });
 
   it('should display lock icon when scope is locked', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="workspace-card">
         {mockInstitutionWorkspace.scopeLocked && (
           <span data-testid="lock-icon">🔒</span>
@@ -104,7 +104,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   });
 
   it('should not display lock icon when scope is not locked', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="workspace-card">
         {mockFamilyWorkspace.scopeLocked && (
           <span data-testid="lock-icon">🔒</span>
@@ -116,7 +116,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   });
 
   it('should display "This workspace manages" label with correct scope type', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-display">
         <p>
           This workspace manages{' '}
@@ -133,7 +133,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   });
 
   it('should display capabilities toggles', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="capabilities">
         {Object.entries(mockInstitutionWorkspace.capabilities!).map(([key, enabled]) => (
           <div key={key} data-testid={`capability-${key}`}>
@@ -149,7 +149,7 @@ describe('WorkspaceEditor - Scope Display', () => {
   });
 
   it('should display scope locked warning when scope is locked', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-warning">
         {mockInstitutionWorkspace.scopeLocked && (
           <div data-testid="locked-warning">

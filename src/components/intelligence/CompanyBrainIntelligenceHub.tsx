@@ -20,7 +20,6 @@
  */
 
 import * as React from 'react';
-import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
@@ -30,7 +29,6 @@ import {
   BarChart3,
   RefreshCw,
   Cpu,
-  Layers,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type {

@@ -12,22 +12,18 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
-  ShieldAlert,
   CheckCircle2,
   XCircle,
   Clock,
   ArrowRight,
-  Flame,
-  AlertTriangle,
 } from 'lucide-react';
 import type { AiAdminActionProposal, AiProposalStatus } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface AiProposalsQueueTableProps {
   proposals: AiAdminActionProposal[];

@@ -14,7 +14,6 @@
 import * as React from 'react';
 import {
   Upload,
-  X,
   CheckCircle2,
   AlertCircle,
   Loader2,
@@ -22,8 +21,6 @@ import {
   Layers,
   Sparkles,
   ArrowRight,
-  RefreshCw,
-  Table as TableIcon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -35,7 +32,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Select,
@@ -56,7 +52,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';
 import { batchCreateQRCodes } from '@/lib/qr-actions';
-import { sanitizeCsvField } from '@/lib/batch-zip-exporter';
 import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
 import type { BatchQRItem, QRDesign, QRFrameStyle } from '@/lib/types';
 
@@ -495,7 +490,7 @@ export default function BatchImportDialog({ open, onOpenChange, onSuccess }: Bat
                       </SelectTrigger>
                       <SelectContent className="rounded-xl">
                         <SelectItem value="none">Raw QR (No Frame)</SelectItem>
-                        <SelectItem value="bottom-banner">Bottom "Scan Me" Banner</SelectItem>
+                        <SelectItem value="bottom-banner">Bottom &quot;Scan Me&quot; Banner</SelectItem>
                         <SelectItem value="top-banner">Top Banner</SelectItem>
                         <SelectItem value="rounded-box">Rounded Box</SelectItem>
                         <SelectItem value="polaroid">Polaroid</SelectItem>

@@ -5,7 +5,6 @@ import {
   calculateDealHealthScore,
   extractPostMeetingIntelligence,
   buildUnifiedActivityTimeline,
-  DEFAULT_DEAL_INTELLIGENCE_GOVERNANCE,
 } from '../deal-intelligence-engine';
 import type { StakeholderPerson, UnifiedTimelineEvent } from '../types';
 

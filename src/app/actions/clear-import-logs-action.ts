@@ -35,7 +35,7 @@ export async function clearAllImportLogsAction(userId: string): Promise<{
         const fourteenDaysAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
 
         for (const doc of logsSnap.docs) {
-            const docId = doc.id;
+            const _docId = doc.id;
             const docData = doc.data();
 
             // Only delete logs older than 14 days based on startedAt

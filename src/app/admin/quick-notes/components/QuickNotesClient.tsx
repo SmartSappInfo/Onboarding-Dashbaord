@@ -13,13 +13,6 @@ import {
   LayoutTemplate,
   Lightbulb, 
   Sparkles, 
-  CheckCircle2, 
-  MessageSquareQuote,
-  Notebook,
-  Compass,
-  BookOpen,
-  Eye,
-  CheckSquare,
   Settings,
   Network,
   Inbox,
@@ -28,7 +21,6 @@ import {
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -37,7 +29,7 @@ import { useFirestore, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
 import type { QuickNote, UnifiedNote, KnowledgeType } from '@/lib/quick-notes-types';
-import { collectOwnedStoragePaths, quickNoteToUnified, sortUnifiedNotes, KNOWLEDGE_TYPE_META, normalizeKnowledgeType } from '@/lib/quick-notes-domain';
+import { collectOwnedStoragePaths, quickNoteToUnified, sortUnifiedNotes, normalizeKnowledgeType } from '@/lib/quick-notes-domain';
 import { deleteAttachmentObject } from '@/lib/quick-notes-attachments';
 import { fetchAggregatedNotes } from '@/lib/quick-notes-feed-actions';
 import {

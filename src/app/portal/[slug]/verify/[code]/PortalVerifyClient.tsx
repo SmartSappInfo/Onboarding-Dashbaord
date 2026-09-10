@@ -10,7 +10,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
@@ -21,17 +21,12 @@ import {
   CheckCircle2,
   ShieldCheck,
   Printer,
-  Share2,
   Download,
   AlertTriangle,
   Award,
-  Calendar,
   Layers,
-  GraduationCap,
-  ExternalLink,
   Copy,
   ArrowLeft,
-  Sparkles,
 } from 'lucide-react';
 
 interface PortalVerifyClientProps {
@@ -45,7 +40,7 @@ interface PortalVerifyClientProps {
 export function PortalVerifyClient({
   portal,
   certificate,
-  verificationCode,
+  verificationCode: _verificationCode,
   isValid,
   message,
 }: PortalVerifyClientProps) {
@@ -53,7 +48,7 @@ export function PortalVerifyClient({
   const [isExportingBadge, setIsExportingBadge] = React.useState(false);
 
   const brandName = portal.branding?.brandName || portal.name;
-  const logoUrl = portal.branding?.logoUrl;
+  const _logoUrl = portal.branding?.logoUrl;
 
   const handlePrint = () => {
     if (typeof window !== 'undefined') {

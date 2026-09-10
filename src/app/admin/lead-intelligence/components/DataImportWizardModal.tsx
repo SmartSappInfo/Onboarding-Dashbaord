@@ -19,23 +19,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { Progress } from '@/components/ui/progress';
 import { 
   FileSpreadsheet, 
   Upload, 
-  Columns, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Copy, 
   Sparkles, 
-  Eye, 
   Database,
   ArrowRight,
   ArrowLeft,

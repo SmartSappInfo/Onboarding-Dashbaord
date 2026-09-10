@@ -1,6 +1,6 @@
 import * as React from "react";
 import Link from "next/link";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card";
 
 
 export function MetricCard({

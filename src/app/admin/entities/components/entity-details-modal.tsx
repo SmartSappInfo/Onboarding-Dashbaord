@@ -14,7 +14,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
-import { Globe, Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, History, MessageSquarePlus, Send, Layout, MessageCircle } from 'lucide-react';
+import { Calendar, Mail, Phone, Users, MapPin, PenSquare, Workflow, User, ChevronLeft, ChevronRight, MessageSquarePlus, Send, Layout, MessageCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
@@ -44,7 +44,7 @@ export default function EntityDetailsModal({ entity, open, onOpenChange, onNavig
   const [isLogActivityModalOpen, setIsLogActivityModalOpen] = React.useState(false);
   
   if (!entity) return null;
-  const contacts = resolveEntityContacts(entity as any);
+  const _contacts = resolveEntityContacts(entity as any);
 
   const DetailItem = ({ icon: Icon, label, value, children }: { icon: React.ElementType, label: string, value?: string | number | null, children?: React.ReactNode }) => {
     if (!value && !children) return null;

@@ -16,14 +16,12 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import {
   Trophy,
   Users,
   EyeOff,
-  ShieldAlert,
   UserCheck,
   Award,
   Target,

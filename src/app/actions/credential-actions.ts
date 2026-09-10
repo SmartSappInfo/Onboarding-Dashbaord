@@ -16,7 +16,6 @@ import type {
   CertificateTemplate,
   IssuedCertificate,
   BadgeDefinition,
-  AwardedBadge,
   OpenBadgeCredential30,
   XApiStatement,
   CreateCertificateTemplateInput,

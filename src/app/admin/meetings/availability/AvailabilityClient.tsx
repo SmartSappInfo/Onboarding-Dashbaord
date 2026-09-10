@@ -9,8 +9,6 @@
 import * as React from 'react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { PageContainerFluid } from '@/components/ui/page-container';
-import { MeetingsNavigation } from '../components/MeetingsNavigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -43,7 +41,6 @@ import {
   CalendarOff,
   Globe,
   Calendar,
-  Check,
 } from 'lucide-react';
 import {
   DEFAULT_WEEKLY_RULES,
@@ -116,7 +113,7 @@ export default function AvailabilityClient() {
   const [newOverrideDate, setNewOverrideDate] = React.useState('');
   const [newOverrideType, setNewOverrideType] = React.useState<'available' | 'unavailable'>('unavailable');
   const [newOverrideReason, setNewOverrideReason] = React.useState('');
-  const [newOverrideIntervals, setNewOverrideIntervals] = React.useState<AvailabilityInterval[]>([
+  const [newOverrideIntervals, _setNewOverrideIntervals] = React.useState<AvailabilityInterval[]>([
     { start: '09:00', end: '17:00' },
   ]);
 

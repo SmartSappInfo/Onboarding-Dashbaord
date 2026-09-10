@@ -38,7 +38,6 @@ import {
   Coins,
   Lock,
 } from 'lucide-react';
-import type { AiWorkforceGovernancePolicy } from '@/lib/ai-sales-workforce/types';
 import {
   getAiWorkforceDashboardDataAction,
   toggleAiMasterKillSwitchAction,

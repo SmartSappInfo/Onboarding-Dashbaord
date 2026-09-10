@@ -14,8 +14,6 @@ import {
   CheckCircle2, 
   TrendingUp, 
   Clock, 
-  ArrowUpRight,
-  TrendingDown
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';

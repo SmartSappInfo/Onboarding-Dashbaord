@@ -15,15 +15,12 @@ import {
   Send,
   Sparkles,
   CheckCircle2,
-  AlertCircle,
   Loader2,
   Plus,
   X,
-  ShieldCheck,
 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import {
@@ -34,7 +31,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import type { Form } from '@/lib/types';
 import type {
   ScheduledFormReportConfig,
   ScheduledReportFrequency,

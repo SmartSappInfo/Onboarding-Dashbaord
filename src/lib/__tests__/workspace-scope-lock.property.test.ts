@@ -61,7 +61,7 @@ const userIdArb = fc.string({ minLength: 10, maxLength: 30 }).map((s) => `user_$
 /**
  * Creates a minimal valid Workspace object for testing.
  */
-function createWorkspace(
+function _createWorkspace(
   id: string,
   organizationId: string,
   industry: IndustryVertical,

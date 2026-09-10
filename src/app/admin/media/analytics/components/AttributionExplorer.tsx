@@ -26,7 +26,6 @@ import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import type {
   MediaAttribution,
   AttributionType,
-  AttributionModelType,
 } from '@/lib/types/media-2.0';
 import { exportAttributionCsvAction } from '@/lib/media/attribution-service';
 import { Input } from '@/components/ui/input';
@@ -43,14 +42,12 @@ import {
   Search,
   Download,
   Filter,
-  CheckCircle2,
   Video,
   FileText,
   Music,
   Image as ImageIcon,
   Sparkles,
   ArrowUpDown,
-  ExternalLink,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

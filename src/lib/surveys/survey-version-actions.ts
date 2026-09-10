@@ -17,7 +17,6 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { Survey } from '@/lib/types';
 import type { SurveyVersion } from './survey-v2-types';
 import { computeSurveyChecksum, hydrateSurveyDocument, synthesizeVersionSnapshot } from './survey-hydration-adapter';
 import { requireWorkspace } from '@/lib/auth/require-auth';

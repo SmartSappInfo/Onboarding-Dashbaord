@@ -14,7 +14,7 @@
  * Tests that users can only access collections matching their workspace industry
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import {
   initializeTestEnvironment,
   RulesTestEnvironment,
@@ -26,7 +26,6 @@ import {
   getDoc, 
   setDoc, 
   updateDoc, 
-  deleteDoc,
 } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';

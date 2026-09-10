@@ -129,7 +129,7 @@ export function createTaskNonBlocking(db: Firestore, task: Omit<Task, 'id' | 'cr
             metadata: { taskId: docRef.id, category: task.category }
         });
         return docRef;
-    }).catch(async (error) => {
+    }).catch(async (_error) => {
         const permissionError = new FirestorePermissionError({
             path: tasksCol.path,
             operation: 'create',
@@ -172,7 +172,7 @@ export function updateTaskNonBlocking(db: Firestore, taskId: string, updates: Pa
                 metadata: { taskId }
             });
         }
-    }).catch(async (error) => {
+    }).catch(async (_error) => {
         const permissionError = new FirestorePermissionError({
             path: taskRef.path,
             operation: 'update',
@@ -229,7 +229,7 @@ export async function bulkCompleteTasks(db: Firestore, taskIds: string[]) {
  */
 export function deleteTaskNonBlocking(db: Firestore, taskId: string) {
     const taskRef = doc(db, 'tasks', taskId);
-    deleteDoc(taskRef).catch(async (error) => {
+    deleteDoc(taskRef).catch(async (_error) => {
         const permissionError = new FirestorePermissionError({
             path: taskRef.path,
             operation: 'delete',

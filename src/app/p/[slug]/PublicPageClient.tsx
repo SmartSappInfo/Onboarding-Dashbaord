@@ -1,11 +1,11 @@
 'use client';
 
 import * as React from 'react';
-import { use, useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { CampaignPage, CampaignPageVersion, PageTrigger, PageTriggerAction, OrgBranding } from '@/lib/types';
-import { Loader2, PlusSquare, X, CheckCircle2, ArrowRight, Banknote, Smartphone, FileText, Upload } from 'lucide-react';
+import { Loader2, X, CheckCircle2, ArrowRight, Banknote, Smartphone, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,15 +13,10 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { SmartSappLogo } from '@/components/icons';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
-import { submitStandaloneFormAction } from '@/lib/form-actions';
-import { getThemesAction } from '@/lib/theme-actions';
-import { recordPageViewAction, recordInteractionAction } from '@/lib/analytics-actions';
+import { recordPageViewAction } from '@/lib/analytics-actions';
 import { useSearchParams } from 'next/navigation';
 import { useTheme } from 'next-themes';
-import type { CampaignPageTheme } from '@/lib/types';
-import { PaymentMethodCard } from '@/components/portal/PaymentMethodCard';
 import Footer from '@/components/footer';
 import SUBSCRIPTION_PAYMENT_DATA from './payment-guide-data.json';
 import SUBSCRIPTION_RENEWAL_DATA from './subscription-renewal-data.json';
@@ -33,7 +28,7 @@ import { VERSIONS_COLLECTION } from '@/lib/page-builder/constants';
 import { sanitizeHtml, sanitizeCss } from '@/lib/page-builder/sanitize';
 import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 import { PageRenderer } from '@/components/page-builder/PageRenderer';
-import { resolveTheme, isColorLight } from '@/lib/page-builder/resolve-theme';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import { migrateLegacyStructure } from '@/lib/page-builder/migrate';
 import { parseStructure } from '@/lib/page-builder/schema';
 import { PageTracking } from '@/components/page-builder/PageTracking';
@@ -745,7 +740,7 @@ export default function PublicPageClient({
 
                                                     {block.type === 'testimonial' && (
                                                         <div className="max-w-lg mx-auto p-8 bg-slate-50/50 dark:bg-zinc-900/30 rounded-2xl border border-border/20 dark:border-zinc-800/50 text-center space-y-4">
-                                                            <div className="text-4xl text-slate-300 dark:text-zinc-700">"</div>
+                                                            <div className="text-4xl text-slate-300 dark:text-zinc-700">&quot;</div>
                                                             <p className="text-base italic text-slate-800 dark:text-slate-200 leading-relaxed font-semibold">{interpolate(block.props.quote || '')}</p>
                                                             <div className="flex items-center justify-center gap-3 pt-2">
                                                                 {block.props.avatarUrl && (

@@ -53,11 +53,11 @@ function HomepageLayout() {
           Welcome to the<br />SmartSapp Family
         </div>
         <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6, marginBottom: 6 }}>
-          Your child's school has signed up on SmartSapp.<br />
+          Your child&apos;s school has signed up on SmartSapp.<br />
           Here is a quick video to help you understand what it means for you as a parent.
         </div>
         <div style={{ fontSize: 10, fontWeight: 900, color: 'white', marginBottom: 18 }}>
-          Please watch the full video. It's super important!
+          Please watch the full video. It&apos;s super important!
         </div>
         {/* Video thumbnail */}
         <div style={{ position: 'relative', background: '#f5c800', borderRadius: 14, overflow: 'hidden', margin: '0 auto', maxWidth: 520, aspectRatio: '16/9', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', padding: '0 16px', boxShadow: '0 8px 32px rgba(59,95,255,0.25)' }}>

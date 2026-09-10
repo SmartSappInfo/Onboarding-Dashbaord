@@ -11,7 +11,6 @@
  * @testability Covered in `ai-admin-services.test.ts`.
  */
 
-import { adminDb } from '@/lib/firebase-admin';
 import type {
   AiAdminActionType,
   AiActionImpactPreview,

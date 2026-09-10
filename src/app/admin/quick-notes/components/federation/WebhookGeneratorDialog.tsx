@@ -18,7 +18,6 @@ import {
   Key,
   Copy,
   Check,
-  Code,
   ShieldAlert,
   Loader2,
   Terminal,
@@ -277,8 +276,8 @@ export function WebhookGeneratorDialog({
                     <p className="font-semibold text-foreground">Slack Workflow Builder Setup:</p>
                     <ol className="list-decimal pl-4 space-y-1 text-[11px]">
                       <li>In Slack, open Workflow Builder &gt; New Workflow.</li>
-                      <li>Choose trigger: "When a message is reacted to" (e.g. with 📝).</li>
-                      <li>Add step: "Send web request" to the Webhook URL above.</li>
+                      <li>Choose trigger: &quot;When a message is reacted to&quot; (e.g. with 📝).</li>
+                      <li>Add step: &quot;Send web request&quot; to the Webhook URL above.</li>
                       <li>Set header: <code className="text-xs font-mono bg-muted px-1 rounded">Authorization: Bearer {generatedKey.slice(0, 10)}...</code></li>
                       <li>Set body JSON mapping <code className="font-mono">title</code> and <code className="font-mono">content</code>.</li>
                     </ol>
@@ -289,10 +288,10 @@ export function WebhookGeneratorDialog({
                   <div className="p-3 bg-muted/30 border border-border rounded-xl space-y-1.5 text-xs text-muted-foreground">
                     <p className="font-semibold text-foreground">Zapier / Make Webhook Action:</p>
                     <ol className="list-decimal pl-4 space-y-1 text-[11px]">
-                      <li>Choose action: "Webhooks by Zapier &gt; Custom Request (POST)".</li>
+                      <li>Choose action: &quot;Webhooks by Zapier &gt; Custom Request (POST)&quot;.</li>
                       <li>URL: <code className="font-mono">{webhookUrl}</code></li>
                       <li>Headers: <code className="font-mono">Authorization: Bearer {generatedKey.slice(0, 10)}...</code></li>
-                      <li>Payload: JSON with <code className="font-mono">title</code>, <code className="font-mono">content</code>, and <code className="font-mono">source: "webhook_rest"</code>.</li>
+                      <li>Payload: JSON with <code className="font-mono">title</code>, <code className="font-mono">content</code>, and <code className="font-mono">source: &quot;webhook_rest&quot;</code>.</li>
                     </ol>
                   </div>
                 </TabsContent>

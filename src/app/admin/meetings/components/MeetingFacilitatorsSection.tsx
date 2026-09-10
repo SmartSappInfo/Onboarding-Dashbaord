@@ -29,7 +29,7 @@ const getInitials = (name?: string) =>
 export function MeetingFacilitatorsSection() {
   const { activeOrganizationId } = useTenant();
   const firestore = useFirestore();
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const form = useFormContext();
   const { fields, append, remove, update } = useFieldArray({
     control: form.control,
@@ -263,7 +263,7 @@ function FacilitatorCard({ field, index, onRemove, onUpdate }: FacilitatorCardPr
     setIsMediaOpen(false);
   }, [index, onUpdate]);
 
-  const hasProfileData = field.role || field.bio;
+  const _hasProfileData = field.role || field.bio;
 
   return (
     <>

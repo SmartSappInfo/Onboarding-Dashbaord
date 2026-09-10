@@ -20,9 +20,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import {
-  arrayMove,
   SortableContext,
-  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
   useSortable,
 } from '@dnd-kit/sortable';
@@ -88,12 +86,12 @@ interface SortableItemProps {
 // Extracted from render to prevent recreation focus/state loss
 function SortableFieldItem({
   instance,
-  idx,
+  idx: _idx,
   appField,
   isSelected,
   isFirst,
   isLast,
-  themePreset,
+  themePreset: _themePreset,
   inputStyle,
   onSelect,
   onUpdateWidth,
@@ -354,7 +352,7 @@ export default function BuilderCanvas({
   onUpdateFieldInstance,
   onMoveField,
   onRemoveField,
-  onReorderFields,
+  onReorderFields: _onReorderFields,
   onAddStandardField,
   sandboxMode = 'edit',
 }: BuilderCanvasProps) {

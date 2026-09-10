@@ -1,12 +1,10 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Plus,
   QrCode,
-  ExternalLink,
   MoreHorizontal,
   Pause,
   Play,
@@ -15,7 +13,6 @@ import {
   Download,
   Eye,
   Search,
-  Filter,
   BarChart3,
   Zap,
   ScanLine,
@@ -31,7 +28,6 @@ import {
   Code,
   Clock,
   Calendar,
-  ShieldCheck,
   Sparkles,
   Layers,
   Globe,

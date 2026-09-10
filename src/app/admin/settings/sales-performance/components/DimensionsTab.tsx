@@ -17,14 +17,12 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2,
   AlertCircle,
-  RotateCcw,
   Sparkles,
   PieChart,
   Activity,

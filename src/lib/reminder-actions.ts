@@ -5,11 +5,10 @@ import { resolveAndRender } from './template-resolver';
 import { sendMessage, sendRawMessage } from './messaging-engine';
 import { computeScheduledAt } from './template-variable-utils';
 import { buildMeetingBaseVariables, buildRegistrantVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
-import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingReminderSlot, MeetingInvitationSlot, MeetingRegistrant } from './types';
+import type { Meeting, ScheduledMessage, TemplateCategory, MeetingMessagingConfig, MeetingRegistrant } from './types';
 import { REMINDER_OFFSETS } from './types';
 import { calculateChannelTriggerTime } from './invitation-utils';
-import { getBaseUrl, getRequestBaseUrl } from './utils/url-helpers';
-import { getPersonalizedMeetingUrl } from './meeting-tokens';
+import { getRequestBaseUrl } from './utils/url-helpers';
 import { requireAuth } from '@/lib/auth/require-auth';
 
 // ---------------------------------------------------------------------------

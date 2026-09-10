@@ -20,11 +20,8 @@ import * as React from 'react';
 import {
   AlertTriangle,
   CheckCircle2,
-  GitCompare,
-  ArrowRight,
   User,
   Calendar,
-  ExternalLink,
   SlidersHorizontal,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

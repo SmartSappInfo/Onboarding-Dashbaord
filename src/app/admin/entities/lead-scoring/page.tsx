@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useState, useMemo } from 'react';
-import { doc, updateDoc, writeBatch, runTransaction, collection, query, where, limit, orderBy } from 'firebase/firestore';
+import { doc, updateDoc, writeBatch, collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
@@ -19,31 +19,21 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Checkbox } from '@/components/ui/checkbox';
 import { 
   Sparkles,
-  ChevronDown,
-  ChevronUp,
   Search,
   RotateCcw,
   Sliders, 
   Plus, 
   X, 
-  TrendingUp, 
   Archive, 
-  Flame, 
   User,
   ShieldAlert,
   Download,
-  Mail,
   Phone,
   Trash2,
-  UserCheck,
-  Building,
   CheckCircle2,
-  Calendar,
   AlertTriangle,
-  ArrowRight,
   Loader2,
   RefreshCw,
-  Wand2
 } from 'lucide-react';
 import { CleanContactEmailDialog } from '@/components/shared/CleanContactEmailDialog';
 import { verifySingleContactAction, deleteContactAction, bulkCleanContactsAction } from '@/lib/automation-actions';
@@ -54,7 +44,6 @@ import type {
   EmailVerificationRule, 
   PhoneVerificationRule,
   UserProfile,
-  Entity
 } from '@/lib/types';
 import { 
   adjustLeadScoreAction, 

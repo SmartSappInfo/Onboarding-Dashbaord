@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
-import { Settings, Loader2, Save, X, Plus } from 'lucide-react';
+import { Settings, Loader2, Save, X } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { getErrorMessage } from '@/lib/errors/report-error';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useForm, Controller, useWatch, FormProvider } from 'react-hook-form';
+import { useForm, Controller, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Button } from '@/components/ui/button';
@@ -13,27 +13,19 @@ import DataEntryModal from './DataEntryModal';
 import AlreadySignedGate from './AlreadySignedGate';
 import { 
     Loader2, 
-    Download, 
     CheckCircle2, 
     Send, 
     ShieldAlert, 
-    AlertTriangle, 
     AlertCircle,
     ZoomIn, 
     ZoomOut, 
-    Edit3, 
-    LayoutList, 
-    X, 
-    ChevronDown, 
-    Clock, 
     Save,
-    Calendar as CalendarIcon
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
-import { useSearchParams, useRouter, usePathname } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { format, isValid, parseISO } from 'date-fns';
-import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
+import { SmartSappLogo } from '@/components/icons';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -56,18 +48,15 @@ import {
 import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
 import { Slider } from '@/components/ui/slider';
 import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { useFirestore } from '@/firebase';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
 import { saveAgreementProgressAction, finalizeAgreementAction } from '@/lib/pdf-actions';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
-const pdfjsPromise = import('pdfjs-dist');
+const _pdfjsPromise = import('pdfjs-dist');
 
 const generateValidationSchema = (fields: PDFFormField[]) => {
     const schemaObject = fields.reduce((acc, field) => {
@@ -141,13 +130,13 @@ export default function PdfFormRenderer({
     orgBranding?: OrgBranding | null
 }) {
   const router = useRouter();
-  const pathname = usePathname();
+  const _pathname = usePathname();
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
   const [pdfDoc, setPdfDoc] = React.useState<PDFDocumentProxy | null>(null);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [isDownloading, setIsDownloading] = React.useState(false);
+  const [_isDownloading, _setIsDownloading] = React.useState(false);
   const [isFinalizedView, setIsFinalizedView] = React.useState(isLocked);
   const [createdSubmissionId, setCreatedSubmissionId] = React.useState<string | null>(null);
   
@@ -178,7 +167,7 @@ export default function PdfFormRenderer({
     defaultValues: initialData
   });
 
-  const { register, handleSubmit, watch, setValue, getValues, formState: { errors }, control, trigger: validate } = methods;
+  const { register, handleSubmit, watch, setValue, getValues, formState: { errors }, control, trigger: _validate } = methods;
   const watchedValues = watch();
 
   // Auto-populate empty date fields with today's date on mount

@@ -9,14 +9,9 @@
 
 import React, { useState } from 'react';
 import { 
-  AlertTriangle, 
-  CheckCircle2, 
-  HelpCircle, 
-  Clock, 
   Search, 
   Flame, 
   Sparkles,
-  ArrowUpDown
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -31,7 +26,7 @@ interface QuestionFrictionHeatmapProps {
 
 export default function QuestionFrictionHeatmap({ questions = [] }: QuestionFrictionHeatmapProps) {
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'dropOff' | 'dwell' | 'completions'>('dropOff');
+  const [sortBy, _setSortBy] = useState<'dropOff' | 'dwell' | 'completions'>('dropOff');
 
   const filtered = questions.filter(q => 
     q.label.toLowerCase().includes(searchTerm.toLowerCase()) ||

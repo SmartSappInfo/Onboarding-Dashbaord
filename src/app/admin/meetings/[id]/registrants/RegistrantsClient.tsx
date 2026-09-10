@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from 'react';
 import { useFirestore } from '@/firebase';
-import type { Meeting, MeetingRegistrant } from '@/lib/types';
+import type { MeetingRegistrant } from '@/lib/types';
 import { format } from 'date-fns';
 import { 
     Users, ArrowLeft, ChevronLeft, CheckCircle2, Clock, Download, Mail, Search,
@@ -10,7 +10,6 @@ import {
     MoreHorizontal, Check, X, Trash2, Plus, UsersRound, Send,
     SlidersHorizontal, Copy, CopyCheck
 } from 'lucide-react';
-import Link from 'next/link';
 import { useMeetingContext } from '../layout';
 import { getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 
@@ -51,7 +50,7 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function RegistrantsClient({ meetingId }: { meetingId: string }) {
   const { toast } = useToast();
-  const firestore = useFirestore();
+  const _firestore = useFirestore();
   const [searchQuery, setSearchQuery] = useState('');
   
   // State for toggling individual attendance
@@ -73,12 +72,12 @@ export default function RegistrantsClient({ meetingId }: { meetingId: string }) 
   const [regForm, setRegForm] = useState({ name: '', email: '', phone: '' });
 
   // Dynamic columns configuration (conforming to vercel-react-best-practices and next-best-practices)
-  const [isPendingTransition, startTransition] = useTransition();
+  const [_isPendingTransition, _startTransition] = useTransition();
   const [visibleColumnKeys, setVisibleColumnKeys] = useState<string[]>([]);
   const [hasCustomizedColumns, setHasCustomizedColumns] = useState(false);
 
   // Consume shared workspace context
-  const { meeting, registrants, isLoading, meetingDocRef } = useMeetingContext();
+  const { meeting, registrants, isLoading, meetingDocRef: _meetingDocRef } = useMeetingContext();
   const isLoadingMeeting = isLoading;
   const isLoadingRegistrants = isLoading;
   const meetingError = null;

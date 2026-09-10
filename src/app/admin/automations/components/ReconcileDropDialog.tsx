@@ -26,7 +26,7 @@ export function ReconcileDropDialog({
   open,
   onOpenChange,
   draggedNodeLabel,
-  targetEdgeLabel,
+  targetEdgeLabel: _targetEdgeLabel,
   onConfirm,
   onCancel,
 }: ReconcileDropDialogProps) {
@@ -67,7 +67,7 @@ export function ReconcileDropDialog({
               Reconcile Graph Change
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Configure how <span className="font-semibold text-foreground">"{draggedNodeLabel}"</span> should be spliced into the connector path.
+              Configure how <span className="font-semibold text-foreground">&quot;{draggedNodeLabel}&quot;</span> should be spliced into the connector path.
             </DialogDescription>
           </DialogHeader>
 
@@ -149,7 +149,7 @@ export function ReconcileDropDialog({
                 <div className="space-y-0.5 pr-4">
                   <p className="text-xs font-semibold text-foreground">Auto-heal original path</p>
                   <p className="text-[10px] text-muted-foreground leading-normal">
-                    Bridge the node's original parent and child steps together to prevent path disruption.
+                    Bridge the node&apos;s original parent and child steps together to prevent path disruption.
                   </p>
                 </div>
                 <button

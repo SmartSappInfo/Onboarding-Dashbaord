@@ -66,7 +66,7 @@ registerBlock({
 
         {props.bio && (
           <p className="text-xs text-muted-foreground leading-relaxed italic border-t border-border pt-3">
-            "{props.bio}"
+            &quot;{props.bio}&quot;
           </p>
         )}
 

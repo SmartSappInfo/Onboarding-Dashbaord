@@ -35,7 +35,7 @@ export class MembershipPlanService {
    */
   static async createPlan(
     input: CreatePlanInput,
-    actorId: string = 'system'
+    _actorId: string = 'system'
   ): Promise<MembershipPlan> {
     if (!input.organizationId || !input.portalId || !input.name) {
       throw new Error('organizationId, portalId, and name are required.');
@@ -88,7 +88,7 @@ export class MembershipPlanService {
   static async updatePlan(
     planId: string,
     input: UpdatePlanInput,
-    actorId: string = 'system'
+    _actorId: string = 'system'
   ): Promise<MembershipPlan> {
     const docRef = adminDb.collection(PLANS_COLLECTION).doc(planId);
     const doc = await docRef.get();

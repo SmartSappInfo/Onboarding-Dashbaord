@@ -17,7 +17,6 @@ import type {
   CreateMembershipInput,
   UpdateMembershipInput,
   PortalMemberRole,
-  MembershipStatus,
   MemberFilterOptions,
 } from '../types/membership';
 
@@ -131,7 +130,7 @@ export class PortalMembershipService {
   static async updateMembership(
     membershipId: string,
     input: UpdateMembershipInput,
-    actorId: string = 'system'
+    _actorId: string = 'system'
   ): Promise<PortalMembership> {
     const docRef = adminDb.collection(MEMBERSHIPS_COLLECTION).doc(membershipId);
     const doc = await docRef.get();
@@ -264,7 +263,7 @@ export class PortalMembershipService {
   /**
    * Deletes a membership document.
    */
-  static async deleteMembership(membershipId: string, actorId: string): Promise<boolean> {
+  static async deleteMembership(membershipId: string, _actorId: string): Promise<boolean> {
     const docRef = adminDb.collection(MEMBERSHIPS_COLLECTION).doc(membershipId);
     await docRef.delete();
     return true;

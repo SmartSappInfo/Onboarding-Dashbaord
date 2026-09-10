@@ -13,7 +13,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -40,9 +40,7 @@ import {
   Upload,
   RefreshCw,
   Ban,
-  Copy,
   CheckCircle2,
-  Clock,
   AlertTriangle,
   FileSpreadsheet,
   Loader2,
@@ -50,12 +48,11 @@ import {
   Search,
   Check,
   X,
-  Building2,
   Phone,
   MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Invitation, InvitationStatus, Role, Workspace, Department } from '@/lib/types';
+import type { Invitation, Role, Workspace, Department } from '@/lib/types';
 import {
   dispatchInvitationsAction,
   resendInvitationAction,
@@ -105,7 +102,7 @@ export function InvitationsManager({
   const [inviteWorkspaceId, setInviteWorkspaceId] = React.useState('');
   const [inviteRoleIds, setInviteRoleIds] = React.useState<string[]>([]);
   const [inviteDeptId, setInviteDeptId] = React.useState('none');
-  const [inviteDays, setInviteDays] = React.useState(7);
+  const [inviteDays, _setInviteDays] = React.useState(7);
   const [inviteChannels, setInviteChannels] = React.useState<('email' | 'sms' | 'whatsapp')[]>(['email']);
   const [isSendingSingle, setIsSendingSingle] = React.useState(false);
 

@@ -25,15 +25,12 @@ import {
   Trash2,
   Download,
   Search,
-  Filter,
   Eye,
   Lock,
   UserCheck,
   AlertTriangle,
   RefreshCw,
-  CheckCircle2,
   Calendar,
-  Layers,
   FileSpreadsheet,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
@@ -79,7 +76,6 @@ import {
 } from '@/lib/media/rbac-service';
 import type {
   MediaAuditLog,
-  MediaAuditResourceType,
   MediaRetentionPolicy,
   MediaResourcePermission,
   MediaResourceRole,
@@ -94,7 +90,7 @@ export default function MediaGovernanceConsolePage() {
   const [auditLogs, setAuditLogs] = useState<MediaAuditLog[]>([]);
   const [retentionPolicy, setRetentionPolicy] = useState<MediaRetentionPolicy>(DEFAULT_RETENTION_POLICY);
   const [permissions, setPermissions] = useState<MediaResourcePermission[]>([]);
-  const [isPending, startTransition] = useTransition();
+  const [_isPending, startTransition] = useTransition();
 
   // Audit Filters
   const [auditSearch, setAuditSearch] = useState('');

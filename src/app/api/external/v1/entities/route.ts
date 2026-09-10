@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
       pipelineId,
       stageId,
       assignedTo,
-      workspaceTags,
+      _workspaceTags,
       globalTags,
     } = body;
 

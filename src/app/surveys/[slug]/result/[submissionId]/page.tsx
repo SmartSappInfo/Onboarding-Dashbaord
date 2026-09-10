@@ -25,7 +25,7 @@ function sanitizeAndFormatUrl(url: string): string {
     return `https://${trimmed}`;
 }
 
-function replaceVariablesInUrl(
+function _replaceVariablesInUrl(
     url: string, 
     variables: Record<string, string | number | boolean | null | undefined>
 ): string {
@@ -137,7 +137,7 @@ async function getResultData(slug: string, submissionId: string) {
             const refParam = response.assignedUserId;
             if (refParam && survey.workspaceIds?.length) {
                 const isEncrypted = refParam.split(':').length === 3;
-                let resolvedRef = refParam;
+                let _resolvedRef = refParam;
                 if (isEncrypted) {
                     try {
                         const { decryptToken } = await import('@/lib/crypto');

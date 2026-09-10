@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { AppField, FieldGroup, IndustryVertical, Workspace, UserProfile } from './types';
-import { INDUSTRY_FIELD_REGISTRY, PLATFORM_FIELD_GROUPS, resolveGroupIcon } from './industry-field-registry';
+import { PLATFORM_FIELD_GROUPS, resolveGroupIcon } from './industry-field-registry';
 import { STATIC_VARIABLES } from './template-variable-registry-data';
 import { listPlatformIndustryFieldGroupsInternal } from './backoffice/backoffice-field-actions';
 import { revalidatePath } from 'next/cache';

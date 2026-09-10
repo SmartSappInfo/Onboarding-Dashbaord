@@ -46,7 +46,7 @@ const CATEGORY_LABELS: Record<string, string> = {
 };
 
 export function SmartTemplateDropdown({
-    category,
+    category: _category,
     recipientType,
     channel,
     templateTypePrefix,

@@ -18,9 +18,7 @@ import {
   MessageSquare,
   Mail,
   Smartphone,
-  Layers,
   Loader2,
-  CheckCircle2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -31,7 +29,6 @@ import {
   SheetDescription,
 } from '@/components/ui/sheet';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { generateContextualCopyAction } from '@/app/actions/qr-ai-actions';

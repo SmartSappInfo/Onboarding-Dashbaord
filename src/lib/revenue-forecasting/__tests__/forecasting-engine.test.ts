@@ -20,7 +20,6 @@ import {
   detectDealSlippage,
   calculateForecastPaceAttainment,
   generateAiForecastExplanation,
-  DEFAULT_FORECASTING_GOVERNANCE,
 } from '../forecasting-engine';
 import type {
   AttributionTouchpoint,

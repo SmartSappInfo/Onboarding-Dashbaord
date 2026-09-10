@@ -7,11 +7,8 @@ import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { APP_FEATURES, type AppFeatureId, type FeatureToggleMap } from '@/lib/types';
 import { updateOrganizationFeaturesAction, updateWorkspaceFeaturesAction } from '@/lib/feature-actions';
-import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import {
   Loader2,
@@ -57,8 +54,8 @@ const ICON_MAP: Record<string, React.ElementType> = {
  */
 export default function FeatureManager() {
   const { activeOrganization, activeOrganizationId, activeWorkspaceId, activeWorkspace, isSuperAdmin } = useTenant();
-  const { orgFeatures, workspaceFeatures, isLoading: isFeaturesLoading } = useFeatures();
-  const { user } = useUser();
+  const { orgFeatures: _orgFeatures, workspaceFeatures: _workspaceFeatures, isLoading: isFeaturesLoading } = useFeatures();
+  const { user: _user } = useUser();
   const { toast } = useToast();
 
   const [isSavingOrg, setIsSavingOrg] = React.useState(false);

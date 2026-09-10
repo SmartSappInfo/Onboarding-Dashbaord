@@ -22,13 +22,21 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Layers, Plus, Trash2, Video, Link as LinkIcon, 
-  ExternalLink, Sparkles, BookOpen, Tag as TagIcon, 
-  Zap, MessageCircle, Music, Phone, Mail, Download, Send
+import {
+  BookOpen,
+  Download,
+  Layers,
+  Link as LinkIcon,
+  Mail,
+  MessageCircle,
+  Music,
+  Phone,
+  Plus,
+  Send,
+  Trash2,
+  Video,
+  Zap,
 } from 'lucide-react';
-import { TagSelector } from '@/components/tags/TagSelector';
 
 interface DocumentLayerInspectorProps {
   pages: DocumentPage[];

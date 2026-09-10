@@ -8,10 +8,9 @@
  * External function signatures are preserved for backward compatibility.
  */
 
-import type { School, WorkspaceEntity, EntityContact } from './types';
+import type { School, WorkspaceEntity } from './types';
 import {
   getPrimaryContact as getNewPrimaryContact,
-  resolveEntityContacts,
 } from './entity-contact-helpers';
 
 /**

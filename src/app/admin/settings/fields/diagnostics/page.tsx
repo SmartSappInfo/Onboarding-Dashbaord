@@ -3,15 +3,14 @@
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useUser, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { MessageTemplate } from '@/lib/types';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
-import { validateTemplateVariables, ValidationError } from '@/lib/template-validator';
+import { validateTemplateVariables } from '@/lib/template-validator';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';

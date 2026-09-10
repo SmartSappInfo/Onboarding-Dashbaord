@@ -342,7 +342,7 @@ Available template variables (use double curly braces): entity_name, entity_emai
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text);
-    } catch (e) {
+    } catch (_e) {
       console.error('[CAMPAIGN-AI] Failed to parse campaign copy JSON:', text);
       return { success: false, error: 'AI output was not valid JSON' };
     }
@@ -549,7 +549,7 @@ export async function generateEmailBlocksAction(params: {
 }> {
   try {
     const activePrompt = params.prompt || params.instruction || '';
-    const activeMode = params.mode || 'layout_analysis';
+    const _activeMode = params.mode || 'layout_analysis';
     const brandColors = params.brandColors;
 
     const brandGuidance = brandColors 
@@ -640,7 +640,7 @@ AESTHETIC RULES:
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text);
-    } catch (e) {
+    } catch (_e) {
       console.error('[CAMPAIGN-AI] Failed to parse email blocks result JSON:', text);
       return { success: false, error: 'AI output was not valid JSON' };
     }
@@ -747,7 +747,7 @@ CRITICAL RULES:
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text);
-    } catch (e) {
+    } catch (_e) {
       console.error('[CAMPAIGN-AI] Failed to parse HeadlineIQ result JSON:', text);
       return { success: false, error: 'AI output was not valid JSON' };
     }

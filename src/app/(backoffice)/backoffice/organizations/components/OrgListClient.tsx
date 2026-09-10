@@ -9,13 +9,11 @@ import {
   Eye,
   Pause,
   Play,
-  AlertTriangle,
   Plus,
   Users,
   Layers,
   Copy,
   Check,
-  ExternalLink,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -275,7 +273,7 @@ export default function OrgListClient() {
         setTimeout(() => setCopiedLink(false), 2000);
       }
       toast({ title: 'Copied', description: `${type === 'token' ? 'Join token' : 'Invitation link'} copied to clipboard.` });
-    } catch (err) {
+    } catch (_err) {
       toast({ variant: 'destructive', title: 'Copy Failed', description: 'Failed to copy to clipboard.' });
     }
   };
@@ -552,7 +550,7 @@ export default function OrgListClient() {
                 <div className="text-xs text-muted-foreground bg-emerald-500/5 border border-emerald-500/10 p-3 rounded-lg flex items-start gap-2">
                   <span className="text-emerald-400 font-bold">💡 Note:</span>
                   <span>
-                    When the user visits this link, they will complete their profile, customize the organization's branding/preferences, create the first workspace, and automatically become the organization's <strong>Administrator</strong>.
+                    When the user visits this link, they will complete their profile, customize the organization&apos;s branding/preferences, create the first workspace, and automatically become the organization&apos;s <strong>Administrator</strong>.
                   </span>
                 </div>
               </div>

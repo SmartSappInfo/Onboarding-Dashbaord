@@ -314,7 +314,7 @@ async function createEntityFromRow(
 /**
  * Builds institution data from CSV row
  */
-function buildInstitutionData(row: InstitutionImportRow): InstitutionData {
+function _buildInstitutionData(row: InstitutionImportRow): InstitutionData {
   const data: InstitutionData = {};
 
   if (row.nominalRoll) {

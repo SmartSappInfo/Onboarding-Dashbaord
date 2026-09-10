@@ -19,14 +19,13 @@ import type {
 } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
 import {
   Select,
   SelectContent,
@@ -40,10 +39,6 @@ import {
   Trash2,
   Clock,
   Send,
-  Phone,
-  Mail,
-  MessageSquare,
-  Sparkles,
   Handshake,
   Video,
   UserCheck,
@@ -54,7 +49,7 @@ export interface SurveyCrmInboundTriggersCardProps {
   workspaceId: string;
 }
 
-export function SurveyCrmInboundTriggersCard({ workspaceId }: SurveyCrmInboundTriggersCardProps) {
+export function SurveyCrmInboundTriggersCard({ workspaceId: _workspaceId }: SurveyCrmInboundTriggersCardProps) {
   const { watch, setValue } = useFormContext();
   const { toast } = useToast();
 

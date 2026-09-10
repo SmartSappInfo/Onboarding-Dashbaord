@@ -22,7 +22,7 @@ export function UploadedState({ imageUrl, showGallery, onTriggerReplace, onTrigg
       const parts = decoded.split('/');
       const lastPart = parts[parts.length - 1];
       return lastPart.split('?')[0];
-    } catch (e) {
+    } catch (_e) {
       return 'image.png';
     }
   };
@@ -58,7 +58,7 @@ export function UploadedState({ imageUrl, showGallery, onTriggerReplace, onTrigg
             size: kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${kb.toFixed(1)} KB`
           }));
         }
-      } catch (err) {
+      } catch (_err) {
         // Silent fallback
       }
     };

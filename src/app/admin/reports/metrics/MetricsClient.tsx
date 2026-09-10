@@ -20,12 +20,9 @@ import {
   UserCircle,
   Home,
   Share2,
-  Filter,
-  Loader2,
   TrendingUp,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -37,7 +34,6 @@ import {
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
-import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { EntityType } from '@/lib/types';
 import {

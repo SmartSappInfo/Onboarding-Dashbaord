@@ -207,7 +207,7 @@ export function BlueprintDetailPane({ trigger, globalTemplates, adoptionCount, o
               <Eye className="h-12 w-12 text-muted-foreground/30 stroke-[1.5]" />
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">No global blueprint set</p>
-                <p className="text-xs text-muted-foreground max-w-xs">There is no system default messaging blueprint mapped to this trigger's channel.</p>
+                <p className="text-xs text-muted-foreground max-w-xs">There is no system default messaging blueprint mapped to this trigger&apos;s channel.</p>
               </div>
               <Button 
                 onClick={() => onCustomize(trigger, activeTab)}

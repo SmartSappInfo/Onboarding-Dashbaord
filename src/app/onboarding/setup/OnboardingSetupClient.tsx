@@ -45,7 +45,7 @@ export default function OnboardingSetupClient() {
   
   const [primaryColor, setPrimaryColor] = React.useState('#10b981');
   const [secondaryColor, setSecondaryColor] = React.useState('#3b82f6');
-  const [fontFamily, setFontFamily] = React.useState('Inter');
+  const [fontFamily, _setFontFamily] = React.useState('Inter');
   const [logoUrl, setLogoUrl] = React.useState('');
   
   const [defaultLanguage, setDefaultLanguage] = React.useState('en');

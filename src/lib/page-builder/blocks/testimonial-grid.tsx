@@ -241,7 +241,7 @@ registerBlock({
                 <div className="flex-1 flex flex-col gap-3">
                   <Quote className="w-5 h-5 text-emerald-400 opacity-60 flex-shrink-0" />
                   <blockquote className={cn("text-xs font-semibold leading-relaxed italic", props.cardTextColor ? "" : "text-slate-300")}>
-                    "{ctx.interpolate(item.quote)}"
+                    &quot;{ctx.interpolate(item.quote)}&quot;
                   </blockquote>
                 </div>
 

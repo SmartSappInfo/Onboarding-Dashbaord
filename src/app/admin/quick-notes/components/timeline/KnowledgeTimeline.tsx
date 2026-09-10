@@ -5,23 +5,13 @@ import {
   Brain,
   Sparkles,
   Search,
-  Filter,
   Plus,
   Loader2,
   ChevronDown,
   Pin,
   TrendingUp,
   ListChecks,
-  AlertCircle,
-  ThumbsUp,
   Calendar,
-  MessageSquare,
-  Lightbulb,
-  CheckCircle2,
-  MessageSquareQuote,
-  Eye,
-  CheckSquare,
-  RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -34,7 +24,6 @@ import { TimelineItemCard } from './TimelineItemCard';
 import { VoiceCaptureButton } from '@/components/shared/VoiceCaptureButton';
 import {
   KNOWLEDGE_TYPE_META,
-  normalizeKnowledgeType,
 } from '@/lib/quick-notes-domain';
 import {
   KNOWLEDGE_TYPES,
@@ -329,7 +318,7 @@ export default function KnowledgeTimeline({
           {showAiBrief && (
             <div className="space-y-4 pt-1">
               <p className="text-xs text-foreground/90 italic font-medium border-l-2 border-primary/50 pl-3 py-0.5 leading-relaxed">
-                "{aiBrief.executiveSummary}"
+                &quot;{aiBrief.executiveSummary}&quot;
               </p>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">

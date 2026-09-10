@@ -8,9 +8,7 @@ import {
     ChevronDown, 
     Check,
     Settings,
-    PlusCircle,
     Zap,
-    Target,
     Users,
     User,
     Building2,
@@ -42,7 +40,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import Link from 'next/link';
 import { useSidebar, SidebarMenu, SidebarMenuItem, SidebarMenuButton } from '@/components/ui/sidebar';
 import type { ContactScope } from '@/lib/types';
@@ -106,11 +103,11 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
         getPermissionsSchemaForWorkspace,
         isLoading 
     } = useTenant();
-    const { state } = useSidebar();
+    const { state: _state } = useSidebar();
     const router = useRouter();
     const pathname = usePathname();
 
-    const [expandedOrgId, setExpandedOrgId] = React.useState<string | null>(null);
+    const [_expandedOrgId, _setExpandedOrgId] = React.useState<string | null>(null);
 
     // Access interception state
     type InterceptState = {
@@ -542,7 +539,7 @@ export default function UnifiedOrgWorkspaceSwitcher({ variant = 'header' }: Unif
                         </AlertDialogTitle>
                     </div>
                     <AlertDialogDescription className="text-sm text-muted-foreground leading-relaxed">
-                        You don't have access to{' '}
+                        You don&apos;t have access to{' '}
                         <span className="font-bold text-foreground">
                             {interceptState?.blockedFeatureLabel}
                         </span>{' '}

@@ -135,7 +135,7 @@ export default function BulkCreateDealModal({
               />
               <div className="flex gap-1.5 p-2.5 rounded-lg bg-primary/5 text-primary text-[10px] font-bold mt-1">
                 <Info className="h-3.5 w-3.5 shrink-0" />
-                <span>Tip: Use <code>{"{{entityName}}"}</code> to dynamically inject each record's name.</span>
+                <span>Tip: Use <code>{"{{entityName}}"}</code> to dynamically inject each record&apos;s name.</span>
               </div>
             </div>
 

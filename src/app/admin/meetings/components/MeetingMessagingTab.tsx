@@ -2,21 +2,16 @@
 
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { MessagingTemplateSelector } from '@/app/admin/components/MessagingTemplateSelector';
 import { fetchTemplatesCached } from '@/app/admin/components/template-cache-manager';
-import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import {
   Mail,
   Smartphone,
-  Bell,
   UserCheck,
   Users,
   Clock,
@@ -24,20 +19,18 @@ import {
   Plus,
   ChevronDown,
   ChevronRight,
-  MessageSquare,
-  Pencil,
   AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import ReminderSlotRow from './ReminderSlotRow';
 import { MessagingChannelBlock } from './MessagingChannelBlock';
 import { DateTimePicker, TimePicker } from '@/components/ui/datetime-picker';
 import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
-import type { MeetingMessagingConfig, MeetingReminderSlot, MeetingInvitationSlot } from '@/lib/types';
-import { DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID, getDefaultMeetingMessagingConfig } from '@/lib/types';
+import type { MeetingMessagingConfig, MeetingReminderSlot } from '@/lib/types';
+import { getDefaultMeetingMessagingConfig } from '@/lib/types';
 
 // ─── Default Config ──────────────────────────────────────────────
 const DEFAULT_CONFIG = getDefaultMeetingMessagingConfig();
@@ -126,7 +119,7 @@ export default function MeetingMessagingTab() {
   }, [firestore, activeWorkspaceId]);
   const { data: workspaceUsers } = useCollection<any>(usersQuery);
 
-  const userOptions = React.useMemo(() => {
+  const _userOptions = React.useMemo(() => {
     const sortedUsers = [...(workspaceUsers || [])].sort((a: any, b: any) => 
       (a.displayName || a.email || '').localeCompare(b.displayName || b.email || '')
     );
@@ -1032,9 +1025,9 @@ interface CollapsibleSectionProps {
 }
 
 function CollapsibleSection({
-  id,
+  id: _id,
   title,
-  description,
+  description: _description,
   icon,
   iconBg,
   isOpen,

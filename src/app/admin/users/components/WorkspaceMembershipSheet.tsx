@@ -19,14 +19,12 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import { Building2, Shield, Star, Plus, Trash2, Check, Loader2, Info } from 'lucide-react';
+import { Building2, Shield, Star, Check, Loader2, Info } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { UserProfile, Role, Workspace, WorkspaceMembership, PersonDetailView } from '@/lib/types';
+import type { UserProfile, Role, Workspace, PersonDetailView } from '@/lib/types';
 import { manageWorkspaceMembershipsAction } from '@/app/actions/identity-actions';
 
 interface WorkspaceMembershipSheetProps {
@@ -52,7 +50,7 @@ export function WorkspaceMembershipSheet({
   isOpen,
   onClose,
   user,
-  personDetail,
+  personDetail: _personDetail,
   roles,
   workspaces,
   onUpdated,

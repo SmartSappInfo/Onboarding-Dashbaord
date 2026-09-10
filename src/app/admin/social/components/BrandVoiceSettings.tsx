@@ -171,7 +171,7 @@ export default function BrandVoiceSettings() {
                 <Sparkles className="h-5 w-5 text-emerald-500" /> AI Brand Voice Guide
               </CardTitle>
               <CardDescription className="text-xs">
-                Configure guidelines that prompt the AI Composer to replicate your organization's exact messaging style.
+                Configure guidelines that prompt the AI Composer to replicate your organization&apos;s exact messaging style.
               </CardDescription>
             </div>
             <Button

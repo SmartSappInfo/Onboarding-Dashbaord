@@ -12,14 +12,9 @@
 
 import * as React from 'react';
 import {
-  Plug2,
-  CheckCircle2,
-  AlertTriangle,
-  XCircle,
   RefreshCw,
   Loader2,
   Calendar,
-  Building2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

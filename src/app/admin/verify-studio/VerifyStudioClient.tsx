@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ShieldCheck, AlertCircle, CheckCircle2, Terminal, 
@@ -84,7 +84,7 @@ export default function VerifyStudioClient() {
         setResult(data);
         setCurrentStep(5);
       }
-    } catch (err) {
+    } catch (_err) {
       addLog('> [CRITICAL] Network error executing verification.');
     } finally {
       setIsVerifying(false);

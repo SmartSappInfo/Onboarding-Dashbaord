@@ -1,8 +1,7 @@
 import React from 'react';
-import { Card } from '@/components/ui/card';
 
 // We would fetch this via a server action in reality.
-export function DealsClosingSoon({ workspaceId }: { workspaceId: string }) {
+export function DealsClosingSoon({ workspaceId: _workspaceId }: { workspaceId: string }) {
   // Mock data for deals closing soon
   const mockDeals = [
     { id: '1', name: 'Acme Corp Enterprise', amount: '$15,000', daysLeft: 2, owner: 'Sarah J.' },

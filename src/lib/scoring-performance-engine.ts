@@ -20,7 +20,6 @@ export type {
 
 import {
   DEFAULT_EFFORT_RULES,
-  type LeadScoreDoc,
   type LeadScoreHistoryDoc,
   type EffortRuleDoc,
   type EffortEventDoc,

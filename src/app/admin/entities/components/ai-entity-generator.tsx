@@ -29,7 +29,6 @@ import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { extractSchoolData } from '@/ai/flows/extract-school-data-flow';
-import type { ExtractSchoolDataOutput } from '@/ai/flows/extract-school-data-flow';
 import { logActivity } from '@/lib/activity-logger';
 import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -41,7 +40,6 @@ import {
     SelectItem, 
     SelectLabel, 
     SelectTrigger, 
-    SelectValue 
 } from '@/components/ui/select';
 import { AI_PROVIDERS } from '@/components/ai/AiModelSelector';
 import { getDoc } from 'firebase/firestore';

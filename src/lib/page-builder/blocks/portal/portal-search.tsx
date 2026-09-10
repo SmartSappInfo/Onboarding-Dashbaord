@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { Search, Sparkles } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { registerBlock } from '../../registry';
 
 const schema = z.object({
@@ -29,7 +29,7 @@ registerBlock({
     popularKeywords: ['Invoicing', 'Fee Collection', 'Mobile Money', 'Admissions', 'WhatsApp Automation'],
   }),
   schema,
-  render: (props: PortalSearchProps, _block, ctx) => {
+  render: (props: PortalSearchProps, _block, _ctx) => {
     return (
       <div className="py-6 space-y-3 max-w-2xl mx-auto w-full">
         <div className="relative">

@@ -1,4 +1,4 @@
-import { PDFForm, PDFFormField } from '@/lib/types';
+import { PDFFormField } from '@/lib/types';
 
 export type ResizeHandle = 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right' | 'top' | 'bottom' | 'left' | 'right';
 

@@ -3,11 +3,8 @@ import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { adminDb } from '@/lib/firebase-admin';
 import type { School } from '@/lib/types';
-import CountdownTimer from '@/components/countdown-timer';
 import VideoEmbed from '@/components/video-embed';
 import AppStoreButtons from '@/components/app-store-buttons';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Link as LinkIcon } from 'lucide-react';
 import JoinMeetingButton from '@/components/join-meeting-button';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
@@ -27,7 +24,7 @@ async function getSchoolBySlug(slug: string): Promise<School | null> {
             return { id: legacySnap.docs[0].id, ...legacySnap.docs[0].data() } as School;
         }
         return { id: querySnap.docs[0].id, ...querySnap.docs[0].data() } as School;
-    } catch (error) {
+    } catch (_error) {
         return null;
     }
 }

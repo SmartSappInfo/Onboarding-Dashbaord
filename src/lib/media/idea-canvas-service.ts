@@ -240,8 +240,8 @@ export interface AiGeneratedIdeasResult {
  */
 export async function generateAiIdeasAction(
   prompt: string,
-  targetAudience = 'Parent Decision Makers',
-  primaryGoal = 'Tuition Clarity & Enrollment'
+  _targetAudience = 'Parent Decision Makers',
+  _primaryGoal = 'Tuition Clarity & Enrollment'
 ): Promise<AiGeneratedIdeasResult> {
   // Defensive fallback data when AI inference is simulated or offline
   const fallbackResult: AiGeneratedIdeasResult = {

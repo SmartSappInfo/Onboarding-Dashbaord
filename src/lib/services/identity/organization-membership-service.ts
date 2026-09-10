@@ -13,7 +13,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { OrganizationMembership, MembershipStatus, MemberType, MembershipSource } from '@/lib/types';
+import type { OrganizationMembership, MembershipStatus } from '@/lib/types';
 
 export class OrganizationMembershipService {
   private static COLLECTION = 'organization_memberships';

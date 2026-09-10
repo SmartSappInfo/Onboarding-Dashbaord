@@ -958,7 +958,7 @@ export async function bulkApplyTagsAction(
     let processedCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
-    const total = contactIds.length;
+    const _total = contactIds.length;
     const partialFailures: string[] = [];
     // Updated WE state (with new tags) to re-project after a successful commit.
     const weToResync: Array<Record<string, unknown>> = [];
@@ -1028,7 +1028,7 @@ export async function bulkApplyTagsAction(
           if (contactType === 'workspace_entity') {
             chunkWe.push({ ...data, id: contactId, workspaceTags: Array.from(existingTags) });
           }
-        } catch (readErr: unknown) {
+        } catch (_readErr: unknown) {
           partialFailures.push(contactId);
           failedCount++;
         }
@@ -1185,7 +1185,7 @@ export async function bulkApplyTagsAction(
 
       try {
         after(runActivityLogs);
-      } catch (err) {
+      } catch (_err) {
         console.warn('[BULK_TAG_ADDED] after() called outside Next.js request context. Executing in background promise.');
         runActivityLogs().catch(err => {
           console.error('[BULK_TAG_ADDED] Fallback runActivityLogs failed:', err);
@@ -1279,7 +1279,7 @@ export async function bulkRemoveTagsAction(
     let processedCount = 0;
     let failedCount = 0;
     const errors: string[] = [];
-    const total = contactIds.length;
+    const _total = contactIds.length;
     const partialFailures: string[] = [];
     const weToResync: Array<Record<string, unknown>> = [];
     const allContactRemovedTags: BulkTagChange[] = [];
@@ -1337,7 +1337,7 @@ export async function bulkRemoveTagsAction(
               tagIds: newlyRemovedTags
             });
           }
-        } catch (readErr: unknown) {
+        } catch (_readErr: unknown) {
           partialFailures.push(contactId);
           failedCount++;
         }
@@ -1470,7 +1470,7 @@ export async function bulkRemoveTagsAction(
 
       try {
         after(runActivityLogs);
-      } catch (err) {
+      } catch (_err) {
         console.warn('[BULK_TAG_REMOVED] after() called outside Next.js request context. Executing in background promise.');
         runActivityLogs().catch(err => {
           console.error('[BULK_TAG_REMOVED] Fallback runActivityLogs failed:', err);

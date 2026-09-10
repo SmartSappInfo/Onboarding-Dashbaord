@@ -16,7 +16,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AutonomousObservationEngine } from '../services/autonomous-observation-engine';
 import { SelfHealingEngine } from '../services/self-healing-engine';
 import { EnterpriseComplianceEngine } from '../services/enterprise-compliance-engine';
-import type { ProactiveRecommendation } from '../types';
 
 // Mock Firebase Admin
 vi.mock('@/lib/firebase-admin', () => ({

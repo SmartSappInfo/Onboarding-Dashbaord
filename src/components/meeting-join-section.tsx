@@ -7,9 +7,8 @@ import MeetingRegistrationForm from '@/components/meeting-registration-form';
 import MeetingRegisteredState from '@/components/meeting-registered-state';
 import { useRegistrationToken } from '@/hooks/use-registration-token';
 import { submitRsvpResponseAction } from '@/app/actions/meeting-registrants-actions';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowRight, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -78,7 +77,7 @@ function RsvpOptionsPanel({
           Hi {contactName} 👋
         </h2>
         <p className="text-[15px] md:text-base text-slate-800 dark:text-slate-200 leading-relaxed font-medium font-sans">
-          We're excited to have you in this session. Are you joining us?
+          We&apos;re excited to have you in this session. Are you joining us?
         </p>
       </div>
 
@@ -107,7 +106,7 @@ function RsvpOptionsPanel({
                 variant="default"
                 className="w-full rounded-xl font-bold h-12 text-sm shadow-md bg-primary hover:bg-primary/90 text-white"
               >
-                Yes, I'll Join
+                Yes, I&apos;ll Join
               </Button>
             </motion.div>
             <div className="grid grid-cols-2 gap-3">
@@ -123,7 +122,7 @@ function RsvpOptionsPanel({
                 variant="secondary"
                 className="rounded-xl font-bold h-11 text-xs bg-slate-100 hover:bg-slate-200 dark:bg-white/10 dark:hover:bg-white/20 text-slate-900 dark:text-white border border-slate-200/30 dark:border-white/5"
               >
-                Can't Make It
+                Can&apos;t Make It
               </Button>
             </div>
           </div>

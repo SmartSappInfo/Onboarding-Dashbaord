@@ -14,7 +14,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
-import { FileUp, Search, RefreshCw, AlertCircle, CheckCircle2, ChevronRight, HardDrive, ArrowLeft, Edit2 } from 'lucide-react';
+import { FileUp, RefreshCw, AlertCircle, CheckCircle2, HardDrive, ArrowLeft, Edit2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { purgeExpiredFailedImportsAction, getFailedRowsAction, updateFailedRowAction, ingestBatchAction, getDuplicateRowsAction, cancelBulkUploadAction, resumeBulkUploadAction, resolveFailedRowAction } from '@/lib/bulk-upload-actions';
@@ -79,7 +79,7 @@ export default function ImportsLogClient() {
             if (fRows.length === 0 && dRows.length > 0 && initialTab === 'failed') {
                 setActiveTab('duplicates');
             }
-        } catch (error) {
+        } catch (_error) {
             toast({ variant: 'destructive', title: 'Error loading resolution data' });
         } finally {
             setIsLoadingFailed(false);
@@ -121,7 +121,7 @@ export default function ImportsLogClient() {
             setFailedRows(prev => prev.map(r => r.id === row.id ? { ...r, rawPayload: updatedPayload } : r));
             setEditingCell(null);
             toast({ title: 'Field updated' });
-        } catch (error) {
+        } catch (_error) {
             toast({ variant: 'destructive', title: 'Update failed' });
         }
     };

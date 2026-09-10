@@ -18,9 +18,7 @@
 
 import type {
   PerformancePolicy,
-  PolicyScoringRule,
   RuleCondition,
-  RuleMultiplier,
   PolicySimulationInput,
   PolicySimulationResult,
   RepSimulationMetric,

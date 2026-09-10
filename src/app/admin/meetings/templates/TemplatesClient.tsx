@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '@/components/ui/card';
+import { Card, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -14,8 +14,6 @@ import {
   GraduationCap,
   Radio,
   Wrench,
-  CheckCircle2,
-  ArrowRight,
   Plus,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -82,7 +80,7 @@ export function TemplatesClient() {
           description: res.error || 'Failed to deploy template.',
         });
       }
-    } catch (err) {
+    } catch (_err) {
       toast({
         variant: 'destructive',
         title: 'Error',

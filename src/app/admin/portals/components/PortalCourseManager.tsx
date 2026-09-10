@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -53,14 +53,11 @@ import {
   Search,
   MoreVertical,
   Layers,
-  Clock,
   User,
-  Award,
   ExternalLink,
   Edit,
   Trash2,
   CheckCircle2,
-  Sparkles,
   Loader2,
   BookOpen,
 } from 'lucide-react';

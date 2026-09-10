@@ -2,7 +2,6 @@
 import * as React from 'react';
 import DashboardCard from "./DashboardCard";
 import { Users, User } from "lucide-react";
-import { cn } from "@/lib/utils";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Progress } from "@/components/ui/progress";

@@ -10,13 +10,7 @@ import {
   ShieldAlert,
   Copy,
   Check,
-  ExternalLink,
-  MessageSquare,
-  Smartphone,
-  Mail,
-  PhoneCall,
   Loader2,
-  FileText,
   Target,
   Layers,
 } from 'lucide-react';
@@ -31,7 +25,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   type CampaignConcept,
-  type CampaignChannel,
 } from '@/lib/quick-notes-types';
 import {
   getCampaignChannelMeta,
@@ -180,7 +173,7 @@ export function CampaignConceptDrawer({
                   💎 Core Value Proposition
                 </span>
                 <p className="text-xs text-foreground font-semibold leading-relaxed">
-                  "{concept.valueProposition}"
+                  &quot;{concept.valueProposition}&quot;
                 </p>
               </div>
 
@@ -201,7 +194,7 @@ export function CampaignConceptDrawer({
                   </Button>
                 </div>
                 <p className="text-xs italic font-medium text-foreground border-l-2 border-primary pl-3 py-1">
-                  "{concept.coreMessageHook}"
+                  &quot;{concept.coreMessageHook}&quot;
                 </p>
               </div>
 
@@ -261,7 +254,7 @@ export function CampaignConceptDrawer({
 
                     <div className="p-2.5 rounded-xl bg-destructive/5 border border-destructive/20 text-xs">
                       <span className="font-bold text-destructive block mb-0.5">Prospect Statement:</span>
-                      <p className="italic text-foreground">"{reb.objection}"</p>
+                      <p className="italic text-foreground">&quot;{reb.objection}&quot;</p>
                     </div>
 
                     <div className="p-2.5 rounded-xl bg-emerald-500/5 border border-emerald-500/20 text-xs space-y-1">

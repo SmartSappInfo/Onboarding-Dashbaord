@@ -4,7 +4,6 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { useTerminology } from '@/hooks/use-terminology';
 import { 
-  CheckSquare, 
   Tag as TagIcon, 
   UserPlus, 
   DollarSign, 

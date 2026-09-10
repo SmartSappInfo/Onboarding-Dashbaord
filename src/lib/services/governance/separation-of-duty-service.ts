@@ -118,7 +118,7 @@ export class SeparationOfDutyService {
         .get();
 
       const userRoles: string[] = memDoc.exists ? memDoc.data()?.roles || [] : [];
-      const userRoleNames: string[] = memDoc.exists ? memDoc.data()?.roleNames || [] : [];
+      const _userRoleNames: string[] = memDoc.exists ? memDoc.data()?.roleNames || [] : [];
 
       for (const rule of rules) {
         const hasA = userRoles.includes(rule.roleIdA);

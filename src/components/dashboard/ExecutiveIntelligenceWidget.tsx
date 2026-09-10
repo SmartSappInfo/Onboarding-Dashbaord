@@ -26,7 +26,6 @@ import {
   ArrowRight,
   ShieldCheck,
   Activity,
-  TrendingUp,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -61,7 +60,7 @@ export function ExecutiveIntelligenceWidget({
   const [recommendations, setRecommendations] = React.useState<ProactiveRecommendation[]>(
     initialRecommendations || []
   );
-  const [isLoading, setIsLoading] = React.useState(!initialSummary);
+  const [_isLoading, setIsLoading] = React.useState(!initialSummary);
 
   React.useEffect(() => {
     if (!initialSummary && workspaceId) {

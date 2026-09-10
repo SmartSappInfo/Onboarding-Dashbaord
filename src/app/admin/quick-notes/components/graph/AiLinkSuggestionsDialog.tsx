@@ -160,7 +160,7 @@ export function AiLinkSuggestionsDialog({
           ) : visibleSuggestions.length === 0 ? (
             <div className="py-10 text-center text-muted-foreground text-xs space-y-1">
               <p className="font-medium text-foreground">No new relationships detected.</p>
-              <p>The AI didn't find strong evidence-backed connections above the confidence threshold.</p>
+              <p>The AI didn&apos;t find strong evidence-backed connections above the confidence threshold.</p>
             </div>
           ) : (
             <div className="max-h-[380px] overflow-y-auto space-y-3 pr-1">
@@ -236,7 +236,7 @@ export function AiLinkSuggestionsDialog({
                         <span className="font-semibold text-foreground flex items-center gap-1 text-[10px] uppercase">
                           <Quote className="w-2.5 h-2.5" /> Evidence Quote
                         </span>
-                        <p className="italic line-clamp-2">"{s.evidenceQuotes[0]}"</p>
+                        <p className="italic line-clamp-2">&quot;{s.evidenceQuotes[0]}&quot;</p>
                       </div>
                     )}
                   </div>

@@ -19,7 +19,6 @@ import { useFirestore } from '@/lib/firestore-context';
 import type {
   AttributionModelType,
   MediaInfluenceSummary,
-  TopInfluencingAsset,
 } from '@/lib/types/media-2.0';
 import {
   getMediaInfluenceSummaryAction,
@@ -38,7 +37,6 @@ import {
 import {
   DollarSign,
   TrendingUp,
-  Zap,
   Clock,
   Eye,
   Users,
@@ -54,7 +52,6 @@ import {
   ArrowRight,
   RefreshCw,
   HelpCircle,
-  Bot,
 } from 'lucide-react';
 import { MediaCopilotDrawer } from '@/app/admin/media/components/MediaCopilotDrawer';
 import { cn } from '@/lib/utils';

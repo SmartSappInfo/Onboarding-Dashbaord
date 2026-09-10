@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
@@ -39,7 +38,6 @@ import {
   ChevronDown,
   Save,
   Loader2,
-  Sparkles,
   Layers,
   Settings2,
   CheckCircle2,
@@ -55,7 +53,6 @@ import type {
   OnboardingStepDefinition,
   OnboardingAudience,
   OnboardingStepType,
-  PolicyConditionOperator,
 } from '@/lib/types';
 import { createOrUpdateJourneyAction } from '@/app/actions/onboarding-actions';
 

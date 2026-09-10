@@ -13,7 +13,7 @@
 import { NextRequest } from 'next/server';
 
 export async function GET(req: NextRequest): Promise<Response> {
-  const url = new URL(req.url);
+  const _url = new URL(req.url);
   const host = req.headers.get('host') || 'localhost:3000';
   const protocol = req.headers.get('x-forwarded-proto') || 'http';
   const endpointUrl = `${protocol}://${host}/api/mcp`;

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, ArrowRight, Loader2, CheckCircle2, GitFork } from 'lucide-react';
+import { ArrowRight, Loader2, CheckCircle2, GitFork } from 'lucide-react';
 import { submitRoutingFormAction } from '@/app/actions/routing-form-actions';
 import type { RoutingForm, RoutingEvaluationResult } from '@/lib/meetings/types/routing';
 
@@ -130,7 +130,7 @@ export default function PublicRoutingClient({ form }: PublicRoutingClientProps) 
         <Card className="rounded-3xl border shadow-sm ring-1 ring-border/50 overflow-hidden">
           <CardContent className="p-6 sm:p-8">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {(form.fields || []).map((field, idx) => (
+              {(form.fields || []).map((field, _idx) => (
                 <div key={field.id} className="space-y-2">
                   <Label htmlFor={field.id} className="text-sm font-semibold text-foreground flex items-center gap-1">
                     {field.label}

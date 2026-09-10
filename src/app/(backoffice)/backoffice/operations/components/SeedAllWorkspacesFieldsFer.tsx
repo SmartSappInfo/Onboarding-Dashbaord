@@ -70,7 +70,7 @@ export default function SeedAllWorkspacesFieldsFer() {
     };
   } | null>(null);
   const [history, setHistory] = React.useState<RunRecord[]>([]);
-  const [isPending, startTransition] = React.useTransition();
+  const [_isPending, startTransition] = React.useTransition();
 
   const canExecute = can('operations', 'execute');
 

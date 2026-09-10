@@ -622,7 +622,7 @@ describe('Property 5: System Tag Immutability', () => {
             size: 0
           });
 
-          const mockDoc = vi.fn((id?: string) => ({
+          const mockDoc = vi.fn((_id?: string) => ({
             get: mockTagGet,
             delete: mockDelete
           }));
@@ -1900,7 +1900,7 @@ describe('Property 3: Workspace Isolation', () => {
           }));
 
           // Mock Firestore: .where('workspaceId', '==', id) returns only matching tags
-          const mockOrderBy = vi.fn().mockImplementation(function (this: any) { return this; });
+          const _mockOrderBy = vi.fn().mockImplementation(function (this: any) { return this; });
 
           const mockWhereForA = {
             orderBy: vi.fn().mockReturnValue({
@@ -2229,7 +2229,7 @@ describe('Property 8: Tag Operation Audit Trail', () => {
           expect(mockAuditSet).toHaveBeenCalledTimes(tagIds.length);
 
           // Property: each audit entry has the correct fields
-          mockAuditSet.mock.calls.forEach((call, idx) => {
+          mockAuditSet.mock.calls.forEach((call, _idx) => {
             const auditEntry = call[0];
 
             // action must be 'applied'
@@ -2429,7 +2429,7 @@ describe('Property 8: Tag Operation Audit Trail', () => {
         fc.constantFrom('school' as const, 'prospect' as const),
         fc.string({ minLength: 5, maxLength: 20 }).filter(s => /^[a-z0-9-]+$/.test(s)), // single tagId
         fc.string({ minLength: 1, maxLength: 50 }), // userId
-        async (contactId, contactType, rawTagId, userId) => {
+        async (contactId, contactType, rawTagId, _userId) => {
           const tagId = `tag-${rawTagId}`;
 
           const mockAuditUpdate = vi.fn();
@@ -3088,7 +3088,7 @@ describe('Property 10: Tag Filter AND Logic', () => {
         })),
     });
 
-    const mockCollection = vi.fn((collectionName: string) => {
+    const mockCollection = vi.fn((_collectionName: string) => {
       const docs = [...schoolDocs, ...prospectDocs];
 
       return {
@@ -3380,7 +3380,7 @@ describe('Property 11: Tag Filter OR Logic', () => {
         })),
     });
 
-    const mockCollection = vi.fn((collectionName: string) => {
+    const mockCollection = vi.fn((_collectionName: string) => {
       const docs = [...schoolDocs, ...prospectDocs];
 
       return {
@@ -3711,7 +3711,7 @@ describe('Property 12: Tag Filter NOT Logic', () => {
       })),
     });
 
-    const mockCollection = vi.fn((collectionName: string) => {
+    const mockCollection = vi.fn((_collectionName: string) => {
       const docs = [...schoolDocs, ...prospectDocs];
 
       return {
@@ -4054,7 +4054,7 @@ describe('Property 12: Tag Filter NOT Logic', () => {
               .filter(d => chunk.some(t => d.tags.includes(t)))
               .map(d => ({ id: d.id, data: () => ({ tags: d.tags, workspaceTags: d.tags, workspaceIds: [workspaceId], workspaceId }) })),
           });
-          const orMock = vi.fn((collectionName: string) => {
+          const orMock = vi.fn((_collectionName: string) => {
             const docs = schoolDocs;
             return {
               where: vi.fn(() => ({
@@ -4828,7 +4828,7 @@ describe('Property 16: No Orphaned Tags', () => {
 
       if (collectionName === 'schools') {
         return {
-          doc: vi.fn((id: string) => ({
+          doc: vi.fn((_id: string) => ({
             get: vi.fn().mockResolvedValue({ exists: false, data: () => null }),
             update: vi.fn().mockResolvedValue(undefined),
           })),
@@ -5212,7 +5212,7 @@ describe('Property 17: Query Performance', () => {
     contactDocs: Array<{ id: string; tags: string[] }>,
     workspaceId: string
   ) => {
-    const mockCollection = vi.fn((collectionName: string) => {
+    const mockCollection = vi.fn((_collectionName: string) => {
       return {
         where: vi.fn((_field: string, _op: string, _val: string) => ({
           where: vi.fn((_f2: string, _o2: string, tagId: string) => ({
@@ -5240,7 +5240,7 @@ describe('Property 17: Query Performance', () => {
     contactDocs: Array<{ id: string; tags: string[] }>,
     workspaceId: string
   ) => {
-    const mockCollection = vi.fn((collectionName: string) => {
+    const mockCollection = vi.fn((_collectionName: string) => {
       return {
         where: vi.fn((_field: string, _op: string, _val: string) => ({
           where: vi.fn((_f2: string, _o2: string, chunk: string[]) => ({
@@ -5268,7 +5268,7 @@ describe('Property 17: Query Performance', () => {
     contactDocs: Array<{ id: string; tags: string[] }>,
     workspaceId: string
   ) => {
-    const mockCollection = vi.fn((collectionName: string) => {
+    const mockCollection = vi.fn((_collectionName: string) => {
       return {
         where: vi.fn(() => ({
           get: vi.fn().mockResolvedValue({
@@ -5820,7 +5820,7 @@ describe('Property 18: Bulk Operation Performance', () => {
     const mockCollection = vi.fn((collectionName: string) => {
       if (collectionName === 'schools' || collectionName === 'prospects') {
         return {
-          doc: vi.fn((contactId: string) => ({
+          doc: vi.fn((_contactId: string) => ({
             get: vi.fn().mockResolvedValue({
               exists: true,
               data: () => ({

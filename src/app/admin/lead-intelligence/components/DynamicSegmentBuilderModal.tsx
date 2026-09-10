@@ -36,7 +36,6 @@ import {
   Filter, 
   Plus, 
   Trash2, 
-  Sparkles, 
   Users, 
   CheckCircle2, 
   Loader2 
@@ -94,7 +93,7 @@ export const DynamicSegmentBuilderModal: React.FC<DynamicSegmentBuilderModalProp
   );
 
   const [matchingCount, setMatchingCount] = useState<number | null>(null);
-  const [totalCount, setTotalCount] = useState<number | null>(null);
+  const [_totalCount, setTotalCount] = useState<number | null>(null);
   const [isEvaluating, setIsEvaluating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -285,7 +284,7 @@ export const DynamicSegmentBuilderModal: React.FC<DynamicSegmentBuilderModalProp
               Filter Conditions
             </Label>
 
-            {rules.map((rule, idx) => (
+            {rules.map((rule, _idx) => (
               <div
                 key={rule.id}
                 className="p-3 rounded-xl border border-border/70 bg-card space-y-2 sm:space-y-0 sm:flex sm:items-center sm:gap-2"

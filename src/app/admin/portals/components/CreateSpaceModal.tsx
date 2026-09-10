@@ -30,7 +30,7 @@ import {
 import { useToast } from '@/hooks/use-toast';
 import { createSpaceAction, updateSpaceAction } from '@/app/actions/community-actions';
 import type { CommunitySpace, SpaceVisibility } from '@/lib/types/community';
-import { MessageSquare, Sparkles, Lock, Layers, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface CreateSpaceModalProps {

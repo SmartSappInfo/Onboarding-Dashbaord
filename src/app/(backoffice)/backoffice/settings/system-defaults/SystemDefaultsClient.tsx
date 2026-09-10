@@ -23,7 +23,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload, Shield, PlusCircle, X, Check, Lock, ShieldAlert, Info } from 'lucide-react';
+import { Loader2, Save, RefreshCw, Mail, MessageSquare, Sparkles, Upload, Shield, PlusCircle, X, ShieldAlert, Info } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
 import { seedSystemTemplates } from '@/lib/seed-templates';

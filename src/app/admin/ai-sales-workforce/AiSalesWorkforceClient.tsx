@@ -27,7 +27,7 @@ import { useTenant } from '@/context/TenantContext';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -42,9 +42,6 @@ import {
   Sparkles,
   Sliders,
   AlertTriangle,
-  Clock,
-  CheckCircle2,
-  Cpu,
   Loader2,
 } from 'lucide-react';
 import type {

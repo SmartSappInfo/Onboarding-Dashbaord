@@ -7,13 +7,11 @@ import * as z from 'zod';
 import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle } from '@/lib/types';
-import { sendMessage } from '@/lib/messaging-engine';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
-import { createBulkMessageJob, processBulkJobChunk, processJobChunkBackground } from '@/lib/bulk-messaging';
-import { type ScheduleMessageResult } from '@/lib/sequential-scheduler';
+import { createBulkMessageJob, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
-import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt, type ResolvedRecipient } from '@/lib/messaging-actions';
+import { fetchContextualData, resolveRecipientContacts, updateEntityLastContactedAt } from '@/lib/messaging-actions';
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
@@ -53,7 +51,6 @@ import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/Template
 import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { EntitySelector } from './EntitySelector';
-import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { useAudiences } from '@/lib/audience-hooks';
@@ -232,7 +229,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
     const [isRefining, setIsRefining] = React.useState(false);
-    const [selectedTone, setSelectedTone] = React.useState<'formal'|'friendly'|'urgent'|'concise'>('formal');
+    const [selectedTone, _setSelectedTone] = React.useState<'formal'|'friendly'|'urgent'|'concise'>('formal');
     const [csvData, setCsvData] = React.useState<CSVRecord[]>([]);
     const [csvHeaders, setCsvHeaders] = React.useState<string[]>([]);
     const [columnMapping, setColumnMapping] = React.useState<Record<string, string>>({});
@@ -254,7 +251,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [jobProcessed, setJobProcessed] = React.useState(0);
     const [jobFailed, setJobFailed] = React.useState(0);
     const [jobTotal, setJobTotal] = React.useState(0);
-    const [availableVariables, setAvailableVariables] = React.useState<TemplateVariable[]>([]);
+    const [_availableVariables, setAvailableVariables] = React.useState<TemplateVariable[]>([]);
     const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
 
     const form = useForm<FormData>({
@@ -282,8 +279,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const watchedSourceResponseId = watch('sourceResponseId');
     const watchedSourcePdfId = watch('sourcePdfId');
     const watchedSourceSubmissionId = watch('sourceSubmissionId');
-    const watchedCustomBody = watch('customBody');
-    const watchedMessageSourceType = watch('messageSourceType');
+    const _watchedCustomBody = watch('customBody');
+    const _watchedMessageSourceType = watch('messageSourceType');
     const watchedSenderProfileId = watch('senderProfileId');
 
     const [audienceSource, setAudienceSource] = React.useState<'individual' | 'manual' | 'saved'>('individual');
@@ -422,11 +419,11 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
-    const { data: meetings } = useCollection<Meeting>(meetingsQuery);
-    const { data: surveys } = useCollection<Survey>(surveysQuery);
-    const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
-    const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
-    const { data: submissions } = useCollection<Submission>(submissionsQuery);
+    const { data: _meetings } = useCollection<Meeting>(meetingsQuery);
+    const { data: _surveys } = useCollection<Survey>(surveysQuery);
+    const { data: _pdfs } = useCollection<PDFForm>(pdfsQuery);
+    const { data: _responses } = useCollection<SurveyResponse>(responsesQuery);
+    const { data: _submissions } = useCollection<Submission>(submissionsQuery);
 
     // Entity selection is now search-backed inside EntitySelector (no full-set
     // load). Recipient resolution happens server-side per entity at send time.
@@ -633,7 +630,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         reader.readAsText(file);
     };
 
-    const handleAiRefine = async () => {
+    const _handleAiRefine = async () => {
         if (!selectedTemplate || isRefining) return;
         setIsRefining(true);
         try {
@@ -1017,7 +1014,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                 <div className="p-8 rounded-2xl border-2 border-dashed border-border/50 text-center space-y-3">
                                     <Wand2 className="h-8 w-8 text-muted-foreground/40 mx-auto" />
                                     <p className="text-sm font-semibold text-muted-foreground">Rich composer coming soon.</p>
-                                    <p className="text-xs text-muted-foreground/60">For now, use a template or create one via "New Template".</p>
+                                    <p className="text-xs text-muted-foreground/60">For now, use a template or create one via &quot;New Template&quot;.</p>
                                     <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={() => setIsQuickCreateOpen(true)}>
                                         <PlusCircle className="h-3.5 w-3.5 mr-1.5" /> Create Template
                                     </Button>
@@ -1368,11 +1365,11 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             <div className="p-6 rounded-2xl border-2 border-dashed border-border/50 flex flex-col items-center gap-3 text-center">
                                 <Tag className="h-7 w-7 text-muted-foreground/30" />
                                 <p className="text-sm font-semibold text-muted-foreground">Tag & automation assignment coming soon.</p>
-                                <p className="text-[10px] text-muted-foreground/60">After sending, you'll be able to auto-tag recipients and trigger workflow automations.</p>
+                                <p className="text-[10px] text-muted-foreground/60">After sending, you&apos;ll be able to auto-tag recipients and trigger workflow automations.</p>
                             </div>
                             <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20">
                                 <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
-                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">You can skip this step — it's optional. Tags and automations can also be applied manually after sending.</p>
+                                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400">You can skip this step — it&apos;s optional. Tags and automations can also be applied manually after sending.</p>
                             </div>
                         </CardContent>
                         <NavFooter onNext={() => setStep(5)} onBack={() => setStep(3)} isSubmitting={isSubmitting} nextLabel="Next: Publish" />

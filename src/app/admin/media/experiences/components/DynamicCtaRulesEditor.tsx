@@ -17,7 +17,7 @@ import type {
   DynamicCtaRule, RuleCondition, RuleAction, 
   RuleConditionType, RuleConditionOperator 
 } from '@/lib/types/media-2.0';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

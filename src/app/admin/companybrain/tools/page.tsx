@@ -28,7 +28,6 @@ import {
   Activity,
   ArrowLeft,
   RefreshCw,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';

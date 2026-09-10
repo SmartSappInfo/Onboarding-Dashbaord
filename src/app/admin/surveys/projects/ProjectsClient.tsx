@@ -21,8 +21,6 @@ import {
   Layers,
   Sparkles,
   Calendar,
-  Tag,
-  BarChart3,
   ArrowRight,
   Loader2,
   RefreshCw,

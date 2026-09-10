@@ -17,12 +17,10 @@ import { Badge } from '@/components/ui/badge';
 import { 
   Activity, 
   TrendingUp, 
-  TrendingDown, 
   Calendar, 
   Flame, 
   CheckCircle2, 
   AlertCircle,
-  Clock,
   Sparkles
 } from 'lucide-react';
 import type { Prospect, LeadSignal, ScoreMovementEvent } from '@/lib/lead-intelligence/types';

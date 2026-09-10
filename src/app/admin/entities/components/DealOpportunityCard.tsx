@@ -239,7 +239,7 @@ export const DealOpportunityCard = React.memo(function DealOpportunityCard({
                         <Info className="h-3 w-3 text-muted-foreground/70 cursor-help" />
                       </TooltipTrigger>
                       <TooltipContent className="max-w-[200px] text-[10px] p-2 bg-popover border border-border">
-                        When enabled, deal creation won't fire automated triggers (e.g. email notifications or background protocols). Recommended to prevent spam.
+                        When enabled, deal creation won&apos;t fire automated triggers (e.g. email notifications or background protocols). Recommended to prevent spam.
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>

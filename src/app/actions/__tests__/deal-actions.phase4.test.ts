@@ -1,13 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { 
   createProductAction, 
-  updateProductAction, 
   deleteProductAction, 
   listProductsAction,
   createProductCategoryAction,
   listProductCategoriesAction,
   createPriceBookAction,
-  listPriceBooksAction 
 } from '../product-actions';
 import { saveDealLineItemsAction, acceptPublicQuoteAction } from '../deal-line-item-actions';
 import { duplicateDealAction } from '../deal-actions';

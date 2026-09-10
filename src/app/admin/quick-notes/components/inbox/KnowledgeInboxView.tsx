@@ -7,16 +7,12 @@ import {
   Search,
   CheckCheck,
   XCircle,
-  Filter,
   RefreshCw,
-  Loader2,
   CheckCircle,
   Tag,
   Link2,
   GitMerge,
   AlertTriangle,
-  Lightbulb,
-  CheckSquare,
   Brain,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -157,7 +153,7 @@ export function KnowledgeInboxView({
     }
   };
 
-  const handleSelectAll = (checked: boolean) => {
+  const _handleSelectAll = (checked: boolean) => {
     if (checked) {
       setSelectedItemIds(new Set(filteredItems.map((i) => i.id)));
     } else {
@@ -391,7 +387,7 @@ export function KnowledgeInboxView({
                 <CheckCircle className="h-6 w-6" />
               </span>
               <div className="space-y-1">
-                <h3 className="text-sm font-bold text-foreground">You're all caught up!</h3>
+                <h3 className="text-sm font-bold text-foreground">You&apos;re all caught up!</h3>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
                   No pending suggestions in this category. New AI-discovered links, duplicate merges, and contradiction
                   alerts will appear here.

@@ -16,12 +16,10 @@ import {
   AlertTriangle,
   XCircle,
   RefreshCw,
-  Loader2,
-  ShieldCheck,
   Gauge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import {

@@ -25,20 +25,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Sparkles,
   Shield,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
   RotateCcw,
   Search,
-  Check,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { Role, PermissionsSchema, Workspace } from '@/lib/types';
 import {
   mergePermissionsSchemas,
@@ -62,7 +58,7 @@ export function AccessSimulatorSheet({
   isOpen,
   onClose,
   roles,
-  workspaces,
+  workspaces: _workspaces,
 }: AccessSimulatorSheetProps) {
   const [selectedRoleIds, setSelectedRoleIds] = React.useState<string[]>([]);
   const [searchQuery, setSearchQuery] = React.useState('');

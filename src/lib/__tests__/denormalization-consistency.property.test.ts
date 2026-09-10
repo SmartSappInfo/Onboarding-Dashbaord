@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { Entity, WorkspaceEntity, EntityType } from '../types';
+import type { Entity, WorkspaceEntity } from '../types';
 
 // Mock Next.js cache module
 vi.mock('next/cache', () => ({

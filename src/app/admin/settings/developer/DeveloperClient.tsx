@@ -18,7 +18,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 export default function DeveloperClient() {
   const { activeWorkspaceId, activeWorkspace } = useTenant();
   const { user } = useUser();
-  const { singular, plural } = useTerminology();
+  const { singular: _singular, plural } = useTerminology();
   const confirm = useConfirm();
 
   const [keys, setKeys] = useState<ApiKeyRecord[]>([]);

@@ -26,7 +26,7 @@ interface MeetingRegistrationFormProps {
  * Public-facing registration form that renders dynamic fields
  * from meeting.registrationFields.
  */
-export default function MeetingRegistrationForm({ meeting, entityId, onRegistered }: MeetingRegistrationFormProps) {
+export default function MeetingRegistrationForm({ meeting, entityId: _entityId, onRegistered }: MeetingRegistrationFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const { toast } = useToast();
@@ -94,7 +94,7 @@ export default function MeetingRegistrationForm({ meeting, entityId, onRegistere
         throw new Error(json?.error || 'Registration failed');
       }
 
-      const { token, status, personalizedMeetingUrl, alreadyRegistered } = json;
+      const { token, status, _personalizedMeetingUrl, alreadyRegistered } = json;
 
       setIsComplete(true);
 

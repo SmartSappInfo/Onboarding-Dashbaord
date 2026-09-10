@@ -21,7 +21,6 @@ import { useFirestore } from '@/lib/firestore-context';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type {
   CopilotPersonaType,
-  CopilotMessage,
   CopilotSession,
 } from '@/lib/types/media-2.0';
 import {
@@ -55,7 +54,6 @@ import {
   RefreshCw,
   X,
   FileText,
-  CornerDownLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

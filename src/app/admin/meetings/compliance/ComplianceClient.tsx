@@ -1,9 +1,8 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
@@ -11,11 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   ShieldCheck,
   Download,
-  Trash2,
   Lock,
-  FileSpreadsheet,
-  AlertTriangle,
-  Sparkles,
   HardDrive,
   Save,
 } from 'lucide-react';
@@ -42,7 +37,7 @@ export function ComplianceClient() {
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
 
-  const [policy, setPolicy] = React.useState<CompliancePolicy | null>(null);
+  const [_policy, setPolicy] = React.useState<CompliancePolicy | null>(null);
   const [allowedDomainsInput, setAllowedDomainsInput] = React.useState('');
   const [blockedDomainsInput, setBlockedDomainsInput] = React.useState('');
   const [retentionDays, setRetentionDays] = React.useState('90');

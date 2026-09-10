@@ -14,27 +14,23 @@
  */
 
 import * as React from 'react';
-import { useFormContext, useFieldArray } from 'react-hook-form';
+import { useFormContext } from 'react-hook-form';
 import {
-  Survey,
   SurveyElement,
   SurveyQuestion,
   SurveyCrmConfig,
   SurveyCrmFieldMapping,
   SurveyCrmTaskRule,
-  SurveyCrmDealRule,
   SurveyCrmFieldDefinition,
   CrmTargetEntityType,
   CrmFieldWriteMode,
   CrmTaskTriggerCondition,
-  CrmFieldTransform,
 } from '@/lib/types';
 import { getSurveyCrmFieldDefinitionsAction } from '@/lib/surveys/survey-crm-sync-actions';
 import { SurveyCrmInboundTriggersCard } from './SurveyCrmInboundTriggersCard';
-import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -54,15 +50,8 @@ import {
   Plus,
   Trash2,
   Database,
-  CheckCircle2,
-  AlertTriangle,
-  ArrowRight,
-  Sparkles,
   Layers,
   Clock,
-  UserCheck,
-  Briefcase,
-  Sliders,
 } from 'lucide-react';
 
 export interface SurveyCrmMappingTabProps {
@@ -74,7 +63,7 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
   const { toast } = useToast();
 
   const [availableCrmFields, setAvailableCrmFields] = React.useState<SurveyCrmFieldDefinition[]>([]);
-  const [isLoadingFields, setIsLoadingFields] = React.useState(true);
+  const [_isLoadingFields, setIsLoadingFields] = React.useState(true);
 
   const elements: SurveyElement[] = watch('elements') || [];
   const questions = elements.filter(

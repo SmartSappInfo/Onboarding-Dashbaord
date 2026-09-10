@@ -33,7 +33,6 @@ import AuthorizationLoader from './components/authorization-loader';
 import { enforceSuperAdminProfileAction } from '@/app/actions/onboarding-actions';
 import NotificationBell from './components/NotificationBell';
 import NotificationCenter from './components/NotificationCenter';
-import UnifiedOrgWorkspaceSwitcher from './components/UnifiedOrgWorkspaceSwitcher';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,7 +57,7 @@ import { BreadcrumbNav } from './components/BreadcrumbNav';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useFeatures } from '@/hooks/use-features';
 import AssignedUserGlobalFilter from './components/AssignedUserGlobalFilter';
-import type { AppFeatureId, Role } from '@/lib/types';
+import type { Role } from '@/lib/types';
 import { usePermissions } from '@/hooks/use-permissions';
 import { useBackofficeAccess } from '@/hooks/use-backoffice-access';
 import { UnsavedChangesProvider } from '@/context/UnsavedChangesContext';
@@ -80,20 +79,20 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
   const searchParams = useSearchParams();
   const { resolvedTheme, setTheme } = useTheme();
   const router = useRouter();
-  const { user, isUserLoading, userError } = useUser();
+  const { user, isUserLoading, userError: _userError } = useUser();
   const firestore = useFirestore();
   const auth = useAuth();
   const { toast } = useToast();
-  const { singular, plural, dealPlural } = useTerminology();
-  const { activeWorkspaceId, activeOrganization, isSuperAdmin } = useTenant();
-  const { isFeatureEnabled } = useFeatures();
+  const { singular: _singular, plural, dealPlural: _dealPlural } = useTerminology();
+  const { activeWorkspaceId: _activeWorkspaceId, activeOrganization, isSuperAdmin } = useTenant();
+  const { isFeatureEnabled: _isFeatureEnabled } = useFeatures();
   
   const [mounted, setMounted] = React.useState(false);
   const [isReady, setIsReady] = React.useState(false);
   const [loaderStatus, setLoaderStatus] = React.useState<'checking' | 'success' | 'failed'>('checking');
   const [userRolesData, setUserRolesData] = React.useState<{ id: string, name: string }[]>([]);
-  const { can, isSystemAdmin } = usePermissions();
-  const { hasBackofficeAccess } = useBackofficeAccess();
+  const { can: _can, isSystemAdmin } = usePermissions();
+  const { hasBackofficeAccess: _hasBackofficeAccess } = useBackofficeAccess();
   const { open: openNotes, close: closeNotes, isOpen: isNotesOpen } = useFloatingNotes();
 
   // Keyboard shortcut listener for Option/Alt + N
@@ -184,7 +183,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
               }
             }
 
-            let perms = data.permissions || [];
+            let _perms = data.permissions || [];
             const roleIds = data.roles || [];
             
             const resolvedRoles = await Promise.all(
@@ -262,7 +261,7 @@ function AdminLayoutContent({ children }: { children: ReactNode }) {
     '/admin', '/admin/entities', '/admin/pipeline', '/admin/tasks', 
     '/admin/meetings', '/admin/automations', '/admin/reports'
   ];
-  const isOperationsPage = operationsPaths.some(path => {
+  const _isOperationsPage = operationsPaths.some(path => {
     return pathname === path || pathname.startsWith(path + '/');
   });
 

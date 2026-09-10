@@ -7,7 +7,7 @@ import type { MeetingRegistrant } from '@/lib/types';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Calendar, UserCircle2, Video, CheckCircle2, XCircle, Clock, MapPin } from 'lucide-react';
+import { Calendar, UserCircle2, Video, MapPin } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';

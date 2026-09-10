@@ -10,45 +10,26 @@ import {
     Tooltip, 
     ResponsiveContainer, 
     Cell,
-    PieChart,
-    Pie,
     Legend,
-    LineChart,
-    Line,
-    AreaChart,
-    Area
 } from 'recharts';
 import { 
-    BarChart3, 
     TrendingUp, 
     Users, 
-    Building, 
     ShieldCheck, 
     Target, 
     Zap, 
     MapPin, 
-    Download, 
     FileText, 
-    Loader2, 
-    Info,
-    Calendar,
-    Trophy,
-    MousePointer2,
-    PieChart as PieChartIcon,
     AlertCircle,
     CheckCircle2,
     Clock,
-    UserCheck,
     Gauge,
-    ArrowRight
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
+import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { WorkspaceEntity, Task, UserProfile, Zone, TaskCategory } from '@/lib/types';
+import type { Task, Zone, TaskCategory } from '@/lib/types';
 import { getReportAggregates, type ReportAggregates } from '@/lib/reports/report-actions';
 import { format, subDays, differenceInDays } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -76,7 +57,7 @@ export default function ReportsClient() {
     const firestore = useFirestore();
     const { activeWorkspaceId } = useWorkspace();
     const { activeOrganizationId } = useTenant();
-    const { singular, plural } = useTerminology();
+    const { singular: _singular, plural } = useTerminology();
     
     // Server-side aggregation (field-projected) — replaces streaming all entities.
     const [aggregates, setAggregates] = React.useState<ReportAggregates | null>(null);
@@ -309,7 +290,7 @@ export default function ReportsClient() {
                             <CardDescription className="text-xs font-semibold text-primary/60">Average days to resolution per task category.</CardDescription>
                         </CardHeader>
                         <CardContent className="p-8 space-y-6">
-                            {categoryMetrics.length > 0 ? categoryMetrics.map((cat, i) => (
+                            {categoryMetrics.length > 0 ? categoryMetrics.map((cat, _i) => (
                                 <div key={cat.name} className="flex items-center justify-between group">
                                     <div className="flex items-center gap-4">
                                         <div className="p-2 bg-muted/50 rounded-xl transition-transform group-hover:scale-110">

@@ -17,7 +17,7 @@ import {
   Copy,
   Check
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -756,7 +756,7 @@ export function DiagnosticsPanel({
             
             <div className="space-y-2">
               <p className="text-[11px] text-muted-foreground leading-normal">
-                You are about to force resume <strong className="text-foreground">{pendingJobs?.length || 0}</strong> contacts currently parked at the step <strong className="text-foreground">"{filterNode?.data?.label || 'Target Node'}"</strong>.
+                You are about to force resume <strong className="text-foreground">{pendingJobs?.length || 0}</strong> contacts currently parked at the step <strong className="text-foreground">&quot;{filterNode?.data?.label || 'Target Node'}&quot;</strong>.
               </p>
               <p className="text-[10px] text-rose-600 bg-rose-50 border border-rose-100 rounded-lg p-2 font-semibold leading-normal flex items-start gap-1.5">
                 <Info size={12} className="shrink-0 mt-0.5" />

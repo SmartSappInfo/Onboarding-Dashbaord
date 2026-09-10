@@ -62,7 +62,7 @@ export function HeaderNavRenderer({
   onNavItemClick,
   primaryColor = '#3B5FFF',
   className,
-  isEditMode = false,
+  isEditMode: _isEditMode = false,
 }: HeaderNavRendererProps) {
   const [activeDropdownId, setActiveDropdownId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);

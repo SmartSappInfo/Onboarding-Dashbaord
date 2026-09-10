@@ -5,12 +5,10 @@ import Link from 'next/link';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { MeetingsNavigation } from '../components/MeetingsNavigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -37,11 +35,8 @@ import {
   CopyCheck,
   ExternalLink,
   Edit2,
-  RefreshCw,
-  HelpCircle,
   ArrowRight,
   Split,
-  Tag,
 } from 'lucide-react';
 import {
   getRoutingFormsAction,
@@ -52,8 +47,6 @@ import { getEventTypesAction } from '@/app/actions/event-type-actions';
 import type {
   RoutingForm,
   RoutingRule,
-  RoutingCondition,
-  RoutingDestination,
   RoutingConditionOperator,
 } from '@/lib/meetings/types/routing';
 import type { BookingQuestion, EventType } from '@/lib/types';

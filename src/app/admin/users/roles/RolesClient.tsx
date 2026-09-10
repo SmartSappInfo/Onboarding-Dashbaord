@@ -27,12 +27,10 @@ import {
   useMemoFirebase,
   useUser 
 } from '@/firebase';
-import type { Role, PermissionsSchema, Workspace } from '@/lib/types';
+import type { Role, PermissionsSchema } from '@/lib/types';
 import { 
   normalizePermissionsSchema,
-  flattenPermissionsSchema,
 } from '@/lib/permissions-engine';
-import { CANONICAL_ROLE_BLUEPRINTS } from '@/lib/role-blueprint-presets';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -44,14 +42,10 @@ import {
   Plus, 
   Trash2, 
   Save, 
-  Zap, 
   Layers,
   Sparkles,
   Grid3X3,
-  SlidersHorizontal,
-  Info,
   Loader2,
-  Lock,
   ArrowLeft,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -71,7 +65,7 @@ export default function RolesClient() {
   const { toast } = useToast();
   const confirm = useConfirm();
   const { user: authUser } = useUser();
-  const { activeOrganizationId, activeWorkspace, accessibleWorkspaces } = useTenant();
+  const { activeOrganizationId, activeWorkspace: _activeWorkspace, accessibleWorkspaces } = useTenant();
 
   const [activeTab, setActiveTab] = React.useState<'roles' | 'matrix'>('roles');
   const [selectedRoleId, setSelectedRoleId] = React.useState<string | null>(null);

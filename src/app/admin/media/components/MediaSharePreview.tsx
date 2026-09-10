@@ -45,7 +45,7 @@ export function MediaSharePreview({
   description,
   ctaText,
   ctaType,
-  ctaTargetUrl,
+  ctaTargetUrl: _ctaTargetUrl,
   ctaPretext,
   ctaPopoverEnabled,
   ctaActivationGate = 'immediate',

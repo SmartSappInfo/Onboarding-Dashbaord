@@ -4,7 +4,6 @@ import { MousePointer2, ArrowRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { registerBlock } from '../registry';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
-import { genId } from '../tree-operations';
 
 const buttonItemSchema = z.object({
   id: z.string().default(''),
@@ -275,7 +274,7 @@ registerBlock({
         }
         urlObj.searchParams.set('entityId', entityId);
         return isAbsolute ? urlObj.toString() : urlObj.pathname + urlObj.search + urlObj.hash;
-      } catch (e) {
+      } catch (_e) {
         // Fallback for custom routing schemes or malformed paths
         const separator = targetUrl.includes('?') ? '&' : '?';
         return `${targetUrl}${separator}entityId=${encodeURIComponent(entityId)}`;

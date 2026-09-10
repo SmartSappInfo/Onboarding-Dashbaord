@@ -14,10 +14,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   CheckCircle2,
   Sparkles,
-  ArrowRight,
   TrendingUp,
   AlertCircle,
-  Clock,
   Send,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -82,7 +80,7 @@ export function MeetingActionItemsDrawer({
         setItems(res.items);
         toast({ title: `Extracted ${res.items.length} Action Items!` });
       }
-    } catch (err) {
+    } catch (_err) {
       toast({ variant: 'destructive', title: 'Extraction failed' });
     } finally {
       setIsExtracting(false);

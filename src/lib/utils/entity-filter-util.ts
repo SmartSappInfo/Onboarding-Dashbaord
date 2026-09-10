@@ -1,4 +1,3 @@
-import type { WorkspaceEntity } from '../types';
 
 export interface FilterStateInput {
   search: string;

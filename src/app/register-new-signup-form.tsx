@@ -1,14 +1,13 @@
 "use client";
 
 import * as React from "react";
-import { useForm, FormProvider, Controller } from "react-hook-form";
+import { useForm, FormProvider } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card';
 import { 
     Calendar as CalendarIcon, 
-    X, 
     Building, 
     Users, 
     Zap, 
@@ -34,7 +33,6 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 
 import { Button } from "@/components/ui/button";
 import {
-  Form,
   FormControl,
   FormDescription,
   FormField,
@@ -43,7 +41,6 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -51,8 +48,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { useFirestore, errorEmitter, FirestorePermissionError, useCollection, useMemoFirebase } from "@/firebase";
+import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { EntityContactManager } from "@/app/admin/entities/components/EntityContactManager";
 import { type SubscriptionPackage } from "@/lib/types";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -207,7 +203,7 @@ export default function NewSchoolSignupForm() {
   const handleClearDraft = () => {
     try {
       localStorage.removeItem(DRAFT_STORAGE_KEY);
-    } catch (e) {}
+    } catch (_e) {}
     form.reset(DEFAULT_FORM_VALUES as FormData);
     setHasRestoredDraft(false);
     toast({
@@ -216,7 +212,7 @@ export default function NewSchoolSignupForm() {
     });
   };
 
-  const watchEntityContacts = form.watch("entityContacts");
+  const _watchEntityContacts = form.watch("entityContacts");
   const watchPackageId = form.watch("subscriptionPackageId");
 
   const handleDiscountChange = (val: number) => {
@@ -294,7 +290,7 @@ export default function NewSchoolSignupForm() {
     if (result.success) {
       try {
         localStorage.removeItem(DRAFT_STORAGE_KEY);
-      } catch (e) {}
+      } catch (_e) {}
       setHasRestoredDraft(false);
       setIsConflictModalOpen(false);
       setPendingSignupInput(null);

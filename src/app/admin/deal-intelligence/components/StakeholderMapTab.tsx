@@ -43,7 +43,6 @@ import {
   Loader2,
 } from 'lucide-react';
 import type {
-  StakeholderMap,
   StakeholderPerson,
   StakeholderRole,
   StakeholderSentiment,
@@ -125,7 +124,7 @@ export const StakeholderMapTab: React.FC<StakeholderMapTabProps> = ({
   const [newSentiment, setNewSentiment] = React.useState<StakeholderSentiment>('neutral');
 
   // Real MEDDPICC evaluation from pure engine
-  const { multiThreadingScore, isSingleThreaded, missingCrucialRoles } = React.useMemo(() => {
+  const { multiThreadingScore, isSingleThreaded, missingCrucialRoles: _missingCrucialRoles } = React.useMemo(() => {
     return evaluateStakeholderMultiThreading(stakeholders, activeDeal?.dealValue || 10000);
   }, [stakeholders, activeDeal?.dealValue]);
 

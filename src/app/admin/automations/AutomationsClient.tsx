@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, limit, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { Automation, AutomationRun, Pipeline, Tag } from '@/lib/types';
+import type { Automation, AutomationRun, Pipeline } from '@/lib/types';
 import { 
     Zap, 
     Plus, 
@@ -31,13 +31,10 @@ import {
     Grid,
     List,
     Filter,
-    ChevronsRight,
     Mail,
     CheckSquare,
     Tag as TagIcon,
-    Play,
     ArrowRightLeft,
-    Globe,
     Target,
     Archive,
     ArchiveRestore,
@@ -269,7 +266,7 @@ export default function AutomationsClient() {
     const { toast } = useToast();
     const confirm = useConfirm();
     const { activeWorkspaceId } = useWorkspace();
-    const { singular, plural } = useTerminology();
+    const { singular: _singular, plural: _plural } = useTerminology();
     const [searchTerm, setSearchTerm] = React.useState('');
     const [selectedRun, setSelectedRun] = React.useState<AutomationRun | null>(null);
     const [triggerDataDialogView, setTriggerDataDialogView] = React.useState<'table' | 'json'>('table');

@@ -27,7 +27,7 @@ import { listCollectionsAction, addAssetToCollectionAction } from '@/lib/media/m
 import { listAssetDerivativesAction } from '@/lib/media/repurposing-service';
 import { AssetRepurposerModal } from './AssetRepurposerModal';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from '@/components/ui/sheet';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';

@@ -42,7 +42,7 @@ export default function TestimonialsSection() {
                     </h2>
                     <p className="mb-6 text-lg text-gray-700">
                     Watch these testimonials to see how parents are ensuring their
-                    child's security with SmartSapp
+                    child&apos;s security with SmartSapp
                     </p>
                     <p className="mb-12 text-lg font-semibold text-gray-900">
                     👇 Click To Watch These Videos. It's Super Important👇

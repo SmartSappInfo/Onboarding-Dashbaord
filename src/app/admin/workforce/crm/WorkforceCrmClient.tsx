@@ -21,7 +21,6 @@ import {
   Briefcase,
   DollarSign,
   Users,
-  ArrowRightLeft,
   RefreshCw,
   Zap,
 } from 'lucide-react';
@@ -34,7 +33,7 @@ import { CrmWorkloadOverviewTable } from './components/CrmWorkloadOverviewTable'
 import { OwnershipTransferModal } from './components/OwnershipTransferModal';
 
 export function WorkforceCrmClient() {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const { user: authUser } = useUser();
   const { activeOrganizationId } = useTenant();
 

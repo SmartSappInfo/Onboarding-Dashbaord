@@ -19,8 +19,6 @@
 
 import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
-import type { AgentFinding, AgentActionProposal } from '@/lib/supervisor/types';
-import type { McpPayloadValue } from '@/lib/mcp/types';
 
 export const synthesizeResultInputSchema = z.object({
   workspaceId: z.string().optional(),

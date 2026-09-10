@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Meeting, MeetingRegistrant } from '@/lib/types';
 import { validateRegistrantToken } from '@/app/actions/meeting-attendance-actions';
@@ -33,7 +32,7 @@ interface UseRegistrationTokenResult {
  */
 export function useRegistrationToken(meeting: Meeting): UseRegistrationTokenResult {
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const _router = useRouter();
   const firestore = useFirestore();
 
   const [token, setTokenState] = useState<string | null>(searchParams.get('token'));

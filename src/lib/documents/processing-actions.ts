@@ -51,7 +51,7 @@ export async function queueDocumentProcessingAction(
   payload: QueueProcessingJobPayload
 ): Promise<ProcessingJobActionResult> {
   try {
-    const { workspaceId, documentId, versionId, sourceUrl, sourceType = 'pdf', sourceFileName = 'document.pdf', userId } = payload;
+    const { workspaceId, documentId, versionId, sourceUrl, sourceType = 'pdf', sourceFileName = 'document.pdf', userId: _userId } = payload;
 
     if (!workspaceId || !documentId || !versionId || !sourceUrl) {
       return { success: false, error: 'Missing required processing parameters.' };

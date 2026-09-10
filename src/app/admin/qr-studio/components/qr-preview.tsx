@@ -42,7 +42,7 @@ export default function QRPreview({
 
   // Extract properties that affect the inner QR graphic
   const qrSpecificDesignStr = React.useMemo(() => {
-    const { posterData, ...qrOnlyDesign } = designOverrides || {};
+    const { posterData: _posterData, ...qrOnlyDesign } = designOverrides || {};
     return JSON.stringify(qrOnlyDesign);
   }, [designOverrides]);
 

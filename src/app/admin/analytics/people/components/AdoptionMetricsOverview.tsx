@@ -12,9 +12,7 @@
 
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
-import { Users, TrendingUp, Sparkles, Moon, Activity, CheckCircle2 } from 'lucide-react';
+import { Users, TrendingUp, Sparkles, Activity, CheckCircle2 } from 'lucide-react';
 import type { OrganizationAdoptionSummary, MemberActivityMetric } from '@/lib/types';
 
 interface AdoptionMetricsOverviewProps {
@@ -25,7 +23,7 @@ interface AdoptionMetricsOverviewProps {
 
 export function AdoptionMetricsOverview({
   summary,
-  memberMetrics,
+  memberMetrics: _memberMetrics,
   isLoading,
 }: AdoptionMetricsOverviewProps) {
   if (isLoading) {

@@ -24,7 +24,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { 
-  Sparkles, 
   TrendingUp, 
   TrendingDown, 
   ArrowRight, 

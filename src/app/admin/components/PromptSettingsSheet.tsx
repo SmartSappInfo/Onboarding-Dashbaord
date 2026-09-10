@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { getGlobalPromptById, getTenantOverrides, saveTenantOverride, deleteTenantOverride } from '@/lib/pms-repository';
 import type { GlobalPrompt, TenantPromptOverride } from '@/lib/pms-types';
-import { Loader2, Sparkles, Sliders, RotateCcw, AlertTriangle } from 'lucide-react';
+import { Loader2, Sliders, RotateCcw, AlertTriangle } from 'lucide-react';
 import { useUser } from '@/firebase';
 interface PromptSettingsSheetProps {
   open: boolean;

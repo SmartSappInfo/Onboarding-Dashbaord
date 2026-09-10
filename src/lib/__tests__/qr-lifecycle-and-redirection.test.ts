@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { validateSafeUrl, normalizeQRCode } from '@/lib/qr-helpers';
-import { DEFAULT_QR_LIFECYCLE_CONFIG, DEFAULT_QR_SECURITY_CONFIG, DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
-import type { QRCode, QRLifecycleConfig, QRSecurityConfig } from '@/lib/types';
+import { DEFAULT_QR_DESIGN } from '@/lib/qr-constants';
+import type { QRLifecycleConfig, QRSecurityConfig } from '@/lib/types';
 
 describe('QR Safety & Safe URL Validator', () => {
   it('allows safe HTTPS and HTTP destination URLs', () => {

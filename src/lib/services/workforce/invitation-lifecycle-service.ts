@@ -20,8 +20,6 @@ import type {
   InvitationStatus,
   Person,
   OrganizationMembership,
-  WorkspaceMembership,
-  IdentityAccount,
 } from '@/lib/types';
 import { IdentityAccountService } from '@/lib/services/identity/identity-account-service';
 import { PersonService } from '@/lib/services/identity/person-service';

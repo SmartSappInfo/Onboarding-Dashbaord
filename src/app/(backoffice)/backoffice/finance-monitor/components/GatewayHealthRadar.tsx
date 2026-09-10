@@ -9,8 +9,8 @@
 'use client';
 
 import * as React from 'react';
-import { CreditCard, Activity, CheckCircle2, AlertTriangle, XCircle } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { CreditCard } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { GatewayHealthStatus } from '@/lib/backoffice/backoffice-types';
 

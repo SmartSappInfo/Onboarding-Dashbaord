@@ -24,7 +24,6 @@ import type {
   QRCampaign,
   QRCampaignObjective,
   QRCampaignStatus,
-  QRCampaignMetrics,
   CampaignAnalytics,
   QRCode,
 } from '@/lib/types';

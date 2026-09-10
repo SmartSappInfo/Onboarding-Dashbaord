@@ -8,10 +8,10 @@
  * Validates: Requirement 25 (Explicit UI Language for Scope Rules)
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { render, screen, within } from '@testing-library/react';
+import { describe, it, expect, vi } from 'vitest';
+import { render, screen } from '@testing-library/react';
 import { ScopeLabel, ScopeSelector, ScopeMismatchError, ScopeBadge } from '@/app/admin/contacts/components/ScopeBadge';
-import type { ContactScope, EntityType } from '@/lib/types';
+import type { ContactScope } from '@/lib/types';
 
 describe('Task 39 Checkpoint: UI Language is Explicit and Clear', () => {
   describe('Workspace Settings - Scope Rules Display', () => {

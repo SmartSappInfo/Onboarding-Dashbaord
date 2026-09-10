@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -26,16 +26,13 @@ import {
   Calendar,
   Clock,
   Video,
-  Users,
   PlayCircle,
   Sparkles,
   ArrowRight,
   ExternalLink,
   CheckCircle2,
-  Lock,
   Loader2,
   ArrowLeft,
-  Flame,
 } from 'lucide-react';
 
 interface PortalEventsCatalogClientProps {
@@ -254,7 +251,7 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
               const isRegistering = registeringEventId === event.id;
               const hasReplay = Boolean(event.recordingUrl);
               const startTime = new Date(event.scheduledStartTime);
-              const isPast = startTime.getTime() < Date.now();
+              const _isPast = startTime.getTime() < Date.now();
 
               return (
                 <Card

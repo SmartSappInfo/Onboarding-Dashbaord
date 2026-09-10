@@ -20,15 +20,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
-  CheckCircle2,
-  TrendingUp,
-  AlertTriangle,
-  Lightbulb,
-  ShieldAlert,
   Play,
   Loader2,
   Check,
-  ExternalLink,
 } from 'lucide-react';
 import type { AgentResult, AgentActionProposal } from '@/lib/supervisor/types';
 

@@ -18,7 +18,6 @@ import type {
   GrantAccessInput,
   EntitlementCheckResult,
   ResourceType,
-  PortalMembership,
 } from '../types/membership';
 
 const GRANTS_COLLECTION = 'access_grants';
@@ -180,7 +179,7 @@ export class EntitlementService {
   /**
    * Revokes an explicit AccessGrant by ID.
    */
-  static async revokeAccess(grantId: string, actorId: string = 'system'): Promise<boolean> {
+  static async revokeAccess(grantId: string, _actorId: string = 'system'): Promise<boolean> {
     const docRef = adminDb.collection(GRANTS_COLLECTION).doc(grantId);
     await docRef.delete();
     return true;

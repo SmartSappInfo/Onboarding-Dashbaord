@@ -2,7 +2,6 @@
 
 import { adminDb } from './firebase-admin';
 import type { MessageCampaign } from './types';
-import { FieldValue } from 'firebase-admin/firestore';
 import { requireAuth } from '@/lib/auth/require-auth';
 
 export async function evaluateCampaignABTest(campaignId: string, forcedWinnerId?: 'A' | 'B'): Promise<void> {

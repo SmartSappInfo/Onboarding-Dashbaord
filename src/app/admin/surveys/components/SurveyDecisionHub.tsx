@@ -33,10 +33,9 @@ import type {
 } from '@/lib/types';
 import { getSystemDecisionPlaybooksAction, testSurveyDecisionRuleAction } from '@/lib/surveys/survey-decision-engine';
 import { TagSelector } from '@/components/tags/TagSelector';
-import { PipelineStageSelector } from './PipelineStageSelector';
 import { useToast } from '@/hooks/use-toast';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,21 +48,14 @@ import {
   Workflow,
   Plus,
   Trash2,
-  Sparkles,
   Zap,
   Clock,
-  Tags,
   GitMerge,
-  UserCheck,
   CheckCircle2,
   BookOpen,
-  ArrowRight,
-  TrendingUp,
-  AlertTriangle,
   Play,
   Check,
   X,
-  Radio,
   Sliders,
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
@@ -234,7 +226,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
       });
 
       setSimulationResult(res);
-    } catch (err) {
+    } catch (_err) {
       toast({
         variant: 'destructive',
         title: 'Simulation Error',
@@ -340,7 +332,7 @@ export function SurveyDecisionHub({ workspaceId }: SurveyDecisionHubProps) {
           </div>
         ) : (
           <div className="space-y-3">
-            {decisionConfig.rules.map((rule, idx) => (
+            {decisionConfig.rules.map((rule, _idx) => (
               <div
                 key={rule.id}
                 className={cn(

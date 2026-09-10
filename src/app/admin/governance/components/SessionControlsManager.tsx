@@ -13,10 +13,8 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useToast } from '@/hooks/use-toast';
@@ -24,16 +22,13 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
-  Shield,
   Laptop,
   Smartphone,
-  Globe,
   Ban,
   Save,
   Loader2,
   Lock,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { UserSession, SecurityPolicyConfig, MFAEnforcementLevel } from '@/lib/types';
 import {
   listSessionsAction,
@@ -48,7 +43,7 @@ export function SessionControlsManager() {
   const { user: authUser } = useUser();
   const { activeOrganizationId } = useTenant();
 
-  const [policy, setPolicy] = React.useState<SecurityPolicyConfig | null>(null);
+  const [_policy, setPolicy] = React.useState<SecurityPolicyConfig | null>(null);
   const [sessions, setSessions] = React.useState<UserSession[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isSavingPolicy, setIsSavingPolicy] = React.useState(false);

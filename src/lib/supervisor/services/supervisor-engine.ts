@@ -33,7 +33,6 @@ import {
   AgentRequest,
   AgentRun,
   AgentResult,
-  AgentToolCall,
   SupervisorPlan,
   SupervisorPlanStep,
   AgentActionProposal,

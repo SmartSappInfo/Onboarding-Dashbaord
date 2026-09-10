@@ -1,10 +1,8 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { 
   EmailVerificationEngine, 
   SyntaxValidator, 
   BurnerValidator,
-  DnsValidator,
-  SmtpValidator
 } from '../email-verifier';
 
 describe('EmailVerificationEngine', () => {

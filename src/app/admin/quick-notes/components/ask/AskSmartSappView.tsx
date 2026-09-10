@@ -541,7 +541,7 @@ export default function AskSmartSappView({
                             </div>
 
                             <p className="text-xs text-muted-foreground/90 italic line-clamp-3 bg-background/50 p-2 rounded border border-border/40">
-                              "{citation.excerpt}"
+                              &quot;{citation.excerpt}&quot;
                             </p>
                           </div>
 

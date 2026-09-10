@@ -23,11 +23,9 @@ import {
     History,
     Zap,
     ShieldAlert,
-    CheckCircle2,
-    X
 } from 'lucide-react';
 import { useFirestore, useUser } from '@/firebase';
-import { collection, query, where, getDocs, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { purgeContractAction } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
@@ -199,7 +197,7 @@ export default function WithdrawContractModal({ entity, open, onOpenChange }: Wi
  <div className="space-y-1">
  <p className="text-sm font-semibold text-rose-900 tracking-tight">Purge Policy Notice</p>
  <p className="text-[10px] text-rose-700 leading-relaxed font-bold opacity-80">
-                                            Withdrawing a contract will reset the record's legal status to "Unprepared". Deleting submissions will permanently remove the signed high-fidelity PDFs from the system.
+                                            Withdrawing a contract will reset the record&apos;s legal status to &quot;Unprepared&quot;. Deleting submissions will permanently remove the signed high-fidelity PDFs from the system.
                                         </p>
                                     </div>
                                 </div>

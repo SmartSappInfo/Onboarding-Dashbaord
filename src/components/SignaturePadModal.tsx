@@ -21,7 +21,6 @@ import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { processSignatureImage, processPhotoImage } from '@/lib/signature-processing';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface SignaturePadModalProps {
     open: boolean;
@@ -49,10 +48,10 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
 
     // Refinement Parameters
     const [inkSensitivity, setInkSensitivity] = React.useState(150);
-    const [strokeWeight, setStrokeWeight] = React.useState(0); // Fixed at 0 per requirement
-    const [smoothing, setSmoothing] = React.useState(1); // Fixed at 1 per requirement
-    const [brightness, setBrightness] = React.useState(0);
-    const [contrast, setContrast] = React.useState(0);
+    const [_strokeWeight, _setStrokeWeight] = React.useState(0); // Fixed at 0 per requirement
+    const [_smoothing, _setSmoothing] = React.useState(1); // Fixed at 1 per requirement
+    const [brightness, _setBrightness] = React.useState(0);
+    const [contrast, _setContrast] = React.useState(0);
     
     const [crop, setCrop] = React.useState({ x: 0, y: 0 });
     const [zoom, setZoom] = React.useState(1);
@@ -125,7 +124,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                     });
                 }
             }
-        } catch (err) {
+        } catch (_err) {
             console.warn("Manual focus not supported.");
         }
     };
@@ -213,7 +212,7 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                     setProcessedResult(result.dataUrl);
                 }
                 setStep('confirm');
-            } catch (e) {
+            } catch (_e) {
                 toast({ variant: 'destructive', title: 'Processing Failed' });
             } finally {
                 setIsProcessingPreview(false);

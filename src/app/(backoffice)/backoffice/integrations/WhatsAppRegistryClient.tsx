@@ -85,7 +85,7 @@ export default function WhatsAppRegistryClient() {
                 WhatsApp Connections
               </CardTitle>
               <CardDescription className="text-xs font-semibold text-muted-foreground mt-0.5">
-                Every organization's WhatsApp Business connection. Credentials are encrypted and never shown here.
+                Every organization&apos;s WhatsApp Business connection. Credentials are encrypted and never shown here.
               </CardDescription>
             </div>
             <Button variant="outline" size="sm" onClick={load} disabled={loading} className="rounded-xl font-bold">

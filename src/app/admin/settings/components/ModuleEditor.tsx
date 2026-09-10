@@ -198,7 +198,7 @@ export default function ModuleEditor() {
     try {
       await batch.commit();
       toast({ title: 'Modules Reordered', description: 'The display order has been updated.' });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to reorder modules.' });
       setLocalModules(modules || []);
     }
@@ -221,7 +221,7 @@ export default function ModuleEditor() {
       await addDoc(collection(firestore, 'modules'), newModule);
       setNewModuleName('');
       toast({ title: 'Module Added', description: `"${newModule.name}" has been added.` });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to add module.' });
     } finally {
       setIsAdding(false);
@@ -234,7 +234,7 @@ export default function ModuleEditor() {
     try {
       await deleteDoc(doc(firestore, 'modules', moduleToDelete.id));
       toast({ title: 'Module Deleted', description: `"${moduleToDelete.name}" was deleted.`});
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete module.' });
     } finally {
         setModuleToDelete(null);
@@ -273,7 +273,7 @@ export default function ModuleEditor() {
     try {
         await updateDoc(moduleRef, newValues);
         toast({ title: 'Module Updated' });
-    } catch (error) {
+    } catch (_error) {
         toast({ variant: 'destructive', title: 'Error', description: 'Failed to update module.' });
     } finally {
         setEditingModuleId(null);
@@ -285,7 +285,7 @@ export default function ModuleEditor() {
       const stageRef = doc(firestore, 'modules', id);
       try {
           await updateDoc(stageRef, { color });
-      } catch (error) {
+      } catch (_error) {
           toast({ variant: 'destructive', title: 'Error', description: 'Failed to update module color.' });
       }
   };
@@ -358,7 +358,7 @@ export default function ModuleEditor() {
               <AlertDialogHeader>
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
-                      This will permanently delete the module "{moduleToDelete?.name}". This action cannot be undone.
+                      This will permanently delete the module &quot;{moduleToDelete?.name}&quot;. This action cannot be undone.
                   </AlertDialogDescription>
               </AlertDialogHeader>
               <AlertDialogFooter>

@@ -15,8 +15,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Sparkles,
   Bot,
-  Send,
-  CalendarCheck,
   User,
   Clock,
   CheckCircle2,
@@ -68,7 +66,7 @@ export function AISchedulingAssistantModal({
       } else {
         throw new Error(res.error);
       }
-    } catch (err) {
+    } catch (_err) {
       toast({
         variant: 'destructive',
         title: 'Assistant Error',

@@ -4,7 +4,6 @@ import {
   validateStageTransition,
   resolveStageTerminalStatus,
   isStageTerminal,
-  STAGE_REQUIRED_FIELD_LABELS,
 } from '../deal-stage-validation';
 import type { Deal, DealStage } from '../deal-types';
 

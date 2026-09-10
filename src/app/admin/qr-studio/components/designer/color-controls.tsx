@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
-import { Button } from '@/components/ui/button';
-import { Eye, Palette, Sparkles, RefreshCw } from 'lucide-react';
+import { Eye, Sparkles } from 'lucide-react';
 import type { QRDesign } from '@/lib/types';
 
 interface ColorControlsProps {

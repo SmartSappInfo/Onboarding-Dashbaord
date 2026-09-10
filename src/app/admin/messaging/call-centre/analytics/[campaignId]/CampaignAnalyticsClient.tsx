@@ -6,7 +6,7 @@ import { useCallQueueItems, useCallCampaigns } from '@/lib/call-centre-hooks';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainer } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
@@ -24,7 +24,6 @@ import {
   CheckCircle2,
   PhoneOff,
   UserCheck,
-  ChevronRight,
   UserPlus,
   Play
 } from 'lucide-react';
@@ -192,7 +191,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
     return 'bg-blue-500/10 border-blue-500/20 text-blue-400';
   };
 
-  const getStatusBadge = (status: CallCampaign['status']) => {
+  const _getStatusBadge = (status: CallCampaign['status']) => {
     switch (status) {
       case 'running':
         return <Badge className="bg-emerald-500 hover:bg-emerald-600 font-bold uppercase text-[9px] px-2 rounded-md">Running</Badge>;
@@ -545,7 +544,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                                   
                                   {isExpanded && (
                                     <div className="mt-2.5 p-3.5 bg-muted border border-border rounded-xl text-xs text-foreground font-serif leading-relaxed italic whitespace-pre-line select-text animate-in slide-in-from-top-2 duration-200">
-                                      "{item.notesDraft}"
+                                      &quot;{item.notesDraft}&quot;
                                     </div>
                                   )}
                                 </div>

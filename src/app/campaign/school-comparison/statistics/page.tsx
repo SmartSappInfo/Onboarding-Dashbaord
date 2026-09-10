@@ -15,9 +15,6 @@ import {
     Tooltip, 
     ResponsiveContainer, 
     Cell, 
-    PieChart, 
-    Pie, 
-    Legend 
 } from 'recharts';
 import { 
     Users, 
@@ -25,7 +22,6 @@ import {
     Clock, 
     TrendingUp, 
     Building2, 
-    GraduationCap, 
     Zap,
     MousePointer2,
     Activity,

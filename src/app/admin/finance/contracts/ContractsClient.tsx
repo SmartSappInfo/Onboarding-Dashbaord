@@ -4,23 +4,18 @@
 import * as React from 'react';
 import { collection, query, orderBy, doc, getDoc, where, getCountFromServer } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { WorkspaceEntity, Contract, UserProfile } from '@/lib/types';
+import type { WorkspaceEntity, Contract } from '@/lib/types';
 import { UNASSIGNED_ZONE } from '@/lib/zone-constants';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { 
     FileCheck, 
     Search, 
     Plus, 
-    Filter, 
     Building, 
-    CheckCircle2, 
     Clock, 
     AlertCircle, 
-    FileText, 
     Download, 
     Send,
-    ArrowRight,
-    TrendingUp,
     ShieldCheck,
     Target,
     Zap,
@@ -30,15 +25,13 @@ import {
     Loader2,
     Copy,
     Globe,
-    CheckSquare,
     X,
     ListChecks,
     RotateCcw,
-    ExternalLink,
     ShieldAlert,
     History
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -665,7 +658,7 @@ export default function AgreementsClient() {
                             </div>
  <AlertDialogTitle className="text-center font-semibold tracking-tight">Purge Agreement Record?</AlertDialogTitle>
  <AlertDialogDescription className="text-center text-sm font-medium">
- You are about to permanently remove the agreement record for <span className="font-bold text-foreground">"{contractToPurge?.entity.displayName}"</span>. 
+ You are about to permanently remove the agreement record for <span className="font-bold text-foreground">&quot;{contractToPurge?.entity.displayName}&quot;</span>. 
                                 <br/><br/>
  <strong className="text-destructive text-[10px] ">Impact Alert:</strong> This will also delete the corresponding signed PDF from the Doc Signing module, ensuring no orphan data remains. This action is irreversible.
                             </AlertDialogDescription>

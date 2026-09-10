@@ -16,7 +16,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { Badge } from '@/components/ui/badge';
 import { logNoteActivity, getEntityAiSummary } from '@/lib/note-actions';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { Sparkles, BrainCircuit, ListChecks, TrendingUp, TrendingDown, Info, Settings2, History, LayoutList } from 'lucide-react';
+import { Sparkles, BrainCircuit, ListChecks, TrendingUp, Info, Settings2, History, LayoutList } from 'lucide-react';
 import PromptSettingsSheet from '@/app/admin/components/PromptSettingsSheet';
 import KnowledgeTimeline from '@/app/admin/quick-notes/components/timeline/KnowledgeTimeline';
 
@@ -229,7 +229,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
             } else {
                 toast({ title: 'AI Generation failed', description: result.error, variant: 'destructive' });
             }
-        } catch (error) {
+        } catch (_error) {
             toast({ title: 'Error generating brief', variant: 'destructive' });
         } finally {
             setIsGeneratingSummary(false);
@@ -523,7 +523,7 @@ export default function EntityNotesTab({ entityId, compact = false, dealId, deal
                         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2 duration-500 relative z-10">
                             <div>
                                 <p className="text-sm text-foreground/90 leading-relaxed italic font-medium border-l-4 border-indigo-500/50 pl-4 py-1">
-                                    "{aiSummary.executiveSummary}"
+                                    &quot;{aiSummary.executiveSummary}&quot;
                                 </p>
                             </div>
 

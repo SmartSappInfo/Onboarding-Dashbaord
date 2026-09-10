@@ -206,7 +206,7 @@ export default function LeadIntelligenceClient() {
   // and predictable from a few observed outputs. It is now generated server-side with
   // crypto.randomBytes and stored only as a SHA-256 hash, so the plaintext is returned
   // exactly once and shown to the operator to copy.
-  const [oneTimeToken, setOneTimeToken] = useState<string | null>(null);
+  const [_oneTimeToken, setOneTimeToken] = useState<string | null>(null);
 
   const generateNewToken = async () => {
     if (!activeWorkspaceId) return;

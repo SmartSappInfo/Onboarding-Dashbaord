@@ -17,10 +17,7 @@ import * as React from 'react';
 import {
   History,
   CheckCircle2,
-  GitBranch,
   Sparkles,
-  ArrowUpRight,
-  Clock,
   User,
   Layers,
   Loader2,

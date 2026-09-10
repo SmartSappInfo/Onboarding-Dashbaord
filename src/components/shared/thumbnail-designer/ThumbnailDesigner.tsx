@@ -454,7 +454,7 @@ export default function ThumbnailDesigner({
       const cutoutUrl = await removeImageBackgroundAction(selectedElement.imageSrc);
       updateElement(selectedElement.id, { imageSrc: cutoutUrl });
       toast({ title: 'Background removed', description: 'AI successfully extracted the subject.' });
-    } catch (e) {
+    } catch (_e) {
       toast({ variant: 'destructive', title: 'Background extraction failed', description: 'AI could not cut out subject.' });
     } finally {
       setIsRemovingBg(false);
@@ -493,7 +493,7 @@ export default function ThumbnailDesigner({
         const output = await runGenerateHooks({ topic: copywriterTopic });
         setGeneratedHooks(output.hooks);
         toast({ title: 'AI Hooks Generated!', description: 'Brainstorm list is now ready.' });
-      } catch (err) {
+      } catch (_err) {
         toast({ variant: 'destructive', title: 'Brainstorm failed', description: 'AI could not generate hooks.' });
       } finally {
         setIsGeneratingHooks(false);
@@ -576,7 +576,7 @@ export default function ThumbnailDesigner({
           title: 'AI Generated Thumbnail!',
           description: output.explanation || 'Composition ready for editing.',
         });
-      } catch (err) {
+      } catch (_err) {
         toast({ variant: 'destructive', title: 'Generation failed', description: 'AI could not process your layout.' });
       }
     });
@@ -613,7 +613,7 @@ export default function ThumbnailDesigner({
 
         setAiInstructions('');
         toast({ title: 'AI Canvas Updated!', description: output.explanation });
-      } catch (err) {
+      } catch (_err) {
         toast({ variant: 'destructive', title: 'AI Edit Failed', description: 'Could not apply instructions.' });
       }
     });
@@ -2288,7 +2288,7 @@ export default function ThumbnailDesigner({
                     I Built a SaaS to $10K MRR in 30 Days (Draft)
                   </SelectItem>
                   <SelectItem value="v-2" className="text-xs">
-                    10 Coding Secrets They Don't Want You to Know (Live)
+                    10 Coding Secrets They Don&apos;t Want You to Know (Live)
                   </SelectItem>
                 </SelectContent>
               </Select>

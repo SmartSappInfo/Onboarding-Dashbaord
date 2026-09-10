@@ -8,8 +8,8 @@
  * Requirements: 26
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
-import type { PDFForm, Survey, Meeting, Entity, School } from '../types';
+import { describe, it, expect } from 'vitest';
+import type { PDFForm, Survey, Meeting, Entity } from '../types';
 
 describe('Task 36: PDF Forms, Surveys, and Meetings Integration', () => {
   describe('36.1 & 36.2: PDFForm and Survey entityId fields', () => {

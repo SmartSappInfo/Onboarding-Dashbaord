@@ -55,7 +55,7 @@ export function ViewerContainer({
   onHotspotClick,
   onNextPage,
   onPrevPage,
-  onPageSelect,
+  onPageSelect: _onPageSelect,
   zoomScale,
   panOffset,
   onTouchStart,
@@ -66,7 +66,7 @@ export function ViewerContainer({
   pdfRenderingFallback = false,
 }: ViewerContainerProps) {
   // Virtual Window Calculation (Active Page +/- 2)
-  const virtualPages = useMemo(() => {
+  const _virtualPages = useMemo(() => {
     const minPage = Math.max(1, currentPage - 2);
     const maxPage = Math.min(pageCount, currentPage + 2);
     return pages.filter((p) => p.pageNumber >= minPage && p.pageNumber <= maxPage);

@@ -8,17 +8,14 @@
  */
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
   DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import {
   Search,
   FileText,
@@ -169,10 +166,10 @@ export function PortalSearchModal({
             </div>
           ) : results.length === 0 ? (
             <div className="py-12 text-center text-xs text-muted-foreground">
-              No content matching "<strong className="text-foreground">{queryText}</strong>"
+              No content matching &quot;<strong className="text-foreground">{queryText}</strong>&quot;
             </div>
           ) : (
-            results.map(({ item, snippet, matchedFields }) => {
+            results.map(({ item, snippet, matchedFields: _matchedFields }) => {
               const IconComp = TYPE_ICONS[item.type] || FileText;
               const targetUrl = `/portal/${portalSlug}/content/${item.type}/${item.slug}`;
 

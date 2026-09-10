@@ -3,11 +3,10 @@
 
 import * as React from 'react';
 import type { Activity, UserProfile } from '@/lib/types';
-import { format, formatDistanceToNow } from 'date-fns';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
-import { Loader2, Trash2, Pencil, Bot } from 'lucide-react';
+import { Loader2, Trash2, Pencil } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';

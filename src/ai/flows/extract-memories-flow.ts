@@ -22,10 +22,6 @@
 
 import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
-import type {
-  MemoryCandidate,
-  ExtractedEntity,
-} from '@/lib/memory/types';
 
 export const MEMORY_CANDIDATE_TYPES = [
   'fact',

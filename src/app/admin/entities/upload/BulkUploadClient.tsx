@@ -18,7 +18,7 @@ import { useTerminology } from '@/hooks/use-terminology';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { ingestBatchAction } from '@/lib/bulk-upload-actions';
 import { cn } from '@/lib/utils';
-import type { DuplicateStrategy, DealImportConfig, NotificationConfig } from '@/lib/import-types';
+import type { DealImportConfig, NotificationConfig } from '@/lib/import-types';
 
 // Step sub-components
 import { UploadStep } from './components/UploadStep';

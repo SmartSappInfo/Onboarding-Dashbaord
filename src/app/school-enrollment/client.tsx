@@ -22,7 +22,7 @@ const HERO_THUMBNAIL_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9
 const PRICING_THUMBNAIL_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1782713567250-Thumb_Pricing_Features_Enrollment.gif?alt=media&token=f0f9c166-a8cf-47e3-85cc-ca88f738dac7';
 const HERO_VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fvideo%2FEnrollment%20Main%20Video.mp4?alt=media&token=a6659184-8044-4229-a0e1-64f8d17d4ae2';
 const PRICING_VIDEO_URL = 'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fvideo%2F1782804150466-Pricing%20Options.mp4?alt=media&token=dd9c4116-14fe-4cca-9f79-3618b33b828e';
-const CTA_LINK = 'https://smartsapp.com/request-trial';
+const _CTA_LINK = 'https://smartsapp.com/request-trial';
 const PAGE_SLUG = 'school-enrollment';
 
 // ─── Video Facade Component (LCP Optimization) ─────────────────────────────────
@@ -126,12 +126,12 @@ export default function SchoolEnrollmentClient() {
     track('page_view', channel);
   }, [track]);
 
-  const handleCtaClick = (location: string) => {
+  const handleCtaClick = (_location: string) => {
     track('cta_click');
     setIsSurveyOpen(true);
   };
 
-  const handleVideoPlay = (location: string) => {
+  const handleVideoPlay = (_location: string) => {
     if (!hasFiredVideoStart.current) {
       hasFiredVideoStart.current = true;
       track('video_start');
@@ -224,7 +224,7 @@ export default function SchoolEnrollmentClient() {
           </p>
  
           <div className="mb-4">
-            <p className="font-semibold text-slate-300 mt-2">Click to watch video, It's super important!</p>
+            <p className="font-semibold text-slate-300 mt-2">Click to watch video, It&apos;s super important!</p>
           </div>
  
           <div className="max-w-3xl mx-auto mb-8">
@@ -275,13 +275,13 @@ export default function SchoolEnrollmentClient() {
               </h2>
               <div className="space-y-6 text-slate-600 text-lg leading-relaxed">
                 <p>
-                  You're dedicated, passionate, and committed to providing top-tier education, but your school isn't reaching its full potential. Enrollment numbers are stagnant or, worse, declining.
+                  You&apos;re dedicated, passionate, and committed to providing top-tier education, but your school isn&apos;t reaching its full potential. Enrollment numbers are stagnant or, worse, declining.
                 </p>
                 <p>
-                  This isn't just a number game; it's about the future of your school and its students. The problem is clear: traditional enrollment strategies are no longer sufficient in today's digital age.
+                  This isn&apos;t just a number game; it&apos;s about the future of your school and its students. The problem is clear: traditional enrollment strategies are no longer sufficient in today&apos;s digital age.
                 </p>
                 <p>
-                  Parents and students are looking for something more, something you're eager to provide but haven't yet found the best way to do it.
+                  Parents and students are looking for something more, something you&apos;re eager to provide but haven&apos;t yet found the best way to do it.
                 </p>
               </div>
             </div>
@@ -314,13 +314,13 @@ export default function SchoolEnrollmentClient() {
               </h2>
               <div className="space-y-6 text-slate-600 text-base leading-relaxed">
                 <p>
-                  Imagine the stress and frustration of watching empty seats that could have been filled with eager learners. Each unfilled spot is a missed opportunity to shape a young mind and grow your school's community.
+                  Imagine the stress and frustration of watching empty seats that could have been filled with eager learners. Each unfilled spot is a missed opportunity to shape a young mind and grow your school&apos;s community.
                 </p>
                 <p className="border-l-4 border-orange-500 pl-6 py-3 bg-orange-50 text-orange-950 italic rounded-r-lg">
                   Financial uncertainties loom larger with each passing semester, affecting your ability to invest in quality staff, advanced teaching materials, and the very essence that makes your school unique.
                 </p>
                 <p>
-                  The longer this trend continues, the harder it becomes to maintain the high educational standards you've set, let alone think about expanding your offerings or facilities.
+                  The longer this trend continues, the harder it becomes to maintain the high educational standards you&apos;ve set, let alone think about expanding your offerings or facilities.
                 </p>
               </div>
               <div className="flex flex-wrap gap-4 pt-4">
@@ -358,7 +358,7 @@ export default function SchoolEnrollmentClient() {
               <div className="md:col-span-6 space-y-4 text-left">
                 <h3 className="text-2xl font-bold text-slate-900">Tailored Enrollment Strategies</h3>
                 <p className="text-slate-650 text-lg leading-relaxed">
-                  Our approach is not one-size-fits-all. We craft personalized strategies that align with your school's unique strengths and values.
+                  Our approach is not one-size-fits-all. We craft personalized strategies that align with your school&apos;s unique strengths and values.
                 </p>
               </div>
               <div className="md:col-span-6 flex justify-center md:justify-end">
@@ -442,7 +442,7 @@ export default function SchoolEnrollmentClient() {
               <div className="md:col-span-6 space-y-4 text-left">
                 <h3 className="text-2xl font-bold text-slate-900">Complete Transparency</h3>
                 <p className="text-slate-650 text-lg leading-relaxed">
-                  With regular reports and analytics, you'll see exactly how our strategies translate into real enrollment increases.
+                  With regular reports and analytics, you&apos;ll see exactly how our strategies translate into real enrollment increases.
                 </p>
               </div>
               <div className="md:col-span-6 flex justify-center md:justify-end">
@@ -555,13 +555,13 @@ export default function SchoolEnrollmentClient() {
             <div className="grid grid-cols-1 md:grid-cols-12 gap-12 items-center max-w-5xl mx-auto">
               {/* Left Column - Details Card */}
               <div className="md:col-span-6 bg-white border border-slate-200 rounded-3xl p-8 md:p-10 shadow-sm flex flex-col items-start">
-                <h3 className="text-xl font-bold text-slate-900 mb-6">Everything you'll need to attract parents:</h3>
+                <h3 className="text-xl font-bold text-slate-900 mb-6">Everything you&apos;ll need to attract parents:</h3>
                 
                 <ul className="space-y-4 mb-8 text-slate-650 text-left">
                   <li className="flex items-start gap-2.5">
                     <span className="text-slate-400 mt-1.5 shrink-0">•</span>
                     <span>
-                      <strong className="text-slate-800">Engaging Videos and Animations:</strong> Three Months worth of Videos and animations to show your school's unique strengths websites, landing pages, social media, etc.
+                      <strong className="text-slate-800">Engaging Videos and Animations:</strong> Three Months worth of Videos and animations to show your school&apos;s unique strengths websites, landing pages, social media, etc.
                     </span>
                   </li>
                   <li className="flex items-start gap-2.5">
@@ -573,7 +573,7 @@ export default function SchoolEnrollmentClient() {
                   <li className="flex items-start gap-2.5">
                     <span className="text-slate-400 mt-1.5 shrink-0">•</span>
                     <span>
-                      <strong className="text-slate-800">Captivating Headlines and Sales Copies:</strong> Speak directly to parents' needs.
+                      <strong className="text-slate-800">Captivating Headlines and Sales Copies:</strong> Speak directly to parents&apos; needs.
                     </span>
                   </li>
                 </ul>
@@ -615,7 +615,7 @@ export default function SchoolEnrollmentClient() {
               <div className="flex-1 text-center md:text-left space-y-4">
                 <h2 className="text-3xl md:text-4xl font-bold text-white">100% Money Back Guarantee</h2>
                 <p className="text-lg text-slate-300 leading-relaxed">
-                  If you implement our strategies and for any reason, you are not satisfied with the results or cannot fill your empty spots in one term, Please send me an email and we will refund 100% of your money into your account. We won't ask you a single question.
+                  If you implement our strategies and for any reason, you are not satisfied with the results or cannot fill your empty spots in one term, Please send me an email and we will refund 100% of your money into your account. We won&apos;t ask you a single question.
                 </p>
               </div>
             </div>
@@ -638,10 +638,10 @@ export default function SchoolEnrollmentClient() {
             {/* Body copy with highlights */}
             <div className="max-w-3xl mx-auto text-lg text-slate-650 mb-12 space-y-6 leading-relaxed">
               <p>
-                Don't let another <strong className="text-slate-900 font-bold">enrollment period</strong> pass by with less-than-ideal numbers. <strong className="text-slate-900 font-bold">It's time to take the first step</strong> towards securing a brighter future for your school.
+                Don&apos;t let another <strong className="text-slate-900 font-bold">enrollment period</strong> pass by with less-than-ideal numbers. <strong className="text-slate-900 font-bold">It&apos;s time to take the first step</strong> towards securing a brighter future for your school.
               </p>
               <p>
-                Request your <span className="bg-yellow-200 text-slate-900 px-1.5 py-0.5 rounded font-bold border border-yellow-300">Free 30-minute Consultation today</span>, and let's discuss how we can help <strong className="text-slate-900 font-bold">you fill your empty spots in one term – Guaranteed.</strong>
+                Request your <span className="bg-yellow-200 text-slate-900 px-1.5 py-0.5 rounded font-bold border border-yellow-300">Free 30-minute Consultation today</span>, and let&apos;s discuss how we can help <strong className="text-slate-900 font-bold">you fill your empty spots in one term – Guaranteed.</strong>
               </p>
               <p>
                 With our expertise, passion, and data-driven approach, coupled with a 100% money-back guarantee, you have everything to gain.
@@ -669,7 +669,7 @@ export default function SchoolEnrollmentClient() {
                 <div className="w-8 h-8 bg-white/20 flex items-center justify-center rounded-lg mr-4">
                   <span className="text-white text-xs">✖</span>
                 </div>
-                <span>No, Thanks. I'll continue bleeding financially</span>
+                <span>No, Thanks. I&apos;ll continue bleeding financially</span>
               </button>
             </div>
           </div>

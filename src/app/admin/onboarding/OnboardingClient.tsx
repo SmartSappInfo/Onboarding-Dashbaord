@@ -23,25 +23,19 @@ import {
   Users,
   BarChart3,
   Plus,
-  RefreshCw,
-  CheckCircle2,
-  Clock,
-  Sparkles,
-  ArrowRight,
 } from 'lucide-react';
 import Link from 'next/link';
 import type { OnboardingJourney, OnboardingInstance } from '@/lib/types';
 import {
   listJourneysAction,
   listOnboardingInstancesAction,
-  seedDefaultJourneysAction,
 } from '@/app/actions/onboarding-actions';
 import { JourneyLibraryList } from './components/JourneyLibraryList';
 import { JourneyBuilderModal } from './components/JourneyBuilderModal';
 import { ActiveOnboardingTable } from './components/ActiveOnboardingTable';
 
 export function OnboardingClient() {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const { user: authUser } = useUser();
   const { activeOrganizationId } = useTenant();
 

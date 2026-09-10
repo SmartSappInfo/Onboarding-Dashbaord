@@ -22,7 +22,6 @@ import type {
   DocumentAiMessage,
   DocumentAiQaResponse,
   DocumentAiCitation,
-  LayerType,
 } from '@/lib/types/document-types';
 
 export function generateDocumentSummary(

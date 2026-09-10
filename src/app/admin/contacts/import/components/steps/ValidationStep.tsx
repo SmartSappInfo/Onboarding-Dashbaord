@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ImportState } from '../../types';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Loader2, AlertTriangle, CheckCircle, CopyX } from 'lucide-react';
+import { ArrowLeft, ArrowRight, AlertTriangle, CheckCircle, CopyX } from 'lucide-react';
 import { validateImportBatch } from '@/lib/import-export/entity-import-actions';
 
 interface Props {

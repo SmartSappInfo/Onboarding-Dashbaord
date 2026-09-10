@@ -12,12 +12,11 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowRightLeft, DollarSign, Users, Briefcase, CheckCircle2, AlertTriangle } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { ArrowRightLeft, Briefcase } from 'lucide-react';
 import type { CrmWorkloadSummary } from '@/lib/types';
 
 interface CrmWorkloadOverviewTableProps {

@@ -19,8 +19,6 @@ import { Button } from '@/components/ui/button';
 import {
   Clock,
   Eye,
-  CheckCircle2,
-  AlertCircle,
   Users,
   RotateCw,
 } from 'lucide-react';

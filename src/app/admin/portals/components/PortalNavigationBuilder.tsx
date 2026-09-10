@@ -8,11 +8,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -30,7 +29,6 @@ import {
   MoveDown,
   Edit2,
   ExternalLink,
-  ChevronRight,
   Share2,
 } from 'lucide-react';
 import type {
@@ -202,7 +200,7 @@ export function PortalNavigationBuilder({
         <CardContent className="space-y-2 pt-0">
           {navigation.headerItems.length === 0 ? (
             <div className="p-6 text-center border-2 border-dashed rounded-xl text-xs text-muted-foreground">
-              No navigation items configured. Click "Add Nav Item" to create one.
+              No navigation items configured. Click &quot;Add Nav Item&quot; to create one.
             </div>
           ) : (
             navigation.headerItems.map((item, idx) => (

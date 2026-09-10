@@ -26,7 +26,6 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
@@ -35,9 +34,7 @@ import {
     Trash2, 
     Sparkles, 
     Loader2, 
-    Check, 
     Pencil,
-    X,
     Code,
     Eye,
     ChevronDown,
@@ -46,7 +43,6 @@ import {
 } from 'lucide-react';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -54,7 +50,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PageContainerFluid } from '@/components/ui/page-container';
 import { cn } from '@/lib/utils';
 import MediaSelectorTrigger from '@/app/admin/components/MediaSelectorTrigger';
 

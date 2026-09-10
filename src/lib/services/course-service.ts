@@ -11,8 +11,6 @@ import type {
   Course,
   CourseModule,
   CourseLesson,
-  CourseAssessment,
-  CourseAssignment,
   CreateCourseInput,
   UpdateCourseInput,
   CreateModuleInput,

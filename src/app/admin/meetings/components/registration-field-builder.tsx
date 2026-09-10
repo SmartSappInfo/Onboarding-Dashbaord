@@ -97,7 +97,7 @@ function SortableFieldRow({
   onMoveDown,
   onEdit,
   onDelete,
-  onToggleRequired,
+  onToggleRequired: _onToggleRequired,
   isEditing,
   editState,
   onEditChange,

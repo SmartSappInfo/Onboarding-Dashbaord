@@ -20,7 +20,6 @@ import type {
   Survey,
   SurveyDecisionConfig,
   SurveyDecisionRule,
-  SurveyDecisionCondition,
   SurveyDecisionAction,
   SurveyDecisionExecutionLog,
   SystemDecisionPlaybook,
@@ -601,7 +600,7 @@ export async function getSystemDecisionPlaybooksAction(): Promise<{
     }
     const data = docSnap.data();
     return { success: true, playbooks: data?.playbooks || DEFAULT_SYSTEM_PLAYBOOKS };
-  } catch (err: unknown) {
+  } catch (_err: unknown) {
     return { success: true, playbooks: DEFAULT_SYSTEM_PLAYBOOKS };
   }
 }

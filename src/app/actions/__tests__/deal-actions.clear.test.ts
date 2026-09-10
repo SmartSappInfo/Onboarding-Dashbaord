@@ -43,7 +43,7 @@ vi.mock('@/lib/firebase-admin', () => {
         }
         if (name === 'onboardingStages') {
           return {
-            doc: vi.fn((id: string) => ({
+            doc: vi.fn((_id: string) => ({
               get: vi.fn().mockResolvedValue({
                 exists: true,
                 data: () => ({ name: 'Discovery Stage' }),
@@ -55,7 +55,7 @@ vi.mock('@/lib/firebase-admin', () => {
           return {
             where: vi.fn((field1: string, op1: string, val1: string) => {
               return {
-                where: vi.fn((field2: string, op2: string, val2: string) => {
+                where: vi.fn((_field2: string, _op2: string, _val2: string) => {
                   return {
                     get: vi.fn().mockImplementation(async () => {
                       if (val1 === 'stage-with-deals') {

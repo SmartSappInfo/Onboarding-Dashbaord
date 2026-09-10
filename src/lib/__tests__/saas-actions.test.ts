@@ -17,7 +17,6 @@ import {
   createOnboarding,
   updateOnboardingMilestone,
   createSubscription,
-  updateSubscription,
   createSupportTicket,
   updateSupportTicket,
   createHealthScore,

@@ -45,11 +45,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Sparkles,
   FlaskConical,
-  Workflow,
-  Target,
-  Sliders,
   CheckCircle2,
-  Lock,
 } from 'lucide-react';
 import { collection, query, where, limit, getDocs } from 'firebase/firestore';
 
@@ -76,7 +72,7 @@ export function ExperimentBuilderModal({
   const [name, setName] = useState('Headline & Gate Urgency Test');
   const [type, setType] = useState<ExperimentType>('GATE_THRESHOLD');
   const [algorithm, setAlgorithm] = useState<BanditAlgorithm>('EPSILON_GREEDY');
-  const [minSampleSize, setMinSampleSize] = useState(100);
+  const [minSampleSize, _setMinSampleSize] = useState(100);
   const [autoPromoteWinner, setAutoPromoteWinner] = useState(true);
 
   // Target Asset / Experience selector
@@ -85,11 +81,11 @@ export function ExperimentBuilderModal({
   const [selectedExperienceId, setSelectedExperienceId] = useState(preselectedExperienceId || '');
 
   // Variant Overrides
-  const [variantAHeadline, setVariantAHeadline] = useState('');
+  const [variantAHeadline, _setVariantAHeadline] = useState('');
   const [variantACtaText, setVariantACtaText] = useState('Continue to Onboarding');
   const [variantAGating, setVariantAGating] = useState<ABExperimentVariantOverrides['gating']>('immediate');
 
-  const [variantBHeadline, setVariantBHeadline] = useState('');
+  const [variantBHeadline, _setVariantBHeadline] = useState('');
   const [variantBCtaText, setVariantBCtaText] = useState('Claim Your Enrollment Spot');
   const [variantBGating, setVariantBGating] = useState<ABExperimentVariantOverrides['gating']>('half');
 

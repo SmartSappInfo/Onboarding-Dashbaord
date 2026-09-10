@@ -9,7 +9,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,8 +33,6 @@ import {
   listEnterpriseAuditLogsAction,
 } from '@/app/actions/enterprise-actions';
 import type {
-  EnterpriseSsoConfig,
-  EnterpriseWhiteLabelConfig,
   OrgHierarchyNode,
   EnterpriseAuditLog,
   SsoProvider,
@@ -48,12 +46,8 @@ import {
   ShieldAlert,
   Save,
   Plus,
-  CheckCircle2,
-  AlertCircle,
   Loader2,
   Languages,
-  Layers,
-  Sparkles,
   Lock,
 } from 'lucide-react';
 
@@ -101,7 +95,7 @@ export function PortalEnterpriseManager({
 
   // Audit Logs State
   const [auditLogs, setAuditLogs] = React.useState<EnterpriseAuditLog[]>([]);
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [_isLoading, setIsLoading] = React.useState(false);
 
   // ── Load Data ──────────────────────────────────────────────────────────────
 
@@ -319,7 +313,7 @@ export function PortalEnterpriseManager({
                 <Languages className="w-4 h-4 text-primary" /> Custom System Terminology Dictionary
               </h4>
               <p className="text-xs text-muted-foreground">
-                Rename core application concepts to fit your institution's vocabulary.
+                Rename core application concepts to fit your institution&apos;s vocabulary.
               </p>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">

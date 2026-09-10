@@ -4,7 +4,6 @@ import * as React from 'react';
 import {
   type CreateIdeaPayload,
   type IdeaPriority,
-  type IdeaAssumptionRiskLevel,
 } from '@/lib/quick-notes-types';
 import {
   Dialog,
@@ -17,14 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Sparkles, Loader2, Plus, Lightbulb } from 'lucide-react';
+import { Sparkles, Loader2, Lightbulb } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { developRawIdeaAiAction } from '@/lib/quick-notes-idea-actions';
 
@@ -49,7 +41,7 @@ export function CreateIdeaDialog({
   const [rawText, setRawText] = React.useState('');
   const [problem, setProblem] = React.useState('');
   const [proposedSolution, setProposedSolution] = React.useState('');
-  const [priority, setPriority] = React.useState<IdeaPriority>('medium');
+  const [priority, _setPriority] = React.useState<IdeaPriority>('medium');
   const [impact, setImpact] = React.useState(7);
   const [effort, setEffort] = React.useState(4);
   const [confidence, setConfidence] = React.useState(6);

@@ -2,9 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   SurveyMessagingContextInputSchema,
   GeneratedEmailTemplateSchema,
-  GeneratedSmsTemplateSchema,
   GeneratedWhatsappTemplateSchema,
-  GenerateSurveyMessagingOutputSchema,
   type SurveyMessagingContextInput,
   type GenerateSurveyMessagingOutput,
 } from '../schemas/survey-messaging-schemas';

@@ -12,15 +12,13 @@
  */
 
 import React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Server, 
   Coins, 
   Clock, 
-  CheckCircle2, 
-  Zap 
 } from 'lucide-react';
 import type { ProviderPerformanceMetric } from '@/lib/lead-intelligence/types';
 import { cn } from '@/lib/utils';

@@ -8,7 +8,7 @@
  */
 
 import React, { useState } from 'react';
-import { Target, Globe, Compass, Share2 } from 'lucide-react';
+import { Target } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';

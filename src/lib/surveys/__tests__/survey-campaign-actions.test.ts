@@ -18,7 +18,7 @@ const mockDoc = vi.fn((id?: string) => ({
 const mockWhere = vi.fn().mockReturnThis();
 const mockLimit = vi.fn().mockReturnThis();
 
-const mockCollection = vi.fn((name: string) => ({
+const mockCollection = vi.fn((_name: string) => ({
   doc: mockDoc,
   where: mockWhere,
   limit: mockLimit,

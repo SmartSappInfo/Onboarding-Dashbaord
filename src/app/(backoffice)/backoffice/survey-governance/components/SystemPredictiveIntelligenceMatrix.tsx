@@ -27,13 +27,10 @@ import { Badge } from '@/components/ui/badge';
 import {
   BrainCircuit,
   Save,
-  CheckCircle2,
   Sparkles,
   Sliders,
   Flame,
-  TrendingUp,
   Loader2,
-  Layers,
 } from 'lucide-react';
 
 export function SystemPredictiveIntelligenceMatrix() {

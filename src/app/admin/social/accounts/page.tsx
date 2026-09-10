@@ -22,7 +22,6 @@ import {
   CheckCircle2, 
   Globe, 
   Info, 
-  RefreshCw 
 } from 'lucide-react';
 import type { SocialAccount } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -156,7 +155,7 @@ export default function SocialAccountsPage() {
         <div className="text-xs leading-relaxed space-y-1">
           <span className="font-bold block">Developer Notice</span>
           <p>
-            You are running in <strong>Dual Simulation Mode</strong>. Clicking "Connect Profile" will instantly simulate the OAuth response locally, generating mock profile tokens and populating simulated content streams.
+            You are running in <strong>Dual Simulation Mode</strong>. Clicking &quot;Connect Profile&quot; will instantly simulate the OAuth response locally, generating mock profile tokens and populating simulated content streams.
           </p>
         </div>
       </div>

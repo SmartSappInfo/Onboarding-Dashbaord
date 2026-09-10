@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { executeAutomation } from '../automations/executor';
-import { adminDb } from '../firebase-admin';
 
 const { mockLogActivity } = vi.hoisted(() => ({
   mockLogActivity: vi.fn(),

@@ -2,7 +2,6 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { SystemMigrationLog } from '@/lib/types';
-import { FieldValue } from 'firebase-admin/firestore';
 import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 

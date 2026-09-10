@@ -19,7 +19,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, X, CheckCircle2, AlertCircle, UserPlus } from 'lucide-react';
+import { Search, X, CheckCircle2, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AsyncEntityAvatar } from '@/app/admin/components/AsyncEntityAvatar';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -79,7 +79,7 @@ export function AssignContactsToTagDialog({
     setProgress(0);
 
     try {
-      const total = selectedContactIds.length;
+      const _total = selectedContactIds.length;
 
       const res = await bulkApplyTagsAction(
         selectedContactIds,

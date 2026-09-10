@@ -34,8 +34,6 @@ import {
   ArrowLeft,
   CheckCircle2,
   Bell,
-  Clock,
-  ShieldCheck,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -48,9 +46,9 @@ interface SessionWizardModalProps {
 type SessionType = 'webinar' | 'training' | 'consultation' | 'workshop' | 'general';
 
 export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const { toast } = useToast();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId: _activeWorkspaceId } = useWorkspace();
 
   const [step, setStep] = React.useState<number>(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -60,7 +58,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [date, setDate] = React.useState('');
-  const [time, setTime] = React.useState('19:00');
+  const [_time, _setTime] = React.useState('19:00');
   const [duration, setDuration] = React.useState('60');
 
   // Step 3: Registration

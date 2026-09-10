@@ -42,7 +42,6 @@ import {
   Check,
   Trash2,
   AlertTriangle,
-  Shield,
   Loader2,
 } from 'lucide-react';
 import type { McpApiKey, McpCategory } from '@/lib/mcp/types';

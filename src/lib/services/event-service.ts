@@ -14,7 +14,6 @@ import type {
   LiveEvent,
   EventRegistration,
   CourseCohort,
-  CohortMember,
   CreateEventInput,
   UpdateEventInput,
   RegisterEventInput,

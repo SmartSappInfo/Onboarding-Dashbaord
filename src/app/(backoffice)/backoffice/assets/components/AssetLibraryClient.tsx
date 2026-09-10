@@ -17,7 +17,7 @@ import { listAllAssets, deleteAssetRecord } from '@/lib/backoffice/backoffice-as
 import { useBackoffice } from '../../context/BackofficeProvider';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
-import type { PlatformAsset, PlatformAssetCategory } from '@/lib/backoffice/backoffice-types';
+import type { PlatformAsset } from '@/lib/backoffice/backoffice-types';
 
 export default function AssetLibraryClient() {
   const { can } = useBackoffice();

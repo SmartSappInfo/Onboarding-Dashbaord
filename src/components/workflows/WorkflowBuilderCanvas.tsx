@@ -13,7 +13,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
@@ -31,7 +31,6 @@ import {
   Edit2,
   Trash2,
   ArrowDown,
-  ArrowRight,
   Save,
   Loader2,
 } from 'lucide-react';

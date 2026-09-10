@@ -9,10 +9,9 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -22,15 +21,12 @@ import {
 import type { PortalAnalyticsSnapshot } from '@/lib/types/portal-analytics';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import {
-  TrendingUp,
   Users,
   GraduationCap,
   MessageSquare,
   Sparkles,
   RefreshCw,
-  ArrowRight,
   AlertTriangle,
-  CheckCircle2,
   DollarSign,
   Layers,
   Award,

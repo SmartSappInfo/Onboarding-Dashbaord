@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { revalidatePath } from 'next/cache';
-import type { MessageTemplate, TemplateCategory, TemplateTarget, ContentMode, VariableContext, MessageChannel } from './types';
+import type { MessageTemplate, TemplateCategory, TemplateTarget, VariableContext, MessageChannel } from './types';
 import { MESSAGING_TRIGGERS } from './messaging-triggers';
 import { requireAuth } from '@/lib/auth/require-auth';
 

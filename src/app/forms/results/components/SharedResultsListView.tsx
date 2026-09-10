@@ -9,9 +9,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, formatDistanceToNow } from 'date-fns';
 import Link from 'next/link';
-import { Eye, Download, Loader2, X, Key, ChevronDown, FileSpreadsheet, Printer, Users, Clock, CheckSquare } from 'lucide-react';
+import { Eye, Download, Loader2, X, Key, FileSpreadsheet, Printer, Users, Clock, CheckSquare } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { SmartSappIcon } from '@/components/icons';
@@ -23,7 +23,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
 
 const pdfjsPromise = import('pdfjs-dist');
@@ -171,7 +170,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
         link.click();
         document.body.removeChild(link);
         toast({ title: "CSV Export Started" });
-    } catch (e) {
+    } catch (_e) {
         toast({ variant: 'destructive', title: 'CSV Export Failed' });
     } finally {
         setIsExportingCSV(false);
@@ -410,7 +409,7 @@ export default function SharedResultsListView({ pdfForm }: { pdfForm: PDFForm })
                                         onCheckedChange={toggleSelectAll} 
                                     />
                                 </TableHead>
-                                {displayFields.map((field, idx) => (
+                                {displayFields.map((field, _idx) => (
                                     <TableHead key={field.id} className={cn("text-[10px] font-bold text-foreground uppercase tracking-wider py-4")}>
                                         <div className="flex items-center gap-1.5">
                                             {field.label || 'Unnamed'}
@@ -585,7 +584,7 @@ function HighFidelityDownloader({
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             onDownloadFinished(true);
-        } catch (e) {
+        } catch (_e) {
             onDownloadFinished(false);
         } finally { setIsCapturing(false); }
     }, [fileName, onDownloadFinished, isCapturing]);

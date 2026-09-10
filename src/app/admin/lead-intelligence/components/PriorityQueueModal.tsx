@@ -18,8 +18,6 @@ import React, { useState } from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -33,9 +31,6 @@ import {
   ArrowRight, 
   Sparkles, 
   Trophy, 
-  ExternalLink,
-  ShieldCheck,
-  CheckCircle2
 } from 'lucide-react';
 import type { 
   Prospect, 
@@ -46,7 +41,6 @@ import { AutonomousSDREngine } from '@/lib/lead-intelligence/sdr';
 import { AIOutreachReviewModal } from './AIOutreachReviewModal';
 import { executeProspectActivationAction } from '@/app/actions/lead-intelligence-actions';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 interface PriorityQueueModalProps {
   prospects: Prospect[];

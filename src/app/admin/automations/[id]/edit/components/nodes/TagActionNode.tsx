@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { TagIcon, PlusCircle, MinusCircle, Plus, StickyNote } from 'lucide-react';
+import { PlusCircle, MinusCircle, Plus, StickyNote } from 'lucide-react';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';

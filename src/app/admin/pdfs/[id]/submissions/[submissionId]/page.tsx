@@ -21,7 +21,7 @@ const pdfjsPromise = import('pdfjs-dist');
 
 export default function SubmissionDetailPage() {
   const params = useParams();
-  const router = useRouter();
+  const _router = useRouter();
   const { toast } = useToast();
   const pdfId = params.id as string;
   const submissionId = params.submissionId as string;

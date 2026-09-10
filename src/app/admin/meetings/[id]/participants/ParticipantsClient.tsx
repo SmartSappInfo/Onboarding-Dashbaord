@@ -16,12 +16,11 @@ import { collection, query, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
@@ -50,7 +49,6 @@ import {
   Users,
   UserPlus,
   Search,
-  Filter,
   CheckCircle2,
   XCircle,
   Clock,
@@ -59,20 +57,16 @@ import {
   RefreshCw,
   Mail,
   Phone,
-  Shield,
   Loader2,
   Trash2,
   Check,
   UserCheck,
-  UserX,
-  Sparkles,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import type {
   MeetingParticipant,
   ParticipantRole,
   ParticipantRsvpStatus,
-  ParticipantAttendanceStatus,
 } from '@/lib/meetings/types';
 import {
   getParticipantRoleMeta,
@@ -487,7 +481,7 @@ export default function ParticipantsClient({ meetingId, meetingTitle }: Particip
                   <td colSpan={6} className="py-12 text-center text-muted-foreground">
                     <Users className="w-8 h-8 mx-auto mb-2 opacity-40" />
                     <p className="font-medium">No participants match the current criteria.</p>
-                    <p className="text-xs mt-1">Add attendees or click "Sync Legacy" to backfill existing registrants.</p>
+                    <p className="text-xs mt-1">Add attendees or click &quot;Sync Legacy&quot; to backfill existing registrants.</p>
                   </td>
                 </tr>
               ) : (

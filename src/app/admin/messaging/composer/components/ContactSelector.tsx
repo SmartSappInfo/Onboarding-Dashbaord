@@ -2,11 +2,9 @@
 
 import * as React from 'react';
 import type { EntityContact } from '@/lib/types';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Contact, Mail, Phone, AlertCircle, ShieldCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

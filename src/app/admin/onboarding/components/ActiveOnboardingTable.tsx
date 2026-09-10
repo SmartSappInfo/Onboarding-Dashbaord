@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -23,13 +23,8 @@ import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
   CheckCircle2,
-  Clock,
-  AlertTriangle,
-  Play,
   SkipForward,
-  User,
   Loader2,
-  RefreshCw,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { OnboardingInstance } from '@/lib/types';

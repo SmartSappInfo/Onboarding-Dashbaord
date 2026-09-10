@@ -2,7 +2,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
-import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, VariableDefinition, School, Contract, Meeting, EntityType, DefaultSenderProfileIds, Entity } from './types';
+import type { MessageTemplate, SenderProfile, MessageStyle, MessageLog, Contract, Meeting, EntityType, DefaultSenderProfileIds, Entity } from './types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from './messaging-utils';
 import { resolveOrgBrandingVars } from './messaging-branding';
 import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
@@ -10,18 +10,16 @@ import { logActivity } from './activity-logger';
 import { sendSms } from './mnotify-service';
 import { sendEmail, type EmailAttachment } from './resend-service';
 import { sendPushNotification } from './onesignal-service';
-import { resolveTagVariables } from './messaging-actions';
 import { resolveContact } from './contact-adapter';
 import { FieldsVariablesService } from './services/fields-variables-service-impl';
-import { buildMeetingBaseVariables, buildFacilitatorVariables, buildRegistrantVariables } from './meeting-variable-helpers';
+import { buildMeetingBaseVariables, buildFacilitatorVariables } from './meeting-variable-helpers';
 import { getRecipientContact } from './migration-status-utils';
-import { getContactVariables, getRecipientContactVariables } from './entity-contact-helpers';
-import { getBaseUrl, getRequestBaseUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
+import { getRequestBaseUrl, cleanPersonalizedMeetingUrl } from './utils/url-helpers';
 import { CHANNEL_REGISTRY } from './messaging/channel-registry';
 import { resolveOrgId, resolveSenderProfileId, toSenderProfile } from './messaging/sender-repository';
 import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
-import { resolveContextWorkspaceId, resolveWorkspaceIdFromEntity } from './services/workspace-resolver';
+import { resolveContextWorkspaceId } from './services/workspace-resolver';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
 import { getErrorMessage, reportError } from '@/lib/errors/report-error';

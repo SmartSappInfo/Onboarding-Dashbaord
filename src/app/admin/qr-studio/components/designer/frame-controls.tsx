@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Camera, ArrowDown, Sparkles, Lock, Link as LinkIcon, Phone, Star, ShoppingBag, Square, Smartphone, Tag, Ticket, MessageSquare, ShieldCheck } from 'lucide-react';
 import type { QRDesign, QRFrameStyle, QRFrameIcon } from '@/lib/types';
 

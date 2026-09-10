@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Code, Copy, Check, ExternalLink, Sparkles } from 'lucide-react';
+import { Code, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface EmbedCodeModalProps {
@@ -74,7 +74,7 @@ export function EmbedCodeModal({
         <DialogHeader>
           <DialogTitle className="text-lg font-bold flex items-center gap-2">
             <Code className="h-5 w-5 text-primary" />
-            Embed "{title}" On Your Website
+            Embed &quot;{title}&quot; On Your Website
           </DialogTitle>
           <DialogDescription className="text-xs">
             Add responsive scheduling directly to WordPress, Webflow, React, or custom landing pages.

@@ -46,7 +46,7 @@ export async function getRequestBaseUrl(): Promise<string> {
     if (host && !host.startsWith('0.0.0.0') && !host.startsWith('127.0.0.1')) {
       return `${proto}://${host}`;
     }
-  } catch (error) {
+  } catch (_error) {
     // In background tasks where request context doesn't exist, headers() throws an error.
     // We fall back gracefully to the standard base URL.
   }

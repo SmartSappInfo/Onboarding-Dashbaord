@@ -8,8 +8,7 @@ import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/
 import { addDoc, collection, query, where, orderBy, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { File as FileIcon, Upload, Loader2, Info, Layout, Plus } from 'lucide-react';
+import { File as FileIcon, Upload, Loader2, Info, Plus } from 'lucide-react';
 import type { MediaAsset, MediaCategory } from '@/lib/types';
 import { deduplicateCategories, getDeterministicCategoryId, sanitizeFirestorePayload } from '@/lib/utils/category-utils';
 import { z } from 'zod';
@@ -213,7 +212,7 @@ export default function MediaUploader({
                 dimensions: { width, height },
                 dataUrl,
             });
-        } catch(e) {
+        } catch(_e) {
             toast({ variant: 'destructive', title: 'Could not read image file', description: file.name });
         }
       } else {

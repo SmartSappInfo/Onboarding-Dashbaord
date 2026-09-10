@@ -15,7 +15,6 @@ import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import {
   getEntitySurveyHistoryAction,
   type EntitySurveyHistorySummary,
-  type EntitySurveyHistoryItem,
 } from '@/lib/surveys/survey-crm-trigger-actions';
 import { SendSurveyModal } from './SendSurveyModal';
 import { EntityPredictiveHealthCard } from './EntityPredictiveHealthCard';
@@ -27,21 +26,14 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Send,
-  Sparkles,
-  MessageSquare,
-  CheckCircle2,
-  Calendar,
   ExternalLink,
   ChevronDown,
   ChevronUp,
   Loader2,
-  TrendingUp,
-  AlertTriangle,
   Smile,
   Meh,
   Frown,
   FileQuestion,
-  Award,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

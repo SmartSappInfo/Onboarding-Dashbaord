@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { cn } from '@/lib/utils';
-import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Slider } from '@/components/ui/slider';
@@ -39,7 +38,7 @@ import {
     useEditor, 
     LocalPDFFormField 
 } from './Editor';
-import type { PDFForm, PDFFormField, WorkspaceEntity } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity } from '@/lib/types';
 
 interface FieldMapperProps {
   pdf: PDFForm;
@@ -68,7 +67,7 @@ interface FieldMapperProps {
 function EditorLayout() {
     const { 
         zoom, setZoom, addField, undo, redo, canUndo, canRedo, 
-        onDetect, isDetecting, onPreview, isFullScreen, setIsFullScreen,
+        onDetect, isDetecting, onPreview: _onPreview, isFullScreen, setIsFullScreen,
         viewMode, setViewMode, isFieldDeleteConfirmOpen, setIsFieldDeleteConfirmOpen,
         selectedFieldIds, setFields, setSelectedFieldIds
     } = useEditor();

@@ -11,7 +11,7 @@
  * 4. Tested in src/lib/surveys/__tests__/survey-logic-graph.test.ts.
  */
 
-import type { SurveyElement, SurveyQuestion, SurveyLogicBlock } from '@/lib/types';
+import type { SurveyElement, SurveyLogicBlock } from '@/lib/types';
 
 export interface LogicGraphIssue {
   type: 'error' | 'warning';

@@ -643,7 +643,7 @@ export async function triggerSalesPlayManuallyAction(params: {
   try {
     const {
       workspaceId,
-      organizationId,
+      organizationId: _organizationId,
       actorId,
       actorName,
       playId,

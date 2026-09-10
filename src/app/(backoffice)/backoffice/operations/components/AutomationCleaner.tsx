@@ -70,7 +70,7 @@ export default function AutomationCleaner() {
   const [phase, setPhase] = React.useState<Phase>('idle');
   const [lastResult, setLastResult] = React.useState<ClearAutomationResult | null>(null);
   const [history, setHistory] = React.useState<RunRecord[]>([]);
-  const [isPending, startTransition] = React.useTransition();
+  const [_isPending, startTransition] = React.useTransition();
 
   const canExecute = can('operations', 'execute');
 

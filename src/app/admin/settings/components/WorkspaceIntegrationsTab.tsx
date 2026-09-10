@@ -27,9 +27,7 @@ import {
   Link2, 
   Link2Off,
   CheckCircle,
-  AlertCircle
 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { WorkspaceAiSettingsCard } from '@/components/ai/WorkspaceAiSettingsCard';
 
 export interface WorkspaceIntegrationsTabProps {
@@ -382,7 +380,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
               <p className="text-[10px] font-medium text-muted-foreground leading-relaxed px-1">
                 Configure the default Sender ID for SMS dispatches sent from this workspace. 
                 This ID is restricted by telecommunication regulations to a maximum of 11 alphanumeric characters. 
-                If left blank, 'SmartSapp' will be used as default.
+                If left blank, &apos;SmartSapp&apos; will be used as default.
               </p>
 
               <div className="space-y-2 pt-2">

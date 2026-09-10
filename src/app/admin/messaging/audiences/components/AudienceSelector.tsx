@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Users, Tag, Target, Loader2, Sparkles } from 'lucide-react';
+import { Users, Tag, Target, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -51,7 +51,7 @@ export interface AudienceSelectorProps {
 
 export function AudienceSelector({
     workspaceId,
-    organizationId,
+    organizationId: _organizationId,
     channel,
     audienceMode,
     filters,

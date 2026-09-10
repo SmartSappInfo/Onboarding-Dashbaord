@@ -5,7 +5,6 @@ import {
   type Idea,
   type IdeaLifecycleStage,
   type CreateIdeaPayload,
-  type IdeaFilterOptions,
 } from '@/lib/quick-notes-types';
 import {
   Lightbulb,
@@ -14,19 +13,12 @@ import {
   Target,
   CheckCircle2,
   Layers,
-  LayoutGrid,
-  Filter,
   Plus,
-  ArrowRight,
-  ShieldCheck,
   Search,
-  RotateCcw,
-  Loader2,
   Table,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   getWorkspaceIdeasAction,
@@ -60,7 +52,7 @@ export function IdeaStudioView({
 
   const [ideas, setIdeas] = React.useState<Idea[]>(initialIdeas);
   const [viewMode, setViewMode] = React.useState<StudioViewMode>('pipeline');
-  const [isLoading, setIsLoading] = React.useState(false);
+  const [_isLoading, setIsLoading] = React.useState(false);
 
   const [selectedIdea, setSelectedIdea] = React.useState<Idea | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = React.useState(false);
@@ -315,7 +307,7 @@ export function IdeaStudioView({
                 setIdeas((prev) => prev.map((i) => (i.id === updated.id ? updated : i)));
                 setSelectedIdea(updated);
               }}
-              onSelectNode={(node) => {
+              onSelectNode={(_node) => {
                 // Node selected
               }}
             />

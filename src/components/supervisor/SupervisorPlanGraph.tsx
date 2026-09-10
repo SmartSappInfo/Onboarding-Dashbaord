@@ -14,7 +14,6 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
   CheckCircle2,
@@ -70,7 +69,7 @@ export function SupervisorPlanGraph({
 
       {/* Step Timeline Cards */}
       <div className="space-y-2.5 pt-1">
-        {steps.map((step, idx) => {
+        {steps.map((step, _idx) => {
           const isSelected = selectedStepNumber === step.stepNumber;
           const isRunning = step.status === 'running';
           const isApproval = step.status === 'needs_approval';

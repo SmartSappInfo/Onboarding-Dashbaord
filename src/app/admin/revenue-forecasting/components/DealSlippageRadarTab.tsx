@@ -18,21 +18,12 @@
 import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import {
   Compass,
-  AlertTriangle,
-  Clock,
-  ShieldAlert,
-  ArrowRight,
   Filter,
-  CheckCircle2,
-  Calendar,
-  AlertCircle,
   Lightbulb,
 } from 'lucide-react';
 import type {
-  DealSlippageModel,
   RevenueForecastOverview,
   SlippageSeverity,
 } from '@/lib/revenue-forecasting/types';

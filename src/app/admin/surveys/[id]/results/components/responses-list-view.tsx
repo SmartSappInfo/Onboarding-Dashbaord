@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import type { Survey, SurveyResponse, SurveyQuestion, ResolvedContact, SurveyElement, SurveyEntityMapping } from '@/lib/types';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
-import { Trophy, Trash2, MoreHorizontal, CheckSquare, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, Search, ShieldCheck, X, Phone, Mail, Copy, Check, Tag as TagIcon, GitPullRequest, CalendarDays, ExternalLink } from 'lucide-react';
+import { Trophy, Trash2, MoreHorizontal, Loader2, Lock, Eye, AlertTriangle, Building2, User as UserIcon, Filter, ShieldCheck, X, Phone, Mail, Copy, Check, Tag as TagIcon, GitPullRequest, CalendarDays, ExternalLink } from 'lucide-react';
 import SurveyAnalyticsBulkActionsBar from './SurveyAnalyticsBulkActionsBar';
 import SurveyEntityManageDialogs, { type ManagedEntityTarget } from './SurveyEntityManageDialogs';
 import { Checkbox } from '@/components/ui/checkbox';

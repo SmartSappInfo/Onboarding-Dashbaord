@@ -1,10 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, Video, AudioWaveform, FileText, AlertCircle, Upload, Library, Loader2 } from 'lucide-react';
+import { ImageIcon, Video, AudioWaveform, FileText, AlertCircle, Upload, Library } from 'lucide-react';
 import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import MediaUploader from '../../media/components/media-uploader';
 import type { MediaAsset } from '@/lib/types';

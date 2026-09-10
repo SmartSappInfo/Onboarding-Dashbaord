@@ -28,7 +28,6 @@ import {
   ArrowRight,
 } from 'lucide-react';
 import { TURNKEY_WORKFLOW_BLUEPRINTS } from '@/lib/workflows/blueprints';
-import type { WorkflowDefinition } from '@/lib/workflows/types';
 
 export interface WorkflowGalleryGridProps {
   onInstallBlueprint: (blueprintId: string) => Promise<void>;

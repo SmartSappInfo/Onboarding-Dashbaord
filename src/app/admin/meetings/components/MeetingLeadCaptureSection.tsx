@@ -27,7 +27,6 @@ import {
   User,
   X,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -80,7 +79,7 @@ export default function MeetingLeadCaptureSection({ registrationFields }: Meetin
       .map(f => ({ label: f.label, value: f.id }));
   }, [registrationFields]);
 
-  const tagOptions = React.useMemo(() => {
+  const _tagOptions = React.useMemo(() => {
     return (tags || []).map((t: any) => ({ label: t.name, value: t.id }));
   }, [tags]);
 

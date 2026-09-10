@@ -2,7 +2,7 @@
 
 import { adminDb } from './firebase-admin';
 import type { PDFForm, Submission } from './types';
-import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { requireAuth } from '@/lib/auth/require-auth';
 
 /**
  * @fileOverview Query helpers for PDF forms with entityId/entityId fallback support.

@@ -14,7 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Users, Send, CheckCircle2, Eye, Play, Trophy, Layers, RefreshCw, BarChart3 } from 'lucide-react';
+import { Send, CheckCircle2, Eye, Trophy, Layers, RefreshCw, BarChart3 } from 'lucide-react';
 import type { Survey } from '@/lib/types';
 import type { SurveyDeployment } from '@/lib/surveys/survey-v2-types';
 
@@ -26,7 +26,7 @@ export interface DistributionOverviewTabProps {
 }
 
 export function DistributionOverviewTab({
-  survey,
+  survey: _survey,
   deployments,
   totalResponses,
   onRefresh,

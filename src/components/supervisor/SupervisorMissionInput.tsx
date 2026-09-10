@@ -24,10 +24,6 @@ import {
   Sliders,
   Play,
   Loader2,
-  Building2,
-  Briefcase,
-  ListTodo,
-  Users,
 } from 'lucide-react';
 
 export interface SupervisorMissionInputProps {

@@ -1,9 +1,9 @@
 import React from 'react';
 
-export function CampaignDeliveryRate({ workspaceId }: { workspaceId: string }) {
+export function CampaignDeliveryRate({ workspaceId: _workspaceId }: { workspaceId: string }) {
   // Mock data for delivery rate
   const deliveryRate = 98.4;
-  const bounceRate = 1.6;
+  const _bounceRate = 1.6;
 
   return (
     <div className="flex flex-col items-center justify-center h-full space-y-4 p-4">

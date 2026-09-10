@@ -4,7 +4,7 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import type { Tag, TagCategory } from '@/lib/types';
+import type { Tag } from '@/lib/types';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

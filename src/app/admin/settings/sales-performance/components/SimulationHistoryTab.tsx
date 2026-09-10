@@ -16,7 +16,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -30,10 +30,6 @@ import {
   ArrowDownRight,
   Minus,
   Loader2,
-  CheckCircle2,
-  Users,
-  TrendingUp,
-  ShieldAlert,
 } from 'lucide-react';
 import type {
   PolicySimulationResult,

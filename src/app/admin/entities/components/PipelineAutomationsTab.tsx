@@ -7,7 +7,7 @@ import { Zap, Clock, BarChart2, ArrowRight } from 'lucide-react';
 import type { WorkspaceEntity } from '@/lib/types';
 import Link from 'next/link';
 
-export default function PipelineAutomationsTab({ weData }: { weData: WorkspaceEntity }) {
+export default function PipelineAutomationsTab({ weData: _weData }: { weData: WorkspaceEntity }) {
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 text-left animate-in fade-in slide-in-from-bottom-2 duration-500">
 

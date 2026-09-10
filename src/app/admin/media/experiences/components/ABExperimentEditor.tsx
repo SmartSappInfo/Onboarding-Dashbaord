@@ -17,14 +17,13 @@
 import { useState } from 'react';
 import type { ABExperimentConfig, ABExperimentVariantOverrides } from '@/lib/types/media-2.0';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Split, TrendingUp, Trophy, Sparkles, ArrowRight } from 'lucide-react';
+import { Split, Trophy } from 'lucide-react';
 
 export interface ABExperimentEditorProps {
   config: ABExperimentConfig;
@@ -39,7 +38,7 @@ export function ABExperimentEditor({
   baseCtaText,
   onChange,
 }: ABExperimentEditorProps) {
-  const [activeTab, setActiveTab] = useState<'variantA' | 'variantB'>('variantB');
+  const [_activeTab, _setActiveTab] = useState<'variantA' | 'variantB'>('variantB');
 
   const vAViews = config.metrics?.variantAViews ?? 0;
   const vAClicks = config.metrics?.variantAClicks ?? 0;

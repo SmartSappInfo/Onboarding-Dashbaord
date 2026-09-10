@@ -59,7 +59,7 @@ export async function savePipelineAction(id: string | null, data: Partial<Pipeli
  * Sets a specific pipeline as the default for its workspace.
  * Automatically unsets any existing default in that same workspace.
  */
-export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId: string, userId: string) {
+export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId: string, _userId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireWorkspace(workspaceId);
 

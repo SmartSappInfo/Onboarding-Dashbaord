@@ -12,17 +12,15 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import {
   completeLessonAction,
-  recordVideoProgressAction,
   submitAssessmentAction,
 } from '@/app/actions/learning-actions';
 import { LessonAiTutorDrawer } from './components/LessonAiTutorDrawer';
@@ -39,7 +37,6 @@ import type {
 import {
   PlayCircle,
   CheckCircle2,
-  Lock,
   ArrowLeft,
   ArrowRight,
   Sparkles,
@@ -47,14 +44,10 @@ import {
   HelpCircle,
   Layers,
   Menu,
-  X,
-  FileText,
   Download,
-  Send,
   Loader2,
   Check,
 } from 'lucide-react';
-import { LearningProgressService } from '@/lib/services/learning-progress-service';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalCoursePlayerClientProps {
@@ -90,7 +83,7 @@ export default function PortalCoursePlayerClient({
       text: 'Hello! I am your AI Learning Assistant for this lesson. Ask me anything about the content, request a quick summary, or ask for a practice quiz!',
     },
   ]);
-  const [isAiThinking, setIsAiThinking] = React.useState(false);
+  const [_isAiThinking, setIsAiThinking] = React.useState(false);
 
   // 1. Query Portal
   const portalQuery = useMemoFirebase(
@@ -284,7 +277,7 @@ export default function PortalCoursePlayerClient({
     }
   };
 
-  const handleAskAi = async (customPrompt?: string) => {
+  const _handleAskAi = async (customPrompt?: string) => {
     const queryText = customPrompt || aiPrompt;
     if (!queryText.trim()) return;
 
@@ -328,8 +321,8 @@ export default function PortalCoursePlayerClient({
     );
   }
 
-  const theme = portal?.theme || { colors: { primary: '#3A86FF' } };
-  const brandTitle = portal?.branding?.brandName || portal?.name || 'Academy';
+  const _theme = portal?.theme || { colors: { primary: '#3A86FF' } };
+  const _brandTitle = portal?.branding?.brandName || portal?.name || 'Academy';
   const progressPct = enrollment?.progressPercentage || 0;
 
   return (
@@ -541,7 +534,7 @@ export default function PortalCoursePlayerClient({
                 <Card className="rounded-3xl border-2 border-border p-8 text-center space-y-2 bg-card">
                   <HelpCircle className="w-10 h-10 mx-auto text-muted-foreground" />
                   <h4 className="font-bold text-sm">No Scored Quiz for this Lesson</h4>
-                  <p className="text-xs text-muted-foreground">Click "Mark as Complete" to advance to the next topic.</p>
+                  <p className="text-xs text-muted-foreground">Click &quot;Mark as Complete&quot; to advance to the next topic.</p>
                 </Card>
               ) : (
                 <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card">

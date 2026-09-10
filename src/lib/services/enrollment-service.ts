@@ -19,7 +19,7 @@ export class EnrollmentService {
     userId: string,
     portalId: string,
     source: EnrollmentSource = 'manual_admin',
-    actorId?: string
+    _actorId?: string
   ): Promise<CourseEnrollment> {
     const existingSnap = await adminDb
       .collection('course_enrollments')

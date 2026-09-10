@@ -18,7 +18,6 @@ import { Ratio, Crop, Image as ImageIcon, Percent, TextCursorInput, Loader2 } fr
 import { useDebounce } from '@/hooks/use-debounce';
 import { processImage } from '@/lib/image-processing';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ScrollArea } from '@/components/ui/scroll-area';
 
 export interface ImageEditingState {
   crop?: Area;

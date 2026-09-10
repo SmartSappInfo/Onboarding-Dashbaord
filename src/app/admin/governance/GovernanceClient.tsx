@@ -14,7 +14,7 @@
 import * as React from 'react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -27,11 +27,9 @@ import {
   ShieldAlert,
   Lock,
   History,
-  Plus,
   RefreshCw,
   Play,
   Ban,
-  Users,
   Eye,
 } from 'lucide-react';
 import Link from 'next/link';

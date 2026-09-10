@@ -5,7 +5,6 @@ import { useUser, useFirestore } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { useDoc, useMemoFirebase } from '@/firebase';
 import type { UserProfile } from '@/lib/types';
-import type { BackofficeRole } from '@/lib/backoffice/backoffice-types';
 
 /**
  * Hook to check if the current user has backoffice access.

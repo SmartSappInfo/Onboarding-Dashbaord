@@ -193,7 +193,7 @@ export async function getProjectLongitudinalAnalyticsAction(
     );
 
     // Compute progress points & respondent cohort tracking
-    waveAnalyticsResults.forEach(({ wave, responses, survey }) => {
+    waveAnalyticsResults.forEach(({ wave, responses, survey: _survey }) => {
       let scoreSum = 0;
       let scoredCount = 0;
       let promoterCount = 0;

@@ -26,15 +26,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   ShieldAlert,
   Save,
-  CheckCircle2,
-  Lock,
-  Layers,
   FlaskConical,
   Scale,
-  RefreshCw,
   Loader2,
-  Calendar,
-  Sparkles,
 } from 'lucide-react';
 
 export function SystemResearchGovernanceMatrix() {

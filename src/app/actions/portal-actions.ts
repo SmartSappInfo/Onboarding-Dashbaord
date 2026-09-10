@@ -20,7 +20,6 @@ import type {
   CreatePortalInput,
   UpdatePortalInput,
   PublicPortalProjection,
-  PortalMode,
 } from '@/lib/types/portal';
 
 export interface ActionResponse<T> {

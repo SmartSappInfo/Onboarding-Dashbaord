@@ -12,10 +12,9 @@
 
 import * as React from 'react';
 import { useFormContext, Controller } from 'react-hook-form';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Switch } from '@/components/ui/switch';
@@ -25,7 +24,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Sparkles,
   Building,
   Users,
   User,
@@ -33,10 +31,7 @@ import {
   Video,
   Palette,
   Sliders,
-  FolderGit2,
-  Layers,
   MessageSquareText,
-  Type,
   FlaskConical,
   Eye,
 } from 'lucide-react';

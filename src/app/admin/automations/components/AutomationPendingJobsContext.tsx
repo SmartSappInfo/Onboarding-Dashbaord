@@ -18,7 +18,7 @@ const PendingJobsContext = React.createContext<PendingJobsContextValue>({
 
 export function AutomationPendingJobsProvider({
   automationId,
-  workspaceId,
+  workspaceId: _workspaceId,
   children,
 }: {
   automationId: string;

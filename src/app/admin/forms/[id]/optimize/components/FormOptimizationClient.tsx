@@ -16,16 +16,10 @@ import {
   Edit,
   BarChart3,
   Inbox,
-  Split,
-  Activity,
-  AlertTriangle,
-  Layers,
-  ChevronRight,
 } from 'lucide-react';
 import { PageContainer } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import type { Form } from '@/lib/types';
 import type {
@@ -51,10 +45,10 @@ export default function FormOptimizationClient({
   initialAnomalies,
   initialExperiments,
 }: FormOptimizationClientProps) {
-  const router = useRouter();
-  const { toast } = useToast();
+  const _router = useRouter();
+  const { toast: _toast } = useToast();
   const [experiments, setExperiments] = useState<FormExperiment[]>(initialExperiments);
-  const [anomalies, setAnomalies] = useState<FormAnomalyAlert[]>(initialAnomalies);
+  const [anomalies, _setAnomalies] = useState<FormAnomalyAlert[]>(initialAnomalies);
 
   const refreshExperiments = async () => {
     const res = await getFormExperimentsAction({ formId: form.id });

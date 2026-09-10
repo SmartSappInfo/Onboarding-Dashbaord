@@ -6,7 +6,7 @@ let mockDocExists = true;
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: (colName: string) => ({
+    collection: (_colName: string) => ({
       doc: () => ({
         get: vi.fn().mockImplementation(async () => ({
           exists: mockDocExists,

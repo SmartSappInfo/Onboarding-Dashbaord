@@ -9,8 +9,8 @@
 'use client';
 
 import * as React from 'react';
-import { TrendingDown, HelpCircle, CheckCircle2, Building2 } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { HelpCircle, CheckCircle2 } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { SurveyDropoffInsight } from '@/lib/backoffice/backoffice-types';
 

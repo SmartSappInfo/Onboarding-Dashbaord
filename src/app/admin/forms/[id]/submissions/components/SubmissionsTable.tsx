@@ -13,7 +13,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import type { Form, FormSubmission } from '@/lib/types';
-import { getSubmissionPreview, parseDateSafe, formatFieldValue } from '@/lib/forms-utils';
+import { parseDateSafe, formatFieldValue } from '@/lib/forms-utils';
 
 interface Props {
   submissions: FormSubmission[];

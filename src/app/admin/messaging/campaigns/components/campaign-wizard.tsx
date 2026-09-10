@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
-import { collection, query, where, orderBy, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useFirestore, useUser, useCollection, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { createCampaign, updateCampaign } from '@/lib/campaign-hooks';
@@ -12,20 +12,16 @@ import type { MessageCampaign, MessageChannel, TemplateTarget, ContentMode, Audi
 import { AudienceSelector } from '@/app/admin/messaging/audiences/components/AudienceSelector';
 import { useAudiences } from '@/lib/audience-hooks';
 import { legacyAudienceToFilters } from '@/lib/audience-hooks';
-import { TagSelector } from '@/components/tags/TagSelector';
 import { ABTestSlider } from './ABTestSlider';
-import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import { previewCampaignAudience } from '@/lib/messaging-actions';
 import { renderBlocksToHtml, resolveVariables, plainTextToHtml } from '@/lib/messaging-utils';
 import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
-import { generateCampaignCopy, refineCampaignCopy } from '@/lib/campaign-ai';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Separator } from '@/components/ui/separator';
@@ -34,7 +30,6 @@ import {
     Users, Save, Send, Tag, Target, FileText, Calendar, Eye, Megaphone, Zap, X, Plus,
     Sparkles, Wand2, Pencil, PlusCircle, Search
 } from 'lucide-react';
-import { Checkbox } from '@/components/ui/checkbox';
 import {
     AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
     AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -43,8 +38,7 @@ import { cn } from '@/lib/utils';
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
-import { motion, AnimatePresence } from 'framer-motion';
-import { EmailHygieneBadge } from '@/app/admin/components/EmailHygieneBadge';
+import { motion } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command';
 import { createTagAction } from '@/lib/tag-actions';
@@ -271,10 +265,10 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     const [showExitDialog, setShowExitDialog] = React.useState(false);
 
     // Phase 6 Story 6: AI Copy Assistant
-    const [isGenerating, setIsGenerating] = React.useState(false);
-    const [showAiPanel, setShowAiPanel] = React.useState(false);
-    const [aiPrompt, setAiPrompt] = React.useState('');
-    const [aiVariants, setAiVariants] = React.useState<string[]>([]);
+    const [_isGenerating, _setIsGenerating] = React.useState(false);
+    const [_showAiPanel, _setShowAiPanel] = React.useState(false);
+    const [_aiPrompt, _setAiPrompt] = React.useState('');
+    const [_aiVariants, _setAiVariants] = React.useState<string[]>([]);
     
     // Quick Create Template state
     const [quickCreateOpen, setQuickCreateOpen] = React.useState(false);
@@ -291,7 +285,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     const activeVariant = state.variants.find(v => v.id === activeVariantTab) || state.variants[0];
 
     // ── Audience Preview State ────────────────────────────────────────────────
-    const [isPreviewing, setIsPreviewing] = React.useState(false);
+    const [_isPreviewing, setIsPreviewing] = React.useState(false);
     const [previewResult, setPreviewResult] = React.useState<{
         count: number;
         contactCount: number;
@@ -490,7 +484,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
     }, [senderProfiles, state.channel]);
 
     // ── Saved Audiences (Story 5: for audience picker) ─────────────────────
-    const { audiences: savedAudiences } = useAudiences(activeWorkspaceId);
+    const { audiences: _savedAudiences } = useAudiences(activeWorkspaceId);
 
     // ── Workspace Tags (Story 2 Phase 6: for post-send tag rules) ─────────
     const tagsQuery = useMemoFirebase(() => {

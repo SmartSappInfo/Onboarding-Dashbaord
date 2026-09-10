@@ -1,6 +1,5 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { triggerAutomationProtocols } from '../automation-processor';
 import { logActivity } from '../activity-logger';
 import { adminDb } from '../firebase-admin';
 

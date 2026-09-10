@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { CredentialService } from '../credential-service';
 
 describe('CredentialService Unit Logic', () => {
   it('formats valid Open Badges 3.0 W3C Verifiable Credential schema payload', async () => {

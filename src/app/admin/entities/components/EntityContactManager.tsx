@@ -19,7 +19,7 @@ import { getSystemContactTypes } from '@/lib/contact-type-defaults';
 import type { ContactTypeEntry, EntityType } from '@/lib/types';
 
 // Fallback used only while the server action is loading
-const FALLBACK_ROLES: ContactTypeEntry[] = getSystemContactTypes('institution');
+const _FALLBACK_ROLES: ContactTypeEntry[] = getSystemContactTypes('institution');
 
 function EntityContactItem({ 
     index, 
@@ -229,7 +229,7 @@ export function EntityContactManager({ entityType = 'institution', organizationI
 
   // Dynamic role loading from the 3-level hierarchy
   const [availableRoles, setAvailableRoles] = React.useState<ContactTypeEntry[]>(getSystemContactTypes(entityType));
-  const [isLoadingRoles, setIsLoadingRoles] = React.useState(false);
+  const [_isLoadingRoles, setIsLoadingRoles] = React.useState(false);
 
   React.useEffect(() => {
     let cancelled = false;

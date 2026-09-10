@@ -224,7 +224,7 @@ export function HeadlineIQOptimizer({
               <SelectContent className="rounded-xl">
                 <SelectItem value="aida">AIDA (Attention / Action)</SelectItem>
                 <SelectItem value="pas">PAS (Problem / Solution)</SelectItem>
-                <SelectItem value="4us">4 U's (Specificity / Value)</SelectItem>
+                <SelectItem value="4us">4 U&apos;s (Specificity / Value)</SelectItem>
               </SelectContent>
             </Select>
           </div>

@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -12,8 +11,6 @@ import {
   DollarSign,
   History,
   Tag,
-  Plus,
-  ExternalLink,
   Mail,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -21,7 +18,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { TagSelector } from '@/components/tags/TagSelector';
 import {
   getMeetingCRMContextAction,
-  associateMeetingDealAction,
 } from '@/app/actions/meeting-crm-actions';
 import type { CRMContactContext } from '@/lib/meetings/types/crm-attribution';
 import { format } from 'date-fns';
@@ -32,7 +28,7 @@ interface MeetingCRMTabProps {
   contactName?: string;
 }
 
-export function MeetingCRMTab({ meetingId, contactEmail, contactName }: MeetingCRMTabProps) {
+export function MeetingCRMTab({ meetingId: _meetingId, contactEmail, contactName: _contactName }: MeetingCRMTabProps) {
   const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
 

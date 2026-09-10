@@ -36,10 +36,6 @@ import {
   Copy,
   Check,
   Share2,
-  Video,
-  FileText,
-  Music,
-  ExternalLink,
   Loader2,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';

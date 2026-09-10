@@ -6,14 +6,12 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   createSurveyProjectAction,
   getSurveyProjectsAction,
-  getSurveyProjectByIdAction,
   updateSurveyProjectAction,
-  assignSurveysToProjectAction,
 } from '../survey-project-actions';
 
 const mockDbStore: Record<string, Record<string, unknown>> = {};
 
-const { mockSet, mockGetDoc, mockDoc, mockWhere, mockGetCollection, mockCollection, mockBatch } = vi.hoisted(() => {
+const { mockSet: _mockSet, mockGetDoc: _mockGetDoc, mockDoc, mockWhere: _mockWhere, mockGetCollection: _mockGetCollection, mockCollection, mockBatch } = vi.hoisted(() => {
   const set = vi.fn(async function (this: { id: string }, data: Record<string, unknown>) {
     mockDbStore[this.id] = { ...data, id: this.id };
     return true;

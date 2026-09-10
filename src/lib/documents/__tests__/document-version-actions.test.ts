@@ -5,7 +5,7 @@ import {
   archiveDocumentVersionAction,
   getDocumentVersionsAction,
 } from '../document-version-actions';
-import type { Document, DocumentVersion, DocumentPage } from '@/lib/types/document-types';
+import type { Document, DocumentVersion } from '@/lib/types/document-types';
 
 const mockStore: Record<string, Record<string, Record<string, unknown>>> = {
   documents: {},

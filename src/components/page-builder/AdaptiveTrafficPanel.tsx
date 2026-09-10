@@ -13,7 +13,7 @@
 
 import React from 'react';
 import type { BanditPolicy } from '@/lib/types';
-import { GitBranch, Play, Pause, TrendingUp, Sparkles } from 'lucide-react';
+import { GitBranch, Play, Pause, Sparkles } from 'lucide-react';
 
 export interface AdaptiveTrafficPanelProps {
   policy: BanditPolicy | null;

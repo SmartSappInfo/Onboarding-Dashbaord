@@ -14,16 +14,13 @@ import { useParams, useRouter } from 'next/navigation';
 import {
   Lock,
   Unlock,
-  KeyRound,
   ShieldCheck,
   AlertTriangle,
   Loader2,
-  ArrowRight,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 export default function QRUnlockPage() {
   const params = useParams();

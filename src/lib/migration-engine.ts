@@ -11,17 +11,12 @@
 
 import {
   collection,
-  query,
-  where,
   getDocs,
   getDoc,
   doc,
-  setDoc,
   writeBatch,
   type Firestore,
   type DocumentData,
-  deleteDoc,
-  QuerySnapshot
 } from 'firebase/firestore';
 
 import type {
@@ -35,7 +30,6 @@ import type {
   ValidationError,
   EntityType,
   ProgressCallback,
-  MigrationProgress
 } from './migration-types';
 
 /**
@@ -535,11 +529,11 @@ export class MigrationEngineImpl implements MigrationEngine {
         for (const backupDoc of batchDocs) {
           try {
             const backupData = backupDoc.data();
-            const { backedUpAt, ...originalData } = backupData;
+            const { _backedUpAt, ...originalData } = backupData;
 
             // Restore original record (remove entityId and entityType)
             const recordRef = doc(this.firestore, collectionName, backupDoc.id);
-            const { entityId, entityType, ...restoredData } = originalData;
+            const { _entityId, _entityType, ...restoredData } = originalData;
             
             firestoreBatch.set(recordRef, {
               ...restoredData,

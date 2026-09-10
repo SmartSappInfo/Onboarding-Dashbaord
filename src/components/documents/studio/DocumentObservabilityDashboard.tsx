@@ -20,25 +20,15 @@ import { Badge } from '@/components/ui/badge';
 import {
   Activity,
   ShieldCheck,
-  Zap,
-  HardDrive,
   RefreshCw,
   CheckCircle2,
-  AlertTriangle,
-  Server,
-  Layers,
-  Sparkles,
-  Users,
-  Lock,
 } from 'lucide-react';
 import type {
   DocumentObservabilitySummary,
-  StorageLifecycleReport,
   DocumentRole,
 } from '@/lib/types/document-types';
 import { ROLE_PERMISSIONS_MAP } from '@/lib/types/document-types';
 import { getWorkspaceHealthReportAction } from '@/lib/documents/document-observability-actions';
-import { auditWorkspaceStorageLifecycle } from '@/lib/documents/document-lifecycle-service';
 import { useToast } from '@/hooks/use-toast';
 
 interface DocumentObservabilityDashboardProps {

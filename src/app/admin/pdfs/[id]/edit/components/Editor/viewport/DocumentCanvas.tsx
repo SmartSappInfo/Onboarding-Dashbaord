@@ -43,7 +43,7 @@ export function DocumentCanvas() {
         const loadedDoc = await loadingTask.promise;
         setPdfDoc(loadedDoc);
         setNumPages(loadedDoc.numPages);
-      } catch (e) {
+      } catch (_e) {
         toast({ variant: 'destructive', title: 'Error Loading PDF' });
       }
     };

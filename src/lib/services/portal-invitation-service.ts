@@ -205,7 +205,7 @@ export class PortalInvitationService {
   /**
    * Revokes an invitation link.
    */
-  static async revokeInvitation(invitationId: string, actorId: string): Promise<boolean> {
+  static async revokeInvitation(invitationId: string, _actorId: string): Promise<boolean> {
     const docRef = adminDb.collection(INVITATIONS_COLLECTION).doc(invitationId);
     await docRef.update({
       status: 'revoked',

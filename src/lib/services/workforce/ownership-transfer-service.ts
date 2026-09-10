@@ -15,7 +15,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import type {
   CrmEntityType,
   CrmOwnershipTransferJob,
-  CrmOwnershipTransferStatus,
 } from '@/lib/types';
 import { PersonService } from '@/lib/services/identity/person-service';
 import { SecurityAuditService } from '@/lib/services/governance/security-audit-service';

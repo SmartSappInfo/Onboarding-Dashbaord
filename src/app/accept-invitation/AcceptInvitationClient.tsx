@@ -22,14 +22,9 @@ import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
   ShieldCheck,
-  Building,
-  Key,
-  Mail,
   Loader2,
   AlertTriangle,
-  CheckCircle2,
   ArrowRight,
-  User,
 } from 'lucide-react';
 import {
   validateInvitationTokenAction,

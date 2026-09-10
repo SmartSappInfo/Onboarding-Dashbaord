@@ -19,14 +19,14 @@ import { useState } from 'react';
 import type { PersonalizationConfig } from '@/lib/types/media-2.0';
 import { resolvePersonalizedContent } from '@/lib/media/personalization-rules-service';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Sparkles, Tag, Eye, Layers } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Sparkles, Tag, Eye } from 'lucide-react';
 
 export interface PersonalizationTokenEditorProps {
   workspaceId: string;

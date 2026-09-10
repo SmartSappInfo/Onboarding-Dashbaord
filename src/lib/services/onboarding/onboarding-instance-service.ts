@@ -17,7 +17,6 @@ import type {
   OnboardingInstance,
   OnboardingStepInstance,
   OnboardingInstanceStatus,
-  Person,
 } from '@/lib/types';
 import { OnboardingJourneyService } from './onboarding-journey-service';
 import { AdaptiveConditionEvaluator, MemberEvaluationContext } from './adaptive-condition-evaluator';
@@ -130,7 +129,7 @@ export class OnboardingInstanceService {
     const now = new Date().toISOString();
     let stepFound = false;
 
-    const updatedSteps = instance.stepInstances.map((s, idx) => {
+    const updatedSteps = instance.stepInstances.map((s, _idx) => {
       if (s.stepId === stepId || s.id === stepId) {
         stepFound = true;
         return {

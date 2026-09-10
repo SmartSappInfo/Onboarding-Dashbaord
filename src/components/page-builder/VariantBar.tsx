@@ -12,7 +12,7 @@
  */
 
 import React from 'react';
-import type { Experiment, ExperimentVariant } from '@/lib/types';
+import type { Experiment } from '@/lib/types';
 import { FlaskConical, Plus, CheckCircle2, TrendingUp } from 'lucide-react';
 
 export interface VariantBarProps {

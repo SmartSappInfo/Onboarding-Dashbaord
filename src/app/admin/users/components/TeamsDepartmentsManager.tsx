@@ -29,8 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useUser } from '@/firebase';
@@ -43,7 +42,6 @@ import {
   Edit2,
   Crown,
   Briefcase,
-  Layers,
   Loader2,
   Save,
   Search,
@@ -51,7 +49,6 @@ import {
   X,
   UserPlus,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { Department, Team, PersonDetailView, Workspace } from '@/lib/types';
 import {
   createOrUpdateDepartmentAction,

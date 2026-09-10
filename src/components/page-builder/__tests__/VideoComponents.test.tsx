@@ -45,7 +45,7 @@ describe('Video Components and Autoplay behavior', () => {
     });
 
     it('renders iframe/video upon click when not disabled', () => {
-      const { queryByTitle, getByAltText, container } = render(
+      const { queryByTitle: _queryByTitle, getByAltText, container } = render(
         <VideoEmbed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" thumbnailUrl="https://example.com/thumb.jpg" />
       );
       const thumbnail = getByAltText('Video thumbnail');
@@ -55,7 +55,7 @@ describe('Video Components and Autoplay behavior', () => {
     });
 
     it('does not play upon click when disabled is true', () => {
-      const { queryByTitle, getByAltText, container } = render(
+      const { queryByTitle: _queryByTitle, getByAltText, container } = render(
         <VideoEmbed url="https://www.youtube.com/watch?v=dQw4w9WgXcQ" thumbnailUrl="https://example.com/thumb.jpg" disabled={true} />
       );
       const thumbnail = getByAltText('Video thumbnail');

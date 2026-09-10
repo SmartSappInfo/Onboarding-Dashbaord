@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 
 interface UploadDropzoneProps {
   onFilesDropped: (files: FileList | null) => void;

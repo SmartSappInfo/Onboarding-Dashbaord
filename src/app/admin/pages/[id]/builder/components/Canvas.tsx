@@ -9,7 +9,6 @@ import {
     useSensor,
     useSensors,
     type DragEndEvent,
-    useDroppable,
     type CollisionDetection
 } from '@dnd-kit/core';
 import {
@@ -66,9 +65,6 @@ import {
     Link2,
     RemoveFormatting,
     Baseline,
-    ChevronDown,
-    CaseSensitive,
-    Check,
     X,
     Sparkles
 } from 'lucide-react';
@@ -86,8 +82,8 @@ import {
 } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings, HeaderCtaButton } from '@/lib/types';
-import { getNormalizedHeaderButtons, isColorLight } from '@/lib/page-builder/resolve-theme';
+import type { PageSection, PageBlock, CampaignPageVersion, ResolvedTheme, BuilderResources, PageHeaderSettings, PageFooterSettings } from '@/lib/types';
+import { getNormalizedHeaderButtons } from '@/lib/page-builder/resolve-theme';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import { HeaderNavRenderer } from '@/components/page-builder/HeaderNavRenderer';
 import { WorkspaceContext } from '@/components/page-builder/WorkspaceContext';
@@ -489,7 +485,7 @@ function ColumnCell({
     selectedSectionId,
     selectedColumnIndex,
     onSelectBlock,
-    onSetTab,
+    onSetTab: _onSetTab,
     onRemoveBlock,
     onMoveBlock,
     onDuplicateBlock,
@@ -904,17 +900,17 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
     onClickFooter,
     onUpdateHeader,
     onUpdateFooter,
-    onSetViewport,
+    onSetViewport: _onSetViewport,
     onAppendSection,
     onAppendMultipleSections,
     onApplyPageStructure,
-}, ref) => {
+}, _ref) => {
     // Canvas Viewport Panning & Zooming Engine States
     const [zoom, setZoom] = useState(0.9);
     const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
     const [isPanning, setIsPanning] = useState(false);
     const [panToolActive, setPanToolActive] = useState(false);
-    const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+    const [_mousePos, setMousePos] = useState({ x: 0, y: 0 });
     const [isAiChatOpen, setIsAiChatOpen] = useState(false);
 
     // Ghana Profile Simulation States
@@ -2730,7 +2726,7 @@ const Canvas = React.forwardRef<HTMLDivElement, CanvasProps>(({
                                         if (previewText) {
                                             return (
                                                 <p className="text-[9px] italic text-slate-400 line-clamp-2 leading-relaxed">
-                                                    "{previewText.length > 50 ? previewText.substring(0, 48) + '...' : previewText}"
+                                                    &quot;{previewText.length > 50 ? previewText.substring(0, 48) + '...' : previewText}&quot;
                                                 </p>
                                             );
                                         }

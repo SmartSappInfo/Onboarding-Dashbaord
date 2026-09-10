@@ -25,7 +25,7 @@ import {
 } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Activity, ChevronDown, ChevronUp, AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { Search, Activity, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
 import type { McpAuditLog } from '@/lib/mcp/types';
 
 export interface McpAuditLogViewerProps {
@@ -33,7 +33,7 @@ export interface McpAuditLogViewerProps {
   isLoading?: boolean;
 }
 
-export function McpAuditLogViewer({ logs, isLoading = false }: McpAuditLogViewerProps) {
+export function McpAuditLogViewer({ logs, isLoading: _isLoading = false }: McpAuditLogViewerProps) {
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedStatus, setSelectedStatus] = React.useState<string>('all');
   const [expandedLogId, setExpandedLogId] = React.useState<string | null>(null);

@@ -22,7 +22,6 @@ import { Card, CardContent } from '@/components/ui/card';
 import {
   Sparkles,
   Plus,
-  Lightbulb,
   Users,
   Anchor,
   FileText,

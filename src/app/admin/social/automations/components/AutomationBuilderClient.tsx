@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,11 +22,9 @@ import {
   Loader2, 
   ArrowDown, 
   Sparkles, 
-  Tag, 
   Bell, 
   Edit3, 
   CheckCircle,
-  HelpCircle,
   X
 } from 'lucide-react';
 import type { SocialAutomationRule } from '@/lib/types';
@@ -545,7 +542,7 @@ export default function AutomationBuilderClient() {
 
                 {actions.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground/60 italic py-4 text-center leading-relaxed">
-                    No steps added yet. Click "Add Step Action" to build your responder chain.
+                    No steps added yet. Click &quot;Add Step Action&quot; to build your responder chain.
                   </p>
                 ) : (
                   <div className="space-y-3">

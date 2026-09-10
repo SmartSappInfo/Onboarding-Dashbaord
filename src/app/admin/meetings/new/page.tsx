@@ -16,7 +16,6 @@ import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { 
     Calendar, 
     Loader2, 
-    Globe, 
     Video, 
     Settings2,
     Save,
@@ -25,20 +24,15 @@ import {
     Check,
     Type,
     Sparkles,
-    Bell,
     ClipboardCheck,
     ImageIcon,
-    Clock,
     LayoutGrid,
     CheckCircle2,
     PlusCircle,
     MessageSquare,
-    Zap,
     Rocket,
-    Copy,
     QrCode,
     Link2,
-    Users,
     Webhook,
     Pencil,
     X
@@ -46,7 +40,7 @@ import {
 import { MEETING_TEMPLATES } from '../constants/templates';
 
 import type { WorkspaceEntity, MeetingType, MeetingRegistrationField } from '@/lib/types';
-import { MEETING_TYPES, REMINDER_OFFSETS, getDefaultMeetingMessagingConfig } from '@/lib/types';
+import { MEETING_TYPES, getDefaultMeetingMessagingConfig } from '@/lib/types';
 import { Eye, EyeOff, LayoutTemplate, Palette } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -56,13 +50,12 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  Form,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useCollection, useMemoFirebase, useUser } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -70,7 +63,6 @@ import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { BrochureSelect } from '../components/brochure-select';
 import { logActivity } from '@/lib/activity-logger';
 import { Separator } from '@/components/ui/separator';
-import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { format } from 'date-fns';
 import { MediaSelect } from '../../entities/components/media-select';
@@ -80,7 +72,6 @@ import RegistrationFieldBuilder from '../components/registration-field-builder';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 import { rescheduleRemindersForMeeting } from '@/lib/reminder-actions';
-import { Checkbox } from '@/components/ui/checkbox';
 import MeetingPreviewPanel from '../components/MeetingPreviewPanel';
 import MeetingLeadCaptureSection from '../components/MeetingLeadCaptureSection';
 import MeetingMessagingTab from '../components/MeetingMessagingTab';
@@ -299,7 +290,7 @@ export default function NewMeetingPage() {
   const watchedHeroTitle = form.watch('heroTitle');
   const registrationEnabled = form.watch('registrationEnabled');
   const watchedBrandingEnabled = form.watch('brandingEnabled');
-  const watchedHeroLayout = form.watch('heroLayout');
+  const _watchedHeroLayout = form.watch('heroLayout');
 
   const [isEditingTitle, setIsEditingTitle] = React.useState(false);
   const titleVal = form.watch('title') || 'New Webinar';

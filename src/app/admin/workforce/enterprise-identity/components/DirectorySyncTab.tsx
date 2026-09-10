@@ -24,7 +24,6 @@ import {
   XCircle,
   Loader2,
   Key,
-  Users,
 } from 'lucide-react';
 import type { DirectorySyncConfig, DirectorySyncLog, DirectorySyncProvider } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';

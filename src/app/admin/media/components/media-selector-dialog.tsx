@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { MediaAsset } from '@/lib/types';
 
-const TABS: MediaAsset['type'][] = ['image', 'video', 'audio', 'document', 'link'];
-const TAB_NAMES: Record<MediaAsset['type'], string> = {
+const _TABS: MediaAsset['type'][] = ['image', 'video', 'audio', 'document', 'link'];
+const _TAB_NAMES: Record<MediaAsset['type'], string> = {
   image: 'Images',
   video: 'Videos',
   audio: 'Audio',

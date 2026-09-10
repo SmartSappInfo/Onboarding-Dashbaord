@@ -54,7 +54,7 @@ export async function POST(req: Request) {
                 reportError('api.webhooks.email', e, { note: `[EMAIL-WEBHOOK] Async processing failed:` });
               }
             });
-          } catch (err) {
+          } catch (_err) {
             // Fallback for environment outside request context (e.g. tests)
             console.warn(`[EMAIL-WEBHOOK] next/server after() was called outside Next.js request context. Executing synchronously.`);
             for (const recipient of toList) {

@@ -23,7 +23,6 @@ import {
   Target,
   CheckSquare,
   ShieldAlert,
-  Shield,
   Sliders,
   Play,
   Wrench,

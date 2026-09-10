@@ -25,7 +25,6 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -33,18 +32,13 @@ import {
   Trash2,
   Filter,
   Layers,
-  Sparkles,
   Bookmark,
   Check,
   RotateCcw,
-  ArrowRight,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import type { Deal, OnboardingStage, UserProfile } from '@/lib/types';
 import type {
   DealFilterTree,
-  DealFilterGroup,
-  DealFilterRule,
   DealFilterOperator,
 } from '@/lib/deals/deal-saved-views';
 import { countMatchingDeals } from '@/lib/deals/deal-filter-engine';

@@ -37,7 +37,6 @@ import {
   Meh,
   Frown,
   Loader2,
-  Send,
   Zap,
 } from 'lucide-react';
 import type { MeetingBrief, PostMeetingIntelligence } from '@/lib/deal-intelligence/types';

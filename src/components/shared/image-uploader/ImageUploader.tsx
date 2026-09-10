@@ -44,7 +44,7 @@ export function ImageUploader({
   category = 'General',
   maxSizeMB = 5,
   className,
-  aspectRatio = 'auto',
+  aspectRatio: _aspectRatio = 'auto',
 }: ImageUploaderProps) {
   const firestore = useFirestore();
   const { user } = useUser();

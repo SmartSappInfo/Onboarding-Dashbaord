@@ -19,14 +19,8 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { Survey, SurveyResponse, SurveyQuestion } from '@/lib/types';
 import {
-  computeNpsMetrics,
-  computeCesMetrics,
-  computeMatrixMetrics,
-  computeRankingMetrics,
-  computeSliderMetrics,
   computeCrossTabulation,
   computeResponseQualityMetrics,
-  getResponseAnswer,
   type CrossTabMatrixResult,
   type ResponseQualityMetrics,
 } from './survey-analytics-engine';

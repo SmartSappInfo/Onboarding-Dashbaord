@@ -5,34 +5,26 @@ import dynamic from 'next/dynamic';
 import {
     Layout,
     Settings2,
-    MonitorPlay,
     Check,
     ArrowRight,
     ArrowLeft,
     Loader2,
     Save,
     Database,
-    PlusCircle,
-    Eye,
     Maximize2,
     Minimize2,
-    Monitor,
     Smartphone as PhoneIcon,
     Code,
     Sparkles,
     ChevronRight,
     FlaskConical,
-    Share2,
     FileText,
-    UserCog,
     ClipboardList,
     Calendar,
     FileCheck,
     CheckSquare,
     Cpu,
     QrCode,
-    MousePointer2,
-    List,
     Mail as MailIcon,
     MessageSquare,
     Zap,
@@ -42,13 +34,10 @@ import {
     Redo,
     ArrowUp,
     ArrowDown,
-    ArrowUpToLine,
-    ArrowDownToLine,
     X,
     Copy,
     Pencil,
     Trash2,
-    Search,
     GripVertical,
     Upload,
     PanelLeftClose,
@@ -57,15 +46,12 @@ import {
 import { cn, stripHtml } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { useSidebar, SidebarContext } from '@/components/ui/sidebar';
+import { SidebarContext } from '@/components/ui/sidebar';
 import { useCollection, useMemoFirebase, useFirestore, useUser } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { createFieldAction, createFieldGroupAction } from '@/lib/fields-actions';
-import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from '@/components/ui/accordion';
-import { EntityCombobox } from '@/components/entities/EntityCombobox';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -94,7 +80,7 @@ import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, rectIn
 import { SortableContext, verticalListSortingStrategy, arrayMove, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Skeleton } from '@/components/ui/skeleton';
-import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable, MessageChannel, EntityContact } from '@/lib/types';
+import type { MessageTemplate, MessageBlock, VariableDefinition, MessageStyle, Meeting, Survey, PDFForm, ContentMode, TemplateTarget, TemplateStatus, FieldGroup, AppField, RecipientType, TemplateVariable, MessageChannel, EntityContact } from '@/lib/types';
 import { toPositionalBody } from '@/lib/whatsapp/whatsapp-domain';
 
 /** Languages offered when submitting a WhatsApp template to Meta for approval. */
@@ -154,12 +140,11 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { validateTemplateVariables } from '@/lib/template-validator';
-import { Users, UserCheck, ShieldCheck as ShieldCheckIcon, AlertTriangle, AlertCircle } from 'lucide-react';
+import { Users, AlertTriangle, AlertCircle } from 'lucide-react';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
 import { HeadlineIQOptimizer } from '@/components/shared/HeadlineIQOptimizer';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
-import AiModelSelector from '@/components/ai/AiModelSelector';
 import UnifiedPromptInput from '@/components/shared/UnifiedPromptInput';
 
 async function uploadArchitectImage(file: File, workspaceId: string): Promise<string> {
@@ -2495,7 +2480,7 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                         <span className="text-[4.5px] text-slate-500 truncate max-w-[60px]">{block.title || 'Custom'}</span>
                     </div>
                     <div className="text-[4.5px] font-mono text-blue-300/80 line-clamp-3 leading-tight opacity-90">
-                        &lt;table width="100%" ...&gt;<br />
+                        &lt;table width=&quot;100%&quot; ...&gt;<br />
                         &nbsp;&nbsp;&lt;tr&gt;&lt;td&gt;...&lt;/td&gt;&lt;/tr&gt;<br />
                         &lt;/table&gt;
                     </div>
@@ -2575,7 +2560,7 @@ export function TemplateWorkshop({
     const { user } = useUser();
 
     // Dialog state for dynamic variable creation
-    const [variableSearchQuery, setVariableSearchQuery] = React.useState('');
+    const [variableSearchQuery, _setVariableSearchQuery] = React.useState('');
     const [isAddVarOpen, setIsAddVarOpen] = React.useState(false);
     const [isCreatingVar, setIsCreatingVar] = React.useState(false);
     const [varForm, setVarForm] = React.useState({
@@ -2586,7 +2571,7 @@ export function TemplateWorkshop({
         groupId: '',
         defaultValue: '',
     });
-    const [accordionValue, setAccordionValue] = React.useState<string[]>(['branding', 'primary_contacts', 'entity_fields', 'custom_vars']);
+    const [_accordionValue, setAccordionValue] = React.useState<string[]>(['branding', 'primary_contacts', 'entity_fields', 'custom_vars']);
 
     React.useEffect(() => {
         if (!variableSearchQuery.trim()) {
@@ -2704,7 +2689,7 @@ export function TemplateWorkshop({
     ], [entityTerminology]);
 
     const [step, setStep] = React.useState(1);
-    const [editorMode, setEditorMode] = React.useState<'designer' | 'code'>('designer');
+    const [editorMode, _setEditorMode] = React.useState<'designer' | 'code'>('designer');
     const [isFullScreen, setIsFullScreen] = React.useState(false);
     const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
     const [selectedBlockIds, setSelectedBlockIds] = React.useState<string[]>([]);
@@ -2766,7 +2751,7 @@ export function TemplateWorkshop({
     }, [toast]);
 
     // Sidebar collapsible tags accordion state
-    const [expandedGroups, setExpandedGroups] = React.useState<Record<string, boolean>>({});
+    const [_expandedGroups, _setExpandedGroups] = React.useState<Record<string, boolean>>({});
 
     // Form State
     const [status, setStatus] = React.useState<TemplateStatus>(initialTemplate?.status || 'draft');
@@ -3479,7 +3464,7 @@ export function TemplateWorkshop({
         return rectIntersection(args);
     }, []);
 
-    const handleAddBlock = (type: MessageBlock['type'], variant?: 'h1' | 'h2' | 'h3') => {
+    const _handleAddBlock = (type: MessageBlock['type'], variant?: 'h1' | 'h2' | 'h3') => {
         const id = `blk_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
         const newBlock: MessageBlock = { id, type, title: '', content: '', variant, style: { textAlign: 'left', variant: 'default' } };
         if (type === 'list') { newBlock.listStyle = 'unordered'; newBlock.items = ['Item 1']; }
@@ -3929,7 +3914,7 @@ export function TemplateWorkshop({
     };
 
     // contentMode-aware preview (Risk Analysis: Risk 3 fix)
-    const extractBgColor = React.useCallback((html: string) => {
+    const _extractBgColor = React.useCallback((html: string) => {
         const bodyMatch = html.match(/<body[^>]*style=["']([^"']*)["']/i);
         if (bodyMatch) {
             const style = bodyMatch[1];
@@ -4257,7 +4242,7 @@ export function TemplateWorkshop({
         return filteredVars.filter(v => v.category === 'custom');
     }, [filteredVars]);
 
-    const contactVarGroups = React.useMemo(() => {
+    const _contactVarGroups = React.useMemo(() => {
         const primary = contactVars.filter(v => !v.key.includes('_roles_') && !v.key.includes('_signatory_'));
         const signatory = contactVars.filter(v => v.key.includes('_signatory_'));
         const roles = contactVars.filter(v => v.key.includes('_roles_'));
@@ -4288,7 +4273,7 @@ export function TemplateWorkshop({
     }, [availableVarsForEditor]);
 
     // Group dynamically harvested survey question variables by individual surveys
-    const surveyGroups = React.useMemo(() => {
+    const _surveyGroups = React.useMemo(() => {
         if (category !== 'surveys') return [];
         const surveyVars = filteredVars.filter(v => v.category === 'surveys' || v.source === 'surveys');
         const groupsMap: Record<string, { title: string; variables: VariableDefinition[] }> = {};
@@ -4314,7 +4299,7 @@ export function TemplateWorkshop({
     }, [filteredVars, category, surveys]);
 
     // Group dynamically harvested PDF form field variables by individual forms
-    const pdfGroups = React.useMemo(() => {
+    const _pdfGroups = React.useMemo(() => {
         if (category !== 'forms' && category !== 'agreements') return [];
         const pdfVars = filteredVars.filter(v => v.category === 'forms' || v.source === 'forms');
         const groupsMap: Record<string, { title: string; variables: VariableDefinition[] }> = {};
@@ -4366,7 +4351,7 @@ export function TemplateWorkshop({
         return labels;
     }, [surveys, pdfs]);
 
-    const featureSpecificVars: VariableDefinition[] = [];
+    const _featureSpecificVars: VariableDefinition[] = [];
 
     const stepTransition = {
         initial: { opacity: 0, x: 20 },

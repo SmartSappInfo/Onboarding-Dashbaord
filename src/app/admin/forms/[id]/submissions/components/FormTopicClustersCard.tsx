@@ -18,10 +18,8 @@ import {
   ChevronUp,
   Wand2,
   Loader2,
-  RefreshCw,
   Quote,
   Zap,
-  AlertTriangle,
   Lightbulb,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

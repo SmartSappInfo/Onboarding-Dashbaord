@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { FolderKanban, Plus, Layers, Eye, Pencil, Globe } from 'lucide-react';
+import { FolderKanban, Plus, Eye, Pencil, Globe } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { listFieldPacks } from '@/lib/backoffice/backoffice-field-actions';

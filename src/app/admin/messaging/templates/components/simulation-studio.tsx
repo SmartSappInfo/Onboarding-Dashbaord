@@ -3,11 +3,9 @@
 import * as React from 'react';
 import { 
     MonitorPlay, 
-    SeparatorVertical, 
     Monitor, 
     Smartphone as PhoneIcon, 
     Loader2, 
-    Zap,
     PenLine,
     AlertTriangle,
     ArrowRight
@@ -28,7 +26,7 @@ import { Separator } from '@/components/ui/separator';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 import { resolveVariables } from '@/lib/messaging-utils';
-import type { MessageTemplate, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, Meeting, Survey, PDFForm } from '@/lib/types';
 import { useTheme } from 'next-themes';
 
 interface SimulationStudioProps {

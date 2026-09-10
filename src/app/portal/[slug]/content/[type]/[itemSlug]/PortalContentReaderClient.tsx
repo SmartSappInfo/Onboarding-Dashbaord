@@ -14,30 +14,21 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   ArrowLeft,
-  Calendar,
-  Clock,
   Download,
-  Share2,
   Copy,
   ChevronRight,
-  BookOpen,
   FileText,
-  Sparkles,
   FolderArchive,
   Search,
-  ExternalLink,
-  CheckCircle2,
-  Video,
-  Globe,
 } from 'lucide-react';
 import { PortalSearchModal } from '../../../components/PortalSearchModal';
 import type { Portal } from '@/lib/types/portal';
-import type { ContentItem, ContentItemType } from '@/lib/types/content';
+import type { ContentItem } from '@/lib/types/content';
 
 interface PortalContentReaderClientProps {
   slug: string;

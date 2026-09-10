@@ -23,11 +23,7 @@ import {
   ExternalLink,
   Filter,
   Rocket,
-  Sparkles,
-  TrendingUp,
-  Briefcase,
   Star,
-  CheckCircle2,
   Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';

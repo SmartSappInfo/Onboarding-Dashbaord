@@ -29,10 +29,6 @@ import {
   Scale,
   Building,
   Save,
-  CheckCircle2,
-  AlertTriangle,
-  UserCheck,
-  Sparkles,
 } from 'lucide-react';
 import type { RoutingRule, RoutingStrategy, RepRoutingConfig } from '@/lib/sales-orchestration/types';
 import { saveRoutingRuleAction } from '@/app/actions/sales-orchestration-actions';

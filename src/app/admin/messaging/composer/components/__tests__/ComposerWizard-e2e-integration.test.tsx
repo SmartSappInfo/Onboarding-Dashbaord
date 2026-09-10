@@ -12,7 +12,7 @@
  * to message sending and summary reporting.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 
 describe('ComposerWizard - End-to-End Integration (Task 9.2)', () => {
     describe('Requirement 1.2: Entity selector displays searchable list', () => {

@@ -327,7 +327,7 @@ export function useUnifiedEntityTimeline({
         });
       }
       toast({ title: item.isPinned ? 'Item unpinned' : 'Item pinned to top' });
-    } catch (error) {
+    } catch (_error) {
       toast({ title: 'Failed to update pin', variant: 'destructive' });
     }
   };
@@ -343,7 +343,7 @@ export function useUnifiedEntityTimeline({
       }
       toast({ title: 'Item removed from timeline' });
       return true;
-    } catch (error) {
+    } catch (_error) {
       toast({ title: 'Failed to delete item', variant: 'destructive' });
       return false;
     }
@@ -369,7 +369,7 @@ export function useUnifiedEntityTimeline({
       }
       toast({ title: 'Note updated successfully' });
       return true;
-    } catch (error) {
+    } catch (_error) {
       toast({ title: 'Failed to update note', variant: 'destructive' });
       return false;
     }
@@ -406,7 +406,7 @@ export function useUnifiedEntityTimeline({
         toast({ title: 'Failed to create task', description: res.error, variant: 'destructive' });
         return false;
       }
-    } catch (error) {
+    } catch (_error) {
       toast({ title: 'Error creating task', variant: 'destructive' });
       return false;
     }
@@ -439,7 +439,7 @@ export function useUnifiedEntityTimeline({
       } else {
         toast({ title: 'AI Brief generation failed', description: res.error, variant: 'destructive' });
       }
-    } catch (error) {
+    } catch (_error) {
       toast({ title: 'Error generating AI brief', variant: 'destructive' });
     } finally {
       setIsGeneratingBrief(false);

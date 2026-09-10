@@ -2,9 +2,8 @@
 
 import * as React from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { collection, query, where, doc, orderBy, updateDoc } from 'firebase/firestore';
-import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { resolveInvitationRecipients, type InvitationRecipient } from '@/lib/contacts/contact-repository';
@@ -17,9 +16,6 @@ import {
   Send, 
   Mail, 
   Smartphone, 
-  Calendar, 
-  ChevronLeft, 
-  ChevronDown, 
   Loader2, 
   CheckCircle2, 
   XCircle, 
@@ -27,20 +23,14 @@ import {
   PlusCircle, 
   Eye,
   Info,
-  ShieldCheck,
   Filter,
   Check,
   Settings2,
   Target,
   User,
   BookmarkCheck,
-  Download,
   Search,
-  UserCheck,
-  ClipboardCheck,
-  SlidersHorizontal,
   MoreHorizontal,
-  X,
   Trash2,
   Plus,
   AlertCircle,
@@ -66,16 +56,14 @@ import {
   manuallyUpdateGuestStatusAction
 } from '@/app/actions/meeting-registrants-actions';
 import { toggleRegistrantAttendance } from '@/app/actions/meeting-attendance-actions';
-import type { Meeting, MeetingRegistrant, MeetingInvitationSlot } from '@/lib/types';
+import type { MeetingRegistrant, MeetingInvitationSlot } from '@/lib/types';
 import { DEFAULT_GLOBAL_INVITATION_TEMPLATE_ID } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, 
   DropdownMenuSeparator, DropdownMenuTrigger,
-  DropdownMenuCheckboxItem
 } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -174,8 +162,8 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
 
   // Roster filters & inline sending loading states
   const [filterRsvpStatus, setFilterRsvpStatus] = React.useState<string>('all');
-  const [filterAttendance, setFilterAttendance] = React.useState<string>('all');
-  const [filterSignupStatus, setFilterSignupStatus] = React.useState<string>('all');
+  const [filterAttendance, _setFilterAttendance] = React.useState<string>('all');
+  const [filterSignupStatus, _setFilterSignupStatus] = React.useState<string>('all');
   const [isRowSending, setIsRowSending] = React.useState<Record<string, boolean>>({});
   const [copiedRegistrantId, setCopiedRegistrantId] = React.useState<string | null>(null);
 
@@ -184,11 +172,11 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const [previewChannel, setPreviewChannel] = React.useState<'email' | 'sms'>('email');
 
   // Registrants Ledger specific states
-  const [searchQuery, setSearchQuery] = React.useState('');
+  const [searchQuery, _setSearchQuery] = React.useState('');
   const [searchQueryInvites, setSearchQueryInvites] = React.useState('');
-  const [isToggling, setIsToggling] = React.useState<Record<string, boolean>>({});
+  const [_isToggling, setIsToggling] = React.useState<Record<string, boolean>>({});
   const [selectedIds, setSelectedIds] = React.useState<Set<string>>(new Set());
-  const [isProcessingBulk, setIsProcessingBulk] = React.useState(false);
+  const [_isProcessingBulk, setIsProcessingBulk] = React.useState(false);
   const [registrantToDelete, setRegistrantToDelete] = React.useState<MeetingRegistrant | null>(null);
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isRegisterOpen, setIsRegisterOpen] = React.useState(false);
@@ -202,15 +190,15 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   const [isSavingResendTemplates, setIsSavingResendTemplates] = React.useState(false);
 
   // Dynamic columns configuration
-  const [visibleColumnKeys, setVisibleColumnKeys] = React.useState<string[]>([]);
-  const [hasCustomizedColumns, setHasCustomizedColumns] = React.useState(false);
+  const [visibleColumnKeys, _setVisibleColumnKeys] = React.useState<string[]>([]);
+  const [hasCustomizedColumns, _setHasCustomizedColumns] = React.useState(false);
 
   // Consume shared workspace context
   const { meeting, registrants, isLoading, meetingDocRef } = useMeetingContext();
   const isLoadingMeeting = isLoading;
   const isLoadingRegistrants = isLoading;
-  const meetingError = null;
-  const registrantsError = null;
+  const _meetingError = null;
+  const _registrantsError = null;
 
   // Derived state from active slot configuration
   const invitationSlots = React.useMemo(() => {
@@ -368,7 +356,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }, [meeting?.registrationFields, registrants]);
 
   // Derive active visible columns
-  const activeColumns = React.useMemo(() => {
+  const _activeColumns = React.useMemo(() => {
     if (hasCustomizedColumns) {
       return visibleColumnKeys;
     }
@@ -376,7 +364,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }, [allAvailableFields, visibleColumnKeys, hasCustomizedColumns]);
 
   // Format custom registration field values
-  const getFormattedFieldValue = (registrant: any, key: string) => {
+  const _getFormattedFieldValue = (registrant: any, key: string) => {
     const rawVal = key === 'phone' ? registrant.phone : registrant.registrationData?.[key];
     
     if (rawVal === undefined || rawVal === null) return '';
@@ -516,7 +504,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   }, [registeredAttendees, searchQuery, filterAttendance, filterSignupStatus]);
 
   // Hook up Registrants Ledger pagination
-  const registrantsPagination = useClientPagination(filteredRegistrants, 10);
+  const _registrantsPagination = useClientPagination(filteredRegistrants, 10);
 
   const handleToggleChannel = React.useCallback(async (ch: 'email' | 'sms') => {
     if (!meeting || !meetingDocRef) return;
@@ -761,7 +749,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   };
 
   // Individual toggle attendance status
-  const handleToggleAttendance = async (registrant: any) => {
+  const _handleToggleAttendance = async (registrant: any) => {
     const newStatus = registrant.status === 'attended' ? 'registered' : 'attended';
     setIsToggling(prev => ({ ...prev, [registrant.id]: true }));
     try {
@@ -776,7 +764,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   };
 
   // Individual approval/cancellation
-  const handleUpdateStatus = async (registrant: any, status: 'approved' | 'cancelled') => {
+  const _handleUpdateStatus = async (registrant: any, status: 'approved' | 'cancelled') => {
     try {
       const result = await updateRegistrantStatusAction(meetingId, registrant.id, status);
       if (!result.success) throw new Error(result.error);
@@ -804,7 +792,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   };
 
   // Resend personalized join links
-  const handleSendLink = async (registrant: any) => {
+  const _handleSendLink = async (registrant: any) => {
     if (!meeting) return;
     try {
       const result = await sendRegistrantJoinLinkAction(
@@ -821,7 +809,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   };
 
   // Bulk Actions
-  const handleBulkAction = async (actionType: 'approve' | 'cancel' | 'delete' | 'sendLinks') => {
+  const _handleBulkAction = async (actionType: 'approve' | 'cancel' | 'delete' | 'sendLinks') => {
     if (selectedIds.size === 0 || !meeting) return;
     setIsProcessingBulk(true);
     
@@ -898,7 +886,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   };
 
   // Ledger Select toggles
-  const toggleAll = () => {
+  const _toggleAll = () => {
     if (selectedIds.size === filteredRegistrants.length && filteredRegistrants.length > 0) {
       setSelectedIds(new Set());
     } else {
@@ -906,7 +894,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     }
   };
 
-  const toggleOne = (id: string) => {
+  const _toggleOne = (id: string) => {
     const next = new Set(selectedIds);
     if (next.has(id)) next.delete(id);
     else next.add(id);
@@ -914,7 +902,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
   };
 
   // Export CSV
-  const handleExportCSV = () => {
+  const _handleExportCSV = () => {
     if (!filteredRegistrants?.length) return;
     const dynamicHeaders = new Set<string>();
     filteredRegistrants.forEach((r: any) => Object.keys(r.registrationData || {}).forEach(k => dynamicHeaders.add(k)));
@@ -1933,7 +1921,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
               <AlertCircle className="h-5 w-5 text-destructive" /> Permanently Delete Roster Entry?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-xs font-semibold text-muted-foreground mt-2">
-              This will permanently delete {registrantToDelete?.name} from this session's database roster, cancelling their invitation link.
+              This will permanently delete {registrantToDelete?.name} from this session&apos;s database roster, cancelling their invitation link.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-2">
@@ -1974,7 +1962,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                 placeholder="Select email template..."
               />
               <p className="text-[10px] text-muted-foreground/60 leading-normal">
-                If unconfigured, defaults to the organization's fallback Resend Join Link (Email) template.
+                If unconfigured, defaults to the organization&apos;s fallback Resend Join Link (Email) template.
               </p>
             </div>
             <div className="space-y-2">
@@ -1992,7 +1980,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                 placeholder="Select SMS template..."
               />
               <p className="text-[10px] text-muted-foreground/60 leading-normal">
-                If unconfigured, defaults to the organization's fallback Resend Join Link (SMS) template.
+                If unconfigured, defaults to the organization&apos;s fallback Resend Join Link (SMS) template.
               </p>
             </div>
             <DialogFooter className="pt-4 gap-2">

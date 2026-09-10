@@ -10,7 +10,6 @@ import type {
   CertificateTemplate,
   IssuedCertificate,
   BadgeDefinition,
-  AwardedBadge,
   XApiStatement,
 } from '@/lib/types/credentials';
 

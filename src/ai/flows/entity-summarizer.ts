@@ -1,6 +1,5 @@
 import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
-import { EntityNote } from '@/lib/types';
 import { resolveAndCompilePrompt } from '@/lib/pms-resolver';
 
 export const entitySummarySchema = z.object({

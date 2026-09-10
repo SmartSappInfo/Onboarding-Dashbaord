@@ -21,7 +21,7 @@
  * EXPECTED OUTCOME: All tests PASS (confirms baseline behavior to preserve)
  */
 
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import * as fc from 'fast-check';
 
 describe('Preservation Property Tests: Runtime Behavior Unchanged', () => {

@@ -49,7 +49,7 @@ async function callIntelligenceAI<T>(params: {
   provider?: string;
   modelId?: string;
 }): Promise<T> {
-  const { prompt, schema, organizationId, provider = 'openrouter', modelId = 'google/gemini-3.6-flash' } = params;
+  const { prompt, schema, organizationId, provider: _provider = 'openrouter', modelId = 'google/gemini-3.6-flash' } = params;
 
   try {
     let apiKey = process.env.OPENROUTER_API_KEY;

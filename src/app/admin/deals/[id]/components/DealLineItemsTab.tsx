@@ -65,7 +65,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { formatCurrency, getCurrencySymbol } from '@/lib/currency-utils';
+import { formatCurrency } from '@/lib/currency-utils';
 import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
 import { 
   saveDealLineItemsAction, 
@@ -100,7 +100,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
 
   // Catalog Products state
   const [catalogProducts, setCatalogProducts] = React.useState<Product[]>([]);
-  const [isLoadingCatalog, setIsLoadingCatalog] = React.useState(false);
+  const [_isLoadingCatalog, setIsLoadingCatalog] = React.useState(false);
 
   React.useEffect(() => {
     if (!deal.workspaceId) return;

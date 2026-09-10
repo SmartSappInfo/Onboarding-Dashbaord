@@ -20,11 +20,8 @@ import {
   Users,
   Award,
   ArrowRight,
-  ShieldCheck,
-  Globe,
   FolderArchive,
   Newspaper,
-  Layers,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';

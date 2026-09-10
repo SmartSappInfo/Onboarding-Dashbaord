@@ -15,7 +15,7 @@ import { useBackoffice } from '../context/BackofficeProvider';
 export default function AuthorizationGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+  const _auth = useAuth();
   const { hasAccess, isLoading } = useBackoffice();
   const [status, setStatus] = React.useState<'checking' | 'granted' | 'denied'>('checking');
 

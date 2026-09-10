@@ -13,7 +13,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -34,12 +34,10 @@ import {
   Tag,
   ArrowRight,
   ArrowLeft,
-  Sparkles,
   Smartphone,
   Building,
   Lock,
   Loader2,
-  Gift,
 } from 'lucide-react';
 
 interface PortalCheckoutClientProps {

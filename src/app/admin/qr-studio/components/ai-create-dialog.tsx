@@ -17,13 +17,8 @@ import {
   Sparkles,
   Loader2,
   CheckCircle2,
-  ArrowRight,
-  RefreshCw,
   Sliders,
-  Palette,
-  Tag,
   ShieldCheck,
-  Check,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -36,7 +31,6 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';

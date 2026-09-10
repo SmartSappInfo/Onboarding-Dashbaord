@@ -14,39 +14,32 @@ import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   GraduationCap,
   BookOpen,
   FolderArchive,
-  Calendar,
   Award,
   Sparkles,
   Flame,
   ArrowRight,
   Download,
-  ExternalLink,
   PlayCircle,
-  CheckCircle2,
   Lock,
   ArrowLeft,
-  CreditCard,
   LogOut,
-  Sliders,
-  Video,
   ListOrdered,
 } from 'lucide-react';
 import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
 import type { Portal } from '@/lib/types/portal';
-import type { PortalMembership, MembershipPlan, AccessGrant } from '@/lib/types/membership';
+import type { PortalMembership, AccessGrant } from '@/lib/types/membership';
 import type { ContentItem } from '@/lib/types/content';
-import type { Course, CourseEnrollment } from '@/lib/types/learning';
+import type { Course } from '@/lib/types/learning';
 import { PortalAuthModal } from '../components/PortalAuthModal';
 import { MemberOnboardingWidget } from './components/MemberOnboardingWidget';
 import { MemberTasksWidget } from './components/MemberTasksWidget';
@@ -60,7 +53,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
   const auth = useAuth();
   const { user, isUserLoading } = useUser();
   const router = useRouter();
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
 
   const [activeTab, setActiveTab] = React.useState('courses');
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
@@ -154,7 +147,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
         : null,
     [firestore, portal?.id, user?.uid]
   );
-  const { data: grants } = useCollection<AccessGrant>(grantsQuery);
+  const { data: _grants } = useCollection<AccessGrant>(grantsQuery);
 
   const lessons = React.useMemo(() => (contentItems || []).filter(c => c.type === 'lesson'), [contentItems]);
   const resources = React.useMemo(() => (contentItems || []).filter(c => c.type === 'resource'), [contentItems]);

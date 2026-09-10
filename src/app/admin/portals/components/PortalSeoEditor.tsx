@@ -8,13 +8,13 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Search, Share2, Eye, ShieldAlert } from 'lucide-react';
+import { Globe, Share2 } from 'lucide-react';
 import type { PortalSeoConfig, PortalBranding } from '@/lib/types/portal';
 
 interface PortalSeoEditorProps {

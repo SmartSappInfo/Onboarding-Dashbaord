@@ -13,7 +13,6 @@ import type {
   FormComponent, 
   FormField, 
   FieldSemanticType,
-  FormComponentType,
 } from './form-types';
 
 /**

@@ -16,10 +16,9 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { MessageSquare, Send, Loader2, CheckCircle2, AlertCircle, Smartphone } from 'lucide-react';
+import { MessageSquare, Send, Loader2, CheckCircle2, Smartphone } from 'lucide-react';
 import { AudienceSelector } from './AudienceSelector';
 import { createSurveyDistributionCampaignAction, dispatchSurveyDistributionCampaignAction } from '@/lib/surveys/survey-campaign-actions';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -37,7 +36,7 @@ export interface WhatsAppCampaignTabProps {
 export function WhatsAppCampaignTab({
   survey,
   deployments,
-  defaultUrl,
+  defaultUrl: _defaultUrl,
   onRefresh,
 }: WhatsAppCampaignTabProps) {
   const { activeWorkspaceId } = useWorkspace();

@@ -1,7 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   calculateEntityPredictiveHealthAction,
-  getWorkspacePredictiveOverviewAction,
   executePredictiveNextBestAction,
   getSystemPredictiveWeightsAction,
   saveSystemPredictiveWeightsAction,
@@ -35,7 +34,7 @@ const mockCollection = vi.fn(() => ({
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: (name: string) => mockCollection(),
+    collection: (_name: string) => mockCollection(),
   },
 }));
 

@@ -18,7 +18,7 @@
 
 import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, doc } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { Document, DocumentSourceType, DocumentType } from '@/lib/types/document-types';
@@ -137,7 +137,7 @@ export default function DocumentStudioClient() {
   const [isMediaSelectorOpen, setIsMediaSelectorOpen] = useState(false);
   const [isMigrationOpen, setIsMigrationOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [_copiedId, setCopiedId] = useState<string | null>(null);
 
   // Form State for Quick Create
   const [title, setTitle] = useState('');

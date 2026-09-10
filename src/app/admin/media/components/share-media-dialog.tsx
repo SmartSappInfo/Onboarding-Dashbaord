@@ -1013,7 +1013,7 @@ export default function ShareMediaDialog({ asset, open, onOpenChange }: ShareMed
                                                     </div>
                                                     <div className="space-y-1">
                                                         <p className="text-xs font-extrabold text-foreground">Save Configuration to Activate Links</p>
-                                                        <p className="text-[10px] text-muted-foreground font-medium">Click "Save Config" below to persist options and generate active public share links.</p>
+                                                        <p className="text-[10px] text-muted-foreground font-medium">Click &quot;Save Config&quot; below to persist options and generate active public share links.</p>
                                                     </div>
                                                 </div>
                                             ) : activeLinkTab === 'links' ? (

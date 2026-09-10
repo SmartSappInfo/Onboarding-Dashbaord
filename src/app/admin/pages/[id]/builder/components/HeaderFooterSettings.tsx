@@ -510,7 +510,7 @@ export function HeaderSettingsControl({
               </div>
 
               {(!header.navItems || header.navItems.length === 0) ? (
-                <p className="text-[10px] text-slate-500 italic text-center py-2">No links. Click 'Add Link' above.</p>
+                <p className="text-[10px] text-slate-500 italic text-center py-2">No links. Click &apos;Add Link&apos; above.</p>
               ) : (
                 <div className="space-y-3 max-h-96 overflow-y-auto pr-1">
                   {header.navItems.map((item) => (
@@ -732,7 +732,7 @@ export function HeaderSettingsControl({
                           </div>
 
                           <div className="space-y-2">
-                            {(item.children || []).map((child, cIdx) => (
+                            {(item.children || []).map((child, _cIdx) => (
                               <div key={child.id} className="p-2.5 bg-slate-950 border border-slate-800 rounded-md space-y-2 relative">
                                 <button
                                   type="button"

@@ -16,7 +16,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { computeFunnelData, computeDropoffInsights, type FunnelStep } from '@/lib/survey-analytics-utils';
-import { Filter, TrendingDown, ArrowDown, AlertCircle, CheckCircle2, Zap } from 'lucide-react';
+import { Filter, ArrowDown } from 'lucide-react';
 
 export interface FunnelDropoffTabProps {
   survey: Survey;

@@ -1,19 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import {
   getRelationDisplayLabel,
   buildAdjacencyGraph,
   findShortestGraphPath,
   extractSubGraph,
   detectGraphClusters,
-  computeGraphMetrics,
   filterKnowledgeGraph,
   extractBacklinks,
 } from '../quick-notes-domain';
 import type {
   UnifiedNote,
   KnowledgeRelation,
-  GraphNode,
-  GraphEdge,
 } from '../quick-notes-types';
 
 describe('Company Brain Phase 5: Knowledge Graph Domain Logic', () => {

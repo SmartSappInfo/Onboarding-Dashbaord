@@ -18,7 +18,6 @@ import type {
 } from '@/lib/meetings/types/crm-attribution';
 import {
   calculateLeadMeetingScore,
-  DEFAULT_SCORE_WEIGHTS,
 } from '@/lib/meetings/crm-attribution-service';
 
 function getErrorMessage(error: unknown): string {

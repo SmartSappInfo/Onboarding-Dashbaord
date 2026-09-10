@@ -20,10 +20,8 @@ import {
   recordPerformanceMetric,
   getPerformanceMetricsForCampaign,
   createClientReport,
-  updateClientReport,
   getClientReportsForEntity,
   createStrategyDoc,
-  updateStrategyDoc,
   getStrategyDocsForEntity,
 } from '../marketing-actions';
 import type { Workspace, Entity, Campaign, Proposal, Deliverable } from '../types';

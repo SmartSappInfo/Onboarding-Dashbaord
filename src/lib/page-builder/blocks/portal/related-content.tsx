@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { Sparkles, ArrowRight, BookOpen, FileText, Newspaper } from 'lucide-react';
+import { Sparkles, ArrowRight } from 'lucide-react';
 import { registerBlock } from '../../registry';
 import { Badge } from '@/components/ui/badge';
 

@@ -24,7 +24,7 @@ export class PredictiveIntelligenceEngine {
    */
   public static calculatePredictiveLikelihood(prospect: Prospect): PredictiveConversionLikelihood {
     const score = prospect.scoring?.overallScore ?? 50;
-    const need = prospect.scoring?.needScore ?? 10;
+    const _need = prospect.scoring?.needScore ?? 10;
     const digitalMaturity = prospect.scoring?.digitalMaturity ?? 10;
     const intent = prospect.scoring?.buyingIntent ?? 10;
     const budget = prospect.scoring?.budgetProbability ?? 10;

@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Clock, Hourglass, Plus, StickyNote } from 'lucide-react';
+import { Clock, Plus, StickyNote } from 'lucide-react';
 import { usePendingJobs } from '../../../../components/AutomationPendingJobsContext';
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
@@ -10,9 +10,6 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 /**
  * @fileOverview Temporal Delay Node for Automation Canvas.
@@ -60,7 +57,7 @@ export function DelayNode({ id, data, selected }: DelayNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const config = data.config || {};
     const params = useParams();
-    const automationId = params?.id as string;
+    const _automationId = params?.id as string;
     const { countsBySourceNodeId } = usePendingJobs();
     const waitingCount = countsBySourceNodeId[id] || 0;
 

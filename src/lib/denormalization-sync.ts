@@ -121,7 +121,7 @@ export async function extractDenormalizedFields(entity: Entity): Promise<Denorma
 
   const { extractPrimaryContactFields } = await import('./entity-contact-helpers');
   
-  const { primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields(entity);
+  const { primaryContactName: _primaryContactName, primaryEmail, primaryPhone } = extractPrimaryContactFields(entity);
   
   return {
     displayName: entity.name,

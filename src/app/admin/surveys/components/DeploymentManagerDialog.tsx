@@ -23,9 +23,6 @@ import {
   Mail,
   MessageSquare,
   Smartphone,
-  Layers,
-  Calendar,
-  AlertCircle,
   Plus,
   Loader2,
   RefreshCw,
@@ -68,7 +65,7 @@ export function DeploymentManagerDialog({
   surveyId,
   workspaceId,
   surveyTitle,
-  defaultSlug,
+  defaultSlug: _defaultSlug,
 }: DeploymentManagerDialogProps) {
   const { toast } = useToast();
 

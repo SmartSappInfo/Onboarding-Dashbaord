@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { X, Tag, Zap, Globe, Building2, User, ExternalLink, CheckCircle2, XCircle } from 'lucide-react';
+import { Tag, Zap, Globe, ExternalLink, CheckCircle2 } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';

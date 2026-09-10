@@ -4,7 +4,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import Papa from 'papaparse';
 import * as XLSX from 'xlsx';
-import { Upload, FileText, ArrowLeft, ClipboardList, Download, ChevronDown, AlertTriangle, X } from 'lucide-react';
+import { Upload, ArrowLeft, ClipboardList, Download, ChevronDown, AlertTriangle, X } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

@@ -12,13 +12,9 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { globalAgentRegistry } from '@/lib/supervisor/agent-registry';
-import { BaseDomainSpecialist, AgentSecurityViolationError } from '../specialists/base-domain-specialist';
+import { AgentSecurityViolationError } from '../specialists/base-domain-specialist';
 import { KnowledgeSpecialist } from '../specialists/knowledge-specialist';
 import { RevenueSpecialist } from '../specialists/revenue-specialist';
-import { MeetingSpecialist } from '../specialists/meeting-specialist';
-import { SdrSpecialist } from '../specialists/sdr-specialist';
-import { OperationsSpecialist } from '../specialists/operations-specialist';
-import { GovernanceSpecialist } from '../specialists/governance-specialist';
 import { SwarmOrchestrator } from '../services/swarm-orchestrator';
 import { McpGateway } from '@/lib/mcp/gateway';
 import type { AgentRequest, AgentResult, AgentToolCall } from '@/lib/supervisor/types';

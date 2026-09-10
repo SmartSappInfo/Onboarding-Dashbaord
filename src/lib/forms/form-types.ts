@@ -6,15 +6,6 @@
  * FormSettings, FormThemeConfig, and related types.
  */
 
-import type { Timestamp } from 'firebase/firestore';
-import type { 
-  AppField, 
-  FormFieldInstance, 
-  FormThemeConfig, 
-  FormSuccessBehavior, 
-  FormSubmissionActions,
-  SeoConfig,
-} from '@/lib/types';
 
 export type FormPurpose =
   | 'lead_capture'

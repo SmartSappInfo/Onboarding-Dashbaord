@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Pin, PinOff, Pencil, Trash2, Link2, CheckSquare, Paperclip, School } from 'lucide-react';
+import { Pin, PinOff, Pencil, Trash2, Paperclip, School } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

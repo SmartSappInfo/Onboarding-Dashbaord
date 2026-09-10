@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Layers, Copy, Check, Code } from 'lucide-react';
+import { Copy, Check, Code } from 'lucide-react';
 import { generateIframeEmbedSnippet, generateModalEmbedSnippet } from '@/lib/surveys/survey-attribution';
 import type { Survey } from '@/lib/types';
 

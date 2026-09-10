@@ -246,7 +246,7 @@ async function resolveFromEntity(
 /**
  * Resolves contact data from the legacy schools collection
  */
-async function resolveFromSchool(
+async function _resolveFromSchool(
   schoolData: School, 
   workspaceId: string, 
   forceLegacy: boolean = false
@@ -424,7 +424,7 @@ export async function readFromEntities(entityId: string): Promise<Entity | null>
  */
 export async function getEntity(
   entityId: string,
-  migrationStatus?: 'legacy' | 'migrated' | 'dual-write'
+  _migrationStatus?: 'legacy' | 'migrated' | 'dual-write'
 ): Promise<Entity | null> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();

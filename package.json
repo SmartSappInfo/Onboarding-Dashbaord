@@ -13,7 +13,7 @@
     "genkit:watch": "genkit start -- tsx --watch src/ai/dev.ts",
     "build": "NEXT_TELEMETRY_DISABLED=1 BUILD_CPUS=2 NODE_OPTIONS='--max-old-space-size=4096' next build",
     "build:next": "NEXT_TELEMETRY_DISABLED=1 BUILD_CPUS=2 NODE_OPTIONS='--max-old-space-size=4096' next build",
-    "lint": "eslint 'src/**/*.{ts,tsx}' --max-warnings 9999",
+    "lint": "eslint 'src/**/*.{ts,tsx}' --max-warnings 645",
     "typecheck": "NODE_OPTIONS='--max-old-space-size=8192' tsc --noEmit",
     "format": "prettier --write .",
     "test": "vitest",

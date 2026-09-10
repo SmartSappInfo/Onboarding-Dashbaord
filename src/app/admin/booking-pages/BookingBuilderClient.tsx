@@ -5,7 +5,7 @@ import { useUser, useCollection, useFirestore, useMemoFirebase } from '@/firebas
 import type { BookingPage, BookingQuestion, ConferencingProvider } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,7 +30,6 @@ import {
   Loader2, 
   Calendar, 
   Sparkles,
-  Settings,
   Eye,
   PlusCircle
 } from 'lucide-react';

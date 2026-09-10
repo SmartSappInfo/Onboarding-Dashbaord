@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -21,14 +21,11 @@ import {
   GraduationCap,
   Search,
   BookOpen,
-  User,
   Layers,
   Clock,
   ArrowRight,
   ArrowLeft,
   Sparkles,
-  CheckCircle2,
-  Lock,
 } from 'lucide-react';
 import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
 import type { Portal } from '@/lib/types/portal';
@@ -44,7 +41,7 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedCategory, setSelectedCategory] = React.useState<string>('all');
-  const [selectedLevel, setSelectedLevel] = React.useState<string>('all');
+  const [selectedLevel, _setSelectedLevel] = React.useState<string>('all');
 
   // 1. Query Portal
   const portalQuery = useMemoFirebase(

@@ -35,14 +35,10 @@ import {
   Workflow,
   Play,
   RotateCw,
-  Scale,
   Clock,
   Sparkles,
-  ShieldAlert,
   Loader2,
   Sliders,
-  Flame,
-  CheckCircle2,
   AlertTriangle,
 } from 'lucide-react';
 import type {

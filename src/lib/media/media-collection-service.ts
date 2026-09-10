@@ -12,7 +12,7 @@ import {
   collection, doc, getDoc, getDocs, query, where, 
   setDoc, updateDoc, orderBy, type Firestore 
 } from 'firebase/firestore';
-import type { MediaCollection, MediaPackage, CollectionType } from '../types/media-2.0';
+import type { MediaCollection, CollectionType } from '../types/media-2.0';
 
 export interface CreateCollectionParams {
   workspaceId: string;

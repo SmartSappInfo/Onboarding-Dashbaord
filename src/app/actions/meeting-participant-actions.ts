@@ -429,7 +429,7 @@ export async function bulkImportParticipantsAction(input: {
     for (const item of participants) {
       if (!item.name || !item.email) continue;
 
-      const { rawToken, tokenHash } = generateSecureJoinToken();
+      const { rawToken: _rawToken, tokenHash } = generateSecureJoinToken();
       const pRef = adminDb
         .collection('meetings')
         .doc(meetingId)

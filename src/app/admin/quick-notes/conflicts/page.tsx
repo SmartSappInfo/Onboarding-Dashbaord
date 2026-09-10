@@ -19,10 +19,8 @@ import * as React from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  AlertTriangle,
   RefreshCw,
   ShieldCheck,
-  Filter,
 } from 'lucide-react';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { Button } from '@/components/ui/button';

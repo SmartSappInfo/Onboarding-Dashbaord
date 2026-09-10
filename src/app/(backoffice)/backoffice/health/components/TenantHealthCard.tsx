@@ -10,7 +10,7 @@
 'use client';
 
 import * as React from 'react';
-import { HeartPulse, Mail, Plug2, Banknote, Workflow, Users, AlertCircle, ExternalLink, Shield } from 'lucide-react';
+import { HeartPulse, Mail, Plug2, Banknote, Workflow, Users, AlertCircle, Shield } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

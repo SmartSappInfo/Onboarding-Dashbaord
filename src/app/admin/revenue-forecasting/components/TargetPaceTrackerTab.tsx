@@ -26,7 +26,6 @@ import {
   AlertCircle,
   CheckCircle2,
   AlertTriangle,
-  ArrowRight,
   ShieldAlert,
   Zap,
   Flame,
@@ -34,7 +33,6 @@ import {
 import type {
   PaceHealthStatus,
   RevenueForecastOverview,
-  TargetAttainmentPacing,
 } from '@/lib/revenue-forecasting/types';
 
 interface TargetPaceTrackerTabProps {
@@ -42,7 +40,7 @@ interface TargetPaceTrackerTabProps {
 }
 
 export function TargetPaceTrackerTab({ overview }: TargetPaceTrackerTabProps) {
-  const { targetPacing, monteCarloResult } = overview;
+  const { targetPacing, monteCarloResult: _monteCarloResult } = overview;
 
   const getPaceStatusBadge = (status: PaceHealthStatus) => {
     switch (status) {

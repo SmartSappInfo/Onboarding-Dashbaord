@@ -1,9 +1,8 @@
 import * as React from 'react';
-import { Users, Save, Check } from 'lucide-react';
+import { Users, Save } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getContactTypeDefaults, saveContactTypeDefaults } from '@/lib/backoffice/backoffice-field-actions';
 import { getSystemContactTypes } from '@/lib/contact-type-defaults';
 import { useBackoffice } from '../../context/BackofficeProvider';

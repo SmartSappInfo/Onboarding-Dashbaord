@@ -1,9 +1,4 @@
 import type { MigrationStatus, ResolvedContact, EntityContact } from './types';
-import {
-  getPrimaryContact,
-  getSignatoryContact,
-  resolveEntityContacts,
-} from './entity-contact-helpers';
 
 /**
  * @fileOverview Migration Status Utility Functions

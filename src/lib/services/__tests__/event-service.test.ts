@@ -1,5 +1,4 @@
 import { describe, it, expect } from 'vitest';
-import { EventService } from '../event-service';
 
 describe('EventService', () => {
   describe('Slug & Event Helpers', () => {

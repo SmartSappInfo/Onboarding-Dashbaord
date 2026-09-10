@@ -6,11 +6,11 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Survey, SurveyResponse, SurveySession, SurveySummary, UserProfile } from "@/lib/types";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie, Legend, LineChart, Line, CartesianGrid } from 'recharts';
 import { cn } from '@/lib/utils';
-import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy, BarChart3, TrendingUp, Brain, Sparkles, MessageSquare, ArrowRight, Loader2 } from 'lucide-react';
+import { Target, MousePointer2, AlertCircle, TrendingDown, UserMinus, ShieldCheck, User as UserIcon, Award, Activity, Users, Trophy, BarChart3, TrendingUp, Brain, Sparkles, MessageSquare, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -23,8 +23,6 @@ import { motion, type Variants } from 'framer-motion';
 import {
     CHART_COLORS,
     type AnalyzedResult,
-    type FunnelStep,
-    type DropoffInsight,
     type AttributionRow,
     computeFunnelData,
     computeDropoffInsights,

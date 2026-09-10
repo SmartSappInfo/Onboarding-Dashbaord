@@ -6,11 +6,7 @@ import {
   X,
   GitMerge,
   AlertTriangle,
-  Sparkles,
   Link2,
-  Tag,
-  CheckSquare,
-  Lightbulb,
   ExternalLink,
   ChevronDown,
   ChevronUp,
@@ -104,7 +100,7 @@ export function InboxItemCard({
             <div className="flex items-center justify-between text-xs font-bold text-amber-800 dark:text-amber-300">
               <span className="flex items-center gap-1.5">
                 <GitMerge className="h-3.5 w-3.5" />
-                Overlap with: "{item.duplicateDetails.candidateTitle}"
+                Overlap with: &quot;{item.duplicateDetails.candidateTitle}&quot;
               </span>
               <span>{Math.round(item.duplicateDetails.similarityScore * 100)}% Match</span>
             </div>
@@ -140,13 +136,13 @@ export function InboxItemCard({
                 <span className="text-[10px] font-bold text-muted-foreground block mb-0.5 uppercase tracking-wider">
                   Thesis (Current Record)
                 </span>
-                <p className="text-xs italic text-foreground">"{item.contradictionDetails.thesis?.quote || item.contradictionDetails.thesisQuote || item.contradictionDetails.thesisClaim || ''}"</p>
+                <p className="text-xs italic text-foreground">&quot;{item.contradictionDetails.thesis?.quote || item.contradictionDetails.thesisQuote || item.contradictionDetails.thesisClaim || ''}&quot;</p>
               </div>
               <div className="p-2.5 rounded-lg bg-card border border-border/60">
                 <span className="text-[10px] font-bold text-muted-foreground block mb-0.5 uppercase tracking-wider">
                   Antithesis ({item.contradictionDetails.antithesis?.sourceTitle || 'Other Record'})
                 </span>
-                <p className="text-xs italic text-foreground">"{item.contradictionDetails.antithesis?.quote || item.contradictionDetails.antithesisQuote || item.contradictionDetails.antithesisClaim || ''}"</p>
+                <p className="text-xs italic text-foreground">&quot;{item.contradictionDetails.antithesis?.quote || item.contradictionDetails.antithesisQuote || item.contradictionDetails.antithesisClaim || ''}&quot;</p>
               </div>
             </div>
           </div>
@@ -162,7 +158,7 @@ export function InboxItemCard({
                 <span className="font-mono uppercase font-bold text-emerald-600 dark:text-emerald-400">
                   {item.suggestedPatch.relationType}
                 </span>{' '}
-                to "{item.suggestedPatch.targetObjectTitle || 'Target Entity'}"
+                to &quot;{item.suggestedPatch.targetObjectTitle || 'Target Entity'}&quot;
               </span>
             </div>
           </div>
@@ -183,7 +179,7 @@ export function InboxItemCard({
                 {item.evidence.map((ev, idx) => (
                   <div key={idx} className="text-xs text-muted-foreground bg-muted/30 p-2 rounded-lg">
                     <span className="font-bold text-foreground block">{ev.sourceTitle}</span>
-                    <p className="text-[11px] italic mt-0.5">"{ev.textSnippet}"</p>
+                    <p className="text-[11px] italic mt-0.5">&quot;{ev.textSnippet}&quot;</p>
                   </div>
                 ))}
               </div>

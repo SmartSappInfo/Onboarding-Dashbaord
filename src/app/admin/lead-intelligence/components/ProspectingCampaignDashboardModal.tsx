@@ -32,7 +32,6 @@ import {
   Send, 
   TrendingUp, 
   Download,
-  CheckCircle2
 } from 'lucide-react';
 import type { ProspectingCampaign } from '@/lib/lead-intelligence/types';
 import { cn } from '@/lib/utils';

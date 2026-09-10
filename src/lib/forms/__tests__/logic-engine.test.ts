@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   evaluateSafeFormula,
   evaluateCondition,
-  evaluateConditionGroup,
   detectLogicCycles,
   evaluateFormLogic,
 } from '../logic-engine';

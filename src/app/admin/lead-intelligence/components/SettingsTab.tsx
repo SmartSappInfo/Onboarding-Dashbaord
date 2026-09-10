@@ -17,7 +17,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { 
   Download, 
@@ -27,15 +26,8 @@ import {
   EyeOff, 
   KeyRound, 
   Chrome, 
-  ShieldCheck, 
   Sliders, 
-  Activity, 
   MapPin, 
-  Coins, 
-  Cpu, 
-  Clock, 
-  RotateCcw,
-  Loader2
 } from 'lucide-react';
 import type { 
   LeadIntelligenceSettings, 
@@ -53,7 +45,6 @@ import { ProviderHealthStatusCard } from './ProviderHealthStatusCard';
 import { ProviderRoutingMatrixModal } from './ProviderRoutingMatrixModal';
 import { TerritoryRulesManagerModal } from './TerritoryRulesManagerModal';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
 
 interface SettingsTabProps {
   settings: LeadIntelligenceSettings;

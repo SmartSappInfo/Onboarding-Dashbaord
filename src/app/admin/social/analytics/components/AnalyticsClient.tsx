@@ -31,7 +31,6 @@ import {
 } from 'recharts';
 import { simulateSocialConversionsAction } from '@/app/actions/social-composer-actions';
 import type { SocialPost, WorkspaceEntity, Invoice } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface TimeMetric {
   date: string;
@@ -64,7 +63,7 @@ export default function AnalyticsClient() {
     );
   }, [db, activeWorkspaceId]);
 
-  const { data: postsRaw, isLoading: isLoadingPosts } = useCollection<SocialPost>(postsQuery);
+  const { data: postsRaw, isLoading: _isLoadingPosts } = useCollection<SocialPost>(postsQuery);
   const posts = postsRaw || [];
 
   // 2. Load CRM Contacts
@@ -101,7 +100,7 @@ export default function AnalyticsClient() {
     posts.forEach((post) => {
       if (selectedPostId !== 'all' && post.id !== selectedPostId) return;
 
-      Object.entries(post.platformVariations).forEach(([platform, variation]) => {
+      Object.entries(post.platformVariations).forEach(([platform, _variation]) => {
         if (activePlatform !== 'all' && platform !== activePlatform) return;
 
         // Calculate reach and clicks from mock/simulated indices

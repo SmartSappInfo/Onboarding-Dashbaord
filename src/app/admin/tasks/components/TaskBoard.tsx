@@ -12,7 +12,6 @@ import {
     type DragOverEvent,
     closestCorners,
 } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
 import type { Task, TaskStatus } from '@/lib/types';
 import TaskColumn from './TaskColumn';
 import TaskCard from './TaskCard';
@@ -57,7 +56,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
         if (!over) return;
 
         const activeId = active.id as string;
-        const overId = over.id as string;
+        const _overId = over.id as string;
 
         const activeData = active.data.current;
         const overData = over.data.current;
@@ -103,7 +102,7 @@ export default function TaskBoard({ tasks, entityLogoMap, onTaskClick, userMap }
                     title: 'Status Synchronized', 
                     description: `Moved task to ${currentLocalTask.status.replace('_', ' ')} phase.` 
                 });
-            } catch (e) {
+            } catch (_e) {
                 setLocalTasks(tasks); // Rollback
                 toast({ variant: 'destructive', title: 'Sync Failure' });
             }

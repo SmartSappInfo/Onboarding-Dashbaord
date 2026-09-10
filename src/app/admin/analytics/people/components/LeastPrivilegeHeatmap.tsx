@@ -14,10 +14,8 @@ import * as React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { Button } from '@/components/ui/button';
-import { ShieldCheck, ShieldAlert, Sparkles, Flame, CheckCircle2 } from 'lucide-react';
+import { ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Role } from '@/lib/types';
 
 interface LeastPrivilegeRoleReport {
   roleId: string;
@@ -45,7 +43,7 @@ interface LeastPrivilegeHeatmapProps {
 
 export function LeastPrivilegeHeatmap({
   rolesReport,
-  isLoading,
+  isLoading: _isLoading,
 }: LeastPrivilegeHeatmapProps) {
   const [selectedRoleId, setSelectedRoleId] = React.useState<string | null>(null);
 

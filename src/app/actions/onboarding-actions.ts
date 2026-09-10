@@ -15,7 +15,6 @@
 import { adminAuth, adminDb } from '@/lib/firebase-admin';
 import { OnboardingJourneyService } from '@/lib/services/onboarding/onboarding-journey-service';
 import { OnboardingInstanceService } from '@/lib/services/onboarding/onboarding-instance-service';
-import { PersonService } from '@/lib/services/identity/person-service';
 import { IdentityMigrationService } from '@/lib/services/identity/identity-migration-service';
 import type {
   OnboardingJourney,
@@ -231,7 +230,7 @@ export async function bulkAssignJourneyAction(params: {
       params.journeyId
     );
     return { success: true, assignedCount: res.assignedCount, errors: res.errors };
-  } catch (err: unknown) {
+  } catch (_err: unknown) {
     return { success: false, assignedCount: 0, errors: [] };
   }
 }

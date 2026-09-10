@@ -35,7 +35,7 @@ export interface ActionResponse<T> {
 export async function generateQRFromPromptAction(
   prompt: string,
   organizationId?: string,
-  workspaceId?: string
+  _workspaceId?: string
 ): Promise<ActionResponse<AiGeneratedQRConfig>> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
   await requireAuth();

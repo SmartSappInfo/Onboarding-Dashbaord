@@ -20,9 +20,6 @@ import {
     ChevronRight, 
     Calendar as CalendarIcon, 
     Clock, 
-    Building,
-    Zap,
-    Users,
     ArrowRight
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

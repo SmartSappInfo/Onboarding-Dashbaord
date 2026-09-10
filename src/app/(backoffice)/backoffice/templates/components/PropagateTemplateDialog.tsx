@@ -23,8 +23,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Badge } from '@/components/ui/badge';
-import { Loader2, Send, CheckCircle2, AlertTriangle, Building2, Layers } from 'lucide-react';
+import { Loader2, Send, CheckCircle2, AlertTriangle, Building2 } from 'lucide-react';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
 import { propagateTemplateAction } from '@/lib/backoffice/backoffice-template-actions';

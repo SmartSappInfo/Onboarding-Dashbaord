@@ -8,9 +8,7 @@ import {
   Layers,
   Users,
   Database,
-  Settings,
   ScrollText,
-  Shield,
   ToggleRight,
   Wrench,
 } from 'lucide-react';

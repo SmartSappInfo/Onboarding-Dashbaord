@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import DashboardCard from './DashboardCard';
-import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { Workflow, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -26,7 +25,7 @@ interface PipelineWidgetProps {
  * Shows a compact horizontal bar chart of stage distribution for a single pipeline.
  */
 export function PipelineWidget({ 
-  pipelineId, 
+  pipelineId: _pipelineId, 
   pipelineName, 
   stages,
   terminology = { singular: 'Entity', plural: 'Entities' }

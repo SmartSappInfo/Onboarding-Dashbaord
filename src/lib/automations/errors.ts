@@ -41,7 +41,7 @@ export class AutomationNotFoundError extends AutomationError {
   }
 }
 
-const GENERIC_MESSAGE = 'Something went wrong while saving the automation. Please try again.';
+const _GENERIC_MESSAGE = 'Something went wrong while saving the automation. Please try again.';
 
 /**
  * Maps errors to messages safe to return to the admin UI with detailed resolutions.

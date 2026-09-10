@@ -21,7 +21,6 @@ import * as React from 'react';
 import {
   Wrench,
   CheckCircle2,
-  AlertCircle,
   Database,
   Network,
   Activity,
@@ -29,7 +28,7 @@ import {
   Sparkles,
   RotateCcw,
 } from 'lucide-react';
-import type { BrainHealthAudit, SelfHealingActionItem } from '@/lib/intelligence/types';
+import type { BrainHealthAudit } from '@/lib/intelligence/types';
 import { Button } from '@/components/ui/button';
 
 interface SelfHealingHealthCenterProps {

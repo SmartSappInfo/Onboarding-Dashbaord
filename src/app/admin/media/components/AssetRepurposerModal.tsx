@@ -41,7 +41,6 @@ import {
   Copy,
   Download,
   Trash2,
-  Layers,
   FileText,
   Mail,
   Share2,
@@ -49,7 +48,6 @@ import {
   Quote,
   Briefcase,
   RefreshCw,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -119,7 +117,7 @@ export function AssetRepurposerModal({
   assetId,
   assetTitle,
   assetType = 'video',
-  durationSeconds,
+  durationSeconds: _durationSeconds,
 }: AssetRepurposerModalProps) {
   const firestore = useFirestore();
   const { activeWorkspaceId } = useWorkspace();
@@ -133,7 +131,7 @@ export function AssetRepurposerModal({
   const [existingDerivatives, setExistingDerivatives] = React.useState<MediaDerivative[]>([]);
   const [activePreviewType, setActivePreviewType] = React.useState<DerivativeType>('FAQ');
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [isLoadingExisting, setIsLoadingExisting] = React.useState(true);
+  const [_isLoadingExisting, setIsLoadingExisting] = React.useState(true);
   const [copiedId, setCopiedId] = React.useState<string | null>(null);
 
   // Load existing derivatives for this asset

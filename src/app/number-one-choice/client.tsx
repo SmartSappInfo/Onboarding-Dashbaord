@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { ArrowRight, CheckCircle2, Play } from 'lucide-react';
 import { usePageAnalytics } from '@/hooks/use-page-analytics';
 import { PageAnalyticsReader } from '@/components/page-analytics-reader';
-import type { PageEventChannel } from '@/lib/types';
 
 const CUSTOM_THUMBNAIL_URL =
   'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1773056120187-thumb-parents-convenience-survey.webp?alt=media&token=6a85de53-0fdf-4848-b7d2-9236014df6fd';

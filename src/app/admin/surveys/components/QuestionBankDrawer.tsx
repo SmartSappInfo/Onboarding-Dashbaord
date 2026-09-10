@@ -18,12 +18,8 @@ import {
   Search,
   Plus,
   Sparkles,
-  Tag,
-  BarChart2,
-  CheckCircle2,
   Loader2,
   RefreshCw,
-  SlidersHorizontal,
   BookmarkPlus,
 } from 'lucide-react';
 import {

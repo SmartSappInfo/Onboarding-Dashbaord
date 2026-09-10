@@ -4,9 +4,9 @@ import * as React from 'react';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Zap, Layout, Camera, Share2, Globe, Hash, Network, Phone as PhoneIcon } from 'lucide-react';
+import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Layout, Camera, Share2, Globe, Hash, Network } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { doc, updateDoc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where } from 'firebase/firestore';
 
 import type { Entity, WorkspaceEntity, UserProfile, SubscriptionPackage } from '@/lib/types';
 import { Button } from '@/components/ui/button';
@@ -21,7 +21,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFirestore, useDoc, useMemoFirebase, useUser, useCollection } from '@/firebase';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -119,7 +119,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
   const { user } = useUser();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
   const { activeOrganizationId, activeOrganization } = useTenant();
-  const { singular, updateStatus, termStatus } = useTerminology();
+  const { singular, updateStatus: _updateStatus, termStatus } = useTerminology();
   const { restrictToAssigned, canViewEntity } = useWorkspaceVisibility();
 
   const [hasInitialized, setHasInitialized] = React.useState(false);

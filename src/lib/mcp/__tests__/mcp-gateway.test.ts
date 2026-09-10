@@ -2,13 +2,12 @@
  * @fileOverview Unit Tests for CompanyBrain Phase 6: MCP Platform, Registry & Gateway
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { z } from 'zod';
 import { McpRegistry } from '../registry';
 import { McpGateway } from '../gateway';
 import {
   McpToolDefinition,
-  McpJsonRpcRequest,
   MCP_ERROR_CODES,
   McpExecutionContext,
 } from '../types';

@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
@@ -24,14 +24,12 @@ import {
   CheckCircle2,
   Circle,
   Sparkles,
-  ArrowRight,
   Video,
   User,
   GraduationCap,
   MessageSquare,
   Calendar,
   ExternalLink,
-  Award,
   Loader2,
 } from 'lucide-react';
 

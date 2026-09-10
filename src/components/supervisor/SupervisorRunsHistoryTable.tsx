@@ -29,7 +29,6 @@ import {
   Search,
   Clock,
   ExternalLink,
-  Bot,
   AlertCircle,
   CheckCircle2,
   ShieldAlert,

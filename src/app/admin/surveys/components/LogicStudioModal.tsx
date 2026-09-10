@@ -21,7 +21,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,13 +32,9 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle2,
-  ArrowRight,
-  Sparkles,
-  Layers,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, SurveyLogicBlock } from '@/lib/types';
-import { validateSurveyLogicGraph, type LogicGraphIssue } from '@/lib/surveys/survey-logic-graph';
+import { validateSurveyLogicGraph } from '@/lib/surveys/survey-logic-graph';
 
 interface LogicStudioModalProps {
   open: boolean;

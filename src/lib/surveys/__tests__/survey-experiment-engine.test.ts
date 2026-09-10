@@ -27,7 +27,7 @@ const mockCollection = vi.fn(() => ({
 
 vi.mock('@/lib/firebase-admin', () => ({
   adminDb: {
-    collection: (name: string) => mockCollection(),
+    collection: (_name: string) => mockCollection(),
   },
 }));
 

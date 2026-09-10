@@ -20,7 +20,6 @@ import {
   getDocs,
   query,
   where,
-  orderBy,
   limit,
   type Firestore,
 } from 'firebase/firestore';

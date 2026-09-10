@@ -20,7 +20,7 @@ import { searchMediaSemanticallyAction } from '@/lib/media/content-intelligence-
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Search, Sparkles, ExternalLink, Play, Loader2 } from 'lucide-react';
+import { Search, Sparkles, Play, Loader2 } from 'lucide-react';
 
 export function SemanticMediaSearch() {
   const firestore = useFirestore();

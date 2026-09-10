@@ -4,7 +4,6 @@
 import Image from 'next/image';
 import type { School, Meeting, Entity } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
-import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
 import { format, isAfter } from 'date-fns';
 import { Calendar, Clock, PlayCircle } from 'lucide-react';

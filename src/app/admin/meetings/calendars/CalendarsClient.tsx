@@ -5,7 +5,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { MeetingsNavigation } from '../components/MeetingsNavigation';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -14,13 +13,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   CalendarDays,
   CheckCircle2,
-  AlertCircle,
-  ExternalLink,
   Trash2,
   RefreshCw,
   Plus,
   ShieldCheck,
-  Zap,
 } from 'lucide-react';
 import {
   getCalendarConnectionsAction,

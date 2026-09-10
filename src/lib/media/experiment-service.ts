@@ -22,7 +22,6 @@ import {
   setDoc,
   deleteDoc,
   getDocs,
-  writeBatch,
   query,
   where,
   orderBy,

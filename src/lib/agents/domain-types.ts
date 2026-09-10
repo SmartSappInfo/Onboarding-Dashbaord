@@ -19,19 +19,12 @@
  */
 
 import { z } from 'zod';
-import type { McpPayloadValue } from '@/lib/mcp/types';
-import { zMcpPayloadValue } from '@/lib/mcp/types';
 import type {
   SmartSappAgent,
   AgentCapability,
-  AgentCategory,
-  AgentFinding,
   AgentActionProposal,
-  AgentToolCall,
-  AgentRequest,
   AgentResult,
 } from '@/lib/supervisor/types';
-import type { ContextSourceCitation } from '@/lib/memory/context-types';
 
 /**
  * Standard identifiers for built-in domain specialist personas.

@@ -45,7 +45,7 @@ import StageColumn from './StageColumn';
 import DealCard from './DealCard';
 import StageValidationModal from './StageValidationModal';
 import MobileStageSwitcher from './MobileStageSwitcher';
-import { validateStageTransition, resolveStageTerminalStatus } from '@/lib/deals/deal-stage-validation';
+import { validateStageTransition } from '@/lib/deals/deal-stage-validation';
 import type { StageRequiredField } from '@/lib/types';
 import type { KanbanFilters } from '../pipeline-types';
 import { applyDealFilters } from '../utils/filter-deals';

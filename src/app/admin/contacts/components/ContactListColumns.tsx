@@ -3,7 +3,7 @@
 import * as React from 'react';
 import type { Entity, WorkspaceEntity, ContactScope } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Building, Users, User, Mail, Phone, MapPin, Briefcase, Baby } from 'lucide-react';
+import { Building, Users, User, Mail, Briefcase, Baby } from 'lucide-react';
 
 interface ContactListItem extends WorkspaceEntity {
   entity?: Entity;

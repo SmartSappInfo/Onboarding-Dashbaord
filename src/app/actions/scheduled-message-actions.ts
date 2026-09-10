@@ -70,7 +70,7 @@ export async function renderScheduledMessageAction(messageId: string) {
                   };
                   vars = { ...orgVars, ...vars };
               }
-          } catch (e) {}
+          } catch (_e) {}
       }
 
       let styleWrapper = '';

@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { adminDb } from '@/lib/firebase-admin';
 import RsvpResponseClient from '@/components/rsvp-response-client';
 import { notFound } from 'next/navigation';
-import { SmartSappLogo } from '@/components/icons';
 import { getOrgBranding } from '@/lib/org-branding';
 import Footer from '@/components/footer';
 

@@ -64,7 +64,7 @@ export function buildConnectionRecord(
  * secret keys are physically removed, not merely undefined.
  */
 export function toPublicConnection(conn: WhatsAppConnection): WhatsAppConnectionPublic {
-  const { accessToken, appSecret, webhookVerifyToken, ...safe } = conn;
+  const { accessToken, appSecret, webhookVerifyToken: _webhookVerifyToken, ...safe } = conn;
   return {
     ...safe,
     hasToken: !!accessToken,

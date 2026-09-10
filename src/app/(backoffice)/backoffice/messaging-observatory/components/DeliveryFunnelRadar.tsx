@@ -9,8 +9,8 @@
 'use client';
 
 import * as React from 'react';
-import { Mail, MessageSquare, Smartphone, Bell, TrendingUp, AlertOctagon, CheckCircle2 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Mail, MessageSquare, Smartphone, Bell } from 'lucide-react';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { DeliveryMetrics } from '@/lib/backoffice/backoffice-types';
 

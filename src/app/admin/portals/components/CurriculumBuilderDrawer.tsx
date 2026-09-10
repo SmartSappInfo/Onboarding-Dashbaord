@@ -17,10 +17,9 @@ import {
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import {
   Select,
@@ -46,7 +45,6 @@ import type {
   CourseLesson,
   LessonContentType,
   ReleaseScheduleType,
-  CompletionRuleType,
 } from '@/lib/types/learning';
 import { AssessmentBuilderModal } from './AssessmentBuilderModal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -55,19 +53,9 @@ import {
   Layers,
   Plus,
   Trash2,
-  Video,
-  FileText,
   HelpCircle,
-  Clock,
   Lock,
-  Sparkles,
-  ChevronRight,
-  ChevronDown,
-  PlayCircle,
-  Sliders,
-  CheckCircle2,
   Loader2,
-  FileCode,
 } from 'lucide-react';
 
 interface CurriculumBuilderDrawerProps {
@@ -294,7 +282,7 @@ export function CurriculumBuilderDrawer({
             <Layers className="w-10 h-10 mx-auto text-primary/60" />
             <h4 className="font-bold text-sm text-foreground">No Modules Yet</h4>
             <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-              Start building this course by clicking "Add Module" above.
+              Start building this course by clicking &quot;Add Module&quot; above.
             </p>
             <Button
               size="sm"

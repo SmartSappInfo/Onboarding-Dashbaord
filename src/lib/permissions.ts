@@ -11,7 +11,6 @@
 import type { IndustryVertical } from './types';
 import { getWorkspaceIndustry } from './industry-cache';
 import { adminDb } from './firebase-admin';
-import type { Workspace } from './types';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**

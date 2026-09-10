@@ -4,7 +4,6 @@
 import Image from 'next/image';
 import type { School, Meeting, Entity } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
-import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
 import { format, isAfter } from 'date-fns';
 import { Calendar, Clock, PlayCircle, Radio } from 'lucide-react';
@@ -60,7 +59,7 @@ export default function WebinarMeetingHero({ entity, meeting, tokenResult, nextS
     return () => clearInterval(interval);
   }, [meeting.meetingTime, meeting.recordingUrl]);
 
-  const ctaLabel = getHeroCtaLabel(meeting.type?.id || 'webinar', meeting.heroCtaLabel);
+  const _ctaLabel = getHeroCtaLabel(meeting.type?.id || 'webinar', meeting.heroCtaLabel);
 
   return (
     <section className="relative w-full bg-background text-foreground pt-32 pb-16 md:pt-40 md:pb-24 min-h-screen h-auto md:h-screen flex items-center overflow-visible md:overflow-hidden">

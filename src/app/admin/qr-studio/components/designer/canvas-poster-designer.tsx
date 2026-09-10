@@ -7,19 +7,8 @@ import {
   Circle,
   Minus,
   Image as ImageIcon,
-  Palette,
-  Move,
   ChevronDown,
   Download,
-  Save,
-  Undo2,
-  Redo2,
-  Copy,
-  Trash2,
-  Lock,
-  Unlock,
-  Layers,
-  Sparkles,
   LayoutTemplate,
   AlignCenter,
   AlignLeft,
@@ -64,14 +53,14 @@ export default function CanvasPosterDesigner({
   orgId,
   wsId,
   onPosterDataChange,
-  onSaveAsTemplate,
+  onSaveAsTemplate: _onSaveAsTemplate,
 }: CanvasPosterDesignerProps) {
   const { toast } = useToast();
   const canvasRef = React.useRef<HTMLDivElement>(null);
   const [showTemplates, setShowTemplates] = React.useState(true);
-  const [activeTemplate, setActiveTemplate] = React.useState<string | null>(null);
+  const [_activeTemplate, setActiveTemplate] = React.useState<string | null>(null);
   const [showMediaDialog, setShowMediaDialog] = React.useState(false);
-  const [workspaceTemplates, setWorkspaceTemplates] = React.useState<QRCodeTemplate[]>([]);
+  const [_workspaceTemplates, setWorkspaceTemplates] = React.useState<QRCodeTemplate[]>([]);
   const [snapGuides, setSnapGuides] = React.useState<{ x?: number; y?: number } | null>(null);
 
   // History states for canvas Undo/Redo

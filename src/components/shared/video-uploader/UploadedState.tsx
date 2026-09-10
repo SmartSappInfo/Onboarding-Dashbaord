@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 
 interface UploadedStateProps {
   videoUrl: string;
@@ -73,7 +72,7 @@ export function UploadedState({
       const parts = decoded.split('/');
       const lastPart = parts[parts.length - 1];
       return lastPart.split('?')[0];
-    } catch (e) {
+    } catch (_e) {
       return 'video.mp4';
     }
   };

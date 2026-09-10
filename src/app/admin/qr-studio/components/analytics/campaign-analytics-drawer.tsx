@@ -11,18 +11,10 @@
 import * as React from 'react';
 import {
   BarChart3,
-  TrendingUp,
-  Users,
   Smartphone,
   Globe,
   Loader2,
-  Calendar,
-  Layers,
-  ArrowRight,
-  ShieldCheck,
-  Zap,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import {
   Sheet,
   SheetContent,

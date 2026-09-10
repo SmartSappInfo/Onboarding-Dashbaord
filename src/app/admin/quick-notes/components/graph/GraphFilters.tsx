@@ -5,7 +5,7 @@ import { Search, X, Filter } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { getNodeTypeColor, getRelationDisplayLabel } from '@/lib/quick-notes-domain';
+import { getNodeTypeColor } from '@/lib/quick-notes-domain';
 import type {
   GraphNodeType,
   KnowledgeRelationType,
@@ -32,7 +32,7 @@ const COMMON_NODE_TYPES: Array<{ id: GraphNodeType; label: string }> = [
   { id: 'task', label: 'Tasks' },
 ];
 
-const COMMON_REL_TYPES: Array<{ id: KnowledgeRelationType; label: string }> = [
+const _COMMON_REL_TYPES: Array<{ id: KnowledgeRelationType; label: string }> = [
   { id: 'supports', label: 'Supports' },
   { id: 'contradicts', label: 'Contradicts' },
   { id: 'depends_on', label: 'Depends On' },
@@ -66,7 +66,7 @@ export function GraphFilters({
     });
   };
 
-  const toggleRelType = (type: KnowledgeRelationType) => {
+  const _toggleRelType = (type: KnowledgeRelationType) => {
     const next = new Set(activeRelTypes);
     if (next.has(type)) {
       next.delete(type);

@@ -14,7 +14,6 @@ import {
   PinOff,
   Trash2,
   Edit2,
-  Reply,
   Check,
   X,
   ExternalLink,
@@ -22,7 +21,6 @@ import {
   PlusCircle,
   Loader2,
   Briefcase,
-  AlertTriangle,
   Lightbulb,
   CheckCircle2,
   MessageSquareQuote,
@@ -81,7 +79,7 @@ export const TimelineItemCard = React.memo(function TimelineItemCard({
   onDelete,
   onUpdateContent,
   onCreateTask,
-  onReply,
+  onReply: _onReply,
 }: TimelineItemCardProps) {
   const confirm = useConfirm();
   const [isEditing, setIsEditing] = React.useState(false);

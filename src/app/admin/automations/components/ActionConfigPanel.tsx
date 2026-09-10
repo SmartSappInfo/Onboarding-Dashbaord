@@ -2,13 +2,10 @@ import * as React from 'react';
 import { 
   Smartphone,
   CheckSquare,
-  Mail,
-  Bell,
   X as XIcon,
   Building,
   UserPlus,
   Zap,
-  Tag as TagIcon,
   UserCog,
   Trash2,
   Table
@@ -20,11 +17,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { MultiSelect } from '@/components/ui/multi-select';
 import { TagSelector } from '@/components/tags';
 import { cn } from '@/lib/utils';
 import { createFieldAction } from '@/lib/fields-actions';
-import { createTagAction } from '@/lib/tag-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
 import { MappableInputField } from './MappableInputField';
 import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile, MessageResendConfig, MessageTemplate } from '@/lib/types';
@@ -409,7 +404,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
     return filteredAppFields.filter(f => !Object.prototype.hasOwnProperty.call(customData, (f.id || f.name) as string));
   }, [filteredAppFields, customData]);
 
-  const tagOptions = React.useMemo(() => {
+  const _tagOptions = React.useMemo(() => {
     return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
   }, [allTags]);
 
@@ -736,14 +731,14 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   users,
   stages,
   pipelines,
-  variables,
+  variables: _variables,
   singular,
   automations = [],
   appFields = [],
   fieldGroups = [],
   allTags = [],
 }: ActionConfigPanelProps) {
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
   const { activeWorkspace, accessibleWorkspaces } = useWorkspace() as { activeWorkspace?: Workspace; accessibleWorkspaces?: Workspace[] };
   const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
   const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
@@ -2244,7 +2239,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         <div className="p-4 rounded-xl bg-muted/30 border border-border/50 space-y-2 text-center text-xs">
           <CheckSquare className="h-8 w-8 text-primary mx-auto opacity-60" />
           <p className="font-bold text-sm">End/Complete Flow Step</p>
-          <p className="text-[10px] text-muted-foreground">Flow execution ends here. The workflow run status will update to "completed".</p>
+          <p className="text-[10px] text-muted-foreground">Flow execution ends here. The workflow run status will update to &quot;completed&quot;.</p>
         </div>
       ) : null}
     </div>

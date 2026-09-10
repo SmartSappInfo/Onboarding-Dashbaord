@@ -9,7 +9,7 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowRight, ArrowLeft, Check, Sparkles, CornerDownLeft } from 'lucide-react';
+import { ArrowLeft, Check, CornerDownLeft } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import { cn, stripHtml } from '@/lib/utils';
 import VideoHero from '@/components/video-hero';

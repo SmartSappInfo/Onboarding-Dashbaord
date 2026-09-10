@@ -10,11 +10,11 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Users2, Award, Zap } from 'lucide-react';
+import { Users2, Zap } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TeamLeaderboardItem {

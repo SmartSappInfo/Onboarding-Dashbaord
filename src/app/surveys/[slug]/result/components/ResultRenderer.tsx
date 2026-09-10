@@ -398,7 +398,7 @@ export default function ResultRenderer({
     const [selectedEntityId, setSelectedEntityId] = React.useState<string>('none');
     const [selectedContactEmail, setSelectedContactEmail] = React.useState<string>('none');
     const [simulatedValues, setSimulatedValues] = React.useState<Record<string, string>>({});
-    const [isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
+    const [_isLoadingSimulation, setIsLoadingSimulation] = React.useState(false);
 
     const activeValues = React.useMemo(() => ({
         ...simulatedValues,

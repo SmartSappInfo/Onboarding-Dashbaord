@@ -10,7 +10,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { COLLECTIONS } from '@/lib/collection-constants';
 import { revalidatePath } from 'next/cache';
-import type { Form, FormSubmission } from '@/lib/types';
+import type { Form } from '@/lib/types';
 import type { FormMetricsDaily } from './form-analytics-types';
 import { getOrGenerateFormTopicClustersAction } from './form-intelligence-actions';
 import { requireAuth } from '@/lib/auth/require-auth';
@@ -58,7 +58,7 @@ export async function getWorkspaceFormsExecutiveReportAction(params: {
       .get();
 
     const forms = formsSnap.docs.map(doc => doc.data() as Form);
-    const formIds = forms.map(f => f.id);
+    const _formIds = forms.map(f => f.id);
 
     if (forms.length === 0) {
       return {

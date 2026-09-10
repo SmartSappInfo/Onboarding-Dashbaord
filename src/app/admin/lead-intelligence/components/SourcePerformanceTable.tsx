@@ -12,7 +12,6 @@
  */
 
 import React from 'react';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
   Globe, 
@@ -20,7 +19,6 @@ import {
   FileSpreadsheet, 
   Search, 
   Users, 
-  ArrowUpRight 
 } from 'lucide-react';
 import type { SourcePerformanceMetric } from '@/lib/lead-intelligence/types';
 import { cn } from '@/lib/utils';

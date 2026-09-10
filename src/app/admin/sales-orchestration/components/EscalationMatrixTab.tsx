@@ -20,14 +20,9 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
-  AlertTriangle,
   Clock,
   ShieldAlert,
-  BellRing,
   CheckCircle2,
-  Users,
-  Flame,
-  ArrowRight,
 } from 'lucide-react';
 import type {
   EscalationRule,

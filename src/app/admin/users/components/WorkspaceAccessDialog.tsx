@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
-import type { UserProfile, Role, PermissionsSchema, AppPermissionId, Workspace } from '@/lib/types';
+import type { UserProfile, Role, PermissionsSchema, AppPermissionId } from '@/lib/types';
 import { mergePermissionsSchemas } from '@/lib/permissions-engine';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
@@ -25,11 +25,8 @@ import {
     Building2,
     Plus,
     Trash2,
-    ShieldCheck,
     Loader2,
-    ChevronRight,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface WorkspaceAccessDialogProps {

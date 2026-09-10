@@ -55,7 +55,7 @@ const STATUS_CONFIG = {
   archived:  { label: 'Archived',  className: 'bg-amber-500/10 text-amber-600 border-amber-500/20' },
 } as const;
 
-const GOAL_LABEL: Record<CampaignPage['pageGoal'], string> = {
+const _GOAL_LABEL: Record<CampaignPage['pageGoal'], string> = {
   lead_capture: 'Lead Capture',
   registration: 'Registration',
   information:  'Information',

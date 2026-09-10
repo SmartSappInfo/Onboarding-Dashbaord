@@ -4,7 +4,6 @@ import * as React from 'react';
 import {
   Activity, Play, AlertCircle, Building2,
   CheckCircle2, XCircle, Search, ShieldAlert,
-  Terminal,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -21,7 +20,7 @@ import { useBackoffice } from '../../context/BackofficeProvider';
 import { useAuth } from '@/firebase';
 
 export default function TenantDiagnostics() {
-  const { profile, can } = useBackoffice();
+  const { profile: _profile, can } = useBackoffice();
   const auth = useAuth();
   
   const [scopeType, setScopeType] = React.useState<'organization' | 'workspace'>('organization');

@@ -22,7 +22,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addDoc, collection, doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
-import type { Survey, UserProfile } from '@/lib/types';
+import type { Survey } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import AiModelSelector from '@/components/ai/AiModelSelector';
 import { RainbowButton } from '@/components/ui/rainbow-button';
@@ -165,7 +165,7 @@ export default function AiSurveyGenerator() {
   };
 
   const runChunkedGeneration = async (content: string, sourceType: 'text' | 'url', startFrom?: PhaseId) => {
-    const { provider, modelId, keyLevel } = await resolveModel();
+    const { provider, modelId, keyLevel: _keyLevel } = await resolveModel();
     sourceTextRef.current = content;
 
     // Resolve source text for URL inputs
@@ -497,7 +497,7 @@ export default function AiSurveyGenerator() {
         {showProgress && (
  <div className="mb-8 p-6 rounded-2xl bg-muted/30 border border-border/50">
  <div className="grid grid-cols-4 gap-3">
-              {phases.map((phase, index) => {
+              {phases.map((phase, _index) => {
                 const Icon = phase.icon;
                 const isActive = phase.status === 'running';
                 const isComplete = phase.status === 'complete';

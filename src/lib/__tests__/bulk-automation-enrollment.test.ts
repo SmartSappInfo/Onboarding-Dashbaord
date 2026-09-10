@@ -59,7 +59,7 @@ describe('Bulk Automation Enrollment Service', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockGetAll.mockImplementation(async (...refs: any[]) => {
-      return refs.map((ref: any) => ({
+      return refs.map((_ref: any) => ({
         exists: true,
         id: 'ent-1',
         data: () => ({

@@ -11,7 +11,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, Loader2, Plus, Video, Phone, MapPin, Globe } from 'lucide-react';
+import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import type { MeetingLocationType, EventTypeFormat } from '@/lib/meetings/types';
 import { createEventTypeAction } from '@/app/actions/event-type-actions';
 
@@ -29,7 +29,7 @@ export default function NewEventTypePage() {
   const [name, setName] = React.useState('');
   const [durationMinutes, setDurationMinutes] = React.useState(30);
   const [locationType, setLocationType] = React.useState<MeetingLocationType>('google_meet');
-  const [locationDetails, setLocationDetails] = React.useState('');
+  const [locationDetails, _setLocationDetails] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [format, setFormat] = React.useState<EventTypeFormat>('one_to_one');
   const [isCreating, setIsCreating] = React.useState(false);

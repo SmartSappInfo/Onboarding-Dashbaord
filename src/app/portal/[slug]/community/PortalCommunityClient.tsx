@@ -11,7 +11,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -46,20 +46,13 @@ import {
   Pin,
   Heart,
   Flame,
-  Lightbulb,
   ThumbsUp,
-  PartyPopper,
   MessageCircle,
-  Share2,
   Lock,
   Plus,
-  Image as ImageIcon,
-  CheckCircle2,
   Award,
-  Users,
   Search,
   Loader2,
-  Check,
 } from 'lucide-react';
 import { PortalAuthModal } from '../components/PortalAuthModal';
 import { getErrorMessage } from '@/lib/errors/report-error';

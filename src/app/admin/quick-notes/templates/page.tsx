@@ -44,7 +44,7 @@ import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useFirestore, useUser } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { cn } from '@/lib/utils';
-import type { KnowledgeTemplate, KnowledgeType, NoteDocument } from '@/lib/quick-notes-types';
+import type { KnowledgeTemplate, KnowledgeType } from '@/lib/quick-notes-types';
 import {
   KNOWLEDGE_TYPE_META,
   normalizeKnowledgeType,
@@ -195,7 +195,7 @@ export default function KnowledgeTemplatesPage() {
       } else {
         toast({ title: 'Templates already exist for this workspace.' });
       }
-    } catch (err) {
+    } catch (_err) {
       toast({ title: 'Failed to seed templates', variant: 'destructive' });
     } finally {
       setIsSeeding(false);

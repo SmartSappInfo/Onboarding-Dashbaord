@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Star, Smile, Meh, Frown, CheckCircle2, Sparkles, Send } from 'lucide-react';
+import { CheckCircle2, Send } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { submitPublicMeetingFeedbackAction } from '@/app/actions/meeting-feedback-actions';
 

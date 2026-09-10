@@ -12,16 +12,12 @@ import {
     TrendingUp, 
     History, 
     Plus, 
-    ArrowRight,
-    Loader2,
-    Calendar,
     Target,
     ShieldCheck,
     AlertCircle,
     Download,
     Eye,
     FileText,
-    Users
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useDoc } from '@/firebase';
 import { collection, query, where, orderBy, doc } from 'firebase/firestore';
@@ -36,7 +32,7 @@ interface EntityBillingTabProps {
     workspaceEntity: WorkspaceEntity;
 }
 
-export default function EntityBillingTab({ entity, workspaceEntity }: EntityBillingTabProps) {
+export default function EntityBillingTab({ entity, workspaceEntity: _workspaceEntity }: EntityBillingTabProps) {
     const firestore = useFirestore();
     const { singular } = useTerminology();
 
@@ -219,7 +215,7 @@ export default function EntityBillingTab({ entity, workspaceEntity }: EntityBill
                         </CardHeader>
  <CardContent className="p-8 pt-0 text-left">
  <p className="text-[10px] font-bold text-white/40 leading-relaxed tracking-tighter italic">
-                                "All invoices are snapshotted at the point of creation to ensure historical consistency. Changes to global tax rules or subscription rates will only affect future billing periods."
+                                &quot;All invoices are snapshotted at the point of creation to ensure historical consistency. Changes to global tax rules or subscription rates will only affect future billing periods.&quot;
                             </p>
                         </CardContent>
                     </Card>

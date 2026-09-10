@@ -17,13 +17,8 @@ import {
   Library,
   Sparkles,
   Search,
-  Plus,
   RefreshCw,
   Loader2,
-  CheckCircle2,
-  Tag,
-  BarChart2,
-  SlidersHorizontal,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -33,7 +28,6 @@ import { useToast } from '@/hooks/use-toast';
 import {
   getQuestionBankItemsAction,
   seedSystemQuestionBankAction,
-  saveQuestionToBankAction,
 } from '@/lib/surveys/question-bank-actions';
 import type { QuestionBankItem } from '@/lib/surveys/survey-v2-types';
 

@@ -38,7 +38,7 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy } from 'firebase/firestore';
+import { collection, query, where } from 'firebase/firestore';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
 import type { CampaignPage, Survey, Form, Meeting, Automation } from '@/lib/types';
@@ -602,7 +602,7 @@ function SortablePageAccordionItem({
     watchedPages,
     editingPageIdx,
     setEditingPageIdx,
-    previewPageIdx,
+    previewPageIdx: _previewPageIdx,
     setPreviewPageIdx,
     clonePage,
     remove,
@@ -654,7 +654,7 @@ function SortablePageAccordionItem({
             )}
         >
             <AccordionTrigger asChild className="hover:no-underline py-6">
-                <div className="flex flex-row items-center justify-between w-full gap-4 pr-4" onClick={(e) => {
+                <div className="flex flex-row items-center justify-between w-full gap-4 pr-4" onClick={(_e) => {
                     // Prevent Accordion from opening/closing when clicking on elements in this container
                 }}>
                     <div className="flex flex-col md:flex-row md:items-center justify-between flex-1 gap-4">
@@ -1671,7 +1671,7 @@ export function PageEditor({
 }
 
 export default function ResultPageBuilder() {
-    const { control, watch, setValue, register, getValues } = useFormContext();
+    const { control, watch, setValue, register: _register, getValues } = useFormContext();
     const { fields: pages, append, remove, move } = useFieldArray({
         control,
         name: 'resultPages',

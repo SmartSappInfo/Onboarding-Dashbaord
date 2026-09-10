@@ -58,7 +58,6 @@ import {
   Route,
   Brain,
   ArrowRight,
-  CornerDownRight,
   Search,
 } from 'lucide-react';
 import {
@@ -79,7 +78,6 @@ import {
   type GraphPath,
   type GraphNodeType,
   NODE_TYPE_DISPLAY_CONFIG,
-  RELATIONSHIP_TYPE_DISPLAY_CONFIG,
 } from '@/lib/memory/graph-types';
 import {
   KNOWLEDGE_RELATION_TYPES,

@@ -22,7 +22,7 @@ interface ContactDisplayProps {
 }
 
 // Entity type icons for visual distinction
-const ENTITY_TYPE_ICONS = {
+const _ENTITY_TYPE_ICONS = {
   institution: Building,
   family: Users,
   person: User,

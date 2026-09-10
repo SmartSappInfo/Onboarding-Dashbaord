@@ -12,7 +12,7 @@ describe('InlineEditable Component', () => {
   });
 
   it('renders normal element in view mode', () => {
-    const { getByText, container } = render(
+    const { getByText, container: _container } = render(
       <InlineEditable value="Hello World" isEdit={false} tagName="h1" />
     );
     const element = getByText('Hello World');
@@ -45,7 +45,7 @@ describe('InlineEditable Component', () => {
   it('does not overwrite user input when focused and parent state/props update', () => {
     const TestWrapper = () => {
       const [val, setVal] = useState('Initial');
-      const [dummy, setDummy] = useState(0);
+      const [_dummy, setDummy] = useState(0);
 
       return (
         <div>

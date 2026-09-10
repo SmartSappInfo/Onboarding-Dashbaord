@@ -3,7 +3,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import { generateRegistrantToken, getPersonalizedMeetingUrl } from '@/lib/meeting-tokens';
 import { sendRawMessage, sendMessage } from '@/lib/messaging-engine';
-import { ensureAbsoluteUrl, getBaseUrl, getRequestBaseUrl } from '@/lib/utils/url-helpers';
+import { getRequestBaseUrl } from '@/lib/utils/url-helpers';
 import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 import { resolveActiveTemplate } from '@/lib/template-resolver';
 import { requireAuth } from '@/lib/auth/require-auth';

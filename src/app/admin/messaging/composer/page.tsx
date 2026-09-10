@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useSearchParams } from 'next/navigation';
 import ComposerWizard from './components/ComposerWizard';
-import type { TemplateCategory } from '@/lib/types';
 
 import { PageContainer } from '@/components/ui/page-container';
 

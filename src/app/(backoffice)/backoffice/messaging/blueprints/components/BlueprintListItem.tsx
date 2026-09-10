@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { MessagingTrigger, MessageTemplate } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Smartphone, Globe, Building2, Bell, Users, BarChart3, Check } from 'lucide-react';
+import { Mail, Smartphone, Globe, Building2, Users, BarChart3, Check } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface BlueprintListItemProps {
@@ -76,7 +76,7 @@ function BlueprintListItemComponent({ trigger, isActive, globalTemplates, adopti
         <div className="flex items-center gap-1.5">
           {trigger.supportedChannels.map(channel => {
             const isConfigured = configuredChannels.includes(channel);
-            const isEmail = channel === 'email';
+            const _isEmail = channel === 'email';
 
             return (
               <div

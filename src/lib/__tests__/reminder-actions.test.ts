@@ -50,7 +50,7 @@ import { computeScheduledAt } from '../template-variable-utils';
 import * as firebaseAdmin from '../firebase-admin';
 import * as messagingEngine from '../messaging-engine';
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mocks = () => (firebaseAdmin as any).__mocks as {
   update: ReturnType<typeof vi.fn>;
   set: ReturnType<typeof vi.fn>;

@@ -35,7 +35,6 @@ import {
   Share2,
   Filter,
   ArrowDownRight,
-  ExternalLink,
   ChevronRight,
   Activity,
 } from 'lucide-react';

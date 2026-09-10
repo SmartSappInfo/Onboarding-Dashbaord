@@ -173,7 +173,7 @@ export const ScoringModelConfigModal: React.FC<ScoringModelConfigModalProps> = (
                   </DialogTitle>
                 </div>
                 <DialogDescription className="text-xs text-muted-foreground pt-0.5">
-                  Fine-tune dimension multipliers to match your organization's sales priorities.
+                  Fine-tune dimension multipliers to match your organization&apos;s sales priorities.
                 </DialogDescription>
               </div>
 

@@ -179,7 +179,7 @@ export function ScriptPlaybookView({ graph, resolveText }: ScriptPlaybookViewPro
                     {node.type === 'outcome' && node.data.outcomeValue && (
                       <div className="flex items-center gap-1.5 text-[10px] font-bold text-purple-600 dark:text-purple-400 uppercase tracking-wider pt-2">
                         <CheckCircle2 className="h-3.5 w-3.5" />
-                        <span>Resolves call to outcome: "{node.data.outcomeValue}"</span>
+                        <span>Resolves call to outcome: &quot;{node.data.outcomeValue}&quot;</span>
                       </div>
                     )}
 
@@ -195,7 +195,7 @@ export function ScriptPlaybookView({ graph, resolveText }: ScriptPlaybookViewPro
                             >
                               <span className="font-semibold text-muted-foreground flex items-center gap-1.5">
                                 <ArrowRight className="h-3 w-3 text-muted-foreground" />
-                                If response is: <span className="text-primary font-black">"{choice.edgeLabel}"</span>
+                                If response is: <span className="text-primary font-black">&quot;{choice.edgeLabel}&quot;</span>
                               </span>
                               <button
                                 type="button"

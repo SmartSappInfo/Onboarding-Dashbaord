@@ -10,7 +10,6 @@
  * @testability Covered in `workforce-intelligence-services.test.ts`.
  */
 
-import { adminDb } from '@/lib/firebase-admin';
 import type { TeamIntelligenceSummary, TeamCapacityStatus } from '@/lib/types';
 import { TeamService } from '@/lib/services/workforce/team-service';
 import { DepartmentService } from '@/lib/services/workforce/department-service';

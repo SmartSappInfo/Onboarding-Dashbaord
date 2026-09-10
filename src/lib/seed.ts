@@ -8,37 +8,14 @@ import {
     doc, 
     query, 
     where, 
-    orderBy, 
-    limit, 
     setDoc, 
     deleteField, 
-    addDoc,
     getDoc,
     type Firestore 
 } from 'firebase/firestore';
 import type { 
     School, 
-    Meeting, 
-    MediaAsset, 
-    Survey, 
-    UserProfile, 
-    OnboardingStage, 
-    Module, 
-    Activity, 
-    PDFForm, 
-    SenderProfile, 
-    MessageStyle, 
-    MessageTemplate, 
-    MessageLog, 
-    Zone, 
-    Task, 
-    SubscriptionPackage, 
-    BillingPeriod, 
-    Role, 
-    Pipeline, 
     Workspace, 
-    Invoice,
-    Automation,
     BillingProfile
 } from '@/lib/types';
 import { ALL_TEMPLATES } from './page-builder/templates';
@@ -410,7 +387,7 @@ async function performRollback(firestore: Firestore, colName: string): Promise<n
     let count = 0;
 
     snap.forEach(docSnap => {
-        const { backedUpAt, ...originalData } = docSnap.data() as any;
+        const { _backedUpAt, ...originalData } = docSnap.data() as any;
         batch.set(doc(firestore, colName, docSnap.id), originalData);
         count++;
     });
@@ -424,25 +401,25 @@ export async function rollbackTasksMigration(firestore: Firestore) { return perf
 export async function rollbackActivitiesMigration(firestore: Firestore) { return performRollback(firestore, 'activities'); }
 
 // Stubs for remaining exports to maintain build compatibility
-export async function seedMedia(f: Firestore) { return 0; }
-export async function seedSchools(f: Firestore) { return 0; }
-export async function seedMeetings(f: Firestore) { return 0; }
-export async function seedSurveys(f: Firestore) { return 0; }
-export async function seedUserAvatars(f: Firestore) { return 0; }
-export async function seedOnboardingStages(f: Firestore) { return 0; }
-export async function seedModules(f: Firestore) { return 0; }
-export async function seedZones(f: Firestore) { return 0; }
-export async function seedMessageLogs(f: Firestore) { return 0; }
-export async function seedTasks(f: Firestore) { return 0; }
-export async function seedRolesAndPermissions(f: Firestore) { return 0; }
-export async function seedPipelines(f: Firestore) { return 0; }
-export async function seedOnboardingPipelineFromCurrentData(f: Firestore) { return 0; }
-export async function enrichAndRestoreSchools(f: Firestore) { return 0; }
-export async function rollbackAutomationsMigration(f: Firestore) { return 0; }
-export async function enrichAutomationsWithWorkspace(f: Firestore) { return 0; }
-export async function enrichMediaWithWorkspace(f: Firestore) { return 0; }
-export async function rollbackMediaMigration(f: Firestore) { return 0; }
-export async function rollbackRolesMigration(f: Firestore) { return 0; }
+export async function seedMedia(_f: Firestore) { return 0; }
+export async function seedSchools(_f: Firestore) { return 0; }
+export async function seedMeetings(_f: Firestore) { return 0; }
+export async function seedSurveys(_f: Firestore) { return 0; }
+export async function seedUserAvatars(_f: Firestore) { return 0; }
+export async function seedOnboardingStages(_f: Firestore) { return 0; }
+export async function seedModules(_f: Firestore) { return 0; }
+export async function seedZones(_f: Firestore) { return 0; }
+export async function seedMessageLogs(_f: Firestore) { return 0; }
+export async function seedTasks(_f: Firestore) { return 0; }
+export async function seedRolesAndPermissions(_f: Firestore) { return 0; }
+export async function seedPipelines(_f: Firestore) { return 0; }
+export async function seedOnboardingPipelineFromCurrentData(_f: Firestore) { return 0; }
+export async function enrichAndRestoreSchools(_f: Firestore) { return 0; }
+export async function rollbackAutomationsMigration(_f: Firestore) { return 0; }
+export async function enrichAutomationsWithWorkspace(_f: Firestore) { return 0; }
+export async function enrichMediaWithWorkspace(_f: Firestore) { return 0; }
+export async function rollbackMediaMigration(_f: Firestore) { return 0; }
+export async function rollbackRolesMigration(_f: Firestore) { return 0; }
 
 /**
  * CONTACT TYPE TEMPLATES: System Defaults (FER-01)

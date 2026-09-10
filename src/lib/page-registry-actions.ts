@@ -74,7 +74,7 @@ export async function registerCustomCodedPage(
       return { success: true, pageId: existingId, alreadyExists: true };
     }
 
-    const baseUrl = getBaseUrl();
+    const _baseUrl = getBaseUrl();
     const now = new Date().toISOString();
 
     const pageData: Omit<CampaignPage, 'id'> = {

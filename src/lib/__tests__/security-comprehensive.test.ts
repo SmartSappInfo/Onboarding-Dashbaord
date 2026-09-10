@@ -183,7 +183,7 @@ vi.mock('../firebase-admin', () => {
 /**
  * Check if user has permission to access a workspace
  */
-function userHasWorkspaceAccess(userId: string, workspaceId: string, userWorkspaces: string[]): boolean {
+function _userHasWorkspaceAccess(userId: string, workspaceId: string, userWorkspaces: string[]): boolean {
   return userWorkspaces.includes(workspaceId);
 }
 
@@ -193,7 +193,7 @@ function userHasWorkspaceAccess(userId: string, workspaceId: string, userWorkspa
 async function checkEntityUpdatePermission(
   userId: string,
   workspaceId: string,
-  entityId: string
+  _entityId: string
 ): Promise<{ granted: boolean; reason?: string }> {
   const { adminDb } = await import('../firebase-admin');
 

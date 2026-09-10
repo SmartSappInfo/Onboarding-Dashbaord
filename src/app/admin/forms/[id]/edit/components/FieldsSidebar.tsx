@@ -4,7 +4,6 @@ import * as React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import type { AppField, FieldGroup, FormFieldInstance } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -162,8 +161,8 @@ export default function FieldsSidebar({
   availableFields,
   fieldGroups,
   addedFields,
-  formType,
-  contactScope,
+  formType: _formType,
+  contactScope: _contactScope,
   onAddField,
 }: FieldsSidebarProps) {
   const [search, setSearch] = React.useState('');

@@ -19,7 +19,7 @@ interface GoalPreviewProps {
 // Each is a 900px-wide div rendered inside a scaled container.
 // They reference var(--accent) so theme color applies without Tailwind JIT dynamic classes.
 
-function LeadCaptureLayout({ pageName }: { pageName: string }) {
+function LeadCaptureLayout({ pageName: _pageName }: { pageName: string }) {
   return (
     <div style={{
       fontFamily: 'system-ui, sans-serif',
@@ -93,7 +93,7 @@ function LeadCaptureLayout({ pageName }: { pageName: string }) {
   );
 }
 
-function RegistrationLayout({ pageName }: { pageName: string }) {
+function RegistrationLayout({ pageName: _pageName }: { pageName: string }) {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: 'white', minHeight: '100%', color: '#0f172a', display: 'flex', flexDirection: 'column' }}>
       <div style={{ padding: '14px 36px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #e2e8f0' }}>
@@ -146,7 +146,7 @@ function RegistrationLayout({ pageName }: { pageName: string }) {
   );
 }
 
-function InformationLayout({ pageName }: { pageName: string }) {
+function InformationLayout({ pageName: _pageName }: { pageName: string }) {
   const tiles = [
     { title: 'Automate Onboarding End-to-End', desc: 'From first contact to fully onboarded — every touchpoint managed with smart automation and AI-powered workflows.', wide: true, color: 'rgba(99,102,241,0.12)', border: 'rgba(99,102,241,0.2)', icon: '#a78bfa' },
     { title: 'Smart Scheduling', desc: 'Reduce no-shows by 68%.', wide: false, color: 'rgba(16,185,129,0.1)', border: 'rgba(16,185,129,0.18)', icon: '#34d399' },
@@ -187,7 +187,7 @@ function InformationLayout({ pageName }: { pageName: string }) {
   );
 }
 
-function PaymentLayout({ pageName }: { pageName: string }) {
+function PaymentLayout({ pageName: _pageName }: { pageName: string }) {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f8fafc', minHeight: '100%', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '40px 36px' }}>
       <div style={{ width: '100%', maxWidth: 400, background: 'white', borderRadius: 24, boxShadow: '0 20px 60px rgba(0,0,0,0.1)', padding: 36, border: '1px solid #e2e8f0' }}>
@@ -213,7 +213,7 @@ function PaymentLayout({ pageName }: { pageName: string }) {
   );
 }
 
-function ThankYouLayout({ pageName }: { pageName: string }) {
+function ThankYouLayout({ pageName: _pageName }: { pageName: string }) {
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f8fafc', minHeight: '100%', color: '#0f172a', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 36px', textAlign: 'center' }}>
       <div style={{ width: 80, height: 80, background: 'var(--accent)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 28, boxShadow: '0 0 40px rgba(99,102,241,0.3)' }}>
@@ -222,7 +222,7 @@ function ThankYouLayout({ pageName }: { pageName: string }) {
         </svg>
       </div>
       <div style={{ fontSize: 44, fontWeight: 900, lineHeight: 1.1, marginBottom: 16, color: '#0f172a' }}>
-        You're all set!
+        You&apos;re all set!
       </div>
       <div style={{ fontSize: 16, color: '#64748b', lineHeight: 1.6, maxWidth: 460, marginBottom: 40 }}>
         Thanks for signing up. Your account is ready and your onboarding journey begins now.

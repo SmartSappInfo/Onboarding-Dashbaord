@@ -18,24 +18,19 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import type {
   CourseAssessment,
   AssessmentQuestion,
   AssessmentOption,
-  AssessmentQuestionType,
 } from '@/lib/types/learning';
 import {
   Plus,
   Trash2,
-  CheckCircle2,
   HelpCircle,
-  Sparkles,
-  Sliders,
   Check,
   X,
   Loader2,

@@ -160,7 +160,7 @@ export async function saveWorkspaceAction(id: string | null, data: Partial<Works
 /**
  * Attempts to delete a workspace. 
  */
-export async function deleteWorkspaceAction(id: string, userId: string) {
+export async function deleteWorkspaceAction(id: string, _userId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 

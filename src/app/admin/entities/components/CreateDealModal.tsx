@@ -42,7 +42,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
     const { toast } = useToast();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const firestore = useFirestore();
-    const { singular, plural } = useTerminology();
+    const { singular, plural: _plural } = useTerminology();
 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [name, setName] = React.useState('');
@@ -301,7 +301,7 @@ export default function CreateDealModal({ entityId, initialStageId, initialPipel
                                                     </div>
                                                 ) : searchResults.length === 0 ? (
                                                     <CommandEmpty className="p-4 text-xs font-semibold text-muted-foreground text-center">
-                                                        No {singular.toLowerCase()} or contact found matching "{entitySearch}".
+                                                        No {singular.toLowerCase()} or contact found matching &quot;{entitySearch}&quot;.
                                                     </CommandEmpty>
                                                 ) : (
                                                     <CommandGroup>

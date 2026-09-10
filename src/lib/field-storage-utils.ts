@@ -22,7 +22,7 @@ export type FieldBucket = 'root' | 'financeData' | 'industryData' | 'personData'
 export function resolveFieldStorageBucket(
   variableName: string, 
   entityType: EntityType, 
-  industry?: IndustryVertical
+  _industry?: IndustryVertical
 ): FieldBucket {
   // 1. Root Fields (Common to all entities)
   const rootFields = [

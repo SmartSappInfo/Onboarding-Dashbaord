@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { forceAdvanceRun } from '../automations/run-management';
-import { adminDb } from '../firebase-admin';
 
 vi.mock('../automations/nodes/traverse', () => ({
   traverseNodes: vi.fn().mockResolvedValue(undefined),

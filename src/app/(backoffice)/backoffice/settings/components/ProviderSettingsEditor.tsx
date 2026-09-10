@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Network, Search, Save, KeyRound, Globe, Workflow, Brain, Plus, X } from 'lucide-react';
+import { Network, Save, KeyRound, Workflow, Brain, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
@@ -10,7 +10,7 @@ import { listProviderSettings, saveProviderSetting } from '@/lib/backoffice/back
 import { useBackoffice } from '../../context/BackofficeProvider';
 import { useBackofficeToken } from '@/hooks/use-backoffice-token';
 import { useToast } from '@/hooks/use-toast';
-import type { PlatformProviderSetting, PlatformProviderType } from '@/lib/backoffice/backoffice-types';
+import type { PlatformProviderSetting } from '@/lib/backoffice/backoffice-types';
 
 export default function ProviderSettingsEditor() {
   const { can } = useBackoffice();
@@ -357,7 +357,7 @@ export default function ProviderSettingsEditor() {
                           <div>
                              <h4 className="text-sm font-semibold text-foreground">Supported Models Registry</h4>
                              <p className="text-[10px] text-muted-foreground mt-1">
-                                Dictates which explicit model identifiers (e.g. "gpt-4o") map to this provider. <b>Only manipulable by the SuperAdmin Control Plane. Tenants cannot dictate logic bounds.</b>
+                                Dictates which explicit model identifiers (e.g. &quot;gpt-4o&quot;) map to this provider. <b>Only manipulable by the SuperAdmin Control Plane. Tenants cannot dictate logic bounds.</b>
                              </p>
                           </div>
                        </div>

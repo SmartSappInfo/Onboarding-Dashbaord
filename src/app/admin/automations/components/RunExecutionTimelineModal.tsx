@@ -22,7 +22,7 @@ import {
   ChevronDown,
   ChevronRight,
 } from 'lucide-react';
-import type { AutomationRun, StepRunState, StepExecution } from '@/lib/types';
+import type { AutomationRun, StepExecution } from '@/lib/types';
 
 interface RunExecutionTimelineModalProps {
   run: AutomationRun | null;
@@ -91,7 +91,7 @@ export function RunExecutionTimelineModal({
                 const IconComponent = cfg.icon;
                 const isExpanded = expandedStepNodeId === nodeId;
                 const startTime = stepState.executedAt ? new Date(stepState.executedAt) : null;
-                const endTime = stepState.executedAt && stepState.durationMs ? new Date(new Date(stepState.executedAt).getTime() + stepState.durationMs) : null;
+                const _endTime = stepState.executedAt && stepState.durationMs ? new Date(new Date(stepState.executedAt).getTime() + stepState.durationMs) : null;
 
                 return (
                   <div key={nodeId} className="relative group">

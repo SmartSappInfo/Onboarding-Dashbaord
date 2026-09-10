@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -25,7 +24,6 @@ import {
     Plus, ArrowLeft, Users, Filter, MoreHorizontal, Copy, Trash2,
     Pencil, Save, Loader2, Inbox,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
 import { PageContainer, PageContainerNarrow } from '@/components/ui/page-container';
 import { getErrorMessage } from '@/lib/errors/report-error';

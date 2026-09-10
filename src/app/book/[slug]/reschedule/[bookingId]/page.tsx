@@ -11,18 +11,13 @@ import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
-  Calendar as CalendarIcon,
-  Clock,
   ChevronLeft,
   ChevronRight,
   Loader2,
   ArrowLeft,
   RotateCcw,
-  Globe,
-  Video,
 } from 'lucide-react';
 import {
   format,

@@ -19,7 +19,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import { QuickNotesRepository } from '@/lib/quick-notes-repository';
 import { NoteIndexRepository } from '@/lib/note-index-repository';
 import { validateIngestionPayload } from '@/lib/quick-notes-domain';
-import type { QuickNote } from '@/lib/quick-notes-types';
 
 // In-memory sliding-window rate limiter (60 req / 60s per key hash)
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
@@ -83,7 +82,7 @@ export async function POST(req: NextRequest) {
     const keyDoc = keyQuery.docs[0];
     const keyData = keyDoc.data();
     const workspaceId = keyData.workspaceId as string;
-    const organizationId = keyData.organizationId as string;
+    const _organizationId = keyData.organizationId as string;
     const createdBy = (keyData.createdBy as string) || 'system_webhook';
 
     // 3. Sliding-window Rate Limit Check

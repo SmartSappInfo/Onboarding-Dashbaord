@@ -20,7 +20,7 @@
  */
 
 import { after } from 'next/server';
-import type { Deal, DealLineItem, DealQuote, AutomationTrigger } from '../types';
+import type { AutomationTrigger } from '../types';
 
 export type DealEventType =
   | 'deal.created'

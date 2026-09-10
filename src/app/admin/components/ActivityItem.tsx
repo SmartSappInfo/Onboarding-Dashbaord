@@ -1,6 +1,6 @@
 'use client';
 
-import type { Activity, UserProfile, School } from '@/lib/types';
+import type { Activity, UserProfile } from '@/lib/types';
 import Link from 'next/link';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -47,7 +47,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
   const rec = activity as unknown as Record<string, unknown>;
   const contactName: string = activity.displayName || activity.entityName || (typeof rec.schoolName === 'string' ? rec.schoolName : '');
   const contactId: string = activity.entityId || (typeof rec.schoolId === 'string' ? rec.schoolId : '');
-  const contactSlug: string = activity.entitySlug || (typeof rec.schoolSlug === 'string' ? rec.schoolSlug : '');
+  const _contactSlug: string = activity.entitySlug || (typeof rec.schoolSlug === 'string' ? rec.schoolSlug : '');
   const entityType = activity.entityType;
   const isLegacy: boolean = !activity.entityId && Boolean(rec.schoolId);
   

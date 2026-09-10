@@ -23,7 +23,6 @@ import {
   query,
   where,
   orderBy,
-  limit,
   arrayUnion,
 } from 'firebase/firestore';
 import { firestore as db } from '@/firebase/config';

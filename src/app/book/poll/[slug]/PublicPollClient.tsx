@@ -10,10 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import {
   Vote,
   Clock,
-  Calendar,
   CheckCircle2,
-  Users,
-  Award,
   Check,
   HelpCircle,
   X,
@@ -35,10 +32,10 @@ function getErrorMessage(error: unknown): string {
   return 'An unexpected error occurred.';
 }
 
-export function PublicPollClient({ initialPoll, initialVotes = [] }: PublicPollClientProps) {
+export function PublicPollClient({ initialPoll, initialVotes: _initialVotes = [] }: PublicPollClientProps) {
   const { toast } = useToast();
 
-  const [poll, setPoll] = React.useState<MeetingPoll>(initialPoll);
+  const [poll, _setPoll] = React.useState<MeetingPoll>(initialPoll);
   const [voterName, setVoterName] = React.useState('');
   const [voterEmail, setVoterEmail] = React.useState('');
   const [comments, setComments] = React.useState('');
@@ -145,7 +142,7 @@ export function PublicPollClient({ initialPoll, initialVotes = [] }: PublicPollC
                 </div>
                 <h3 className="text-base font-bold text-foreground">Your availability has been recorded!</h3>
                 <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                  We'll notify you at <strong>{voterEmail}</strong> as soon as {poll.hostName} selects the winning time slot.
+                  We&apos;ll notify you at <strong>{voterEmail}</strong> as soon as {poll.hostName} selects the winning time slot.
                 </p>
               </div>
             ) : (

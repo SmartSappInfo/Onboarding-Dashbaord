@@ -22,17 +22,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
-  CalendarCheck,
   Clock,
   Video,
   User,
   Mail,
   Phone,
   Building2,
-  ExternalLink,
-  Calendar,
-  XCircle,
-  FileText,
   Sparkles,
   ArrowRight,
 } from 'lucide-react';

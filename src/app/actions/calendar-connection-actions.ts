@@ -12,7 +12,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection, CalendarSyncResult } from '@/lib/meetings/types/calendar';
-import type { Booking, EventType } from '@/lib/meetings/types';
+import type { Booking } from '@/lib/meetings/types';
 import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
 import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';

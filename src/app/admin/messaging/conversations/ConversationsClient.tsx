@@ -3,14 +3,12 @@
 import * as React from 'react';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
-import type { MessageLog, WorkspaceEntity } from '@/lib/types';
+import type { MessageLog } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import ThreadList from './components/ThreadList';
 import MessageThread from './components/MessageThread';
 import EntityContextPanel from './components/EntityContextPanel';
 import { MessageSquare, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import DOMPurify from 'isomorphic-dompurify';
 import { PageContainerFluid } from '@/components/ui/page-container';
 
 const READ_STATE_KEY = 'smartsapp:conversations:v1';

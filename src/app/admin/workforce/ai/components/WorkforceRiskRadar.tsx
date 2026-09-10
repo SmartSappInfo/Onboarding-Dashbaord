@@ -12,11 +12,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { ShieldAlert, AlertTriangle, ShieldCheck, TrendingDown, Sparkles } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, ShieldCheck, Sparkles } from 'lucide-react';
 import type { OrganizationRiskOverview } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface WorkforceRiskRadarProps {
   overview: OrganizationRiskOverview | null;

@@ -19,8 +19,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import {
   SurveyAnomalyDetectionInputSchema,
   SurveyAnomalyDetectionOutputSchema,
-  type SurveyAnomalyDetectionInput,
-  type SurveyAnomalyDetectionOutput,
 } from '../schemas/survey-intelligence-schemas';
 
 function renderAnomalyPrompt(input: {

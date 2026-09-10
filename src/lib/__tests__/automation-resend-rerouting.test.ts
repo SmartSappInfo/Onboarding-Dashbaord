@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { resumeAutomationRun } from '../automations/resume';
-import { adminDb } from '../firebase-admin';
 import { traverseNodes } from '../automations/nodes/traverse';
 
 // Mock traverseNodes

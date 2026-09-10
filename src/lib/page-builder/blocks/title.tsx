@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { Heading } from 'lucide-react';
 import { registerBlock } from '../registry';
 import { cn } from '@/lib/utils';
-import { sanitizeHtml } from '../sanitize';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 import { isColorLight } from '../resolve-theme';
 
@@ -203,7 +202,7 @@ registerBlock({
     const subheadingSize = props.customSubheadingSize && props.customSubheadingSize !== 'default' ? props.customSubheadingSize : null;
     
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [hasMounted, setHasMounted] = React.useState(false);
+    const [_hasMounted, setHasMounted] = React.useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     React.useEffect(() => {

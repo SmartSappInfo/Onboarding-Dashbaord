@@ -6,16 +6,15 @@ import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigat
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
-import { doc, collection, query, orderBy, where, getDocs } from 'firebase/firestore';
-import { Skeleton } from '@/components/ui/skeleton';
+import { doc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
     Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
 } from 'lucide-react';
-import { type PDFForm, type PDFFormField, type WorkspaceEntity, type Entity, type MessageTemplate, type SenderProfile, type SeoConfig } from '@/lib/types';
+import { type PDFForm, type PDFFormField, type SeoConfig } from '@/lib/types';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
-import { savePdfForm, updatePdfFormStatus } from '@/lib/pdf-actions';
+import { savePdfForm } from '@/lib/pdf-actions';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -23,12 +22,10 @@ import * as z from 'zod';
 import FieldMapper from './components/FieldMapper';
 import PdfPreviewDialog from './components/PdfPreviewDialog';
 import { detectPdfFields } from '@/ai/flows/detect-pdf-fields-flow';
-import { identifyPrimaryField } from '@/ai/flows/identify-primary-field-flow';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
 import {
   AlertDialog,
-  AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
   AlertDialogDescription,
@@ -44,7 +41,6 @@ import { MediaSelect } from '@/app/admin/entities/components/media-select';
 import WebhookManager from '@/app/admin/surveys/components/webhook-manager';
 import InternalNotificationConfig from '@/app/admin/components/internal-notification-config';
 import { cn } from '@/lib/utils';
-import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 
@@ -122,12 +118,12 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
 export default function EditPdfPage() {
   const params = useParams();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const pathname = usePathname();
+  const _searchParams = useSearchParams();
+  const _pathname = usePathname();
   const { toast } = useToast();
   const pdfId = params.id as string;
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user: _user } = useUser();
   const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
 
   const { activeOrganizationId } = useTenant();
@@ -138,14 +134,14 @@ export default function EditPdfPage() {
   const [namingFieldId, setNamingFieldId] = React.useState<string | null>(null);
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDetecting, setIsDetecting] = React.useState(false);
-  const [isStatusChanging, setIsStatusChanging] = React.useState(false);
+  const [isStatusChanging, _setIsStatusChanging] = React.useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = React.useState(false);
   const [isDetectionModeOpen, setIsDetectionModeOpen] = React.useState(false);
-  const [autosaveStatus, setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
-  const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
+  const [_autosaveStatus, _setAutosaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
+  const [_isQuickCreateOpen, _setIsQuickCreateOpen] = React.useState(false);
   const [hasInitialized, setHasInitialized] = React.useState(false);
 
-  const storageKey = `pdf-autosave-${pdfId}`;
+  const _storageKey = `pdf-autosave-${pdfId}`;
   const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
   const form = useForm<FormData>({
@@ -155,18 +151,18 @@ export default function EditPdfPage() {
     }
   });
 
-  const { reset, watch, setValue, getValues, trigger } = form;
+  const { reset, watch, setValue, getValues: _getValues, trigger } = form;
   const watchedSchoolId = watch('entityId');
   // Resolve the selected entity by doc id (fed to FieldMapper/preview) without
   // loading the whole workspace (Phase 5.2).
   const selectedSchool = useEntityByDocId(watchedSchoolId);
 
-  const { state: historyState, set: setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
+  const { state: _historyState, set: _setHistory, undo: undoHistory, redo: redoHistory, canUndo, canRedo, reset: resetHistory } = useUndoRedo<PDFFormField[]>([]);
 
   const isProgrammaticChange = React.useRef(false);
-  const debouncedFields = useDebounce(fields, 800);
+  const _debouncedFields = useDebounce(fields, 800);
   const watchedForm = watch();
-  const debouncedForm = useDebounce(watchedForm, 2000);
+  const _debouncedForm = useDebounce(watchedForm, 2000);
 
   const pdfDocRef = useMemoFirebase(() => firestore && pdfId ? doc(firestore, 'pdfs', pdfId) : null, [firestore, pdfId]);
   const { data: pdf, isLoading } = useDoc<PDFForm>(pdfDocRef);
@@ -257,7 +253,7 @@ export default function EditPdfPage() {
             else setFields(prev => [...prev, ...newSuggestions]);
             toast({ title: 'AI Detection Complete', description: `${result.fields.length} potential fields found.` });
         }
-    } catch (error: unknown) { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
+    } catch (_error: unknown) { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
   };
 
  if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;

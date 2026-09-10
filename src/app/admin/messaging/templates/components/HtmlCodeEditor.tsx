@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import type { VariableDefinition, TemplateVariable } from '@/lib/types';
-import { VariablePicker } from '@/components/messaging/VariablePicker';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { AlertTriangle } from 'lucide-react';

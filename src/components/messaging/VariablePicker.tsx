@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
-import type { TemplateVariable, VariableContext } from '@/lib/types';
+import type { TemplateVariable } from '@/lib/types';
 
 interface VariablePickerProps {
   /**

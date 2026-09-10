@@ -322,8 +322,8 @@ export class PortalAnalyticsService {
    */
   public static generateAiCorrelationInsights(
     business: BusinessMetrics,
-    learning: LearningMetrics,
-    community: CommunityMetrics
+    _learning: LearningMetrics,
+    _community: CommunityMetrics
   ): AiCorrelationInsight[] {
     return [
       {

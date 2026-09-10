@@ -12,7 +12,7 @@
  * 4. Strict Zero-Any Invariant.
  */
 
-import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement } from '@/lib/types';
+import type { SurveyResponse, SurveyQuestion, SurveyElement } from '@/lib/types';
 import { parseDateSafe } from '@/lib/forms-utils';
 
 // ─── TYPES ──────────────────────────────────────────────────────────────────

@@ -1,7 +1,6 @@
 // @ts-nocheck
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { propagateIndustryGroupChanges } from '../industry-propagation';
-import { adminDb } from '../../firebase-admin';
 import { canUser } from '../../workspace-permissions';
 import { listIndustryPredefinedGroupsAction, installPredefinedIndustryGroupsAction } from '../../fields-actions';
 

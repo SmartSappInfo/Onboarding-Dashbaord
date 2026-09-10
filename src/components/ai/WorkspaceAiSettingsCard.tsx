@@ -20,7 +20,6 @@ import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import {
   AiModelRegistry,
-  type AiModelDefinition,
   type AiProviderId,
 } from '@/lib/ai/model-registry';
 import { updateWorkspaceAiSettingsAction } from '@/lib/ai/actions/workspace-ai-actions';

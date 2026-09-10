@@ -95,7 +95,7 @@ export async function executePurgeLegacyFieldsFerAction(): Promise<{
     // ----------------------------------------------------------------------
     // We need to re-seed the new fields for every workspace
     const workspacesSnap = await adminDb.collection('workspaces').get();
-    const affectedWorkspaceIds = workspacesSnap.docs.map(doc => doc.id);
+    const _affectedWorkspaceIds = workspacesSnap.docs.map(doc => doc.id);
 
     // Create a fallback "Custom Details" group for each workspace just in case
     const fallbackGroupIds: Record<string, string> = {};

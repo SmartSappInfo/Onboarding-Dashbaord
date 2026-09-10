@@ -13,7 +13,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { AccessRequest, AccessRequestStatus } from '@/lib/types';
+import type { AccessRequest } from '@/lib/types';
 import { WorkspaceMembershipService } from '@/lib/services/identity/workspace-membership-service';
 import { IdentityProjectionService } from '@/lib/services/identity/identity-projection-service';
 

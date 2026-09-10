@@ -16,7 +16,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { SurveyDistributionCampaign, SurveyDeployment } from './survey-v2-types';
+import type { SurveyDistributionCampaign } from './survey-v2-types';
 import { generateTrackingToken, buildSurveyAttributionUrl } from './survey-attribution';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { sendMessage } from '@/lib/messaging-engine';
@@ -263,7 +263,7 @@ export async function dispatchSurveyDistributionCampaignAction(
 export async function estimateAudienceSizeAction(
   workspaceId: string,
   filterTagIds?: string[],
-  entityTypes?: string[]
+  _entityTypes?: string[]
 ): Promise<{ count: number }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran for anyone.
   await requireWorkspace(workspaceId);

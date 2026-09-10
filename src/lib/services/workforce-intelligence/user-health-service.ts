@@ -10,7 +10,6 @@
  * @testability Covered in `workforce-intelligence-services.test.ts`.
  */
 
-import { adminDb } from '@/lib/firebase-admin';
 import type { UserHealthScore, UserHealthStatus } from '@/lib/types';
 import { PersonService } from '@/lib/services/identity/person-service';
 import { CrmWorkloadService } from '@/lib/services/workforce/crm-workload-service';

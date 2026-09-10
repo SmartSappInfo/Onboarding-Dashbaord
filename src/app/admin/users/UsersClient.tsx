@@ -21,7 +21,6 @@ import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebas
 import type {
   UserProfile,
   Role,
-  Workspace,
   MembershipStatus,
   PeopleDirectoryFilter,
   Department,
@@ -34,30 +33,18 @@ import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Switch } from '@/components/ui/switch';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
-  User as UserIcon,
   ShieldCheck,
-  Zap,
-  Info,
-  Loader2,
-  ShieldEllipsis,
   UserPlus,
   Building2,
   Search,
-  Filter,
   SlidersHorizontal,
-  Star,
-  ExternalLink,
-  Ban,
-  CheckCircle2,
-  Clock,
   Users,
   Mail,
   ShieldAlert,
@@ -106,7 +93,7 @@ export default function UsersClient() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const confirm = useConfirm();
-  const { activeOrganizationId, activeWorkspaceId, accessibleWorkspaces } = useTenant();
+  const { activeOrganizationId, activeWorkspaceId: _activeWorkspaceId, accessibleWorkspaces } = useTenant();
   const { user: currentUser } = useUser();
 
   // Top Tab Navigation State
@@ -175,7 +162,7 @@ export default function UsersClient() {
 
   const { data: users, isLoading: isLoadingUsers } = useCollection<UserProfile>(usersQuery);
   const { data: roles, isLoading: isLoadingRoles } = useCollection<Role>(rolesQuery);
-  const roleMap = useRoleLookup(roles);
+  const _roleMap = useRoleLookup(roles);
 
   const isLoading = isLoadingUsers || isLoadingRoles;
 
@@ -258,7 +245,7 @@ export default function UsersClient() {
   };
 
   // Remove member from organization
-  const handleRemoveUser = async (targetUser: UserProfile) => {
+  const _handleRemoveUser = async (targetUser: UserProfile) => {
     if (!activeOrganizationId) return;
 
     const ok = await confirm({

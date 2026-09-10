@@ -2,10 +2,9 @@
 import { useState, useMemo, useEffect, useCallback, useTransition, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { collection, doc, deleteDoc, query, where, orderBy, updateDoc, getDoc, getDocs } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError, useUser, useDoc } from '@/firebase';
-import type { WorkspaceEntity, Entity, Zone, Tag, TagCategory, Module, EntityContact } from '@/lib/types';
-import { TagSelector } from '@/components/tags/TagSelector';
+import { collection, doc, query, where, orderBy, updateDoc, getDoc, getDocs } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase, useUser, useDoc } from '@/firebase';
+import type { WorkspaceEntity, Entity, Tag, TagCategory, EntityContact } from '@/lib/types';
 import { TagBadges } from '@/components/tags/TagBadges';
 import { BulkTagOperations } from '@/components/tags/BulkTagOperations';
 import { TagFilter } from '@/components/tags/TagFilter';
@@ -26,9 +25,9 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, MessageCircle, Building2, Flame, Filter, ChevronDown, ListFilter, X, RotateCcw, Clock, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive } from 'lucide-react';
+import { MoreHorizontal, CalendarPlus, Edit, Trash2, MapPin, UserPlus, ArrowUpDown, Eye, Send, PlusCircle, Sparkles, User, FileUp, ShieldCheck, Share2, Tag as TagIcon, Mail, Phone, Building2, Flame, ChevronDown, ListFilter, X, RotateCcw, CalendarDays, ClipboardList, Video, PhoneCall, Download, Archive } from 'lucide-react';
 import ManageWorkspacesModal from './components/ManageWorkspacesModal';
 import AiEntityGenerator from './components/ai-entity-generator';
 import {
@@ -60,7 +59,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/use-permissions';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import AssignUserModal from './components/AssignUserModal';
 import { Input } from '@/components/ui/input';
@@ -68,12 +67,12 @@ import { Textarea } from '@/components/ui/textarea';
 
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { cn, toTitleCase } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { createAudience } from '@/lib/audience-hooks';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2 } from 'lucide-react';
-import { LocationCascade, type LocationValue } from '@/components/location/LocationCascade';
+import { type LocationValue } from '@/components/location/LocationCascade';
 import { CountrySelect } from '@/components/location/CountrySelect';
 import { RegionSelect } from '@/components/location/RegionSelect';
 import { DistrictSelect } from '@/components/location/DistrictSelect';
@@ -137,14 +136,14 @@ export default function EntitiesClient() {
   const { 
     singular, 
     plural, 
-    addNew, 
-    importBulk, 
+    addNew: _addNew, 
+    importBulk: _importBulk, 
     noFound, 
     deleteConfirm, 
     deleteLabel, 
-    updateStatus, 
+    updateStatus: _updateStatus, 
     termName, 
-    termStatus,
+    termStatus: _termStatus,
     viewConsole,
     editProfile
   } = useTerminology();
@@ -628,7 +627,7 @@ export default function EntitiesClient() {
   const { 
     entities, 
     isLoading: isLoadingEntities,
-    totalCount: totalEntitiesCount
+    totalCount: _totalEntitiesCount
   } = usePaginatedEntities({
     firestore,
     activeWorkspaceId,
@@ -766,7 +765,7 @@ export default function EntitiesClient() {
                 status: data.status || 'unchecked',
                 score: data.score || 0
               };
-            } catch (e) {
+            } catch (_e) {
               console.warn('Failed to decode email hash:', doc.id);
             }
           });
@@ -845,13 +844,13 @@ export default function EntitiesClient() {
   // Hook up our robust Selection Hook Core
   const {
     selectedEntityIds,
-    setSelectedEntityIds,
+    setSelectedEntityIds: _setSelectedEntityIds,
     paginatedEntities,
     totalPages,
     selectedCount,
     isAllSelectedOnPage,
     isAllSelectedInView,
-    isIndeterminateOnPage,
+    isIndeterminateOnPage: _isIndeterminateOnPage,
     toggleSelect,
     selectCurrentPage,
     selectOtherPages,

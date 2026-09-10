@@ -19,7 +19,6 @@ import {
   PopoverTrigger
 } from '@/components/ui/popover';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { 
   Coins, 
@@ -27,9 +26,7 @@ import {
   Cpu, 
   Sparkles, 
   ShieldCheck, 
-  AlertCircle, 
   Calendar,
-  Zap
 } from 'lucide-react';
 import type { CreditLedgerSummary } from '@/lib/lead-intelligence/types';
 import { cn } from '@/lib/utils';

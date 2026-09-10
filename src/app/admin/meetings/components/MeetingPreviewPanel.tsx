@@ -5,15 +5,12 @@ import React from 'react';
 import { 
     Monitor, 
     Smartphone, 
-    Globe, 
     ShieldCheck, 
     Lock,
     ExternalLink,
     Play
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
 interface MeetingPreviewPanelProps {

@@ -27,17 +27,11 @@ import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { 
   Sliders, 
-  ArrowUpDown, 
-  ShieldCheck, 
-  Sparkles, 
-  Globe, 
   Mail, 
   Cpu, 
   Building2,
-  CheckCircle2
 } from 'lucide-react';
-import type { ProviderRoutingRule, ProviderId } from '@/lib/lead-intelligence/types';
-import { cn } from '@/lib/utils';
+import type { ProviderRoutingRule } from '@/lib/lead-intelligence/types';
 
 interface ProviderRoutingMatrixModalProps {
   isOpen: boolean;

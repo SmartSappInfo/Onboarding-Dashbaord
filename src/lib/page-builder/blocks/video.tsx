@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
-import { Film, Play, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
+import { Film, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
 import VideoEmbed, { VideoPlayButtonOverlay } from '@/components/video-embed';
 import { registerBlock } from '../registry';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
@@ -130,7 +130,7 @@ registerBlock({
       });
       
       try {
-        const downloadUrl = await uploadPageMedia(file, ctx.page?.workspaceId || '', (percent) => {});
+        const downloadUrl = await uploadPageMedia(file, ctx.page?.workspaceId || '', (_percent) => {});
         
         ctx.onPropChange?.({
           videoData: {

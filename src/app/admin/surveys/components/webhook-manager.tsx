@@ -72,7 +72,7 @@ export default function WebhookManager() {
             setNewWebhookName('');
             setNewWebhookUrl('');
             toast({ title: 'Webhook Saved', description: 'The new endpoint is now available in your library.' });
-        } catch (e) {
+        } catch (_e) {
             toast({ variant: 'destructive', title: 'Error Saving Webhook' });
         } finally {
             setIsSaving(false);

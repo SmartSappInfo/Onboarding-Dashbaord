@@ -28,7 +28,7 @@ const INPUT_CLASS = 'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-
 export const PropertiesPanel = React.memo(function PropertiesPanel({
   block,
   resources,
-  theme,
+  theme: _theme,
   workspaceId,
   onUpdate,
 }: PropertiesPanelProps) {

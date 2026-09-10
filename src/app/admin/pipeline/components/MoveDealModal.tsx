@@ -73,7 +73,7 @@ export default function MoveDealModal({
 
   if (!deal) return null;
 
-  const currentStage = stages.find(s => s.id === deal.stageId);
+  const _currentStage = stages.find(s => s.id === deal.stageId);
   const targetStage = stages.find(s => s.id === selectedStageId);
 
   // Validate entry gate requirements

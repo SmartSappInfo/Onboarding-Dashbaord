@@ -1,8 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { bulkApplyTagsAction, bulkRemoveTagsAction } from '../tag-actions';
 import { updateEntityAction } from '../entity-actions';
-import { adminDb } from '../firebase-admin';
-import type { Tag, EntityType } from '../types';
 
 // Mock Dependencies
 const mockBatch = {

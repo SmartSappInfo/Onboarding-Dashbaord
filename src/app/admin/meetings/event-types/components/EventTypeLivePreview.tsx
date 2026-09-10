@@ -9,11 +9,10 @@
  */
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Clock, Video, Globe, Calendar, Check, Sparkles } from 'lucide-react';
+import { Clock, Video, Globe, Sparkles } from 'lucide-react';
 import type { BookingField, MeetingLocationType } from '@/lib/meetings/types';
 
 interface EventTypeLivePreviewProps {

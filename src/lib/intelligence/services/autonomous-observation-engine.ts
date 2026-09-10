@@ -33,7 +33,6 @@ import type {
   ObservationScanRequest,
   RecommendationStatus,
 } from '../types';
-import { WorkflowEngine } from '@/lib/workflows/services/workflow-engine';
 
 // In-memory fallback stores for local testing / offline dev
 const inMemoryRecommendations = new Map<string, ProactiveRecommendation>();

@@ -9,19 +9,12 @@
  */
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import {
   Sparkles,
-  TrendingUp,
-  AlertTriangle,
   CheckCircle2,
-  HelpCircle,
   Wand2,
   Loader2,
-  Tag,
   ArrowRight,
-  Flame,
-  ShieldAlert,
   Quote,
   Zap,
 } from 'lucide-react';

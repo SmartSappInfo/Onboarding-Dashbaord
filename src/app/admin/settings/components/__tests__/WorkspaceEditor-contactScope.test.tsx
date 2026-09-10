@@ -9,7 +9,7 @@ import '@testing-library/jest-dom';
 describe('WorkspaceEditor - Contact Scope Selector', () => {
   it('should display contact scope selector for new workspaces', () => {
     // Simulate the new workspace form
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="new-workspace-form">
         <div data-testid="scope-selector">
           <h4>Contact Scope</h4>
@@ -29,7 +29,7 @@ describe('WorkspaceEditor - Contact Scope Selector', () => {
   it('should allow selecting institution scope', () => {
     let selectedScope = 'institution';
     
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-selector">
         <button 
           data-testid="scope-institution"
@@ -50,7 +50,7 @@ describe('WorkspaceEditor - Contact Scope Selector', () => {
   it('should allow selecting family scope', () => {
     let selectedScope = 'institution';
     
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-selector">
         <button 
           data-testid="scope-family"
@@ -70,7 +70,7 @@ describe('WorkspaceEditor - Contact Scope Selector', () => {
   it('should allow selecting person scope', () => {
     let selectedScope = 'institution';
     
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-selector">
         <button 
           data-testid="scope-person"
@@ -88,7 +88,7 @@ describe('WorkspaceEditor - Contact Scope Selector', () => {
   });
 
   it('should display scope descriptions', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-selector">
         <div data-testid="scope-institution-desc">
           Institutional contacts with billing, contracts, and subscription management.
@@ -108,7 +108,7 @@ describe('WorkspaceEditor - Contact Scope Selector', () => {
   });
 
   it('should display warning about scope immutability', () => {
-    const { container } = render(
+    const { container: _container } = render(
       <div data-testid="scope-warning">
         Contact scope cannot be changed after the first entity is linked to this workspace.
       </div>

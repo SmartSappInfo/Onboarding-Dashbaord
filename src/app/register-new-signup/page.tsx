@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
 import NewSchoolSignupForm from '@/app/register-new-signup-form';
-import Header from '@/components/header';
 import Footer from '@/components/footer';
 import { getCustomPageMetadata } from '@/lib/seo-server';
 

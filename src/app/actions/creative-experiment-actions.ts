@@ -26,7 +26,6 @@ import { makeUniqueId } from '@/lib/creative/creative-types';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {
-  calculateStatisticalSignificance,
   cloneDocumentForExperimentVariant,
   SAMPLE_EXPERIMENTS,
 } from '@/lib/creative/creative-experiments-engine';

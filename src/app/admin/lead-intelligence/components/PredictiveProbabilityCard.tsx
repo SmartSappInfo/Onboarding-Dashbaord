@@ -13,7 +13,7 @@
  */
 
 import React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { 
@@ -21,10 +21,8 @@ import {
   Calendar, 
   Briefcase, 
   CheckCircle2, 
-  DollarSign, 
   Sparkles, 
   Info,
-  ShieldCheck
 } from 'lucide-react';
 import type { PredictiveConversionLikelihood } from '@/lib/lead-intelligence/types';
 import { cn } from '@/lib/utils';

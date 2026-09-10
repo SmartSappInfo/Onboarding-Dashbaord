@@ -16,15 +16,11 @@
 
 import * as React from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   TrendingUp,
   Clock,
   Zap,
-  Target,
-  Users,
   CheckCircle2,
-  Percent,
 } from 'lucide-react';
 import type { AiFleetMetrics } from '@/lib/ai-sales-workforce/types';
 

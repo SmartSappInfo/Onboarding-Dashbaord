@@ -17,7 +17,6 @@ import {
   User,
 } from 'lucide-react';
 import type {
-  CustomPageStats,
   CustomPageEventWithEntity,
   PageEventType,
   PageEventChannel,

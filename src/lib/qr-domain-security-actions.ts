@@ -11,8 +11,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { nanoid } from 'nanoid';
-import { hashPasscode, verifyPasscode, evaluateSecurityRules } from '@/lib/qr-helpers';
-import type { QRCustomDomain, QRCode } from '@/lib/types';
+import type { QRCustomDomain } from '@/lib/types';
 import DOMPurify from 'isomorphic-dompurify';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 

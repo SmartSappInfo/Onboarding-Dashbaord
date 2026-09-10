@@ -19,8 +19,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import {
   SurveySentimentThemeInputSchema,
   SurveySentimentThemeOutputSchema,
-  type SurveySentimentThemeInput,
-  type SurveySentimentThemeOutput,
 } from '../schemas/survey-intelligence-schemas';
 
 function renderSentimentThemePrompt(input: {

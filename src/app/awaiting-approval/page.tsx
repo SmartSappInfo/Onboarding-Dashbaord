@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useUser, useAuth, useFirestore } from '@/firebase';
 import { onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { 
   Loader2, LogOut, Clock, CheckCircle2, ShieldAlert,
   Building2, Phone, Briefcase, Mail

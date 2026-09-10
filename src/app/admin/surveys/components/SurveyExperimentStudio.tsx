@@ -14,7 +14,6 @@
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 import type {
-  Survey,
   SurveyExperimentConfig,
   SurveyExperimentVariant,
 } from '@/lib/types';
@@ -24,7 +23,7 @@ import {
 } from '@/lib/surveys/survey-experiment-actions';
 import { useToast } from '@/hooks/use-toast';
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CardInfoTooltip } from '@/components/shared/CardInfoTooltip';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -37,14 +36,8 @@ import {
   Plus,
   Trash2,
   Trophy,
-  CheckCircle2,
-  TrendingUp,
-  BarChart3,
-  Percent,
-  Sparkles,
   Loader2,
   Crown,
-  Shuffle,
   Type,
   FileText,
   MousePointerClick,
@@ -91,7 +84,7 @@ export function SurveyExperimentStudio({ surveyId, workspaceId }: SurveyExperime
     status: 'draft',
   };
 
-  const [isLoadingResults, setIsLoadingResults] = React.useState(false);
+  const [_isLoadingResults, setIsLoadingResults] = React.useState(false);
   const [evaluatedVariants, setEvaluatedVariants] = React.useState<SurveyExperimentVariant[]>(expConfig.variants);
   const [winningVariantId, setWinningVariantId] = React.useState<string | undefined>(undefined);
   const [totalCompletions, setTotalCompletions] = React.useState(0);

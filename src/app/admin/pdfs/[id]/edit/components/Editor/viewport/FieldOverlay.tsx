@@ -46,7 +46,7 @@ interface FieldOverlayProps {
 
 export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimensions }: FieldOverlayProps) {
   const { 
-    selectedFieldIds, namingFieldId, selectField, updateField, removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, entity
+    selectedFieldIds, namingFieldId, selectField, updateField, removeField: _removeField, duplicateFields, zoom, setIsFieldDeleteConfirmOpen, viewMode, entity
   } = useEditor();
   
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ 
@@ -147,7 +147,7 @@ export const FieldOverlay = React.memo(function FieldOverlay({ field, pageDimens
     textTransform: field.textTransform === 'capitalize' ? 'none' : field.textTransform || 'none', // Handle title case manually
   };
 
-  const Icon = fieldIcons[field.type];
+  const _Icon = fieldIcons[field.type];
   const resizeHandles: ResizeHandle[] = ['top-left', 'top-right', 'bottom-left', 'bottom-right', 'top', 'bottom', 'left', 'right'];
 
   const displayText = React.useMemo(() => {

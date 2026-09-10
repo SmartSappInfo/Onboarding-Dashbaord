@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   SurveyQualityAuditOutputSchema,
   SurveySentimentThemeOutputSchema,
-  SurveyAnomalyDetectionOutputSchema,
   SurveyResearchAssistantOutputSchema,
 } from '../schemas/survey-intelligence-schemas';
 

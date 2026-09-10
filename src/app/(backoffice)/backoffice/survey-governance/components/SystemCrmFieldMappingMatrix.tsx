@@ -22,8 +22,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Table,
@@ -40,8 +38,6 @@ import {
   Lock,
   Save,
   Loader2,
-  RefreshCw,
-  Sparkles,
 } from 'lucide-react';
 
 export default function SystemCrmFieldMappingMatrix() {
@@ -58,7 +54,7 @@ export default function SystemCrmFieldMappingMatrix() {
       if (res.success && res.templates) {
         setTemplates(res.templates);
       }
-    } catch (err) {
+    } catch (_err) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -119,7 +115,7 @@ export default function SystemCrmFieldMappingMatrix() {
           description: res.error || 'Failed to save templates',
         });
       }
-    } catch (err) {
+    } catch (_err) {
       toast({
         variant: 'destructive',
         title: 'Error',

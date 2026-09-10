@@ -27,7 +27,6 @@ import {
   Loader2, 
   History, 
   Sparkles,
-  Download
 } from 'lucide-react';
 import type { 
   Prospect, 

@@ -15,12 +15,10 @@ import type {
   FormExperiment,
   FormVariant,
   ExperimentStatus,
-  StatisticalSignificanceResult,
   FormHealthScore,
   FormHealthGrade,
   HealthDiagnosticFinding,
   FormAnomalyAlert,
-  FormOptimizationRecommendation,
 } from './form-optimization-types';
 import { calculateStatisticalSignificance } from './form-utils';
 import { requireAuth } from '@/lib/auth/require-auth';

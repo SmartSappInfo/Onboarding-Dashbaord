@@ -43,7 +43,7 @@ interface AiChatEditorProps {
 }
 
 function AiChatPanel() {
-    const { getValues, reset, watch } = useFormContext();
+    const { getValues, reset, watch: _watch } = useFormContext();
     const { toast } = useToast();
     const router = useRouter();
     const params = useParams();
@@ -394,7 +394,7 @@ function AiChatPanel() {
         }
     };
 
-    const handleKeyDown = (e: React.KeyboardEvent) => {
+    const _handleKeyDown = (e: React.KeyboardEvent) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
             handleSend();
@@ -727,7 +727,7 @@ function AiChatPanel() {
     );
 }
 
-export default function AiChatEditor({ variant = 'default', className }: AiChatEditorProps) {
+export default function AiChatEditor({ variant: _variant = 'default', className: _className }: AiChatEditorProps) {
     const [mounted, setMounted] = React.useState(false);
     React.useEffect(() => setMounted(true), []);
 

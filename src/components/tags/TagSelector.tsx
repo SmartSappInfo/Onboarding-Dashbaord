@@ -56,7 +56,7 @@ import {
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
-import { Tag as TagIcon, X, Plus, Search, Check } from 'lucide-react';
+import { X, Plus, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMediaQuery } from '@/hooks/use-media-query';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -452,7 +452,7 @@ export function TagSelector({
           >
             <Plus className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="text-xs font-bold flex-1 truncate">
-              Create tag "{searchTerm.trim()}"
+              Create tag &quot;{searchTerm.trim()}&quot;
             </span>
           </button>
         )}
@@ -461,7 +461,7 @@ export function TagSelector({
             <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground px-2 py-1" aria-hidden="true">
               {category}
             </p>
-            {tags.map((tag, groupIdx) => {
+            {tags.map((tag, _groupIdx) => {
               const globalIdx = flatAvailableTags.indexOf(tag);
               const isFocused = focusedIndex === globalIdx;
               return (

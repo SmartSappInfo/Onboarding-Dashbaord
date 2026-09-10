@@ -1,4 +1,4 @@
-import React, { lazy } from 'react';
+import React from 'react';
 
 // Using React.lazy for client-side widgets, or we can just import server components if the registry is rendered on the server.
 // For Next.js App Router, if WidgetRegistry is imported inside a Client Component, these will be treated as client imports.
@@ -10,7 +10,6 @@ import React, { lazy } from 'react';
 // To avoid this and keep RSC benefits, we should just map strings to generic client wrappers, or we can use Server Actions inside the widgets if they are Client Components, 
 // OR we map them to Server Components if this file is imported on the Server and we pass down the rendered nodes.
 
-import { WidgetWrapper } from './widget-wrapper';
 
 // Let's import existing widgets for now
 import { MetricCard } from './MetricCard';

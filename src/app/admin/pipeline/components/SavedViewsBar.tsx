@@ -33,10 +33,8 @@ import {
   Lock,
   Globe,
   Loader2,
-  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -45,13 +43,11 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
-import type { Deal, OnboardingStage, UserProfile } from '@/lib/types';
+import type { Deal, OnboardingStage } from '@/lib/types';
 import type {
   DealSavedView,
   DealColumnKey,
@@ -60,7 +56,6 @@ import type {
 import {
   createDealSavedViewAction,
   deleteDealSavedViewAction,
-  updateDealSavedViewAction,
 } from '@/app/actions/deal-saved-view-actions';
 import type { KanbanFilters } from '../pipeline-types';
 import { countMatchingDeals } from '@/lib/deals/deal-filter-engine';
@@ -111,7 +106,7 @@ export default function SavedViewsBar({
   const [isSaveOpen, setIsSaveOpen] = React.useState(false);
   const [newViewName, setNewViewName] = React.useState('');
   const [newViewVisibility, setNewViewVisibility] = React.useState<'private' | 'workspace'>('workspace');
-  const [newViewIcon, setNewViewIcon] = React.useState('Bookmark');
+  const [newViewIcon, _setNewViewIcon] = React.useState('Bookmark');
   const [isSaving, setIsSaving] = React.useState(false);
 
   const stagesMap = React.useMemo(() => {

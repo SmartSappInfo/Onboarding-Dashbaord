@@ -23,7 +23,7 @@ import { KnowledgeGraphService } from '../services/knowledge-graph-service';
 import { GraphProjectionService } from '../pipeline/graph-projection-service';
 import { MEMORY_OBJECTS_COLLECTION } from '../memory-repository';
 import type { MemoryObject } from '../types';
-import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
+import { requireAuth } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 import {

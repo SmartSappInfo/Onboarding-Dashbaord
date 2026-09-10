@@ -1,6 +1,6 @@
 'use client';
 
-import { useForm, useFieldArray, Controller } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Input } from '@/components/ui/input';
@@ -8,11 +8,10 @@ import { Button } from '@/components/ui/button';
 import { addDoc, collection } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import { useState, useEffect } from 'react';
-import { Loader2, Plus, X, Users, Baby, UserCircle, Clock, Zap } from 'lucide-react';
+import { Loader2, Plus, X, Baby, UserCircle, Clock, Zap } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   name: z.string().min(3, { message: 'Please enter your full name.' }),
@@ -111,7 +110,7 @@ export default function JoinMeetingForm({ meetingId, entityId, meetingLink, meet
                     <div className="space-y-3">
                         <p className="text-2xl font-black text-black dark:text-white leading-tight">😃 You're In Too Early!</p>
                         <p className="text-base font-medium text-slate-800 dark:text-white/70 leading-relaxed px-4">
-                            You'll be able to join from here, when the countdown is over
+                            You&apos;ll be able to join from here, when the countdown is over
                         </p>
                     </div>
                 </motion.div>

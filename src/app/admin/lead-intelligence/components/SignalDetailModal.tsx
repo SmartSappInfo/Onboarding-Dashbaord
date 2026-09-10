@@ -23,11 +23,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
-  Flame, 
-  TrendingUp, 
-  Users, 
-  ShieldAlert, 
-  Zap, 
   Calendar, 
   CheckCircle2, 
   ArrowRight,

@@ -1,6 +1,6 @@
 import React from 'react';
 import { z } from 'zod';
-import { Sparkles, Send, Bot, User } from 'lucide-react';
+import { Sparkles, Send, Bot } from 'lucide-react';
 import { registerBlock } from '../../registry';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -76,7 +76,7 @@ registerBlock({
                   type="button"
                   className="text-left text-[11px] px-3 py-1.5 rounded-xl border border-border bg-muted/40 hover:bg-muted text-muted-foreground hover:text-foreground transition-all"
                 >
-                  "{text}"
+                  &quot;{text}&quot;
                 </button>
               );
             })}

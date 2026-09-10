@@ -21,12 +21,12 @@ const {
 }));
 
 vi.mock('../firebase-admin', () => {
-  const queryRef = {
+  const _queryRef = {
     get: mockGet,
   };
 
   const collectionRef = {
-    doc: vi.fn((path) => ({
+    doc: vi.fn((_path) => ({
       get: mockGet,
       update: mockUpdate,
       set: mockSet,

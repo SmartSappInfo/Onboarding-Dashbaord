@@ -8,11 +8,11 @@
  *    All mocks and props maintain strict TypeScript types without `any` or `any[]`.
  */
 
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import React from 'react';
 import FlipbookReaderClient from '../FlipbookReaderClient';
-import type { FlipbookConfig, FlipbookPage } from '@/lib/types/flipbook-types';
+import type { FlipbookConfig } from '@/lib/types/flipbook-types';
 
 // Mock Toast
 const mockToast = vi.fn();

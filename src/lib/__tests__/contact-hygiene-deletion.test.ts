@@ -2,10 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   cleanContactEmailAction,
   deleteContactAction,
-  verifySingleContactAction,
   bulkCleanContactsAction,
 } from '../automation-actions';
-import { adminDb } from '../firebase-admin';
 
 // Mock Firebase Transaction and get/update/delete operations
 const mockGet = vi.fn();
@@ -21,8 +19,8 @@ const mockTransaction = {
 vi.mock('../firebase-admin', () => {
   return {
     adminDb: {
-      collection: vi.fn((col) => ({
-        doc: vi.fn((id) => ({
+      collection: vi.fn((_col) => ({
+        doc: vi.fn((_id) => ({
           get: mockGet,
           update: mockUpdate,
           delete: mockDelete,

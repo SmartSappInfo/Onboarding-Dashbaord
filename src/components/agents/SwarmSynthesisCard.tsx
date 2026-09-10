@@ -21,14 +21,12 @@ import {
   CheckCircle2,
   AlertTriangle,
   Sparkles,
-  ArrowRight,
-  ShieldAlert,
   Play,
   Clock,
   Layers,
   FileText,
 } from 'lucide-react';
-import type { SwarmRun, SwarmConsensus } from '@/lib/agents/domain-types';
+import type { SwarmRun } from '@/lib/agents/domain-types';
 import type { AgentActionProposal, AgentResult } from '@/lib/supervisor/types';
 import { executeJointProposalAction } from '@/lib/agents/actions/domain-agent-actions';
 import { useToast } from '@/hooks/use-toast';

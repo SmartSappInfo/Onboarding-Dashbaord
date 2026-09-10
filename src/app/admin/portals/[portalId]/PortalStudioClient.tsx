@@ -21,7 +21,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -32,14 +32,8 @@ import {
   ExternalLink,
   Copy,
   Sparkles,
-  Paintbrush,
-  Compass,
   Sliders,
-  ShieldCheck,
-  Globe,
-  Eye,
   Loader2,
-  Check,
 } from 'lucide-react';
 import { PortalThemeCustomizer } from '../components/PortalThemeCustomizer';
 import { PortalNavigationBuilder } from '../components/PortalNavigationBuilder';
@@ -80,7 +74,7 @@ interface PortalStudioClientProps {
 }
 
 export default function PortalStudioClient({ portalId }: PortalStudioClientProps) {
-  const router = useRouter();
+  const _router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
   const { activeOrganization, accessibleWorkspaces, allAccessibleWorkspaces } = useTenant();
@@ -137,10 +131,10 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
   const [seo, setSeo] = React.useState<PortalSeoConfig | null>(null);
 
   const [activeTab, setActiveTab] = React.useState('identity');
-  const [showPreviewMobile, setShowPreviewMobile] = React.useState(false);
+  const [_showPreviewMobile, _setShowPreviewMobile] = React.useState(false);
   const [isAiCopilotOpen, setIsAiCopilotOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
-  const [hasChanges, setHasChanges] = React.useState(false);
+  const [_hasChanges, setHasChanges] = React.useState(false);
 
   // Initialize draft state from Firestore or Server Action
   React.useEffect(() => {

@@ -746,7 +746,7 @@ export function renderBlocksToHtml(
         const tag = (block.listStyle === 'ordered' || block.listStyle === 'roman') ? 'ol' : 'ul';
         const listStyleType = block.listStyle === 'roman' ? 'upper-roman' : block.listStyle === 'ordered' ? 'decimal' : block.listStyle === 'checkmark' || block.listStyle === 'arrow' ? 'none' : 'disc';
         
-        const items = (block.items || []).map((item, i) => {
+        const items = (block.items || []).map((item, _i) => {
           let prefix = '';
           if (block.listStyle === 'checkmark') {
             prefix = '<span style="color: #10b981; margin-right: 8px; font-weight: bold;">✓</span>';

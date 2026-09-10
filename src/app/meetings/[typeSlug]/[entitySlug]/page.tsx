@@ -3,7 +3,6 @@ import { Suspense } from 'react';
 import { cache } from 'react';
 import MeetingLoader from '@/components/meeting-loader';
 import { adminDb } from '@/lib/firebase-admin';
-import { SmartSappLogo } from '@/components/icons';
 import type { Meeting } from '@/lib/types';
 import { resolveSeoMetadata } from '@/lib/seo';
 import { getOrgBranding } from '@/lib/org-branding';

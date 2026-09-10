@@ -238,7 +238,7 @@ export async function setOrganizationDefaultWorkspaceAction(
  * Provisions default roles, modules and zones for a new organization.
  * Uses a single atomic batch with parallel fetches to prevent waterfalls.
  */
-async function provisionOrganizationDefaults(organizationId: string, userId: string): Promise<void> {
+async function provisionOrganizationDefaults(organizationId: string, _userId: string): Promise<void> {
     const timestamp = new Date().toISOString();
     const batch = adminDb.batch();
 

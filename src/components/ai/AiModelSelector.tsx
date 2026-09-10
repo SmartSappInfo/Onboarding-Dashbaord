@@ -29,7 +29,6 @@ import {
   AiModelRegistry,
   type AiModelDefinition,
   type AiModelTier,
-  type AiProviderId,
 } from '@/lib/ai/model-registry';
 import { useWorkspaceAiModel } from '@/hooks/use-workspace-ai-model';
 

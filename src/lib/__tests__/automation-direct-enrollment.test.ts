@@ -61,7 +61,7 @@ vi.mock('../firebase-admin', () => {
       }),
       getAll: vi.fn().mockImplementation((...refs: unknown[]) =>
         Promise.all(
-          refs.map((r) =>
+          refs.map((_r) =>
             Promise.resolve({
               exists: true,
               id: 'ent_123',

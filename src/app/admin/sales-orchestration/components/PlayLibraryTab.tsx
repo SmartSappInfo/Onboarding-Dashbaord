@@ -34,14 +34,7 @@ import {
   Search,
   Zap,
   Clock,
-  ShieldCheck,
-  TrendingUp,
   Workflow,
-  Sparkles,
-  ArrowRight,
-  Flame,
-  AlertCircle,
-  Plus,
 } from 'lucide-react';
 import type { SalesPlay, PlayCategory } from '@/lib/sales-orchestration/types';
 import {

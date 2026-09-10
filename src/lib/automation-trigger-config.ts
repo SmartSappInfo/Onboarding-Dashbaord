@@ -1,4 +1,4 @@
-import type { Automation, AutomationTrigger, AutomationTriggerDef } from './types';
+import type { Automation, AutomationTrigger } from './types';
 
 /**
  * Resolves the config for the currently-firing trigger from the automation's triggers array.

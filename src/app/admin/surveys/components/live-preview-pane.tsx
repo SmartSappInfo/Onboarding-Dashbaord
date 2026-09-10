@@ -13,7 +13,6 @@
 import * as React from 'react';
 import { useFormContext } from 'react-hook-form';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Monitor,
@@ -23,11 +22,7 @@ import {
   Sun,
   Moon,
   Sparkles,
-  RotateCcw,
-  Layers,
-  CheckCircle2,
   FlaskConical,
-  Eye,
 } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { SmartSappLogo } from '@/components/icons';
@@ -63,7 +58,7 @@ export default function LivePreviewPane() {
     patternColor = '#3B82F6',
     startButtonText,
     submitButtonText,
-    showCoverPage,
+    _showCoverPage,
     showBranding,
     showSurveyTitles = true,
     showIntroAsPage = true,

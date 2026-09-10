@@ -6,8 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Search, Megaphone, Inbox } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { MessageCampaign, CampaignStatus } from '@/lib/types';
+import type { MessageCampaign } from '@/lib/types';
 import { CampaignListRow } from './campaign-list-row';
 
 interface CampaignListProps {

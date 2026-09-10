@@ -11,7 +11,6 @@ import type { AssessmentQuestion } from '@/lib/types/learning';
 import type {
   AiTutorSession,
   AiTutorMessage,
-  AiKnowledgeChunk,
   AiPedagogyDiagnostic,
   GeneratePortalScaffoldInput,
   GeneratedPortalScaffold,

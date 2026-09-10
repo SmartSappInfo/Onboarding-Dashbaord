@@ -48,7 +48,7 @@ export const PlainTextEditor = React.memo(function PlainTextEditor({
     maxLength,
     placeholder = 'Write your message…',
     registerInsertCallback,
-    contextLabels
+    contextLabels: _contextLabels
 }: PlainTextEditorProps) {
     const textareaRef = React.useRef<HTMLTextAreaElement>(null);
     const [showLinkPicker, setShowLinkPicker] = React.useState(false);

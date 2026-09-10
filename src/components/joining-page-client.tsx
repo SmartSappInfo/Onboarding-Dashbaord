@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Meeting, Entity, MeetingFacilitator } from '@/lib/types';
 import Image from 'next/image';
@@ -20,7 +20,6 @@ import {
   ShieldCheck,
   ExternalLink,
   Camera,
-  Upload,
   Pencil,
   Check,
   X,
@@ -74,7 +73,7 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
   const [meeting, setMeeting] = useState<Meeting | null>(null);
   const [entity, setEntity] = useState<Entity | null>(null);
   const [registrant, setRegistrant] = useState<RegistrantInfo | null>(null);
-  const [launchCountdown, setLaunchCountdown] = useState(5);
+  const [launchCountdown, _setLaunchCountdown] = useState(5);
   const [isJoinReady, setIsJoinReady] = useState(false);
   const [redirectCountdown, setRedirectCountdown] = useState(5);
   const [autoRedirectCountdown, setAutoRedirectCountdown] = useState(5);
@@ -530,7 +529,7 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
                 <CheckCircle2 className="h-10 w-10 text-emerald-400" />
               </div>
               <div className="space-y-2">
-                <p className="text-2xl font-black text-foreground tracking-tight">You're In!</p>
+                <p className="text-2xl font-black text-foreground tracking-tight">You&apos;re In!</p>
                 <p className="text-sm text-foreground/60 font-medium">
                   The meeting room has been opened in a new tab.
                 </p>
@@ -818,7 +817,7 @@ export default function JoiningPageClient({ typeSlug, entitySlug, token }: Joini
                           <span className="font-bold text-foreground">
                             {meeting.heroTitle || resolvedName || 'this session'}
                           </span>{' '}
-                          has been confirmed. The meeting room will open automatically when it's time.
+                          has been confirmed. The meeting room will open automatically when it&apos;s time.
                         </p>
                       </>
                     )}

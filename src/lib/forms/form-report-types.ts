@@ -5,7 +5,7 @@
  * cohort performance comparisons, revenue attribution, and scheduled email reports.
  */
 
-import type { FormAnalyticsSummary, FormFunnelStage, QuestionFrictionMetric, UtmAttributionSummary } from './form-analytics-types';
+import type { FormFunnelStage, QuestionFrictionMetric, UtmAttributionSummary } from './form-analytics-types';
 import type { FormAiTopicClusterSummary } from './form-intelligence-types';
 
 export type FormReportPreset =

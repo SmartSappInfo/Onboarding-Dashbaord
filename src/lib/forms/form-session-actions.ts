@@ -8,7 +8,6 @@
  */
 
 import { adminDb } from '../firebase-admin';
-import { COLLECTIONS } from '../collection-constants';
 import type { FormSession, FormEvent } from './form-types';
 
 /**

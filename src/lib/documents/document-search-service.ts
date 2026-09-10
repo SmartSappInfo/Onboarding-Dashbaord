@@ -89,7 +89,7 @@ export function buildDocumentSearchIndex(
 export function searchDocumentText(
   pages: Array<{ pageNumber: number; extractedText?: string }>,
   query: string,
-  index?: DocumentSearchIndex
+  _index?: DocumentSearchIndex
 ): SearchMatchResult[] {
   if (!query || typeof query !== 'string' || !query.trim()) {
     return [];

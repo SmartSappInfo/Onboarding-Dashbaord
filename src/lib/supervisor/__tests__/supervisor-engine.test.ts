@@ -14,16 +14,12 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AgentRegistry } from '../agent-registry';
 import { SupervisorEngine } from '../services/supervisor-engine';
-import { globalMcpRegistry } from '@/lib/mcp/registry';
 import { McpGateway } from '@/lib/mcp/gateway';
 import type {
   SmartSappAgent,
   AgentRequest,
-  AgentRun,
   AgentResult,
-  SupervisorPlanStep,
 } from '../types';
-import { z } from 'zod';
 
 // Mock Firebase Admin
 vi.mock('@/lib/firebase-admin', () => {

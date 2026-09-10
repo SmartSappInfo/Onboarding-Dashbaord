@@ -44,9 +44,7 @@ import {
   Percent,
   Clock,
   CheckCircle2,
-  AlertTriangle,
   Target,
-  FileCheck,
   DollarSign,
   Calendar,
   Users,
@@ -55,7 +53,6 @@ import {
   Shield,
   Zap
 } from 'lucide-react';
-import { ONBOARDING_STAGE_COLORS } from '@/lib/colors';
 import { cn } from '@/lib/utils';
 import { STAGE_REQUIRED_FIELD_LABELS } from '@/lib/deals/deal-stage-validation';
 

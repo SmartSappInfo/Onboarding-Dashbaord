@@ -5,7 +5,6 @@ import {
     handleUpdateDealValue, 
     handleUpdateDealStatus 
 } from '../automations/actions/deal-automation-actions';
-import { adminDb } from '../firebase-admin';
 import type { ExecutionContext } from '../automations/execution-types';
 import type { DealAutomationActionConfig } from '../automations/actions/deal-automation-actions';
 

@@ -19,7 +19,6 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { 
-  DocumentProcessingJob, 
   ProcessingJobStatus, 
   ProcessingJobType,
   DocumentSourceType,

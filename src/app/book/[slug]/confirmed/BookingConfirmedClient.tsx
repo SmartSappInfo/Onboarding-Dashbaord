@@ -9,18 +9,12 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import {
   CheckCircle2,
   Calendar,
   Clock,
   Video,
-  Globe,
-  Download,
-  CalendarPlus,
-  ArrowRight,
   User,
   RotateCcw,
   XCircle,
@@ -50,7 +44,7 @@ export default function BookingConfirmedClient({
   const startDate = new Date(booking.startAt);
   const endDate = new Date(booking.endAt);
 
-  const googleCalUrl = React.useMemo(() => {
+  const _googleCalUrl = React.useMemo(() => {
     return getGoogleCalendarUrl({
       title: `${booking.eventTypeName} - SmartSapp`,
       description: `Meeting with ${booking.booker?.firstName} ${booking.booker?.lastName}.\nJoin Link: ${booking.joinUrl || ''}`,
@@ -60,7 +54,7 @@ export default function BookingConfirmedClient({
     });
   }, [booking]);
 
-  const outlookCalUrl = React.useMemo(() => {
+  const _outlookCalUrl = React.useMemo(() => {
     return getOutlookCalendarUrl({
       title: `${booking.eventTypeName} - SmartSapp`,
       description: `Meeting with ${booking.booker?.firstName} ${booking.booker?.lastName}.\nJoin Link: ${booking.joinUrl || ''}`,
@@ -71,7 +65,7 @@ export default function BookingConfirmedClient({
   }, [booking]);
 
   // Trigger .ics file download
-  const handleDownloadIcs = () => {
+  const _handleDownloadIcs = () => {
     const icsString = generateIcsContent({
       title: `${booking.eventTypeName} - SmartSapp`,
       description: `Meeting with ${booking.booker?.firstName} ${booking.booker?.lastName}.\nJoin Link: ${booking.joinUrl || ''}`,

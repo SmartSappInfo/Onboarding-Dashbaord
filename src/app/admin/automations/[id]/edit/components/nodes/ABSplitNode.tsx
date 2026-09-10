@@ -10,9 +10,6 @@ import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { useParams } from 'next/navigation';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
-import { useWorkspace } from '@/context/WorkspaceContext';
 
 interface CommonNodeData {
   config?: any;
@@ -44,7 +41,7 @@ interface ABSplitNodeProps {
 export function ABSplitNode({ id, data, selected }: ABSplitNodeProps) {
     const [isHovered, setIsHovered] = React.useState(false);
     const config = data.config || {};
-    const params = useParams();
+    const _params = useParams();
     const { countsBySourceNodeId } = usePendingJobs();
     const waitingCount = countsBySourceNodeId[id] || 0;
     const splitRatio = config.splitRatio ?? 50;

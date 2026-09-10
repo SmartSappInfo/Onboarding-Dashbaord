@@ -43,14 +43,6 @@ import {
   BookOpen,
   Tag,
   TrendingUp,
-  DollarSign,
-  Repeat,
-  Percent,
-  Check,
-  X,
-  Filter,
-  Layers,
-  ArrowUpRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

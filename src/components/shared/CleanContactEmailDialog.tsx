@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { cleanContactEmailAction, deleteContactAction } from '@/lib/automation-actions';
-import { AlertTriangle, Check, Loader2, Sparkles, Trash2, Archive, CheckCircle2 } from 'lucide-react';
+import { AlertTriangle, Check, Loader2, Sparkles, Trash2, Archive } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 interface CleanContactEmailDialogProps {
@@ -232,7 +232,7 @@ export function CleanContactEmailDialog({
               <span className="font-semibold text-slate-300">Important safety checks:</span>
               <ul className="list-disc pl-4 space-y-1">
                 <li>Primary/Signatory roles will automatically transfer to the next contact.</li>
-                <li>If this is the entity's sole contact, the entire company/entity will be permanently deleted.</li>
+                <li>If this is the entity&apos;s sole contact, the entire company/entity will be permanently deleted.</li>
               </ul>
             </div>
             <div className="flex gap-2 justify-end pt-2">

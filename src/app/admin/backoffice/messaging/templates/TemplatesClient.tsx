@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, TemplateStatus } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from '../../../messaging/templates/components/template-gallery';
 import { isWhatsAppDisplay } from '../../../messaging/templates/lib/unified-template';
@@ -23,7 +23,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
-import { Loader2, Trash2, Plus, Zap, Database, ShieldCheck } from 'lucide-react';
+import { Loader2, Trash2, Plus, Zap, Database } from 'lucide-react';
 import { AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 import { seedGlobalMessagingBlueprint } from '@/lib/seed-messaging-blueprint';
@@ -261,7 +261,7 @@ export default function TemplatesClient() {
             await deleteDoc(doc(firestore, 'message_templates', templateToDelete.id));
             toast({ title: 'Template Removed' });
             setTemplateToDelete(null);
-        } catch (e: unknown) {
+        } catch (_e: unknown) {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         } finally {
             setIsDeleting(false);
@@ -394,7 +394,7 @@ export default function TemplatesClient() {
                             <div>
                                 <h4 className="text-sm font-bold text-amber-900">Blueprint Management</h4>
                                 <p className="text-xs text-amber-800/80 mt-1 leading-relaxed">
-                                    Changes made here will affect the "Default" options for all workspaces. Organizations can still create their own overrides which will take precedence over these global blueprints.
+                                    Changes made here will affect the &quot;Default&quot; options for all workspaces. Organizations can still create their own overrides which will take precedence over these global blueprints.
                                 </p>
                             </div>
                         </div>
@@ -427,7 +427,7 @@ export default function TemplatesClient() {
                             Delete Global Blueprint?
                         </AlertDialogTitle>
                         <AlertDialogDescription className="text-sm font-medium">
-                            This will permanently remove <span className="font-bold text-foreground">"{templateToDelete?.name}"</span> from the global registry. All workspaces currently using this blueprint will lose access to it.
+                            This will permanently remove <span className="font-bold text-foreground">&quot;{templateToDelete?.name}&quot;</span> from the global registry. All workspaces currently using this blueprint will lose access to it.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
                     <AlertDialogFooter className="mt-4">

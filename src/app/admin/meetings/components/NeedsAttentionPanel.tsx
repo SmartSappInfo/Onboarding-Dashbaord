@@ -18,10 +18,8 @@ import {
   AlertTriangle,
   CalendarDays,
   CheckSquare,
-  Sparkles,
   ArrowRight,
   Flame,
-  Clock,
   ExternalLink,
 } from 'lucide-react';
 

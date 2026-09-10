@@ -13,10 +13,8 @@ import type { Form } from '@/lib/types';
 import type {
   FormDistributionLink,
   CreateDistributionLinkPayload,
-  EmbedConfig,
-  UtmParameters,
 } from './form-distribution-types';
-import { buildDistributionUrl, generateEmbedSnippet } from './form-utils';
+import { buildDistributionUrl } from './form-utils';
 import { requireAuth } from '@/lib/auth/require-auth';
 
 /**

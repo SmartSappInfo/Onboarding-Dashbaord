@@ -5,7 +5,7 @@
  */
 
 import { vi } from 'vitest';
-import { initializeApp, getApps, deleteApp, cert } from 'firebase-admin/app';
+import { initializeApp, getApps, deleteApp } from 'firebase-admin/app';
 import { getFirestore } from 'firebase-admin/firestore';
 import type { Firestore } from 'firebase-admin/firestore';
 
@@ -122,7 +122,7 @@ export async function waitForEmulator(maxAttempts = 10, delayMs = 1000): Promise
       await db.collection('_health_check').doc('test').set({ timestamp: Date.now() });
       await db.collection('_health_check').doc('test').delete();
       return true;
-    } catch (error) {
+    } catch (_error) {
       if (i === maxAttempts - 1) {
         console.error('Firebase emulator not ready after', maxAttempts, 'attempts');
         return false;

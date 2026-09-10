@@ -25,16 +25,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import {
-  Layers,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Building,
-  Users,
   FileCheck,
   Video,
   Shield,
-  Clock,
   Sparkles,
   Loader2,
   PartyPopper,

@@ -4,13 +4,11 @@ import * as React from 'react';
 import { useRouter } from 'next/navigation';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import { 
@@ -26,8 +24,6 @@ import {
   Eye, 
   Settings, 
   Image as ImageIcon,
-  CheckCircle2,
-  AlertCircle,
   Globe
 } from 'lucide-react';
 import BrandVoiceSettings from '../../components/BrandVoiceSettings';

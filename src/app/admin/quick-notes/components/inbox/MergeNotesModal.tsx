@@ -7,7 +7,6 @@ import {
   Loader2,
   FileText,
   CheckCircle2,
-  ArrowRight,
   Archive,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -157,10 +156,10 @@ export function MergeNotesModal({
                 <RadioGroupItem value="append_summary" id="s-summary" className="mt-0.5" />
                 <div className="space-y-0.5">
                   <Label htmlFor="s-summary" className="text-xs font-bold text-foreground cursor-pointer">
-                    Append as "Merged Findings" Heading
+                    Append as &quot;Merged Findings&quot; Heading
                   </Label>
                   <p className="text-[11px] text-muted-foreground">
-                    Places the source note's contents under a designated sub-heading at the bottom of the destination note.
+                    Places the source note&apos;s contents under a designated sub-heading at the bottom of the destination note.
                   </p>
                 </div>
               </div>

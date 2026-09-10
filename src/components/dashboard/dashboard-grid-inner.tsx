@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useTransition } from 'react';
+import React, { useState, useRef, useTransition } from 'react';
 import { ResponsiveGridLayout as Responsive } from 'react-grid-layout';
 import { WidthProvider } from 'react-grid-layout/legacy';
 import type { Layout, ResponsiveLayouts as Layouts } from 'react-grid-layout';

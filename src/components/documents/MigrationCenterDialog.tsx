@@ -26,7 +26,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { AlertCircle, CheckCircle2, RefreshCw, Sparkles, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, RefreshCw, Sparkles, ShieldCheck } from 'lucide-react';
 import { migrateWorkspaceFlipbooks, MigrationSummary } from '@/lib/documents/migration-service';
 import { useToast } from '@/hooks/use-toast';
 

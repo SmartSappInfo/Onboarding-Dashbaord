@@ -3,7 +3,7 @@
 import React, { useState, useTransition } from 'react';
 import { updatePreferencesAction } from '@/app/actions/unsubscribe-actions';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mail, Calendar, Sparkles, CheckCircle2, ShieldCheck, Inbox, AlertTriangle } from 'lucide-react';
+import { Calendar, CheckCircle2, ShieldCheck, Inbox, AlertTriangle } from 'lucide-react';
 import type { OrgBranding } from '@/lib/types';
 
 interface PreferenceFormProps {
@@ -116,7 +116,7 @@ export default function PreferenceForm({
               </div>
               <h1 className="text-2xl font-extrabold text-slate-100 tracking-tight mb-3">Preferences Updated</h1>
               <p className="text-slate-400 text-sm leading-relaxed mb-8 max-w-sm mx-auto">
-                We've successfully updated your email preferences for <b>{displayName}</b>. 
+                We&apos;ve successfully updated your email preferences for <b>{displayName}</b>. 
                 Your settings are now active.
               </p>
               

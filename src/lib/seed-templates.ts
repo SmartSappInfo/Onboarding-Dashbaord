@@ -1,6 +1,5 @@
 
-import { doc, getFirestore, setDoc, writeBatch } from 'firebase/firestore';
-import { useFirestore } from '@/firebase';
+import { doc, writeBatch } from 'firebase/firestore';
 
 /**
  * SEED: System-wide Message Templates

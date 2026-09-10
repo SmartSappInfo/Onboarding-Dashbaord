@@ -19,8 +19,6 @@
 
 import { ai, getModel } from '../genkit';
 import { z } from 'genkit';
-import type { SupervisorPlan, SupervisorPlanStep } from '@/lib/supervisor/types';
-import type { McpPayloadValue } from '@/lib/mcp/types';
 
 export const decomposeGoalInputSchema = z.object({
   workspaceId: z.string().optional().describe('Active workspace ID for AI model routing.'),

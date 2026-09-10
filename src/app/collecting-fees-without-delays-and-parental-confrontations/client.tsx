@@ -19,7 +19,7 @@ import { ResizableIFrame } from '@/components/ui/ResizableIFrame';
 const CUSTOM_THUMBNAIL_URL =
   'https://firebasestorage.googleapis.com/v0/b/studio-9220106300-f74cb.firebasestorage.app/o/media%2Fimage%2F1782385064904-Thumbnails.webp?alt=media&token=f40892b1-4b9e-4988-8304-e42fc0711aba';
 const YOUTUBE_VIDEO_ID = '8xhxALYfNDc';
-const CTA_LINK = 'https://smartsapp.com/request-trial';
+const _CTA_LINK = 'https://smartsapp.com/request-trial';
 const PAGE_SLUG = 'collecting-fees-without-delays-and-parental-confrontations';
 
 type VideoState = 'idle' | 'playing' | 'finished';

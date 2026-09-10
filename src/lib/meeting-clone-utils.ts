@@ -17,11 +17,11 @@ function generateToken(): string {
  */
 export function cloneMeetingData(originalMeeting: Meeting): Omit<Meeting, 'id'> {
   const {
-    id,
-    publishStatus,
-    status,
-    endedAt,
-    meetingSlug,
+    id: _id,
+    publishStatus: _publishStatus,
+    status: _status,
+    endedAt: _endedAt,
+    meetingSlug: _meetingSlug,
     title,
     facilitators,
     ...rest

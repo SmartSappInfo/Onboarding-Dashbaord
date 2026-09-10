@@ -28,7 +28,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import { ArrowRightLeft, Loader2, DollarSign, Users, CheckSquare, Sparkles } from 'lucide-react';
+import { ArrowRightLeft, Loader2 } from 'lucide-react';
 import type { CrmEntityType, CrmWorkloadSummary, PersonDetailView } from '@/lib/types';
 import { transferOwnershipAction } from '@/app/actions/crm-workforce-actions';
 

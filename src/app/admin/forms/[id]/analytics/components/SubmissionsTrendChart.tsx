@@ -17,7 +17,7 @@ import {
   ResponsiveContainer,
   Legend 
 } from 'recharts';
-import { TrendingUp, BarChart2 } from 'lucide-react';
+import { BarChart2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { TimeSeriesTrendPoint } from '@/lib/forms/form-analytics-types';

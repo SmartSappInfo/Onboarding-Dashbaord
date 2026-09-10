@@ -25,14 +25,8 @@ import {
   Workflow,
   Activity,
   Sparkles,
-  ShieldAlert,
-  Play,
-  FlaskConical,
   Plus,
   RotateCcw,
-  CheckCircle2,
-  Clock,
-  ChevronRight,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type {

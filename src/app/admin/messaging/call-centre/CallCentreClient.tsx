@@ -31,7 +31,7 @@ import { PageContainer } from '@/components/ui/page-container';
 import type { CallCampaign, CallScript } from '@/lib/types';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -49,7 +49,6 @@ import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
@@ -86,7 +85,6 @@ import {
   UserCheck,
   BarChart3,
   Phone,
-  ChevronRight,
   Eye,
   MoreHorizontal,
   Settings,
@@ -303,7 +301,7 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   };
 
   // Status Badge Helper
-  const getStatusBadge = (status: CallCampaign['status']) => {
+  const _getStatusBadge = (status: CallCampaign['status']) => {
     switch (status) {
       case 'running':
         return <Badge className="bg-emerald-500 hover:bg-emerald-600 font-bold uppercase text-[9px] px-2 rounded-md">Running</Badge>;

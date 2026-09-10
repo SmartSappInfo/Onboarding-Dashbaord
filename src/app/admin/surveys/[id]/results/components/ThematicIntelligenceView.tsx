@@ -25,14 +25,10 @@ import {
   Smile,
   Meh,
   Frown,
-  AlertOctagon,
   Quote,
-  TrendingUp,
-  TrendingDown,
   Tag,
   ShieldAlert,
   Zap,
-  RotateCcw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';

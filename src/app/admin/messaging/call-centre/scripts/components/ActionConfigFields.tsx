@@ -12,9 +12,7 @@ import { Info, Calendar, Clock, CalendarDays, CalendarPlus, UserPlus } from 'luc
 import {
   Select,
   SelectContent,
-  SelectGroup,
   SelectItem,
-  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
@@ -246,7 +244,7 @@ const ActionConfigFields = React.memo(function ActionConfigFields({
   const taskDueTimeOfDay = params.taskDueTimeOfDay ?? '15:00'; // default 3 PM
 
   // ── Stages grouped by pipeline (CHANGE_STAGE) ─────────────────────────────
-  const stagesByPipeline = React.useMemo(() => {
+  const _stagesByPipeline = React.useMemo(() => {
     const pipelineNames = new Map(pipelines.map((p) => [p.id, p.name]));
     const groups = new Map<string, { pipelineName: string; stages: typeof stages }>();
     for (const stage of stages) {

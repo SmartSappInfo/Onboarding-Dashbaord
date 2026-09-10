@@ -2,13 +2,11 @@
 'use client';
 
 import * as React from 'react';
-import { Bell, Info, Calendar, FileText, CheckCircle2, MoreHorizontal, Inbox, Clock } from 'lucide-react';
+import { Bell, Info, Calendar, FileText, Inbox, Clock } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuContent,
-    DropdownMenuItem,
     DropdownMenuTrigger,
-    DropdownMenuLabel,
     DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';

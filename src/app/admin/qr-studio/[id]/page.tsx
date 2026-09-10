@@ -10,21 +10,15 @@ import {
   Pause,
   Play,
   Pencil,
-  Check,
   Loader2,
   QrCode,
-  BarChart3,
   Link2,
-  Palette,
-  Settings,
   ScanLine,
   Code,
   Calendar,
   Clock,
   Hash,
   CornerDownRight,
-  ShieldCheck,
-  AlertTriangle,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 import { Button } from '@/components/ui/button';
@@ -33,7 +27,6 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import {
@@ -43,7 +36,6 @@ import {
   updateQRLifecycle,
   pauseQRCode,
   resumeQRCode,
-  expireQRCode,
   updateQRShortPath,
   saveQRTemplate,
 } from '@/lib/qr-actions';

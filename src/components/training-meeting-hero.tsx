@@ -4,7 +4,6 @@
 import Image from 'next/image';
 import type { School, Meeting, Entity } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
-import JoinMeetingForm from '@/components/join-meeting-form';
 import LightRays from '@/components/LightRays';
 import { format, isAfter } from 'date-fns';
 import { Calendar, Clock, PlayCircle } from 'lucide-react';
@@ -12,7 +11,6 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import ScrollDownIndicator from './scroll-down-indicator';
-import { cn } from '@/lib/utils';
 import AnimatedHeroShapes from './animated-hero-shapes';
 import { motion } from 'framer-motion';
 import { getHeroTitle, getHeroDescription } from '@/lib/meeting-hero-defaults';

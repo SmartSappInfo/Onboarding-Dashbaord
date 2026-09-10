@@ -8,7 +8,6 @@
 import { adminDb } from '../firebase-admin';
 import { COLLECTIONS } from '../collection-constants';
 import type { Form, AppField } from '../types';
-import type { FormVersion } from '../forms/form-types';
 import { normalizeFormToVersion } from '../forms/form-compatibility';
 
 export interface FormHealthReport {

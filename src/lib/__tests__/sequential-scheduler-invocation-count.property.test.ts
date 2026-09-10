@@ -132,7 +132,7 @@ describe('Sequential_Scheduler Property Tests', () => {
       const mockSendMessage = vi.mocked(messagingEngine.sendMessage);
       
       let callIndex = 0;
-      mockSendMessage.mockImplementation(async (input) => {
+      mockSendMessage.mockImplementation(async (_input) => {
         const currentCallIndex = callIndex++;
         if (currentCallIndex === failureIndex) {
           return { success: false, error: 'Simulated failure' };
@@ -170,7 +170,7 @@ describe('Sequential_Scheduler Property Tests', () => {
       const mockSendMessage = vi.mocked(messagingEngine.sendMessage);
       
       let callIndex = 0;
-      mockSendMessage.mockImplementation(async (input) => {
+      mockSendMessage.mockImplementation(async (_input) => {
         const currentCallIndex = callIndex++;
         if (currentCallIndex === exceptionIndex) {
           throw new Error('Network timeout');

@@ -10,7 +10,7 @@
 import { adminDb } from './firebase-admin';
 import { COLLECTIONS } from './collection-constants';
 import type { Form } from './types';
-import type { FormVersion, FormPage, FormComponent } from './forms/form-types';
+import type { FormVersion, FormPage } from './forms/form-types';
 import { revalidatePath } from 'next/cache';
 import { canUser } from './workspace-permissions';
 import { requireAuth } from '@/lib/auth/require-auth';

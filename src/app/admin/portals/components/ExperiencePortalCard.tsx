@@ -17,7 +17,6 @@ import Link from 'next/link';
 import {
   ExternalLink,
   Copy,
-  QrCode,
   MoreVertical,
   Edit3,
   CopyPlus,

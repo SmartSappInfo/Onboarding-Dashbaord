@@ -12,7 +12,7 @@
  */
 
 import * as React from 'react';
-import { useEntitySearch, type SearchedEntity } from '@/hooks/use-entity-search';
+import { useEntitySearch } from '@/hooks/use-entity-search';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';

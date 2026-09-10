@@ -77,7 +77,7 @@ export default function WhatsAppGuidePanel({ webhookUrl }: { webhookUrl: string 
             <WhatsAppCopyButton value={webhookUrl} />
           </div>
           <ul className="space-y-1.5 text-[12px]">
-            <li><strong>Verify token:</strong> your connection's verify token (created when you save credentials).</li>
+            <li><strong>Verify token:</strong> your connection&apos;s verify token (created when you save credentials).</li>
             <li><strong>Subscribe</strong> to the <strong>messages</strong> field (inbound + delivery/read statuses).</li>
           </ul>
           <p className="text-[11px] text-muted-foreground">

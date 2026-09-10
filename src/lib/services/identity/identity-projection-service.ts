@@ -21,7 +21,6 @@ import type {
   IdentityAccount,
   Person,
   OrganizationMembership,
-  WorkspaceMembership,
   UserProfile,
   Role,
   PermissionsSchema,

@@ -6,12 +6,11 @@ import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import type { Survey, SurveyResponse, SurveySession, UserProfile } from '@/lib/types';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList, Legend } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 import { cn } from '@/lib/utils';
 import {
     MousePointerClick,
@@ -23,7 +22,6 @@ import {
     Activity,
     Clock,
     TrendingUp,
-    User as UserIcon,
     ArrowUpRight,
 } from 'lucide-react';
 
@@ -329,7 +327,7 @@ export default function FieldTeamView({ survey, responses }: { survey: Survey; r
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {repStats.map((rep, idx) => (
+                                {repStats.map((rep, _idx) => (
                                     <TableRow key={rep.id} className="group transition-all hover:bg-blue-50/30 dark:hover:bg-blue-950/10">
                                         <TableCell className="py-4 pl-6">
                                             {users ? <UserName userId={rep.id} users={users} /> : <Skeleton className="h-8 w-32" />}

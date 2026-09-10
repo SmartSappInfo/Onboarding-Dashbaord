@@ -21,7 +21,7 @@ const CHUNK_SIZE = 50; // Number of tasks to process in one server action call
 function safeAfter(fn: () => Promise<void>) {
   try {
     after(fn);
-  } catch (e) {
+  } catch (_e) {
     fn().catch(err => {
       reportError('bulk-messaging', err, { note: '[BULK-BG] SafeAfter fallback execution failed:' });
     });
@@ -359,7 +359,7 @@ export async function processBulkJobChunk(jobId: string) {
             }
         }
     } else {
-        const { transformBodyWithTracking } = await import('./link-tracking');
+        const { transformBodyWithTracking: _transformBodyWithTracking } = await import('./link-tracking');
         for (const taskDoc of tasksSnap.docs) {
             const task = taskDoc.data() as MessageTask;
             
@@ -367,7 +367,7 @@ export async function processBulkJobChunk(jobId: string) {
             // For raw messages or simple templates, we need to ensure the body is ready for tracking
             // In bulk-messaging, individual tasks don't have their own bodies, they use template.body + variables
             
-            let finalBody = ''; // This is handled inside sendMessage, but for tracking we need it BEFORE
+            let _finalBody = ''; // This is handled inside sendMessage, but for tracking we need it BEFORE
             // Actually, sendMessage handles the resolution.
             // If we want to track links in SMS, we should probably resolve variables, then track, then pass as override.
             

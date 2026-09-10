@@ -41,7 +41,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Progress } from '@/components/ui/progress';
 import type { Prospect } from '@/lib/lead-intelligence/types';
 import { useToast } from '@/hooks/use-toast';
 import { EnrichmentProgressPanel } from './EnrichmentProgressPanel';

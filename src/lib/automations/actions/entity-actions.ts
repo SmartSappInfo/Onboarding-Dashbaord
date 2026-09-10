@@ -442,7 +442,7 @@ export async function handleCreateContactForEntity(
     if (orgSnap.exists) {
       defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
     }
-  } catch (err) {}
+  } catch (_err) {}
 
   const crypto = await import('crypto');
   const { normalizePhoneNumber } = await import('../../phone-utils');
@@ -569,7 +569,7 @@ export async function handleUpdateContact(
     if (orgSnap.exists) {
       defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
     }
-  } catch (err) {}
+  } catch (_err) {}
 
   const { normalizePhoneNumber } = await import('../../phone-utils');
   const { normalizeContactType, enforceContactConstraints } = await import('../../entity-contact-helpers');

@@ -3,8 +3,6 @@
 import * as React from 'react';
 import { createPortal } from 'react-dom';
 import { useSlashAutocomplete } from '@/hooks/use-slash-autocomplete';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import type { TemplateVariable } from '@/lib/types';
 import { Bold, Italic, Underline, Strikethrough } from 'lucide-react';
@@ -458,13 +456,13 @@ export interface SlashInputProps extends Omit<React.ComponentPropsWithoutRef<'di
 }
 
 export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
-  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, variant = 'default', className, placeholder, autoComplete, ...props }, ref) => {
+  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, variant = 'default', className, placeholder, autoComplete: _autoComplete, ...props }, ref) => {
     const localRef = React.useRef<HTMLDivElement>(null);
     React.useImperativeHandle(ref, () => localRef.current as unknown as HTMLInputElement);
 
     const {
       showAutocomplete,
-      autocompleteCoords,
+      autocompleteCoords: _autocompleteCoords,
       autocompleteIndex,
       filteredVars,
       handleKeyDown,
@@ -710,7 +708,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
               formatting.checkSelection();
             }
           }}
-          onSelect={(e) => {
+          onSelect={(_e) => {
             if (enableFormatting) {
               formatting.checkSelection();
             }
@@ -720,7 +718,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
               formatting.setIsFocused(true);
             }
           }}
-          onBlur={(e) => {
+          onBlur={(_e) => {
             handleBlur();
             if (enableFormatting) {
               setTimeout(() => formatting.setIsFocused(false), 250);
@@ -828,13 +826,13 @@ export interface SlashTextareaProps extends Omit<React.ComponentPropsWithoutRef<
 }
 
 export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextareaProps>(
-  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, variant = 'default', className, placeholder, rows, ...props }, ref) => {
+  ({ value, onChange, variables = SCRIPT_VARIABLES, enableFormatting = false, variant = 'default', className, placeholder, rows: _rows, ...props }, ref) => {
     const localRef = React.useRef<HTMLDivElement>(null);
     React.useImperativeHandle(ref, () => localRef.current as unknown as HTMLTextAreaElement);
 
     const {
       showAutocomplete,
-      autocompleteCoords,
+      autocompleteCoords: _autocompleteCoords,
       autocompleteIndex,
       filteredVars,
       handleKeyDown,
@@ -1075,7 +1073,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
               formatting.checkSelection();
             }
           }}
-          onSelect={(e) => {
+          onSelect={(_e) => {
             if (enableFormatting) {
               formatting.checkSelection();
             }
@@ -1085,7 +1083,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
               formatting.setIsFocused(true);
             }
           }}
-          onBlur={(e) => {
+          onBlur={(_e) => {
             handleBlur();
             if (enableFormatting) {
               setTimeout(() => formatting.setIsFocused(false), 250);

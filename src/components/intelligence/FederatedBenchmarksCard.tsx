@@ -22,7 +22,6 @@ import {
   BarChart,
   ShieldCheck,
   Building2,
-  HelpCircle,
 } from 'lucide-react';
 import type { FederatedBenchmarkMetric } from '@/lib/intelligence/types';
 

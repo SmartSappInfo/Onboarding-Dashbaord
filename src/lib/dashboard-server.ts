@@ -1,8 +1,8 @@
 import { adminDb } from './firebase-admin';
 import { cache } from 'react';
-import type { Workspace, DashboardLayout, OnboardingStage, Entity, WorkspaceEntity, Meeting, Survey, Task, Activity, MessageLog, Zone, UserProfile, Pipeline } from './types';
+import type { Workspace, DashboardLayout, OnboardingStage, WorkspaceEntity, Meeting, Survey, Activity, MessageLog, Zone, UserProfile, Pipeline } from './types';
 import { startOfToday, format, isAfter } from 'date-fns';
-import { countActiveEntities, getEntityProjections, sumActiveCapacity } from './dashboard/dashboard-repository';
+import { countActiveEntities, getEntityProjections } from './dashboard/dashboard-repository';
 import { UNASSIGNED_ZONE, withUnassignedZone } from './zone-constants';
 
 /**
@@ -73,7 +73,7 @@ export const getMetricStats = async (workspaceId: string) => {
  * TODO: Refactor to use Deal-based pipeline instead of entity-level pipeline
  * Pipeline tracking has moved from WorkspaceEntity to Deal model
  */
-export const getPipelineStats = async (workspaceId: string) => {
+export const getPipelineStats = async (_workspaceId: string) => {
     // TODO: Query deals collection instead of workspace_entities
     // const deals = await getWorkspaceDeals(workspaceId);
     // Group deals by stageId and aggregate

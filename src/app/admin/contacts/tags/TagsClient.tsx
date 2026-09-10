@@ -13,14 +13,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { AssignContactsToTagDialog } from '@/components/tags/AssignContactsToTagDialog';
 import {
   Dialog,
@@ -619,7 +611,7 @@ function TagsClientInner() {
           <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold">Delete Tag?</AlertDialogTitle>
             <AlertDialogDescription>
- This will remove <span className="font-bold">"{deletingTag?.name}"</span> from all{' '}
+ This will remove <span className="font-bold">&quot;{deletingTag?.name}&quot;</span> from all{' '}
  <span className="font-bold">{deletingTag?.usageCount || 0} contacts</span>. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>

@@ -17,7 +17,7 @@ import { Plus } from 'lucide-react';
  * - **Add Button (+)**: float icon at the midpoint with a WCAG-compliant 44x44px touch target
  */
 export function WorkflowEdge({
-  id,
+  id: _id,
   sourceX,
   sourceY,
   targetX,

@@ -13,7 +13,6 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type {
   MeetingIntelligence,
-  MeetingActionItem,
   MeetingPrepBrief,
   MeetingTranscript,
 } from '@/lib/meetings/types/intelligence';

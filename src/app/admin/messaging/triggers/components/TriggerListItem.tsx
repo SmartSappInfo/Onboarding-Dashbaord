@@ -1,7 +1,7 @@
 import * as React from 'react';
 import type { MessagingTrigger, MessageTemplate } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
-import { Mail, Smartphone, Globe, Building2, Bell, Users, ShieldAlert, Award } from 'lucide-react';
+import { Mail, Smartphone, Globe, Building2, Bell, Users, Award } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface TriggerListItemProps {

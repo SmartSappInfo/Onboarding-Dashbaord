@@ -69,8 +69,6 @@ import {
   bulkRetryRunsAction,
   bulkForceAdvanceRunsAction,
   jumpRunToStepAction,
-  cleanAndVerifyRunContactAction,
-  createContactFollowupTaskAction,
 } from '@/lib/automation-actions';
 import { StepTimeline } from './StepTimeline';
 import { RunExecutionTimelineModal } from './RunExecutionTimelineModal';
@@ -1199,7 +1197,7 @@ export function AutomationActivityLog({ automationId, nodes }: AutomationActivit
                 const isWebhook = isWebhookRun(run);
                 const isRetryProcessing = isActionProcessing(`${run.id}-retry`);
                 const isSkipProcessing = isActionProcessing(`${run.id}-forceAdvance`);
-                const isRunProcessing = isRunProcessingAnyAction(run.id);
+                const _isRunProcessing = isRunProcessingAnyAction(run.id);
                 const isActionable = effectiveStatus === 'failed' || effectiveStatus === 'running' || effectiveStatus === 'paused' || effectiveStatus === 'waiting';
 
                 return (

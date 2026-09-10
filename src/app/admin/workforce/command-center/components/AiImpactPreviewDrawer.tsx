@@ -15,28 +15,22 @@ import * as React from 'react';
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
   SheetTitle,
   SheetDescription,
   SheetFooter,
 } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import {
-  Sparkles,
   ShieldAlert,
   CheckCircle2,
   XCircle,
   Loader2,
   TrendingDown,
-  Users,
-  Layers,
   AlertTriangle,
   Flame,
 } from 'lucide-react';
 import type { AiAdminActionProposal, BlastRadiusLevel } from '@/lib/types';
-import { cn } from '@/lib/utils';
 
 interface AiImpactPreviewDrawerProps {
   isOpen: boolean;

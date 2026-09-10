@@ -2,7 +2,7 @@
 
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { collection, doc, query, orderBy, where, updateDoc } from 'firebase/firestore';
+import { collection, doc, query, orderBy, where } from 'firebase/firestore';
 import type { PDFForm, Submission, PDFFormField, PdfSession } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import * as React from 'react';
-import { Tooltip as ShadcnTooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { TooltipProvider } from '@/components/ui/tooltip';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { ToastAction } from '@/components/ui/toast';
@@ -28,12 +28,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { cn, resolveVariableValue, toTitleCase } from '@/lib/utils';
+import { cn, toTitleCase } from '@/lib/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { updatePdfResultsSharing, updatePdfFormMapping, deleteSubmissions } from '@/lib/pdf-actions';
 import { Checkbox } from '@/components/ui/checkbox';
 import {
@@ -48,7 +48,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Cell, LabelList, Tooltip } from 'recharts';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
 
@@ -78,7 +78,7 @@ export default function SubmissionsPage() {
   const [isProcessingBatch, setIsProcessingBatch] = React.useState(false);
   const [selectedNamingFieldId, setSelectedNamingFieldId] = React.useState<string | null>(null);
   const [isShareDialogOpen, setIsShareDialogOpen] = React.useState(false);
-  const [isExportingCSV, setIsExportingCSV] = React.useState(false);
+  const [_isExportingCSV, setIsExportingCSV] = React.useState(false);
 
   // Multi-select and Single Delete state
   const [selectedIds, setSelectedIds] = React.useState<string[]>([]);
@@ -105,7 +105,7 @@ export default function SubmissionsPage() {
 
   const { data: pdf, isLoading: isLoadingPdf } = useDoc<PDFForm>(pdfDocRef);
   const { data: submissions, isLoading: isLoadingSubmissions } = useCollection<Submission>(submissionsQuery);
-  const { data: sessions, isLoading: isLoadingSessions } = useCollection<PdfSession>(sessionsQuery);
+  const { data: sessions, isLoading: _isLoadingSessions } = useCollection<PdfSession>(sessionsQuery);
 
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
@@ -144,7 +144,7 @@ export default function SubmissionsPage() {
     }
     const submittedCount = sessions.filter(s => s.isSubmitted).length;
     steps.push({ label: 'Signed & Submitted', count: submittedCount, color: '#10b981' });
-    return steps.map((s, i) => ({ ...s, percentage: (s.count / sessions.length) * 100 }));
+    return steps.map((s, _i) => ({ ...s, percentage: (s.count / sessions.length) * 100 }));
   }, [sessions, pdf]);
 
   const dropoffInsights = React.useMemo(() => {
@@ -288,7 +288,7 @@ export default function SubmissionsPage() {
         link.click();
         document.body.removeChild(link);
         toast({ title: "CSV Export Started" });
-    } catch (e) {
+    } catch (_e) {
         toast({ variant: 'destructive', title: 'Export Failed' });
     } finally {
         setIsExportingCSV(false);
@@ -308,7 +308,7 @@ export default function SubmissionsPage() {
         } else {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         }
-    } catch (e) {
+    } catch (_e) {
         toast({ variant: 'destructive', title: 'Error' });
     } finally {
         setIsDeletingSelected(false);
@@ -577,7 +577,7 @@ export default function SubmissionsPage() {
                             {dropoffInsights.length > 0 ? (
                                 <Table>
  <TableHeader><TableRow className="hover:bg-transparent bg-muted/20"><TableHead className="pl-8 py-4 text-[9px] font-semibold ">Transition</TableHead><TableHead className="text-right pr-8 py-4 text-[9px] font-semibold ">Loss %</TableHead></TableRow></TableHeader>
-                                    <TableBody>{dropoffInsights.slice(0, 5).map((insight, idx) => (
+                                    <TableBody>{dropoffInsights.slice(0, 5).map((insight, _idx) => (
                                         <TableRow key={insight.from + insight.to} className="group transition-colors"><TableCell className="pl-8 py-4"><p className="text-[10px] font-bold text-foreground leading-tight">{insight.from} → {insight.to}</p><p className="text-[9px] text-muted-foreground uppercase mt-0.5">{insight.lost} Users Lost</p></TableCell><TableCell className="text-right pr-8 py-4"><Badge variant="outline" className={cn("h-5 text-[9px] font-semibold uppercase border-none", insight.lossPercentage > 30 ? "bg-rose-50 text-rose-600" : "bg-orange-50 text-orange-600")}>{insight.lossPercentage.toFixed(0)}%</Badge></TableCell></TableRow>
                                     ))}</TableBody>
                                 </Table>
@@ -707,7 +707,7 @@ function HighFidelityDownloader({
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a'); a.href = url; a.download = fileName; document.body.appendChild(a); a.click(); document.body.removeChild(a);
             onDownloadFinished(true);
-        } catch (e) {
+        } catch (_e) {
             onDownloadFinished(false);
         } finally { setIsCapturing(false); }
     }, [fileName, onDownloadFinished, isCapturing]);

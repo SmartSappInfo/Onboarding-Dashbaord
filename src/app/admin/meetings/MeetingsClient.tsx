@@ -3,9 +3,9 @@
 import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { collection, orderBy, query, where, doc, deleteDoc, addDoc, getDocs, updateDoc } from 'firebase/firestore';
+import { collection, orderBy, query, where, doc, deleteDoc, addDoc, updateDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
-import type { Meeting, WorkspaceEntity, Entity } from '@/lib/types';
+import type { Meeting } from '@/lib/types';
 import { useEntityResolver } from '@/context/EntityCacheContext';
 import { MEETING_TYPES } from '@/lib/types';
 import { cloneMeetingData, getUniqueSlugForType } from '@/lib/meeting-clone-utils';
@@ -29,26 +29,15 @@ import {
     BarChart3, 
     LayoutList, 
     Users,
-    ClipboardCheck,
     LayoutGrid,
     Loader2,
-    Plus,
-    Calendar,
-    Search,
-    Filter,
-    MoreVertical,
     Edit3,
-    Save,
     Check,
-    School,
-    Video,
-    Globe,
     Code,
     X,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
 
-import { Card, CardContent } from '@/components/ui/card';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -80,7 +69,6 @@ import { AsyncEntityAvatar } from '../components/AsyncEntityAvatar';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext'; // Added useTenant import
-import { cn } from '@/lib/utils';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import dynamic from 'next/dynamic';
 import { QrCode } from 'lucide-react';
@@ -96,11 +84,9 @@ const MeetingCalendar = dynamic(() => import('./components/MeetingCalendar'), {
 });
 
 const MeetingQRDialog = dynamic(() => import('./components/MeetingQRDialog'), { ssr: false });
-import { PageContainerFluid } from '@/components/ui/page-container';
-import { MeetingsNavigation } from './components/MeetingsNavigation';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
-const getInitials = (name?: string) => {
+const _getInitials = (name?: string) => {
     if (!name) return '?';
     return name.split(' ').map(n => n[0]).join('').toUpperCase();
 }
@@ -238,7 +224,7 @@ export default function MeetingsHubClient() {
   };
 
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
-  const { singular, plural } = useTerminology();
+  const { singular, plural: _plural } = useTerminology();
 
   const meetingsCol = useMemoFirebase(() => {
     if (!firestore) return null;
@@ -322,7 +308,7 @@ export default function MeetingsHubClient() {
         });
         setMeetingToDelete(null);
       })
-      .catch((error) => {
+      .catch((_error) => {
         const permissionError = new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete',
@@ -727,7 +713,7 @@ export default function MeetingsHubClient() {
             <AlertDialogHeader>
               <AlertDialogTitle className="font-semibold tracking-tight">Purge Session Architecture?</AlertDialogTitle>
               <AlertDialogDescription className="text-sm font-medium">
-                This will permanently remove the scheduled session for <span className="font-bold text-foreground">"{meetingToDelete?.entityName}"</span> and its attendance logic.
+                This will permanently remove the scheduled session for <span className="font-bold text-foreground">&quot;{meetingToDelete?.entityName}&quot;</span> and its attendance logic.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-4">

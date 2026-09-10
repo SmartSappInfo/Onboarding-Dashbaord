@@ -188,7 +188,7 @@ vi.mock('../firebase-admin', () => {
 async function checkEntityUpdatePermission(
   userId: string,
   workspaceId: string,
-  entityId: string
+  _entityId: string
 ): Promise<{ granted: boolean; reason?: string }> {
   const { adminDb } = await import('../firebase-admin');
 

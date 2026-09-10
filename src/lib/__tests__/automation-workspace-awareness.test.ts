@@ -11,7 +11,7 @@
  * Requirements: 10
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 describe('Automation Engine - Workspace Awareness (Requirement 10)', () => {
   describe('20.1 - Event Payload includes workspaceId', () => {

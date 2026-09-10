@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import type { Node, Edge } from 'reactflow';
 import { MEETING_TYPES, type ScriptNode, type ScriptEdge, type UserProfile, type CallOutcomeAutomation } from '@/lib/types';
 import { type ActionConfigDataSources } from './ActionConfigFields';
 import { OutcomeAutomationsEditor } from './OutcomeAutomationsEditor';
@@ -13,17 +12,14 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import {
   ArrowRight,
-  ArrowLeft,
   CheckCircle2,
   AlertCircle,
   Play,
   HelpCircle,
-  Settings,
   X,
   Info,
   Layers,
@@ -101,7 +97,7 @@ export function InteractiveScriptView({
   triggeredIds,
   onEndCall,
   currentContact,
-  entityData,
+  entityData: _entityData,
   triggerActionsAutomatically = false,
   hideSidebars = false,
   activeNodeId: controlledActiveNodeId,
@@ -1118,7 +1114,7 @@ export function InteractiveScriptView({
   const allOutcomes = React.useMemo(() => nodes.filter(n => n.type === 'outcome'), [nodes]);
 
   // Body text shown for an action/outcome in its detail view.
-  const bodyOf = React.useCallback((node: ScriptNode) => {
+  const _bodyOf = React.useCallback((node: ScriptNode) => {
     if (node.type === 'outcome') {
       return node.data?.text || `Mark this call outcome as "${node.data?.outcomeValue || 'Outcome'}".`;
     }

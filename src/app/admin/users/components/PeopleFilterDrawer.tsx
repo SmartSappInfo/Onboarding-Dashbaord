@@ -13,14 +13,13 @@
  */
 
 import * as React from 'react';
-import { Filter, X, RotateCcw, Check, Sparkles, Building, Shield, UserCheck } from 'lucide-react';
+import { Filter, RotateCcw, Check, Sparkles, Building, Shield } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetFooter } from '@/components/ui/sheet';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { cn } from '@/lib/utils';
 import type { PeopleDirectoryFilter, MembershipStatus, Workspace, Role } from '@/lib/types';
 
 interface PeopleFilterDrawerProps {

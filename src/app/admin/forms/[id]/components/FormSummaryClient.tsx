@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { doc, collection, query, orderBy, limit, getCountFromServer, where } from 'firebase/firestore';
 import { useFirestore, useDoc, useMemoFirebase, useCollection } from '@/firebase';
@@ -340,7 +339,7 @@ export default function FormSummaryClient({ id }: { id: string }) {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={4} className="h-32 text-center text-muted-foreground">
-                      No form fields configured yet. Click "Design Studio" to add fields.
+                      No form fields configured yet. Click &quot;Design Studio&quot; to add fields.
                     </TableCell>
                   </TableRow>
                 )}

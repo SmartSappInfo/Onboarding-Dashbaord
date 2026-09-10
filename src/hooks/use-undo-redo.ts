@@ -8,7 +8,7 @@ function deepEqual(a: any, b: any): boolean {
     if (a === b) return true;
     try {
         return JSON.stringify(a) === JSON.stringify(b);
-    } catch (e) {
+    } catch (_e) {
         return false;
     }
 }

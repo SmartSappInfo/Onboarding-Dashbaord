@@ -48,14 +48,14 @@ vi.mock('../firebase-admin', () => {
     update: vi.fn().mockResolvedValue(undefined)
   };
 
-  const doc = vi.fn((id) => {
+  const doc = vi.fn((_id) => {
     return {
       get: getMeetingDocMock,
       update: vi.fn().mockResolvedValue(undefined),
       collection: vi.fn((subPath) => {
         if (subPath === 'registrants') {
           return {
-            doc: vi.fn((regId) => registrantDocRef)
+            doc: vi.fn((_regId) => registrantDocRef)
           };
         }
       })
@@ -71,7 +71,7 @@ vi.mock('../firebase-admin', () => {
       where,
       limit,
       add,
-      doc: vi.fn((id) => ({
+      doc: vi.fn((_id) => ({
         update: vi.fn().mockResolvedValue(undefined)
       }))
     };

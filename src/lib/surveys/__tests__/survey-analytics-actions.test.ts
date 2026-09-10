@@ -7,10 +7,10 @@ import {
 const mockGet = vi.fn();
 const mockOrderBy = vi.fn().mockReturnThis();
 
-const mockCollection = vi.fn((name: string) => ({
-  doc: vi.fn((id?: string) => ({
+const mockCollection = vi.fn((_name: string) => ({
+  doc: vi.fn((_id?: string) => ({
     get: mockGet,
-    collection: (subName: string) => ({
+    collection: (_subName: string) => ({
       orderBy: mockOrderBy,
       get: mockGet,
     }),

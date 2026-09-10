@@ -35,10 +35,8 @@ import {
   RefreshCw,
   CheckCircle2,
   Play,
-  Layers,
   Cpu,
   Server,
-  ArrowUpRight,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 

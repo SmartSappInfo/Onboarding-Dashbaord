@@ -25,7 +25,6 @@ import {
   Twitter, 
   Youtube, 
   Globe, 
-  Sparkles, 
   Clock, 
   Loader2 
 } from 'lucide-react';
@@ -36,8 +35,7 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { PageContainerFluid } from '@/components/ui/page-container';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { DndContext, useDraggable, useDroppable, DragEndEvent } from '@dnd-kit/core';
 import type { SocialPost } from '@/lib/types';
 import { updatePostScheduleAction } from '@/app/actions/social-composer-actions';
@@ -163,7 +161,7 @@ export default function SocialCalendarClient() {
   const { toast } = useToast();
 
   const [currentMonth, setCurrentMonth] = React.useState<Date>(new Date());
-  const [selectedDate, setSelectedDate] = React.useState<Date>(new Date());
+  const [_selectedDate, setSelectedDate] = React.useState<Date>(new Date());
 
   // 1. Fetch Social Posts from Firestore
   const postsQuery = useMemoFirebase(() => {

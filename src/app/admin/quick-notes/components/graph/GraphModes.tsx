@@ -47,7 +47,7 @@ const MODES: Array<{
 export function GraphModes({
   currentMode,
   onModeChange,
-  selectedNodeLabel,
+  selectedNodeLabel: _selectedNodeLabel,
   className = '',
 }: GraphModesProps) {
   return (

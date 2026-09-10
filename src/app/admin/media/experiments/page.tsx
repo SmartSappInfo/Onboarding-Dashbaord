@@ -24,7 +24,7 @@ import {
   deleteMediaExperimentAction,
 } from '@/lib/media/experiment-service';
 import { ExperimentBuilderModal } from './components/ExperimentBuilderModal';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -37,13 +37,10 @@ import {
   Play,
   Pause,
   Trash2,
-  CheckCircle2,
-  Percent,
   Search,
   Plus,
   RefreshCw,
   Workflow,
-  ArrowUpRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { PageContainerFluid } from '@/components/ui/page-container';

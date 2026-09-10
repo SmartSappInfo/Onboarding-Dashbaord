@@ -31,7 +31,6 @@ import {
   Tablet,
   MousePointerClick,
   Share2,
-  Calendar,
   Layers,
   ArrowDownRight,
 } from 'lucide-react';

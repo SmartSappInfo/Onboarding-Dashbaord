@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     };
 
     // Execute atomically inside a Firestore Transaction
-    const result = await adminDb.runTransaction(async (transaction) => {
+    const _result = await adminDb.runTransaction(async (transaction) => {
       // 1. Read prospect status
       const prospectRef = adminDb.collection('prospects').doc(prospect.id);
       const prospectSnap = await transaction.get(prospectRef);

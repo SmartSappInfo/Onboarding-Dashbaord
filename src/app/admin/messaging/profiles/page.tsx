@@ -37,10 +37,8 @@ import {
     Pencil,
     Mail, 
     Smartphone, 
-    Check, 
     X,
     Loader2,
-    RefreshCw,
     Sparkles,
     ShieldCheck,
     Clock,
@@ -50,8 +48,6 @@ import {
     Save,
     Send,
     Info,
-    Layout,
-    Share2
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -59,7 +55,6 @@ import { Badge } from '@/components/ui/badge';
 import { checkSenderIdStatusAction, registerSenderIdAction } from '@/lib/mnotify-actions';
 import { fetchVerifiedDomainsAction } from '@/lib/resend-actions';
 import { Textarea } from '@/components/ui/textarea';
-import { cn } from '@/lib/utils';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
@@ -180,7 +175,7 @@ export default function SenderProfilesPage() {
             setWorkspaceIds([activeWorkspaceId]);
             setIsAdding(false);
             toast({ title: 'Profile Created', description: 'Available in ' + workspaceIds.length + ' workspace(s).' });
-        } catch (e) {
+        } catch (_e) {
             toast({ variant: 'destructive', title: 'Error', description: 'Failed to create profile.' });
         } finally {
             setIsSubmitting(false);
@@ -240,7 +235,7 @@ export default function SenderProfilesPage() {
             });
             setEditingProfile(null);
             toast({ title: 'Profile Updated' });
-        } catch (e) {
+        } catch (_e) {
             toast({ variant: 'destructive', title: 'Update Failed' });
         } finally {
             setIsUpdating(false);
@@ -342,7 +337,7 @@ export default function SenderProfilesPage() {
                 await handleSyncStatus(registeringProfile);
                 setRegisteringProfile(null);
             } else throw new Error(result.error);
-        } catch (e: unknown) {
+        } catch (_e: unknown) {
             toast({ variant: 'destructive', title: 'Registration Failed' });
         } finally {
             setIsRegProcessing(false);

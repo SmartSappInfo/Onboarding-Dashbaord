@@ -17,19 +17,15 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { 
     CalendarClock, 
-    ArrowLeft, 
     Trash2, 
     Loader2, 
     AlertCircle, 
-    RefreshCw, 
     Clock, 
     ArrowRight,
     Pencil,
     Save,
     Mail,
     Smartphone,
-    X,
-    Info,
     Send,
     Search,
     Inbox,
@@ -64,7 +60,6 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 export default function ScheduledMessagesPage() {

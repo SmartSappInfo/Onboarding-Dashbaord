@@ -31,7 +31,7 @@ interface PublishTemplateModalProps {
 export default function PublishTemplateModal({
   isOpen,
   onOpenChange,
-  section,
+  section: _section,
   onSave,
 }: PublishTemplateModalProps) {
   const [name, setName] = React.useState('');

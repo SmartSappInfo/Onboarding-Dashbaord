@@ -32,7 +32,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   let db;
   try {
     db = initializeFirestore(firebaseApp, { experimentalForceLongPolling: true });
-  } catch (e) {
+  } catch (_e) {
     db = getFirestore(firebaseApp);
   }
   return {

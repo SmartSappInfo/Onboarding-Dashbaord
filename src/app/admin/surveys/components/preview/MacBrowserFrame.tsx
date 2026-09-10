@@ -5,7 +5,7 @@
  */
 
 import * as React from 'react';
-import { Lock, Share2, Maximize2, RotateCcw } from 'lucide-react';
+import { Lock, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface MacBrowserFrameProps {

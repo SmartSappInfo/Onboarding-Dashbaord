@@ -361,7 +361,7 @@ export async function executeRecommendedAction(params: {
   await requireAuth();
 
   try {
-    const { formId, submissionId, action, userId } = params;
+    const { formId: _formId, submissionId, action, userId } = params;
 
     const subRef = adminDb.collection(COLLECTIONS.FORM_SUBMISSIONS).doc(submissionId);
     const subDoc = await subRef.get();

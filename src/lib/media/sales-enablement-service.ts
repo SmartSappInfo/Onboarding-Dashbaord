@@ -20,7 +20,6 @@
 import {
   collection,
   doc,
-  getDoc,
   setDoc,
   getDocs,
   query,
@@ -32,7 +31,6 @@ import {
 import type {
   DealMediaPackage,
   PreMeetingIntelligence,
-  MediaAsset,
 } from '../types/media-2.0';
 import { createDistributionLinkAction } from './media-link-service';
 

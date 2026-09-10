@@ -25,14 +25,10 @@ import {
   Trash2,
   Star,
   Sparkles,
-  Users,
-  CheckCircle2,
-  Clock,
   Plus,
-  Play,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { OnboardingJourney, OnboardingAudience } from '@/lib/types';
+import type { OnboardingJourney } from '@/lib/types';
 import {
   deleteJourneyAction,
   createOrUpdateJourneyAction,

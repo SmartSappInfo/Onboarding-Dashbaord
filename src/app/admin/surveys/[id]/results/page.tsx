@@ -16,11 +16,10 @@
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import * as React from 'react';
 import { useDoc, useCollection, useFirestore, useMemoFirebase, useUser } from "@/firebase";
-import type { Survey, SurveyResponse, SurveyQuestion, SurveySummary, SurveySession } from "@/lib/types";
+import type { Survey, SurveyResponse, SurveySummary, SurveySession } from "@/lib/types";
 import { doc, collection, query, orderBy, addDoc } from 'firebase/firestore';
 import { Button } from "@/components/ui/button";
 import {
-  ArrowLeft,
   Sparkles,
   Loader2,
   Download,
@@ -38,7 +37,6 @@ import { useToast } from "@/hooks/use-toast";
 import { generateSurveySummary } from "@/ai/flows/generate-survey-summary-flow";
 import { useLiveAiModel } from "@/hooks/use-live-ai-model";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
 
 import ResponsesListView from "./components/responses-list-view";

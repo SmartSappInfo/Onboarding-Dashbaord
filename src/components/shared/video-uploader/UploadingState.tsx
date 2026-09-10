@@ -8,7 +8,7 @@ interface UploadingStateProps {
   className?: string;
 }
 
-export function UploadingState({ previewUrl, progress, label, isVideo, className }: UploadingStateProps) {
+export function UploadingState({ previewUrl, progress, label: _label, isVideo: _isVideo, className: _className }: UploadingStateProps) {
   return (
     <div className="w-full relative h-[220px] rounded-2xl overflow-hidden border border-slate-800 flex flex-col items-center justify-center text-center">
       {previewUrl ? (

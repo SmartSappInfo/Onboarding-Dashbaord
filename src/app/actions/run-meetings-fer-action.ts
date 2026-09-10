@@ -7,7 +7,7 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 
 export async function runMeetingsFerAction(
   workspaceId: string,
-  organizationId: string
+  _organizationId: string
 ): Promise<{
   success: boolean;
   processedMeetings: number;

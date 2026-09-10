@@ -3,7 +3,6 @@ import {
     resolveOrgFooter, 
     htmlContainsFooter, 
     ORG_FOOTER_SENTINEL, 
-    DEFAULT_ORG_FOOTER_HTML,
     type OrgFooterVariables 
 } from '../org-footer-service';
 

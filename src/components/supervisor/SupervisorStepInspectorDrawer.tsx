@@ -24,10 +24,8 @@ import { Button } from '@/components/ui/button';
 import {
   Wrench,
   Clock,
-  CheckCircle2,
   AlertCircle,
   HelpCircle,
-  Code,
   Copy,
   Check,
 } from 'lucide-react';

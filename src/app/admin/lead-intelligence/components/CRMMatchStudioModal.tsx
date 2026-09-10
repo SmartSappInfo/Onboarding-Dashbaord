@@ -28,14 +28,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { 
   GitMerge, 
-  Building2, 
-  ArrowRight, 
   CheckCircle2, 
-  PlusCircle, 
-  XCircle, 
   Loader2,
-  Sparkles,
-  ShieldCheck
 } from 'lucide-react';
 import type { Prospect, CRMMatchCandidate, CRMEnrichmentMergePayload } from '@/lib/lead-intelligence/types';
 import { enrichExistingCRMRecordAction, syncProspectToCRMAction } from '@/app/actions/lead-intelligence-actions';
@@ -205,7 +199,7 @@ export const CRMMatchStudioModal: React.FC<CRMMatchStudioModalProps> = ({
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    Non-destructively merges verified contacts, technographics, and AI insights into "{matchCandidate.entityName}".
+                    Non-destructively merges verified contacts, technographics, and AI insights into &quot;{matchCandidate.entityName}&quot;.
                   </p>
 
                   {/* Nested Toggles for Enrich */}

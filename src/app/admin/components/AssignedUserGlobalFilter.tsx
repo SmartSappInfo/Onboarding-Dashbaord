@@ -9,7 +9,6 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User as UserIcon, Users } from 'lucide-react';
 import { useGlobalFilter } from '@/context/GlobalFilterProvider';
-import { Label } from '@/components/ui/label';
 import { useTenant } from '@/context/TenantContext';
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : <UserIcon size={12} />;

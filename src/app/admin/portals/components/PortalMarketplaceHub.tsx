@@ -8,7 +8,7 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -30,14 +30,7 @@ import {
   Sparkles,
   Download,
   Star,
-  Layers,
-  ArrowRight,
   Loader2,
-  CheckCircle2,
-  BookOpen,
-  Award,
-  Users,
-  Building,
 } from 'lucide-react';
 
 interface PortalMarketplaceHubProps {

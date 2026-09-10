@@ -12,7 +12,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, limit } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,19 +26,12 @@ import type { AffiliatePartner, AffiliateReferral } from '@/lib/types/commerce';
 import type { Portal } from '@/lib/types/portal';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import {
-  Users,
-  DollarSign,
-  TrendingUp,
   Share2,
   Copy,
   Check,
-  Award,
-  Sparkles,
   ArrowLeft,
   Gift,
-  ShieldCheck,
   Loader2,
-  ExternalLink,
 } from 'lucide-react';
 
 interface PortalAffiliateDashboardClientProps {
@@ -56,7 +49,7 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
   const [partnerName, setPartnerName] = React.useState('');
   const [partnerEmail, setPartnerEmail] = React.useState('');
   const [customCode, setCustomCode] = React.useState('');
-  const [payoutMethod, setPayoutMethod] = React.useState('Mobile Money');
+  const [payoutMethod, _setPayoutMethod] = React.useState('Mobile Money');
   const [payoutDetails, setPayoutDetails] = React.useState('');
   const [isRegistering, setIsRegistering] = React.useState(false);
 

@@ -16,10 +16,6 @@ import { Button } from '@/components/ui/button';
 import {
   Clock,
   Video,
-  ExternalLink,
-  CheckCircle2,
-  AlertCircle,
-  Sparkles,
   ArrowRight,
   Flame,
 } from 'lucide-react';
@@ -80,7 +76,7 @@ export function MyDayTimeline({ bookings, onOpenBookingDetail }: MyDayTimelinePr
 
       <CardContent className="p-6">
         <div className="relative pl-6 space-y-6 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-border/80">
-          {sortedBookings.map((bkg, index) => {
+          {sortedBookings.map((bkg, _index) => {
             const isCompleted = bkg.status === 'completed';
             const isCancelled = bkg.status === 'cancelled';
             const hasHighIntent = bkg.booker.notes?.toLowerCase().includes('enterprise') || bkg.booker.notes?.toLowerCase().includes('urgent');

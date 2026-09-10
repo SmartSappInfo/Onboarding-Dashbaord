@@ -20,7 +20,6 @@ import {
   Loader2,
   CheckCircle2,
   FileArchive,
-  AlertCircle,
   Database,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';

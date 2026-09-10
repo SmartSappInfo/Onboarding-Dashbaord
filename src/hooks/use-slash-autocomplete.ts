@@ -25,9 +25,9 @@ interface UseSlashAutocompleteProps {
 
 export function useSlashAutocomplete({
   variables,
-  value,
+  value: _value,
   onChange,
-  registerInsertCallback,
+  registerInsertCallback: _registerInsertCallback,
 }: UseSlashAutocompleteProps) {
   const [showAutocomplete, setShowAutocomplete] = React.useState(false);
   const [autocompleteQuery, setAutocompleteQuery] = React.useState('');

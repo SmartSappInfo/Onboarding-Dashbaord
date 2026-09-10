@@ -10,7 +10,6 @@ import * as React from 'react';
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
@@ -24,10 +23,8 @@ import {
   UserCheck,
   Shield,
   CheckCircle2,
-  Video,
   Clock,
   RefreshCw,
-  AlertCircle,
 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import type { MeetingActivity, MeetingActivityType } from '@/lib/meetings/types';

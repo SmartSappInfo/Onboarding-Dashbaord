@@ -19,12 +19,9 @@ import {
   GitMerge,
   Sparkles,
   Check,
-  X,
   Loader2,
-  FileText,
   Info,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { ConsolidationCandidate } from '@/lib/memory/orchestrator-types';

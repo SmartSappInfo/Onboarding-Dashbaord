@@ -26,10 +26,10 @@ import type {
   BulkOperationResult,
   UserProfile,
 } from '@/lib/types';
-import { DepartmentService, CreateDepartmentPayload, UpdateDepartmentPayload } from '@/lib/services/workforce/department-service';
+import { DepartmentService, CreateDepartmentPayload } from '@/lib/services/workforce/department-service';
 import { DepartmentSeedService, type BackfillSummary } from '@/lib/services/workforce/department-seed-service';
 import { ALL_SEED_DEPARTMENT_NAMES } from '@/lib/constants/seed-departments';
-import { TeamService, CreateTeamPayload, UpdateTeamPayload } from '@/lib/services/workforce/team-service';
+import { TeamService, CreateTeamPayload } from '@/lib/services/workforce/team-service';
 import { InvitationLifecycleService, CreateInvitationPayload } from '@/lib/services/workforce/invitation-lifecycle-service';
 import { InvitationDispatchService } from '@/lib/services/workforce/invitation-dispatch-service';
 import { AccessRequestService, SubmitAccessRequestPayload } from '@/lib/services/workforce/access-request-service';

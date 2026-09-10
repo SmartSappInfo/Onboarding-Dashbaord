@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Zap, Lock, BarChart3, Edit3, Globe, Shield, Link, Calendar, Clock, Hash, CornerDownRight } from 'lucide-react';
+import { BarChart3, Link, Calendar, Clock, Hash, CornerDownRight } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import type { WizardState } from './create-qr-wizard';

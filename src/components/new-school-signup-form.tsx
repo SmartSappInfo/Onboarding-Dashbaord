@@ -7,7 +7,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { format } from "date-fns";
 import { Calendar as CalendarIcon, X } from "lucide-react";
-import { collection } from 'firebase/firestore';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 import { Button } from "@/components/ui/button";
@@ -135,7 +134,7 @@ export default function NewSchoolSignupForm() {
       if (!response.ok) {
         throw new Error("Webhook submission failed");
       }
-    } catch (error) {
+    } catch (_error) {
       toast({
         variant: "destructive",
         title: "Uh oh! Something went wrong.",
@@ -383,7 +382,7 @@ export default function NewSchoolSignupForm() {
                 <div className="space-y-0.5">
                   <FormLabel className="text-base">Notify School</FormLabel>
                   <FormDescription>
-                    Send signup confirmation to the school's primary email.
+                    Send signup confirmation to the school&apos;s primary email.
                   </FormDescription>
                 </div>
                 <FormControl>
@@ -547,7 +546,7 @@ export default function NewSchoolSignupForm() {
                 <div className="space-y-0.5">
                   <FormLabel className="text-base">Notify School by SMS</FormLabel>
                   <FormDescription>
-                    Send signup confirmation to the school's primary phone number.
+                    Send signup confirmation to the school&apos;s primary phone number.
                   </FormDescription>
                 </div>
                 <FormControl>

@@ -20,7 +20,6 @@ import type {
   PersonDetailView,
   IdentityAccount,
   OrganizationMembership,
-  WorkspaceMembership,
   UserProfile,
 } from '@/lib/types';
 import { IdentityAccountService } from './identity-account-service';

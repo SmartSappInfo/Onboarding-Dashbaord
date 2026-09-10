@@ -4,7 +4,7 @@ import * as React from 'react';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,7 +17,6 @@ import { collection, query, where, doc, setDoc, getDocs, limit } from 'firebase/
 import { 
   Radio, 
   Settings, 
-  ListFilter, 
   Sparkles, 
   Loader2, 
   Plus, 
@@ -320,7 +319,7 @@ export default function ListeningClient() {
                           <span className="font-extrabold text-xs text-foreground block">{alert.author}</span>
                         </div>
                         <Badge className="text-[9px] uppercase tracking-widest h-5 px-2 border" variant="outline">
-                          matched '{alert.matchingKeyword}'
+                          matched &apos;{alert.matchingKeyword}&apos;
                         </Badge>
                       </CardHeader>
                       <CardContent className="pt-4 space-y-4 flex-1">

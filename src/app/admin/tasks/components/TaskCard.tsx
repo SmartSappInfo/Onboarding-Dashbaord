@@ -12,8 +12,6 @@ import {
     AlertTriangle, 
     ShieldAlert, 
     Circle, 
-    Building2, 
-    Link as LinkIcon,
     Bell,
     ArrowRight,
     MessageSquare,
@@ -24,7 +22,6 @@ import { format, isToday, isPast } from 'date-fns';
 import { getTaskInterlinkUrl } from '@/lib/task-actions';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { getProgressValue } from './task-utils';
 
 const PRIORITY_CONFIG: Record<TaskPriority, { color: string, icon: any }> = {
     urgent: { color: 'text-rose-600 bg-rose-50 border-rose-200', icon: ShieldAlert },

@@ -11,7 +11,6 @@ import {
   Loader2,
   ArrowRight,
   ShieldCheck,
-  Video,
 } from 'lucide-react';
 import LightRays from '@/components/LightRays';
 import AnimatedHeroShapes from '@/components/animated-hero-shapes';
@@ -38,7 +37,7 @@ export default function RsvpResponseClient({
   meetingId,
   meetingTitle,
   meetingTime,
-  meetingLink,
+  meetingLink: _meetingLink,
   typeSlug,
   entitySlug,
   token,
@@ -231,7 +230,7 @@ export default function RsvpResponseClient({
                         variant="default"
                         className="w-full rounded-xl font-bold h-12 text-sm shadow-md"
                       >
-                        Yes, I'll Attend
+                        Yes, I&apos;ll Attend
                       </Button>
                       <div className="grid grid-cols-2 gap-3">
                         <Button
@@ -246,7 +245,7 @@ export default function RsvpResponseClient({
                           variant="secondary"
                           className="rounded-xl font-bold h-11 text-xs"
                         >
-                          Can't Make It
+                          Can&apos;t Make It
                         </Button>
                       </div>
                     </div>

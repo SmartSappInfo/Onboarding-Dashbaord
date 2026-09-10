@@ -8,7 +8,7 @@ import type { Task } from '@/lib/types';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format, isToday, isPast } from 'date-fns';
-import { CheckCircle2, Circle, Clock, ArrowRight, ShieldAlert, Zap } from 'lucide-react';
+import { CheckCircle2, Circle, Clock, ArrowRight, Zap } from 'lucide-react';
 import { completeTaskNonBlocking } from '@/lib/task-actions';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';

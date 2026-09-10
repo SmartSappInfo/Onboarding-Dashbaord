@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { collection, query, orderBy, where, onSnapshot, doc, addDoc, deleteDoc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, where, onSnapshot, doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { MediaAsset, MediaCategory } from '@/lib/types';
 import { deduplicateCategories, getDeterministicCategoryId } from '@/lib/utils/category-utils';

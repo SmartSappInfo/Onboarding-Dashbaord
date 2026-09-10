@@ -2,11 +2,10 @@
 
 import { adminDb } from './firebase-admin';
 import { withEntitySearchFields } from './entities/entity-cache-domain';
-import { revalidatePath } from 'next/cache';
-import type { FormSubmission, WorkspaceEntity, Entity, CampaignPage, SurveyResponse, EntityContact } from './types';
+import type { FormSubmission, WorkspaceEntity, Entity, CampaignPage, EntityContact } from './types';
 import crypto from 'crypto';
 import { applyTagAction } from './scoped-tag-actions';
-import { normalizeContactType, enforceContactConstraints } from './entity-contact-helpers';
+import { enforceContactConstraints } from './entity-contact-helpers';
 import { requireAuth } from '@/lib/auth/require-auth';
 
 /**

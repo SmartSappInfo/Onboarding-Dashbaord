@@ -15,12 +15,8 @@
 import * as React from 'react';
 import {
   Search,
-  Shield,
   CheckCircle2,
   XCircle,
-  AlertTriangle,
-  SlidersHorizontal,
-  Info,
 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -28,7 +24,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
-import type { Role, PermissionDefinition, PermissionsSchema, PermissionRiskLevel } from '@/lib/types';
+import type { Role, PermissionsSchema, PermissionRiskLevel } from '@/lib/types';
 import { CANONICAL_PERMISSIONS_CATALOG } from '@/lib/services/authorization/permission-registry-service';
 import { evaluatePermission, normalizePermissionsSchema } from '@/lib/permissions-engine';
 

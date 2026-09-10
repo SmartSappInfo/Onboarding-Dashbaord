@@ -9,7 +9,7 @@
 'use client';
 
 import * as React from 'react';
-import { ShieldX, Search, Mail, Smartphone, AlertCircle, Loader2 } from 'lucide-react';
+import { ShieldX, Search, Mail, Smartphone, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {

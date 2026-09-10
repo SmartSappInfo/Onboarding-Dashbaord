@@ -15,9 +15,8 @@ import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Monitor, Clock, Play, ExternalLink, ShieldCheck, Copy, Check } from 'lucide-react';
+import { Monitor, Play, Copy, Check } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import type { Survey } from '@/lib/types';
 
@@ -26,7 +25,7 @@ export interface KioskModeTabProps {
   defaultUrl: string;
 }
 
-export function KioskModeTab({ survey, defaultUrl }: KioskModeTabProps) {
+export function KioskModeTab({ survey: _survey, defaultUrl }: KioskModeTabProps) {
   const { toast } = useToast();
   const [autoResetSeconds, setAutoResetSeconds] = React.useState<number>(10);
   const [showProgressBar, setShowProgressBar] = React.useState<boolean>(true);

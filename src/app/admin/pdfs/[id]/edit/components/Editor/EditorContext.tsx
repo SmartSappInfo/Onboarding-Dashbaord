@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import type { PDFForm, PDFFormField, WorkspaceEntity } from '@/lib/types';
+import type { PDFForm, WorkspaceEntity } from '@/lib/types';
 import type { LocalPDFFormField, AlignmentType, DistributionType, MarqueeState, EditorViewMode } from './types';
 import { calculateAlignment, calculateDistribution } from './utils/alignment';
 

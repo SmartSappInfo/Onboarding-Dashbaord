@@ -3,10 +3,10 @@
 import { useForm, Controller, useWatch, type Control, type FieldErrors, type FieldValues } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
-import { addDoc, collection, getDoc, doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { getStorage, ref, uploadBytesResumable, getDownloadURL, type UploadTask } from 'firebase/storage';
 
-import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, Webhook, SurveyStepperVariant } from '@/lib/types';
+import type { Survey, SurveyQuestion, SurveyElement, SurveyLogicBlock, SurveyLayoutBlock, SurveyResultRule, SurveyStepperVariant } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -19,16 +19,37 @@ import { useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase
 import * as React from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { 
-  CalendarIcon, Star, Upload, File as FileIcon, FileText, X, Check, Loader2, 
-  ArrowRight, ArrowLeft, AlertCircle, Zap, Trophy as TrophyIcon, 
-  Asterisk, Globe, Mail, Smartphone, Bell, CheckCircle2, XCircle, 
-  Info, Building2, Download, FileSpreadsheet, FileImage, Trash2, Plus
+import {
+  AlertCircle,
+  ArrowLeft,
+  ArrowRight,
+  Asterisk,
+  Bell,
+  Building2,
+  CalendarIcon,
+  Check,
+  CheckCircle2,
+  Download,
+  File as FileIcon,
+  FileImage,
+  FileSpreadsheet,
+  FileText,
+  Globe,
+  Info,
+  Loader2,
+  Mail,
+  Plus,
+  Smartphone,
+  Star,
+  Trash2,
+  Upload,
+  X,
+  XCircle,
+  Zap,
 } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import { format, isValid, parseISO } from 'date-fns';
-import { cn, toTitleCase } from '@/lib/utils';
-import Image from 'next/image';
+import { cn } from '@/lib/utils';
 import VideoEmbed from '@/components/video-embed';
 import { Progress } from '@/components/ui/progress';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -44,9 +65,8 @@ import { extractFileNameFromStorageUrl, isGenericChoiceValue } from '@/lib/surve
 import type { PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
-import { SmartSappIcon, SmartSappLogo } from '@/components/icons';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { sendMessage } from '@/lib/messaging-engine';
 import { triggerInternalNotification } from '@/lib/notification-engine';
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -56,7 +76,7 @@ import VideoHero from '@/components/video-hero';
 import { submitPublicSurveyResponse, triggerSurveyWebhook } from '@/lib/survey-actions';
 import { useTheme } from 'next-themes';
 import { evaluateRuleCondition } from '@/lib/surveys/survey-logic-graph';
-import { getContrastButtonStyles, getContrastTextColor } from '@/app/admin/surveys/components/inspector/contrast-utils';
+import { getContrastButtonStyles } from '@/app/admin/surveys/components/inspector/contrast-utils';
 
 
 
@@ -742,7 +762,7 @@ const ElementRenderer = ({
         return interpolateWithMapForHtml(text, simulatedValues || {}, false);
     };
 
-    const interpolateArray = (items: string[] | undefined | null): string[] => {
+    const _interpolateArray = (items: string[] | undefined | null): string[] => {
         if (!items) return [];
         return items.map(item => interpolateText(item));
     };

@@ -25,7 +25,7 @@ const { mockDoc, mockCollection, mockBatch } = vi.hoisted(() => {
           data: () => data,
         };
       }),
-      collection: vi.fn((subCol: string) => {
+      collection: vi.fn((_subCol: string) => {
         if (!mockVersionsStore[docId]) {
           mockVersionsStore[docId] = {};
         }

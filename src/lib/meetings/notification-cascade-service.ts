@@ -9,7 +9,6 @@
 import type {
   NotificationChannel,
   MeetingLifecycleTrigger,
-  NotificationDispatchJob,
 } from './types/notifications';
 
 /**

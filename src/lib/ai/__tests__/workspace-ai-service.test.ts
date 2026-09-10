@@ -15,7 +15,6 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 vi.unmock('@/ai/genkit');
 
 import { WorkspaceAiService } from '../services/workspace-ai-service';
-import { AiModelRegistry } from '../model-registry';
 import { getModel } from '@/ai/genkit';
 
 const mockDocGet = vi.fn();

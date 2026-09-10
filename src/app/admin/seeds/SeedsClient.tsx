@@ -394,7 +394,7 @@ export default function SeedsClient() {
                             </div>
                             <CardTitle className="text-xl text-blue-950">Backfill Contact Projection</CardTitle>
                             <CardDescription className="max-w-2xl text-blue-900/70">
-                                Flattens each entity's <code>entityContacts</code> into the new <code>workspace_contacts</code> collection — one row per contact — so audience builders (composer, campaigns, manual selector, tag assignment) can search and segment contacts server-side instead of loading every entity. New and edited contacts get projected automatically; this one-time pass covers existing records. Idempotent (deterministic ids), so safe to re-run.
+                                Flattens each entity&apos;s <code>entityContacts</code> into the new <code>workspace_contacts</code> collection — one row per contact — so audience builders (composer, campaigns, manual selector, tag assignment) can search and segment contacts server-side instead of loading every entity. New and edited contacts get projected automatically; this one-time pass covers existing records. Idempotent (deterministic ids), so safe to re-run.
                             </CardDescription>
                         </CardHeader>
                         <CardContent>

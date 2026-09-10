@@ -12,7 +12,6 @@ import {
     X,
     ChevronLeft,
     Trash2,
-    Search,
     SplitSquareVertical,
     CalendarDays,
     StickyNote,
@@ -385,7 +384,7 @@ function getTriggerDescriptionDetail(
 const TriggerListItem = React.memo(function TriggerListItem({
     trigger,
     isPrimary,
-    index,
+    index: _index,
     allTags,
     forms,
     surveys,
@@ -497,10 +496,10 @@ const TriggerPickerItem = React.memo(function TriggerPickerItem({
 
 export function NodeInspector({ 
     node, 
-    onUpdate, 
+    onUpdate: _onUpdate, 
     onUpdateAllSimilarNodes,
     triggers = [], 
-    onTriggersChange,
+    onTriggersChange: _onTriggersChange,
     onDirtyChange,
     onApply,
     onTest,

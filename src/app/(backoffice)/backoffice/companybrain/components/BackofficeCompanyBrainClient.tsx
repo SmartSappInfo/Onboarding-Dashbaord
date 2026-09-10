@@ -56,14 +56,12 @@ import {
   ExternalLink,
   Bot,
   Workflow,
-  CheckCircle2,
   Activity,
   RotateCw,
   Play,
   ShieldAlert,
   Users,
   Download,
-  FileCheck2,
   Shield,
   Sliders,
 } from 'lucide-react';
@@ -94,7 +92,6 @@ import type { McpPayloadValue, McpJsonRpcResponse } from '@/lib/mcp/types';
 import type { AgentDescriptor, AgentRun } from '@/lib/supervisor/types';
 import type {
   SpecialistDescriptor,
-  SpecialistWorkspaceConfig,
   SpecialistAutonomyLevel,
   DomainSpecialistId,
   SwarmRun,
@@ -336,7 +333,7 @@ export default function BackofficeCompanyBrainClient() {
 
   // Domain Specialists & Swarm Governance State (Phase 8)
   const [specialistsList, setSpecialistsList] = React.useState<SpecialistDescriptor[]>([]);
-  const [isLoadingSpecialists, setIsLoadingSpecialists] = React.useState(false);
+  const [_isLoadingSpecialists, setIsLoadingSpecialists] = React.useState(false);
   const [selectedSpecialistId, setSelectedSpecialistId] = React.useState<DomainSpecialistId>('revenue_specialist');
   const [policyWorkspaceId, setPolicyWorkspaceId] = React.useState('');
   const [policyAutonomy, setPolicyAutonomy] = React.useState<SpecialistAutonomyLevel>('supervised');
@@ -458,7 +455,7 @@ export default function BackofficeCompanyBrainClient() {
 
   // Phase 9: Autonomous Workflows & Event Triggers State
   const [workflowsList, setWorkflowsList] = React.useState<WorkflowDefinition[]>([]);
-  const [workflowRunsList, setWorkflowRunsList] = React.useState<WorkflowRun[]>([]);
+  const [_workflowRunsList, setWorkflowRunsList] = React.useState<WorkflowRun[]>([]);
   const [isLoadingWorkflows, setIsLoadingWorkflows] = React.useState<boolean>(false);
   const [isEmergencyKillSwitchActive, setIsEmergencyKillSwitchActive] = React.useState<boolean>(false);
   const [installingBlueprintId, setInstallingBlueprintId] = React.useState<string | null>(null);

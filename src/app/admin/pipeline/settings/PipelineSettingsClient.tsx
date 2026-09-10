@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { doc, updateDoc, query, collection, orderBy, where, getDocs, deleteDoc, writeBatch, addDoc } from 'firebase/firestore';
-import { useFirestore, useDoc, useMemoFirebase, useCollection, useUser } from '@/firebase';
+import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import type { Pipeline, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
@@ -13,7 +13,6 @@ import {
     Settings2,
     CheckCircle2,
     Maximize,
-    Layout,
     Zap,
     Plus,
     Trash2,
@@ -23,7 +22,7 @@ import {
     DollarSign
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -38,7 +37,7 @@ import { Separator } from '@/components/ui/separator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 
-interface PipelineConfigViewProps {
+interface _PipelineConfigViewProps {
     pipelineId: string;
     columnWidth: number;
     onWidthChange: (width: number) => void;
@@ -49,7 +48,7 @@ export default function PipelineSettingsClient() {
     const { toast } = useToast();
     const confirm = useConfirm();
     const { user } = useUser();
-    const { activeWorkspaceId, allowedWorkspaces, activeOrganizationId } = useWorkspace();
+    const { activeWorkspaceId, allowedWorkspaces: _allowedWorkspaces, activeOrganizationId } = useWorkspace();
     
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
     const [isCreating, setIsAdding] = React.useState(false);
@@ -221,7 +220,7 @@ export default function PipelineSettingsClient() {
             await batch.commit();
             setSelectedId(null);
             toast({ title: 'Pipeline Purged' });
-        } catch (e) {
+        } catch (_e) {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         }
     };

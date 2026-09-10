@@ -10,12 +10,12 @@ export default function WelcomeSection() {
           Welcome to the <span className="text-primary">SmartSapp</span> Family
         </h2>
         <p className="mb-4 text-lg text-gray-700">
-          Your child's school has signed up on SmartSapp.
+          Your child&apos;s school has signed up on SmartSapp.
           <br />
           Here is a quick video to help you understand what it means for you as a parent.
         </p>
         <p className="mb-10 text-lg font-semibold text-gray-900">
-          Please watch the full video. It's super important!
+          Please watch the full video. It&apos;s super important!
         </p>
         <div className="mx-auto max-w-[60%]">
             <VideoEmbed url="https://youtu.be/M6MUlDkfZOg" />

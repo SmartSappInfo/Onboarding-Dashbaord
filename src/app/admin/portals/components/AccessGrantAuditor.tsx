@@ -11,7 +11,6 @@ import * as React from 'react';
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -30,12 +29,7 @@ import {
   ShieldCheck,
   Plus,
   Trash2,
-  Lock,
   Unlock,
-  Sparkles,
-  BookOpen,
-  FolderArchive,
-  Calendar,
   Loader2,
 } from 'lucide-react';
 import { grantAccessAction, revokeAccessAction } from '@/app/actions/membership-actions';
@@ -55,10 +49,10 @@ export function AccessGrantAuditor({ portalId, organizationId }: AccessGrantAudi
 
   // Grant Modal form state
   const [userId, setUserId] = React.useState('');
-  const [membershipId, setMembershipId] = React.useState('');
+  const [membershipId, _setMembershipId] = React.useState('');
   const [resourceType, setResourceType] = React.useState<ResourceType>('course');
   const [resourceId, setResourceId] = React.useState('');
-  const [grantType, setGrantType] = React.useState<GrantType>('manual_admin_grant');
+  const [grantType, _setGrantType] = React.useState<GrantType>('manual_admin_grant');
   const [expirationDays, setExpirationDays] = React.useState<number>(365);
   const [notes, setNotes] = React.useState('');
 

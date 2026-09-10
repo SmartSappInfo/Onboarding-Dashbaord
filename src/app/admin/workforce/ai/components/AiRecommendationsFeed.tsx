@@ -12,20 +12,17 @@
  */
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Sparkles,
-  ShieldAlert,
   CheckCircle2,
   XCircle,
   Loader2,
   TrendingDown,
-  ArrowRight,
   Info,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import type { AiWorkforceRecommendation, AiRecommendationPriority } from '@/lib/types';
 
 interface AiRecommendationsFeedProps {

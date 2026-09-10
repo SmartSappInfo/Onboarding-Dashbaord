@@ -12,7 +12,7 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import type { Region, District, Country } from '@/lib/types';
+import type { Region, District } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { CountrySelect } from '@/components/location/CountrySelect';
@@ -114,7 +114,7 @@ export default function LocationHierarchyEditor() {
       });
       setNewRegionName('');
       toast({ title: 'Region Added', description: `"${newRegionName}" has been added.` });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to add region.' });
     } finally {
       setIsAddingRegion(false);
@@ -160,7 +160,7 @@ export default function LocationHierarchyEditor() {
       });
       setNewDistrictName('');
       toast({ title: 'District Added', description: `"${newDistrictName}" has been added.` });
-    } catch (error) {
+    } catch (_error) {
       toast({ variant: 'destructive', title: 'Error', description: 'Failed to add district.' });
     } finally {
       setIsAddingDistrict(false);

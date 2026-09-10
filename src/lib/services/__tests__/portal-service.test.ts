@@ -1,6 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PortalService, PORTAL_MODE_PRESETS } from '../portal-service';
-import type { PortalMode } from '../../types/portal';
+import { PortalService } from '../portal-service';
 
 describe('PortalService', () => {
   describe('Presets Catalog', () => {

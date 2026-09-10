@@ -15,7 +15,6 @@ import {
 import {
   calculateIceScore,
   getLifecycleStageDisplayLabel,
-  getValidationStatusDisplayLabel,
   getAssumptionRiskDisplay,
 } from '@/lib/quick-notes-domain';
 import {
@@ -25,16 +24,8 @@ import {
   Trash2,
   CheckSquare,
   TrendingUp,
-  ShieldAlert,
-  FlaskConical,
-  FileText,
-  CheckCircle2,
-  Layers,
   Plus,
-  ArrowRight,
-  ExternalLink,
   Loader2,
-  Sliders,
   Rocket,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -519,7 +510,7 @@ export function IdeaEditorDrawer({
                   className="h-8 text-xs font-semibold text-purple-600 dark:text-purple-400 border-purple-500/30 hover:bg-purple-500/10 gap-1.5"
                 >
                   {isChallengingAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  Devil's Advocate Challenge
+                  Devil&apos;s Advocate Challenge
                 </Button>
               </div>
 

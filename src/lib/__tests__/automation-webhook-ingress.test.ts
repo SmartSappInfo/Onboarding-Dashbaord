@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { POST } from '../../app/api/automations/webhook/[id]/route';
-import { adminDb } from '../firebase-admin';
 import { triggerAutomationProtocols } from '../automation-processor';
 
 const mockUpdate = vi.fn();

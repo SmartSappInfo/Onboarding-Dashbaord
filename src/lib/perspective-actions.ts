@@ -71,7 +71,7 @@ export async function savePerspectiveAction(id: string | null, data: Partial<Per
  * Attempts to delete a perspective. 
  * Rejects if data (Schools, Tasks, Pipelines) is associated with it.
  */
-export async function deletePerspectiveAction(id: string, userId: string) {
+export async function deletePerspectiveAction(id: string, _userId: string) {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 

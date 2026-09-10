@@ -16,7 +16,7 @@ import type { MediaAsset } from '@/lib/types';
 import type { ContentRecommendationItem } from '@/lib/types/media-2.0';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Video, FileText, Music, Sparkles, Play, Target } from 'lucide-react';
+import { Video, FileText, Music, Sparkles, Play } from 'lucide-react';
 
 export interface MediaRecommendationsCarouselProps {
   assets?: MediaAsset[];

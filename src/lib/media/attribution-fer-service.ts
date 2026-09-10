@@ -16,7 +16,6 @@ import {
   collection,
   doc,
   getDocs,
-  getDoc,
   writeBatch,
   query,
   where,

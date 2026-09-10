@@ -1,8 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -11,9 +10,6 @@ import {
   Zap,
   Globe,
   Video,
-  CheckCircle2,
-  AlertTriangle,
-  RefreshCw,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -22,7 +18,7 @@ import type { TelemetrySummary } from '@/lib/meetings/types/telemetry';
 
 export function TelemetryClient() {
   const { activeWorkspaceId } = useWorkspace();
-  const { toast } = useToast();
+  const { toast: _toast } = useToast();
 
   const [summary, setSummary] = React.useState<TelemetrySummary | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);

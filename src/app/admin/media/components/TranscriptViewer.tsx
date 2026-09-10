@@ -13,11 +13,10 @@
  */
 
 import { useState } from 'react';
-import type { MediaTranscript, TranscriptCue } from '@/lib/types/media-2.0';
+import type { MediaTranscript } from '@/lib/types/media-2.0';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Search, Download, Play, Clock, Sparkles } from 'lucide-react';
 
 export interface TranscriptViewerProps {

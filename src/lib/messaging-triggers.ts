@@ -1,4 +1,4 @@
-import type { MessagingTrigger, MessageChannel } from './types';
+import type { MessagingTrigger } from './types';
 
 export const MESSAGING_TRIGGERS: MessagingTrigger[] = [
   // ── Meetings: Invitations ────────────────────────────────────────────────

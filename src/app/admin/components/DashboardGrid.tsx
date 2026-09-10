@@ -24,7 +24,6 @@ import { RecentActivity } from "@/components/dashboard/RecentActivity";
 import { ZoneDistribution } from "@/components/dashboard/ZoneDistribution";
 import { MessagingWidget } from "@/components/dashboard/MessagingWidget";
 import { TaskWidget } from "@/components/dashboard/TaskWidget";
-import { PipelineWidget } from "@/components/dashboard/PipelineWidget";
 import { ExecutiveIntelligenceWidget } from "@/components/dashboard/ExecutiveIntelligenceWidget";
 import { DraggableCard } from './DraggableCard';
 import type { DashboardLayout, Pipeline } from '@/lib/types';
@@ -32,13 +31,11 @@ import { DashboardSkeleton } from './DashboardSkeleton';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useFeatures } from '@/hooks/use-features';
 import { useTenant } from '@/context/TenantContext';
-import { STATIC_WIDGETS, filterWidgetsByFeatures, DEFAULT_WIDGET_IDS, getAllWidgets } from '@/lib/widget-registry';
+import { filterWidgetsByFeatures, DEFAULT_WIDGET_IDS, getAllWidgets } from '@/lib/widget-registry';
 import WidgetSelector from './WidgetSelector';
-import { Button } from '@/components/ui/button';
-import { LayoutGrid, Plus } from 'lucide-react';
 
 
-const staticComponentMap: Record<string, React.FC<any>> = {
+const _staticComponentMap: Record<string, React.FC<any>> = {
   executiveIntelligence: ExecutiveIntelligenceWidget,
   taskWidget: TaskWidget,
   pipelinePieChart: PipelinePieChart,
@@ -63,7 +60,7 @@ export default function DashboardGrid({
     isCustomizerOpen: boolean;
     onCustomizerChange: (open: boolean) => void;
 }) {
-    const { user } = useUser();
+    const { user: _user } = useUser();
     const firestore = useFirestore();
     const { activeWorkspaceId, activeWorkspace, hasPermission } = useTenant();
     const { isFeatureEnabled } = useFeatures();

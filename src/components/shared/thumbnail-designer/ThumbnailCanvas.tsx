@@ -21,7 +21,6 @@ import * as React from 'react';
 import { useEffect, useRef, useState, useMemo } from 'react';
 import type {
   CreativeElement,
-  CanvasElement,
   SnapGuideLine,
   BoundingBox,
   SaliencyHotspot,
@@ -119,9 +118,9 @@ export default function ThumbnailCanvas({
   onSelectMultiple,
   onUpdateElement,
   onUpdateElementsBatch,
-  onDeleteElement,
-  onUndo,
-  onRedo,
+  onDeleteElement: _onDeleteElement,
+  onUndo: _onUndo,
+  onRedo: _onRedo,
   zoomPercent,
   panX,
   panY,

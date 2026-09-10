@@ -434,7 +434,7 @@ export default function BulkMeetingInviteModal({
                       <Mail className="h-4 w-4 text-primary" /> Mark as Pending & Send Invite
                     </p>
                     <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed font-semibold">
-                      Adds participants as 'pending' and dispatches an invitation from the series.
+                      Adds participants as &apos;pending&apos; and dispatches an invitation from the series.
                     </p>
                   </Label>
                 </div>

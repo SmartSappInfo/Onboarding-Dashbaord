@@ -47,7 +47,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 
 
 // Helpers to access the mocks exposed by the factory
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 const mocks = () => (firebaseAdmin as any).__mocks as {
   set: ReturnType<typeof vi.fn>;
   commit: ReturnType<typeof vi.fn>;

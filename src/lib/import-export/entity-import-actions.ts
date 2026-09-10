@@ -98,7 +98,7 @@ export async function validateImportBatch(
     if (orgSnap.exists) {
       defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
     }
-  } catch (err) {}
+  } catch (_err) {}
 
   if (workspaceId) {
     const wsSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
@@ -314,7 +314,7 @@ export async function executeImportBatch(
     if (orgSnap.exists) {
       defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
     }
-  } catch (err) {}
+  } catch (_err) {}
 
   let successCount = 0;
   let errorCount = 0;
@@ -493,8 +493,8 @@ function buildEntityPayload(
   mapped: Record<string, string>,
   entityType: EntityType,
   defaultCountryCode: string,
-  pipelineId?: string,
-  stageId?: string
+  _pipelineId?: string,
+  _stageId?: string
 ): any | null {
   // Sync Contact Name <-> Entity Name generically
   const contactName = mapped.contact_name || mapped.contactName || '';

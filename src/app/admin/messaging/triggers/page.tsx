@@ -7,7 +7,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTenant } from '@/context/TenantContext';
 import { MESSAGING_TRIGGERS } from '@/lib/messaging-triggers';
 import { TEMPLATES, type TemplateDef } from '@/lib/messaging-templates-registry';
-import type { MessageTemplate, MessagingTrigger, MessageChannel, MessageBlock, RecipientType, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm } from '@/lib/types';
+import type { MessageTemplate, MessagingTrigger, MessageChannel, MessageBlock, RecipientType, VariableDefinition, MessageStyle, Meeting, Survey, PDFForm } from '@/lib/types';
 import { TriggerListItem } from './components/TriggerListItem';
 import { TriggerDetailPane } from './components/TriggerDetailPane';
 import { TemplateWorkshop } from '../templates/components/template-workshop';
@@ -256,11 +256,11 @@ export default function MessagingTriggersPage() {
   };
 
   // Handle mobile back button
-  const handleMobileBack = () => {
+  const _handleMobileBack = () => {
     setMobilePanel('list');
   };
 
-  const handleSelectTrigger = (id: string) => {
+  const _handleSelectTrigger = (id: string) => {
     setSelectedTriggerId(id);
     setMobilePanel('detail');
   };
@@ -697,7 +697,7 @@ export default function MessagingTriggersPage() {
               <RefreshCw className="h-5 w-5 text-amber-500" /> Revert to System Default?
             </AlertDialogTitle>
             <AlertDialogDescription className="text-sm font-medium">
-              This will permanently delete your organization's custom override for this trigger. The system will fall back to using the global blueprint provided by the platform.
+              This will permanently delete your organization&apos;s custom override for this trigger. The system will fall back to using the global blueprint provided by the platform.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4">

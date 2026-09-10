@@ -21,7 +21,6 @@ import {
   LayoutTemplate,
   Wand2,
   XCircle,
-  Link2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
@@ -35,7 +34,6 @@ import {
   plainTextToTipTap, 
   deriveTitleFromText, 
   KNOWLEDGE_TYPE_META,
-  normalizeKnowledgeType,
   extractPlainText 
 } from '@/lib/quick-notes-domain';
 import type { KnowledgeType, KnowledgeClassificationResult, NoteDocument } from '@/lib/quick-notes-types';
@@ -54,7 +52,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel,
 } from '@/components/ui/dropdown-menu';
-import { categorySwatch } from '@/app/admin/quick-notes/components/quick-notes-ui';
 
 // Semantic knowledge type configuration with icons
 const KNOWLEDGE_OPTIONS: Array<{ id: KnowledgeType; label: string; icon: React.ComponentType<{ className?: string }> }> = [

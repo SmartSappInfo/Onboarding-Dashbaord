@@ -215,7 +215,7 @@ describe('Property 2: Pipeline State Isolation Invariant', () => {
         fc.string({ minLength: 1, maxLength: 20 }), // stage1Id
         fc.string({ minLength: 1, maxLength: 20 }), // stage2Id
         fc.string({ minLength: 1, maxLength: 20 }), // userId
-        async (entityId, workspace1Id, workspace2Id, pipelineId, stage1Id, stage2Id, userId) => {
+        async (entityId, workspace1Id, workspace2Id, pipelineId, stage1Id, stage2Id, _userId) => {
           // Ensure workspaces are different
           if (workspace1Id === workspace2Id) return;
 

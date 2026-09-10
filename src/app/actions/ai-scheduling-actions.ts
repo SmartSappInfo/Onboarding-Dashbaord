@@ -42,7 +42,7 @@ export async function parseAndSuggestSlotsAction(payload: {
   await requireAuth();
 
   try {
-    const { workspaceId, prompt, hostUserId } = payload;
+    const { workspaceId: _workspaceId, prompt, hostUserId } = payload;
     if (!prompt.trim()) throw new Error('Prompt cannot be empty.');
 
     const intent = parseSchedulingIntent(prompt);

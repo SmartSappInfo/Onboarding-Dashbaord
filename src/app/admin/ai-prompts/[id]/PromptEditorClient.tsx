@@ -30,7 +30,6 @@ import {
   Terminal,
   Grid,
   FileText,
-  AlertTriangle
 } from 'lucide-react';
 
 interface PromptEditorClientProps {

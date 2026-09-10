@@ -137,7 +137,7 @@ export const CRMStatusBadgeCard: React.FC<CRMStatusBadgeCardProps> = ({
               </div>
 
               <p className="text-xs text-foreground/80 font-medium">
-                Matches existing entity: <strong className="text-foreground">"{matchCandidate.entityName}"</strong>.
+                Matches existing entity: <strong className="text-foreground">&quot;{matchCandidate.entityName}&quot;</strong>.
               </p>
 
               <div className="flex items-center gap-2 pt-1">

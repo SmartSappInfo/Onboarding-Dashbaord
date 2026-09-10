@@ -8,7 +8,6 @@ import {
     Target, 
     ChevronDown, 
     Check,
-    Layout,
     PlusCircle
 } from 'lucide-react';
 import {
@@ -21,7 +20,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 
 /**

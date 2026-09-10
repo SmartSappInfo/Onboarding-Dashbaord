@@ -130,7 +130,7 @@ export function UploadStep({ state, updateState, onNext }: Props) {
           } else {
             toast({ title: 'Empty file', description: 'The file contains no valid data', variant: 'destructive' });
           }
-        } catch (err) {
+        } catch (_err) {
           toast({ title: 'Failed to parse', description: 'Invalid JSON format in file', variant: 'destructive' });
         }
       };

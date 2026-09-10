@@ -72,7 +72,7 @@ describe('ComposerWizard - Multi-Entity Integration', () => {
             const entitySelectorProps = {
                 channel: 'email',
                 selectedEntityIds: ['entity-1', 'entity-2'],
-                onSelectionChange: (ids: string[]) => {},
+                onSelectionChange: (_ids: string[]) => {},
                 maxSelections: 100,
             };
             

@@ -10,7 +10,6 @@
  * @testability Covered in `workforce-intelligence-services.test.ts`.
  */
 
-import { adminDb } from '@/lib/firebase-admin';
 import type { RoleIntelligenceSummary, RoleEffectivenessRating, Role } from '@/lib/types';
 import { RoleManagementService } from '@/lib/services/authorization/role-management-service';
 

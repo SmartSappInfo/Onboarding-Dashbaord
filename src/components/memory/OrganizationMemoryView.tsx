@@ -22,14 +22,9 @@
 import * as React from 'react';
 import {
   Brain,
-  Sparkles,
   ShieldCheck,
   Search,
   RefreshCw,
-  XCircle,
-  AlertTriangle,
-  Clock,
-  GitMerge,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -122,7 +117,7 @@ export function OrganizationMemoryView({
   const [isScanning, setIsScanning] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedType, setSelectedType] = React.useState<MemoryType | 'all'>('all');
-  const [selectedVerification, setSelectedVerification] = React.useState<
+  const [selectedVerification, _setSelectedVerification] = React.useState<
     VerificationState | 'all'
   >('all');
 

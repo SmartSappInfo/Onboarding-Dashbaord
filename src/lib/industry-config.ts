@@ -435,7 +435,7 @@ export function getSidebarItemsForIndustry(industry: IndustryVertical): SidebarI
 
 export function getEnabledIndustries(): IndustryVertical[] {
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const featureFlags = require('@/lib/feature-flags');
     if (typeof featureFlags.getEnabledIndustries === 'function') {
       return featureFlags.getEnabledIndustries() as IndustryVertical[];

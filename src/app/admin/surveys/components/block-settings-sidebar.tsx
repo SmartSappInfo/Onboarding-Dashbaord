@@ -26,7 +26,6 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
@@ -52,7 +51,7 @@ export default function BlockSettingsSidebar({
     onOpenVersionHistory,
     onAddQuestion,
 }: BlockSettingsSidebarProps) {
-    const { watch, setValue, control, register, getValues } = useFormContext();
+    const { watch, setValue, control, register, getValues: _getValues } = useFormContext();
     const elements = watch('elements') || [];
     
     const activeIndex = selectedBlockIds.length === 1 
@@ -132,7 +131,7 @@ export default function BlockSettingsSidebar({
     }
 
     const isQuestion = (el: SurveyElement): el is SurveyQuestion => 'isRequired' in el;
-    const isLayout = (el: SurveyElement): el is SurveyLayoutBlock => !('isRequired' in el);
+    const _isLayout = (el: SurveyElement): el is SurveyLayoutBlock => !('isRequired' in el);
 
     const convertBlockType = (newType: SurveyElement['type']) => {
         if (!element) return;
@@ -1248,7 +1247,7 @@ export default function BlockSettingsSidebar({
                                             {element.type === 'yes-no' ? (
                                                 <div className="grid grid-cols-2 gap-3">
                                                     <div className="space-y-1.5">
-                                                        <Label className="text-sm font-semibold">"Yes" Points</Label>
+                                                        <Label className="text-sm font-semibold">&quot;Yes&quot; Points</Label>
                                                         <Controller
                                                             control={control}
                                                             name={`elements.${activeIndex}.yesScore`}
@@ -1263,7 +1262,7 @@ export default function BlockSettingsSidebar({
                                                         />
                                                     </div>
                                                     <div className="space-y-1.5">
-                                                        <Label className="text-sm font-semibold">"No" Points</Label>
+                                                        <Label className="text-sm font-semibold">&quot;No&quot; Points</Label>
                                                         <Controller
                                                             control={control}
                                                             name={`elements.${activeIndex}.noScore`}

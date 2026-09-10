@@ -7,11 +7,7 @@ import { useTenant } from '@/context/TenantContext';
 import type { Organization, AISeedResult } from '@/lib/types';
 import { 
     Building, 
-    Plus, 
-    Trash2, 
-    Pencil, 
     Loader2, 
-    Upload,
     X,
     Globe,
     Mail,
@@ -19,7 +15,6 @@ import {
     MapPin,
     Eye,
     EyeOff,
-    Briefcase,
     Settings,
     Palette,
     Key,
@@ -186,7 +181,7 @@ export default function OrganizationManagementDialog({
             }
 
             setSeedResult(data.result as AISeedResult);
-        } catch (err: unknown) {
+        } catch (_err: unknown) {
             setScrapeError('Network error. Please check your connection and try again.');
         } finally {
             setIsScraping(false);
@@ -515,7 +510,7 @@ export default function OrganizationManagementDialog({
                                                 </CardTitle>
                                                 <CardDescription className="text-xs text-muted-foreground/80 flex items-start gap-1.5">
                                                     <Info className="h-3 w-3 mt-0.5 flex-shrink-0 text-violet-400" />
-                                                    Enter your organization's website URL and let AI automatically extract your brand colors, logo, and localization settings.
+                                                    Enter your organization&apos;s website URL and let AI automatically extract your brand colors, logo, and localization settings.
                                                 </CardDescription>
                                             </CardHeader>
                                             <CardContent className="p-6 space-y-4">

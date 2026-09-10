@@ -4,7 +4,7 @@
  * Requirements: 20, 27
  */
 
-import { EntityType, ContactScope } from './types';
+import { EntityType } from './types';
 
 /**
  * CSV column schemas for each contact scope

@@ -12,7 +12,7 @@ import MediaAssetCard from './media-asset-card';
 import UploadButton from './upload-button';
 import AddLinkButton from './add-link-button';
 import MediaAssetInspectorDrawer from './MediaAssetInspectorDrawer';
-import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown, Tag, Bot, Sparkles } from 'lucide-react';
+import { Search, FolderOpen, Filter, HardDrive, Youtube, Zap, ChevronDown, Tag, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { MediaCopilotDrawer } from './MediaCopilotDrawer';
 import {

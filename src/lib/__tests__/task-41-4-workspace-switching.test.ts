@@ -139,7 +139,7 @@ function queryWorkspaceEntities(workspaceId: string, filters?: {
 }) {
   const results: any[] = [];
   
-  for (const [id, we] of mockFirestore.workspace_entities.entries()) {
+  for (const [_id, we] of mockFirestore.workspace_entities.entries()) {
     if (we.workspaceId !== workspaceId) continue;
     
     // Apply filters
@@ -320,21 +320,21 @@ describe('Task 41.4 - Workspace Switching Integration Test', () => {
   describe('3. Data Isolation Between Workspaces', () => {
     it('should only show entities linked to the active workspace', () => {
       // Create two institution workspaces
-      const ws1 = createWorkspace('ws_onboarding', 'institution');
-      const ws2 = createWorkspace('ws_billing', 'institution');
+      const _ws1 = createWorkspace('ws_onboarding', 'institution');
+      const _ws2 = createWorkspace('ws_billing', 'institution');
 
       // Create three institutions
-      const entity1 = createEntity('entity_school_1', 'institution', {
+      const _entity1 = createEntity('entity_school_1', 'institution', {
         name: 'School A',
         slug: 'school-a',
         institutionData: { nominalRoll: 500 },
       });
-      const entity2 = createEntity('entity_school_2', 'institution', {
+      const _entity2 = createEntity('entity_school_2', 'institution', {
         name: 'School B',
         slug: 'school-b',
         institutionData: { nominalRoll: 300 },
       });
-      const entity3 = createEntity('entity_school_3', 'institution', {
+      const _entity3 = createEntity('entity_school_3', 'institution', {
         name: 'School C',
         slug: 'school-c',
         institutionData: { nominalRoll: 200 },
@@ -382,8 +382,8 @@ describe('Task 41.4 - Workspace Switching Integration Test', () => {
 
     it('should show different operational state for same entity in different workspaces', () => {
       // Create two workspaces
-      const wsOnboarding = createWorkspace('ws_onboarding', 'institution');
-      const wsBilling = createWorkspace('ws_billing', 'institution');
+      const _wsOnboarding = createWorkspace('ws_onboarding', 'institution');
+      const _wsBilling = createWorkspace('ws_billing', 'institution');
 
       // Create one institution
       const entity = createEntity('entity_school_shared', 'institution', {
@@ -427,7 +427,7 @@ describe('Task 41.4 - Workspace Switching Integration Test', () => {
 
   describe('4. Query Filtering is Workspace-Scoped', () => {
     it('should filter by stage within workspace scope only', () => {
-      const ws = createWorkspace('ws_onboarding', 'institution');
+      const _ws = createWorkspace('ws_onboarding', 'institution');
 
       // Create entities
       createEntity('entity_1', 'institution', { name: 'School 1', slug: 'school-1', institutionData: {} });
@@ -463,7 +463,7 @@ describe('Task 41.4 - Workspace Switching Integration Test', () => {
     });
 
     it('should filter by workspace tags within workspace scope only', () => {
-      const ws = createWorkspace('ws_sales', 'person');
+      const _ws = createWorkspace('ws_sales', 'person');
 
       // Create person entities
       createEntity('person_1', 'person', {
@@ -518,9 +518,9 @@ describe('Task 41.4 - Workspace Switching Integration Test', () => {
   describe('5. Workspace Switching Summary', () => {
     it('should validate complete workspace switching workflow', () => {
       // Create three workspaces
-      const wsInstitution = createWorkspace('ws_schools', 'institution');
-      const wsFamily = createWorkspace('ws_families', 'family');
-      const wsPerson = createWorkspace('ws_people', 'person');
+      const _wsInstitution = createWorkspace('ws_schools', 'institution');
+      const _wsFamily = createWorkspace('ws_families', 'family');
+      const _wsPerson = createWorkspace('ws_people', 'person');
 
       // Create entities for each scope
       const school = createEntity('entity_school', 'institution', {

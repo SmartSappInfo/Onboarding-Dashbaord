@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { X, Download, Image, FileCode, FileImage, FileText, AlertTriangle, ShieldCheck, Loader2 } from 'lucide-react';
+import { X, Download, Image, FileCode, FileImage, FileText, AlertTriangle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';

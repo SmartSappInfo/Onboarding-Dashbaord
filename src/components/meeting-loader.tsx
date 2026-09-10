@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { collection, query, where, getDocs, limit, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
 
 import { useFirestore } from '@/firebase';
-import type { Meeting, Entity } from '@/lib/types';
-import { MEETING_TYPES } from '@/lib/types';
+import type { Meeting } from '@/lib/types';
 import MeetingHero from '@/components/meeting-hero';
 import { Skeleton } from '@/components/ui/skeleton';
 import AppDownloadSection from '@/components/app-download-section';

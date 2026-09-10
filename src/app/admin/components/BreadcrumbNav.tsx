@@ -6,7 +6,6 @@ import Link from 'next/link';
 import { ChevronRight, ArrowLeft, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigation } from '@/context/NavigationContext';
-import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTerminology } from '@/hooks/use-terminology';
 

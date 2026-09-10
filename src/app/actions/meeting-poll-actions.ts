@@ -19,7 +19,6 @@ import type {
 } from '@/lib/meetings/types/polls';
 import {
   aggregateSlotVoteCounts,
-  calculatePollConsensus,
 } from '@/lib/meetings/poll-consensus-service';
 
 function getErrorMessage(error: unknown): string {

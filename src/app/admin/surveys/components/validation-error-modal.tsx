@@ -12,7 +12,6 @@ import {
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { AlertCircle, ArrowRight } from 'lucide-react';
-import type { SurveyElement } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export interface ValidationError {
@@ -93,7 +92,7 @@ export default function ValidationErrorModal({ open, onOpenChange, errors, onFix
                         onClick={() => onOpenChange(false)}
                         className="rounded-xl font-semibold h-12 px-10 shadow-lg cursor-pointer transition-all duration-200 active:scale-95"
                     >
-                        Got it, I'll fix them
+                        Got it, I&apos;ll fix them
                     </Button>
                 </DialogFooter>
             </DialogContent>

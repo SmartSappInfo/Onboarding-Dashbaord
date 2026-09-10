@@ -17,7 +17,6 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
 import { Calendar, Video, Vote, ArrowRight, Sparkles } from 'lucide-react';
 
 interface NewMeetingModalProps {

@@ -6,8 +6,6 @@
 import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { mergePermissionsSchemas, getBlankPermissions } from '../permissions-engine';
-import { logBackofficeAction } from './audit-logger';
-import { createAuditSnapshot } from './backoffice-utils';
 import type { AuditActor, PlatformJob } from './backoffice-types';
 import type { UserProfile, Role, PermissionsSchema } from '../types';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -23,7 +21,7 @@ import { getErrorMessage } from '@/lib/errors/report-error';
  */
 export async function processRbacMigration(
   jobId: string,
-  actor: AuditActor
+  _actor: AuditActor
 ): Promise<{ success: boolean; error?: string }> {
   const jobRef = adminDb.collection('platform_jobs').doc(jobId);
 

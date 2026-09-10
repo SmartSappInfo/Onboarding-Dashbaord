@@ -1,13 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { doc, updateDoc, addDoc, collection } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Meeting, MeetingRegistrant } from '@/lib/types';
 import CountdownTimer from '@/components/countdown-timer';
 import { isAfter } from 'date-fns';
 import { motion } from 'framer-motion';
-import { CheckCircle2, Clock, Rocket, User, X } from 'lucide-react';
+import { CheckCircle2, Clock, Rocket, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
@@ -153,7 +152,7 @@ export default function MeetingRegisteredState({
           <CheckCircle2 className="h-8 w-8 text-emerald-400" />
         </div>
         <div className="space-y-2">
-          <p className="text-xl font-black text-foreground uppercase tracking-tight">You're In!</p>
+          <p className="text-xl font-black text-foreground uppercase tracking-tight">You&apos;re In!</p>
           <p className="text-sm text-muted-foreground font-medium">
             Meeting room has been opened in a new tab.
           </p>
@@ -217,7 +216,7 @@ export default function MeetingRegisteredState({
             Welcome back, {firstName}! 👋
           </p>
           <p className="text-base font-medium text-muted-foreground leading-relaxed px-4">
-            You're registered for this session. The meeting room will open automatically when it's time.
+            You&apos;re registered for this session. The meeting room will open automatically when it&apos;s time.
           </p>
         </div>
 
@@ -232,7 +231,7 @@ export default function MeetingRegisteredState({
           {registrant.status === 'waitlisted' ? (
             <>
               <Clock className="h-3 w-3" />
-              On Waitlist — We'll notify you
+              On Waitlist — We&apos;ll notify you
             </>
           ) : (
             <>

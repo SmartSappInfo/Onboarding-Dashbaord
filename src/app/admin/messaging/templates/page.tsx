@@ -3,14 +3,13 @@
 import * as React from 'react';
 import { collection, query, orderBy, addDoc, doc, deleteDoc, updateDoc, where, or } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from '@/firebase';
-import type { MessageTemplate, VariableDefinition, MessageStyle, WorkspaceEntity, Meeting, Survey, PDFForm, AppField, TemplateStatus } from '@/lib/types';
+import type { MessageTemplate, VariableDefinition, MessageStyle, Meeting, Survey, PDFForm, AppField, TemplateStatus } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { TemplateGallery } from './components/template-gallery';
 import { TemplateWorkshop } from './components/template-workshop';
 import { TemplatePreviewModal } from './components/template-preview-modal';
 // import { cloneTemplate } from '@/lib/template-actions'; // TODO: Implement cloneTemplate function
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
-import type { UnifiedVariable } from '@/lib/types/variables';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -24,23 +23,20 @@ import {
 import { 
     Dialog, 
     DialogContent, 
-    DialogHeader, 
-    DialogTitle, 
-    DialogDescription, 
     DialogFooter 
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Trash2, Plus, Sparkles, Wand2, X, Zap, ChevronDown, RefreshCw, Mail, Smartphone, MessageCircle, ArrowUpToLine } from 'lucide-react';
+import { Loader2, Trash2, Plus, Sparkles, Zap, ChevronDown, RefreshCw, Mail, Smartphone, MessageCircle, ArrowUpToLine } from 'lucide-react';
 import {
     DropdownMenu,
     DropdownMenuTrigger,
     DropdownMenuContent,
     DropdownMenuItem,
 } from '@/components/ui/dropdown-menu';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { RainbowButton } from '@/components/ui/rainbow-button';
 import { generateEmailTemplate } from '@/ai/flows/generate-email-template-flow';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -287,7 +283,7 @@ export default function MessageTemplatesPage() {
     const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
     const { data: appFields } = useCollection<AppField>(appFieldsQuery);
 
-    const sortedMeetings = React.useMemo(() => {
+    const _sortedMeetings = React.useMemo(() => {
         return (meetings || []).toSorted((a, b) => (b.meetingTime || '').localeCompare(a.meetingTime || ''));
     }, [meetings]);
 
@@ -626,7 +622,7 @@ export default function MessageTemplatesPage() {
             invalidateAllTemplatesCache();
             toast({ title: 'Template Removed' });
             setTemplateToDelete(null);
-        } catch (e: unknown) {
+        } catch (_e: unknown) {
             toast({ variant: 'destructive', title: 'Deletion Failed' });
         } finally {
             setIsDeleting(false);
@@ -768,7 +764,7 @@ export default function MessageTemplatesPage() {
                                 <div className="space-y-1">
                                     <Badge variant="outline" className="bg-blue-500/5 text-blue-600 border-blue-500/20 font-bold uppercase tracking-widest text-[9px] px-3 py-1">Communications Hub</Badge>
                                     <h1 className="text-3xl font-bold tracking-tight">Client Messaging Library</h1>
-                                    <p className="text-muted-foreground text-sm max-w-lg">Manage your organization's messaging blueprints. These templates are automatically synced across all platform modules.</p>
+                                    <p className="text-muted-foreground text-sm max-w-lg">Manage your organization&apos;s messaging blueprints. These templates are automatically synced across all platform modules.</p>
                                 </div>
                                 <div className="flex items-center gap-3">
                                     {activeOrganizationId ? (
@@ -926,7 +922,7 @@ export default function MessageTemplatesPage() {
                     <AlertDialogHeader>
  <AlertDialogTitle className="font-semibold text-xl tracking-tight">Remove Template?</AlertDialogTitle>
  <AlertDialogDescription className="text-sm font-medium">
- Deleting <span className="font-bold text-foreground">"{templateToDelete?.name}"</span> will permanently remove it from your template library.
+ Deleting <span className="font-bold text-foreground">&quot;{templateToDelete?.name}&quot;</span> will permanently remove it from your template library.
                         </AlertDialogDescription>
                     </AlertDialogHeader>
  <AlertDialogFooter className="mt-4">

@@ -11,7 +11,7 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import type { MeetingRecording } from '@/lib/meetings/types/intelligence';
-import { generateRecordingShareToken, isValidMediaFormat } from '@/lib/meetings/recording-service';
+import { generateRecordingShareToken } from '@/lib/meetings/recording-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 

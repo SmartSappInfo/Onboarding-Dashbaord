@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUser } from '@/firebase';
 import { logActivity } from '@/lib/activity-logger';
-import type { WorkspaceEntity, Activity } from '@/lib/types';
+import type { WorkspaceEntity } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useTerminology } from '@/hooks/use-terminology';

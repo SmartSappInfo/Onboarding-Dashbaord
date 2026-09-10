@@ -11,7 +11,7 @@
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import fc from 'fast-check';
-import type { Task, EntityType } from '../types';
+import type { EntityType } from '../types';
 
 // Mock Next.js cache module
 vi.mock('next/cache', () => ({

@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { z } from 'zod';
-import { Quote, Play, Edit, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
+import { Quote, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
 import { registerBlock } from '../registry';
-import { sanitizeHtml } from '../sanitize';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -240,7 +239,7 @@ registerBlock({
     const [logoLibraryOpen, setLogoLibraryOpen] = useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [hasMounted, setHasMounted] = useState(false);
+    const [_hasMounted, setHasMounted] = useState(false);
 
     // eslint-disable-next-line react-hooks/rules-of-hooks
     useEffect(() => {
@@ -323,7 +322,7 @@ registerBlock({
       });
       
       try {
-        const downloadUrl = await uploadPageMedia(file, ctx.page?.workspaceId || '', (percent) => {});
+        const downloadUrl = await uploadPageMedia(file, ctx.page?.workspaceId || '', (_percent) => {});
         
         ctx.onPropChange?.({
           videoData: {

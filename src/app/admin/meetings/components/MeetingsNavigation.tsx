@@ -31,17 +31,8 @@ import {
   Plus,
   GitFork,
   Settings,
-  MoreHorizontal,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { GlobalMeetingSearchModal } from './GlobalMeetingSearchModal';
 import { AISchedulingAssistantModal } from './AISchedulingAssistantModal';
 import { NewMeetingModal } from './NewMeetingModal';

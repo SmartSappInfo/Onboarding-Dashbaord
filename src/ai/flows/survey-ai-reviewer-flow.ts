@@ -19,8 +19,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import {
   SurveyQualityAuditInputSchema,
   SurveyQualityAuditOutputSchema,
-  type SurveyQualityAuditInput,
-  type SurveyQualityAuditOutput,
 } from '../schemas/survey-intelligence-schemas';
 
 function renderAuditPrompt(input: {

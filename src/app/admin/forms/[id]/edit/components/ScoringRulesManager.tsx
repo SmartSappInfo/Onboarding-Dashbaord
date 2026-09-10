@@ -1,13 +1,13 @@
 'use client';
 
 import * as React from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { Award, PlusCircle, Trash2, Plus, Minus, CheckCircle2 } from 'lucide-react';
+import { Award, PlusCircle, Trash2, Plus, Minus } from 'lucide-react';
 import type { FormFieldInstance, AppField } from '@/lib/types';
 import type { FormScoreRule, LogicComparisonOperator } from '@/lib/forms/form-logic-types';
 

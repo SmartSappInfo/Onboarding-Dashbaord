@@ -75,7 +75,6 @@ import {
   createGlobalTemplate,
   updateGlobalTemplate,
   deleteGlobalTemplate,
-  listGlobalTemplates,
   createOrgOverride,
   updateOrgTemplate,
   revertToGlobal,

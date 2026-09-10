@@ -2,7 +2,6 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateLeadMeetingScore,
   computeDealAttributionRevenue,
-  DEFAULT_SCORE_WEIGHTS,
 } from '../crm-attribution-service';
 import type { MeetingScoreEvent, MeetingDealAttribution } from '../types/crm-attribution';
 

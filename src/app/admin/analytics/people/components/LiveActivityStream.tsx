@@ -19,11 +19,9 @@ import {
   Activity,
   RefreshCw,
   LogIn,
-  LogOut,
   Sparkles,
   ShieldCheck,
   CheckCircle2,
-  Lock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PlatformEvent, PlatformEventCategory } from '@/lib/types';

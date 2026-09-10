@@ -7,7 +7,6 @@ import {
   CheckCircle2,
   ChevronDown,
   ChevronUp,
-  ExternalLink,
   ShieldAlert,
   Archive,
   Layers,
@@ -206,7 +205,7 @@ export const CampaignConceptCard = React.memo(function CampaignConceptCard({
           Opening Hook
         </span>
         <p className="italic text-foreground font-medium border-l-2 border-primary/60 pl-2.5 py-0.5">
-          "{concept.coreMessageHook}"
+          &quot;{concept.coreMessageHook}&quot;
         </p>
       </div>
 
@@ -254,7 +253,7 @@ export const CampaignConceptCard = React.memo(function CampaignConceptCard({
                   className="p-2 rounded-lg bg-amber-500/5 border border-amber-500/20 text-xs space-y-1"
                 >
                   <p className="font-semibold text-amber-900 dark:text-amber-200">
-                    ❌ Objection: "{reb.objection}"
+                    ❌ Objection: &quot;{reb.objection}&quot;
                   </p>
                   <p className="text-foreground/80">
                     👉 Rebuttal: {reb.rebuttal}

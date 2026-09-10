@@ -68,7 +68,7 @@ vi.mock('@/lib/firebase-admin', () => {
               return {
                 where: vi.fn((field2: string, op2: string, val2: string) => {
                   return {
-                    limit: vi.fn((num: number) => ({
+                    limit: vi.fn((_num: number) => ({
                       get: vi.fn().mockImplementation(async () => {
                         if (val1 === 'pipe-active-deals' && val2 === 'open') {
                           return { empty: false, docs: [{ id: 'deal-active' }] };

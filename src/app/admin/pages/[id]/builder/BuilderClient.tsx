@@ -6,7 +6,6 @@ import { collection, query, doc, getDoc, updateDoc, setDoc, where, getDocs, orde
 import { useFirestore, useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import {
@@ -26,8 +25,6 @@ import {
     Eye,
     Edit3,
     TrendingUp,
-    Target,
-    ArrowRight,
     Undo2,
     Redo2,
     Code,
@@ -38,7 +35,7 @@ import {
     Pencil,
 } from 'lucide-react';
 import ShareEmbedDialog from '@/components/share-embed-dialog';
-import { saveSectionAction, getSectionTemplatesAction } from '@/lib/section-actions';
+import { saveSectionAction } from '@/lib/section-actions';
 import { cn } from '@/lib/utils';
 import PublishTemplateModal from './components/PublishTemplateModal';
 import {
@@ -200,7 +197,7 @@ function PageSlugEditor({ slug, onSave }: { slug: string; onSave: (val: string) 
 export default function BuilderClient({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const firestore = useFirestore();
-    const router = useRouter();
+    const _router = useRouter();
     const { toast } = useToast();
     const { user } = useUser();
     const { activeWorkspaceId, activeWorkspace, activeOrganizationId: organizationId } = useTenant();
@@ -244,8 +241,8 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
     );
 
     const [versions, setVersions] = useState<CampaignPageVersion[]>([]);
-    const [leads, setLeads] = useState<Record<string, unknown>[]>([]);
-    const [isLoadingLeads, setIsLoadingLeads] = useState(false);
+    const [_leads, _setLeads] = useState<Record<string, unknown>[]>([]);
+    const [_isLoadingLeads, _setIsLoadingLeads] = useState(false);
     const [isShareOpen, setIsShareOpen] = useState(false);
     const [savingSection, setSavingSection] = useState<PageSection | null>(null);
     const [isLeftSidebarExpanded, setIsLeftSidebarExpanded] = useState(true);

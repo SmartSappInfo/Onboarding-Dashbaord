@@ -23,7 +23,6 @@ import {
   Clock,
   CheckCircle2,
   TrendingUp,
-  ExternalLink,
   Sparkles,
   RefreshCw,
   Share2,

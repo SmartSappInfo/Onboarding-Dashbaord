@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -24,15 +24,9 @@ import {
   Video,
   ListTodo,
   TrendingUp,
-  AlertTriangle,
   FileText,
-  Clock,
   Plus,
-  Play,
-  Share2,
   Calendar,
-  Layers,
-  ArrowRight,
   ShieldAlert,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
@@ -71,13 +65,13 @@ export function MeetingIntelligenceTab({
   meetingId,
   workspaceId,
   organizationId,
-  meetingTitle,
+  meetingTitle: _meetingTitle,
 }: MeetingIntelligenceTabProps) {
   const { toast } = useToast();
 
   const [intelligence, setIntelligence] = React.useState<MeetingIntelligence | null>(null);
   const [recordings, setRecordings] = React.useState<MeetingRecording[]>([]);
-  const [prepBrief, setPrepBrief] = React.useState<MeetingPrepBrief | null>(null);
+  const [_prepBrief, setPrepBrief] = React.useState<MeetingPrepBrief | null>(null);
 
   const [isLoading, setIsLoading] = React.useState(true);
   const [isGenerating, setIsGenerating] = React.useState(false);
@@ -320,7 +314,7 @@ export function MeetingIntelligenceTab({
           <Sparkles className="h-10 w-10 mx-auto text-primary opacity-40 animate-pulse" />
           <h4 className="text-base font-semibold text-foreground">No intelligence generated yet</h4>
           <p className="text-xs text-muted-foreground max-w-md mx-auto">
-            Click "Generate AI Digest" above to analyze the session, extract action items, and detect buying signals.
+            Click &quot;Generate AI Digest&quot; above to analyze the session, extract action items, and detect buying signals.
           </p>
           <Button
             onClick={handleGenerateIntelligence}
@@ -507,7 +501,7 @@ export function MeetingIntelligenceTab({
                         </Badge>
                       </div>
                       {sig.quote && (
-                        <p className="text-xs text-muted-foreground italic">"{sig.quote}"</p>
+                        <p className="text-xs text-muted-foreground italic">&quot;{sig.quote}&quot;</p>
                       )}
                     </div>
                   ))}

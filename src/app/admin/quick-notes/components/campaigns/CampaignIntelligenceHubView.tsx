@@ -5,20 +5,10 @@ import Link from 'next/link';
 import {
   Rocket,
   ShieldAlert,
-  Sparkles,
   Search,
-  Filter,
   ArrowLeft,
   Plus,
-  RefreshCw,
-  MessageSquare,
-  Smartphone,
-  Mail,
-  PhoneCall,
-  Layers,
-  Send,
   TrendingUp,
-  CheckCircle2,
   Sliders,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -60,7 +50,7 @@ export function CampaignIntelligenceHubView() {
   const [battlecards, setBattlecards] = React.useState<ObjectionBattlecard[]>([]);
   const [insights, setInsights] = React.useState<KnowledgeInsight[]>([]);
   const [ideas, setIdeas] = React.useState<Idea[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
+  const [_isLoading, setIsLoading] = React.useState(true);
 
   // Filters state
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -284,7 +274,7 @@ export function CampaignIntelligenceHubView() {
               </div>
               <h4 className="text-sm font-bold text-foreground">No Campaign Concepts Found</h4>
               <p className="text-xs text-muted-foreground max-w-md mt-1 mb-4">
-                Click "Create Concept" to transform validated ideas and customer feedback into grounded marketing campaigns.
+                Click &quot;Create Concept&quot; to transform validated ideas and customer feedback into grounded marketing campaigns.
               </p>
               <Button
                 type="button"

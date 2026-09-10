@@ -10,7 +10,7 @@
  * Validates: Task 16.1, 16.2, 16.3
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, beforeEach, afterEach } from 'vitest';
 import {
   initializeTestEnvironment,
   RulesTestEnvironment,
@@ -23,10 +23,6 @@ import {
   setDoc, 
   updateDoc, 
   deleteDoc,
-  collection,
-  getDocs,
-  query,
-  where,
 } from 'firebase/firestore';
 import { readFileSync } from 'fs';
 import { resolve } from 'path';

@@ -49,14 +49,14 @@ const mockCreateEntityAction = vi.fn(async (data: any, userId: string, workspace
   return { success: true, id };
 });
 
-const mockUpdateEntityAction = vi.fn(async (entityId: string, data: any, userId: string, workspaceId: string, orgId: string) => {
+const mockUpdateEntityAction = vi.fn(async (entityId: string, data: any, _userId: string, _workspaceId: string, _orgId: string) => {
   const existing = mockStore.entities.get(entityId) || {};
   mockStore.entities.set(entityId, { ...existing, ...data });
   return { success: true };
 });
 
 vi.mock('../entity-actions', () => ({
-  createEntityAction: (data: any, userId: string, workspaceId: string, entityType: any, orgId?: string, forceCreate?: boolean) =>
+  createEntityAction: (data: any, userId: string, workspaceId: string, entityType: any, orgId?: string, _forceCreate?: boolean) =>
     mockCreateEntityAction(data, userId, workspaceId, entityType, orgId || 'default'),
   updateEntityAction: (entityId: string, data: any, userId: string, workspaceId: string, orgId: string) =>
     mockUpdateEntityAction(entityId, data, userId, workspaceId, orgId),

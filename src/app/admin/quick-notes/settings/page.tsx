@@ -735,7 +735,7 @@ export default function QuickNotesSettingsPage() {
               className="min-h-[80px] text-xs resize-none rounded-xl"
             />
             <p className="text-[10px] text-muted-foreground">
-              Directives applied globally to all 'Ask SmartSapp Knowledge' queries in this workspace.
+              Directives applied globally to all &apos;Ask SmartSapp Knowledge&apos; queries in this workspace.
             </p>
           </div>
         </div>
@@ -858,7 +858,7 @@ export default function QuickNotesSettingsPage() {
                 7. Idea Intelligence & Studio Governance
               </h2>
               <p className="text-xs text-muted-foreground">
-                Configure lifecycle state machine gates, prioritization formulas (ICE), and AI Devil's Advocate thresholds.
+                Configure lifecycle state machine gates, prioritization formulas (ICE), and AI Devil&apos;s Advocate thresholds.
               </p>
             </div>
           </div>
@@ -897,7 +897,7 @@ export default function QuickNotesSettingsPage() {
               <div className="space-y-0.5">
                 <Label className="text-xs font-bold text-foreground">Strict Validation Gate</Label>
                 <p className="text-[10px] text-muted-foreground">
-                  Requires ideas to have at least 1 validated hypothesis and attached evidence before moving to "Approved".
+                  Requires ideas to have at least 1 validated hypothesis and attached evidence before moving to &quot;Approved&quot;.
                 </p>
               </div>
               <Switch
@@ -968,7 +968,7 @@ export default function QuickNotesSettingsPage() {
               <div className="space-y-0.5">
                 <Label className="text-xs font-bold text-foreground">Auto-Sync Idea Notes</Label>
                 <p className="text-[10px] text-muted-foreground">
-                  Automatically initializes structured Idea entities whenever a note is tagged with knowledgeType 'idea'.
+                  Automatically initializes structured Idea entities whenever a note is tagged with knowledgeType &apos;idea&apos;.
                 </p>
               </div>
               <Switch

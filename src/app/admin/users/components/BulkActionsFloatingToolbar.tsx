@@ -39,7 +39,6 @@ import {
   CheckCircle2,
   X,
   Loader2,
-  Sparkles,
 } from 'lucide-react';
 import type { Role, Workspace, Department, BulkWorkforceActionType } from '@/lib/types';
 import { executeBulkWorkforceAction } from '@/app/actions/workforce-actions';

@@ -26,33 +26,21 @@ import {
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { 
     Loader2, 
     Save, 
     CheckCircle2, 
     Clock, 
-    AlertTriangle, 
-    ShieldAlert, 
     User, 
     Building2, 
-    Zap,
     Plus,
-    Link as LinkIcon,
-    ClipboardList,
     FileText,
     Target,
-    Bell,
-    Mail,
-    Smartphone,
     X,
     Calendar,
     Layout,
     StickyNote,
     Paperclip,
-    Trash2,
-    PlusCircle,
     Phone,
     MapPin,
     GraduationCap,
@@ -61,7 +49,7 @@ import {
 } from 'lucide-react';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { collection, orderBy, query, where, limit } from 'firebase/firestore';
-import type { Task, UserProfile, WorkspaceEntity, TaskPriority, TaskCategory, Survey, PDFForm, SurveyResponse, Submission, TaskReminder, TaskNote, TaskAttachment } from '@/lib/types';
+import type { Task, UserProfile, Survey, PDFForm, SurveyResponse, Submission } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { EntityCombobox } from '@/components/entities/EntityCombobox';
 import { cn } from '@/lib/utils';
@@ -189,7 +177,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving,
     const firestore = useFirestore();
     const { user: currentUser } = useUser();
     const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
-    const { singular, plural } = useTerminology();
+    const { singular, plural: _plural } = useTerminology();
 
     const [activeStep, setActiveStep] = React.useState<1 | 2>(1);
     
@@ -218,8 +206,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving,
         if (!users || !activeWorkspaceId) return [];
         return users.filter(u => u.workspaceIds?.includes(activeWorkspaceId));
     }, [users, activeWorkspaceId]);
-    const { data: surveys } = useCollection<Survey>(surveysQuery);
-    const { data: pdfs } = useCollection<PDFForm>(pdfsQuery);
+    const { data: _surveys } = useCollection<Survey>(surveysQuery);
+    const { data: _pdfs } = useCollection<PDFForm>(pdfsQuery);
 
     const form = useForm<TaskFormValues>({
         resolver: zodResolver(taskSchema),
@@ -245,7 +233,7 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving,
 
     const { register, handleSubmit, control, reset, setValue } = form;
     
-    const { fields: reminders, append: appendReminder, remove: removeReminder } = useFieldArray({ control, name: 'reminders' });
+    const { fields: _reminders, append: _appendReminder, remove: _removeReminder } = useFieldArray({ control, name: 'reminders' });
     const { fields: notes, append: appendNote, remove: removeNote } = useFieldArray({ control, name: 'notes' });
     const { fields: attachments, append: appendAttachment, remove: removeAttachment } = useFieldArray({ control, name: 'attachments' });
 
@@ -263,8 +251,8 @@ export default function TaskEditor({ open, onOpenChange, task, onSave, isSaving,
         return query(collection(firestore, `pdfs/${watchedParentId}/submissions`), orderBy('submittedAt', 'desc'), limit(50));
     }, [open, firestore, watchedEntityType, watchedParentId]);
 
-    const { data: responses } = useCollection<SurveyResponse>(responsesQuery);
-    const { data: submissions } = useCollection<Submission>(submissionsQuery);
+    const { data: _responses } = useCollection<SurveyResponse>(responsesQuery);
+    const { data: _submissions } = useCollection<Submission>(submissionsQuery);
 
     React.useEffect(() => {
         const normalizeAssignees = (val: any): string[] => {

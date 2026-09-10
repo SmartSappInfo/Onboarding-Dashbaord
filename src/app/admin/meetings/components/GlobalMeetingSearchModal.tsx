@@ -4,12 +4,10 @@ import * as React from 'react';
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
-  DialogTitle,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Search, Video, Calendar, User, Clock, ArrowRight } from 'lucide-react';
+import { Search, Clock, ArrowRight } from 'lucide-react';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useRouter } from 'next/navigation';
 import { format } from 'date-fns';
@@ -90,7 +88,7 @@ export function GlobalMeetingSearchModal({ open, onOpenChange }: GlobalMeetingSe
             <p className="text-xs text-muted-foreground py-8 text-center">Loading meetings...</p>
           ) : filtered.length === 0 ? (
             <p className="text-xs text-muted-foreground py-8 text-center">
-              No meetings found matching "{query}".
+              No meetings found matching &quot;{query}&quot;.
             </p>
           ) : (
             filtered.map(evt => (

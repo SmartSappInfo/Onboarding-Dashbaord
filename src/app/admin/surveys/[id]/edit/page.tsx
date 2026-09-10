@@ -3,10 +3,9 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
-import { doc, collection, getDocs, updateDoc, setDoc, query, orderBy, where, deleteDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { doc, collection, getDocs, updateDoc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Button } from '@/components/ui/button';
 import { 
     Check, 
@@ -14,18 +13,13 @@ import {
     ArrowLeft, 
     ArrowRight, 
     Save, 
-    Undo,
-    Redo,
-    X,
-    Sparkles,
     Zap,
     Share2,
     Settings2,
     Layout,
-    Eye,
     BarChart3
 } from 'lucide-react';
-import { type Survey, type SurveyElement, type SurveyQuestion, type SurveyResultPage, type School, type WorkspaceEntity } from '@/lib/types';
+import { type Survey, type SurveyElement, type SurveyResultPage } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { FormProvider, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,12 +28,9 @@ import { useUndoRedo } from '@/hooks/use-undo-redo';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Badge } from '@/components/ui/badge';
-import { SmartSappIcon } from '@/components/icons';
 import { syncVariableRegistry } from '@/lib/messaging-actions';
 import { cn } from '@/lib/utils';
 import { pruneUndefined } from '@/lib/firestore-utils';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useSidebar } from '@/components/ui/sidebar';
 import { finalizeLearningSignalAction } from '@/lib/learning-loop-actions';
 import { updateWorkspaceVocabularyAction } from '@/lib/vocabulary-map-actions';
@@ -53,7 +44,6 @@ import ResultsStep from '../../components/results-step';
 import Step4Publish from '../../components/step-4-publish';
 import LivePreviewPane from '../../components/live-preview-pane';
 import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
-import AiChatEditor from '../../components/ai-chat-editor';
 
 const formSchema = z.object({
   internalName: z.string().min(2, { message: 'Internal name must be at least 2 characters.' }),
@@ -245,9 +235,9 @@ export default function EditSurveyPage() {
     const [step, setStep] = React.useState(1);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isErrorModalOpen, setIsErrorModalOpen] = React.useState(false);
-    const [validationErrors, setValidationErrors] = React.useState<ValidationError[]>([]);
+    const [validationErrors, _setValidationErrors] = React.useState<ValidationError[]>([]);
     const [hasInitialized, setHasInitialized] = React.useState(false);
-    const [mobileMode, setMobileMode] = React.useState<'edit' | 'preview'>('edit');
+    const [_mobileMode, _setMobileMode] = React.useState<'edit' | 'preview'>('edit');
 
     const surveyDocRef = useMemoFirebase(() => {
         if (!firestore || !surveyId) return null;
@@ -274,7 +264,7 @@ export default function EditSurveyPage() {
         }
     });
 
-    const { getValues, setValue, watch, reset, trigger } = form;
+    const { getValues: _getValues, setValue, watch, reset, trigger } = form;
 
     const {
         state: historyState,
@@ -363,7 +353,7 @@ export default function EditSurveyPage() {
         }
     }, [historyState, setValue]);
 
-    const onSubmit = async (data: FormData) => {
+    const _onSubmit = async (data: FormData) => {
         setIsSaving(true);
         const { resultPages, ...mainData } = data;
         
@@ -425,7 +415,7 @@ export default function EditSurveyPage() {
             // Check if we should finalize a learning signal
             if (aiMetadata?.isAiGenerated && !aiMetadata.isFirstPublishComplete && aiMetadata.learningSignalId) {
                 // Determine touched fields for reinforcement learning
-                const touchedFields = Object.keys(form.formState.touchedFields);
+                const _touchedFields = Object.keys(form.formState.touchedFields);
                 
                 // Finalize the signal (non-blocking via after() inside the action)
                 await finalizeLearningSignalAction(
@@ -525,8 +515,8 @@ export default function EditSurveyPage() {
         router.push(`${target === 1 ? pathname : `${pathname}?step=${target}`}`, { scroll: false });
     };
 
-    const handleUndo = () => { if (canUndo) { isProgrammaticChange.current = true; undoHistory(); } };
-    const handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
+    const _handleUndo = () => { if (canUndo) { isProgrammaticChange.current = true; undoHistory(); } };
+    const _handleRedo = () => { if (canRedo) { isProgrammaticChange.current = true; redoHistory(); } };
 
  if (isLoading || !hasInitialized) return <div className="flex h-full items-center justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 

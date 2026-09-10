@@ -32,7 +32,6 @@ import {
   MousePointerClick,
   Send,
   CheckCircle2,
-  Wand2,
   Loader2,
   RefreshCw,
   ArrowRight,
@@ -77,7 +76,7 @@ export function IdentityExperimentVariants({
   const mainStartButtonText = watch('startButtonText') || "Let's Start";
   const mainSubmitButtonText = watch('submitButtonText') || 'Submit Response';
 
-  const [isLoadingResults, setIsLoadingResults] = React.useState(false);
+  const [_isLoadingResults, setIsLoadingResults] = React.useState(false);
   const [resultsData, setResultsData] = React.useState<{
     winningVariantId?: string | null;
     totalCompletions: number;

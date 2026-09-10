@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { getQRCode } from '@/lib/qr-actions';
 import type { QRCode } from '@/lib/types';
-import { QrCode } from 'lucide-react';
 
 const QRPreview = dynamic(() => import('@/app/admin/qr-studio/components/qr-preview'), { ssr: false });
 
@@ -16,7 +15,7 @@ interface EmbeddedQRCodeProps {
   onClose?: () => void;
 }
 
-export function EmbeddedQRCode({ qrId, organizationId, workspaceId, isInModal = false, onClose }: EmbeddedQRCodeProps) {
+export function EmbeddedQRCode({ qrId, organizationId, workspaceId, isInModal: _isInModal = false, onClose: _onClose }: EmbeddedQRCodeProps) {
   const [qrCode, setQrCode] = useState<QRCode | null>(null);
   const [loading, setLoading] = useState(true);
 

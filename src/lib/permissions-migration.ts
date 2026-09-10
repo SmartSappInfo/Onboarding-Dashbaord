@@ -12,7 +12,6 @@ import {
   getDocs, 
   query, 
   where,
-  doc
 } from 'firebase/firestore';
 
 /**

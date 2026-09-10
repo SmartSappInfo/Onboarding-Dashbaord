@@ -40,7 +40,7 @@ function createMockCollection(options: {
   const docSnap = options.docSnap || { exists: false };
 
   const collection = {
-    where: vi.fn().mockImplementation((field, op, val) => {
+    where: vi.fn().mockImplementation((field, _op, _val) => {
       if (field === 'slug') {
         return {
           limit: vi.fn().mockReturnThis(),

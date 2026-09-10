@@ -91,7 +91,7 @@ export function TemplateEditorExample({
       />
 
       <div className="text-xs text-muted-foreground">
-        Tip: Click "Insert Variable" to add dynamic content to your template. Variables will be
+        Tip: Click &quot;Insert Variable&quot; to add dynamic content to your template. Variables will be
         replaced with actual values when the message is sent.
       </div>
     </div>

@@ -29,9 +29,6 @@ import {
   CheckCircle2,
   XCircle,
   Shield,
-  Building,
-  Layers,
-  Info,
 } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';

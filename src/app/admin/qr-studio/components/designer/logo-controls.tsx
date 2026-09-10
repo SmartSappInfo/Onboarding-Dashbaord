@@ -2,11 +2,9 @@
 
 import * as React from 'react';
 import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
-import { Upload, ImageIcon, X, Image as ImageIcon2 } from 'lucide-react';
+import { ImageIcon, X, Image as ImageIcon2 } from 'lucide-react';
 import type { QRDesign, MediaAsset } from '@/lib/types';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 

@@ -6,7 +6,6 @@ import { Zap, Target, Building, CheckSquare, Database, Globe, Play, Tag, Mail, D
 import { NodeActionToolbar } from './NodeActionToolbar';
 import { Card } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { useWorkspaceScopedQueries } from '../../../../hooks/useWorkspaceScopedQueries';
 import { useExecutionOverlay, ExecutionBadge } from './ExecutionOverlay';
 
@@ -122,15 +121,15 @@ export function TriggerNode({ id, data, selected }: any) {
     const primary = triggers[0];
     const trigger = primary?.type ?? null;
     const config = primary?.config ?? data.config ?? {};
-    const overflowCount = triggers.length - 1;
+    const _overflowCount = triggers.length - 1;
 
     const Icon = TRIGGER_ICONS[trigger] || Zap;
 
     const { allTags, forms, surveys, pipelines, stages } = useWorkspaceScopedQueries();
 
-    const stepName = TRIGGER_NAMES[trigger] || (trigger ? trigger.replace(/_/g, ' ') : 'Event Trigger');
+    const _stepName = TRIGGER_NAMES[trigger] || (trigger ? trigger.replace(/_/g, ' ') : 'Event Trigger');
 
-    const getTriggerSource = () => {
+    const _getTriggerSource = () => {
         if (!trigger) return 'Entry';
         if (trigger === 'WEBHOOK_RECEIVED') return 'Webhook';
         if (trigger === 'FORM_SUBMITTED') return 'Form';

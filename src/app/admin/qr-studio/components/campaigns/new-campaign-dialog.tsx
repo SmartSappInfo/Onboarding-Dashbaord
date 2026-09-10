@@ -13,12 +13,7 @@ import * as React from 'react';
 import {
   FolderPlus,
   Loader2,
-  Calendar,
-  Layers,
-  Sparkles,
   CheckCircle2,
-  Tag,
-  Target,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -32,13 +27,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useTenant } from '@/context/TenantContext';
 import { useUser } from '@/firebase';

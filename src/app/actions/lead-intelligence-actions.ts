@@ -26,7 +26,6 @@ import type {
   ScoringModelConfig,
   ScoringSimulationResult,
   ScoreMovementEvent,
-  ExplainableScoreBreakdown,
   CRMMatchCandidate,
   CRMEnrichmentMergePayload,
   UnifiedActivityItem,
@@ -44,12 +43,9 @@ import type {
   IntelligenceInboxCategory,
   IdentityCollisionRecord,
   ProviderHealthRecord,
-  ProviderRoutingRule,
-  TerritoryRule,
   EnterpriseGovernanceConfig,
   CreditLedgerSummary,
   DataImportColumnMapping,
-  DataImportValidationResult
 } from '@/lib/lead-intelligence/types';
 import type { Entity, WorkspaceEntity, EntityContact } from '@/lib/types';
 import { adjustLeadScoreAction } from '@/lib/scoring-performance-engine';
@@ -3374,7 +3370,7 @@ export async function executeEnterpriseDataImportAction(
   organizationId: string,
   rows: Record<string, string>[],
   mapping: DataImportColumnMapping,
-  autoEnrich: boolean = false
+  _autoEnrich: boolean = false
 ): Promise<{
   success: boolean;
   importedCount?: number;

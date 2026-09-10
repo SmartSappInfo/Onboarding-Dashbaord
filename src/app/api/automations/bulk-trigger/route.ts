@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
 
     // Resolve effective workspace ID and organization ID via single source of truth resolver
     const { resolveWorkspaceGuid } = await import('@/lib/automations/workspace-resolver');
-    const { workspaceId: effectiveWorkspaceId, organizationId: resolvedOrgId } = await resolveWorkspaceGuid(workspaceId, automation);
+    const { workspaceId: effectiveWorkspaceId, organizationId: _resolvedOrgId } = await resolveWorkspaceGuid(workspaceId, automation);
 
     // Security Check: Enforce tenant organization boundary
     const autoOrgId = (automation as unknown as Record<string, unknown>).organizationId as string | undefined;

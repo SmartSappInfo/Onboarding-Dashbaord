@@ -39,7 +39,6 @@ import {
   Layers,
   Send,
   Package as PackageIcon,
-  CheckCircle2,
   Loader2,
   Sparkles,
 } from 'lucide-react';

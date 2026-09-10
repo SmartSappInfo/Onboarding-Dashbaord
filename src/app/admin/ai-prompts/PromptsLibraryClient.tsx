@@ -18,12 +18,9 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import {
   Search,
-  Sparkles,
   Bot,
   Sliders,
   RotateCcw,
-  CheckCircle,
-  FileText
 } from 'lucide-react';
 
 const CATEGORIES = [

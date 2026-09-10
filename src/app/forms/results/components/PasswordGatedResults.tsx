@@ -48,7 +48,7 @@ export default function PasswordGatedResults({ pdfForm }: { pdfForm: PDFForm }) 
           } else {
             localStorage.removeItem(storageKey);
           }
-        } catch (e) {
+        } catch (_e) {
           localStorage.removeItem(storageKey);
         }
       }
@@ -97,7 +97,7 @@ export default function PasswordGatedResults({ pdfForm }: { pdfForm: PDFForm }) 
             </div>
             <DialogTitle className="text-center text-xl">Shared Results Access</DialogTitle>
             <DialogDescription className="text-center">
-              Please enter the password provided to you to view the submissions for <strong>"{pdfForm.name}"</strong>.
+              Please enter the password provided to you to view the submissions for <strong>&quot;{pdfForm.name}&quot;</strong>.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>

@@ -1,7 +1,6 @@
 'use server';
 
 import { getMetricStats, getPipelineStats, getUpcomingMeetings, getLatestSurveys, getRecentActivities } from '@/lib/dashboard-server';
-import { adminDb } from '@/lib/firebase-admin';
 import { cache } from 'react';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 

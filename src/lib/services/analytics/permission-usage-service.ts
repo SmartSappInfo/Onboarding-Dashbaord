@@ -12,7 +12,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
-import type { PermissionUsageRecord, Role } from '@/lib/types';
+import type { PermissionUsageRecord } from '@/lib/types';
 import { RoleManagementService } from '@/lib/services/authorization/role-management-service';
 
 export class PermissionUsageService {
