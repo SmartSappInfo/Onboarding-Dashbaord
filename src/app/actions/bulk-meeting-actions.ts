@@ -16,7 +16,13 @@ interface BulkMeetingInviteData {
   channels?: ('email' | 'sms')[]; // Optional: active channels to send templates to
 }
 
-export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData) {
+/**
+ * Unguarded core, for callers that have ALREADY established authority.
+ *
+ * `message-status-automations.ts` invokes this from the automation engine, which
+ * runs without a user session and so cannot satisfy a session guard.
+ */
+export async function bulkRegisterParticipantsActionCore(data: BulkMeetingInviteData) {
   try {
     const { entityIds, meetingId, workspaceId, sendInvites, selectedContactIds, channels } = data;
 
@@ -199,4 +205,15 @@ export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData
     console.error('[bulkRegisterParticipantsAction] Error:', error);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Server Action entry point — a public HTTP endpoint, so it authenticates its caller
+ * (audit F2). Bulk creation across many entities is exactly the kind of thing that
+ * should never run for an anonymous caller.
+ */
+export async function bulkRegisterParticipantsAction(data: BulkMeetingInviteData) {
+  const { requireAuth } = await import('@/lib/auth/require-auth');
+  await requireAuth();
+  return bulkRegisterParticipantsActionCore(data);
 }

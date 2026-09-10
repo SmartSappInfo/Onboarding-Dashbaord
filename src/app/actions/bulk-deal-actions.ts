@@ -22,7 +22,13 @@ export interface BulkDealCreationData {
   messagePreviewText?: string | null;
 }
 
-export async function bulkCreateDealsAction(data: BulkDealCreationData) {
+/**
+ * Unguarded core, for callers that have ALREADY established authority.
+ *
+ * `message-status-automations.ts` invokes this from the automation engine, which
+ * runs without a user session and so cannot satisfy a session guard.
+ */
+export async function bulkCreateDealsActionCore(data: BulkDealCreationData) {
   try {
     const {
       entityIds,
@@ -293,4 +299,15 @@ export async function bulkCreateDealsAction(data: BulkDealCreationData) {
     console.error('[bulkCreateDealsAction] Error:', error);
     return { success: false, error: message };
   }
+}
+
+/**
+ * Server Action entry point — a public HTTP endpoint, so it authenticates its caller
+ * (audit F2). Bulk creation across many entities is exactly the kind of thing that
+ * should never run for an anonymous caller.
+ */
+export async function bulkCreateDealsAction(data: BulkDealCreationData) {
+  const { requireAuth } = await import('@/lib/auth/require-auth');
+  await requireAuth();
+  return bulkCreateDealsActionCore(data);
 }

@@ -1,5 +1,10 @@
-'use server';
-
+// NOTE: intentionally NOT 'use server' (audit F2).
+//
+// called by the public /api/meetings/register route, never from the browser.
+// The directive published every export here as a public HTTP endpoint, which is
+// strictly worse than an unguarded internal function: it can be called by anyone,
+// and the session-less callers above cannot satisfy a session guard anyway. No
+// client component imports this module, so removing it costs nothing.
 import { adminDb } from '@/lib/firebase-admin';
 import { withEntitySearchFields } from '@/lib/entities/entity-cache-domain';
 import { FieldValue } from 'firebase-admin/firestore';

@@ -14,7 +14,13 @@ import { requireAuth } from '@/lib/auth/require-auth';
  * @param limit - Maximum number of activities to return (default: 50)
  * @returns Array of activities for the contact
  */
-export async function getActivitiesForContact(
+/**
+ * Unguarded core, for callers that have ALREADY established authority.
+ *
+ * `/api/activities` authenticates with a bearer token and enforces workspace access
+ * itself, so it cannot satisfy a session-cookie guard.
+ */
+export async function getActivitiesForContactCore(
     entityId: string,
     workspaceId: string,
     limit: number = 50
@@ -89,4 +95,18 @@ export async function deleteNote(activityId: string) {
     console.error('Failed to delete note:', error);
     return { error: 'You do not have permission to delete this note or it does not exist.' };
   }
+}
+
+/**
+ * Server Action entry point — a public HTTP endpoint, so it authenticates its caller and
+ * scopes to the workspace being read (audit F2).
+ */
+export async function getActivitiesForContact(
+    entityId: string,
+    workspaceId: string,
+    limit: number = 50
+): Promise<Activity[]> {
+  const { requireWorkspace } = await import('@/lib/auth/require-auth');
+  await requireWorkspace(workspaceId);
+  return getActivitiesForContactCore(entityId, workspaceId, limit);
 }

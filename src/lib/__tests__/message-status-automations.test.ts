@@ -95,11 +95,14 @@ vi.mock('../../app/actions/deal-actions', () => ({
 const mockBulkCreateDealsAction = vi.fn();
 vi.mock('../../app/actions/bulk-deal-actions', () => ({
   bulkCreateDealsAction: (...args: unknown[]) => mockBulkCreateDealsAction(...args),
+  // The automation engine calls the unguarded core, not the guarded Server Action (audit F2).
+  bulkCreateDealsActionCore: (...args: unknown[]) => mockBulkCreateDealsAction(...args),
 }));
 
 const mockBulkCreateTasksAction = vi.fn();
 vi.mock('../../app/actions/bulk-task-actions', () => ({
   bulkCreateTasksAction: (...args: unknown[]) => mockBulkCreateTasksAction(...args),
+  bulkCreateTasksActionCore: (...args: unknown[]) => mockBulkCreateTasksAction(...args),
 }));
 
 describe('executeMessageStatusAutomations', () => {

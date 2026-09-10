@@ -1,5 +1,10 @@
-'use server';
-
+// NOTE: intentionally NOT 'use server' (audit F2).
+//
+// the automation engine drives these; nothing in the browser calls them.
+// The directive published every export here as a public HTTP endpoint, which is
+// strictly worse than an unguarded internal function: it can be called by anyone,
+// and the session-less callers above cannot satisfy a session guard anyway. No
+// client component imports this module, so removing it costs nothing.
 import { adminDb } from '../firebase-admin';
 import { FieldValue } from 'firebase-admin/firestore';
 import { logAutomationEvent } from '../automation-log';

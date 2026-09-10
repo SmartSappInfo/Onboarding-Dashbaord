@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getActivitiesForContact } from '@/lib/activity-actions';
+// Already authenticated and workspace-checked above; call the core rather than the
+// Server Action, whose guard reads a session cookie this caller does not have (audit F2).
+import { getActivitiesForContactCore as getActivitiesForContact } from '@/lib/activity-actions';
 import { logActivity } from '@/lib/activity-logger';
 import { authenticateApiRequest } from '@/lib/auth/api-auth-guard';
 import type { ActivityType, ActivityMetadata, EntityType } from '@/lib/types';

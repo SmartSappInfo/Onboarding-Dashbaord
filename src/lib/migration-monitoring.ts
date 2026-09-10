@@ -7,7 +7,13 @@
  * Requirements: 30.1, 30.2, 30.3, 30.5
  */
 
-'use server';
+// NOTE: intentionally NOT 'use server' (audit F2).
+//
+// The /api/migration/* routes call these after their own system-admin check, and
+// they authenticate with a bearer token rather than a session cookie. The directive
+// published all ten exports as public HTTP endpoints — including cleanupOldMigration
+// Logs and exportMigrationLogs — while the only legitimate callers could not satisfy
+// a session guard anyway. No client component imports this module.
 
 import { adminDb } from './firebase-admin';
 import type {

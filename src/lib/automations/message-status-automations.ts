@@ -209,7 +209,7 @@ export async function executeMessageStatusAutomations(
                   ? '{{entityName}} - Delivery Failed'
                   : '{{entityName}} - Opened Email';
 
-                const { bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
+                const { bulkCreateDealsActionCore: bulkCreateDealsAction } = await import('../../app/actions/bulk-deal-actions');
                 // CAUTION: organizationId MUST be forwarded here for multi-tenant isolation.
                 // Using '' as fallback is safe but limits cross-org query scoping.
                 await bulkCreateDealsAction({
@@ -263,7 +263,7 @@ export async function executeMessageStatusAutomations(
                 { workspaceId, entityId, recipientContact: effectiveContactId }
               );
 
-              const { bulkCreateTasksAction } = await import('../../app/actions/bulk-task-actions');
+              const { bulkCreateTasksActionCore: bulkCreateTasksAction } = await import('../../app/actions/bulk-task-actions');
               // CAUTION: organizationId MUST be forwarded here for multi-tenant isolation.
               await bulkCreateTasksAction({
                 entityIds: [entityId],
@@ -282,7 +282,7 @@ export async function executeMessageStatusAutomations(
 
           case 'send_meeting': {
             if (action.meetingTypeId) {
-              const { bulkRegisterParticipantsAction } = await import('../../app/actions/bulk-meeting-actions');
+              const { bulkRegisterParticipantsActionCore: bulkRegisterParticipantsAction } = await import('../../app/actions/bulk-meeting-actions');
               await bulkRegisterParticipantsAction({
                 entityIds: [entityId],
                 meetingId: action.meetingTypeId,
