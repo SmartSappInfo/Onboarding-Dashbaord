@@ -46,6 +46,11 @@ jobs:
       - name: Run Typecheck
         run: NODE_OPTIONS='--max-old-space-size=4096' pnpm typecheck
 
+      # A codemod once inserted imports above a 'use client'/'use server' directive.
+      # tsc and the full test suite both passed; only the build caught it. This is cheap.
+      - name: Check directive placement
+        run: pnpm check:directives
+
       - name: Run ESLint
         run: pnpm lint
 

@@ -1,3 +1,4 @@
+'use server';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 /**
@@ -10,7 +11,6 @@ import { toClientErrorMessage } from '@/lib/errors/report-error';
  * 4. Tested in src/lib/surveys/__tests__/survey-ai-refinement-actions.test.ts.
  */
 
-'use server';
 
 import {
   refineSurveyQuestionFlow,

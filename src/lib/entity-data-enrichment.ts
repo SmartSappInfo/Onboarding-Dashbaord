@@ -1,3 +1,4 @@
+'use client';
 import { getErrorMessage } from '@/lib/errors/report-error';
 /**
  * Entity Data Enrichment — Fetch → Enrich → Restore Protocol
@@ -12,7 +13,6 @@ import { getErrorMessage } from '@/lib/errors/report-error';
  * FER-01 unified contact architecture work.
  */
 
-'use client';
 
 import {
     collection,

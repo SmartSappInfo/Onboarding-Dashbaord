@@ -1,5 +1,5 @@
-import { getErrorMessage } from '@/lib/errors/report-error';
 'use client';
+import { getErrorMessage } from '@/lib/errors/report-error';
 
 import * as React from "react";
 import { DashboardHeader } from "./DashboardHeader";
