@@ -29,6 +29,24 @@ service cloud.firestore {
       );
     }
 
+    // ── Platform deployment + messaging controls (backoffice isolation) ──
+    //
+    // This document decides whether the platform may contact customers at all.
+    //
+    // Read: system admins only. It reveals operational posture and nothing a tenant needs.
+    // Write: DENIED to every client, deliberately. The only writer is a server action
+    // running under authorizeBackofficeSession via the Admin SDK, which bypasses these
+    // rules. Keeping the client write path closed means an XSS in the backoffice cannot
+    // pause the platform's outbound messaging.
+    //
+    // CAUTION: do not "fix" this by allowing system admins to write. The server action is
+    // the audited path; a direct client write would bypass the audit log entirely.
+    match /platform_config/{controlId} {
+      allow get: if isAuthorized() && isSystemAdmin();
+      allow list: if isAuthorized() && isSystemAdmin();
+      allow write: if false;
+    }
+
     // Workspace-scoped access to a survey and everything beneath it.
     //
     // Subcollection documents (responses, sessions, ai_insights, …) do not carry
