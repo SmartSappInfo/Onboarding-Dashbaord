@@ -7,6 +7,7 @@ import { syncCampaignStats } from './campaign-analytics';
 import { CHANNEL_REGISTRY, contactResolutionChannel } from './messaging/channel-registry';
 import type { MessageCampaign } from './types';
 import { after } from 'next/server';
+import { requireWorkspace } from './auth/require-auth';
 
 /**
  * Dispatches a campaign: resolves audience, creates job, triggers processing.
@@ -14,7 +15,13 @@ import { after } from 'next/server';
  * R1 fix: This is what the wizard "Send" button must call — not saveDraft.
  * R2 fix: Creates ephemeral template for campaigns without templateId.
  */
-export async function dispatchCampaign(campaignId: string): Promise<{
+/**
+ * Unguarded core, for callers that have ALREADY established authority.
+ *
+ * `/api/cron/process-scheduled-messages` dispatches scheduled campaigns and authenticates
+ * with CRON_SECRET, not a user session — so it cannot go through the Server Action below.
+ */
+export async function dispatchCampaignCore(campaignId: string): Promise<{
   success: boolean;
   jobId?: string;
   error?: string;
@@ -312,6 +319,11 @@ export async function resendToFailed(campaignId: string): Promise<{
     if (!campaignSnap.exists) return { success: false, error: 'Campaign not found' };
     const campaign = campaignSnap.data() as MessageCampaign;
 
+    // SECURITY (audit F2): dispatching sends real SMS/email/WhatsApp and costs real
+    // money. This was reachable by anyone holding a campaign id. The workspace comes
+    // from the stored campaign, never the caller.
+    await requireWorkspace(campaign.workspaceId);
+
     if (!campaign.jobId) return { success: false, error: 'No linked job found' };
 
     // Get failed tasks
@@ -365,4 +377,24 @@ export async function resendToFailed(campaignId: string): Promise<{
     console.error('[RESEND] Failed:', error.message);
     return { success: false, error: error.message };
   }
+}
+
+/**
+ * Server Action entry point for dispatching a campaign.
+ *
+ * SECURITY (audit F2): a public HTTP endpoint that spends real money on SMS, email and
+ * WhatsApp. It previously ran for anyone who could supply a campaign id. The workspace is
+ * read from the stored campaign, never from the caller.
+ */
+export async function dispatchCampaign(campaignId: string): Promise<{
+  success: boolean;
+  jobId?: string;
+  error?: string;
+}> {
+  const campaignSnap = await adminDb.collection('message_campaigns').doc(campaignId).get();
+  if (!campaignSnap.exists) return { success: false, error: 'Campaign not found' };
+
+  await requireWorkspace((campaignSnap.data() as MessageCampaign).workspaceId);
+
+  return dispatchCampaignCore(campaignId);
 }

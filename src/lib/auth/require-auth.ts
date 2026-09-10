@@ -105,3 +105,32 @@ export async function requireSystemAdmin(): Promise<AuthContext> {
   }
   return ctx;
 }
+
+/**
+ * Verified identity plus an organization scope.
+ *
+ * Many actions take an optional `organizationId` and fall back to a platform-wide
+ * default when it is omitted — which, unauthenticated, lets a caller operate against
+ * another tenant's configuration or against the platform's own provider credentials.
+ *
+ * @param organizationId When given, the caller must belong to it (system admins bypass).
+ *        When omitted, the caller's own organization is returned.
+ * @returns The auth context plus the organization id the caller may actually act on.
+ */
+export async function requireOrganization(
+  organizationId?: string
+): Promise<AuthContext & { organizationId: string }> {
+  const ctx = await requireAuth();
+
+  if (!organizationId) {
+    const own = ctx.profile.organizationId;
+    if (!own) throw new ForbiddenError('Account is not attached to an organization.');
+    return { ...ctx, organizationId: own };
+  }
+
+  if (!ctx.isSystemAdmin && ctx.profile.organizationId !== organizationId) {
+    throw new ForbiddenError('No access to this organization.');
+  }
+
+  return { ...ctx, organizationId };
+}

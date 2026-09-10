@@ -1,6 +1,7 @@
 'use server';
 
 import { adminDb } from './firebase-admin';
+import { requireOrganization } from './auth/require-auth';
 import { 
     getSmsBalance, 
     getSenderIdStatus, 
@@ -35,6 +36,11 @@ async function resolveMnotifyApiKey(organizationId?: string): Promise<string | u
  * Server Action to fetch current SMS credit balance.
  */
 export async function fetchSmsBalanceAction(organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
   try {
     const apiKey = await resolveMnotifyApiKey(organizationId);
     const balance = await getSmsBalance(apiKey);
@@ -49,6 +55,11 @@ export async function fetchSmsBalanceAction(organizationId?: string) {
  * Server Action to check approval status of a Sender ID.
  */
 export async function checkSenderIdStatusAction(name: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
   try {
     const apiKey = await resolveMnotifyApiKey(organizationId);
     const data = await getSenderIdStatus(name, apiKey);
@@ -67,6 +78,11 @@ export async function checkSenderIdStatusAction(name: string, organizationId?: s
  * Server Action to register a new Sender ID.
  */
 export async function registerSenderIdAction(name: string, purpose: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
   const trimmedName = name.trim();
   if (trimmedName.length > 11 || !/^[a-zA-Z0-9]+$/.test(trimmedName)) {
     return { 
@@ -89,6 +105,11 @@ export async function registerSenderIdAction(name: string, purpose: string, orga
  * Server Action to fetch scheduled messages.
  */
 export async function fetchScheduledMessagesAction(organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
     try {
         const apiKey = await resolveMnotifyApiKey(organizationId);
         const data = await getScheduledMessages(apiKey);
@@ -108,6 +129,11 @@ export async function updateScheduledMessageAction(
   sender: string, 
   organizationId?: string
 ) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
     try {
         const apiKey = await resolveMnotifyApiKey(organizationId);
         await updateScheduledSms(id, message, date, sender, apiKey);
@@ -121,6 +147,11 @@ export async function updateScheduledMessageAction(
  * Server Action to delete a scheduled message.
  */
 export async function deleteScheduledMessageAction(id: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
     try {
         const apiKey = await resolveMnotifyApiKey(organizationId);
         await deleteScheduledSms(id, apiKey);
@@ -134,6 +165,11 @@ export async function deleteScheduledMessageAction(id: string, organizationId?: 
  * Server Action to fetch campaign reports.
  */
 export async function fetchSmsReportsAction(from: string, to: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
     try {
         const apiKey = await resolveMnotifyApiKey(organizationId);
         const data = await getSmsMetrics(from, to, apiKey);
@@ -147,6 +183,11 @@ export async function fetchSmsReportsAction(from: string, to: string, organizati
  * Server Action to fetch the live status of an SMS from the gateway.
  */
 export async function fetchSmsStatusAction(providerId: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
     try {
         const apiKey = await resolveMnotifyApiKey(organizationId);
         const data = await getSmsStatus(providerId, apiKey);

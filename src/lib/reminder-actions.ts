@@ -1216,7 +1216,9 @@ export async function processScheduledCampaigns(): Promise<{ processedCount: num
       return { processedCount, errors };
     }
 
-    const { dispatchCampaign } = await import('./campaign-dispatch');
+    // The cron authenticates with CRON_SECRET and has no user session, so it calls the
+    // dispatch core directly rather than the guarded Server Action (audit F2).
+    const { dispatchCampaignCore: dispatchCampaign } = await import('./campaign-dispatch');
 
     for (const doc of snap.docs) {
       const campaignId = doc.id;

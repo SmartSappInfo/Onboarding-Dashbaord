@@ -882,6 +882,67 @@ Requiring membership alone breaks the backoffice; requiring backoffice roles alo
 UI. The API-key actions use it.
 
 
+
+### Batch 4c — partial, and deliberately stopped short
+
+Provider and campaign-dispatch surfaces are done. **66 / 316.** The core send engine is
+NOT done, and the reason matters more than the count.
+
+**Done.** The mnotify (8) and resend (3) provider actions now scope to the caller's
+organization via a new `requireOrganization(organizationId?)` helper. This mattered because
+`resolveMnotifyApiKey()` falls back to the **platform's own SMS credential** when no org is
+passed — so unauthenticated callers could read any tenant's SMS balance, pull delivery
+reports, cancel scheduled sends, and register sender IDs against platform credit.
+`dispatchCampaign` and `resendToFailed` are also guarded: dispatching a campaign spends real
+money and ran for anyone holding a campaign id.
+
+**A cron path would have broken, and was preserved.**
+`/api/cron/process-scheduled-messages` authenticates with `CRON_SECRET`, not a user session,
+and calls `dispatchCampaign` for every scheduled campaign. Guarding it directly would have
+silently killed all scheduled sending. `dispatchCampaignCore` is now the unguarded internal
+entry point the cron uses, with the Server Action wrapping it.
+
+**Why `messaging-engine.ts` was left alone.** `sendMessage` / `sendRawMessage` look like the
+obvious next targets — they are `'use server'`, take an arbitrary recipient and body, and
+cost money on every call. They are also a genuinely mixed-trust surface:
+
+- **~20 session-less internal callers**: the automation engine
+  (`automations/actions/message-actions.ts`, `notification-actions.ts`, `run-management.ts`),
+  cron (`reminder-actions`, `scheduled-message-repository`, `invitation-actions`), job
+  routes (`/api/jobs/resend`, `/api/pdfs/submit`) and bulk processing.
+- **Anonymous public callers**: `src/app/surveys/[slug]/components/survey-form.tsx` is a
+  client component on a public survey page, and calls `sendMessage` three times to deliver
+  respondent acknowledgements. `/api/meetings/register` does the same for registrations.
+
+So `requireAuth()` here would break anonymous survey acknowledgements and meeting
+registration, while a core/wrapper split — the trick used elsewhere in Phase 4 — closes
+nothing, because both halves stay exported from the same `'use server'` module and remain
+equally reachable over HTTP. An attempt at that split was made and reverted for exactly that
+reason.
+
+**What this surface actually needs**, as its own piece of work:
+
+1. Move the engine implementation into a module without `'use server'`, so internal callers
+   import it directly and it is not an HTTP endpoint at all.
+2. Give the public flows their own narrow, guarded entry points that do not accept a free
+   recipient/template pair from the client — a survey acknowledgement should name the survey
+   and the outcome, with the server resolving the template and recipient from stored config,
+   and it should be rate-limited per submission.
+3. Only then point the four client components at those entry points.
+
+That is a design change, not a parameter removal, and it is the single largest remaining
+piece of F2. Until it lands, `sendMessage` and `sendRawMessage` remain public endpoints that
+will send a message with an arbitrary body to an arbitrary recipient.
+
+**Still outstanding in 4c** (unchanged, all still unguarded): `messaging-actions.ts` (12
+actions), `bulk-messaging.ts`, `notification-engine.ts`, `scheduled-message-actions.ts`,
+`template-actions.ts` (14), `qr-campaign-actions.ts` (7), `campaign-analytics.ts` (7),
+`survey-campaign-actions.ts`, `campaign-events.ts`, `campaign-post-send.ts`,
+`form-notification-actions.ts`, `meeting-notification-actions.ts` and the template
+migration/helper files.
+
+---
+
 ---
 
 ## Phase 5 — Credential and Observability Hardening

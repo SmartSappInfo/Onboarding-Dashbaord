@@ -3,6 +3,7 @@
 
 import { adminDb } from './firebase-admin';
 import { getEmail, getVerifiedDomains, cancelEmail } from './resend-service';
+import { requireOrganization } from './auth/require-auth';
 
 /**
  * Resolves Resend credentials for a given organization if custom routing is enabled.
@@ -30,6 +31,11 @@ async function resolveResendCredentials(organizationId?: string): Promise<{ apiK
  * Server Action to fetch live delivery status of an email.
  */
 export async function fetchEmailStatusAction(id: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
   try {
     const { apiKey } = await resolveResendCredentials(organizationId);
     const data = await getEmail(id, apiKey);
@@ -43,6 +49,11 @@ export async function fetchEmailStatusAction(id: string, organizationId?: string
  * Server Action to list verified sending domains.
  */
 export async function fetchVerifiedDomainsAction(organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
   try {
     const { apiKey } = await resolveResendCredentials(organizationId);
     const data = await getVerifiedDomains(apiKey);
@@ -56,6 +67,11 @@ export async function fetchVerifiedDomainsAction(organizationId?: string) {
  * Server Action to cancel a pending scheduled email.
  */
 export async function cancelScheduledEmailAction(id: string, organizationId?: string) {
+  // SECURITY (audit F2): the provider key resolver falls back to the PLATFORM
+  // credential when no org is given, so an unauthenticated caller could spend
+  // platform credit or read another tenant's provider data. Scope to the caller.
+  ({ organizationId } = await requireOrganization(organizationId));
+
   try {
     const { apiKey } = await resolveResendCredentials(organizationId);
     await cancelEmail(id, apiKey);
