@@ -26,7 +26,7 @@ the duration.
 
 | Stage | Scope | Client risk | Status |
 | --- | --- | --- | --- |
-| **A** | Outbound kill switch + runtime controls + staging backend | None (additive) | ☐ Not started |
+| **A** | Outbound kill switch + runtime controls + staging backend | None (additive) | ☑ **Code complete** — console step A6.7 pending |
 | **B** | Backoffice backend + `goadmin` domain | None (additive) | ☐ Not started |
 | **C** | Hostname gating + public-origin pin | **Yes — the only client-affecting stage** | ☐ Not started |
 | **D** | True build isolation (optional) | Medium | ☐ Not started |
@@ -798,8 +798,10 @@ git commit -m "feat(rules): restrict platform_config to system admins, deny clie
 
 **Files:**
 - Create: `apphosting.staging.yaml`
+- Modify: `src/proxy.ts` — block anonymous public routes when `APP_ENV=staging` (D-1)
+- Test: `src/__tests__/proxy-staging-public.test.ts`
 
-- [ ] **Step 1: Create the file**
+- [x] **Step 1: Create the file**
 
 ```yaml
 # Staging backend — shares the production Firebase project, so it MUST NOT be able to
@@ -847,7 +849,7 @@ env:
     secret: whatsapp-encryption-key
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apphosting.staging.yaml
@@ -856,31 +858,31 @@ git commit -m "feat(hosting): add staging backend config with outbound sending d
 
 ### Task A6: Verify the whole stage
 
-- [ ] **Step 1: Types**
+- [x] **Step 1: Types**
 
 Run: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 2: Lint**
+- [x] **Step 2: Lint**
 
 Run: `npm run lint`
 Expected: exit 0 (warning ceiling unchanged).
 
-- [ ] **Step 3: Directive placement**
+- [x] **Step 3: Directive placement**
 
 Run: `npm run check:directives`
 Expected: all directives first.
 
-- [ ] **Step 4: Full suite**
+- [x] **Step 4: Full suite**
 
 Run: `NODE_OPTIONS='--max-old-space-size=4096' npx vitest run`
 Expected: previous pass count plus the new tests, 0 failures.
 
-- [ ] **Step 5: Rules**
+- [x] **Step 5: Rules**
 
 Run: `npm run test:rules`
 
-- [ ] **Step 6: Prove the switch actually blocks (the assertion R8 depends on)**
+- [x] **Step 6: Prove the switch actually blocks (the assertion R8 depends on)**
 
 ```bash
 ALLOW_OUTBOUND_MESSAGING=false npx tsx -e "
@@ -892,7 +894,7 @@ ALLOW_OUTBOUND_MESSAGING=false npx tsx -e "
 ```
 Expected: `OK blocked: Outbound email is disabled…`
 
-- [ ] **Step 7: Console — create the staging backend (manual)**
+- [ ] **Step 7: Console — create the staging backend (manual — owner)**
 
 1. `git switch -c staging && git push -u origin staging` *(only when asked to push)*
 2. Firebase console → App Hosting → Create backend → same repo → branch `staging`.
