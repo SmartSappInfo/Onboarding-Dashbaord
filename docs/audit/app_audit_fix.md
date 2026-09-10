@@ -400,7 +400,31 @@ that is the targeted escape hatch, rather than disabling the protection globally
 - [x] `portal_waitlists` and `webinar_questions` corrected; every remaining `update: if true` reviewed and justified in a comment or removed.
 - [x] Emulator rules tests cover cross-tenant read, anonymous list, anonymous update.
 - [x] XSS test passes; `redirectUrl` scheme/host validated.
-- [x] `ignoreBuildErrors` removed; build green.
+- [x] `ignoreBuildErrors` removed; build green. — **REVERSED. See the correction below.**
+
+> **Correction (F10): removing `ignoreBuildErrors` broke the App Hosting deploy.**
+>
+> This was verified green with a LOCAL `next build`, which was the wrong test. Removing the
+> flag adds a full TypeScript pass to every deploy build — ~37 minutes on this codebase —
+> on a Cloud Build machine that has repeatedly hit OOM and timeouts (`533c8149` V8 OOM,
+> `add8789d` CPU limits, `31332c64` timeout, `cb4928fc` SSG hangs). Commit `8c400833` had
+> set the flag to `true` deliberately, titled *"ignore build errors in next config"*, for
+> exactly that reason. Phase 1 reverted a working build fix without establishing why it
+> existed.
+>
+> `ignoreBuildErrors: true` is restored, with the reasoning written into `next.config.ts`.
+>
+> **F10's intent is preserved, in the right place.** The `typecheck-and-lint` CI job runs
+> `tsc --noEmit` with an 8GB heap on every push and fails on any type error, so a type
+> error still cannot reach `main`. Duplicating that inside the deploy build bought nothing
+> and cost the deploy.
+>
+> Measured after the change: build exit 0, and the "Running TypeScript" phase is gone. On a
+> warm cache that removes ~37 minutes from every deploy.
+>
+> To type check in the deploy build again, first make it small enough — split the
+> backoffice out of the client build (`docs/architecture/backoffice-isolation-plan.md`,
+> Stage D).
 
 **Deferred within Phase 1, tracked in the rules file.** `survey_sessions` and `surveySessions`
 still carry `allow update: if true` so anonymous respondents can record progress; both are

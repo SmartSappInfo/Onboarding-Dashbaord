@@ -4,7 +4,29 @@ import type { NextConfig } from 'next';
 const nextConfig: NextConfig = {
   // Allow HMR from network IP in development
   allowedDevOrigins: ['10.155.120.120'],
-  
+
+  // TYPE CHECKING IS OWNED BY CI, NOT BY THE DEPLOY BUILD.
+  //
+  // Do not "restore" this to false without reading this first — it has been flipped twice.
+  //
+  // History: 8c400833 set this to true specifically to get Cloud Build passing. Audit
+  // Phase 1 (F10) then removed it as a regression guard, which silently added a full
+  // TypeScript pass to every App Hosting build. That pass takes ~37 minutes on this
+  // codebase, on a builder that has repeatedly hit OOM and timeouts (533c8149, add8789d,
+  // 31332c64, cb4928fc). It broke the deploy.
+  //
+  // The safety F10 wanted is fully preserved, just in the right place: the
+  // `typecheck-and-lint` CI job runs `tsc --noEmit` with an 8GB heap on every push and
+  // fails on any type error, so a type error still cannot reach main. Repeating that work
+  // inside the deploy build buys nothing and costs the deploy.
+  //
+  // To make the deploy build type check again, first make it small enough: split the
+  // backoffice out of the client build — docs/architecture/backoffice-isolation-plan.md,
+  // Stage D.
+  typescript: {
+    ignoreBuildErrors: true,
+  },
+
   staticPageGenerationTimeout: 60,
   async headers() {
     return [
