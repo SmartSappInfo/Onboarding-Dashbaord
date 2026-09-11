@@ -62,6 +62,7 @@ import {
   FILE_TYPE_PRESETS 
 } from '@/lib/survey-file-utils';
 import { extractFileNameFromStorageUrl, isGenericChoiceValue } from '@/lib/survey-response-utils';
+import { resolveStepperLabel } from '@/lib/surveys/stepper-label';
 import type { PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -1613,10 +1614,12 @@ function SurveyStepper({
     const currentStepNumber = activeVisibleIndex >= 0 ? activeVisibleIndex + 1 : 1;
     const progressPercentage = Math.round((currentStepNumber / totalVisible) * 100);
 
-    // Active section title for display
+    // Active section title for display.
+    // Section titles are rich text, and this is a TEXT sink — `resolveStepperLabel`
+    // strips the markup so a Word paste cannot print tags at the respondent.
     const activePage = pages[currentIndex] || [];
     const activeSection = activePage[0] as SurveyLayoutBlock | undefined;
-    const activeSectionTitle = activeSection?.stepperTitle || activeSection?.title || `Step ${currentStepNumber}`;
+    const activeSectionTitle = resolveStepperLabel(activeSection, currentStepNumber);
 
     // 1. Minimal Variant (Dots / Dashes)
     if (variant === 'simple') {
@@ -1707,7 +1710,9 @@ function SurveyStepper({
 
                     const section = page[0] as SurveyLayoutBlock | undefined;
                     const isSectionVisible = section ? (elementStates[section.id]?.isVisible ?? !section.hidden) : true;
-                    const title: string = (isSectionVisible ? (section?.stepperTitle || section?.title || null) : null) || `Step ${index + 1}`;
+                    // TEXT sink — see `resolveStepperLabel`. Rendering the raw rich-text
+                    // title here is what printed `<SPAN STYLE=...>` on live surveys.
+                    const title: string = resolveStepperLabel(section, index + 1, { isSectionVisible });
                     const isCompleted = actualIdx < currentIndex;
                     const isActive = actualIdx === currentIndex;
                     const isInvalid = !pageStatuses[actualIdx]?.isValid;
@@ -1750,10 +1755,26 @@ function SurveyStepper({
                                         <span className="text-xs font-black">{index + 1}</span>
                                     )}
                                 </motion.div>
-                                <div className="mt-3 text-center px-1 w-full max-w-[100px]">
+                                {/*
+                                  * CAUTION — do not merge these two elements back together.
+                                  *
+                                  * `line-clamp-2` sets `display:-webkit-box`, but Tailwind emits its
+                                  * `display` utilities AFTER `lineClamp` (core plugin index 21 vs 20),
+                                  * so a sibling `block` / `hidden sm:block` in the same class list wins
+                                  * and silently kills the clamp. That is what let long step labels
+                                  * overflow the fixed `h-8` box and break the stepper's alignment.
+                                  *
+                                  * Responsive visibility therefore lives on the wrapper (which also
+                                  * owns `overflow-hidden` as a belt-and-braces guard), and the clamp
+                                  * lives alone on the <p>.
+                                  */}
+                                <div className={cn(
+                                    "mt-3 text-center px-1 w-full max-w-[100px] h-8 overflow-hidden",
+                                    isActive ? "block" : "hidden sm:block"
+                                )}>
                                     <p className={cn(
-                                        "text-[10px] font-black uppercase tracking-widest leading-tight line-clamp-2 h-8 transition-colors",
-                                        isActive ? "text-foreground block" : "text-muted-foreground opacity-60 hidden sm:block group-hover:opacity-100",
+                                        "text-[10px] font-black uppercase tracking-widest leading-tight line-clamp-2 transition-colors",
+                                        isActive ? "text-foreground" : "text-muted-foreground opacity-60 group-hover:opacity-100",
                                         isCompleted && isInvalid && "text-destructive opacity-100"
                                     )}>
                                         {title}

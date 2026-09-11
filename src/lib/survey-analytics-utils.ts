@@ -8,6 +8,7 @@
  */
 
 import type { Survey, SurveyResponse, SurveyQuestion, SurveyElement, SurveySession } from "@/lib/types";
+import { resolveStepperLabel } from "@/lib/surveys/stepper-label";
 
 // ─── Shared Constants ──────────────────────────────────────────────────────────
 
@@ -119,9 +120,12 @@ export function computeFunnelData(survey: Survey, sessions: SurveySession[]): Fu
 
     return pageElements.map((page, index) => {
         const section = page[0] as { stepperTitle?: string; title?: string } | undefined;
+        // Shares the stepper's resolver so a funnel label can never drift from the label
+        // the respondent actually saw — and so rich-text titles are stripped here too
+        // (chart axis labels are a text sink; raw markup used to render into them).
         const label = index === 0 && survey.showCoverPage
             ? 'Cover Page'
-            : (section?.stepperTitle || section?.title || `Step ${index + 1}`);
+            : resolveStepperLabel(section, index + 1);
 
         const count = sessions.filter(s => s.maxStepReached >= index).length;
 

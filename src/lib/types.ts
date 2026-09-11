@@ -4180,6 +4180,27 @@ export interface SurveyQuestion extends SurveyElement {
   maxFiles?: number;
   maxFileSizeMB?: number;
 
+  // --- Sample / template download (file-upload questions) ---
+  // Lets an author attach a blank template the respondent downloads, fills in offline and
+  // re-uploads through this same question. All optional and additive: a question without
+  // `sampleFileEnabled` renders exactly as it did before the feature existed, so no data
+  // migration was required. Resolved for rendering by `@/lib/surveys/sample-file`.
+  //
+  // CAUTION: `sampleFileUrl` is published on a world-readable survey document. It must
+  // pass `isSafeSampleFileUrl` on save AND on render — never trust a stored value.
+  /** Master switch. When false/absent, every renderer skips the sample card entirely. */
+  sampleFileEnabled?: boolean;
+  /** Download URL, host-allowlisted. Written by `MediaSelect` (stores under `media/**`). */
+  sampleFileUrl?: string;
+  /** Display name; falls back to the name derived from the URL. */
+  sampleFileName?: string;
+  /** Card heading; falls back to the file name. Plain text — stripped before render. */
+  sampleFileTitle?: string;
+  /** Short instructions shown under the heading. Plain text — stripped before render. */
+  sampleFileDescription?: string;
+  /** Download button label; falls back to `SAMPLE_FILE_DEFAULT_BUTTON_TEXT`. */
+  sampleFileButtonText?: string;
+
   // Phase 2 Advanced Question Extensions (Survey Intelligence 2.0)
   matrixRows?: string[];
   matrixColumns?: string[];
