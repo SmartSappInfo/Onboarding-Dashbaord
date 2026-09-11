@@ -208,8 +208,22 @@ describe('renderBlocksToHtml with styles', () => {
     expect(html).toContain('Simple Wide Title');
   });
 
+  /**
+   * Audio and video compile to ONE artefact: a linked poster/card.
+   *
+   * These tests previously asserted the opposite — that a hidden native <audio>/<video>
+   * was emitted alongside the card, revealed by a
+   * `@media screen and (-webkit-min-device-pixel-ratio: 0)` block that also hid the card.
+   * That is what shipped, and it rendered broken: the media query matches every
+   * WebKit/Blink client including Gmail on Chrome, so the working card was hidden and a
+   * player that Gmail strips was revealed in its place.
+   *
+   * As of 2025 Apple Mail no longer supports <video> either, leaving only Samsung Mail and
+   * Thunderbird — neither of which that hack targets. The native branch could therefore
+   * only ever do harm, so it is gone. The linked poster is the universal pattern.
+   */
   describe('audio and video action blocks', () => {
-    it('compiles audio block with play_inline action and toggle styling', () => {
+    it('compiles an audio block to a linked card with no native player', () => {
       const blocks: MessageBlock[] = [
         {
           id: 'test_audio_1',
@@ -223,14 +237,17 @@ describe('renderBlocksToHtml with styles', () => {
       ];
 
       const html = renderBlocksToHtml(blocks, {});
-      expect(html).toContain('class="audio-native-test_audio_1"');
       expect(html).toContain('class="audio-card-test_audio_1"');
-      expect(html).toContain('<audio src="https://example.com/audio.mp3"');
       expect(html).toContain('href="https://example.com/redirect-audio"');
-      expect(html).toContain('audio-native-test_audio_1 {');
+      expect(html).toContain('Listen to this welcome note');
+
+      // No native element, and no media query that could hide the card.
+      expect(html).not.toContain('audio-native-test_audio_1');
+      expect(html).not.toContain('<audio');
+      expect(html).not.toContain('-webkit-min-device-pixel-ratio');
     });
 
-    it('compiles video block with play_inline action and toggle styling', () => {
+    it('compiles a video block to a linked poster with no native player', () => {
       const blocks: MessageBlock[] = [
         {
           id: 'test_video_1',
@@ -243,11 +260,31 @@ describe('renderBlocksToHtml with styles', () => {
       ];
 
       const html = renderBlocksToHtml(blocks, {});
-      expect(html).toContain('class="video-native-test_video_1"');
       expect(html).toContain('class="video-card-test_video_1"');
-      expect(html).toContain('<video src="https://example.com/video.mp4"');
       expect(html).toContain('href="https://example.com/redirect-video"');
-      expect(html).toContain('video-native-test_video_1 {');
+      // The poster carries the visual — it must be a real <img>, not a video poster attr.
+      expect(html).toContain('src="https://example.com/thumbnail.jpg"');
+
+      expect(html).not.toContain('video-native-test_video_1');
+      expect(html).not.toContain('<video');
+      expect(html).not.toContain('-webkit-min-device-pixel-ratio');
+    });
+
+    // Without a redirect target the poster must still link somewhere useful, or the
+    // recipient gets an image that looks clickable and does nothing.
+    it('falls back to the video URL when no redirect target is configured', () => {
+      const blocks: MessageBlock[] = [
+        {
+          id: 'test_video_3',
+          type: 'video',
+          url: 'https://example.com/video.mp4',
+          videoAction: 'play_inline',
+          videoThumbnailUrl: 'https://example.com/thumbnail.jpg'
+        }
+      ];
+
+      const html = renderBlocksToHtml(blocks, {});
+      expect(html).toContain('href="https://example.com/video.mp4"');
     });
 
     it('compiles video block with redirect action without native elements', () => {

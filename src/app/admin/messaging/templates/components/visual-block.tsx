@@ -943,7 +943,13 @@ export function VisualBlock({
                             {/* Video metadata overlay bottom bar */}
                             <div className="absolute bottom-0 inset-x-0 p-3 bg-gradient-to-t from-black/80 to-transparent text-left flex justify-between items-center text-white">
                                 <span className="text-[10px] font-bold tracking-tight truncate max-w-[70%]">
-                                    {block.videoAction === 'download' ? 'Download Action' : block.videoAction === 'redirect' ? 'Tracking Redirect' : 'Inline Player'}
+                                    {/*
+                                      * Was "Inline Player", which told the author the recipient would
+                                      * get a playable video. Email clients strip <video>, so the sent
+                                      * mail is always this poster linked to the video — see the video
+                                      * branch in `messaging-utils.ts`. The label now matches reality.
+                                      */}
+                                    {block.videoAction === 'download' ? 'Download Action' : block.videoAction === 'redirect' ? 'Tracking Redirect' : 'Opens video'}
                                 </span>
                                 <span className="text-[9px] font-semibold bg-white/10 px-2 py-0.5 rounded backdrop-blur">
                                     Video Card
@@ -987,7 +993,8 @@ export function VisualBlock({
                                 {block.audioTitle || 'Untitled Audio'}
                             </h4>
                             <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider leading-none mt-1">
-                                {block.audioDuration || '0:00'} &bull; {block.audioAction === 'download' ? 'Download' : block.audioAction === 'redirect' ? 'Web Link' : 'Inline Player'}
+                                {/* See the video block — email clients strip <audio> too. */}
+                                {block.audioDuration || '0:00'} &bull; {block.audioAction === 'download' ? 'Download' : block.audioAction === 'redirect' ? 'Web Link' : 'Opens audio'}
                             </p>
                         </div>
 

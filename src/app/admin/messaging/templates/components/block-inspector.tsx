@@ -1306,7 +1306,14 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     onChange={e => onUpdate({ videoAction: e.target.value as 'download' | 'play_inline' | 'redirect' })}
                                     className="w-full h-10 px-3 rounded-xl text-xs font-semibold bg-muted/20 border border-border"
                                 >
-                                    <option value="play_inline">Play Inline (where supported)</option>
+                                    {/*
+                                      * "Play Inline (where supported)" promised something email cannot
+                                      * deliver: Gmail and Outlook strip <video>, and Apple Mail dropped
+                                      * support in 2025. The email now always sends a poster image that
+                                      * opens the video when tapped, so this label describes what the
+                                      * recipient actually gets.
+                                      */}
+                                    <option value="play_inline">Open video link</option>
                                     <option value="redirect">Redirect with Tracking</option>
                                     <option value="download">Direct Download</option>
                                 </select>
@@ -1411,7 +1418,8 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                                     onChange={e => onUpdate({ audioAction: e.target.value as 'download' | 'play_inline' | 'redirect' })}
                                     className="w-full h-10 px-3 rounded-xl text-xs font-semibold bg-muted/20 border border-border"
                                 >
-                                    <option value="play_inline">Play Inline (where supported)</option>
+                                    {/* See the video block above — email clients strip <audio> too. */}
+                                    <option value="play_inline">Open audio link</option>
                                     <option value="redirect">Redirect with Tracking</option>
                                     <option value="download">Direct Download</option>
                                 </select>

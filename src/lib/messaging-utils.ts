@@ -828,33 +828,13 @@ export function renderBlocksToHtml(
         const subTextColor = isDark ? '#9ca3af' : '#64748b';
         const actionText = action === 'download' ? 'Download Note' : 'Listen Now';
 
-        const styleBlock = action === 'play_inline' ? `
-            <style>
-              @media screen and (-webkit-min-device-pixel-ratio: 0) {
-                .audio-native-${block.id} {
-                  display: block !important;
-                  max-height: none !important;
-                  overflow: visible !important;
-                }
-                .audio-card-${block.id} {
-                  display: none !important;
-                }
-              }
-            </style>
-        ` : '';
-
-        const nativePlayer = action === 'play_inline' ? `
-            <!--[if !mso]><!-->
-            <div class="audio-native-${block.id}" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
-                <audio src="${audioUrl}" controls style="width: 100%;"></audio>
-            </div>
-            <!--<![endif]-->
-        ` : '';
-
+        // EMAIL AUDIO: same defect and same fix as the video block below — a hidden
+        // native <audio> plus a WebKit media query that hid this card. Gmail strips
+        // <audio>, so the query removed the working card and left a dead player.
+        // The linked card is the only thing that renders everywhere.
+        //
+        // CAUTION: do not reintroduce <audio> or a <style> block here.
         blockHtml = `
-            ${styleBlock}
-            ${nativePlayer}
-
             <div class="audio-card-${block.id}" style="margin: 16px 0; ${marginStyles} background-color: ${cardBg}; border: ${borderConfig}; border-radius: ${cardRadius}; overflow: hidden;">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
                     <table role="presentation" cellpadding="0" cellspacing="0" style="width: 100%; border-collapse: collapse; background-color: transparent;">
@@ -918,33 +898,23 @@ export function renderBlocksToHtml(
             ? `${ensureUnit(s.borderWidth)} ${s.borderStyle || 'solid'} ${s.borderColor || dividerColor}`
             : `1px solid ${dividerColor}`;
 
-        const styleBlock = action === 'play_inline' ? `
-            <style>
-              @media screen and (-webkit-min-device-pixel-ratio: 0) {
-                .video-native-${block.id} {
-                  display: block !important;
-                  max-height: none !important;
-                  overflow: visible !important;
-                }
-                .video-card-${block.id} {
-                  display: none !important;
-                }
-              }
-            </style>
-        ` : '';
-
-        const nativePlayer = action === 'play_inline' ? `
-            <!--[if !mso]><!-->
-            <div class="video-native-${block.id}" style="display:none; max-height:0px; overflow:hidden; mso-hide:all; margin-bottom:12px;">
-                <video src="${videoUrl}" poster="${thumbnailUrl}" controls style="width: 100%; border-radius: ${imgRadius};"></video>
-            </div>
-            <!--<![endif]-->
-        ` : '';
-
+        // EMAIL VIDEO: a linked poster image is the ONLY thing that renders reliably.
+        //
+        // This previously also emitted a hidden native <video> plus a
+        // `@media screen and (-webkit-min-device-pixel-ratio: 0)` block that revealed the
+        // player and HID this card. That query matches every WebKit/Blink client —
+        // including Gmail on Chrome — so in practice it hid the card that works and
+        // revealed a <video> that Gmail strips. Recipients saw a broken half-rendered
+        // player instead of the design.
+        //
+        // It cannot be rescued by narrowing the query either: as of 2025 Apple Mail no
+        // longer supports <video>, leaving only Samsung Mail and Thunderbird, neither of
+        // which that hack targeted. See docs and the tests in messaging-utils.test.ts.
+        //
+        // CAUTION: do not reintroduce <video>, <audio>, <iframe> or a <style> block here.
+        // The poster must stay a plain <img> inside an <a>. Design view (visual-block.tsx
+        // `case 'video'`) renders the same card, so the two surfaces match.
         blockHtml = `
-            ${styleBlock}
-            ${nativePlayer}
-
             <div class="video-card-${block.id}" style="margin: 16px 0; ${marginStyles} text-align: ${align};">
                 <a href="${link}" style="text-decoration: none; display: block; outline: none; border: none;">
                     <table cellpadding="0" cellspacing="0" border="0" style="width: 100%; max-width: 600px; border-collapse: collapse; border-radius: ${imgRadius}; border: ${borderConfig}; overflow: hidden; background-color: #000000; margin: 0 auto;">
