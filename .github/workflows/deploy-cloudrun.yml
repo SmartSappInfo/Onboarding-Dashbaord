@@ -104,11 +104,38 @@ jobs:
             --no-allow-unauthenticated
 
       # A deploy that returns 200 on a real page is the only result worth reporting.
+      #
+      # The service is private (--no-allow-unauthenticated), so this must present an
+      # identity token. An unauthenticated request returns 403 from Cloud Run's front end
+      # before it ever reaches the container — which says nothing about whether the app
+      # works. The deploy service account holds roles/run.invoker for exactly this.
       - name: Smoke test the new revision
         run: |
           URL=$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')
           echo "Deployed: $URL"
-          code=$(curl -o /dev/null -s -w '%{http_code}' --max-time 30 "$URL/login" || echo 000)
-          echo "GET /login -> $code"
-          # 200 or a redirect are both healthy; anything else means the revision is not serving.
-          case "$code" in 200|301|302|307|308) echo "healthy" ;; *) echo "unhealthy"; exit 1 ;; esac
+          TOKEN=$(gcloud auth print-identity-token)
+
+          check() {
+            local path="$1" expected="$2"
+            local code
+            code=$(curl -o /dev/null -s -w '%{http_code}' --max-time 30 \
+              -H "Authorization: Bearer $TOKEN" "$URL$path" || echo 000)
+            echo "  GET $path -> $code (want $expected)"
+            echo "$code"
+          }
+
+          # /login exercises routing and rendering without touching Firestore.
+          login=$(check /login "2xx/3xx" | tail -1)
+          # / is server-rendered and DOES touch Firestore, so it proves the runtime service
+          # account's ambient credentials work — the thing that broke locally.
+          home=$(check / "2xx/3xx" | tail -1)
+
+          fail=0
+          for code in "$login" "$home"; do
+            case "$code" in 200|301|302|307|308) ;; *) fail=1 ;; esac
+          done
+          if [ "$fail" -eq 1 ]; then
+            echo "unhealthy — the revision is serving errors"
+            exit 1
+          fi
+          echo "healthy"
