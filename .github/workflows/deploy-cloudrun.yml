@@ -50,6 +50,12 @@ jobs:
       fail-fast: true
       matrix:
         include:
+          # The client app serves the public internet; the control plane does not.
+          #
+          # CAUTION: this flag is applied on EVERY deploy and overwrites whatever the IAM
+          # policy currently says. Granting allUsers by hand does not survive the next
+          # rollout — that is exactly how the client surface silently went private and
+          # would have 403'd every visitor once its certificate was issued.
           - surface: client
             service: smartsapp-app
           - surface: backoffice
@@ -124,14 +130,14 @@ jobs:
             --service-account "${{ secrets.GCP_RUNTIME_SA }}" \
             --set-env-vars "^@^APP_SURFACE=${{ matrix.surface }}@PUBLIC_APP_ORIGIN=https://go.smartsapp.com@NEXT_PUBLIC_APP_URL=https://go.smartsapp.com@NEXT_TELEMETRY_DISABLED=1@FIREBASE_CONFIG={\"databaseURL\":\"\",\"projectId\":\"studio-9220106300-f74cb\",\"storageBucket\":\"studio-9220106300-f74cb.firebasestorage.app\"}" \
             --set-secrets "CRON_SECRET=cron-secret:latest,WHATSAPP_ENCRYPTION_KEY=whatsapp-encryption-key:latest,RESEND_WEBHOOK_SECRET=resend-webhook-secret:latest,RESEND_API_KEY=resend-api-key:latest,MNOTIFY_API_KEY=mnotify-api-key:latest,ONESIGNAL_APP_ID=onesignal-app-id:latest,ONESIGNAL_REST_API_KEY=onesignal-rest-api-key:latest,CLOUD_TASKS_SECRET=CLOUD_TASKS_SECRET:latest" \
-            --no-allow-unauthenticated
+            ${{ matrix.surface == 'client' && '--allow-unauthenticated' || '--no-allow-unauthenticated' }}
 
       # A deploy that returns 200 on a real page is the only result worth reporting.
       #
-      # The service is private (--no-allow-unauthenticated), so this must present an
-      # identity token. An unauthenticated request returns 403 from Cloud Run's front end
-      # before it ever reaches the container — which says nothing about whether the app
-      # works. The deploy service account holds roles/run.invoker for exactly this.
+      # The backoffice surface is private, so this presents an identity token. Against a
+      # private service an unauthenticated request returns 403 from Cloud Run's front end
+      # before reaching the container, which says nothing about whether the app works. The
+      # token is harmless on the public client surface, so the same step covers both.
       - name: Smoke test the new revision
         run: |
           URL=$(gcloud run services describe "${{ matrix.service }}" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')
@@ -154,7 +160,10 @@ jobs:
             local code
             code=$(curl -o /dev/null -s -w '%{http_code}' --max-time 30 \
               -H "Authorization: Bearer $TOKEN" "$URL$path" || echo 000)
-            echo "  GET $path -> $code (want $expected)"
+            # Progress goes to stderr so it reaches the log; only the code goes to stdout,
+            # where the caller captures it. Echoing both to stdout hid every result inside
+            # the command substitution and made a failed smoke test impossible to diagnose.
+            echo "  GET $path -> $code (want $expected)" >&2
             echo "$code"
           }
 
