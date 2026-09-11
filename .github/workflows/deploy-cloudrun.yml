@@ -73,6 +73,18 @@ jobs:
       # Runtime configuration mirrors the App Hosting service exactly. Secrets are read
       # from Secret Manager at runtime — never baked into the image, never passed as build
       # args, because build args persist in image history.
+      #
+      # FIREBASE_CONFIG is copied from the App Hosting service. firebase-admin reads it to
+      # self-configure on Google infrastructure; without it the Admin SDK falls back to
+      # guessing the project and storage bucket.
+      #
+      # GOOGLE_APPLICATION_CREDENTIALS is deliberately NOT set — App Hosting does not set
+      # it either. The Admin SDK uses the runtime service account's ambient credentials.
+      # Setting it to a file path (as .env does for local development) makes every
+      # server-rendered page 500, because the file does not exist in the image.
+      #
+      # The ^@^ prefix switches gcloud's list delimiter to @, so the JSON value's commas
+      # are not parsed as separate variables.
       - name: Deploy to Cloud Run
         run: |
           gcloud run deploy "$SERVICE" \
@@ -87,7 +99,7 @@ jobs:
             --max-instances 10 \
             --concurrency 80 \
             --service-account "${{ secrets.GCP_RUNTIME_SA }}" \
-            --set-env-vars "APP_SURFACE=client,PUBLIC_APP_ORIGIN=https://go.smartsapp.com,NEXT_PUBLIC_APP_URL=https://go.smartsapp.com,NEXT_TELEMETRY_DISABLED=1" \
+            --set-env-vars "^@^APP_SURFACE=client@PUBLIC_APP_ORIGIN=https://go.smartsapp.com@NEXT_PUBLIC_APP_URL=https://go.smartsapp.com@NEXT_TELEMETRY_DISABLED=1@FIREBASE_CONFIG={\"databaseURL\":\"\",\"projectId\":\"studio-9220106300-f74cb\",\"storageBucket\":\"studio-9220106300-f74cb.firebasestorage.app\"}" \
             --set-secrets "CRON_SECRET=cron-secret:latest,WHATSAPP_ENCRYPTION_KEY=whatsapp-encryption-key:latest,RESEND_WEBHOOK_SECRET=resend-webhook-secret:latest,RESEND_API_KEY=resend-api-key:latest,MNOTIFY_API_KEY=mnotify-api-key:latest,ONESIGNAL_APP_ID=onesignal-app-id:latest,ONESIGNAL_REST_API_KEY=onesignal-rest-api-key:latest,CLOUD_TASKS_SECRET=CLOUD_TASKS_SECRET:latest" \
             --no-allow-unauthenticated
 
