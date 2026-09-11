@@ -113,7 +113,18 @@ jobs:
         run: |
           URL=$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')
           echo "Deployed: $URL"
-          TOKEN=$(gcloud auth print-identity-token)
+          # Workload Identity Federation credentials cannot mint an identity token
+          # directly ("No identity token can be obtained from the current credentials"),
+          # so the deploy service account impersonates ITSELF to produce one. It holds
+          # roles/iam.serviceAccountTokenCreator on itself for this.
+          #
+          # --audiences must be the service URL: Cloud Run validates the token's audience,
+          # and a token minted for the wrong audience is rejected with the same 403 as no
+          # token at all.
+          TOKEN=$(gcloud auth print-identity-token \
+            --impersonate-service-account="${{ secrets.GCP_DEPLOY_SA }}" \
+            --audiences="$URL" \
+            --include-email)
 
           check() {
             local path="$1" expected="$2"
