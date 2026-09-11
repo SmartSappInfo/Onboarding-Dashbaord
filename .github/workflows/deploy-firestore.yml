@@ -17,7 +17,18 @@
 # change could ship to production with the rules it depends on still undeployed.
 # Running on both means a push to either branch keeps rules in step with the code.
 #
-# Secrets Required: FIREBASE_TOKEN (set in GitHub Repo Secrets).
+# AUTHENTICATION — keyless, via Workload Identity Federation.
+# This deliberately does NOT use FIREBASE_TOKEN. That secret was never set, and the
+# previous workflow skipped its deploy step whenever it was empty, so every run went
+# green while deploying nothing — which is how both rulesets drifted unnoticed.
+# `firebase login:ci` tokens are also a long-lived credential, and this repository is
+# public and has leaked credentials before. WIF is what deploy-cloudrun.yml already
+# uses successfully, so the provider and service account secrets already exist.
+#
+# REQUIRED IAM on ${{ secrets.GCP_DEPLOY_SA }} (grant once, then this runs unattended):
+#   roles/firebaserules.admin   — publish Firestore + Storage rulesets
+#   roles/datastore.indexAdmin  — create Firestore indexes
+# If a run fails with PERMISSION_DENIED, the missing role is one of those two.
 # ==============================================================================
 
 name: Deploy Firebase Rules & Indexes
@@ -44,6 +55,10 @@ on:
         required: true
         default: ''
 
+permissions:
+  contents: read
+  id-token: write   # required for Workload Identity Federation
+
 jobs:
   deploy-firebase-rules-and-indexes:
     name: Deploy Firestore & Storage Rules + Indexes
@@ -54,6 +69,15 @@ jobs:
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
+
+      # Keyless auth. Deliberately NOT a service-account JSON key or a
+      # `firebase login:ci` token: this repository is public and has already leaked
+      # credentials once. Mirrors deploy-cloudrun.yml.
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -69,33 +93,20 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Fail loudly rather than skipping. The previous version silently no-opped when
-      # FIREBASE_TOKEN was unset (`if: env.FIREBASE_TOKEN != ''`), so a missing secret
-      # looked exactly like a successful deploy — a green check on a run that deployed
-      # nothing. That is precisely how rules drift goes unnoticed.
-      - name: Verify deploy credentials are present
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        run: |
-          if [ -z "$FIREBASE_TOKEN" ]; then
-            echo "::error::FIREBASE_TOKEN is not set. Rules and indexes were NOT deployed."
-            echo "Add it under Settings > Secrets and variables > Actions."
-            exit 1
-          fi
-
       # Compile-check before releasing. `deploy` would catch a syntax error too, but
       # this fails in seconds and keeps a broken ruleset from being the thing that
       # discovers the problem.
+      #
+      # No --token: firebase-tools picks up the Application Default Credentials that
+      # the auth step above wrote. If this step ever reports PERMISSION_DENIED, the
+      # deploy service account is missing one of the IAM roles listed at the top.
       - name: Validate rules compile
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           npx -y firebase-tools deploy \
             --only firestore:rules,storage \
             --project studio-9220106300-f74cb \
             --non-interactive \
-            --dry-run \
-            --token "$FIREBASE_TOKEN"
+            --dry-run
 
       # CAUTION: no --force. firebase-tools only CREATES indexes by default; deleting
       # an index that exists in the project but not in firestore.indexes.json requires
@@ -103,11 +114,8 @@ jobs:
       # bad diff drop live indexes and take production queries down. Delete indexes by
       # hand, deliberately.
       - name: Deploy Firestore rules + indexes and Storage rules
-        env:
-          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           npx -y firebase-tools deploy \
             --only firestore:rules,firestore:indexes,storage \
             --project studio-9220106300-f74cb \
-            --non-interactive \
-            --token "$FIREBASE_TOKEN"
+            --non-interactive
