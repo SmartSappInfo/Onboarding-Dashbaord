@@ -50,12 +50,19 @@ jobs:
       fail-fast: true
       matrix:
         include:
-          # The client app serves the public internet; the control plane does not.
+          # BOTH surfaces accept public connections at the Cloud Run edge, because both are
+          # reached by people in browsers. Locking the control plane at the IAM layer would
+          # require every operator to hold a Google identity token, which no browser sends.
           #
-          # CAUTION: this flag is applied on EVERY deploy and overwrites whatever the IAM
-          # policy currently says. Granting allUsers by hand does not survive the next
-          # rollout — that is exactly how the client surface silently went private and
-          # would have 403'd every visitor once its certificate was issued.
+          # The control plane is protected in the application instead, by two layers built
+          # for it: the session guard (every /backoffice route redirects to /login, and the
+          # backoffice role matrix gates each action) and BACKOFFICE_IP_ALLOWLIST, which is
+          # empty for now and can be set later without a code change.
+          #
+          # CAUTION: the --allow-unauthenticated flag is applied on EVERY deploy and
+          # overwrites the IAM policy. Changing access by hand does not survive the next
+          # rollout — that is exactly how the client surface silently went private and would
+          # have 403'd every visitor once its certificate was issued. Change it HERE.
           - surface: client
             service: smartsapp-app
           - surface: backoffice
@@ -130,7 +137,7 @@ jobs:
             --service-account "${{ secrets.GCP_RUNTIME_SA }}" \
             --set-env-vars "^@^APP_SURFACE=${{ matrix.surface }}@PUBLIC_APP_ORIGIN=https://go.smartsapp.com@NEXT_PUBLIC_APP_URL=https://go.smartsapp.com@NEXT_TELEMETRY_DISABLED=1@FIREBASE_CONFIG={\"databaseURL\":\"\",\"projectId\":\"studio-9220106300-f74cb\",\"storageBucket\":\"studio-9220106300-f74cb.firebasestorage.app\"}" \
             --set-secrets "CRON_SECRET=cron-secret:latest,WHATSAPP_ENCRYPTION_KEY=whatsapp-encryption-key:latest,RESEND_WEBHOOK_SECRET=resend-webhook-secret:latest,RESEND_API_KEY=resend-api-key:latest,MNOTIFY_API_KEY=mnotify-api-key:latest,ONESIGNAL_APP_ID=onesignal-app-id:latest,ONESIGNAL_REST_API_KEY=onesignal-rest-api-key:latest,CLOUD_TASKS_SECRET=CLOUD_TASKS_SECRET:latest" \
-            ${{ matrix.surface == 'client' && '--allow-unauthenticated' || '--no-allow-unauthenticated' }}
+            --allow-unauthenticated
 
       # A deploy that returns 200 on a real page is the only result worth reporting.
       #
