@@ -1,26 +1,56 @@
 # ==============================================================================
-# GitHub Actions Workflow - Automated Firestore Rules & Indexes Deployment
+# GitHub Actions Workflow - Automated Firebase Rules & Indexes Deployment
 # ==============================================================================
-# Purpose: Automatically deploy updated firestore.rules and firestore.indexes.json
-# to Cloud Firestore whenever modifications are pushed to the deployment branch.
-# Secrets Required: FIREBASE_TOKEN (optional; set in GitHub Repo Secrets).
+# Deploys firestore.rules, firestore.indexes.json AND storage.rules.
+#
+# WHY STORAGE IS HERE NOW (2026-09-11):
+# storage.rules was in the repo but in NO pipeline, and firebase.json carried no
+# `storage` target, so it had never been deployed. The live ruleset silently drifted
+# until it opened with `match /{allPaths=**} { allow write, read; }` — an
+# unconditional grant that left the whole bucket world-readable AND world-writable
+# for roughly six months. Nobody caught it because nothing ever diffed the repo
+# against production. Rules that are not in CI are rules nobody is watching.
+#
+# WHY THIS RUNS ON BOTH BRANCHES:
+# App code deploys from `staging` (see deploy-cloudrun.yml). Rules used to deploy
+# only from `deployment`. That split is what let code and rules drift apart — a
+# change could ship to production with the rules it depends on still undeployed.
+# Running on both means a push to either branch keeps rules in step with the code.
+#
+# Secrets Required: FIREBASE_TOKEN (set in GitHub Repo Secrets).
 # ==============================================================================
 
-name: Deploy Firestore Rules & Indexes
+name: Deploy Firebase Rules & Indexes
 
 on:
   push:
     branches:
       - deployment
+      - staging
     paths:
       - 'firestore.rules'
       - 'firestore.indexes.json'
+      - 'storage.rules'
+      # firebase.json declares WHICH rule files are deployable at all. A change here
+      # can silently take a ruleset in or out of the pipeline, so it must retrigger.
+      - 'firebase.json'
+      - '.github/workflows/deploy-firestore.yml'
+  # Manual escape hatch: lets an operator redeploy rules without an empty commit,
+  # e.g. after restoring a ruleset by hand in the console.
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+        default: ''
 
 jobs:
-  deploy-firestore-rules-and-indexes:
-    name: Deploy Firestore Security Rules & Indexes
+  deploy-firebase-rules-and-indexes:
+    name: Deploy Firestore & Storage Rules + Indexes
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Guard the manual path so an accidental dispatch cannot deploy.
+    if: github.event_name == 'push' || github.event.inputs.confirm == 'deploy'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -39,9 +69,45 @@ jobs:
       - name: Install Dependencies
         run: pnpm install --frozen-lockfile
 
-      # Architectural Pointer: Explicitly target project ID and run non-interactively in CI
-      - name: Deploy to Firebase Firestore
+      # Fail loudly rather than skipping. The previous version silently no-opped when
+      # FIREBASE_TOKEN was unset (`if: env.FIREBASE_TOKEN != ''`), so a missing secret
+      # looked exactly like a successful deploy — a green check on a run that deployed
+      # nothing. That is precisely how rules drift goes unnoticed.
+      - name: Verify deploy credentials are present
         env:
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
-        if: env.FIREBASE_TOKEN != ''
-        run: npx -y firebase-tools deploy --only firestore --project studio-9220106300-f74cb --non-interactive --token "$FIREBASE_TOKEN"
+        run: |
+          if [ -z "$FIREBASE_TOKEN" ]; then
+            echo "::error::FIREBASE_TOKEN is not set. Rules and indexes were NOT deployed."
+            echo "Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      # Compile-check before releasing. `deploy` would catch a syntax error too, but
+      # this fails in seconds and keeps a broken ruleset from being the thing that
+      # discovers the problem.
+      - name: Validate rules compile
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npx -y firebase-tools deploy \
+            --only firestore:rules,storage \
+            --project studio-9220106300-f74cb \
+            --non-interactive \
+            --dry-run \
+            --token "$FIREBASE_TOKEN"
+
+      # CAUTION: no --force. firebase-tools only CREATES indexes by default; deleting
+      # an index that exists in the project but not in firestore.indexes.json requires
+      # confirmation, which --non-interactive declines. Adding --force here would let a
+      # bad diff drop live indexes and take production queries down. Delete indexes by
+      # hand, deliberately.
+      - name: Deploy Firestore rules + indexes and Storage rules
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: |
+          npx -y firebase-tools deploy \
+            --only firestore:rules,firestore:indexes,storage \
+            --project studio-9220106300-f74cb \
+            --non-interactive \
+            --token "$FIREBASE_TOKEN"
