@@ -30,7 +30,6 @@ permissions:
 env:
   PROJECT_ID: studio-9220106300-f74cb
   REGION: us-central1
-  SERVICE: smartsapp-app
   REPOSITORY: app-images
 
 jobs:
@@ -40,6 +39,21 @@ jobs:
     timeout-minutes: 40
     # Guard the manual path so an accidental dispatch cannot deploy.
     if: github.event_name == 'push' || github.event.inputs.confirm == 'deploy'
+
+    # ONE image, TWO services. The client app and the control plane run the same build and
+    # are separated at runtime by APP_SURFACE — see src/lib/platform/app-surface.ts. Do not
+    # split this into two builds: they must be the same artifact, or the surfaces can drift.
+    strategy:
+      # Deploy the surfaces one at a time: the backoffice leg consumes the image the client
+      # leg pushes, so they cannot run in parallel.
+      max-parallel: 1
+      fail-fast: true
+      matrix:
+        include:
+          - surface: client
+            service: smartsapp-app
+          - surface: backoffice
+            service: smartsapp-backoffice
 
     steps:
       - name: Checkout
@@ -59,16 +73,25 @@ jobs:
       - name: Configure Docker for Artifact Registry
         run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
 
+      # Only the client leg builds and pushes; both legs deploy the SAME tag. Building twice
+      # would waste ~4 minutes and, worse, could produce two different artifacts.
       - name: Build image
+        if: matrix.surface == 'client'
         run: |
-          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}:${GITHUB_SHA}"
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/smartsapp-app:${GITHUB_SHA}"
           echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
           docker build \
             --build-arg NEXT_PUBLIC_APP_URL="https://go.smartsapp.com" \
             -t "$IMAGE" .
 
       - name: Push image
+        if: matrix.surface == 'client'
         run: docker push "$IMAGE"
+
+      # The backoffice leg does not build, so it needs the tag computed here too.
+      - name: Resolve image tag
+        if: matrix.surface != 'client'
+        run: echo "IMAGE=${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/smartsapp-app:${GITHUB_SHA}" >> "$GITHUB_ENV"
 
       # Runtime configuration mirrors the App Hosting service exactly. Secrets are read
       # from Secret Manager at runtime — never baked into the image, never passed as build
@@ -87,7 +110,7 @@ jobs:
       # are not parsed as separate variables.
       - name: Deploy to Cloud Run
         run: |
-          gcloud run deploy "$SERVICE" \
+          gcloud run deploy "${{ matrix.service }}" \
             --image "$IMAGE" \
             --project "$PROJECT_ID" \
             --region "$REGION" \
@@ -99,7 +122,7 @@ jobs:
             --max-instances 10 \
             --concurrency 80 \
             --service-account "${{ secrets.GCP_RUNTIME_SA }}" \
-            --set-env-vars "^@^APP_SURFACE=client@PUBLIC_APP_ORIGIN=https://go.smartsapp.com@NEXT_PUBLIC_APP_URL=https://go.smartsapp.com@NEXT_TELEMETRY_DISABLED=1@FIREBASE_CONFIG={\"databaseURL\":\"\",\"projectId\":\"studio-9220106300-f74cb\",\"storageBucket\":\"studio-9220106300-f74cb.firebasestorage.app\"}" \
+            --set-env-vars "^@^APP_SURFACE=${{ matrix.surface }}@PUBLIC_APP_ORIGIN=https://go.smartsapp.com@NEXT_PUBLIC_APP_URL=https://go.smartsapp.com@NEXT_TELEMETRY_DISABLED=1@FIREBASE_CONFIG={\"databaseURL\":\"\",\"projectId\":\"studio-9220106300-f74cb\",\"storageBucket\":\"studio-9220106300-f74cb.firebasestorage.app\"}" \
             --set-secrets "CRON_SECRET=cron-secret:latest,WHATSAPP_ENCRYPTION_KEY=whatsapp-encryption-key:latest,RESEND_WEBHOOK_SECRET=resend-webhook-secret:latest,RESEND_API_KEY=resend-api-key:latest,MNOTIFY_API_KEY=mnotify-api-key:latest,ONESIGNAL_APP_ID=onesignal-app-id:latest,ONESIGNAL_REST_API_KEY=onesignal-rest-api-key:latest,CLOUD_TASKS_SECRET=CLOUD_TASKS_SECRET:latest" \
             --no-allow-unauthenticated
 
@@ -111,7 +134,7 @@ jobs:
       # works. The deploy service account holds roles/run.invoker for exactly this.
       - name: Smoke test the new revision
         run: |
-          URL=$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')
+          URL=$(gcloud run services describe "${{ matrix.service }}" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')
           echo "Deployed: $URL"
           # Workload Identity Federation credentials cannot mint an identity token
           # directly ("No identity token can be obtained from the current credentials"),
@@ -135,14 +158,25 @@ jobs:
             echo "$code"
           }
 
-          # /login exercises routing and rendering without touching Firestore.
-          login=$(check /login "2xx/3xx" | tail -1)
-          # / is server-rendered and DOES touch Firestore, so it proves the runtime service
-          # account's ambient credentials work — the thing that broke locally.
-          home=$(check / "2xx/3xx" | tail -1)
+          # Check pages that mean something ON THIS SURFACE.
+          #
+          # On the client surface, / is server-rendered AND touches Firestore, so it proves
+          # the runtime service account's ambient credentials resolve — the exact thing that
+          # broke locally, and which /login alone would not have caught.
+          #
+          # On the backoffice surface, / merely redirects to the client origin, so checking
+          # it would prove nothing. /backoffice is the surface's own route; unauthenticated
+          # it redirects to /login, which is a healthy 307.
+          if [ "${{ matrix.surface }}" = "backoffice" ]; then
+            a=$(check /backoffice "2xx/3xx" | tail -1)
+            b=$(check /login "2xx/3xx" | tail -1)
+          else
+            a=$(check /login "2xx/3xx" | tail -1)
+            b=$(check / "2xx/3xx" | tail -1)
+          fi
 
           fail=0
-          for code in "$login" "$home"; do
+          for code in "$a" "$b"; do
             case "$code" in 200|301|302|307|308) ;; *) fail=1 ;; esac
           done
           if [ "$fail" -eq 1 ]; then
