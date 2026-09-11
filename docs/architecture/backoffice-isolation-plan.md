@@ -27,9 +27,9 @@ the duration.
 | Stage | Scope | Client risk | Status |
 | --- | --- | --- | --- |
 | **A** | Outbound kill switch + runtime controls + staging backend | None (additive) | ☑ **Code complete** — console step A6.7 pending |
-| **B** | Backoffice backend + `goadmin` domain | None (additive) | ☐ Not started |
-| **C** | Hostname gating + public-origin pin | **Yes — the only client-affecting stage** | ☐ Not started |
-| **D** | True build isolation (optional) | Medium | ☐ Not started |
+| **B** | Backoffice backend + `goadmin` domain | None (additive) | ☑ **Config committed** — console steps B2-B5 pending |
+| **C** | Hostname gating + public-origin pin | **Yes — the only client-affecting stage** | ☑ **Code complete** — deploy + verify pending |
+| **D** | True build isolation — **now the priority: the deploy build is failing** | Medium | ☐ Not started |
 
 Update this table as stages land. A stage is only "done" when its verification block passes.
 
@@ -911,7 +911,7 @@ Expected: `OK blocked: Outbound email is disabled…`
 
 **Files:** Create `apphosting.backoffice.yaml`
 
-- [ ] **Step 1: Create the file**
+- [x] **Step 1: Create the file**
 
 ```yaml
 # Backoffice control plane — goadmin.smartsapp.com.
@@ -951,7 +951,7 @@ env:
     secret: CLOUD_TASKS_SECRET
 ```
 
-- [ ] **Step 2: Commit**
+- [x] **Step 2: Commit**
 
 ```bash
 git add apphosting.backoffice.yaml
@@ -987,7 +987,7 @@ host into customer emails.
 - Modify: `src/lib/utils/url-helpers.ts`
 - Test: `src/lib/utils/__tests__/url-helpers-surface.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, it, expect, afterEach, vi } from 'vitest';
@@ -1015,12 +1015,12 @@ describe('getRequestBaseUrl on the backoffice surface', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch the first case fail**
+- [x] **Step 2: Run it and watch the first case fail**
 
 Run: `npx vitest run src/lib/utils/__tests__/url-helpers-surface.test.ts`
 Expected: the backoffice case FAILS, returning the admin host.
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 In `getRequestBaseUrl()`, before reading headers:
 
@@ -1037,9 +1037,9 @@ In `getRequestBaseUrl()`, before reading headers:
   }
 ```
 
-- [ ] **Step 4: Run tests — expect PASS**
+- [x] **Step 4: Run tests — expect PASS**
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/lib/utils/url-helpers.ts src/lib/utils/__tests__/url-helpers-surface.test.ts
@@ -1052,7 +1052,7 @@ git commit -m "fix(links): pin customer-facing origin off the client surface"
 - Modify: `src/proxy.ts`
 - Test: `src/__tests__/proxy-surface.test.ts`
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
 
 ```ts
 import { describe, it, expect, afterEach, vi } from 'vitest';
@@ -1116,11 +1116,11 @@ describe('unset surface behaves exactly as today', () => {
 });
 ```
 
-- [ ] **Step 2: Run it and watch it fail**
+- [x] **Step 2: Run it and watch it fail**
 
 Run: `npx vitest run src/__tests__/proxy-surface.test.ts`
 
-- [ ] **Step 3: Implement**
+- [x] **Step 3: Implement**
 
 Add near the top of `proxy()`, after the legacy `/s/` rewrite:
 
@@ -1149,14 +1149,14 @@ Add near the top of `proxy()`, after the legacy `/s/` rewrite:
   }
 ```
 
-- [ ] **Step 4: Run the surface tests — expect PASS (7 tests)**
+- [x] **Step 4: Run the surface tests — expect PASS (7 tests)**
 
-- [ ] **Step 5: Run the existing proxy suite — must not regress**
+- [x] **Step 5: Run the existing proxy suite — must not regress**
 
 Run: `npx vitest run src/__tests__/proxy-session-redirect.test.ts`
 Expected: all 43 still pass.
 
-- [ ] **Step 6: Commit**
+- [x] **Step 6: Commit**
 
 ```bash
 git add src/proxy.ts src/__tests__/proxy-surface.test.ts
@@ -1165,7 +1165,7 @@ git commit -m "feat(proxy): gate routes by deployment surface"
 
 ### Task C3: Turn the client surface on
 
-- [ ] **Step 1: Add to `apphosting.yaml`**
+- [x] **Step 1: Add to `apphosting.yaml`**
 
 ```yaml
   - variable: APP_SURFACE
@@ -1176,14 +1176,14 @@ git commit -m "feat(proxy): gate routes by deployment surface"
     availability: [BUILD, RUNTIME]
 ```
 
-- [ ] **Step 2: Verify locally before it ships**
+- [x] **Step 2: Verify locally before it ships**
 
 ```bash
 APP_SURFACE=client npm run build
 ```
 Expected: build succeeds.
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add apphosting.yaml
