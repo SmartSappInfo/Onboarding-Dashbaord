@@ -5,6 +5,20 @@ const nextConfig: NextConfig = {
   // Allow HMR from network IP in development
   allowedDevOrigins: ['10.155.120.120'],
 
+  // Container builds emit a self-contained server; everything else is unchanged.
+  //
+  // WHY THIS IS OPT-IN
+  // App Hosting's build adapter rewrites next.config at build time, and `dev` and the CI
+  // build-verification job both expect the ordinary output. Gating on an env var means
+  // enabling container builds cannot alter any build that exists today — set
+  // BUILD_STANDALONE=true only in the Docker build.
+  //
+  // CAUTION: standalone ships only files Next traced as module imports. Anything read from
+  // disk at RUNTIME must be copied into the image explicitly — see the Dockerfile. Today
+  // that means `public/` (the extension download route) and `data/` (the disposable-email
+  // blocklist, which otherwise silently degrades to a much smaller built-in list).
+  ...(process.env.BUILD_STANDALONE === 'true' ? { output: 'standalone' as const } : {}),
+
   // TYPE CHECKING IS OWNED BY CI, NOT BY THE DEPLOY BUILD.
   //
   // Do not "restore" this to false without reading this first — it has been flipped twice.

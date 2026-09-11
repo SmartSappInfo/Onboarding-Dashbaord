@@ -1,0 +1,102 @@
+# Build the container in CI and deploy it to Cloud Run.
+#
+# WHY THIS EXISTS
+# The identical `pnpm build` completes in ~4.5 minutes on a GitHub runner (4 vCPU / 16 GB)
+# and times out after 57m50s on App Hosting's Cloud Build machine (2 vCPU / 8 GB, not
+# configurable). The app is not too large to build — that builder is too small, and once it
+# swaps the build collapses. Building here removes the constraint rather than negotiating
+# with it. See docs/architecture/backoffice-isolation-plan.md.
+#
+# CAUTION: this deploys to its OWN Cloud Run service, deliberately separate from the
+# App Hosting-managed `studio` service. App Hosting owns that one and would fight us for
+# it. The domain is only moved once this service is proven.
+
+name: Deploy to Cloud Run
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: 'Type "deploy" to confirm'
+        required: true
+        default: ''
+  push:
+    branches: [staging]
+
+permissions:
+  contents: read
+  id-token: write   # required for Workload Identity Federation
+
+env:
+  PROJECT_ID: studio-9220106300-f74cb
+  REGION: us-central1
+  SERVICE: smartsapp-app
+  REPOSITORY: app-images
+
+jobs:
+  build-and-deploy:
+    name: Build image and deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # Guard the manual path so an accidental dispatch cannot deploy.
+    if: github.event_name == 'push' || github.event.inputs.confirm == 'deploy'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Keyless auth. Deliberately NOT a service-account JSON key: this repository is
+      # public and has already leaked credentials once (see docs/audit/app_audit.md).
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER }}
+          service_account: ${{ secrets.GCP_DEPLOY_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+
+      - name: Build image
+        run: |
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT_ID}/${REPOSITORY}/${SERVICE}:${GITHUB_SHA}"
+          echo "IMAGE=$IMAGE" >> "$GITHUB_ENV"
+          docker build \
+            --build-arg NEXT_PUBLIC_APP_URL="https://go.smartsapp.com" \
+            -t "$IMAGE" .
+
+      - name: Push image
+        run: docker push "$IMAGE"
+
+      # Runtime configuration mirrors the App Hosting service exactly. Secrets are read
+      # from Secret Manager at runtime — never baked into the image, never passed as build
+      # args, because build args persist in image history.
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy "$SERVICE" \
+            --image "$IMAGE" \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --platform managed \
+            --port 8080 \
+            --cpu 1 \
+            --memory 1Gi \
+            --min-instances 0 \
+            --max-instances 10 \
+            --concurrency 80 \
+            --service-account "${{ secrets.GCP_RUNTIME_SA }}" \
+            --set-env-vars "APP_SURFACE=client,PUBLIC_APP_ORIGIN=https://go.smartsapp.com,NEXT_PUBLIC_APP_URL=https://go.smartsapp.com,NEXT_TELEMETRY_DISABLED=1" \
+            --set-secrets "CRON_SECRET=cron-secret:latest,WHATSAPP_ENCRYPTION_KEY=whatsapp-encryption-key:latest,RESEND_WEBHOOK_SECRET=resend-webhook-secret:latest,RESEND_API_KEY=resend-api-key:latest,MNOTIFY_API_KEY=mnotify-api-key:latest,ONESIGNAL_APP_ID=onesignal-app-id:latest,ONESIGNAL_REST_API_KEY=onesignal-rest-api-key:latest,CLOUD_TASKS_SECRET=CLOUD_TASKS_SECRET:latest" \
+            --no-allow-unauthenticated
+
+      # A deploy that returns 200 on a real page is the only result worth reporting.
+      - name: Smoke test the new revision
+        run: |
+          URL=$(gcloud run services describe "$SERVICE" --project "$PROJECT_ID" --region "$REGION" --format='value(status.url)')
+          echo "Deployed: $URL"
+          code=$(curl -o /dev/null -s -w '%{http_code}' --max-time 30 "$URL/login" || echo 000)
+          echo "GET /login -> $code"
+          # 200 or a redirect are both healthy; anything else means the revision is not serving.
+          case "$code" in 200|301|302|307|308) echo "healthy" ;; *) echo "unhealthy"; exit 1 ;; esac

@@ -1,0 +1,14 @@
+# Keep the build context small — it is uploaded to the daemon on every build.
+node_modules
+.next
+.git
+.github
+coverage
+test-results
+playwright-report
+docs
+*.md
+.env
+.env.*
+!.env.test.example
+serviceAccountKey.json
