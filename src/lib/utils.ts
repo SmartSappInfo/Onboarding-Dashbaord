@@ -85,39 +85,63 @@ export function getContrastColor(hex: string): string {
 }
 
 /**
+ * Ordered rewrite steps used by `stripHtml`.
+ *
+ * PERFORMANCE (vercel-react-best-practices `js-hoist-regexp`): these literals used to
+ * live inside the function body, so every call allocated ~18 RegExp objects. `stripHtml`
+ * has ~98 call sites, several of them inside render paths that re-run on each keystroke
+ * (e.g. the survey stepper's section labels). Hoisting makes the allocation one-time.
+ *
+ * CAUTION: order is significant — block removals (comment/style/script/xml/head) must run
+ * before the generic tag sweep, and entity decoding must run after it. Do not reorder.
+ *
+ * SAFETY: `String.prototype.replace` resets a global RegExp's `lastIndex`, so sharing
+ * these `/g` literals across calls is safe. Never reuse them with `.test()` or `.exec()`.
+ */
+const STRIP_HTML_STEPS: ReadonlyArray<readonly [RegExp, string]> = [
+  // 1. Remove HTML comments
+  [/<!--[\s\S]*?-->/g, ''],
+  // 2. Remove <style> blocks including internal CSS rules
+  [/<style[^>]*>[\s\S]*?<\/style>/gi, ''],
+  // 3. Remove <script> blocks including internal JS scripts
+  [/<script[^>]*>[\s\S]*?<\/script>/gi, ''],
+  // 4. Remove <xml> and <?xml> blocks
+  [/<xml[^>]*>[\s\S]*?<\/xml>/gi, ''],
+  [/<\?xml[^>]*\?>/gi, ''],
+  // 5. Remove <head> blocks
+  [/<head[^>]*>[\s\S]*?<\/head>/gi, ''],
+  // 6. Remove remaining HTML/XML tags
+  [/<[^>]+>/g, ''],
+  // 8. Decode HTML entities
+  [/&nbsp;/gi, ' '],
+  [/&amp;/gi, '&'],
+  [/&lt;/gi, '<'],
+  [/&gt;/gi, '>'],
+  [/&quot;/gi, '"'],
+  [/&#39;/gi, "'"],
+  [/&rsquo;/gi, "'"],
+  [/&lsquo;/gi, "'"],
+  [/&rdquo;/gi, '"'],
+  [/&ldquo;/gi, '"'],
+  // 9. Clean up multiple spaces and empty lines
+  [/[ \t]+/g, ' '],
+  [/\n\s*\n/g, '\n'],
+];
+
+/**
  * Strips all HTML tags, script/style blocks, embedded CSS rules, and HTML entities from a string to return clean plain text.
+ *
+ * NOTE: this decodes entities, so `&lt;b&gt;` comes back out as the literal text `<b>`.
+ * When the destination is a UI text sink, prefer `toDisplayText` from
+ * `@/lib/utils/display-text`, which re-sweeps and guarantees no tag survives.
  */
 export function stripHtml(html: string): string {
   if (!html) return '';
-  return html
-    // 1. Remove HTML comments
-    .replace(/<!--[\s\S]*?-->/g, '')
-    // 2. Remove <style> blocks including internal CSS rules
-    .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-    // 3. Remove <script> blocks including internal JS scripts
-    .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-    // 4. Remove <xml> and <?xml> blocks
-    .replace(/<xml[^>]*>[\s\S]*?<\/xml>/gi, '')
-    .replace(/<\?xml[^>]*\?>/gi, '')
-    // 5. Remove <head> blocks
-    .replace(/<head[^>]*>[\s\S]*?<\/head>/gi, '')
-    // 6. Remove remaining HTML/XML tags
-    .replace(/<[^>]+>/g, '')
-    // 8. Decode HTML entities
-    .replace(/&nbsp;/gi, ' ')
-    .replace(/&amp;/gi, '&')
-    .replace(/&lt;/gi, '<')
-    .replace(/&gt;/gi, '>')
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;/gi, "'")
-    .replace(/&rsquo;/gi, "'")
-    .replace(/&lsquo;/gi, "'")
-    .replace(/&rdquo;/gi, '"')
-    .replace(/&ldquo;/gi, '"')
-    // 9. Clean up multiple spaces and empty lines
-    .replace(/[ \t]+/g, ' ')
-    .replace(/\n\s*\n/g, '\n')
-    .trim();
+  let out = html;
+  for (const [pattern, replacement] of STRIP_HTML_STEPS) {
+    out = out.replace(pattern, replacement);
+  }
+  return out.trim();
 }
 
 /**
