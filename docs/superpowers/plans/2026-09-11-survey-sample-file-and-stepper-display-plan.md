@@ -14,6 +14,57 @@
 
 ---
 
+## 0. Progress (updated 2026-09-11)
+
+| Phase | Status | Commit |
+|---|---|---|
+| 0 — Baseline | ✅ Done | typecheck 0 errors, suite exit 0 |
+| 1 — `toDisplayText` | ✅ Done | `4c221442` |
+| 2 — Stepper display fix | ✅ Done | `4560ef09` |
+| 3 — Types + sample resolver | ✅ Done | `4560ef09` |
+| 4 — Shared card | ✅ Done | `d0dd8775` |
+| 5 — Design-mode authoring | ✅ Done | `5487a975` |
+| 6 — Public client render | ✅ Done | `5487a975` |
+| 7 — Design-mode previews | ✅ Done | `5487a975` |
+| 8 — Type-switch preservation | ✅ Done | `5487a975` |
+| 9 — Storage rules & hardening | ✅ Code done, **deploy blocked** | `6b55bb40` |
+| 10 — Backoffice | ⬜ Not started | — |
+| 11 — Optional extras | ⬜ Parked | — |
+| 12 — Verify & deploy | 🟡 Verified; **deploy blocked on B1** | — |
+
+**Verification after Phase 9:** `pnpm typecheck` 0 errors · `pnpm lint` 0 errors / 636 warnings (ceiling 645, none in new files) · `pnpm test:run` 593 files passed, 4419 tests, 0 failures.
+
+**New tests added:** 77 across 5 suites, all importing the shipped symbols.
+
+### Blockers
+
+**B1 — Storage rules deploy is unsafe without confirmation.**
+`firebase.json` never had a `storage` target (E11), so `storage.rules` in this repo has
+never been deployed and **what is live in `studio-9220106300-f74cb` is unknown**. Adding
+the target makes `firebase deploy --only storage` overwrite the live ruleset with this
+file. If the console ruleset differs, that is a breaking change to a production surface.
+Needs the live ruleset compared against this file before any deploy.
+
+**B2 — Anonymous `getDownloadURL` is unverified (depends on B1).**
+`survey-uploads/**` is `allow read: if isSignedIn()`, `initiateAnonymousSignIn` exists but
+is never called, and the upload flow calls `getDownloadURL()` immediately after upload —
+which requires `read`. Either the live rules are more permissive than this file, or public
+file uploads fail at the final step. An attempt to confirm empirically against production
+Firestore was blocked by the sandbox. **Do not widen `read` to `if true` speculatively** —
+these are respondent-submitted files (staff rosters, parent/student data).
+
+### Deviations from the plan as written
+
+- Helpers live in focused modules (`src/lib/surveys/stepper-label.ts`, `sample-file.ts`,
+  `sample-file-bridge.ts`) rather than being appended to `survey-file-utils.ts`, per
+  `writing-plans` ("prefer smaller, focused files").
+- `SurveySampleFileCard` hides the file-name sub-line when it is already the heading —
+  found by a test, fixed in the component rather than by loosening the assertion.
+- `extractFileNameFromStorageUrl` needed widening for the new collision-safe upload path;
+  not foreseen in the plan, covered by two new tests.
+
+---
+
 ## 1. Evidence Base (verified before planning)
 
 | # | Finding | Evidence |
