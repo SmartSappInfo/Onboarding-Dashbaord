@@ -1,5 +1,38 @@
 rules_version = '2';
 
+// ─────────────────────────────────────────────────────────────────────────────
+// CRITICAL CONTEXT FOR FUTURE MAINTAINERS — READ BEFORE EDITING
+//
+// The ruleset live in production until 2026-09-11 opened with:
+//
+//     match /{allPaths=**} { allow write, read; }
+//
+// An `allow` with NO `if` clause is an UNCONDITIONAL grant. That single line made
+// the entire bucket world-readable AND world-writable to anonymous callers —
+// survey uploads (staff rosters, parent/student records), PDFs, the media library
+// and note attachments could all be read, overwritten or deleted by anyone. It had
+// been live since 2026-03-03 and was never caught because `firebase.json` carried
+// no `storage` target, so this file was never deployed and nobody diffed the two.
+//
+// RULES THAT MUST BE PRESERVED:
+//  1. NEVER write a bare `allow read;` or `allow write;`. Always attach a condition.
+//     A broad match that grants access wins over narrower matches below it — Cloud
+//     Storage ORs every matching rule, it does not take the most specific one.
+//  2. `firebase.json` MUST keep its `storage` target, or this file silently stops
+//     being the source of truth again.
+//
+// HOW READS ACTUALLY WORK HERE (verified, not assumed):
+//  - `getDownloadURL()` IS gated by these rules — it reads object metadata.
+//  - The tokenized URL it returns (`?alt=media&token=…`) BYPASSES these rules.
+// So tightening read access does NOT break already-rendered images: those use
+// tokenized URLs. It only governs who may MINT a URL in the first place. That is
+// why the two anonymous upload paths below need `get`.
+//
+// `list` is denied to anonymous callers everywhere. Enumeration is the difference
+// between "an attacker must guess one exact path" and "an attacker can harvest the
+// whole bucket", and it is the control that actually protects respondent data.
+// ─────────────────────────────────────────────────────────────────────────────
+
 service firebase.storage {
   match /b/{bucket}/o {
     // Helper function for authenticated users
@@ -7,21 +40,47 @@ service firebase.storage {
       return request.auth != null;
     }
 
-    // Helper function for max file size (25MB max)
+    // Helper function for max file size
     function isUnderMaxSize(maxBytes) {
       return request.resource.size < maxBytes;
     }
 
-    // 1. Profile Pictures: Publicly readable; writable only by the profile owner
+    // Content types the product actually offers as survey/respondent uploads.
+    // Spreadsheets and archives are included because the survey builder offers
+    // "Spreadsheets (.xlsx, .xls, .csv)" and "Archives (.zip, .rar, .7z)". They were
+    // previously absent, so every .xlsx upload was rejected — the single most common
+    // case for a data-collection survey.
+    function isAllowedDocumentType() {
+      return request.resource.contentType.matches(
+        'image/.*' +
+        '|application/pdf' +
+        '|text/.*' +
+        '|application/msword' +
+        '|application/vnd.openxmlformats-officedocument.wordprocessingml.document' +
+        '|application/vnd.ms-excel' +
+        '|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' +
+        '|application/vnd.oasis.opendocument.spreadsheet' +
+        '|application/vnd.oasis.opendocument.text' +
+        '|application/zip' +
+        '|application/x-zip-compressed' +
+        '|application/x-7z-compressed' +
+        '|application/vnd.rar' +
+        '|application/x-rar-compressed'
+      );
+    }
+
+    // 1. Profile Pictures: publicly readable; writable only by the profile owner.
     match /profile-pictures/{userId}/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId &&
         isUnderMaxSize(5 * 1024 * 1024) &&
         request.resource.contentType.matches('image/.*');
     }
 
     match /profile-pictures/{userId} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.auth.uid == userId &&
         isUnderMaxSize(5 * 1024 * 1024) &&
         request.resource.contentType.matches('image/.*');
@@ -29,74 +88,84 @@ service firebase.storage {
 
     // 2. Public Static Assets (logos, public media, brand templates)
     match /public/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && isUnderMaxSize(10 * 1024 * 1024);
     }
 
-    // 3. Media Library: Public read for published media; authenticated write with size limits
+    // 3. Media Library: public read for published media; authenticated write.
+    //
+    // Public `get` is REQUIRED here, not incidental: survey sample-file templates are
+    // stored under this prefix and are downloaded by signed-out survey respondents.
+    // See `SAMPLE_FILE_ALLOWED_HOSTS` in src/lib/surveys/sample-file.ts.
     match /media/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && isUnderMaxSize(50 * 1024 * 1024);
     }
 
     // 4. PDFs & Documents
     match /pdfs/{allPaths=**} {
-      allow read: if true;
+      allow get: if true;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && isUnderMaxSize(30 * 1024 * 1024);
     }
 
-    // 5. Survey Uploads: anonymous respondents submitting files on a public survey.
+    // 5. Survey Uploads: files submitted by anonymous respondents on a public survey.
     //
-    // WRITE IS INTENTIONALLY UNAUTHENTICATED. Public surveys are answered by people who
-    // are not signed in, so requiring auth here would break every public file question.
+    // WRITE IS INTENTIONALLY UNAUTHENTICATED. Public surveys are answered by people
+    // who are not signed in; requiring auth breaks every public file question.
+    // Cloud Storage rules CANNOT read Firestore, so this cannot verify that
+    // {surveyId} exists or is published. Path shape, size and content type are the
+    // only controls available at this layer.
     //
-    // CAUTION: Cloud Storage rules CANNOT read Firestore (get()/exists() are a Firestore
-    // rules feature), so this rule cannot verify that {surveyId} exists or is published.
-    // The only controls available at this layer are the path shape, the size cap and the
-    // content-type allowlist below. Closing the remaining surface requires moving these
-    // uploads behind a server-mediated signed URL — tracked, not done here.
+    // `get` is public because the respondent's own client calls getDownloadURL()
+    // immediately after upload and is anonymous, so there is no identity to match on.
+    // `list` is denied, which is what stops the prefix being harvested.
     //
-    // SIZE: 25 MB matches the maximum the survey builder offers and the "Max 25MB" hint
-    // shown on the dropzone. These two numbers MUST move together — when they drifted
-    // (rule 20 MB vs UI 25 MB) uploads failed at the rule with no useful client error.
+    // KNOWN RESIDUAL RISK: someone who guesses an exact object path can read that one
+    // file. The proper fix is to mint the URL server-side and drop public `get`
+    // entirely — tracked, deliberately not bundled into this security rollout.
     //
-    // CONTENT TYPES: spreadsheets and archives are included because the builder offers
-    // "Spreadsheets (.xlsx, .xls, .csv)" and "Archives (.zip, .rar, .7z)" as allowed
-    // types. They were previously missing, so every .xlsx upload was rejected here — the
-    // single most common case for a data-collection survey.
+    // `create` only: `write` would also grant update and delete, which let anyone who
+    // knew a path overwrite a submitted response after it had been reviewed.
     //
-    // WHY create IS SPLIT OUT FROM write:
-    // `write` grants create + update + delete. With an unauthenticated write rule that
-    // meant anyone who knew an object's path could OVERWRITE a respondent's submitted
-    // file — including the respondent themselves, after the response had been reviewed.
-    // Granting only `create` makes a submitted file immutable. Deletion is handled by
-    // server-side tooling through the Admin SDK, which bypasses these rules.
+    // SIZE: 25 MB matches the survey builder's maximum and the dropzone's "Max 25MB"
+    // hint. These MUST move together — when they drifted (rule 20 MB vs UI 25 MB)
+    // uploads failed here with no useful client-side error.
     match /survey-uploads/{allPaths=**} {
-      allow read: if isSignedIn();
+      allow get: if true;
+      allow list: if isSignedIn();
       allow update, delete: if false;
-      allow create: if isUnderMaxSize(25 * 1024 * 1024) &&
-        request.resource.contentType.matches(
-          'image/.*' +
-          '|application/pdf' +
-          '|text/.*' +
-          '|application/msword' +
-          '|application/vnd.openxmlformats-officedocument.wordprocessingml.document' +
-          '|application/vnd.ms-excel' +
-          '|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' +
-          '|application/vnd.oasis.opendocument.spreadsheet' +
-          '|application/vnd.oasis.opendocument.text' +
-          '|application/zip' +
-          '|application/x-zip-compressed' +
-          '|application/x-7z-compressed' +
-          '|application/vnd.rar' +
-          '|application/x-rar-compressed'
-        );
+      allow create: if isUnderMaxSize(25 * 1024 * 1024) && isAllowedDocumentType();
     }
 
-    // 6. Quick Notes Attachments
+    // 6. Facilitator Photos: uploaded by anonymous facilitators on the public meeting
+    // joining page (src/components/joining-page-client.tsx). Same anonymous
+    // upload-then-getDownloadURL shape as survey uploads, so the same posture applies.
+    //
+    // CAUTION: this prefix was missing from this file entirely. It only worked because
+    // the unconditional catch-all above allowed everything; omitting it here would
+    // have broken facilitator photo uploads on the first real deploy.
+    match /facilitator-pictures/{allPaths=**} {
+      allow get: if true;
+      allow list: if isSignedIn();
+      allow update, delete: if false;
+      allow create: if isUnderMaxSize(10 * 1024 * 1024) &&
+        request.resource.contentType.matches('image/.*');
+    }
+
+    // 7. Quick Notes Attachments: internal workspace content, never public.
     match /quick-notes/{allPaths=**} {
-      allow read: if isSignedIn();
+      allow get, list: if isSignedIn();
       allow write: if isSignedIn() && isUnderMaxSize(25 * 1024 * 1024);
+    }
+
+    // 8. Default deny. Written explicitly so the posture is visible rather than
+    // implied. Anything not matched above is denied to the client SDK; server-side
+    // code uses the Admin SDK, which bypasses these rules entirely.
+    match /{allPaths=**} {
+      allow read, write: if false;
     }
   }
 }
