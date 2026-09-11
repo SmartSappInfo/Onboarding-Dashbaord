@@ -413,7 +413,16 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question, interpolate
 
     const storage = getStorage();
     const cleanFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
-    const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${cleanFileName}`;
+    // CAUTION: the timestamp alone is NOT unique. Two respondents uploading a file with
+    // the same name in the same millisecond produced the same path, and the second upload
+    // silently overwrote the first — losing a submitted answer with no error anywhere.
+    //
+    // The segment MUST stay exactly 6 lower-case alphanumerics: that is the shape
+    // `UPLOAD_PREFIX_PATTERN` in `survey-response-utils` strips when deriving the display
+    // name. Change one and the other stops matching, and respondents start seeing the
+    // random segment in their file names.
+    const uniqueSuffix = Math.random().toString(36).slice(2, 8).padEnd(6, '0');
+    const storagePath = `survey-uploads/${surveyId}/${Date.now()}-${uniqueSuffix}-${cleanFileName}`;
     const storageRef = ref(storage, storagePath);
     const task = uploadBytesResumable(storageRef, file);
 

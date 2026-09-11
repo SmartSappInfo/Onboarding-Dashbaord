@@ -794,12 +794,18 @@ export default function BlockSettingsSidebar({
                                                 <SelectTrigger className="h-11 bg-card border border-border/50 rounded-xl font-bold">
                                                     <SelectValue placeholder="Select max size..." />
                                                 </SelectTrigger>
+                                                {/*
+                                                  * CAUTION: 25 MB is the ceiling enforced by
+                                                  * `storage.rules` → `match /survey-uploads/{allPaths=**}`.
+                                                  * Offering 50/100 MB here was a trap: the upload passed
+                                                  * client validation and then failed at the Storage rule,
+                                                  * which surfaces only as a generic error. If you raise
+                                                  * this list, raise the rule in the SAME change.
+                                                  */}
                                                 <SelectContent className="rounded-xl border-border/50">
                                                     <SelectItem value="5">5 MB</SelectItem>
                                                     <SelectItem value="10">10 MB</SelectItem>
                                                     <SelectItem value="25">25 MB (Recommended)</SelectItem>
-                                                    <SelectItem value="50">50 MB</SelectItem>
-                                                    <SelectItem value="100">100 MB</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         )}

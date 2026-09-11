@@ -45,6 +45,19 @@ describe('Survey File Upload & Target Field Mapping Engine', () => {
       expect(extractFileNameFromStorageUrl(url)).toBe('Staff_Data_2026.xlsx');
     });
 
+    // Uploads now carry a random collision segment after the timestamp, because the
+    // timestamp alone let two same-millisecond uploads of the same name overwrite
+    // each other. The displayed name must be unchanged by that.
+    it('extracts clean filename from the collision-safe upload prefix', () => {
+      const url = 'https://firebasestorage.googleapis.com/v0/b/app.appspot.com/o/survey-uploads%2Fsurv_123%2F1723456789-a1b2c3-Staff_Data_2026.xlsx?alt=media&token=abc';
+      expect(extractFileNameFromStorageUrl(url)).toBe('Staff_Data_2026.xlsx');
+    });
+
+    it('keeps a hyphenated filename intact when it carries no upload prefix', () => {
+      const url = 'https://firebasestorage.googleapis.com/v0/b/app.appspot.com/o/survey-uploads%2Fsurv_123%2FStaff-Data-2026.xlsx?alt=media';
+      expect(extractFileNameFromStorageUrl(url)).toBe('Staff-Data-2026.xlsx');
+    });
+
     it('extracts clean filename when no timestamp delimiter is present', () => {
       const url = 'https://firebasestorage.googleapis.com/v0/b/app.appspot.com/o/survey-uploads%2Fsurv_123%2FStudents_List.csv?alt=media';
       expect(extractFileNameFromStorageUrl(url)).toBe('Students_List.csv');

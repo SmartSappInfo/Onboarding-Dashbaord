@@ -45,11 +45,52 @@ service firebase.storage {
       allow write: if isSignedIn() && isUnderMaxSize(30 * 1024 * 1024);
     }
 
-    // 5. Survey Uploads: Allow public/authenticated submission uploads with size caps & safe MIME types
+    // 5. Survey Uploads: anonymous respondents submitting files on a public survey.
+    //
+    // WRITE IS INTENTIONALLY UNAUTHENTICATED. Public surveys are answered by people who
+    // are not signed in, so requiring auth here would break every public file question.
+    //
+    // CAUTION: Cloud Storage rules CANNOT read Firestore (get()/exists() are a Firestore
+    // rules feature), so this rule cannot verify that {surveyId} exists or is published.
+    // The only controls available at this layer are the path shape, the size cap and the
+    // content-type allowlist below. Closing the remaining surface requires moving these
+    // uploads behind a server-mediated signed URL — tracked, not done here.
+    //
+    // SIZE: 25 MB matches the maximum the survey builder offers and the "Max 25MB" hint
+    // shown on the dropzone. These two numbers MUST move together — when they drifted
+    // (rule 20 MB vs UI 25 MB) uploads failed at the rule with no useful client error.
+    //
+    // CONTENT TYPES: spreadsheets and archives are included because the builder offers
+    // "Spreadsheets (.xlsx, .xls, .csv)" and "Archives (.zip, .rar, .7z)" as allowed
+    // types. They were previously missing, so every .xlsx upload was rejected here — the
+    // single most common case for a data-collection survey.
+    //
+    // WHY create IS SPLIT OUT FROM write:
+    // `write` grants create + update + delete. With an unauthenticated write rule that
+    // meant anyone who knew an object's path could OVERWRITE a respondent's submitted
+    // file — including the respondent themselves, after the response had been reviewed.
+    // Granting only `create` makes a submitted file immutable. Deletion is handled by
+    // server-side tooling through the Admin SDK, which bypasses these rules.
     match /survey-uploads/{allPaths=**} {
       allow read: if isSignedIn();
-      allow write: if isUnderMaxSize(20 * 1024 * 1024) &&
-        request.resource.contentType.matches('image/.*|application/pdf|text/.*|application/msword|application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+      allow update, delete: if false;
+      allow create: if isUnderMaxSize(25 * 1024 * 1024) &&
+        request.resource.contentType.matches(
+          'image/.*' +
+          '|application/pdf' +
+          '|text/.*' +
+          '|application/msword' +
+          '|application/vnd.openxmlformats-officedocument.wordprocessingml.document' +
+          '|application/vnd.ms-excel' +
+          '|application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' +
+          '|application/vnd.oasis.opendocument.spreadsheet' +
+          '|application/vnd.oasis.opendocument.text' +
+          '|application/zip' +
+          '|application/x-zip-compressed' +
+          '|application/x-7z-compressed' +
+          '|application/vnd.rar' +
+          '|application/x-rar-compressed'
+        );
     }
 
     // 6. Quick Notes Attachments
