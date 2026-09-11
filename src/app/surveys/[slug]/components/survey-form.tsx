@@ -63,6 +63,7 @@ import {
 } from '@/lib/survey-file-utils';
 import { extractFileNameFromStorageUrl, isGenericChoiceValue } from '@/lib/survey-response-utils';
 import { resolveStepperLabel } from '@/lib/surveys/stepper-label';
+import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
 import type { PublicSurveyResponseInput } from '@/lib/survey-actions';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
@@ -331,9 +332,14 @@ interface FileUploadProps {
   disabled?: boolean;
   surveyId: string;
   question: SurveyQuestion;
+  /**
+   * Plain-text variable interpolation for the sample card's author copy, passed down so
+   * no substitution logic is duplicated inside the card.
+   */
+  interpolateText?: (text: string) => string;
 }
 
-const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploadProps) => {
+const FileUpload = ({ value, onChange, disabled, surveyId, question, interpolateText }: FileUploadProps) => {
   const [stagedFiles, setStagedFiles] = React.useState<StagedUploadFile[]>([]);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [generalError, setGeneralError] = React.useState<string | null>(null);
@@ -573,6 +579,19 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question }: FileUploa
 
   return (
     <div className="w-full space-y-4 max-w-2xl">
+      {/*
+        * 0. Sample / template download.
+        *
+        * CAUTION: this MUST stay a SIBLING of the drag-and-drop zone below, never a child
+        * of it. The dropzone is a click-to-browse region (onClick opens the file picker),
+        * so nesting the card inside it would make "Download sample" open the picker
+        * instead of downloading the template.
+        *
+        * Renders nothing unless the author configured a sample, so questions that predate
+        * this feature are visually unchanged.
+        */}
+      <SurveySampleFileCard question={question} interpolate={interpolateText} />
+
       {/* 1. Drag and Drop Zone */}
       {canAddMore && (
         <div
@@ -1075,6 +1094,10 @@ const ElementRenderer = ({
                                             disabled={false}
                                             surveyId={surveyId}
                                             question={question}
+                                            // Plain-text interpolation (not the HTML variant): the sample
+                                            // card renders into text sinks, so values must never be
+                                            // HTML-escaped for a sink that will not decode them.
+                                            interpolateText={interpolateText}
                                         />
                                     </div>
                                 )}

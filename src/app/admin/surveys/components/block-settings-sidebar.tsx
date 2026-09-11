@@ -11,7 +11,8 @@ import {
     ListChecks, ChevronDownSquare, Star, Calendar as CalendarIcon,
     Clock, Upload, Heading1, Type, Minus, Image as ImageIcon,
     Video as VideoIcon, AudioWaveform, FileText, Code, Bot,
-    Link as LinkIcon, CheckCircle, ChevronDown, Mail, Phone, Hash, Filter
+    Link as LinkIcon, CheckCircle, ChevronDown, Mail, Phone, Hash, Filter,
+    Download
 } from 'lucide-react';
 import { 
     Select, SelectContent, SelectGroup, SelectItem, 
@@ -26,13 +27,34 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock } from '@/lib/types';
+import type { SurveyElement, SurveyQuestion, SurveyLayoutBlock, MediaAsset } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
 import { MediaSelect } from '../../entities/components/media-select';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
+import { bridgeSampleFileFields, type SampleFileBridgeSource } from '@/lib/surveys/sample-file-bridge';
 import { SurveyHealthOverview } from './inspector/SurveyHealthOverview';
+
+/**
+ * Narrows a survey element type to the media library's asset type.
+ *
+ * Only ever called from the image/video/audio branch, but `element.type` is the whole
+ * element union there, so TypeScript cannot see that. A guarded narrowing keeps the call
+ * site honest — and replaces an `as any` (workspace rule: strict typing, no `any`).
+ * Anything unexpected falls back to 'document', the most permissive picker.
+ */
+function toMediaAssetType(elementType: SurveyElement['type']): MediaAsset['type'] {
+    switch (elementType) {
+        case 'image':
+        case 'video':
+        case 'audio':
+            return elementType;
+        default:
+            return 'document';
+    }
+}
 
 interface BlockSettingsSidebarProps {
     selectedBlockIds: string[];
@@ -176,6 +198,12 @@ export default function BlockSettingsSidebar({
             if (newType === 'description') base.text = element.title || element.text;
             else base.title = element.text || element.title;
         }
+
+        // Between a file-upload question and a document block: carry the attached template
+        // across. Both types store "a downloadable template plus its copy", but under
+        // different field names, so a plain spread would look like the author's template
+        // vanished. The bridge never overwrites a value the target block already has.
+        Object.assign(base, bridgeSampleFileFields(oldType, newType, element as SampleFileBridgeSource));
 
         // 2. Specific field cleanup/initialization
         if (newType === 'rating') base.ratingMax = 5;
@@ -543,6 +571,112 @@ export default function BlockSettingsSidebar({
 
                         {element.type === 'file-upload' && (
                             <div className="space-y-6 pt-2">
+                                {/*
+                                  * SAMPLE / TEMPLATE DOWNLOAD
+                                  *
+                                  * Lets the author attach a blank template the respondent downloads,
+                                  * fills in offline and re-uploads through this same question.
+                                  *
+                                  * Reuses `MediaSelect` (library pick OR direct upload) rather than a
+                                  * bespoke uploader: it already writes to `media/**`, which is the only
+                                  * storage prefix a signed-out respondent can read
+                                  * (`storage.rules` → `match /media/{allPaths=**}` is `read: if true`).
+                                  * `survey-uploads/**` requires sign-in to read and CANNOT serve this.
+                                  *
+                                  * CAUTION: the URL saved here is published on a world-readable survey
+                                  * document. `resolveSampleFile` re-validates it against the host
+                                  * allowlist at render time and shows nothing if it fails.
+                                  */}
+                                <div className="space-y-4 rounded-2xl border border-border/50 bg-muted/20 p-4">
+                                    <div className="flex items-center justify-between group">
+                                        <div className="space-y-0.5 pr-3">
+                                            <Label htmlFor="file-sample-enabled" className="flex items-center gap-2 cursor-pointer">
+                                                <Download className="h-4 w-4 text-primary" />
+                                                <span className="font-bold">Offer a sample</span>
+                                            </Label>
+                                            <p className="text-[10px] text-muted-foreground font-medium">
+                                                Let people download a file to fill in.
+                                            </p>
+                                        </div>
+                                        <Controller
+                                            control={control}
+                                            name={`elements.${activeIndex}.sampleFileEnabled`}
+                                            render={({ field }) => (
+                                                <Switch
+                                                    id="file-sample-enabled"
+                                                    checked={Boolean(field.value)}
+                                                    onCheckedChange={field.onChange}
+                                                />
+                                            )}
+                                        />
+                                    </div>
+
+                                    <Controller
+                                        control={control}
+                                        name={`elements.${activeIndex}.sampleFileEnabled`}
+                                        render={({ field }) => {
+                                            if (!field.value) return <></>;
+                                            return (
+                                                <div className="space-y-4 pt-1">
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-semibold">Sample file</Label>
+                                                        <Controller
+                                                            control={control}
+                                                            name={`elements.${activeIndex}.sampleFileUrl`}
+                                                            render={({ field: urlField }) => (
+                                                                <MediaSelect
+                                                                    value={urlField.value}
+                                                                    onValueChange={(nextUrl) => {
+                                                                        urlField.onChange(nextUrl);
+                                                                        // Store the readable name alongside the URL so the
+                                                                        // card stays correct even if the URL shape changes.
+                                                                        setValue(
+                                                                            `elements.${activeIndex}.sampleFileName`,
+                                                                            nextUrl ? extractFileNameFromStorageUrl(nextUrl) : '',
+                                                                            { shouldDirty: true }
+                                                                        );
+                                                                    }}
+                                                                    filterType="document"
+                                                                />
+                                                            )}
+                                                        />
+                                                        <p className="text-[10px] text-muted-foreground font-medium">
+                                                            Pick from your library or upload a new one.
+                                                        </p>
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-semibold">Title</Label>
+                                                        <Input
+                                                            {...register(`elements.${activeIndex}.sampleFileTitle`)}
+                                                            placeholder="Staff data template"
+                                                            className="h-11 bg-card border border-border/50 rounded-xl font-bold"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-semibold">Short note</Label>
+                                                        <Textarea
+                                                            {...register(`elements.${activeIndex}.sampleFileDescription`)}
+                                                            placeholder="Fill this in and upload it below."
+                                                            className="min-h-[72px] bg-card border border-border/50 rounded-xl text-xs font-medium"
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label className="text-sm font-semibold">Button text</Label>
+                                                        <Input
+                                                            {...register(`elements.${activeIndex}.sampleFileButtonText`)}
+                                                            placeholder="Download sample"
+                                                            className="h-11 bg-card border border-border/50 rounded-xl font-bold"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        }}
+                                    />
+                                </div>
+
                                 <div className="space-y-2">
                                     <Label className="text-sm font-semibold">Allowed File Types</Label>
                                     <Controller
@@ -1155,10 +1289,13 @@ export default function BlockSettingsSidebar({
                                         control={control}
                                         name={`elements.${activeIndex}.url`}
                                         render={({ field }) => (
-                                            <MediaSelect 
-                                                value={field.value} 
+                                            <MediaSelect
+                                                value={field.value}
                                                 onValueChange={field.onChange}
-                                                filterType={element.type as any}
+                                                // Narrowed instead of cast: this branch only renders for
+                                                // image/video/audio, and each is a valid MediaAsset['type'].
+                                                // Replaces an `as any` (workspace rule: strict typing).
+                                                filterType={toMediaAssetType(element.type)}
                                             />
                                         )}
                                     />

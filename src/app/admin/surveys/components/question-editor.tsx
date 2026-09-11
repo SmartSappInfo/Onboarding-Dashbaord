@@ -67,6 +67,7 @@ import { FormMessage } from '@/components/ui/form';
 import { useFieldArray } from 'react-hook-form';
 import { useSlashAutocomplete, convertToCleanHtml } from '@/hooks/use-slash-autocomplete';
 import { sanitizeHtml } from '@/lib/survey-variable-utils';
+import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
 import { createPortal } from 'react-dom';
 import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
@@ -1814,6 +1815,20 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                                     <div className="h-4 w-4 rounded-full border-2 border-muted-foreground/30" />
                                                     <span className="font-bold text-muted-foreground text-xs">NO</span>
                                                 </div>
+                                            </div>
+                                        )}
+                                        {/*
+                                          * Sample / template download preview.
+                                          *
+                                          * Renders the SAME component the public form uses, so what the
+                                          * author sees on this canvas is what the respondent gets. Sits
+                                          * above the dropzone preview to mirror the live ordering.
+                                          * No interpolator is passed — design mode shows the raw
+                                          * {{variable}} template, which is what an author wants to see.
+                                          */}
+                                        {element.type === 'file-upload' && (
+                                            <div className="mb-3">
+                                                <SurveySampleFileCard question={element as SurveyQuestion} />
                                             </div>
                                         )}
                                         {element.type === 'file-upload' && (

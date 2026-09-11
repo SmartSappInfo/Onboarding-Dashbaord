@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
 import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
+import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -125,7 +126,13 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                             </div>
                         )}
                         {question.type === 'file-upload' && (
-                            <div className={cn("w-full max-w-2xl", textAlign === 'center' ? 'mx-auto' : textAlign === 'right' ? 'ml-auto' : 'mr-auto')}>
+                            <div className={cn("w-full max-w-2xl space-y-3", textAlign === 'center' ? 'mx-auto' : textAlign === 'right' ? 'ml-auto' : 'mr-auto')}>
+                                {/*
+                                  * Shows the reviewer the same sample card the respondent was offered,
+                                  * so a response can be read in the context it was collected in.
+                                  * Same shared component as the public form — see SurveySampleFileCard.
+                                  */}
+                                <SurveySampleFileCard question={question} />
                                 <div className="p-6 sm:p-8 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-center flex flex-col items-center justify-center space-y-3">
                                     <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                                         <Upload className="h-6 w-6" />
