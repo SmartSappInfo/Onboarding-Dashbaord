@@ -36,6 +36,27 @@ export async function getRequestBaseUrl(): Promise<string> {
     return getBaseUrl();
   }
 
+  // SECURITY / CORRECTNESS (backoffice isolation, risk R1).
+  //
+  // This helper builds CUSTOMER-FACING links: unsubscribe URLs, meeting joins, short
+  // links, survey invitations. Deriving them from the request host is correct for the
+  // client app — that is what lets a tenant serve the product on its own domain — but it
+  // is wrong everywhere else. On the backoffice backend it would put
+  // goadmin.smartsapp.com into mail sent to customers, which does not error and is only
+  // visible once real messages have gone out.
+  //
+  // So: pin the origin on any surface that is not the client app. The host-derived path
+  // below is left exactly as it was for the client surface.
+  //
+  // CAUTION: if PUBLIC_APP_ORIGIN is unset we deliberately fall through to the host rather
+  // than returning an empty string — a slightly wrong absolute URL is recoverable, a
+  // malformed one is not.
+  const { isBackofficeSurface, getPublicAppOrigin } = await import('@/lib/platform/app-surface');
+  if (isBackofficeSurface()) {
+    const pinnedOrigin = getPublicAppOrigin();
+    if (pinnedOrigin) return pinnedOrigin;
+  }
+
   try {
     // Dynamic import to prevent next/headers from being bundled in client bundles
     const { headers } = await import('next/headers');

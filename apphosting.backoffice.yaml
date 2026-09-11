@@ -1,0 +1,74 @@
+# Backoffice control plane — goadmin.smartsapp.com.
+#
+# Same image as the client app, different surface. APP_SURFACE below is what makes this
+# backend serve /backoffice and redirect everything else to the client origin.
+#
+# CAUTION FOR FUTURE EDITORS
+# PUBLIC_APP_ORIGIN and NEXT_PUBLIC_APP_URL both point at the CLIENT domain on purpose.
+# They answer "where does the product live for customers", not "where is this process
+# running". Pointing either at goadmin.smartsapp.com would put the admin host into customer
+# email — unsubscribe links, meeting joins, survey invitations. See getRequestBaseUrl() in
+# src/lib/utils/url-helpers.ts and risk R1 in the isolation plan.
+
+runConfig:
+  # The control plane is used occasionally, by a handful of people. Scaling to zero is
+  # correct here; a cold start is an acceptable trade for near-zero idle cost.
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 1024
+
+env:
+  - variable: APP_SURFACE
+    value: "backoffice"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Customer-facing links resolve to the client origin, never to this host.
+  - variable: PUBLIC_APP_ORIGIN
+    value: "https://go.smartsapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  - variable: NEXT_PUBLIC_APP_URL
+    value: "https://go.smartsapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # Decision D-2: the control plane is authenticated, but it does not need to be reachable
+  # from the open internet. Comma-separated IPs or CIDR ranges. EMPTY MEANS NO RESTRICTION,
+  # so this stays inert until a value is set — set it once the office egress IP is known.
+  - variable: BACKOFFICE_IP_ALLOWLIST
+    value: ""
+    availability:
+      - RUNTIME
+
+  - variable: RAYON_NUM_THREADS
+    value: "2"
+    availability:
+      - BUILD
+
+  - variable: BUILD_CPUS
+    value: "2"
+    availability:
+      - BUILD
+
+  - variable: NEXT_TELEMETRY_DISABLED
+    value: "1"
+    availability:
+      - BUILD
+
+  # Needed to read stored WhatsApp credentials for the messaging observatory views.
+  - variable: WHATSAPP_ENCRYPTION_KEY
+    secret: whatsapp-encryption-key
+
+  # Cloud Tasks callbacks are signed; the control plane inspects queued work.
+  - variable: CLOUD_TASKS_SECRET
+    secret: CLOUD_TASKS_SECRET
+
+  # CRON_SECRET is intentionally absent: scheduled work belongs to the client backend only.
+  # Without it, /api/cron/* returns 500 here, so cron can never double-run across backends.

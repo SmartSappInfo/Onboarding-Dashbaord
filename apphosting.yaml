@@ -22,6 +22,27 @@ runConfig:
   # - variable: MY_SECRET
   #   secret: mySecretRef
 env:
+  # ── Deployment surface (backoffice isolation) ──
+  #
+  # Marks this backend as the CLIENT app. With this set, /backoffice returns 404 here and
+  # is served only by the goadmin backend.
+  #
+  # CAUTION: clearing this variable restores the previous behaviour (this backend serves
+  # everything) without a code deploy. That is the rollback path — use it before reverting
+  # code if the split needs to be undone in a hurry.
+  - variable: APP_SURFACE
+    value: "client"
+    availability:
+      - BUILD
+      - RUNTIME
+
+  # The origin customers see. Used to build links in outbound mail; see url-helpers.ts.
+  - variable: PUBLIC_APP_ORIGIN
+    value: "https://go.smartsapp.com"
+    availability:
+      - BUILD
+      - RUNTIME
+
   - variable: RAYON_NUM_THREADS
     value: "2"
     availability:

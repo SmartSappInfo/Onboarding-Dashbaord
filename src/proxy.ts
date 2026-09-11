@@ -37,7 +37,63 @@ export function proxy(request: NextRequest) {
     url.pathname = `/surveys/${slug}`;
     return NextResponse.redirect(url);
   }
-  
+
+  // ── Deployment surface gating (backoffice isolation) ───────────────────────
+  //
+  // The same image runs on two App Hosting backends: the client app on go.smartsapp.com
+  // and the control plane on goadmin.smartsapp.com. APP_SURFACE decides which routes this
+  // process answers.
+  //
+  // CAUTION: an UNSET APP_SURFACE means "serve everything", which is exactly how the app
+  // behaves today. Keep it that way — it is what makes this change safe to roll out and
+  // instantly revertible by clearing one environment variable.
+  //
+  // CAUTION: /api is NOT matched by this proxy (see config.matcher at the bottom of this
+  // file), so webhooks, cron and the Chrome extension endpoints are never gated or
+  // redirected here. That is deliberate: providers post to fixed URLs and a redirect would
+  // silently break them.
+  const surface = process.env.APP_SURFACE;
+  const isBackofficePath = pathname === '/backoffice' || pathname.startsWith('/backoffice/');
+
+  if (surface === 'backoffice') {
+    // Decision D-2: the control plane is authenticated, but it does not need to be
+    // reachable from the open internet. Empty allowlist = no restriction, so this stays
+    // inert until an address is configured.
+    //
+    // CAUTION: this reads x-forwarded-for, which a client can forge if it reaches the app
+    // directly. Behind App Hosting the platform rewrites it, so the FIRST entry is the
+    // real client. Treat this as defence in depth, never as the only control — every
+    // backoffice route still authenticates independently.
+    const allowlist = (process.env.BACKOFFICE_IP_ALLOWLIST ?? '')
+      .split(',')
+      .map((entry) => entry.trim())
+      .filter(Boolean);
+
+    if (allowlist.length > 0) {
+      const clientIp = (request.headers.get('x-forwarded-for') ?? '').split(',')[0]?.trim();
+      if (!clientIp || !allowlist.includes(clientIp)) {
+        return new NextResponse(null, { status: 403 });
+      }
+    }
+
+    // Anything that is not the control plane belongs to the client app. Redirect rather
+    // than 404 so a stray bookmark or shared link still lands somewhere useful.
+    if (!isBackofficePath) {
+      const publicOrigin = process.env.PUBLIC_APP_ORIGIN;
+      if (publicOrigin) {
+        return NextResponse.redirect(`${publicOrigin}${pathname}${search}`);
+      }
+      // No origin configured: fall through and serve normally rather than send the user
+      // to a malformed URL.
+    }
+  }
+
+  if (surface === 'client' && isBackofficePath) {
+    // A 404, not a redirect: the control plane should not be discoverable from the tenant
+    // domain, and a redirect would advertise that it exists elsewhere.
+    return new NextResponse(null, { status: 404 });
+  }
+
   // Public routes that don't require authentication
   const publicRoutes = [
     '/login',
