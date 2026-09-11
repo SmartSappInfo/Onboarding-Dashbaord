@@ -28,6 +28,7 @@ import {
 import { useFirestore } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { toSearchKey } from '@/lib/entities/entity-cache-domain';
+import { excludeArchivedEntities } from '@/lib/entities/archived-entity';
 import type { WorkspaceEntity } from '@/lib/types';
 
 export type SearchedEntity = WorkspaceEntity & { id: string };
@@ -42,6 +43,15 @@ export interface UseEntitySearchOptions {
   enabled?: boolean;
   /** Explicit target workspace ID override (falls back to TenantContext activeWorkspaceId). */
   workspaceId?: string;
+  /**
+   * Include soft-deleted (archived) entities. Defaults to FALSE.
+   *
+   * Every consumer of this hook is a picker — "choose an entity to act on" — and acting
+   * on an archived record is always a mistake: messaging it, tagging it, adding it to a
+   * call campaign or attaching a contract. Only pass true for a surface whose job is to
+   * show archived records (a restore/audit view).
+   */
+  includeArchived?: boolean;
 }
 
 export function useEntitySearch({
@@ -50,6 +60,7 @@ export function useEntitySearch({
   filters = [],
   enabled = true,
   workspaceId,
+  includeArchived = false,
 }: UseEntitySearchOptions = {}) {
   const firestore = useFirestore();
   const { activeWorkspaceId: tenantWorkspaceId } = useTenant();
@@ -111,7 +122,19 @@ export function useEntitySearch({
           }
         }
 
-        const page = snap.docs.map((d) => ({ ...(d.data() as WorkspaceEntity), id: d.id }) as SearchedEntity);
+        const rawPage = snap.docs.map((d) => ({ ...(d.data() as WorkspaceEntity), id: d.id }) as SearchedEntity);
+
+        // Archived entities are SOFT-DELETED and must not be selectable in pickers —
+        // the message composer was offering archived contacts as message recipients.
+        // See `archived-entity.ts` for why this cannot be a Firestore constraint
+        // (short version: `status` is optional, and both `==` and `!=` drop rows that
+        // lack the field, which would hide real active contacts).
+        const page = includeArchived ? rawPage : excludeArchivedEntities(rawPage);
+
+        // Cursor and hasMore are deliberately derived from the RAW page, not the
+        // filtered one: paging is a property of the query, not of what we chose to
+        // display. Using the filtered length would stop pagination early whenever a
+        // full page happened to be archived.
         cursorRef.current = snap.docs[snap.docs.length - 1] ?? cursorRef.current;
         setHasMore(snap.docs.length === pageSize);
         setResults((prev) => (reset ? page : [...prev, ...page]));
@@ -121,7 +144,7 @@ export function useEntitySearch({
         setIsLoading(false);
       }
     },
-    [firestore, targetWorkspaceId, enabled, searchKey, filterKey, pageSize],
+    [firestore, targetWorkspaceId, enabled, searchKey, filterKey, pageSize, includeArchived],
   );
 
   // Debounced re-query on search/filter/workspace change.
