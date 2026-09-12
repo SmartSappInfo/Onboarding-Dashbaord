@@ -86,7 +86,7 @@ export default function TestDispatchDialog({
 }: TestDispatchDialogProps) {
     const { toast } = useToast();
     const firestore = useFirestore();
-    const { activeWorkspaceId } = useWorkspace();
+    const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
     const { singular } = useTerminology();
 
     const [recipient, setRecipient] = React.useState('');
@@ -267,6 +267,19 @@ export default function TestDispatchDialog({
             return;
         }
 
+        // The engine runs on the server with no session tenancy, so the dialog has
+        // to hand it the tenant scope the admin is currently working in. Without
+        // this the send fails with "no workspace context resolved".
+        const contextEntityId = (testMode === 'entity' ? selectedEntityId : entityId) || undefined;
+        if (!activeWorkspaceId && !contextEntityId) {
+            toast({
+                variant: 'destructive',
+                title: 'No Workspace Context',
+                description: `Select a ${singular.toLowerCase()} or switch to a workspace before sending a test.`
+            });
+            return;
+        }
+
         setIsSending(true);
         try {
             const finalVars = { ...variables, ...localVariables };
@@ -277,7 +290,9 @@ export default function TestDispatchDialog({
                     senderProfileId: senderProfileId || 'default',
                     recipient: recipient.trim(),
                     variables: finalVars,
-                    entityId: testMode === 'entity' ? selectedEntityId : entityId
+                    entityId: contextEntityId,
+                    workspaceId: activeWorkspaceId || undefined,
+                    organizationId: activeOrganizationId || undefined
                 });
                 if (!result.success) throw new Error(result.error);
             } else if (rawBody) {
@@ -290,7 +305,10 @@ export default function TestDispatchDialog({
                     body: rawBody,
                     subject: rawSubject,
                     senderProfileId,
-                    variables: finalVars
+                    variables: finalVars,
+                    entityId: contextEntityId,
+                    workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
+                    organizationId: activeOrganizationId || undefined
                 });
                 if (!result.success) throw new Error(result.error);
             }
