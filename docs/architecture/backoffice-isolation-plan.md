@@ -958,18 +958,52 @@ git add apphosting.backoffice.yaml
 git commit -m "feat(hosting): add backoffice backend config"
 ```
 
-### Task B2–B5: Console steps (manual, in order)
+### Task B2–B5: Standing up the second surface
 
-- [ ] **B2** Create a second App Hosting backend, same repo, branch `main`, **Environment
-      name** `backoffice`.
-- [ ] **B3** Attach `goadmin.smartsapp.com`; complete DNS verification; wait for the
-      certificate to be issued.
-- [ ] **B4** Firebase console → Authentication → Settings → **Authorized domains** → add
-      `goadmin.smartsapp.com`. *Skipping this makes sign-in fail with an opaque error that
-      looks like a code bug (risk R3).*
-- [ ] **B5** Sign in on `goadmin.smartsapp.com` and load `/backoffice`. A fresh sign-in is
-      expected — the session cookie is host-only (risk R4). Confirm one read-only page
-      renders.
+**THE HOSTING DECISION CHANGED MID-FLIGHT.** B2 was written for a second App Hosting
+backend. We did not do that, because App Hosting's Cloud Build step is what was failing in
+the first place — 57m timeouts and OOM on an e2-standard-2 builder. Both surfaces now run
+as **Cloud Run services built by GitHub Actions** (~4m30s), per
+`.github/workflows/deploy-cloudrun.yml` and `docs/architecture/ci-build-and-deploy.md`.
+`apphosting.backoffice.yaml` above is kept only as the record of the intended runtime env;
+the live values come from the workflow's deploy matrix.
+
+- [x] **B2** Second surface created — Cloud Run service `smartsapp-backoffice`
+      (`us-central1`, `APP_SURFACE=backoffice`), deployed by the same workflow as
+      `smartsapp-app`. Both are `--allow-unauthenticated` at the IAM layer, with access
+      enforced in the app (session guard + `BACKOFFICE_IP_ALLOWLIST`) — IAM-level
+      lockout was tried first and made the service unreachable by any browser.
+- [ ] **B3** Attach `goadmin.smartsapp.com`. **Mapping created; blocked on DNS.**
+      The mapping to `smartsapp-backoffice` exists and reports
+      `CertificateProvisioned: Unknown — the challenge data was not visible through the
+      public internet`. Cause: there is no `goadmin` record at all; a **wildcard `*` A
+      record** on `smartsapp.com` (DNS hosted at DigitalOcean) is answering with
+      `209.38.53.42`. Fix is purely additive — an exact-match record beats a wildcard, so
+      nothing needs deleting and none of the `go.` cutover's NXDOMAIN risk applies:
+
+      | Type | CNAME |
+      | Hostname | `goadmin` |
+      | Value | `ghs.googlehosted.com.` — the trailing dot is required; DigitalOcean
+        appends the zone to any value without one, silently creating
+        `ghs.googlehosted.com.smartsapp.com` |
+      | TTL | 300 |
+
+      Google re-polls hourly. Recreating the mapping restarts the poll immediately.
+- [x] **B4** `goadmin.smartsapp.com` added to Firebase Auth authorized domains, via
+      `identitytoolkit.googleapis.com/admin/v2/.../config` with
+      `updateMask=authorizedDomains`. All nine pre-existing domains verified preserved;
+      backup of the prior config was taken before the PATCH. *Skipping this makes sign-in
+      fail with an opaque error that looks like a code bug (risk R3).*
+- [ ] **B5** Sign in on `goadmin.smartsapp.com` and load `/backoffice`. **Blocked on B3.**
+      A fresh sign-in is expected — the session cookie is host-only (risk R4).
+
+Verified against the live services in the meantime, by URL rather than by domain:
+
+| Request | Result |
+| --- | --- |
+| `smartsapp-backoffice` → `/backoffice` | `307` → `/login?redirect=%2Fbackoffice` (stays on host) |
+| `smartsapp-backoffice` → `/admin` | `307` → `https://go.smartsapp.com/admin` |
+| `smartsapp-app` → `/backoffice` | `404` |
 
 **Checkpoint:** `go.smartsapp.com` has not been modified. If anything above is wrong, delete
 the backend; nothing rolls back on the client.
@@ -1190,14 +1224,20 @@ git add apphosting.yaml
 git commit -m "feat(hosting): mark the primary backend as the client surface"
 ```
 
-- [ ] **Step 4: Deploy, then verify in production**
+- [x] **Step 4: Deploy, then verify in production** — done for the client surface;
+      the `goadmin` line is blocked on B3's DNS record.
 
-```bash
-curl -o /dev/null -s -w "%{http_code}\n" https://go.smartsapp.com/backoffice     # expect 404
-curl -o /dev/null -s -w "%{http_code}\n" https://go.smartsapp.com/               # expect 200
-curl -o /dev/null -s -w "%{http_code}\n" https://go.smartsapp.com/admin          # expect 200 or 307 to /login
-curl -o /dev/null -s -w "%{http_code}\n" https://goadmin.smartsapp.com/backoffice # expect 200 or 307 to /login
-```
+| URL | Expected | Actual |
+| --- | --- | --- |
+| `https://go.smartsapp.com/backoffice` | 404 | **404** |
+| `https://go.smartsapp.com/` | 200 | **200** |
+| `https://go.smartsapp.com/admin` | 200 or 307 to `/login` | **307 → `/login?redirect=%2Fadmin`** |
+| `https://go.smartsapp.com/login` | 200 | **200** |
+| `https://goadmin.smartsapp.com/backoffice` | 200 or 307 to `/login` | **unreachable — DNS, see B3** |
+
+Note when re-running these: Cloud Run scales to zero, so the first request to a cold
+service can exceed a short `curl -m`. A `000` here means "cold start", not "broken" —
+retry with `-m 120` before believing it.
 
 - [ ] **Step 5: Send one real message and read its links**
 
