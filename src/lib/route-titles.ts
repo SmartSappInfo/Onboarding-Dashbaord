@@ -110,6 +110,7 @@ export const BACKOFFICE_ROUTE_TITLES: RouteTitleMap = {
   '/backoffice/assets': 'Assets',
   '/backoffice/developer': 'Developer & API',
   '/backoffice/operations': 'Operations',
+  '/backoffice/operations/platform-controls': 'Platform Controls',
   '/backoffice/companybrain': 'CompanyBrain Governance',
   '/backoffice/media/enterprise': 'Enterprise Media Governance',
   '/backoffice/media/health': 'Platform Quality & Stream Health',

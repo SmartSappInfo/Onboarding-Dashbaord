@@ -1226,191 +1226,77 @@ never serve, and the TypeScript phase already dominates (37 minutes on a loaded 
 
 ## Stage E — Backoffice control page
 
-Depends on Stage A. Can ship any time after it.
+**STATUS: DONE.** Depends on Stage A. Shipped after it.
 
-### Task E1: Server actions for the control page
+Rule 3 ("how can the backoffice manage this without touching code?") is answered here:
+pausing customer messaging platform-wide used to need an env-var change and a redeploy.
+It is now a switch with an audit trail.
+
+### Task E1: Server actions for the control page — DONE
 
 **Files:**
-- Create: `src/lib/platform/platform-controls-actions.ts`
-- Test: `src/lib/platform/__tests__/platform-controls-actions.test.ts`
+- `src/lib/platform/platform-controls-actions.ts`
+- `src/lib/platform/__tests__/platform-controls-actions.test.ts` (11 tests)
 
-- [ ] **Step 1: Write the failing test**
+- [x] **Step 1: Write the failing test**
+- [x] **Step 2: Run it and watch it fail** (module not found)
+- [x] **Step 3: Implement**
+- [x] **Step 4: Run tests — 11 passed**
+- [x] **Step 5: Commit**
 
-```ts
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+Exports:
 
-const mockSet = vi.fn();
-const mockGet = vi.fn();
-vi.mock('@/lib/firebase-admin', () => ({
-  adminDb: { collection: () => ({ doc: () => ({ get: mockGet, set: mockSet }) }) },
-}));
-vi.mock('@/lib/backoffice/backoffice-auth', () => ({
-  authorizeBackofficeSession: vi.fn(async () => ({ userId: 'u1', name: 'Ops', email: 'o@e.com', role: 'super_admin' })),
-}));
+| Export | Permission | Notes |
+| --- | --- | --- |
+| `getPlatformControlsAction()` | `settings:view` | Returns `PlatformControlsView` — display-safe primitives only, never the raw document. |
+| `setOutboundPausedAction(paused, reason)` | `settings:edit` (super_admin) | Writes `platform_config/messaging_controls`, audit-logs, resets the local guard cache. |
 
-import { setOutboundPausedAction } from '../platform-controls-actions';
-import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
+Deviations from the sketch in the original plan, and why:
 
-beforeEach(() => { vi.clearAllMocks(); mockGet.mockResolvedValue({ exists: false }); });
+- **Authorization is outside the try/catch.** A denied caller rejects rather than returning
+  `{ success: false }`, which a UI would render as an ordinary retryable failure.
+- **Resuming clears `pausedReason`.** Leaving the old incident note behind would read as
+  the current state to the next operator.
+- **One error call, not two.** `reportError` followed by `toClientErrorMessage` mints two
+  correlation ids, so the operator would quote a reference that is not the one in the logs.
+- **`__resetOutboundCache()` after a successful write.** Makes the change immediate for the
+  instance that served the request; other instances follow within the guard's 30s TTL. The
+  UI says so rather than implying it is instant.
 
-describe('setOutboundPausedAction', () => {
-  it('requires settings:edit (super_admin only)', async () => {
-    await setOutboundPausedAction(true, 'incident').catch(() => undefined);
-    expect(authorizeBackofficeSession).toHaveBeenCalledWith('settings', 'edit');
-  });
+### Task E2: The operator page — DONE
 
-  it('records who paused it, from the session and not the caller', async () => {
-    await setOutboundPausedAction(true, 'incident');
-    expect(mockSet).toHaveBeenCalledWith(
-      expect.objectContaining({ outboundEnabled: false, pausedReason: 'incident', updatedBy: 'u1' }),
-      { merge: true },
-    );
-  });
+**Files:**
+- `src/app/(backoffice)/backoffice/operations/platform-controls/page.tsx` (server component)
+- `src/app/(backoffice)/backoffice/operations/platform-controls/PlatformControlsClient.tsx`
+- `.../__tests__/platform-controls-client.test.tsx` (9 tests)
+- Nav: `BackofficeSidebar.tsx` (Operations group, `settings` module) and `route-titles.ts`
 
-  it('caps the reason so the document cannot be used as storage', async () => {
-    await setOutboundPausedAction(true, 'x'.repeat(500));
-    const written = mockSet.mock.calls[0][0] as { pausedReason: string };
-    expect(written.pausedReason.length).toBeLessThanOrEqual(200);
-  });
+- [x] **Step 1: Build it**
+- [ ] **Step 2: Check it on a phone-sized viewport** — see "Outstanding" below
+- [x] **Step 3: Commit**
 
-  it('refuses when the caller is not authorised, and writes nothing', async () => {
-    (authorizeBackofficeSession as unknown as { mockRejectedValueOnce: (e: Error) => void })
-      .mockRejectedValueOnce(new Error('Forbidden: settings:edit'));
-    await expect(setOutboundPausedAction(true, 'x')).rejects.toThrow('Forbidden');
-    expect(mockSet).not.toHaveBeenCalled();
-  });
-});
-```
+Requirements and how each is met:
 
-- [ ] **Step 2: Run it and watch it fail**
+| Requirement | How |
+| --- | --- |
+| Server component loads state; client owns only the toggle | `page.tsx` is `async` + `force-dynamic`; the client bundle is the switch and dialog. During an incident the state is in the first paint, not behind a spinner. |
+| Words-first status, never a boolean | "Sending is on" / "Sending is paused" / "Sending is off for this environment". A test asserts no `true`/`false` is rendered. |
+| Environment floor disables the toggle | `envFloorAllows === false` → inert switch, one plain line of explanation. A test asserts `ALLOW_OUTBOUND_MESSAGING` never reaches the DOM. |
+| Confirm dialog with a reason to pause; confirm to resume | Pause requires a non-empty note (capped at 200, mirrored from the server); resume confirms without one. |
+| Mobile at 360 px | Single column by default, `sm:` breakpoints for every row layout, `max-w-prose`, no tables, no fixed widths; the toggle row is `min-h-11` (44 px). |
+| Motion | 150 ms colour cross-fade on the status band; no entrance animation on the status text. |
+| Errors as one plain sentence + reference id | The dialog stays open on failure and shows `res.error`, which already carries `(ref: …)`. A test asserts the state does not move. |
 
-- [ ] **Step 3: Implement**
+Read-only operators (`settings:view` but not `edit`) see the state and a disabled control
+with "You can see this setting but not change it." — not a hidden control they would then
+go looking for.
 
-```ts
-'use server';
+The page also warns, quietly, if it is being served by the `client` surface: post-isolation
+that means the split has regressed.
 
-/**
- * @fileOverview Operator controls for deployment surfaces and outbound messaging.
- *
- * Lets an operator pause customer messaging from the backoffice without a deploy.
- *
- * CAUTION: pausing is the only direction this can move things. ALLOW_OUTBOUND_MESSAGING is
- * a hard floor enforced in outbound-guard.ts and cannot be lifted from here — otherwise a
- * console click could turn a staging environment into one that messages real customers.
- */
-import { adminDb } from '@/lib/firebase-admin';
-import { authorizeBackofficeSession } from '@/lib/backoffice/backoffice-auth';
-import { getAppSurface } from '@/lib/platform/app-surface';
-import { reportError, toClientErrorMessage } from '@/lib/errors/report-error';
-
-const MAX_REASON_LENGTH = 200;
-
-export interface PlatformControlsView {
-  surface: ReturnType<typeof getAppSurface>;
-  outboundEnabled: boolean;
-  envFloorAllows: boolean;
-  pausedReason: string;
-  updatedByName: string;
-  updatedAt: string;
-}
-
-export async function getPlatformControlsAction(): Promise<PlatformControlsView> {
-  await authorizeBackofficeSession('settings', 'view');
-
-  const snap = await adminDb.collection('platform_config').doc('messaging_controls').get();
-  const data = snap.exists ? snap.data() : undefined;
-
-  return {
-    surface: getAppSurface(),
-    envFloorAllows: process.env.ALLOW_OUTBOUND_MESSAGING !== 'false',
-    outboundEnabled: data?.outboundEnabled !== false,
-    pausedReason: typeof data?.pausedReason === 'string' ? data.pausedReason : '',
-    updatedByName: typeof data?.updatedByName === 'string' ? data.updatedByName : '',
-    updatedAt: typeof data?.updatedAt === 'string' ? data.updatedAt : '',
-  };
-}
-
-export async function setOutboundPausedAction(
-  paused: boolean,
-  reason: string,
-): Promise<{ success: boolean; error?: string }> {
-  // D-3: settings:edit is super_admin only. See ROLE_MATRIX in backoffice-rbac.ts.
-  const actor = await authorizeBackofficeSession('settings', 'edit');
-
-  try {
-    await adminDb.collection('platform_config').doc('messaging_controls').set(
-      {
-        outboundEnabled: !paused,
-        pausedReason: reason.trim().slice(0, MAX_REASON_LENGTH),
-        updatedBy: actor.userId,
-        updatedByName: actor.name,
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true },
-    );
-
-    // Signature is positional: (actor, action, resourceType, resourceId, options)
-    const { logBackofficeAction } = await import('@/lib/backoffice/audit-logger');
-    await logBackofficeAction(
-      actor,
-      paused ? 'paused_outbound_messaging' : 'resumed_outbound_messaging',
-      'platform_config',
-      'messaging_controls',
-      {
-        scope: 'platform',
-        after: { outboundEnabled: !paused, pausedReason: reason.trim().slice(0, MAX_REASON_LENGTH) },
-      },
-    );
-
-    return { success: true };
-  } catch (error) {
-    reportError('platform.controls', error, { paused });
-    return { success: false, error: toClientErrorMessage('platform.controls', error) };
-  }
-}
-```
-
-- [ ] **Step 4: Run tests — expect PASS**
-
-- [ ] **Step 5: Commit**
-
-```bash
-git add src/lib/platform/platform-controls-actions.ts src/lib/platform/__tests__/platform-controls-actions.test.ts
-git commit -m "feat(backoffice): add platform control server actions"
-```
-
-### Task E2: The operator page
-
-**Files:** Create `src/app/(backoffice)/backoffice/operations/platform-controls/page.tsx`
-
-- [ ] **Step 1: Build it**
-
-Requirements, not a code dump — follow the existing backoffice component patterns in
-`src/app/(backoffice)/backoffice/operations/components/`:
-
-- Server component loads `getPlatformControlsAction()`; a small client component owns the
-  toggle. Keep the client bundle to the interactive part only.
-- Status shown as a words-first pill: **"Sending is on"** / **"Sending is paused"**.
-  Never render a boolean, an env var name, JSON, or a stack trace.
-- When the environment floor blocks sending, show **"Sending is off for this environment"**
-  and disable the toggle, with one line of plain explanation.
-- Pausing opens a confirm dialog requiring a short reason. Resuming confirms too.
-- Mobile: single column at 360 px, 44 px targets, no horizontal scroll.
-- Motion: a 150 ms cross-fade on state change; no entrance animation on the status pill —
-  during an incident it must be readable immediately.
-- Errors surface as one plain sentence plus the reference id from `toClientErrorMessage`.
-
-- [ ] **Step 2: Check it on a phone-sized viewport**
-
-Run the app, open the page at 360×740, confirm no horizontal scroll and that the toggle is
-comfortably tappable.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add "src/app/(backoffice)/backoffice/operations/platform-controls"
-git commit -m "feat(backoffice): add platform controls page"
-```
+**Outstanding:** the phone-sized visual pass (Step 2) still needs a human — it requires a
+running app and a signed-in backoffice session, which the automated tests cannot stand in
+for. The structural guarantees above are covered by tests; the pixel check is not.
 
 ---
 

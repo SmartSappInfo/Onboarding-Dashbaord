@@ -48,6 +48,7 @@ import {
   Cpu,
   Network,
   Brain,
+  PowerOff,
 } from 'lucide-react';
 import {
   Sidebar,
@@ -113,6 +114,8 @@ const controlNavItems: NavItem[] = [
 // ─────────────────────────────────────────────────
 const operationsNavItems: NavItem[] = [
   { href: '/backoffice/operations', icon: Wrench, label: 'Operations & Jobs', module: 'operations' },
+  // Incident control: pause/resume all customer messaging without a deploy (Stage E).
+  { href: '/backoffice/operations/platform-controls', icon: PowerOff, label: 'Platform Controls', module: 'settings' },
   { href: '/backoffice/messaging-observatory', icon: MailWarning, label: 'Messaging Obs.', module: 'messaging_observatory' },
   { href: '/backoffice/finance-monitor', icon: Banknote, label: 'Financial Monitor', module: 'finance_monitor' },
   { href: '/backoffice/meetings-monitor', icon: Video, label: 'Meetings Monitor', module: 'meetings_monitor' },
