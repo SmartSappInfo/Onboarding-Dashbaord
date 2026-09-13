@@ -26,9 +26,16 @@
 # uses successfully, so the provider and service account secrets already exist.
 #
 # REQUIRED IAM on ${{ secrets.GCP_DEPLOY_SA }} (grant once, then this runs unattended):
-#   roles/firebaserules.admin   — publish Firestore + Storage rulesets
-#   roles/datastore.indexAdmin  — create Firestore indexes
-# If a run fails with PERMISSION_DENIED, the missing role is one of those two.
+#   roles/firebaserules.admin            — publish Firestore + Storage rulesets
+#   roles/datastore.indexAdmin           — create Firestore indexes
+#   roles/serviceusage.serviceUsageConsumer  — REQUIRED, and easy to miss.
+#       Before deploying storage rules, firebase-tools calls serviceusage.googleapis.com to
+#       check that firebasestorage.googleapis.com is enabled. Without this role that call
+#       returns 403 and the whole deploy aborts BEFORE any ruleset is published — which is
+#       what failed every run from 2026-09-11 onward:
+#         Request to https://serviceusage.googleapis.com/v1/projects/.../services/
+#         firebasestorage.googleapis.com had HTTP Error: 403, Permission denied
+# If a run fails with PERMISSION_DENIED, the missing role is one of those three.
 # ==============================================================================
 
 name: Deploy Firebase Rules & Indexes

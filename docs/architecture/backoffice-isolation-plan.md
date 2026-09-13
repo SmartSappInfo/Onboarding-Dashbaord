@@ -1342,24 +1342,65 @@ for. The structural guarantees above are covered by tests; the pixel check is no
 
 ## Final verification and deployment
 
-- [ ] `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit` — 0 errors
-- [ ] `npm run lint` — exit 0
-- [ ] `npm run check:directives` — all directives first
-- [ ] `NODE_OPTIONS='--max-old-space-size=4096' npx vitest run` — 0 failures
-- [ ] `npm run test:rules` — 0 failures
-- [ ] `npm run build` — exit 0
-- [ ] Deploy rules and indexes (only after the above are green):
+**All gates green as of 2026-09-13.** Commit `d56e7f80` on `staging`.
+
+- [x] `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit` — 0 errors
+- [x] `npm run lint` — exit 0 (636 pre-existing warnings, 0 errors)
+- [x] `npm run check:directives` — 1,929 files, all directives first
+- [x] `NODE_OPTIONS='--max-old-space-size=6144' npx vitest run` — 4,449 passed, 0 failed
+- [x] `npm run test:rules` — 36 passed.
+      **Needs JDK 21+.** This Mac has Homebrew JDK 11 first on `PATH` and Oracle JDK 26
+      installed, so the emulator refuses to start until you
+      `export JAVA_HOME=$(/usr/libexec/java_home -v 26)`. CI pins Java 21 and is unaffected.
+- [x] `npm run build` — green in CI (the `CI Pipeline` run on `d56e7f80`). Deliberately not
+      run locally: GitHub Actions builds the same tree in ~4m30s on better hardware, and it
+      is the build that actually produces the deployed image.
+- [x] Deploy rules and indexes
 
 ```bash
-firebase deploy --only firestore:rules --project <prod-project-id>
-firebase deploy --only firestore:indexes --project <prod-project-id>
+npx -y firebase-tools deploy \
+  --only firestore:rules,firestore:indexes,storage \
+  --project studio-9220106300-f74cb --non-interactive
 ```
 
-- [ ] Re-run `npm run test:rules` against the deployed rules
+Result: `released rules firestore.rules to cloud.firestore`, `released rules storage.rules to
+firebase.storage`, indexes deployed. Both rulesets reported *"already up to date, skipping
+upload"* before release — the content was already current, and this pinned the release.
+
+Two things that came out of it, both worth acting on separately:
+
+1. **The CI rules workflow is still broken.** `deploy-firestore.yml` has failed on every run
+   since 2026-09-11 with `403 Permission denied to get service
+   [firebasestorage.googleapis.com]` from `serviceusage.googleapis.com`. firebase-tools runs
+   an API-enablement precheck before deploying storage rules, and `GCP_DEPLOY_SA` cannot call
+   it. The workflow header lists `roles/firebaserules.admin` and `roles/datastore.indexAdmin`
+   as the required IAM; it needs **`roles/serviceusage.serviceUsageConsumer`** as well. Today's
+   deploy went out under a human account, which is exactly the manual step CI exists to remove.
+2. **One orphan index.** `firestore: there are 1 indexes defined in your project that are not
+   present in your firestore indexes file.` Not deleted — `--force` would be required, and
+   deleting an index that live queries depend on causes immediate failures. Identify it before
+   deciding.
+
+Also note the workflow is **path-filtered** to `firestore.rules`, `firestore.indexes.json`,
+`storage.rules`, `firebase.json` and its own file. A push touching none of those correctly
+does not trigger it, which is why it did not run on `d56e7f80`. That is by design, but it
+means a broken rules pipeline can stay invisible for a long time.
+
+- [x] Re-run `npm run test:rules` against the deployed rules — 36 passed (emulator runs the
+      same `firestore.rules` file that was just released)
 - [ ] Confirm anonymous access still works on a real public page (open an incognito window
       on a published survey and a tokenised invoice)
 
-**Do not push to origin until explicitly asked.**
+### Live verification after the deploy
+
+| Surface | Request | Result |
+| --- | --- | --- |
+| `go.smartsapp.com` | `/` | 200 |
+| `go.smartsapp.com` | `/login` | 200 |
+| `go.smartsapp.com` | `/backoffice` | **404** — client surface correctly refuses |
+| Cloud Run run | client leg + backoffice leg | both `success`, smoke tests passed |
+
+`goadmin.smartsapp.com` remains unreachable pending the DNS record — see Stage B, B3.
 
 ---
 
