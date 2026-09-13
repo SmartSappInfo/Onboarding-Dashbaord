@@ -5139,28 +5139,6 @@
           "order": "ASCENDING"
         },
         {
-          "fieldPath": "workspaceId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "startedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "automation_runs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "automationId",
-          "order": "ASCENDING"
-        },
-        {
           "fieldPath": "entityId",
           "order": "ASCENDING"
         },
@@ -5406,24 +5384,6 @@
         },
         {
           "fieldPath": "updatedAt",
-          "order": "DESCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "deal_quotes",
-      "queryScope": "COLLECTION",
-      "fields": [
-        {
-          "fieldPath": "workspaceId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "dealId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "createdAt",
           "order": "DESCENDING"
         }
       ]
