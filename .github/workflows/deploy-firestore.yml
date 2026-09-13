@@ -35,26 +35,31 @@
 #       what failed every run from 2026-09-11 onward:
 #         Request to https://serviceusage.googleapis.com/v1/projects/.../services/
 #         firebasestorage.googleapis.com had HTTP Error: 403, Permission denied
-#   projects/<project>/roles/firebaseStorageBucketReader — a CUSTOM role holding exactly
-#       one permission: firebasestorage.defaultBucket.get. After the serviceusage check
-#       passes, firebase-tools looks up which bucket to attach storage.rules to, and that
-#       lookup 403s without it:
-#         Request to https://firebasestorage.googleapis.com/v1alpha/projects/.../
-#         defaultBucket had HTTP Error: 403, Permission
-#         'firebasestorage.defaultBucket.get' denied
 #
-#       DO NOT "simplify" this to roles/firebase.viewer. That role also carries the
-#       permission, and it is the obvious-looking fix, but it bundles 290 permissions
-#       including datastore.entities.get/list, storage.objects.get/list and
-#       firebaseauth.users.get — it would let this CI robot read every document in the
-#       database, every uploaded file, and user records. A deploy account has no business
-#       reading production data, and this repository has leaked credentials before.
-#       Create the custom role instead:
-#         gcloud iam roles create firebaseStorageBucketReader --project=<project> \
-#           --title="Firebase Storage Default Bucket Reader" \
-#           --permissions=firebasestorage.defaultBucket.get --stage=GA
+# THE FOURTH PERMISSION THAT IS NO LONGER NEEDED — and why the fix was config, not IAM.
+# Once the three roles above were granted, the deploy got past the serviceusage check and
+# failed one step later: firebase-tools asks which bucket to attach storage.rules to, via
+#   GET firebasestorage.googleapis.com/v1alpha/projects/<p>/defaultBucket
+# which 403s without firebasestorage.defaultBucket.get, then reports the misleading
+# "Firebase Storage has not been set up on project" once it can call it but not read it.
 #
-# If a run fails with PERMISSION_DENIED, the missing role is one of those four.
+# The tempting fix is roles/firebase.viewer, which carries that permission. DO NOT USE IT.
+# It bundles 290 permissions including datastore.entities.get/list, storage.objects.get/list
+# and firebaseauth.users.get — it would let this CI robot read every document in the
+# database, every uploaded file and user records. A deploy account has no business reading
+# production data, and this repository has leaked credentials before.
+#
+# The real fix was in firebase.json. When "storage" is an OBJECT, firebase-tools has to go
+# and discover the default bucket. When it is an ARRAY with an explicit "bucket", it skips
+# that lookup entirely — so the permission is not needed at all:
+#   "storage": [{ "bucket": "<project>.firebasestorage.app", "rules": "storage.rules" }]
+# CAUTION: reverting that to the object form re-introduces the lookup and this failure.
+#
+# A custom role `firebaseStorageBucketReader` (one permission,
+# firebasestorage.defaultBucket.get) was created while diagnosing this. It is now redundant
+# and can be removed; it is left in place only as a safety net if the config is reverted.
+#
+# If a run fails with PERMISSION_DENIED, the missing role is one of the three above.
 # ==============================================================================
 
 name: Deploy Firebase Rules & Indexes
