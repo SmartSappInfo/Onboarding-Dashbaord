@@ -73,8 +73,11 @@ import {
     BrainCircuit,
     Compass,
     Terminal,
-    ArrowRightLeft
+    ArrowRightLeft,
+    Search,
+    X
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import UnifiedOrgWorkspaceSwitcher from './UnifiedOrgWorkspaceSwitcher';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useFeatures } from '@/hooks/use-features';
@@ -101,6 +104,21 @@ function getScopeLabel(scope: ContactScope | undefined): string | null {
   };
   
   return scopeMap[scope];
+}
+
+/**
+ * One row in the sidebar. Previously these were passed around as `any[]`, which meant a
+ * typo in `visible` or `disabled` silently rendered nothing.
+ */
+interface NavItem {
+  href: string;
+  icon: LucideIcon;
+  label: string;
+  visible: boolean;
+  /** Rendered greyed out with a padlock: the route exists but this user lacks permission. */
+  disabled?: boolean;
+  /** Opens in a new tab (e.g. the backoffice, which is a separate deployment). */
+  external?: boolean;
 }
 
 export function AdminSidebar({ className }: { className?: string } = {}) {
@@ -243,12 +261,137 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: '/backoffice', icon: Cog, label: 'Backoffice', visible: hasBackofficeAccess, external: true },
   ], [wrapHref, can, isFeatureEnabled, hasBackofficeAccess]);
 
-  const renderNavGroup = (title: string, items: any[], defaultOpen = false) => {
+  // ── Sidebar accordion ────────────────────────────────────────────────────────
+  // Only one group is open at a time. The list is long enough (six groups, ~50 rows) that
+  // several open at once buries the bottom of the nav below the fold, especially on a phone.
+  //
+  // HOW THE OPEN GROUP IS DECIDED, and why it is not a plain useState:
+  //   `undefined` means "nobody has clicked yet — follow the current route", so a deep link
+  //   to /admin/surveys arrives with Studios already open. Once the user clicks a group
+  //   header we store their choice and stop following the route; `null` is a real value
+  //   meaning they collapsed everything.
+  //
+  // CAUTION: both the desktop sidebar and the mobile sheet call renderNavGroup, so they
+  // share this one state deliberately — opening a group on mobile must not leave the
+  // desktop rail showing something different when the viewport changes.
+  const [groupChoice, setGroupChoice] = React.useState<string | null | undefined>(undefined);
+
+  // ── Nav search ───────────────────────────────────────────────────────────────────────
+  // The sidebar is ~50 rows across six collapsed groups, so finding "Surveys" otherwise
+  // means guessing which group holds it. While a query is present the accordion steps
+  // aside and a flat result list is shown instead — searching is a different mode of
+  // getting somewhere, and making the user also expand the right group defeats the point.
+  const [navQuery, setNavQuery] = React.useState('');
+
+  const navGroups = React.useMemo<{ title: string; items: NavItem[] }[]>(() => [
+    { title: 'Operations', items: coreNavItems },
+    { title: 'Studios', items: studioNavItems },
+    { title: 'Finance Hub', items: financeNavItems },
+    { title: 'Social Hub', items: socialNavItems },
+    { title: 'Workspace and Users', items: workforceNavItems },
+    { title: 'Management', items: systemNavItems },
+  ], [coreNavItems, studioNavItems, financeNavItems, socialNavItems, workforceNavItems, systemNavItems]);
+
+  // Which group owns the page we are on. Longest matching href wins: every route starts with
+  // /admin, so Dashboard would otherwise claim every page in the sidebar.
+  const routeGroup = React.useMemo(() => {
+    let best: { title: string; length: number } | null = null;
+    for (const group of navGroups) {
+      for (const item of group.items) {
+        if (!item.visible || item.external) continue;
+        const basePath = item.href.split('?')[0];
+        if (isActive(item.href) && (!best || basePath.length > best.length)) {
+          best = { title: group.title, length: basePath.length };
+        }
+      }
+    }
+    return best?.title ?? null;
+  }, [navGroups, isActive]);
+
+  // Hand control back to the route when the route moves to a DIFFERENT group — otherwise a
+  // group the user opened by hand would stay open after they navigate away from it. Staying
+  // on the same route (or moving within the open group) leaves their choice alone.
+  React.useEffect(() => {
+    setGroupChoice(undefined);
+  }, [routeGroup]);
+
+  const openGroup = groupChoice === undefined ? (routeGroup ?? 'Operations') : groupChoice;
+
+  /**
+   * One nav row. Shared by the accordion groups and the search results so the locked state,
+   * active indicator and external-link handling cannot drift apart between the two.
+   *
+   * `caption` is only passed by search, where a flat list needs to say which group a row
+   * came from.
+   */
+  const renderNavItem = (item: NavItem, caption?: string) => {
+    const active = !item.disabled && isActive(item.href);
+
+    // Locked: the route exists but this user lacks permission. Shown rather than hidden so
+    // the feature is discoverable, and so search does not silently return nothing.
+    if (item.disabled) {
+      return (
+        <SidebarMenuItem key={item.href}>
+          <SidebarMenuButton
+            tooltip={`${item.label} — Requires permission`}
+            className="text-muted-foreground/40 rounded-xl h-10 cursor-not-allowed relative overflow-hidden select-none hover:bg-transparent"
+          >
+            <div className="flex items-center gap-3 pointer-events-none">
+              <item.icon className="h-[18px] w-[18px] shrink-0 opacity-40" />
+              <span className="text-xs tracking-wide group-data-[collapsible=icon]:hidden truncate opacity-50">{item.label}</span>
+              <Lock className="h-3 w-3 ml-auto opacity-30 shrink-0 group-data-[collapsible=icon]:hidden" />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      );
+    }
+
+    const inner = (
+      <>
+        {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />}
+        <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-transform duration-300", active ? "scale-110" : "group-hover/item:scale-110")} />
+        <span className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
+          <span className="text-xs tracking-wide truncate">{item.label}</span>
+          {caption && <span className="text-[10px] text-muted-foreground/60 truncate">{caption}</span>}
+        </span>
+      </>
+    );
+
+    return (
+      <SidebarMenuItem key={item.href}>
+        <SidebarMenuButton
+          asChild
+          isActive={active}
+          tooltip={item.label}
+          className={cn(
+            "text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl h-10 transition-all duration-300 group/item relative overflow-hidden",
+            active && "bg-primary/10 text-primary shadow-lg shadow-primary/5 font-semibold"
+          )}
+        >
+          {item.external ? (
+            <a href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
+              {inner}
+            </a>
+          ) : (
+            <Link href={item.href} className="flex items-center gap-3" onClick={() => isMobile && setOpenMobile(false)}>
+              {inner}
+            </Link>
+          )}
+        </SidebarMenuButton>
+      </SidebarMenuItem>
+    );
+  };
+
+  const renderNavGroup = (title: string, items: NavItem[]) => {
     const visibleItems = items.filter(i => i.visible);
     if (visibleItems.length === 0) return null;
 
     return (
-      <Collapsible defaultOpen={defaultOpen} className="group/collapsible">
+      <Collapsible
+        open={openGroup === title}
+        onOpenChange={(next) => setGroupChoice(next ? title : null)}
+        className="group/collapsible"
+      >
         <SidebarGroup className="px-0 py-2">
           <CollapsibleTrigger asChild>
             <SidebarGroupLabel className="cursor-pointer hover:text-foreground text-left text-primary/60 dark:text-primary/40 font-bold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden flex items-center justify-between">
@@ -258,62 +401,95 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
           </CollapsibleTrigger>
           <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
             <SidebarMenu className="gap-1.5 px-3 group-data-[collapsible=icon]:px-2">
-              {visibleItems.map((item) => {
-                const active = !item.disabled && isActive(item.href);
-                const isLocked = !!item.disabled;
-
-                // Locked/disabled state: show with reduced opacity and lock icon
-                if (isLocked) {
-                  return (
-                    <SidebarMenuItem key={item.href}>
-                      <SidebarMenuButton
-                        tooltip={`${item.label} — Requires permission`}
-                        className="text-muted-foreground/40 rounded-xl h-10 cursor-not-allowed relative overflow-hidden select-none hover:bg-transparent"
-                      >
-                        <div className="flex items-center gap-3 pointer-events-none">
-                          <item.icon className="h-[18px] w-[18px] shrink-0 opacity-40" />
-                          <span className="text-xs tracking-wide group-data-[collapsible=icon]:hidden truncate opacity-50">{item.label}</span>
-                          <Lock className="h-3 w-3 ml-auto opacity-30 shrink-0 group-data-[collapsible=icon]:hidden" />
-                        </div>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                }
-
-                return (
-                  <SidebarMenuItem key={item.href}>
-                    <SidebarMenuButton 
-                      asChild 
-                      isActive={active} 
-                      tooltip={item.label} 
-                      className={cn(
-                        "text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl h-10 transition-all duration-300 group/item relative overflow-hidden",
-                        active && "bg-primary/10 text-primary shadow-lg shadow-primary/5 font-semibold"
-                      )}
-                    >
-                      {item.external ? (
-                        <a href={item.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3">
-                          {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />}
-                          <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-transform duration-300", active ? "scale-110" : "group-hover/item:scale-110")} />
-                          <span className="text-xs tracking-wide group-data-[collapsible=icon]:hidden truncate">{item.label}</span>
-                        </a>
-                      ) : (
-                        <Link href={item.href} className="flex items-center gap-3">
-                          {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />}
-                          <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-transform duration-300", active ? "scale-110" : "group-hover/item:scale-110")} />
-                          <span className="text-xs tracking-wide group-data-[collapsible=icon]:hidden truncate">{item.label}</span>
-                        </Link>
-                      )}
-                    </SidebarMenuButton>
-                  </SidebarMenuItem>
-                );
-              })}
+              {visibleItems.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </CollapsibleContent>
         </SidebarGroup>
       </Collapsible>
     );
   };
+
+  const trimmedQuery = navQuery.trim().toLowerCase();
+
+  // Matches on the row's own label, and on its group name, so "finance" surfaces the whole
+  // Finance Hub rather than nothing. Locked rows are included deliberately: hiding them
+  // would make a search for a feature the user cannot yet access look like it does not exist.
+  const searchResults = React.useMemo(() => {
+    if (!trimmedQuery) return [];
+    const out: { item: NavItem; group: string }[] = [];
+    for (const group of navGroups) {
+      const groupMatches = group.title.toLowerCase().includes(trimmedQuery);
+      for (const item of group.items) {
+        if (!item.visible) continue;
+        if (groupMatches || item.label.toLowerCase().includes(trimmedQuery)) {
+          out.push({ item, group: group.title });
+        }
+      }
+    }
+    return out;
+  }, [trimmedQuery, navGroups]);
+
+  /**
+   * The scrollable nav body. Rendered identically by the desktop rail and the mobile sheet —
+   * they previously repeated all six group calls, which is how the two drifted apart.
+   */
+  const renderNavBody = () => (
+    <>
+      {/* Hidden when the rail collapses to icons: there is no room for a field, and the
+          icon rail is a different navigation mode. */}
+      <div className="px-3 pb-1 group-data-[collapsible=icon]:hidden">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
+          <input
+            type="search"
+            value={navQuery}
+            onChange={(e) => setNavQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Escape') setNavQuery(''); }}
+            placeholder="Search menu"
+            aria-label="Search menu"
+            // h-10 keeps the tap target comfortable on a phone; text-sm avoids iOS zooming
+            // the viewport on focus, which 16px-and-below inputs otherwise trigger.
+            className="w-full h-10 pl-9 pr-8 text-sm rounded-xl bg-muted/40 border border-border/40 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all [&::-webkit-search-cancel-button]:hidden"
+          />
+          {navQuery && (
+            <button
+              type="button"
+              onClick={() => setNavQuery('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 flex items-center justify-center rounded-lg text-muted-foreground/60 hover:text-foreground hover:bg-muted transition-colors"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {trimmedQuery ? (
+        <SidebarGroup className="px-0 py-2">
+          {searchResults.length > 0 ? (
+            <SidebarMenu className="gap-1.5 px-3">
+              {searchResults.map(({ item, group }) => renderNavItem(item, group))}
+            </SidebarMenu>
+          ) : (
+            <p className="px-6 py-4 text-xs text-muted-foreground/70">
+              Nothing matches “{navQuery.trim()}”.
+            </p>
+          )}
+        </SidebarGroup>
+      ) : (
+        <>
+          {renderNavGroup("Operations", coreNavItems)}
+          {renderNavGroup("Studios", studioNavItems)}
+          {renderNavGroup("Finance Hub", financeNavItems)}
+          {renderNavGroup("Social Hub", socialNavItems)}
+          {renderNavGroup("Workspace and Users", workforceNavItems)}
+          <div className="mt-auto pt-4 mb-2">
+            {renderNavGroup("Management", systemNavItems)}
+          </div>
+        </>
+      )}
+    </>
+  );
 
   const renderOrganizationsPanel = () => {
     return (
@@ -482,14 +658,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         </SidebarHeader>
         
         <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none hover:scrollbar-thin scrollbar-thumb-muted-foreground/20">
-          {renderNavGroup("Operations", coreNavItems, true)}
-          {renderNavGroup("Studios", studioNavItems, false)}
-          {renderNavGroup("Finance Hub", financeNavItems, false)}
-          {renderNavGroup("Social Hub", socialNavItems, false)}
-          {renderNavGroup("Workspace and Users", workforceNavItems, true)}
-          <div className="mt-auto pt-4 mb-2">
-              {renderNavGroup("Management", systemNavItems, false)}
-          </div>
+          {renderNavBody()}
         </SidebarContent>
         
         <SidebarFooter className="p-4 border-t border-border/30 bg-muted/20 backdrop-blur-md">
@@ -552,14 +721,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
           </SidebarHeader>
 
           <SidebarContent className="mt-2 overflow-x-hidden scrollbar-none">
-            {renderNavGroup("Operations", coreNavItems, true)}
-            {renderNavGroup("Studios", studioNavItems, false)}
-            {renderNavGroup("Finance Hub", financeNavItems, false)}
-            {renderNavGroup("Social Hub", socialNavItems, false)}
-            {renderNavGroup("Workspace and Users", workforceNavItems, true)}
-            <div className="mt-auto pt-4 mb-2">
-                {renderNavGroup("Management", systemNavItems, false)}
-            </div>
+            {renderNavBody()}
           </SidebarContent>
 
           <SidebarFooter className="p-4 border-t border-border/30 bg-muted/20 backdrop-blur-md">
