@@ -28,6 +28,12 @@ import { useParams } from 'next/navigation';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { cn } from '@/lib/utils';
 
+interface AppFieldItem {
+  id?: string;
+  name?: string;
+  label?: string;
+}
+
 interface MappableInputFieldProps {
   value: string;
   onChange: (val: string) => void;
@@ -35,16 +41,62 @@ interface MappableInputFieldProps {
   className?: string;
   inputClassName?: string;
   isTextArea?: boolean;
-  appFields?: any[];
+  appFields?: AppFieldItem[];
 }
 
-function getFlatKeys(obj: any, prefix = ''): { key: string; val: any }[] {
+interface FlatKeyItem {
+  key: string;
+  val: unknown;
+}
+
+interface CapturedWebhookPayload {
+  body?: Record<string, unknown>;
+  headers?: Record<string, string>;
+  query?: Record<string, string>;
+  files?: Array<{ name?: string; size?: number; type?: string }>;
+}
+
+interface VariableItem {
+  key: string;
+  fullKey?: string;
+  label: string;
+  val: string;
+  rawVal?: unknown;
+  group: 'webhook' | 'entity' | 'workspace';
+}
+
+function formatValuePreview(val: unknown): string {
+  if (val === null || val === undefined) return 'none';
+  if (typeof val === 'string') return val.trim() || '""';
+  if (typeof val === 'number' || typeof val === 'boolean') return String(val);
+  if (Array.isArray(val)) {
+    if (val.length === 0) return '[] (empty)';
+    if (typeof val[0] === 'object' && val[0] !== null) {
+      return `${val.length} item${val.length > 1 ? 's' : ''}`;
+    }
+    return val.slice(0, 3).map(String).join(', ') + (val.length > 3 ? '...' : '');
+  }
+  if (typeof val === 'object') {
+    return '{...}';
+  }
+  return String(val);
+}
+
+function getFlatKeys(obj: Record<string, unknown> | unknown, prefix = ''): FlatKeyItem[] {
   if (!obj || typeof obj !== 'object') return [];
-  const res: { key: string; val: any }[] = [];
-  for (const [key, value] of Object.entries(obj)) {
+  const res: FlatKeyItem[] = [];
+  for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
     const path = prefix ? `${prefix}.${key}` : key;
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      res.push(...getFlatKeys(value, path));
+      res.push(...getFlatKeys(value as Record<string, unknown>, path));
+    } else if (Array.isArray(value)) {
+      if (value.length > 0 && typeof value[0] === 'object' && value[0] !== null) {
+        // Flatten first array item for convenient mapping (e.g. entityContacts[0].name)
+        res.push(...getFlatKeys(value[0] as Record<string, unknown>, `${path}[0]`));
+        res.push({ key: path, val: value });
+      } else {
+        res.push({ key: path, val: value });
+      }
     } else {
       res.push({ key: path, val: value });
     }
@@ -104,7 +156,7 @@ export function MappableInputField({
   const firestore = useFirestore();
   const params = useParams();
   const automationId = params.id as string;
-  const [capturedPayload, setCapturedPayload] = React.useState<any>(null);
+  const [capturedPayload, setCapturedPayload] = React.useState<CapturedWebhookPayload | null>(null);
   const [isFocused, setIsFocused] = React.useState(false);
 
   const [modalOpen, setModalOpen] = React.useState(false);
@@ -137,11 +189,11 @@ export function MappableInputField({
       if (snapshot.exists()) {
         const autoData = snapshot.data();
         if (autoData?.latestCapturedWebhook) {
-          setCapturedPayload(autoData.latestCapturedWebhook);
+          setCapturedPayload(autoData.latestCapturedWebhook as CapturedWebhookPayload);
         } else {
-          const webhookTrigger = autoData?.triggers?.find((t: any) => t.type === 'WEBHOOK_RECEIVED');
+          const webhookTrigger = autoData?.triggers?.find((t: { type?: string }) => t.type === 'WEBHOOK_RECEIVED');
           if (webhookTrigger?.config?.capturedPayload) {
-            setCapturedPayload(webhookTrigger.config.capturedPayload);
+            setCapturedPayload(webhookTrigger.config.capturedPayload as CapturedWebhookPayload);
           } else {
             setCapturedPayload(null);
           }
@@ -151,71 +203,82 @@ export function MappableInputField({
     return () => unsub();
   }, [firestore, automationId]);
 
-  // Derive variables lists
-  const webhookVariables = React.useMemo(() => {
+  // Derive variables lists with core variable names and clean values
+  const webhookVariables = React.useMemo<VariableItem[]>(() => {
     if (!capturedPayload) return [];
     
-    const bodyKeys = getFlatKeys(capturedPayload.body || {}).map(item => ({
-      key: `1.body.${item.key}`,
-      label: `body.${item.key}`,
-      val: item.val
+    // 1. Core Webhook Body Properties (clean variable names without 1.body. prefix)
+    const bodyKeys: VariableItem[] = getFlatKeys(capturedPayload.body || {}).map(item => ({
+      key: item.key, // Core variable name: e.g. "arrearsBalance", "phone", "email"
+      fullKey: `1.body.${item.key}`,
+      label: item.key,
+      val: formatValuePreview(item.val),
+      rawVal: item.val,
+      group: 'webhook',
     }));
     
-    const headerKeys = Object.entries(capturedPayload.headers || {}).map(([k, v]) => ({
-      key: `1.headers.${k}`,
-      label: `headers.${k}`,
-      val: v
+    // 2. Webhook Headers (optional)
+    const headerKeys: VariableItem[] = Object.entries(capturedPayload.headers || {}).map(([k, v]) => ({
+      key: `headers.${k}`,
+      fullKey: `1.headers.${k}`,
+      label: `header: ${k}`,
+      val: formatValuePreview(v),
+      rawVal: v,
+      group: 'webhook',
     }));
     
-    const queryKeys = Object.entries(capturedPayload.query || {}).map(([k, v]) => ({
-      key: `1.query.${k}`,
-      label: `query.${k}`,
-      val: v
+    // 3. Webhook Query Parameters (optional)
+    const queryKeys: VariableItem[] = Object.entries(capturedPayload.query || {}).map(([k, v]) => ({
+      key: `query.${k}`,
+      fullKey: `1.query.${k}`,
+      label: `query: ${k}`,
+      val: formatValuePreview(v),
+      rawVal: v,
+      group: 'webhook',
     }));
     
-    const fileKeys = (capturedPayload.files || []).flatMap((file: any, idx: number) => [
-      { key: `1.files[${idx}].name`, label: `files[${idx}].name`, val: file.name },
-      { key: `1.files[${idx}].size`, label: `files[${idx}].size`, val: `${(file.size / 1024).toFixed(1)} KB` },
-      { key: `1.files[${idx}].type`, label: `files[${idx}].type`, val: file.type }
+    // 4. Webhook Files (optional)
+    const fileKeys: VariableItem[] = (capturedPayload.files || []).flatMap((file: { name?: string; size?: number; type?: string }, idx: number) => [
+      { key: `files[${idx}].name`, fullKey: `1.files[${idx}].name`, label: `files[${idx}].name`, val: file.name || 'none', rawVal: file.name, group: 'webhook' as const },
+      { key: `files[${idx}].size`, fullKey: `1.files[${idx}].size`, label: `files[${idx}].size`, val: file.size ? `${(file.size / 1024).toFixed(1)} KB` : '0 KB', rawVal: file.size, group: 'webhook' as const },
+      { key: `files[${idx}].type`, fullKey: `1.files[${idx}].type`, label: `files[${idx}].type`, val: file.type || 'none', rawVal: file.type, group: 'webhook' as const }
     ]);
 
     return [...bodyKeys, ...headerKeys, ...queryKeys, ...fileKeys];
   }, [capturedPayload]);
 
-  const entityVariables = React.useMemo(() => {
-    const native = [
-      { key: 'entity.displayName', label: 'Display Name', val: 'e.g. Acme Corp' },
-      { key: 'entity.primaryEmail', label: 'Primary Email', val: 'e.g. info@acme.com' },
-      { key: 'entity.primaryPhone', label: 'Primary Phone', val: 'e.g. +1234567890' },
-      { key: 'entity.assignedTo', label: 'Account Manager ID', val: 'e.g. usr_789' },
+  const entityVariables = React.useMemo<VariableItem[]>(() => {
+    const native: VariableItem[] = [
+      { key: 'entity.displayName', label: 'Display Name', val: 'e.g. Acme Corp', group: 'entity' },
+      { key: 'entity.primaryEmail', label: 'Primary Email', val: 'e.g. info@acme.com', group: 'entity' },
+      { key: 'entity.primaryPhone', label: 'Primary Phone', val: 'e.g. +1234567890', group: 'entity' },
+      { key: 'entity.assignedTo', label: 'Account Manager ID', val: 'e.g. usr_789', group: 'entity' },
     ];
-    const custom = (appFields || []).map((f: any) => ({
+    const custom: VariableItem[] = (appFields || []).map((f) => ({
       key: `entity.${f.id || f.name}`,
-      label: f.label || f.name,
-      val: `Value of custom field: ${f.label || f.name}`,
+      label: f.label || f.name || 'Custom Field',
+      val: `Custom: ${f.label || f.name}`,
+      group: 'entity',
     }));
     return [...native, ...custom];
   }, [appFields]);
 
-  const workspaceVariables = React.useMemo(() => [
-    { key: 'workspace.id', label: 'Workspace ID', val: 'e.g. ws_555' },
+  const workspaceVariables = React.useMemo<VariableItem[]>(() => [
+    { key: 'workspace.id', label: 'Workspace ID', val: 'e.g. ws_555', group: 'workspace' },
   ], []);
 
-  const allVariables = React.useMemo(() => {
-    const list: { key: string; label: string; val: any; group: string }[] = [];
-    webhookVariables.forEach(x => list.push({ ...x, group: 'webhook' }));
-    entityVariables.forEach(x => list.push({ ...x, group: 'entity' }));
-    workspaceVariables.forEach(x => list.push({ ...x, group: 'workspace' }));
-    return list;
+  const allVariables = React.useMemo<VariableItem[]>(() => {
+    return [...webhookVariables, ...entityVariables, ...workspaceVariables];
   }, [webhookVariables, entityVariables, workspaceVariables]);
 
-  const filteredVariables = React.useMemo(() => {
+  const filteredVariables = React.useMemo<VariableItem[]>(() => {
     const q = searchQuery.toLowerCase().trim();
     if (!q) return allVariables;
     return allVariables.filter(v => 
       v.key.toLowerCase().includes(q) || 
       v.label.toLowerCase().includes(q) || 
-      String(v.val).toLowerCase().includes(q)
+      v.val.toLowerCase().includes(q) ||
+      (v.fullKey && v.fullKey.toLowerCase().includes(q))
     );
   }, [allVariables, searchQuery]);
 
@@ -241,7 +304,7 @@ export function MappableInputField({
     }, 50);
   };
 
-  const groupItems = (groupName: string) => {
+  const groupItems = (groupName: 'webhook' | 'entity' | 'workspace') => {
     return filteredVariables.filter(v => v.group === groupName);
   };
 
@@ -272,12 +335,11 @@ export function MappableInputField({
         {parts.map((part, idx) => {
           if (part.type === 'variable') {
             const variableKey = part.value;
-            const variableInfo = allVariables.find(v => v.key === variableKey);
+            const variableInfo = allVariables.find(v => v.key === variableKey || v.fullKey === variableKey);
             const group = variableInfo?.group || (
-              variableKey.startsWith('1.') ? 'webhook' :
               variableKey.startsWith('entity.') ? 'entity' :
               variableKey.startsWith('workspace.') ? 'workspace' :
-              'unknown'
+              'webhook'
             );
             const rawLabel = variableInfo?.label || variableKey;
             // Strip group prefixes to make label friendly and short
@@ -425,10 +487,17 @@ export function MappableInputField({
                 ) : (
                   <Accordion type="multiple" defaultValue={['webhook_item', 'entity_item']} className="w-full space-y-1.5">
                     {webhookGroup.length > 0 && (
-                      <AccordionItem value="webhook_item" className="border rounded-xl bg-muted/5 px-3">
-                        <AccordionTrigger className="hover:no-underline py-2.5 text-[10px] font-bold text-blue-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Globe className="h-3.5 w-3.5" />
-                          <span>1. Webhook Ingress ({webhookGroup.length})</span>
+                      <AccordionItem value="webhook_item" className="border rounded-xl bg-card px-3 shadow-none">
+                        <AccordionTrigger className="hover:no-underline py-2.5">
+                          <div className="flex items-center gap-2 text-left">
+                            <div className="h-5 w-5 rounded-md bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                              <Globe className="h-3.5 w-3.5" />
+                            </div>
+                            <span className="text-xs font-bold text-foreground">Webhook Data</span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                              {webhookGroup.length}
+                            </span>
+                          </div>
                         </AccordionTrigger>
                         <AccordionContent className="pt-1 pb-3 space-y-1">
                           {webhookGroup.map((v) => (
@@ -436,10 +505,21 @@ export function MappableInputField({
                               key={v.key}
                               type="button"
                               onClick={() => insertVariable(v.key)}
-                              className="w-full flex flex-col text-left px-2 py-1.5 hover:bg-blue-500/5 hover:text-blue-500 rounded-lg transition-colors border border-transparent hover:border-blue-500/10 font-mono text-[9px] group"
+                              className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-blue-500/5 hover:border-blue-500/20 rounded-xl transition-all border border-border/40 group text-left"
                             >
-                              <span className="font-bold text-foreground group-hover:text-blue-500">{`{{${v.key}}}`}</span>
-                              <span className="text-muted-foreground/60 truncate mt-0.5" title={String(v.val)}>Value: {String(v.val)}</span>
+                              <div className="flex flex-col min-w-0 pr-2">
+                                <span className="font-semibold text-xs text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[110px] truncate" title={String(v.val)}>
+                                  {v.val}
+                                </span>
+                              </div>
                             </button>
                           ))}
                         </AccordionContent>
@@ -447,10 +527,17 @@ export function MappableInputField({
                     )}
 
                     {entityGroup.length > 0 && (
-                      <AccordionItem value="entity_item" className="border rounded-xl bg-muted/5 px-3">
-                        <AccordionTrigger className="hover:no-underline py-2.5 text-[10px] font-bold text-emerald-600 uppercase tracking-wider flex items-center gap-1.5">
-                          <Database className="h-3.5 w-3.5" />
-                          <span>Active Entity ({entityGroup.length})</span>
+                      <AccordionItem value="entity_item" className="border rounded-xl bg-card px-3 shadow-none">
+                        <AccordionTrigger className="hover:no-underline py-2.5">
+                          <div className="flex items-center gap-2 text-left">
+                            <div className="h-5 w-5 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                              <Database className="h-3.5 w-3.5" />
+                            </div>
+                            <span className="text-xs font-bold text-foreground">Active Entity</span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                              {entityGroup.length}
+                            </span>
+                          </div>
                         </AccordionTrigger>
                         <AccordionContent className="pt-1 pb-3 space-y-1">
                           {entityGroup.map((v) => (
@@ -458,10 +545,21 @@ export function MappableInputField({
                               key={v.key}
                               type="button"
                               onClick={() => insertVariable(v.key)}
-                              className="w-full flex flex-col text-left px-2 py-1.5 hover:bg-emerald-500/5 hover:text-emerald-500 rounded-lg transition-colors border border-transparent hover:border-emerald-500/10 font-mono text-[9px] group"
+                              className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-emerald-500/5 hover:border-emerald-500/20 rounded-xl transition-all border border-border/40 group text-left"
                             >
-                              <span className="font-bold text-foreground group-hover:text-emerald-600">{`{{${v.key}}}`}</span>
-                              <span className="text-muted-foreground/60 truncate mt-0.5">{v.val}</span>
+                              <div className="flex flex-col min-w-0 pr-2">
+                                <span className="font-semibold text-xs text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[110px] truncate" title={String(v.val)}>
+                                  {v.val}
+                                </span>
+                              </div>
                             </button>
                           ))}
                         </AccordionContent>
@@ -469,10 +567,17 @@ export function MappableInputField({
                     )}
 
                     {workspaceGroup.length > 0 && (
-                      <AccordionItem value="workspace_item" className="border rounded-xl bg-muted/5 px-3">
-                        <AccordionTrigger className="hover:no-underline py-2.5 text-[10px] font-bold text-indigo-500 uppercase tracking-wider flex items-center gap-1.5">
-                          <Activity className="h-3.5 w-3.5" />
-                          <span>Workspace Info ({workspaceGroup.length})</span>
+                      <AccordionItem value="workspace_item" className="border rounded-xl bg-card px-3 shadow-none">
+                        <AccordionTrigger className="hover:no-underline py-2.5">
+                          <div className="flex items-center gap-2 text-left">
+                            <div className="h-5 w-5 rounded-md bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                              <Activity className="h-3.5 w-3.5" />
+                            </div>
+                            <span className="text-xs font-bold text-foreground">Workspace Info</span>
+                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                              {workspaceGroup.length}
+                            </span>
+                          </div>
                         </AccordionTrigger>
                         <AccordionContent className="pt-1 pb-3 space-y-1">
                           {workspaceGroup.map((v) => (
@@ -480,10 +585,21 @@ export function MappableInputField({
                               key={v.key}
                               type="button"
                               onClick={() => insertVariable(v.key)}
-                              className="w-full flex flex-col text-left px-2 py-1.5 hover:bg-indigo-500/5 hover:text-indigo-500 rounded-lg transition-colors border border-transparent hover:border-indigo-500/10 font-mono text-[9px] group"
+                              className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-indigo-500/5 hover:border-indigo-500/20 rounded-xl transition-all border border-border/40 group text-left"
                             >
-                              <span className="font-bold text-foreground group-hover:text-indigo-500">{`{{${v.key}}}`}</span>
-                              <span className="text-muted-foreground/60 truncate mt-0.5">{v.val}</span>
+                              <div className="flex flex-col min-w-0 pr-2">
+                                <span className="font-semibold text-xs text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[110px] truncate" title={String(v.val)}>
+                                  {v.val}
+                                </span>
+                              </div>
                             </button>
                           ))}
                         </AccordionContent>

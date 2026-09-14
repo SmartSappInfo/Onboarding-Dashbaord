@@ -89,6 +89,56 @@ describe('Variable Resolution & Execution Context Enrichment', () => {
         name: 'Fallback Entity Name',
       });
     });
+
+    it('resolves direct core variable names from webhook payload', () => {
+      const config = {
+        arrears: '{{arrearsBalance}}',
+        pkg: '{{subscriptionPackageId}}',
+        currency: '{{currency}}',
+      };
+      const payload = {
+        arrearsBalance: 0,
+        subscriptionPackageId: 'pkg_premium',
+        currency: 'GHS',
+      };
+      const resolved = resolveConfigVariables(config, payload);
+      expect(resolved).toEqual({
+        arrears: '0',
+        pkg: 'pkg_premium',
+        currency: 'GHS',
+      });
+    });
+
+    it('resolves core variable names when present under body or 1.body', () => {
+      const config = {
+        phone: '{{phone}}',
+        email: '{{email}}',
+      };
+      const payload = {
+        '1.body.phone': '+233241234567',
+        'body.email': 'customer@example.com',
+      };
+      const resolved = resolveConfigVariables(config, payload);
+      expect(resolved).toEqual({
+        phone: '+233241234567',
+        email: 'customer@example.com',
+      });
+    });
+
+    it('resolves core variable names from nested payload.body object', () => {
+      const config = {
+        amount: '{{amount}}',
+      };
+      const payload = {
+        body: {
+          amount: 500,
+        },
+      };
+      const resolved = resolveConfigVariables(config, payload);
+      expect(resolved).toEqual({
+        amount: '500',
+      });
+    });
   });
 
   describe('traverseNodes Context Enrichment', () => {

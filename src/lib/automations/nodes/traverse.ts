@@ -140,6 +140,10 @@ export async function enrichExecutionContext(context: ExecutionContext): Promise
     for (const [key, val] of Object.entries(flatBody)) {
       context.payload[`1.body.${key}`] = val;
       context.payload[`body.${key}`] = val;
+      // Core variable name (e.g. context.payload['arrearsBalance'])
+      if (context.payload[key] === undefined) {
+        context.payload[key] = val;
+      }
     }
     for (const [key, val] of Object.entries(headers)) {
       context.payload[`1.headers.${key}`] = val;

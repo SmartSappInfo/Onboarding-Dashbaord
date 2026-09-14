@@ -503,7 +503,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
         <div className="space-y-2">
           <Label className="text-[10px] font-semibold text-muted-foreground ml-1">{singular} Name (Tag/Variable Supported)</Label>
           <MappableInputField 
-            placeholder="e.g. {{1.body.name}}" 
+            placeholder="e.g. {{name}}" 
             value={config.name || ''} 
             onChange={(val) => updateConfig({ name: val })} 
             inputClassName="h-10 shadow-sm"
@@ -515,7 +515,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Primary Phone (Variable Supported)</Label>
             <MappableInputField 
-              placeholder="e.g. {{1.body.phone}}" 
+              placeholder="e.g. {{phone}}" 
               value={config.phone || ''} 
               onChange={(val) => updateConfig({ phone: val })} 
               inputClassName="h-10 shadow-sm"
@@ -525,7 +525,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Primary Email (Variable Supported)</Label>
             <MappableInputField 
-              placeholder="e.g. {{1.body.email}}" 
+              placeholder="e.g. {{email}}" 
               value={config.email || ''} 
               onChange={(val) => updateConfig({ email: val })} 
               inputClassName="h-10 shadow-sm"
@@ -595,7 +595,7 @@ const CreateEntityConfigPanel = React.memo(function CreateEntityConfigPanel({
                       value={String(val ?? '')}
                       onChange={(newVal) => handleUpdateCustomFieldVal(key, newVal)}
                       inputClassName="h-10 rounded-xl bg-card border text-xs font-semibold"
-                      placeholder={`e.g. {{1.body.${key}}} or static value`}
+                      placeholder={`e.g. {{${key}}} or static value`}
                       appFields={appFields}
                     />
                   </div>
@@ -1018,7 +1018,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                       <div className="pl-6 pt-2 animate-in slide-in-from-top-1 duration-200">
                         <Label className="text-[9px] font-bold text-primary ml-1 block mb-1">Static Target (Tag Supported)</Label>
                         <MappableInputField 
-                          placeholder="e.g. {{1.body.email}}" 
+                          placeholder="e.g. {{email}}" 
                           value={config.recipient || ''} 
                           onChange={(val) => updateConfig({ recipient: val })} 
                           inputClassName="font-mono text-xs px-4"
@@ -1201,7 +1201,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                       <div className="pl-6 pt-2 animate-in slide-in-from-top-1 duration-200">
                         <Label className="text-[9px] font-bold text-primary ml-1 block mb-1">Static Target (Tag Supported)</Label>
                         <MappableInputField 
-                          placeholder={actionType === 'DIRECT_EMAIL' ? "e.g. admin@domain.com or {{1.body.email}}" : "e.g. +12345678 or {{1.body.phone}}"} 
+                          placeholder={actionType === 'DIRECT_EMAIL' ? "e.g. admin@domain.com or {{email}}" : "e.g. +12345678 or {{phone}}"} 
                           value={(config.recipient as string) || ''} 
                           onChange={(val) => updateConfig({ recipient: val })} 
                           inputClassName="font-mono text-xs px-4"
@@ -1300,7 +1300,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                           {actionType === 'SEND_NOTIFICATION_SMS' ? 'Custom Mobile Number' : 'Custom Email Address'}
                         </Label>
                         <MappableInputField 
-                          placeholder={actionType === 'SEND_NOTIFICATION_SMS' ? 'e.g. {{1.body.phone}}' : 'e.g. {{1.body.email}}'} 
+                          placeholder={actionType === 'SEND_NOTIFICATION_SMS' ? 'e.g. {{phone}}' : 'e.g. {{email}}'} 
                           value={config.customRecipient || ''} 
                           onChange={(val) => updateConfig({ customRecipient: val })} 
                           inputClassName="font-mono text-xs px-4"
@@ -1345,7 +1345,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Task Definition</Label>
             <MappableInputField 
-              placeholder="e.g. Follow up with {{1.body.name}}" 
+              placeholder="e.g. Follow up with {{name}}" 
               value={config.title || ''} 
               onChange={(val) => updateConfig({ title: val })} 
               inputClassName="h-12 font-bold text-sm"
@@ -1437,7 +1437,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         <div className="space-y-2">
           <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Note Content</Label>
           <MappableInputField
-            placeholder="e.g. Automated follow-up for {{1.body.name}}"
+            placeholder="e.g. Automated follow-up for {{name}}"
             value={config.content || ''}
             onChange={(val) => updateConfig({ content: val })}
             inputClassName="font-bold text-sm"
@@ -1683,7 +1683,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Value ($)</Label>
             <MappableInputField 
-              placeholder="e.g. 5000 or {{1.body.value}}" 
+              placeholder="e.g. 5000 or {{value}}" 
               value={config.value ? String(config.value) : ''} 
               onChange={(val) => updateConfig({ value: val })} 
               inputClassName="font-mono text-sm"
@@ -2101,7 +2101,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Phone Number (Variables Supported)</Label>
               <MappableInputField
-                placeholder="e.g. {{1.body.phone}} or +233..."
+                placeholder="e.g. {{phone}} or +233..."
                 value={(config.searchPhone as string) || ''}
                 onChange={(val) => updateConfig({ searchPhone: val })}
                 inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
@@ -2114,7 +2114,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Email Address (Variables Supported)</Label>
               <MappableInputField
-                placeholder="e.g. {{1.body.email}} or lead@company.com"
+                placeholder="e.g. {{email}} or lead@company.com"
                 value={(config.searchEmail as string) || ''}
                 onChange={(val) => updateConfig({ searchEmail: val })}
                 inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
@@ -2124,7 +2124,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Name (Variables Supported)</Label>
               <MappableInputField
-                placeholder="e.g. {{1.body.name}} or Full Name"
+                placeholder="e.g. {{name}} or Full Name"
                 value={(config.searchName as string) || ''}
                 onChange={(val) => updateConfig({ searchName: val })}
                 inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
@@ -2134,7 +2134,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <div className="space-y-2">
               <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity / Business Name (Optional)</Label>
               <MappableInputField
-                placeholder="e.g. {{1.body.company}} or Organization Name"
+                placeholder="e.g. {{company}} or Organization Name"
                 value={(config.searchEntityName as string) || ''}
                 onChange={(val) => updateConfig({ searchEntityName: val })}
                 inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
@@ -2419,7 +2419,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Value (Points)</Label>
             <MappableInputField 
-              placeholder="e.g. 10 or {{1.body.score_value}}" 
+              placeholder="e.g. 10 or {{score_value}}" 
               value={config.value !== undefined ? String(config.value) : ''} 
               onChange={(val) => {
                 const parsed = Number(val);
@@ -2432,7 +2432,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Target Contact (Optional)</Label>
             <MappableInputField 
-              placeholder="e.g. {{1.body.email}} or {{1.body.contactId}}" 
+              placeholder="e.g. {{email}} or {{contactId}}" 
               value={config.contactEmailOrId || ''} 
               onChange={(val) => updateConfig({ contactEmailOrId: val })} 
               inputClassName="font-mono text-xs"
