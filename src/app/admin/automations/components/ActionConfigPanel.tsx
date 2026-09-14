@@ -8,7 +8,9 @@ import {
   Zap,
   UserCog,
   Trash2,
-  Table
+  Table,
+  Search,
+  UserCheck
 } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -2074,6 +2076,214 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 </div>
               </label>
             </div>
+          </div>
+        </div>
+      ) : null}
+
+      {actionType === 'FIND_CONTACT' ? (
+        <div className="space-y-6">
+          {/* Header & Purpose Banner */}
+          <div className="p-4 rounded-2xl bg-primary/10 border border-primary/20 text-left space-y-1.5">
+            <span className="text-xs font-bold text-primary flex items-center gap-1.5">
+              <Search className="h-4 w-4" /> Find & Bind Contact
+            </span>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Searches the database using phone, email, contact name, or business name. When found, binds the contact and entity as the active context for all downstream steps.
+            </p>
+          </div>
+
+          {/* Search Criteria Card */}
+          <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+            <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+              <Search className="h-4 w-4 text-primary" /> Search Parameters
+            </h4>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Phone Number (Variables Supported)</Label>
+              <MappableInputField
+                placeholder="e.g. {{1.body.phone}} or +233..."
+                value={(config.searchPhone as string) || ''}
+                onChange={(val) => updateConfig({ searchPhone: val })}
+                inputClassName="h-10 rounded-xl font-medium text-xs"
+              />
+              <span className="text-[9px] font-medium text-muted-foreground leading-none ml-1 opacity-70 block">
+                Normalized to E.164 automatically before querying.
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Email Address (Variables Supported)</Label>
+              <MappableInputField
+                placeholder="e.g. {{1.body.email}} or lead@company.com"
+                value={(config.searchEmail as string) || ''}
+                onChange={(val) => updateConfig({ searchEmail: val })}
+                inputClassName="h-10 rounded-xl font-medium text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Contact Name (Variables Supported)</Label>
+              <MappableInputField
+                placeholder="e.g. {{1.body.name}} or Full Name"
+                value={(config.searchName as string) || ''}
+                onChange={(val) => updateConfig({ searchName: val })}
+                inputClassName="h-10 rounded-xl font-medium text-xs"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Entity / Business Name (Optional)</Label>
+              <MappableInputField
+                placeholder="e.g. {{1.body.company}} or Organization Name"
+                value={(config.searchEntityName as string) || ''}
+                onChange={(val) => updateConfig({ searchEntityName: val })}
+                inputClassName="h-10 rounded-xl font-medium text-xs"
+              />
+            </div>
+
+            <div className="space-y-2 pt-1">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Match Strategy</Label>
+              <Select
+                value={(config.matchStrategy as string) || 'priority'}
+                onValueChange={(val) => updateConfig({ matchStrategy: val })}
+              >
+                <SelectTrigger className="h-10 rounded-xl bg-card border font-semibold text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
+                  <SelectItem value="priority">Priority Order: Phone → Email → Contact Name → Entity (Recommended)</SelectItem>
+                  <SelectItem value="any">Match Any (OR - matches if any provided field matches)</SelectItem>
+                  <SelectItem value="all">Match All (AND - requires all provided criteria to agree)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="pt-2">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={config.caseInsensitive !== false}
+                  onChange={(e) => updateConfig({ caseInsensitive: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-[11px] font-bold leading-none mb-0.5 text-foreground">Case-Insensitive Match</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-none">Match names and emails regardless of capitalization</span>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          {/* Fallback Configuration Card */}
+          <div className="space-y-4 p-5 rounded-3xl bg-muted/20 border border-border/50 text-left">
+            <h4 className="text-xs font-bold text-foreground flex items-center gap-2">
+              <UserCheck className="h-4 w-4 text-primary" /> If Contact Not Found
+            </h4>
+
+            <div className="pt-1">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={config.createIfNotFound !== false}
+                  onChange={(e) => updateConfig({ createIfNotFound: e.target.checked })}
+                  className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                />
+                <div className="flex flex-col text-left">
+                  <span className="text-xs font-bold leading-none mb-0.5 text-foreground">Create Entity & Contact if not found</span>
+                  <span className="text-[9px] font-medium text-muted-foreground leading-tight">
+                    Automatically create the CRM entity and contact record, and bind them as the active context for downstream steps.
+                  </span>
+                </div>
+              </label>
+            </div>
+
+            {config.createIfNotFound !== false ? (
+              <div className="space-y-4 pt-3 border-t border-border/40 animate-in fade-in duration-200">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Record Entity Type</Label>
+                  <Select
+                    value={(config.newEntityType as string) || 'person'}
+                    onValueChange={(val) => updateConfig({ newEntityType: val })}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-card border font-semibold text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
+                      <SelectItem value="person">Individual / Person</SelectItem>
+                      <SelectItem value="institution">Company / Institution</SelectItem>
+                      <SelectItem value="family">Family / Household</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Entity Name (Optional Override)</Label>
+                  <MappableInputField
+                    placeholder="Defaults to Contact Name or Company"
+                    value={(config.newEntityName as string) || ''}
+                    onChange={(val) => updateConfig({ newEntityName: val })}
+                    inputClassName="h-10 rounded-xl font-medium text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">New Contact Primary Role</Label>
+                  <Input
+                    placeholder="e.g. Lead, Prospect, Primary"
+                    value={(config.newContactRole as string) || ''}
+                    onChange={(e) => updateConfig({ newContactRole: e.target.value })}
+                    className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Default Assignee</Label>
+                  <Select
+                    value={(config.assignedTo as string) || 'auto'}
+                    onValueChange={(val) => updateConfig({ assignedTo: val })}
+                  >
+                    <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs">
+                      <SelectValue placeholder="Auto-Resolve" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[250px]">
+                      <SelectItem value="auto" className="font-semibold italic text-primary">Unassigned</SelectItem>
+                      {users?.map((u) => (
+                        <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Apply Workspace Tags</Label>
+                  <TagSelector
+                    currentTagIds={(config.tagIds as string[]) || []}
+                    onTagsChange={(newTagIds) => updateConfig({ tagIds: newTagIds })}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-2 pt-3 border-t border-border/40 animate-in fade-in duration-200">
+                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">When Contact Is Not Found</Label>
+                <Select
+                  value={(config.onNotFoundAction as string) || 'halt'}
+                  onValueChange={(val) => updateConfig({ onNotFoundAction: val })}
+                >
+                  <SelectTrigger className="h-10 rounded-xl bg-card border font-semibold text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
+                    <SelectItem value="halt">Halt Automation Run (Cleanly stop execution)</SelectItem>
+                    <SelectItem value="continue">Continue Downstream (Proceed with contactFound = false)</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-[9px] font-medium text-muted-foreground leading-none ml-1 opacity-70 block">
+                  {config.onNotFoundAction === 'continue'
+                    ? 'Subsequent steps can check {{2.contactFound}} using a Condition node.'
+                    : 'The automation run will cleanly terminate at this step without errors.'}
+                </span>
+              </div>
+            )}
           </div>
         </div>
       ) : null}

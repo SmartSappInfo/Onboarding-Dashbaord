@@ -1359,47 +1359,70 @@ function ResponsesListView({
             {/* Password Protected Delete Confirmation */}
             <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
-                    <DialogHeader>
-                        <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
-                            <AlertTriangle className="h-6 w-6 text-destructive" />
-                        </div>
-                        <DialogTitle className="text-center text-xl font-semibold">Verify Identity</DialogTitle>
-                        <DialogDescription className="text-center">
-                            You are about to permanently delete <strong>{selectedIds.length}</strong> record{selectedIds.length !== 1 ? 's' : ''}. Please enter your admin password to proceed.
-                        </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4 py-4">
-                        <div className="space-y-2">
-                            <Label className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                                <Lock className="h-3 w-3" /> Confirm Password
-                            </Label>
-                            <Input 
-                                type="password" 
-                                placeholder="Your account password…" 
-                                value={password} 
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="h-11 rounded-xl"
-                                onKeyDown={(e) => e.key === 'Enter' && handleConfirmDelete()}
-                            />
-                            {authError && <p className="text-xs font-bold text-destructive animate-pulse px-1">{authError}</p>}
-                        </div>
-                    </div>
+                    <form
+                        onSubmit={(e) => {
+                            e.preventDefault();
+                            handleConfirmDelete();
+                        }}
+                    >
+                        <DialogHeader>
+                            <div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+                                <AlertTriangle className="h-6 w-6 text-destructive" />
+                            </div>
+                            <DialogTitle className="text-center text-xl font-semibold">Verify Identity</DialogTitle>
+                            <DialogDescription className="text-center">
+                                You are about to permanently delete <strong>{selectedIds.length}</strong> record{selectedIds.length !== 1 ? 's' : ''}. Please enter your admin password to proceed.
+                            </DialogDescription>
+                        </DialogHeader>
 
-                    <DialogFooter className="sm:justify-between gap-2">
-                        <Button variant="ghost" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
-                            Cancel
-                        </Button>
-                        <Button 
-                            variant="destructive" 
-                            onClick={handleConfirmDelete} 
-                            disabled={isDeleting || !password}
-                            className="font-semibold h-11 px-8 rounded-xl shadow-lg transition-all active:scale-95"
-                        >
-                            {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
-                            Permanently Delete
-                        </Button>
-                    </DialogFooter>
+                        {/* Hidden username field so browser / OS fingerprint autofill (Touch ID / Keychain) pairs with the account email inside this dialog and never touches background search inputs */}
+                        <input
+                            type="text"
+                            name="username"
+                            autoComplete="username"
+                            value={user?.email || ''}
+                            readOnly
+                            tabIndex={-1}
+                            aria-hidden="true"
+                            className="sr-only"
+                            style={{ position: 'absolute', width: 1, height: 1, padding: 0, margin: -1, overflow: 'hidden', clip: 'rect(0, 0, 0, 0)', border: 0 }}
+                        />
+                        
+                        <div className="space-y-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="admin-verify-password" className="text-[10px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                                    <Lock className="h-3 w-3" /> Confirm Password
+                                </Label>
+                                <Input 
+                                    id="admin-verify-password"
+                                    name="password"
+                                    type="password" 
+                                    autoComplete="current-password"
+                                    placeholder="Your account password…" 
+                                    value={password} 
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="h-11 rounded-xl"
+                                    autoFocus
+                                />
+                                {authError && <p className="text-xs font-bold text-destructive animate-pulse px-1">{authError}</p>}
+                            </div>
+                        </div>
+
+                        <DialogFooter className="sm:justify-between gap-2">
+                            <Button type="button" variant="ghost" onClick={() => setIsDeleteDialogOpen(false)} disabled={isDeleting}>
+                                Cancel
+                            </Button>
+                            <Button 
+                                type="submit" 
+                                variant="destructive" 
+                                disabled={isDeleting || !password}
+                                className="font-semibold h-11 px-8 rounded-xl shadow-lg transition-all active:scale-95"
+                            >
+                                {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                                Permanently Delete
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
 

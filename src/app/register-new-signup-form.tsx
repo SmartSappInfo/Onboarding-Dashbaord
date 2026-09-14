@@ -18,11 +18,16 @@ import {
     Percent,
     Loader2, 
     Target,
-    Sparkles
+    Sparkles,
+    Webhook
 } from "lucide-react";
 import { collection, query, where, orderBy } from 'firebase/firestore';
 import { handleSignupAction, type SignupInput } from '@/lib/signup-actions';
 import { dispatchSignupWebhook } from '@/lib/webhook-actions';
+import { 
+  SIGNUP_WEBHOOK_OPTIONS, 
+  type WebhookTargetOption 
+} from '@/lib/webhook-constants';
 import { 
   checkSignupDuplicatesAction, 
   mergeSignupIntoEntityAction, 
@@ -48,6 +53,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { useFirestore, useCollection, useMemoFirebase } from "@/firebase";
 import { EntityContactManager } from "@/app/admin/entities/components/EntityContactManager";
 import { type SubscriptionPackage } from "@/lib/types";
@@ -90,6 +96,7 @@ const formSchema = z.object({
   notifySmartSapp: z.boolean().default(true),
   notifyOnboarding: z.boolean().default(true),
   notifySchoolBySms: z.boolean().default(true),
+  webhookTarget: z.enum(['both', 'smartsapp_automations', 'pabbly', 'none']).default('both'),
 });
 
 type FormData = z.infer<typeof formSchema>;
@@ -115,6 +122,7 @@ const DEFAULT_FORM_VALUES: Partial<FormData> = {
   notifySmartSapp: true,
   notifyOnboarding: true,
   notifySchoolBySms: true,
+  webhookTarget: 'both',
 };
 
 export default function NewSchoolSignupForm() {
@@ -249,7 +257,7 @@ export default function NewSchoolSignupForm() {
         .map(c => c.phone?.trim())
         .filter(phone => phone && phone.length >= 10);
 
-      const webhookData: Record<string, any> = { ...rawFormData };
+      const webhookData: Record<string, unknown> = { ...rawFormData };
       
       webhookData.submissionDate = new Date().toISOString();
       webhookData.implementationDate = format(rawFormData.implementationDate, 'yyyy-MM-dd');
@@ -273,7 +281,8 @@ export default function NewSchoolSignupForm() {
 
       delete webhookData.implementationDate_raw;
       
-      dispatchSignupWebhook(webhookData).catch(err => console.warn('Webhook dispatch error:', err));
+      const chosenTarget: WebhookTargetOption = rawFormData.webhookTarget || 'both';
+      dispatchSignupWebhook(webhookData, chosenTarget).catch(err => console.warn('Webhook dispatch error:', err));
     } catch (error) {
       console.warn('Webhook dispatch failed silently:', error);
     }
@@ -760,6 +769,91 @@ export default function NewSchoolSignupForm() {
                                 <FormControl><Switch checked={field.value} onCheckedChange={field.onChange} /></FormControl>
                             </FormItem>
                             )}
+                        />
+                    </div>
+
+                    {/* Webhook Endpoint Selector Card */}
+                    <div className="pt-2">
+                        <FormField
+                            control={form.control}
+                            name="webhookTarget"
+                            render={({ field }) => {
+                              const selectedOption = SIGNUP_WEBHOOK_OPTIONS.find((o) => o.value === field.value) || SIGNUP_WEBHOOK_OPTIONS[0];
+                              return (
+                                <FormItem className="rounded-2xl border border-border/60 p-5 bg-slate-100/60 dark:bg-slate-800/40 space-y-4">
+                                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                                    <div className="flex items-center gap-2.5">
+                                      <div className="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                                        <Webhook className="h-4 w-4" />
+                                      </div>
+                                      <div>
+                                        <FormLabel className="text-sm font-bold tracking-tight">Webhook Destination</FormLabel>
+                                        <FormDescription className="text-xs text-muted-foreground">
+                                          Decide whether registration responses are pushed to internal or external webhook endpoints.
+                                        </FormDescription>
+                                      </div>
+                                    </div>
+                                    <Badge 
+                                      variant="outline" 
+                                      className="w-fit font-bold text-[10px] uppercase tracking-wider bg-background"
+                                    >
+                                      {selectedOption.category}
+                                    </Badge>
+                                  </div>
+
+                                  <div className="space-y-3">
+                                    <Select value={field.value} onValueChange={field.onChange}>
+                                      <FormControl>
+                                        <SelectTrigger className="h-12 rounded-xl bg-background border-border/80 font-medium min-h-[44px]">
+                                          <SelectValue placeholder="Select target webhook..." />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent className="rounded-xl">
+                                        {SIGNUP_WEBHOOK_OPTIONS.map((opt) => (
+                                          <SelectItem key={opt.value} value={opt.value} className="py-2.5">
+                                            <div className="flex flex-col gap-0.5 text-left">
+                                              <span className="font-semibold text-sm">{opt.label}</span>
+                                              <span className="text-[11px] text-muted-foreground">{opt.description}</span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+
+                                    {/* Associated endpoints display */}
+                                    {selectedOption.urls.length > 0 ? (
+                                      <div className="space-y-2 p-3.5 rounded-xl bg-background/90 border border-border/60 shadow-inner">
+                                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                                          Attached Ingress Endpoint{selectedOption.urls.length > 1 ? 's' : ''}:
+                                        </span>
+                                        <div className="space-y-1.5">
+                                          {selectedOption.urls.map((url, idx) => {
+                                            const isInternal = url.includes('go.smartsapp.com');
+                                            return (
+                                              <div key={idx} className="flex items-center gap-2 text-xs font-mono text-foreground/80 bg-muted/40 p-2 rounded-lg border border-border/40">
+                                                <span 
+                                                  className={`w-2 h-2 rounded-full shrink-0 ${isInternal ? 'bg-primary' : 'bg-amber-500'}`} 
+                                                  aria-hidden="true" 
+                                                />
+                                                <span className="font-sans text-[10px] font-bold uppercase tracking-wider text-muted-foreground shrink-0">
+                                                  [{isInternal ? 'Internal' : 'External'}]:
+                                                </span>
+                                                <span className="truncate select-all">{url}</span>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    ) : (
+                                      <div className="p-3.5 rounded-xl bg-muted/30 border border-dashed border-border text-xs text-muted-foreground">
+                                        No webhooks will be triggered upon registration.
+                                      </div>
+                                    )}
+                                  </div>
+                                  <FormMessage />
+                                </FormItem>
+                              );
+                            }}
                         />
                     </div>
                 </div>

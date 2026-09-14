@@ -9,6 +9,7 @@ import {
   submitCallOutcomeAction,
   cloneCallCampaignAction,
   addContactsToCallCampaignAction,
+  removeContactsFromCampaignAction,
   archiveCallCampaignAction,
   endCallCampaignAction
 } from '../call-centre-actions';
@@ -194,6 +195,14 @@ describe('Call Centre Campaign Engine tests', () => {
       expect(result.success).toBe(true);
       expect(result.count).toBe(2);
       expect(spy).toHaveBeenCalledWith('campaign_123', ['contact_1', 'contact_2'], 'workspace_1', 'user_123', undefined, undefined);
+    });
+
+    it('removes contacts from a campaign queue successfully', async () => {
+      const spy = vi.spyOn(CallCentreService, 'removeContactsFromCampaign').mockResolvedValue({ success: true, count: 2 });
+      const result = await removeContactsFromCampaignAction('campaign_123', ['item_1', 'item_2'], 'workspace_1', 'user_123');
+      expect(result.success).toBe(true);
+      expect(result.count).toBe(2);
+      expect(spy).toHaveBeenCalledWith('campaign_123', ['item_1', 'item_2'], 'workspace_1', 'user_123');
     });
   });
 });

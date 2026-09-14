@@ -305,6 +305,16 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                 const targetsFormatted = targets.map((t) => targetLabels[t] || t).join(', ');
                 return `${campaignTitle} • ${targetsFormatted || 'Primary'}`;
             }
+            case 'FIND_CONTACT': {
+                const searchCriteria: string[] = [];
+                if (config.searchPhone) searchCriteria.push('Phone');
+                if (config.searchEmail) searchCriteria.push('Email');
+                if (config.searchName) searchCriteria.push('Name');
+                if (config.searchEntityName) searchCriteria.push('Entity');
+                const criteriaStr = searchCriteria.length > 0 ? searchCriteria.join(', ') : 'Phone/Email';
+                const fallbackStr = config.createIfNotFound !== false ? 'Auto-Create if missing' : 'Halt if missing';
+                return `Find: ${criteriaStr} • ${fallbackStr}`;
+            }
             default:
                 return actionType.replace(/_/g, ' ');
         }

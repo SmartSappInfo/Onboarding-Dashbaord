@@ -457,10 +457,19 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
       {/* Hidden when the rail collapses to icons: there is no room for a field, and the
           icon rail is a different navigation mode. */}
       <div className="px-3 pb-1 group-data-[collapsible=icon]:hidden">
-        <div className="relative">
+        <form role="search" onSubmit={(e) => e.preventDefault()} className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50 pointer-events-none" />
           <input
+            id="admin-sidebar-nav-search"
+            name="nav_menu_search"
             type="search"
+            autoComplete="off"
+            autoCorrect="off"
+            autoCapitalize="off"
+            spellCheck={false}
+            data-lpignore="true"
+            data-1p-ignore="true"
+            data-form-type="other"
             value={navQuery}
             onChange={(e) => setNavQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === 'Escape') setNavQuery(''); }}
@@ -480,7 +489,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
               <X className="h-3.5 w-3.5" />
             </button>
           )}
-        </div>
+        </form>
       </div>
 
       {trimmedQuery ? (

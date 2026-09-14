@@ -30,6 +30,7 @@ import { Switch } from "./ui/switch";
 import { Badge } from "./ui/badge";
 import { useFirestore } from "@/firebase";
 import { handleSignupAction } from "@/lib/signup-actions";
+import { dispatchSignupWebhook } from "@/lib/webhook-actions";
 
 const formSchema = z.object({
   contactPerson: z.string().min(2, { message: "Contact person must be at least 2 characters." }),
@@ -123,16 +124,9 @@ export default function NewSchoolSignupForm() {
       webhookData.notifyOnboarding = data.notifyOnboarding ? "Yes" : "No";
       webhookData.notifySchoolBySms = data.notifySchoolBySms ? "Yes" : "No";
 
-      const response = await fetch("https://connect.pabbly.com/workflow/sendwebhookdata/IjU3NjYwNTZiMDYzNTA0MzE1MjZkNTUzMzUxMzYi_pc", {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(webhookData),
-      });
-
-      if (!response.ok) {
-        throw new Error("Webhook submission failed");
+      const dispatchResult = await dispatchSignupWebhook(webhookData);
+      if (!dispatchResult.success) {
+        throw new Error(dispatchResult.error || "Webhook submission failed");
       }
     } catch (_error) {
       toast({

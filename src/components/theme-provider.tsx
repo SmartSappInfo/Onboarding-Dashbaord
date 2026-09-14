@@ -3,6 +3,7 @@
 import * as React from 'react';
 import { ThemeProvider as NextThemesProvider } from 'next-themes';
 import type { ThemeProviderProps } from 'next-themes';
+import '@/lib/suppress-warnings';
 
 /**
  * Theme provider wrapper for next-themes.

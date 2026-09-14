@@ -34,7 +34,8 @@ import {
   MessageSquare,
   Sparkles,
   UserCog,
-  Milestone
+  Milestone,
+  UserSearch
 } from 'lucide-react';
 
 interface AutomationStepLibraryModalProps {
@@ -335,6 +336,29 @@ const LIBRARY_ITEMS = [
     icon: Tag,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Add to Call Campaign', actionType: 'ADD_TO_CALL_CAMPAIGN', config: { campaignId: '', recipientTargets: ['triggering'] } }
+  },
+  {
+    id: 'find_contact',
+    title: 'Find Contact',
+    description: 'Look up an existing contact or business entity by phone, email, or name from webhook data, or auto-create if not found.',
+    category: 'contacts_data',
+    icon: UserSearch,
+    nodeType: 'actionNode',
+    payload: {
+      type: 'actionNode',
+      label: 'Find Contact',
+      actionType: 'FIND_CONTACT',
+      config: {
+        searchPhone: '',
+        searchEmail: '',
+        searchName: '',
+        searchEntityName: '',
+        matchStrategy: 'priority',
+        createIfNotFound: true,
+        newEntityType: 'person',
+        onNotFoundAction: 'halt',
+      }
+    }
   },
   {
     id: 'create_entity',

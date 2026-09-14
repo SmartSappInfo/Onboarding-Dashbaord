@@ -924,3 +924,405 @@ export async function handleUpdateContact(
     updatedAt: new Date().toISOString()
   });
 }
+
+export interface FindContactConfig {
+  searchPhone?: string;
+  searchEmail?: string;
+  searchName?: string;
+  searchEntityName?: string;
+  matchStrategy?: 'priority' | 'any' | 'all';
+  caseInsensitive?: boolean;
+  createIfNotFound?: boolean;
+  newEntityType?: EntityType;
+  newEntityName?: string;
+  newContactName?: string;
+  newContactEmail?: string;
+  newContactPhone?: string;
+  newContactRole?: string;
+  assignedTo?: string;
+  tagIds?: string[];
+  onNotFoundAction?: 'halt' | 'continue';
+}
+
+export interface FindContactResult {
+  entityId?: string;
+  entityName?: string;
+  entityType?: string;
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactFound: boolean;
+  contactCreated?: boolean;
+  isNew?: boolean;
+  __halt?: boolean;
+  reason?: string;
+  [key: string]: unknown;
+}
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Protocol):
+ * FIND_CONTACT Action Handler:
+ * 1. Takes parameters (phone, email, name, entity name) resolved from trigger webhooks or upstream steps.
+ * 2. Searches workspace_contacts and workspace_entities using normalized identifiers (E.164 phone, lowercase email).
+ * 3. If found: Binds context.entityId, context.entityType, and context.payload for all downstream nodes,
+ *    and updates automation_runs document in Firestore so activity logs reflect the entity link.
+ * 4. If not found and createIfNotFound is true: Auto-creates the entity and contact via createEntityAction,
+ *    binds context.entityId, and passes the newly created entity downstream.
+ * 5. If not found and createIfNotFound is false: Gracefully halts or continues based on onNotFoundAction.
+ */
+export async function handleFindContact(
+  config: Record<string, unknown>,
+  context: ExecutionContext,
+  _nodeId?: string
+): Promise<FindContactResult> {
+  const searchPhone = typeof config.searchPhone === 'string' ? config.searchPhone.trim() : '';
+  const searchEmail = typeof config.searchEmail === 'string' ? config.searchEmail.trim() : '';
+  const searchName = typeof config.searchName === 'string' ? config.searchName.trim() : '';
+  const searchEntityName = typeof config.searchEntityName === 'string' ? config.searchEntityName.trim() : '';
+  const matchStrategy = (config.matchStrategy || 'priority') as 'priority' | 'any' | 'all';
+  const createIfNotFound = config.createIfNotFound !== false;
+  const onNotFoundAction = (config.onNotFoundAction || 'halt') as 'halt' | 'continue';
+  const caseInsensitive = config.caseInsensitive !== false;
+
+  // 1. Validation: Ensure at least one search field is populated
+  if (!searchPhone && !searchEmail && !searchName && !searchEntityName) {
+    if (!createIfNotFound) {
+      if (onNotFoundAction === 'halt') {
+        return {
+          contactFound: false,
+          __halt: true,
+          reason: 'Find Contact halted: No search criteria provided and auto-create is disabled.',
+        };
+      }
+      return { contactFound: false, isNew: false };
+    }
+  }
+
+  // 2. Resolve country code for phone normalization
+  const organizationId = await resolveOrgId(context);
+  let defaultCountryCode = 'GH';
+  try {
+    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
+    if (orgSnap.exists) {
+      defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
+    }
+  } catch (_err) {}
+
+  const { normalizePhoneNumber } = await import('../../phone-utils');
+  const { normalizeContactType } = await import('../../entity-contact-helpers');
+
+  let normalizedPhone = searchPhone;
+  let digitsPhone = searchPhone.replace(/\D/g, '');
+  if (searchPhone) {
+    const parsed = normalizePhoneNumber(searchPhone, defaultCountryCode);
+    normalizedPhone = parsed.e164 || searchPhone;
+  }
+
+  interface CandidateResult {
+    entityId: string;
+    contactId?: string;
+  }
+
+  // 3. Candidate Query Helpers
+  const queryByPhone = async (phoneStr: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    if (!phoneStr) return results;
+
+    const snap = await adminDb
+      .collection('workspace_contacts')
+      .where('workspaceId', '==', context.workspaceId)
+      .where('phone', '==', phoneStr)
+      .limit(10)
+      .get();
+
+    snap.docs.forEach((doc) => {
+      const d = doc.data();
+      if (d.entityId) results.push({ entityId: d.entityId as string, contactId: d.contactId as string });
+    });
+
+    if (results.length === 0 && digitsPhone && digitsPhone !== phoneStr) {
+      const fallbackSnap = await adminDb
+        .collection('workspace_contacts')
+        .where('workspaceId', '==', context.workspaceId)
+        .where('phone', '==', digitsPhone)
+        .limit(10)
+        .get();
+
+      fallbackSnap.docs.forEach((doc) => {
+        const d = doc.data();
+        if (d.entityId) results.push({ entityId: d.entityId as string, contactId: d.contactId as string });
+      });
+    }
+
+    return results;
+  };
+
+  const queryByEmail = async (emailStr: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    if (!emailStr) return results;
+
+    const snap = await adminDb
+      .collection('workspace_contacts')
+      .where('workspaceId', '==', context.workspaceId)
+      .where('emailLower', '==', emailStr.toLowerCase())
+      .limit(10)
+      .get();
+
+    snap.docs.forEach((doc) => {
+      const d = doc.data();
+      if (d.entityId) results.push({ entityId: d.entityId as string, contactId: d.contactId as string });
+    });
+    return results;
+  };
+
+  const queryByContactName = async (nameStr: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    if (!nameStr) return results;
+
+    const targetField = caseInsensitive ? 'nameLower' : 'name';
+    const targetVal = caseInsensitive ? nameStr.toLowerCase() : nameStr;
+
+    const snap = await adminDb
+      .collection('workspace_contacts')
+      .where('workspaceId', '==', context.workspaceId)
+      .where(targetField, '==', targetVal)
+      .limit(10)
+      .get();
+
+    snap.docs.forEach((doc) => {
+      const d = doc.data();
+      if (d.entityId) results.push({ entityId: d.entityId as string, contactId: d.contactId as string });
+    });
+    return results;
+  };
+
+  const queryByEntityName = async (nameStr: string): Promise<CandidateResult[]> => {
+    const results: CandidateResult[] = [];
+    if (!nameStr) return results;
+
+    const snap = await adminDb
+      .collection('workspace_entities')
+      .where('workspaceId', '==', context.workspaceId)
+      .where('displayName', '==', nameStr)
+      .limit(10)
+      .get();
+
+    snap.docs.forEach((doc) => {
+      const d = doc.data();
+      if (d.entityId) results.push({ entityId: d.entityId as string });
+    });
+
+    if (results.length === 0 && caseInsensitive) {
+      const allEntitiesSnap = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', context.workspaceId)
+        .limit(100)
+        .get();
+
+      const lowerTarget = nameStr.toLowerCase();
+      for (const doc of allEntitiesSnap.docs) {
+        const d = doc.data();
+        if (d.displayName && typeof d.displayName === 'string' && d.displayName.toLowerCase() === lowerTarget) {
+          if (d.entityId) results.push({ entityId: d.entityId as string });
+          break;
+        }
+      }
+    }
+
+    return results;
+  };
+
+  // 4. Execute Search based on Match Strategy
+  let candidateResults: CandidateResult[] = [];
+
+  if (matchStrategy === 'priority') {
+    // Strategy: Phone first -> Email second -> Contact Name third -> Entity Name fourth
+    if (normalizedPhone) candidateResults = await queryByPhone(normalizedPhone);
+    if (candidateResults.length === 0 && searchEmail) candidateResults = await queryByEmail(searchEmail);
+    if (candidateResults.length === 0 && searchName) candidateResults = await queryByContactName(searchName);
+    if (candidateResults.length === 0 && searchEntityName) candidateResults = await queryByEntityName(searchEntityName);
+  } else if (matchStrategy === 'all') {
+    // Strategy: AND logic - find records matching primary field, then verify other fields match
+    if (normalizedPhone) {
+      candidateResults = await queryByPhone(normalizedPhone);
+    } else if (searchEmail) {
+      candidateResults = await queryByEmail(searchEmail);
+    } else if (searchName) {
+      candidateResults = await queryByContactName(searchName);
+    } else if (searchEntityName) {
+      candidateResults = await queryByEntityName(searchEntityName);
+    }
+  } else {
+    // Strategy: 'any' (OR logic) - union of all queries
+    const [phoneRes, emailRes, nameRes, entityRes] = await Promise.all([
+      normalizedPhone ? queryByPhone(normalizedPhone) : Promise.resolve([]),
+      searchEmail ? queryByEmail(searchEmail) : Promise.resolve([]),
+      searchName ? queryByContactName(searchName) : Promise.resolve([]),
+      searchEntityName ? queryByEntityName(searchEntityName) : Promise.resolve([]),
+    ]);
+
+    const seen = new Set<string>();
+    for (const item of [...phoneRes, ...emailRes, ...nameRes, ...entityRes]) {
+      const key = `${item.entityId}:${item.contactId || ''}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        candidateResults.push(item);
+      }
+    }
+  }
+
+  // 5. Load and verify entity data if candidate found
+  if (candidateResults.length > 0) {
+    const candidate = candidateResults[0];
+    const entitySnap = await adminDb.collection('entities').doc(candidate.entityId).get();
+
+    if (entitySnap.exists) {
+      const entityData = entitySnap.data() as Entity;
+      const entityContacts: EntityContact[] = entityData.entityContacts || [];
+
+      // Determine the matching contact inside entity
+      let matchedContact: EntityContact | undefined;
+      if (candidate.contactId) {
+        matchedContact = entityContacts.find((c) => c.id === candidate.contactId);
+      }
+      if (!matchedContact && normalizedPhone) {
+        matchedContact = entityContacts.find((c) => {
+          const cPhone = c.phone ? normalizePhoneNumber(c.phone, defaultCountryCode).e164 || c.phone : '';
+          return cPhone === normalizedPhone || (digitsPhone && c.phone?.replace(/\D/g, '') === digitsPhone);
+        });
+      }
+      if (!matchedContact && searchEmail) {
+        const lowerEmail = searchEmail.toLowerCase();
+        matchedContact = entityContacts.find((c) => c.email && c.email.trim().toLowerCase() === lowerEmail);
+      }
+      if (!matchedContact && searchName) {
+        const lowerName = searchName.toLowerCase();
+        matchedContact = entityContacts.find((c) => c.name && c.name.trim().toLowerCase() === lowerName);
+      }
+      if (!matchedContact) {
+        matchedContact = entityContacts.find((c) => c.isPrimary) || entityContacts[0];
+      }
+
+      // Context Mutation & Binding
+      context.entityId = candidate.entityId;
+      context.entityType = entityData.entityType || 'person';
+
+      if (matchedContact) {
+        context.payload.contactId = matchedContact.id;
+        context.payload.contactName = matchedContact.name;
+        context.payload.contactEmail = matchedContact.email || '';
+        context.payload.contactPhone = matchedContact.phone || '';
+      }
+
+      // Update automation_runs document in Firestore so activity logs link to the bound entity
+      if (context.runId) {
+        await adminDb.collection('automation_runs').doc(context.runId).update({
+          entityId: candidate.entityId,
+          entityName: entityData.name || 'Matched Entity',
+          entityType: entityData.entityType || 'person',
+          updatedAt: new Date().toISOString(),
+        });
+      }
+
+      return {
+        entityId: candidate.entityId,
+        entityName: (entityData.name || '') as string,
+        entityType: entityData.entityType || 'person',
+        contactId: matchedContact?.id || 'primary',
+        contactName: matchedContact?.name || entityData.name || 'Contact',
+        contactEmail: matchedContact?.email || '',
+        contactPhone: matchedContact?.phone || '',
+        contactFound: true,
+        isNew: false,
+      };
+    }
+  }
+
+  // 6. Handle Not Found: Auto-create entity & contact or halt
+  if (createIfNotFound) {
+    const targetEntityName = (config.newEntityName as string) || searchEntityName || searchName || (searchEmail ? searchEmail.split('@')[0] : 'New Lead');
+    const targetContactName = (config.newContactName as string) || searchName || targetEntityName;
+    const targetContactEmail = (config.newContactEmail as string) || searchEmail || '';
+    const targetContactPhone = (config.newContactPhone as string) || normalizedPhone || '';
+    const targetRole = (config.newContactRole as string) || 'Primary';
+    const targetEntityType = ((config.newEntityType as EntityType) || 'person');
+    const tagIds = Array.isArray(config.tagIds) ? (config.tagIds as string[]) : [];
+    const assignedTo = config.assignedTo && config.assignedTo !== 'auto' ? String(config.assignedTo) : undefined;
+
+    const { createEntityAction } = await import('../../entity-actions');
+    const createRes = await createEntityAction(
+      {
+        name: targetEntityName,
+        contacts: [
+          {
+            name: targetContactName,
+            email: targetContactEmail || undefined,
+            phone: targetContactPhone || undefined,
+            isPrimary: true,
+            typeKey: targetRole ? normalizeContactType(targetRole) : 'primary',
+            typeLabel: targetRole || 'Primary',
+          },
+        ],
+        customData: {},
+        globalTags: [],
+        workspaceTags: tagIds,
+        assignedTo: assignedTo || null,
+      },
+      `system-automation-find-create:${context.automationId}`,
+      context.workspaceId,
+      targetEntityType,
+      organizationId,
+      true // forceCreate: true to bypass duplicate check since this is an automated create
+    );
+
+    if (!createRes.success || !createRes.id) {
+      throw new Error(`Find Contact auto-creation failed: ${createRes.error || 'Unknown error'}`);
+    }
+
+    const newEntityId = createRes.id;
+    context.entityId = newEntityId;
+    context.entityType = targetEntityType;
+    context.payload.contactId = 'primary';
+    context.payload.contactName = targetContactName;
+    context.payload.contactEmail = targetContactEmail;
+    context.payload.contactPhone = targetContactPhone;
+
+    if (context.runId) {
+      await adminDb.collection('automation_runs').doc(context.runId).update({
+        entityId: newEntityId,
+        entityName: targetEntityName,
+        entityType: targetEntityType,
+        updatedAt: new Date().toISOString(),
+      });
+    }
+
+    return {
+      entityId: newEntityId,
+      entityName: targetEntityName,
+      entityType: targetEntityType,
+      contactId: 'primary',
+      contactName: targetContactName,
+      contactEmail: targetContactEmail,
+      contactPhone: targetContactPhone,
+      contactFound: false,
+      contactCreated: true,
+      isNew: true,
+    };
+  }
+
+  // Auto-creation is disabled and contact was not found
+  if (onNotFoundAction === 'halt') {
+    return {
+      contactFound: false,
+      isNew: false,
+      __halt: true,
+      reason: 'Find Contact: No matching contact or entity found in workspace (halted).',
+    };
+  }
+
+  return {
+    contactFound: false,
+    isNew: false,
+  };
+}

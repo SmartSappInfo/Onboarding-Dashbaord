@@ -42,6 +42,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import dynamic from 'next/dynamic';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
+import { CampaignQueueTab } from './components/CampaignQueueTab';
+
 const AddContactsDialog = dynamic(
   () => import('../../components/AddContactsDialog').then(m => m.AddContactsDialog),
   { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
@@ -56,8 +58,9 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
   const router = useRouter();
   const { user } = useUser();
   const { toast } = useToast();
-  const { activeWorkspaceId: contextWorkspaceId } = useWorkspace() as any;
-  const activeWorkspaceId = workspaceId || contextWorkspaceId;
+  const workspaceContext = useWorkspace();
+  const contextWorkspaceId = workspaceContext?.activeWorkspaceId;
+  const activeWorkspaceId = workspaceId || contextWorkspaceId || '';
 
   const { campaigns, isLoading: campaignsLoading } = useCallCampaigns(activeWorkspaceId);
   const { queueItems, isLoading: queueItemsLoading } = useCallQueueItems(campaignId);
@@ -66,7 +69,7 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
   // Parse the campaign's script snapshot once (not per row — js-cache-function-results).
   const scriptGraph = React.useMemo(
     () => (campaign ? parseGraph(campaign.scriptSnapshot) : null),
-    [campaign?.scriptSnapshot]
+    [campaign]
   );
   useSetBreadcrumb(campaign?.name ? `${campaign.name} Analytics` : 'Campaign Analytics');
 
@@ -369,9 +372,15 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
 
               {/* Analytics Content — Full Width */}
               <div className="space-y-6">
-                <Tabs defaultValue="distribution" className="w-full">
+                <Tabs defaultValue="queue" className="w-full">
                   <div className="flex items-center justify-between border-b border-border pb-2">
                     <TabsList className="bg-transparent h-10 p-0 rounded-none border-b border-transparent gap-6">
+                      <TabsTrigger 
+                        value="queue" 
+                        className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
+                      >
+                        Call Queue ({queueItems.length})
+                      </TabsTrigger>
                       <TabsTrigger 
                         value="distribution" 
                         className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent text-sm font-bold px-0 pb-2.5 text-muted-foreground data-[state=active]:text-foreground"
@@ -386,6 +395,16 @@ export function CampaignAnalyticsClient({ campaignId, workspaceId }: CampaignAna
                       </TabsTrigger>
                     </TabsList>
                   </div>
+
+                  {/* Call Queue Tab Content */}
+                  <TabsContent value="queue" className="pt-6">
+                    <CampaignQueueTab
+                      campaign={campaign}
+                      queueItems={queueItems}
+                      workspaceId={activeWorkspaceId}
+                      onOpenAddContacts={() => setIsAddContactsOpen(true)}
+                    />
+                  </TabsContent>
 
                   <TabsContent value="distribution" className="pt-6 space-y-8">
                     {queueItems.length === 0 ? (

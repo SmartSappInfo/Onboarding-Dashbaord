@@ -95,10 +95,7 @@ export function AddContactsDialog({
     const selectedEntities = results.filter(r => r.entityId && selectedIds.has(r.entityId));
 
     for (const entity of selectedEntities) {
-      const contacts = (entity as any).entityContacts as Array<{
-        id: string; name: string; phone?: string; email?: string;
-        isPrimary?: boolean; isSignatory?: boolean;
-      }> | undefined;
+      const contacts = entity.entityContacts;
 
       if (!contacts || contacts.length === 0) continue;
 
