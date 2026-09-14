@@ -334,11 +334,11 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         <SidebarMenuItem key={item.href}>
           <SidebarMenuButton
             tooltip={`${item.label} — Requires permission`}
-            className="text-muted-foreground/40 rounded-xl h-10 cursor-not-allowed relative overflow-hidden select-none hover:bg-transparent"
+            className="text-muted-foreground/40 rounded-lg h-10 cursor-not-allowed relative select-none hover:bg-transparent"
           >
             <div className="flex items-center gap-3 pointer-events-none">
               <item.icon className="h-[18px] w-[18px] shrink-0 opacity-40" />
-              <span className="text-xs tracking-wide group-data-[collapsible=icon]:hidden truncate opacity-50">{item.label}</span>
+              <span className="text-[13px] group-data-[collapsible=icon]:hidden truncate opacity-50">{item.label}</span>
               <Lock className="h-3 w-3 ml-auto opacity-30 shrink-0 group-data-[collapsible=icon]:hidden" />
             </div>
           </SidebarMenuButton>
@@ -348,10 +348,9 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
 
     const inner = (
       <>
-        {active && <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-1/2 bg-primary rounded-r-full" />}
-        <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-transform duration-300", active ? "scale-110" : "group-hover/item:scale-110")} />
+        <item.icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors", active && "text-primary")} />
         <span className="flex flex-col min-w-0 group-data-[collapsible=icon]:hidden">
-          <span className="text-xs tracking-wide truncate">{item.label}</span>
+          <span className="text-[13px] truncate">{item.label}</span>
           {caption && <span className="text-[10px] text-muted-foreground/60 truncate">{caption}</span>}
         </span>
       </>
@@ -364,8 +363,11 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
           isActive={active}
           tooltip={item.label}
           className={cn(
-            "text-muted-foreground hover:text-foreground hover:bg-muted/60 rounded-xl h-10 transition-all duration-300 group/item relative overflow-hidden",
-            active && "bg-primary/10 text-primary shadow-lg shadow-primary/5 font-semibold"
+            // Full rounded pill for the active row rather than an edge accent bar: the row
+            // itself is the affordance, which is what makes the reference design readable
+            // at a glance down a long list.
+            "text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg h-10 transition-colors duration-150 group/item relative",
+            active && "bg-primary/10 text-primary font-medium hover:bg-primary/10 hover:text-primary"
           )}
         >
           {item.external ? (
@@ -392,15 +394,32 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
         onOpenChange={(next) => setGroupChoice(next ? title : null)}
         className="group/collapsible"
       >
-        <SidebarGroup className="px-0 py-2">
+        <SidebarGroup className="px-0 py-0.5">
           <CollapsibleTrigger asChild>
-            <SidebarGroupLabel className="cursor-pointer hover:text-foreground text-left text-primary/60 dark:text-primary/40 font-bold text-[10px] mb-2 px-6 uppercase tracking-widest group-data-[collapsible=icon]:hidden flex items-center justify-between">
+            {/* Reads as a nav row rather than a tiny uppercase caption: same height and
+                padding as the items below it, so the group and its contents feel like one
+                object. Highlighted while open, which is the only cue left once the other
+                groups have collapsed. */}
+            <SidebarGroupLabel
+              className={cn(
+                "cursor-pointer text-left h-10 px-3 mx-3 w-auto rounded-lg text-[13px] font-medium normal-case tracking-normal",
+                "flex items-center justify-between transition-colors duration-150",
+                "group-data-[collapsible=icon]:hidden",
+                openGroup === title
+                  ? "text-foreground bg-muted/40"
+                  : "text-muted-foreground/70 hover:text-foreground hover:bg-muted/30"
+              )}
+            >
               {title}
-              <ChevronRight className="h-3 w-3 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
             </SidebarGroupLabel>
           </CollapsibleTrigger>
           <CollapsibleContent className="data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down overflow-hidden">
-            <SidebarMenu className="gap-1.5 px-3 group-data-[collapsible=icon]:px-2">
+            {/* The connector rule from the reference: one hairline running down the group,
+                with the rows inset from it, so nesting is visible without indent guesswork.
+                Sits inside the icon-rail hidden branch because there is no room for it when
+                the sidebar is collapsed to icons. */}
+            <SidebarMenu className="gap-0.5 mt-1 pl-4 ml-6 mr-3 border-l border-border/50 group-data-[collapsible=icon]:pl-0 group-data-[collapsible=icon]:ml-0 group-data-[collapsible=icon]:mr-0 group-data-[collapsible=icon]:border-l-0 group-data-[collapsible=icon]:px-2">
               {visibleItems.map((item) => renderNavItem(item))}
             </SidebarMenu>
           </CollapsibleContent>
@@ -449,7 +468,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
             aria-label="Search menu"
             // h-10 keeps the tap target comfortable on a phone; text-sm avoids iOS zooming
             // the viewport on focus, which 16px-and-below inputs otherwise trigger.
-            className="w-full h-10 pl-9 pr-8 text-sm rounded-xl bg-muted/40 border border-border/40 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all [&::-webkit-search-cancel-button]:hidden"
+            className="w-full h-10 pl-9 pr-8 text-sm rounded-lg bg-muted/40 border border-border/40 text-foreground placeholder:text-muted-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary/40 transition-all [&::-webkit-search-cancel-button]:hidden"
           />
           {navQuery && (
             <button
@@ -467,7 +486,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
       {trimmedQuery ? (
         <SidebarGroup className="px-0 py-2">
           {searchResults.length > 0 ? (
-            <SidebarMenu className="gap-1.5 px-3">
+            <SidebarMenu className="gap-0.5 px-3">
               {searchResults.map(({ item, group }) => renderNavItem(item, group))}
             </SidebarMenu>
           ) : (
@@ -483,7 +502,8 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
           {renderNavGroup("Finance Hub", financeNavItems)}
           {renderNavGroup("Social Hub", socialNavItems)}
           {renderNavGroup("Workspace and Users", workforceNavItems)}
-          <div className="mt-auto pt-4 mb-2">
+          {/* Trailing utility group, set off by a rule as in the reference. */}
+          <div className="mt-auto pt-3 mb-2 border-t border-border/40 mx-3">
             {renderNavGroup("Management", systemNavItems)}
           </div>
         </>
