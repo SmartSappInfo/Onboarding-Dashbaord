@@ -11,7 +11,7 @@ import { recordConversion } from './analytics-actions';
 import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
-import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, SurveyResultRule, OnlinePresence } from './types';
+import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, SurveyResultRule, OnlinePresence, ExistingEntityCorePolicy } from './types';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -166,12 +166,42 @@ export async function sanitizeEntityPayloadForUpdate(
     isExplicitlyMapped: boolean;
     isManualInput: boolean;
     existingEntityName?: string | null;
+    /**
+     * The survey author's choice. 'preserve' keeps the CRM's core identity regardless of
+     * what was submitted. Defaults to 'update' so surveys authored before this option
+     * existed behave exactly as they did. @see ExistingEntityCorePolicy
+     */
+    corePolicy?: ExistingEntityCorePolicy;
   }
 ): Promise<EntityMutationPayload> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 
   const sanitized: EntityMutationPayload = { ...payload };
+
+  // AUTHOR'S CHOICE WINS, AND IT IS CHECKED FIRST.
+  //
+  // This deliberately overrides the generic-name heuristic below. That heuristic exists to
+  // rescue records whose name is junk ("Yes", "[Placeholder] …") by letting a submission
+  // overwrite them — helpful by default, but it is still an overwrite, and an author who
+  // asked to preserve existing details did not ask us to make exceptions on their behalf.
+  //
+  // CAUTION: only IDENTITY is stripped. customData, industryData, tags, location and so on
+  // are left alone on purpose — the option is "do not rewrite who this is", not "ignore this
+  // submission". Adding fields here changes what authors are promised, so think before you do.
+  if (options.isExistingEntity && options.corePolicy === 'preserve') {
+    delete sanitized.name;
+
+    // For person-scope entities the person's name IS the entity's name, so it has to go too,
+    // or the option would silently do nothing for that whole contact scope.
+    if (sanitized.personData) {
+      const { firstName: _f, lastName: _l, fullName: _n, ...restPersonData } = sanitized.personData;
+      sanitized.personData = restPersonData;
+      if (Object.keys(sanitized.personData).length === 0) delete sanitized.personData;
+    }
+
+    return sanitized;
+  }
 
   const isExistingNameGeneric = options.existingEntityName
     ? (isGenericChoiceValue(options.existingEntityName) || options.existingEntityName.startsWith('[Placeholder]'))
@@ -184,6 +214,68 @@ export async function sanitizeEntityPayloadForUpdate(
   }
 
   return sanitized;
+}
+
+/**
+ * Merge a respondent's contact details into an entity's existing contact list.
+ *
+ * Extracted because this ran as two hand-copied blocks (matched-entity and duplicate-fallback)
+ * that had already drifted apart in their isPrimary handling; the preserve option would have
+ * had to be implemented twice and would eventually have been implemented differently.
+ *
+ * Under 'preserve' a MATCHED contact is returned untouched — that is the overwrite the author
+ * asked us not to perform. A genuinely new contact is still appended, because adding someone
+ * who was not on the record is not an overwrite.
+ */
+export function mergeRespondentContact(
+  existingContacts: EntityContact[],
+  incoming: {
+    name: string;
+    email: string;
+    phone: string;
+    typeKey: string;
+    typeLabel: string;
+    isManualNameInput: boolean;
+    fallbackName: string;
+  },
+  options: { corePolicy?: ExistingEntityCorePolicy; firstIsPrimary: boolean }
+): EntityContact[] {
+  const merged = [...existingContacts];
+  const preserve = options.corePolicy === 'preserve';
+
+  for (let i = 0; i < merged.length; i++) {
+    const ec = merged[i];
+    const emailMatch = incoming.email && ec.email && ec.email.toLowerCase().trim() === incoming.email;
+    const phoneMatch = incoming.phone && ec.phone && ec.phone.trim() === incoming.phone;
+
+    if (emailMatch || phoneMatch) {
+      if (preserve) return merged;
+      merged[i] = {
+        ...ec,
+        name: incoming.isManualNameInput
+          ? (incoming.name || ec.name || incoming.fallbackName)
+          : (ec.name || incoming.name || incoming.fallbackName),
+        email: incoming.email || ec.email || '',
+        phone: incoming.phone || ec.phone || '',
+      };
+      return merged;
+    }
+  }
+
+  merged.push({
+    id: `ec_${crypto.randomUUID().substring(0, 8)}`,
+    name: incoming.name || incoming.fallbackName,
+    email: incoming.email,
+    phone: incoming.phone,
+    isPrimary: options.firstIsPrimary && merged.length === 0,
+    isSignatory: false,
+    typeKey: incoming.typeKey,
+    typeLabel: incoming.typeLabel,
+    order: merged.length,
+    updatedAt: new Date().toISOString(),
+  } as EntityContact);
+
+  return merged;
 }
 
 /**
@@ -833,6 +925,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
               isExistingEntity: true,
               isExplicitlyMapped: Boolean(parsedMappings.overriddenEntityName),
               isManualInput: false,
+              corePolicy: surveyData?.existingEntityCorePolicy,
               existingEntityName: existingMatch.entityName || null,
             });
 
@@ -864,6 +957,7 @@ export async function submitPublicSurveyResponse(surveyId: string, responseData:
                 isExistingEntity: true,
                 isExplicitlyMapped: Boolean(parsedMappings.overriddenEntityName),
                 isManualInput: false,
+                corePolicy: surveyData?.existingEntityCorePolicy,
                 existingEntityName: duplicate.name || null,
               });
 
@@ -1396,40 +1490,17 @@ export async function submitPublicSurveyLead(
       const targetData = targetEntitySnap.data();
       const existingContacts: EntityContact[] = targetData?.entityContacts || existingMatch.entityContacts || [];
 
-      let contactExists = false;
-      const mergedContacts = [...existingContacts];
-
-      for (let i = 0; i < mergedContacts.length; i++) {
-        const ec = mergedContacts[i];
-        const emailMatch = cEmail && ec.email && ec.email.toLowerCase().trim() === cEmail;
-        const phoneMatch = cPhone && ec.phone && ec.phone.trim() === cPhone;
-
-        if (emailMatch || phoneMatch) {
-          mergedContacts[i] = {
-            ...ec,
-            name: isManualNameInput ? (leadData.name || ec.name || finalEntityName) : (ec.name || leadData.name || finalEntityName),
-            email: cEmail || ec.email || '',
-            phone: cPhone || ec.phone || '',
-          };
-          contactExists = true;
-          break;
-        }
-      }
-
-      if (!contactExists) {
-        mergedContacts.push({
-          id: `ec_${crypto.randomUUID().substring(0, 8)}`,
-          name: leadData.name || finalEntityName,
-          email: cEmail,
-          phone: cPhone,
-          isPrimary: mergedContacts.length === 0,
-          isSignatory: false,
-          typeKey: resolvedDefaults.contactTypeKey === 'primary' ? 'administrator' : (resolvedDefaults.contactTypeKey as string),
-          typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Administrator' : 'Other',
-          order: mergedContacts.length,
-          updatedAt: new Date().toISOString()
-        });
-      }
+      // Shared with the duplicate-fallback path below — see mergeRespondentContact. Under the
+      // author's 'preserve' choice a matched contact is returned untouched.
+      const mergedContacts = mergeRespondentContact(existingContacts, {
+        name: leadData.name || '',
+        email: cEmail,
+        phone: cPhone,
+        typeKey: resolvedDefaults.contactTypeKey === 'primary' ? 'administrator' : (resolvedDefaults.contactTypeKey as string),
+        typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Administrator' : 'Other',
+        isManualNameInput,
+        fallbackName: finalEntityName,
+      }, { corePolicy: surveyData?.existingEntityCorePolicy, firstIsPrimary: true });
 
       entityPayload.entityContacts = mergedContacts;
       delete entityPayload.contacts;
@@ -1440,6 +1511,7 @@ export async function submitPublicSurveyLead(
         isExistingEntity: true,
         isExplicitlyMapped: isExplicitEntityNameMapped,
         isManualInput: isManualNameInput,
+        corePolicy: surveyData?.existingEntityCorePolicy,
         existingEntityName: existingMatch.entityName || targetData?.name || null,
       });
 
@@ -1468,40 +1540,17 @@ export async function submitPublicSurveyLead(
         const existingData = entitySnap.data();
         const existingContacts: EntityContact[] = existingData?.entityContacts || [];
         
-        let contactExists = false;
-        const mergedContacts = [...existingContacts];
-        
-        for (let i = 0; i < mergedContacts.length; i++) {
-          const ec = mergedContacts[i];
-          const emailMatch = cEmail && ec.email && ec.email.toLowerCase().trim() === cEmail;
-          const phoneMatch = cPhone && ec.phone && ec.phone.trim() === cPhone;
-          
-          if (emailMatch || phoneMatch) {
-            mergedContacts[i] = {
-              ...ec,
-              name: isManualNameInput ? (leadData.name || ec.name || finalEntityName) : (ec.name || leadData.name || finalEntityName),
-              email: cEmail || ec.email || '',
-              phone: cPhone || ec.phone || '',
-            };
-            contactExists = true;
-            break;
-          }
-        }
-        
-        if (!contactExists) {
-          mergedContacts.push({
-            id: `ec_${crypto.randomUUID().substring(0, 8)}`,
-            name: leadData.name || finalEntityName,
-            email: cEmail,
-            phone: cPhone,
-            isPrimary: false,
-            isSignatory: false,
-            typeKey: resolvedDefaults.contactTypeKey === 'primary' ? 'administrator' : (resolvedDefaults.contactTypeKey as string),
-            typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Administrator' : 'Other',
-            order: mergedContacts.length,
-            updatedAt: new Date().toISOString()
-          });
-        }
+        // Shared with the duplicate-fallback path below — see mergeRespondentContact. Under the
+        // author's 'preserve' choice a matched contact is returned untouched.
+        const mergedContacts = mergeRespondentContact(existingContacts, {
+          name: leadData.name || '',
+          email: cEmail,
+          phone: cPhone,
+          typeKey: resolvedDefaults.contactTypeKey === 'primary' ? 'administrator' : (resolvedDefaults.contactTypeKey as string),
+          typeLabel: resolvedDefaults.contactTypeKey === 'primary' ? 'Administrator' : 'Other',
+          isManualNameInput,
+          fallbackName: finalEntityName,
+        }, { corePolicy: surveyData?.existingEntityCorePolicy, firstIsPrimary: false });
         
         entityPayload.entityContacts = mergedContacts;
         delete entityPayload.contacts;
@@ -1511,6 +1560,7 @@ export async function submitPublicSurveyLead(
           isExistingEntity: true,
           isExplicitlyMapped: isExplicitEntityNameMapped,
           isManualInput: isManualNameInput,
+          corePolicy: surveyData?.existingEntityCorePolicy,
           existingEntityName: existingData?.name || duplicate.name || null,
         });
         

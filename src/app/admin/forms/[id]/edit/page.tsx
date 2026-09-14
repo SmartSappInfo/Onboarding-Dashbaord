@@ -1529,6 +1529,7 @@ export default function EditFormPage() {
                       ...currentActions,
                     };
                     if (updated.entityHandling !== undefined) newActions.entityHandling = updated.entityHandling;
+                    if (updated.existingEntityCorePolicy !== undefined) newActions.existingEntityCorePolicy = updated.existingEntityCorePolicy;
                     if (updated.leadSource !== undefined) newActions.leadSource = updated.leadSource;
                     if (updated.progressiveProfiling !== undefined) newActions.progressiveProfiling = updated.progressiveProfiling;
                     if (updated.dealCreation !== undefined) newActions.dealCreation = updated.dealCreation;

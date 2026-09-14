@@ -9,6 +9,7 @@ import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
 import { getForecastUrgency } from '../../pipeline/utils/deal-urgency';
 import { calculateExpectedCloseDate } from '../../pipeline/utils/deal-expected-close';
 import { addDays } from 'date-fns';
+import { parseSafeDate, formatSafeLocaleDate } from '@/lib/date-utils';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
@@ -91,7 +92,7 @@ export default function DealDetailsPage() {
     const params = useParams();
     const router = useRouter();
     const { toast } = useToast();
-    const dealId = params.id as string;
+    const dealId = Array.isArray(params?.id) ? params.id[0] : (params?.id as string | undefined) || '';
     const firestore = useFirestore();
 
 
@@ -232,12 +233,17 @@ export default function DealDetailsPage() {
 
     // Pre-calculate effective expected close date (delivery date)
     const effectiveCloseDate = React.useMemo(() => {
-        if (deal?.expectedCloseDate && deal.expectedCloseDate.trim() !== '') {
+        if (typeof deal?.expectedCloseDate === 'string' && deal.expectedCloseDate.trim() !== '') {
             return deal.expectedCloseDate;
         }
         const activePipe = currentPipeline || effectiveCurrentPipeline || (pipelines.length > 0 ? pipelines[0] : null);
-        const baseDate = deal?.createdAt ? new Date(deal.createdAt) : new Date();
-        return calculateExpectedCloseDate(activePipe, null, baseDate) || addDays(baseDate, 30).toISOString();
+        const parsedBase = parseSafeDate(deal?.createdAt);
+        const baseDate = parsedBase || new Date();
+        try {
+            return calculateExpectedCloseDate(activePipe, null, baseDate) || addDays(baseDate, 30).toISOString();
+        } catch {
+            return addDays(new Date(), 30).toISOString();
+        }
     }, [deal?.expectedCloseDate, deal?.createdAt, currentPipeline, effectiveCurrentPipeline, pipelines]);
 
     const { user: currentUser } = useUser();
@@ -536,9 +542,16 @@ export default function DealDetailsPage() {
             if (deal.stageId) {
                 setStageId(deal.stageId);
             }
-            const dateToSet = deal.expectedCloseDate || effectiveCloseDate;
-            if (dateToSet) {
-                setExpectedCloseDate(dateToSet.split('T')[0]);
+            const rawDateToSet = deal.expectedCloseDate || effectiveCloseDate;
+            if (rawDateToSet) {
+                if (typeof rawDateToSet === 'string') {
+                    setExpectedCloseDate(rawDateToSet.split('T')[0]);
+                } else {
+                    const parsed = parseSafeDate(rawDateToSet);
+                    if (parsed) {
+                        setExpectedCloseDate(parsed.toISOString().split('T')[0]);
+                    }
+                }
             }
         }
     }, [deal, effectiveCloseDate]);
@@ -617,7 +630,7 @@ export default function DealDetailsPage() {
                 .filter((c): c is DealFocalContact => c !== null);
 
             const resolvedCloseDate = expectedCloseDate
-                ? new Date(expectedCloseDate).toISOString()
+                ? (parseSafeDate(expectedCloseDate)?.toISOString() || null)
                 : (effectiveCloseDate || null);
 
             // ARCHITECTURAL POINTER (Rule 10 - Sequential Stage Transition Integrity):
@@ -757,19 +770,26 @@ export default function DealDetailsPage() {
                             <div className="flex items-center gap-4 text-sm font-semibold text-muted-foreground flex-wrap">
                                 <span className="flex items-center gap-1.5"><Banknote className="h-4 w-4 text-primary" /> {formatCurrency(deal.value)}</span>
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
-                                <a 
-                                    href={`/admin/entities/${deal.entityId}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title={`View Linked ${singular}`}
-                                    className="flex items-center gap-1.5 hover:text-primary transition-colors group cursor-pointer"
-                                >
-                                    <Building2 className="h-4 w-4 text-primary shrink-0" />
-                                    <span className="font-semibold underline-offset-4 group-hover:underline">
-                                        {linkedEntity?.displayName || `Linked ${singular}`}
+                                {deal.entityId ? (
+                                    <a 
+                                        href={`/admin/entities/${deal.entityId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        title={`View Linked ${singular}`}
+                                        className="flex items-center gap-1.5 hover:text-primary transition-colors group cursor-pointer"
+                                    >
+                                        <Building2 className="h-4 w-4 text-primary shrink-0" />
+                                        <span className="font-semibold underline-offset-4 group-hover:underline">
+                                            {linkedEntity?.displayName || `Linked ${singular}`}
+                                        </span>
+                                        <ExternalLink className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity shrink-0" />
+                                    </a>
+                                ) : (
+                                    <span className="flex items-center gap-1.5 text-muted-foreground/60">
+                                        <Building2 className="h-4 w-4 shrink-0" />
+                                        <span className="font-semibold italic">No Linked {singular}</span>
                                     </span>
-                                    <ExternalLink className="h-3.5 w-3.5 opacity-70 group-hover:opacity-100 transition-opacity shrink-0" />
-                                </a>
+                                )}
                                 <Separator orientation="vertical" className="h-4 hidden sm:block" />
                                 <span className="flex items-center gap-1.5"><UserCircle2 className="h-4 w-4" /> {deal.assignedTo?.name || 'Unassigned'}</span>
                             </div>
@@ -779,9 +799,10 @@ export default function DealDetailsPage() {
                                 <span className="flex items-center gap-1.5">
                                     <Calendar className="h-3.5 w-3.5 text-primary/50" />
                                     <span className="uppercase tracking-wider text-[10px] text-muted-foreground/60">Close:</span>
-                                    <span>{effectiveCloseDate ? new Date(effectiveCloseDate).toLocaleDateString() : 'TBD'}</span>
+                                    <span>{formatSafeLocaleDate(effectiveCloseDate, 'TBD')}</span>
                                     {effectiveCloseDate && (() => {
-                                        const u = getForecastUrgency(effectiveCloseDate);
+                                        const dateStr = typeof effectiveCloseDate === 'string' ? effectiveCloseDate : parseSafeDate(effectiveCloseDate)?.toISOString();
+                                        const u = getForecastUrgency(dateStr);
                                         return <span className={cn("font-bold", u.colorClass)}>({u.label})</span>;
                                     })()}
                                 </span>
@@ -789,7 +810,7 @@ export default function DealDetailsPage() {
                                 <span className="flex items-center gap-1.5">
                                     <Clock className="h-3.5 w-3.5 text-primary/50" />
                                     <span className="uppercase tracking-wider text-[10px] text-muted-foreground/60">Created:</span>
-                                    {new Date(deal.createdAt).toLocaleDateString()}
+                                    {formatSafeLocaleDate(deal.createdAt, 'Recently')}
                                 </span>
                             </div>
                         </div>
@@ -938,7 +959,7 @@ export default function DealDetailsPage() {
                                                     <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Expected Close Date</Label>
                                                     <Input type="date" value={expectedCloseDate} onChange={e => setExpectedCloseDate(e.target.value)} className="rounded-xl h-11" />
                                                     {expectedCloseDate && (() => {
-                                                        const u = getForecastUrgency(new Date(expectedCloseDate).toISOString());
+                                                        const u = getForecastUrgency(expectedCloseDate);
                                                         return <p className={cn("text-[10px] font-bold ml-1", u.colorClass)}>{u.label}</p>;
                                                     })()}
                                                 </div>
@@ -1102,7 +1123,7 @@ export default function DealDetailsPage() {
                                         <CardTitle className="text-sm font-bold flex items-center gap-2"><MessageSquare className="h-4 w-4 text-primary" /> Notes</CardTitle>
                                     </CardHeader>
                                     <CardContent className="p-4">
-                                        <EntityNotesTab entityId={deal.entityId} dealId={deal.id} dealName={deal.name} compact />
+                                        <EntityNotesTab entityId={deal.entityId || ''} dealId={deal.id} dealName={deal.name} compact />
                                     </CardContent>
                                 </Card>
                         </div>
@@ -1133,7 +1154,7 @@ export default function DealDetailsPage() {
                                                     <p className={cn("text-[11px] font-bold leading-snug", isDone && "line-through text-muted-foreground")}>{t.title}</p>
                                                     <div className="flex items-center gap-1.5 text-[9px] font-semibold text-muted-foreground/70">
                                                         <Clock className="h-3 w-3" />
-                                                        <span className={cn(!isDone && due.colorClass)}>{t.dueDate ? new Date(t.dueDate).toLocaleDateString() : 'No date'}</span>
+                                                        <span className={cn(!isDone && due.colorClass)}>{formatSafeLocaleDate(t.dueDate, 'No date')}</span>
                                                         {t.assignedToName && <><span className="h-1 w-1 rounded-full bg-muted-foreground/40" /><span className="truncate">{t.assignedToName}</span></>}
                                                     </div>
                                                 </div>

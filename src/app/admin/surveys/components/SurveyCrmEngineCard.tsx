@@ -53,6 +53,8 @@ import {
   ChevronDown,
   Pencil,
   X,
+  RefreshCw,
+  Lock,
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -112,6 +114,9 @@ export function SurveyCrmEngineCard() {
   }, [elements]);
 
   const createEntity: boolean = watch('createEntity') || false;
+  // Undefined on every survey authored before this option existed — treated as 'update' so
+  // their behaviour is unchanged.
+  const existingEntityCorePolicy: 'update' | 'preserve' = watch('existingEntityCorePolicy') || 'update';
   const leadCaptureMode: 'questions' | 'form' = watch('leadCaptureMode') || 'questions';
 
   const crmConfig: SurveyCrmConfig = watch('crmConfig') || {
@@ -675,6 +680,63 @@ export function SurveyCrmEngineCard() {
 
             {/* ─── TAB 1: IDENTITY BRIDGE & FORM DESIGNER ─── */}
             <TabsContent value="identity" className="mt-5 space-y-5 outline-none animate-in fade-in-50 duration-200">
+              {/*
+                WHEN WE ALREADY KNOW THEM.
+                Only shown here because it only applies to a matched record — for a brand new
+                one there is nothing to preserve. Default is Update, which is what the app did
+                before this choice existed, so opening an old survey changes nothing.
+                Deliberately plain wording: the author has to be able to tell at a glance which
+                way round it is, because getting it wrong quietly corrupts CRM records.
+              */}
+              <div className="space-y-3">
+                <Label className="text-xs font-bold text-foreground">When the {entityTerminology.toLowerCase()} is already in your CRM</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setValue('existingEntityCorePolicy', 'update', { shouldDirty: true })}
+                    aria-pressed={existingEntityCorePolicy === 'update'}
+                    className={cn(
+                      'p-3.5 rounded-xl border text-left transition-all min-h-[44px] active:scale-[0.97] flex flex-col justify-center',
+                      existingEntityCorePolicy === 'update'
+                        ? 'bg-card border-primary ring-1 ring-primary/30 shadow-xs'
+                        : 'bg-background border-border/50 opacity-70 hover:opacity-100'
+                    )}
+                  >
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <RefreshCw className="h-3.5 w-3.5 text-primary" /> Use the new answers
+                    </span>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">
+                      Their name, email and phone are replaced with what they just entered.
+                    </span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setValue('existingEntityCorePolicy', 'preserve', { shouldDirty: true })}
+                    aria-pressed={existingEntityCorePolicy === 'preserve'}
+                    className={cn(
+                      'p-3.5 rounded-xl border text-left transition-all min-h-[44px] active:scale-[0.97] flex flex-col justify-center',
+                      existingEntityCorePolicy === 'preserve'
+                        ? 'bg-card border-primary ring-1 ring-primary/30 shadow-xs'
+                        : 'bg-background border-border/50 opacity-70 hover:opacity-100'
+                    )}
+                  >
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Lock className="h-3.5 w-3.5 text-primary" /> Keep what you have
+                    </span>
+                    <span className="text-[10px] text-muted-foreground mt-0.5">
+                      Their name, email and phone stay as they are. Everything else still saves.
+                    </span>
+                  </button>
+                </div>
+                {existingEntityCorePolicy === 'preserve' && (
+                  <p className="text-[10px] text-muted-foreground bg-muted/30 border border-border/50 rounded-lg px-3 py-2">
+                    Answers, custom fields, tags and new contacts are still saved. Only the
+                    existing name, email and phone are left alone.
+                  </p>
+                )}
+              </div>
+
               {/* Lead Capture Mode Selector */}
               <div className="space-y-3">
                 <Label className="text-xs font-bold text-foreground">Lead Capture Mechanism</Label>

@@ -35,6 +35,12 @@ export interface ProgressiveProfilingConfig {
 
 export interface FormCrmSettings {
   entityHandling: EntityHandlingStrategy;
+  /**
+   * Whether a matched entity's core identity may be overwritten. Defaults to 'update'.
+   * Mirrors FormSubmissionActions.existingEntityCorePolicy, which is where it is persisted.
+   * @see import('@/lib/types').ExistingEntityCorePolicy
+   */
+  existingEntityCorePolicy?: import('@/lib/types').ExistingEntityCorePolicy;
   contactScope: EntityType;
   leadSource?: string;
   progressiveProfiling?: ProgressiveProfilingConfig;

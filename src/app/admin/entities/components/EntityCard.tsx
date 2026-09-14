@@ -120,7 +120,7 @@ export default function EntityCard({ entity, isOverlay }: EntityCardProps) {
                                     <MoreVertical className="h-3.5 w-3.5" />
                                 </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-56 rounded-xl border-none shadow-2xl p-1.5 animate-in zoom-in-95 duration-200 text-left">
+                            <DropdownMenuContent align="end" className="w-56 rounded-xl border border-border bg-popover text-popover-foreground shadow-2xl p-1.5 animate-in zoom-in-95 duration-200 text-left">
                                 <DropdownMenuLabel className="text-[9px] font-semibold text-muted-foreground px-2 py-1.5 text-left">Console Access</DropdownMenuLabel>
 
                                 <DropdownMenuItem asChild className="rounded-lg p-2 gap-2.5 text-left">

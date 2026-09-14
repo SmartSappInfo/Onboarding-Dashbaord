@@ -574,24 +574,24 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
                             <MoreHorizontal className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48 rounded-xl p-2 border-none shadow-2xl bg-zinc-950 border border-zinc-800 text-zinc-100">
-                        <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-3 py-2">Actions</DropdownMenuLabel>
-                        <DropdownMenuItem onClick={onEdit} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
-                            <div className="p-1.5 bg-blue-500/10 rounded-md text-blue-600"><Pencil className="h-3.5 w-3.5" /></div>
-                            <span className="font-bold text-sm">Edit Contact</span>
+                    <DropdownMenuContent align="end" className="w-52 rounded-xl p-1.5 border border-border bg-popover text-popover-foreground shadow-xl backdrop-blur-md">
+                        <DropdownMenuLabel className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest px-2.5 py-1.5">Actions</DropdownMenuLabel>
+                        <DropdownMenuItem onClick={onEdit} className="rounded-lg p-2 gap-2.5 cursor-pointer text-foreground focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <div className="p-1.5 bg-blue-500/10 dark:bg-blue-500/20 rounded-md text-blue-600 dark:text-blue-400 shrink-0"><Pencil className="h-3.5 w-3.5" /></div>
+                            <span className="font-medium text-xs">Edit Contact</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onInvite} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
-                            <div className="p-1.5 bg-emerald-500/10 rounded-md text-emerald-600"><Video className="h-3.5 w-3.5" /></div>
-                            <span className="font-bold text-sm">Invite to Meeting</span>
+                        <DropdownMenuItem onClick={onInvite} className="rounded-lg p-2 gap-2.5 cursor-pointer text-foreground focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <div className="p-1.5 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-md text-emerald-600 dark:text-emerald-400 shrink-0"><Video className="h-3.5 w-3.5" /></div>
+                            <span className="font-medium text-xs">Invite to Meeting</span>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={onAddToCampaign} className="rounded-lg p-2.5 gap-3 cursor-pointer hover:bg-zinc-900 focus:bg-zinc-900">
-                            <div className="p-1.5 bg-indigo-500/10 rounded-md text-indigo-500"><PhoneCall className="h-3.5 w-3.5" /></div>
-                            <span className="font-bold text-sm">Add to Call Campaign</span>
+                        <DropdownMenuItem onClick={onAddToCampaign} className="rounded-lg p-2 gap-2.5 cursor-pointer text-foreground focus:bg-accent focus:text-accent-foreground hover:bg-accent hover:text-accent-foreground transition-colors">
+                            <div className="p-1.5 bg-indigo-500/10 dark:bg-indigo-500/20 rounded-md text-indigo-600 dark:text-indigo-400 shrink-0"><PhoneCall className="h-3.5 w-3.5" /></div>
+                            <span className="font-medium text-xs">Add to Call Campaign</span>
                         </DropdownMenuItem>
-                        <DropdownMenuSeparator className="my-1 border-zinc-800" />
-                        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive/10 rounded-lg p-2.5 gap-3 cursor-pointer">
-                            <Trash2 className="h-3.5 w-3.5" />
-                            <span className="font-bold text-sm">Remove</span>
+                        <DropdownMenuSeparator className="my-1 bg-border" />
+                        <DropdownMenuItem onClick={onDelete} className="text-destructive focus:bg-destructive/10 focus:text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg p-2 gap-2.5 cursor-pointer transition-colors">
+                            <div className="p-1.5 bg-destructive/10 dark:bg-destructive/20 rounded-md text-destructive shrink-0"><Trash2 className="h-3.5 w-3.5" /></div>
+                            <span className="font-medium text-xs text-destructive">Remove</span>
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>

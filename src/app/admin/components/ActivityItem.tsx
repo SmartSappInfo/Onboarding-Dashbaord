@@ -1,8 +1,8 @@
 'use client';
 
-import type { Activity, UserProfile } from '@/lib/types';
+import type { Activity, UserProfile, WorkspaceEntity } from '@/lib/types';
 import Link from 'next/link';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatSafeDate, formatSafeRelativeTime } from '@/lib/date-utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -13,7 +13,7 @@ interface ActivityItemProps {
   activity: Activity;
   user?: UserProfile;
   showEntityName?: boolean;
-  entity?: any;
+  entity?: WorkspaceEntity | null;
 }
 
 // Entity type icons for visual distinction
@@ -112,11 +112,11 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
             <span className="text-muted-foreground/30">&middot;</span>
             
             <time
-                dateTime={activity.timestamp}
-                title={format(new Date(activity.timestamp), "PPP p")}
+                dateTime={typeof activity.timestamp === 'string' ? activity.timestamp : undefined}
+                title={formatSafeDate(activity.timestamp, "PPP p", "Recent activity")}
                 className="text-muted-foreground/50 tabular-nums font-bold"
             >
-                {formatDistanceToNow(new Date(activity.timestamp), { addSuffix: true })}
+                {formatSafeRelativeTime(activity.timestamp, "recently")}
             </time>
 
             {/* Effort & Lead Score Points Badges */}

@@ -14,6 +14,7 @@ import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Activity, UserProfile } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format, isSameDay } from 'date-fns';
+import { parseSafeDate } from '@/lib/date-utils';
 import ActivityItem from './ActivityItem';
 import { useTenant } from '@/context/TenantContext';
 import { cn } from '@/lib/utils';
@@ -165,7 +166,7 @@ export default function ActivityTimeline({
 
   const groupedActivities = React.useMemo(() => {
     const grouped = filteredActivities.reduce((acc, activity) => {
-        const activityDate = new Date(activity.timestamp);
+        const activityDate = parseSafeDate(activity.timestamp) || new Date();
         let dateLabel: string;
         const today = new Date();
         const yesterday = new Date();
@@ -176,7 +177,11 @@ export default function ActivityTimeline({
         } else if (isSameDay(activityDate, yesterday)) {
           dateLabel = 'Yesterday';
         } else {
-          dateLabel = format(activityDate, 'PPP');
+          try {
+            dateLabel = format(activityDate, 'PPP');
+          } catch {
+            dateLabel = 'Recent';
+          }
         }
     
         if (!acc[dateLabel]) {

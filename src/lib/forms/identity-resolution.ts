@@ -157,6 +157,10 @@ export async function resolveAndEnrichCrmEntity({
 
     const entityHandling = form.actions?.entityHandling || 'create_or_update';
 
+    // The form author's choice. Defaults to 'update', so forms built before this option
+    // existed behave exactly as they did. @see ExistingEntityCorePolicy
+    const corePolicy = form.actions?.existingEntityCorePolicy ?? 'update';
+
     // ── Update Existing Entity ──
     if (resolvedEntityId && entityHandling !== 'create_new') {
       const updatePayload: Record<string, unknown> = {
@@ -174,6 +178,24 @@ export async function resolveAndEnrichCrmEntity({
         updatePayload.familyData = {
           familyName: String(formData.familyName),
         };
+      }
+
+      // AUTHOR ASKED US TO KEEP THE CRM'S IDENTITY.
+      //
+      // Only identity is dropped — customData and every other native field the respondent
+      // filled in still writes through, because the option means "do not rewrite who this
+      // is", not "discard this submission".
+      //
+      // CAUTION: these keys are the NATIVE field variable names. entityUpdates is keyed by
+      // the App Fields registry's variableName, so a rename there must be mirrored here or
+      // the protection silently stops applying. The survey side has the same list in
+      // sanitizeEntityPayloadForUpdate — keep the two in step.
+      if (corePolicy === 'preserve') {
+        for (const key of ['name', 'entityName', 'primaryEmail', 'email', 'primaryPhone', 'phone']) {
+          delete updatePayload[key];
+        }
+        delete updatePayload.personData;
+        delete updatePayload.familyData;
       }
 
       await updateEntityAction(

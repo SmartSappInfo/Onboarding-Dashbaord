@@ -66,6 +66,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { formatCurrency } from '@/lib/currency-utils';
+import { parseSafeDate, formatSafeLocaleDate } from '@/lib/date-utils';
 import { calculateLineItemsTotals } from '@/lib/deals/deal-health-engine';
 import { 
   saveDealLineItemsAction, 

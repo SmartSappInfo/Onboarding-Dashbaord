@@ -4040,6 +4040,11 @@ export interface Survey {
   // Entity Creation & Assignment (Task 12)
   createEntity?: boolean;
   entityMapping?: SurveyEntityMapping;
+  /**
+   * Whether a matched entity's core identity may be overwritten by this survey's answers.
+   * Defaults to 'update'. @see ExistingEntityCorePolicy
+   */
+  existingEntityCorePolicy?: ExistingEntityCorePolicy;
   assignmentEnabled?: boolean;
   assignedUsers?: string[];
   notifyAssignedUsers?: {
@@ -7139,12 +7144,37 @@ export interface FormThemeConfig {
   backgroundStyle?: 'transparent' | 'solid' | 'glass';
 }
 
+/**
+ * What to do with an already-known entity's CORE identity when a submission is matched to it.
+ *
+ *  'update'   — write the submitted values over the stored ones. Default, and what the app
+ *               did before this option existed, so existing surveys and forms are unaffected.
+ *  'preserve' — keep what the CRM already holds. Entity name, primary email, primary phone
+ *               and the matched contact's name/email/phone are left untouched.
+ *
+ * Only IDENTITY is protected. Answers, custom fields, tags, pipeline moves and genuinely new
+ * contacts still write through under 'preserve' — that is enrichment, not overwriting, and
+ * blocking it would make the option useless for its actual purpose.
+ *
+ * WHY THIS IS THE SURVEY/FORM AUTHOR'S CHOICE: a public survey is filled in by whoever has
+ * the link. For a customer-facing update form you want their corrections to win; for a
+ * broadcast survey to an existing list you very much do not want a mistyped name to rewrite
+ * a CRM record. Only the author knows which of those they are building.
+ */
+export type ExistingEntityCorePolicy = 'update' | 'preserve';
+
 export interface FormSubmissionActions {
   tags: string[]; // Applied immediately or post-creation
   automations: string[]; // Triggers 'form_submitted:<formId>' or these explicitly
   notifications?: import('./forms/form-notification-types').FormNotificationSettings;
   webhooks: string[]; // URLs or Webhook document IDs
   entityHandling?: 'create_new' | 'update_matching' | 'create_or_update'; // Legacy fallback
+  /**
+   * Whether a matched entity's core identity may be overwritten. Defaults to 'update'.
+   * Distinct from entityHandling, which decides WHETHER to update at all; this decides what
+   * an update is allowed to touch. @see ExistingEntityCorePolicy
+   */
+  existingEntityCorePolicy?: ExistingEntityCorePolicy;
   leadSource?: string;
   dealCreation?: import('./forms/form-crm-types').DealCreationRule;
   taskAssignment?: import('./forms/form-crm-types').TaskAssignmentRule;

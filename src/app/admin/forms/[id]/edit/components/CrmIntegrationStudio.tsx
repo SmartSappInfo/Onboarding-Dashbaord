@@ -67,6 +67,9 @@ export default function CrmIntegrationStudio({
 
   // Extract settings with safe defaults
   const entityHandling: EntityHandlingStrategy = actions.entityHandling || 'create_or_update';
+  // Undefined on forms built before this option existed — treated as 'update' so their
+  // behaviour is unchanged.
+  const existingEntityCorePolicy = actions.existingEntityCorePolicy ?? 'update';
   const leadSource: string = actions.leadSource || '';
   const progressiveProfiling = actions.progressiveProfiling || { enabled: true, hideKnownFields: false };
   const dealCreation = actions.dealCreation || { enabled: false, titleTemplate: '{{name}} - Form Inquiry' };
@@ -208,6 +211,60 @@ export default function CrmIntegrationStudio({
               })}
             </div>
           </div>
+
+          {/*
+            WHEN WE ALREADY KNOW THEM.
+            Distinct from the rule above: that decides WHETHER a matched record is updated,
+            this decides what an update is allowed to touch. Hidden under 'Always Create New',
+            where nothing is ever matched and the choice would be meaningless.
+            Default is 'update' — what the app did before this option existed.
+          */}
+          {entityHandling !== 'create_new' && (
+            <div className="space-y-3 pt-2">
+              <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                When the contact is already in your CRM
+              </Label>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {[
+                  {
+                    id: 'update' as const,
+                    label: 'Use the new answers',
+                    desc: 'Their name, email and phone are replaced with what they just entered.',
+                  },
+                  {
+                    id: 'preserve' as const,
+                    label: 'Keep what you have',
+                    desc: 'Their name, email and phone stay as they are. Everything else still saves.',
+                  },
+                ].map(opt => {
+                  const isSelected = existingEntityCorePolicy === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => onChange({ existingEntityCorePolicy: opt.id })}
+                      aria-pressed={isSelected}
+                      className={cn(
+                        "flex flex-col text-left p-4 rounded-2xl border transition-all duration-200 min-h-[44px]",
+                        isSelected
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
+                          : "border-border/60 bg-card hover:bg-muted/20"
+                      )}
+                    >
+                      <span className="text-xs font-bold text-foreground mb-1.5">{opt.label}</span>
+                      <span className="text-[11px] text-muted-foreground leading-snug">{opt.desc}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              {existingEntityCorePolicy === 'preserve' && (
+                <p className="text-[10px] text-muted-foreground bg-muted/30 border border-border/50 rounded-lg px-3 py-2">
+                  Answers, custom fields, tags and new contacts are still saved. Only the
+                  existing name, email and phone are left alone.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Lead Source */}
           <div className="space-y-1.5 pt-2">
