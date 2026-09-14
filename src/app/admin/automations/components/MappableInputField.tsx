@@ -11,7 +11,7 @@ import {
   X,
   Settings
 } from 'lucide-react';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Popover, PopoverContent, PopoverTrigger, PopoverAnchor } from '@/components/ui/popover';
 import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -152,6 +152,23 @@ export function MappableInputField({
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
   const inputRef = React.useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [anchorWidth, setAnchorWidth] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const updateWidth = () => {
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        if (rect.width > 0) {
+          setAnchorWidth(rect.width);
+        }
+      }
+    };
+    updateWidth();
+    window.addEventListener('resize', updateWidth);
+    return () => window.removeEventListener('resize', updateWidth);
+  }, [open]);
 
   const firestore = useFirestore();
   const params = useParams();
@@ -443,175 +460,187 @@ export function MappableInputField({
   }
 
   return (
-    <div className={cn('relative flex items-center w-full', className)}>
-      {inputElement}
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className={cn(
-              'absolute right-1.5 h-7 w-7 rounded-lg hover:bg-muted/80 text-muted-foreground/60 hover:text-primary transition-colors',
-              isTextArea ? 'top-1.5' : 'top-1/2 -translate-y-1/2'
-            )}
-            title="Map dynamic variable"
-          >
-            <Brackets className="h-4 w-4" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent className="w-80 p-0 border border-border shadow-2xl rounded-2xl bg-card/95 backdrop-blur-md z-[100]" align="end">
-          <div className="flex flex-col">
-            {/* Search Input */}
-            <div className="border-b p-3 bg-muted/20">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
-                <Input
-                  placeholder="Search variables & values..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 pr-8 h-9 rounded-lg bg-background text-xs"
-                  autoFocus
-                />
-              </div>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverAnchor asChild>
+        <div 
+          ref={containerRef}
+          className={cn('relative flex items-center w-full', className)}
+        >
+          {inputElement}
+          <PopoverTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className={cn(
+                'absolute right-1.5 h-7 w-7 rounded-lg hover:bg-muted/80 text-muted-foreground/60 hover:text-primary transition-colors z-10',
+                isTextArea ? 'top-1.5' : 'top-1/2 -translate-y-1/2'
+              )}
+              title="Map dynamic variable"
+            >
+              <Brackets className="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+        </div>
+      </PopoverAnchor>
+      <PopoverContent 
+        className="p-0 border border-border shadow-2xl rounded-2xl bg-card/95 backdrop-blur-md z-[100] overflow-hidden w-[var(--radix-popper-anchor-width,var(--radix-popover-trigger-width))] max-w-[var(--radix-popover-content-available-width,calc(100vw-2rem))] min-w-[min(100%,320px)]" 
+        align="start"
+        sideOffset={6}
+        style={{
+          width: anchorWidth ? `${anchorWidth}px` : 'var(--radix-popper-anchor-width, var(--radix-popover-trigger-width))',
+        }}
+      >
+        <div className="flex flex-col w-full overflow-hidden">
+          {/* Search Input */}
+          <div className="border-b p-3 bg-muted/20 w-full overflow-hidden">
+            <div className="relative w-full">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
+              <Input
+                placeholder="Search variables & values..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9 pr-8 h-9 rounded-lg bg-background text-xs w-full"
+                autoFocus
+              />
             </div>
-
-            {/* Accordion List */}
-            <ScrollArea className="h-72">
-              <div className="p-3">
-                {filteredVariables.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-muted-foreground/60 flex flex-col items-center justify-center gap-1">
-                    <HelpCircle className="h-6 w-6 text-muted-foreground/30" />
-                    <span>No mapping variables found</span>
-                  </div>
-                ) : (
-                  <Accordion type="multiple" defaultValue={['webhook_item', 'entity_item']} className="w-full space-y-1.5">
-                    {webhookGroup.length > 0 && (
-                      <AccordionItem value="webhook_item" className="border rounded-xl bg-card px-3 shadow-none">
-                        <AccordionTrigger className="hover:no-underline py-2.5">
-                          <div className="flex items-center gap-2 text-left">
-                            <div className="h-5 w-5 rounded-md bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-                              <Globe className="h-3.5 w-3.5" />
-                            </div>
-                            <span className="text-xs font-bold text-foreground">Webhook Data</span>
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
-                              {webhookGroup.length}
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-3 space-y-1">
-                          {webhookGroup.map((v) => (
-                            <button
-                              key={v.key}
-                              type="button"
-                              onClick={() => insertVariable(v.key)}
-                              className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-blue-500/5 hover:border-blue-500/20 rounded-xl transition-all border border-border/40 group text-left"
-                            >
-                              <div className="flex flex-col min-w-0 pr-2">
-                                <span className="font-semibold text-xs text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate">
-                                  {v.label}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono">
-                                  {`{{${v.key}}}`}
-                                </span>
-                              </div>
-                              <div className="shrink-0 flex items-center gap-1.5">
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[110px] truncate" title={String(v.val)}>
-                                  {v.val}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
-                        </AccordionContent>
-                      </AccordionItem>
-                    )}
-
-                    {entityGroup.length > 0 && (
-                      <AccordionItem value="entity_item" className="border rounded-xl bg-card px-3 shadow-none">
-                        <AccordionTrigger className="hover:no-underline py-2.5">
-                          <div className="flex items-center gap-2 text-left">
-                            <div className="h-5 w-5 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                              <Database className="h-3.5 w-3.5" />
-                            </div>
-                            <span className="text-xs font-bold text-foreground">Active Entity</span>
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                              {entityGroup.length}
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-3 space-y-1">
-                          {entityGroup.map((v) => (
-                            <button
-                              key={v.key}
-                              type="button"
-                              onClick={() => insertVariable(v.key)}
-                              className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-emerald-500/5 hover:border-emerald-500/20 rounded-xl transition-all border border-border/40 group text-left"
-                            >
-                              <div className="flex flex-col min-w-0 pr-2">
-                                <span className="font-semibold text-xs text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate">
-                                  {v.label}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono">
-                                  {`{{${v.key}}}`}
-                                </span>
-                              </div>
-                              <div className="shrink-0 flex items-center gap-1.5">
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[110px] truncate" title={String(v.val)}>
-                                  {v.val}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
-                        </AccordionContent>
-                      </AccordionItem>
-                    )}
-
-                    {workspaceGroup.length > 0 && (
-                      <AccordionItem value="workspace_item" className="border rounded-xl bg-card px-3 shadow-none">
-                        <AccordionTrigger className="hover:no-underline py-2.5">
-                          <div className="flex items-center gap-2 text-left">
-                            <div className="h-5 w-5 rounded-md bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                              <Activity className="h-3.5 w-3.5" />
-                            </div>
-                            <span className="text-xs font-bold text-foreground">Workspace Info</span>
-                            <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
-                              {workspaceGroup.length}
-                            </span>
-                          </div>
-                        </AccordionTrigger>
-                        <AccordionContent className="pt-1 pb-3 space-y-1">
-                          {workspaceGroup.map((v) => (
-                            <button
-                              key={v.key}
-                              type="button"
-                              onClick={() => insertVariable(v.key)}
-                              className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-indigo-500/5 hover:border-indigo-500/20 rounded-xl transition-all border border-border/40 group text-left"
-                            >
-                              <div className="flex flex-col min-w-0 pr-2">
-                                <span className="font-semibold text-xs text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate">
-                                  {v.label}
-                                </span>
-                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono">
-                                  {`{{${v.key}}}`}
-                                </span>
-                              </div>
-                              <div className="shrink-0 flex items-center gap-1.5">
-                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[110px] truncate" title={String(v.val)}>
-                                  {v.val}
-                                </span>
-                              </div>
-                            </button>
-                          ))}
-                        </AccordionContent>
-                      </AccordionItem>
-                    )}
-                  </Accordion>
-                )}
-              </div>
-            </ScrollArea>
           </div>
-        </PopoverContent>
-      </Popover>
+
+          {/* Accordion List */}
+          <ScrollArea hideHorizontal className="h-72 w-full overflow-x-hidden [&>div>div]:!block [&>div>div]:!w-full">
+            <div className="p-3 w-full overflow-hidden space-y-1.5">
+              {filteredVariables.length === 0 ? (
+                <div className="py-8 text-center text-xs text-muted-foreground/60 flex flex-col items-center justify-center gap-1">
+                  <HelpCircle className="h-6 w-6 text-muted-foreground/30" />
+                  <span>No mapping variables found</span>
+                </div>
+              ) : (
+                <Accordion type="multiple" defaultValue={['webhook_item', 'entity_item']} className="w-full space-y-1.5 overflow-hidden">
+                  {webhookGroup.length > 0 && (
+                    <AccordionItem value="webhook_item" className="border rounded-xl bg-card px-3 shadow-none overflow-hidden w-full">
+                      <AccordionTrigger className="hover:no-underline py-2.5 w-full">
+                        <div className="flex items-center gap-2 text-left">
+                          <div className="h-5 w-5 rounded-md bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
+                            <Globe className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">Webhook Data</span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400">
+                            {webhookGroup.length}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-3 space-y-1 w-full overflow-hidden">
+                        {webhookGroup.map((v) => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => insertVariable(v.key)}
+                            className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-blue-500/5 hover:border-blue-500/20 rounded-xl transition-all border border-border/40 group text-left min-w-0 overflow-hidden"
+                          >
+                            <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
+                              <span className="font-semibold text-xs text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate block">
+                                {v.label}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
+                                {`{{${v.key}}}`}
+                              </span>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
+                                {v.val}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
+
+                  {entityGroup.length > 0 && (
+                    <AccordionItem value="entity_item" className="border rounded-xl bg-card px-3 shadow-none overflow-hidden w-full">
+                      <AccordionTrigger className="hover:no-underline py-2.5 w-full">
+                        <div className="flex items-center gap-2 text-left">
+                          <div className="h-5 w-5 rounded-md bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                            <Database className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">Active Entity</span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                            {entityGroup.length}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-3 space-y-1 w-full overflow-hidden">
+                        {entityGroup.map((v) => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => insertVariable(v.key)}
+                            className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-emerald-500/5 hover:border-emerald-500/20 rounded-xl transition-all border border-border/40 group text-left min-w-0 overflow-hidden"
+                          >
+                            <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
+                              <span className="font-semibold text-xs text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate block">
+                                {v.label}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
+                                {`{{${v.key}}}`}
+                              </span>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
+                                {v.val}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
+
+                  {workspaceGroup.length > 0 && (
+                    <AccordionItem value="workspace_item" className="border rounded-xl bg-card px-3 shadow-none overflow-hidden w-full">
+                      <AccordionTrigger className="hover:no-underline py-2.5 w-full">
+                        <div className="flex items-center gap-2 text-left">
+                          <div className="h-5 w-5 rounded-md bg-indigo-500/10 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                            <Activity className="h-3.5 w-3.5" />
+                          </div>
+                          <span className="text-xs font-bold text-foreground">Workspace Info</span>
+                          <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+                            {workspaceGroup.length}
+                          </span>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="pt-1 pb-3 space-y-1 w-full overflow-hidden">
+                        {workspaceGroup.map((v) => (
+                          <button
+                            key={v.key}
+                            type="button"
+                            onClick={() => insertVariable(v.key)}
+                            className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-indigo-500/5 hover:border-indigo-500/20 rounded-xl transition-all border border-border/40 group text-left min-w-0 overflow-hidden"
+                          >
+                            <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
+                              <span className="font-semibold text-xs text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate block">
+                                {v.label}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
+                                {`{{${v.key}}}`}
+                              </span>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
+                                {v.val}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                      </AccordionContent>
+                    </AccordionItem>
+                  )}
+                </Accordion>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
+      </PopoverContent>
 
       <FallbackEditorModal
         isOpen={modalOpen}
@@ -620,6 +649,6 @@ export function MappableInputField({
         currentFallback={editingVarCurrentFallback}
         onSave={handleSaveFallback}
       />
-    </div>
+    </Popover>
   );
 }
