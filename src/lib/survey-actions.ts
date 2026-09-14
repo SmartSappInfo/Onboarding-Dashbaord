@@ -12,6 +12,7 @@ import { sendMessage } from './messaging-engine';
 import { resolveContact } from './contact-adapter';
 
 import type { Survey, SurveyResponse, Webhook, EntityType, ContactIdentifierPolicy, IndustryVertical, SurveyQuestion, EntityContact, SurveyResultRule, OnlinePresence, ExistingEntityCorePolicy } from './types';
+import { mergeRespondentContact } from './surveys/respondent-contact-merge';
 import { validateContactIdentifier } from './contact-policy';
 import { createEntityAction, updateEntityAction } from './entity-actions';
 import { createDeal } from '../app/actions/deal-actions';
@@ -146,7 +147,6 @@ export async function syncSurveyUploadedFilesToMedia(
   return registeredUrls;
 }
 
-
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Sanitize entity mutation payload when updating pre-existing entities.
@@ -216,67 +216,6 @@ export async function sanitizeEntityPayloadForUpdate(
   return sanitized;
 }
 
-/**
- * Merge a respondent's contact details into an entity's existing contact list.
- *
- * Extracted because this ran as two hand-copied blocks (matched-entity and duplicate-fallback)
- * that had already drifted apart in their isPrimary handling; the preserve option would have
- * had to be implemented twice and would eventually have been implemented differently.
- *
- * Under 'preserve' a MATCHED contact is returned untouched — that is the overwrite the author
- * asked us not to perform. A genuinely new contact is still appended, because adding someone
- * who was not on the record is not an overwrite.
- */
-export function mergeRespondentContact(
-  existingContacts: EntityContact[],
-  incoming: {
-    name: string;
-    email: string;
-    phone: string;
-    typeKey: string;
-    typeLabel: string;
-    isManualNameInput: boolean;
-    fallbackName: string;
-  },
-  options: { corePolicy?: ExistingEntityCorePolicy; firstIsPrimary: boolean }
-): EntityContact[] {
-  const merged = [...existingContacts];
-  const preserve = options.corePolicy === 'preserve';
-
-  for (let i = 0; i < merged.length; i++) {
-    const ec = merged[i];
-    const emailMatch = incoming.email && ec.email && ec.email.toLowerCase().trim() === incoming.email;
-    const phoneMatch = incoming.phone && ec.phone && ec.phone.trim() === incoming.phone;
-
-    if (emailMatch || phoneMatch) {
-      if (preserve) return merged;
-      merged[i] = {
-        ...ec,
-        name: incoming.isManualNameInput
-          ? (incoming.name || ec.name || incoming.fallbackName)
-          : (ec.name || incoming.name || incoming.fallbackName),
-        email: incoming.email || ec.email || '',
-        phone: incoming.phone || ec.phone || '',
-      };
-      return merged;
-    }
-  }
-
-  merged.push({
-    id: `ec_${crypto.randomUUID().substring(0, 8)}`,
-    name: incoming.name || incoming.fallbackName,
-    email: incoming.email,
-    phone: incoming.phone,
-    isPrimary: options.firstIsPrimary && merged.length === 0,
-    isSignatory: false,
-    typeKey: incoming.typeKey,
-    typeLabel: incoming.typeLabel,
-    order: merged.length,
-    updatedAt: new Date().toISOString(),
-  } as EntityContact);
-
-  return merged;
-}
 
 /**
  * Get surveys for a specific contact (by entityId)
@@ -538,7 +477,6 @@ export async function deleteSurveyResponses(surveyId: string, responseIds: strin
         return { success: false, error: getErrorMessage(error) };
     }
 }
-
 
 
 export interface EntityMatchResult {

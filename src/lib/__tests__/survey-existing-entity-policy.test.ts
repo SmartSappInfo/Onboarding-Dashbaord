@@ -1,5 +1,7 @@
 import { describe, it, expect, vi } from 'vitest';
-import { sanitizeEntityPayloadForUpdate, mergeRespondentContact } from '@/lib/survey-actions';
+import { sanitizeEntityPayloadForUpdate } from '@/lib/survey-actions';
+// Pure helper, deliberately outside the 'use server' module — see its @fileOverview.
+import { mergeRespondentContact } from '@/lib/surveys/respondent-contact-merge';
 import type { EntityContact } from '@/lib/types';
 
 /**
