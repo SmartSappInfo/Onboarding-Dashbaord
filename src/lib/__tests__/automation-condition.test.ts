@@ -311,4 +311,240 @@ describe('evaluateConditionNode (Advanced Segment Logic)', () => {
       ).toBe(false);
     });
   });
+
+  describe('Find Contact outcome evaluations', () => {
+    it('evaluates is_found, is_created, not_found, and successful operators', async () => {
+      const foundNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'is_found',
+          },
+        },
+      };
+
+      const createdNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'is_created',
+          },
+        },
+      };
+
+      const notFoundNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'not_found',
+          },
+        },
+      };
+
+      const successfulNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'successful',
+          },
+        },
+      };
+
+      // Case 1: Existing contact found
+      const foundPayload = {
+        contactFound: true,
+        contactCreated: false,
+        findContactStatus: 'found',
+      };
+      expect(await evaluateConditionNode(foundNode, foundPayload)).toBe(true);
+      expect(await evaluateConditionNode(createdNode, foundPayload)).toBe(false);
+      expect(await evaluateConditionNode(notFoundNode, foundPayload)).toBe(false);
+      expect(await evaluateConditionNode(successfulNode, foundPayload)).toBe(true);
+
+      // Case 2: New contact auto-created
+      const createdPayload = {
+        contactFound: false,
+        contactCreated: true,
+        findContactStatus: 'created',
+      };
+      expect(await evaluateConditionNode(foundNode, createdPayload)).toBe(false);
+      expect(await evaluateConditionNode(createdNode, createdPayload)).toBe(true);
+      expect(await evaluateConditionNode(notFoundNode, createdPayload)).toBe(false);
+      expect(await evaluateConditionNode(successfulNode, createdPayload)).toBe(true);
+
+      // Case 3: Contact not found
+      const notFoundPayload = {
+        contactFound: false,
+        contactCreated: false,
+        findContactStatus: 'not_found',
+      };
+      expect(await evaluateConditionNode(foundNode, notFoundPayload)).toBe(false);
+      expect(await evaluateConditionNode(createdNode, notFoundPayload)).toBe(false);
+      expect(await evaluateConditionNode(notFoundNode, notFoundPayload)).toBe(true);
+      expect(await evaluateConditionNode(successfulNode, notFoundPayload)).toBe(false);
+    });
+
+    it('evaluates is and is_not operators with value criteria', async () => {
+      const isFoundNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'is',
+            value: 'found',
+          },
+        },
+      };
+
+      const isCreatedNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'is',
+            value: 'created',
+          },
+        },
+      };
+
+      const isNotCreatedNode = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'is_not',
+            value: 'created',
+          },
+        },
+      };
+
+      expect(await evaluateConditionNode(isFoundNode, { findContactStatus: 'found', contactFound: true })).toBe(true);
+      expect(await evaluateConditionNode(isFoundNode, { findContactStatus: 'created', contactCreated: true })).toBe(false);
+
+      expect(await evaluateConditionNode(isCreatedNode, { findContactStatus: 'created', contactCreated: true })).toBe(true);
+      expect(await evaluateConditionNode(isCreatedNode, { findContactStatus: 'not_found', contactFound: false })).toBe(false);
+
+      expect(await evaluateConditionNode(isNotCreatedNode, { findContactStatus: 'found', contactFound: true })).toBe(true);
+      expect(await evaluateConditionNode(isNotCreatedNode, { findContactStatus: 'created', contactCreated: true })).toBe(false);
+    });
+
+    it('evaluates boolean find_contact_found and find_contact_created conditions', async () => {
+      const foundBoolNode = {
+        data: {
+          config: {
+            field: 'find_contact_found',
+            operator: 'is_true',
+          },
+        },
+      };
+
+      const createdBoolNode = {
+        data: {
+          config: {
+            field: 'find_contact_created',
+            operator: 'is_true',
+          },
+        },
+      };
+
+      expect(await evaluateConditionNode(foundBoolNode, { contactFound: true, contactCreated: false })).toBe(true);
+      expect(await evaluateConditionNode(foundBoolNode, { contactFound: false, contactCreated: true })).toBe(false);
+
+      expect(await evaluateConditionNode(createdBoolNode, { contactFound: false, contactCreated: true })).toBe(true);
+      expect(await evaluateConditionNode(createdBoolNode, { contactFound: true, contactCreated: false })).toBe(false);
+    });
+
+    it('evaluates step-scoped search conditions with cond.stepId', async () => {
+      const step1Condition = {
+        data: {
+          config: {
+            groups: [
+              {
+                id: 'g1',
+                relation: 'and' as const,
+                conditions: [
+                  {
+                    id: 'c1',
+                    field: 'find_contact_status',
+                    operator: 'is_found',
+                    stepId: 'step_search_phone',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      const step2Condition = {
+        data: {
+          config: {
+            groups: [
+              {
+                id: 'g2',
+                relation: 'and' as const,
+                conditions: [
+                  {
+                    id: 'c2',
+                    field: 'find_contact_status',
+                    operator: 'is_created',
+                    stepId: 'step_search_email',
+                  },
+                ],
+              },
+            ],
+          },
+        },
+      };
+
+      // Payload where step 1 was not found, but step 2 auto-created the contact
+      const multiStepPayload: Record<string, unknown> = {
+        'step_search_phone.contactFound': false,
+        'step_search_phone.contactCreated': false,
+        'step_search_phone.findContactStatus': 'not_found',
+        'step_search_email.contactFound': false,
+        'step_search_email.contactCreated': true,
+        'step_search_email.findContactStatus': 'created',
+        // Top-level payload represents the latest step (step 2)
+        contactFound: false,
+        contactCreated: true,
+        findContactStatus: 'created',
+      };
+
+      expect(await evaluateConditionNode(step1Condition, multiStepPayload)).toBe(false);
+      expect(await evaluateConditionNode(step2Condition, multiStepPayload)).toBe(true);
+    });
+
+    it('gracefully falls back to top-level payload if referenced step was deleted', async () => {
+      const deletedStepCondition = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'is_found',
+            stepId: 'deleted_step_999',
+          },
+        },
+      };
+
+      // Payload has top-level contactFound: true from remaining search step
+      const payloadWithFallback = {
+        contactFound: true,
+        contactCreated: false,
+        findContactStatus: 'found',
+      };
+
+      expect(await evaluateConditionNode(deletedStepCondition, payloadWithFallback)).toBe(true);
+    });
+
+    it('returns false when no search action was ever executed in the run', async () => {
+      const searchCondition = {
+        data: {
+          config: {
+            field: 'find_contact_status',
+            operator: 'not_found',
+          },
+        },
+      };
+
+      // Empty payload without any search keys
+      expect(await evaluateConditionNode(searchCondition, {})).toBe(false);
+    });
+  });
 });

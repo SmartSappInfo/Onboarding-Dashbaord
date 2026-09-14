@@ -115,10 +115,25 @@ const FIELD_TYPE_MAP: Record<string, string> = {
   email_action: 'email_action',
   sms_action: 'sms_action',
   whatsapp_action: 'whatsapp_action',
+  find_contact_status: 'find_contact_status',
+  find_contact_found: 'boolean_search',
+  find_contact_created: 'boolean_search',
 };
 
 // Operators by Field type
 const OPERATORS_BY_TYPE: Record<string, { value: string; label: string }[]> = {
+  find_contact_status: [
+    { value: 'is_found', label: 'Contact was found in database' },
+    { value: 'is_created', label: 'New contact was auto-created' },
+    { value: 'not_found', label: 'Contact was not found' },
+    { value: 'successful', label: 'Contact resolved (Found or Created)' },
+    { value: 'is', label: 'Outcome is exactly' },
+    { value: 'is_not', label: 'Outcome is not' },
+  ],
+  boolean_search: [
+    { value: 'is_true', label: 'Is True / Yes' },
+    { value: 'is_false', label: 'Is False / No' },
+  ],
   text: [
     { value: 'equals', label: 'Exactly Equals' },
     { value: 'not_equals', label: 'Does Not Equal' },
@@ -358,6 +373,56 @@ export function ConditionsBuilder({
     return templates;
   }, [nodes, allTemplates]);
 
+  // ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol
+  // Extract FIND_CONTACT steps from the automation nodes list.
+  // Used to conditionally inject Search & Find Contact category into the condition builder.
+  const findContactSteps = React.useMemo(() => {
+    if (!nodes || !Array.isArray(nodes)) return [];
+    const steps: { id: string; label: string; stepNumber?: number }[] = [];
+    nodes.forEach((node) => {
+      if (
+        node.type === 'actionNode' &&
+        (node.data?.actionType === 'FIND_CONTACT' || node.data?.type === 'FIND_CONTACT')
+      ) {
+        const stepNum = node.data?.stepNumber;
+        const cfg = node.data?.config || {};
+        const searchCriteria: string[] = [];
+        if (cfg.searchPhone) searchCriteria.push('Phone');
+        if (cfg.searchEmail) searchCriteria.push('Email');
+        if (cfg.searchName) searchCriteria.push('Name');
+        if (cfg.searchEntityName) searchCriteria.push('Entity');
+        const criteriaText = searchCriteria.length > 0 ? searchCriteria.join(', ') : 'Phone/Email';
+        const label = stepNum 
+          ? `Step #${stepNum}: Find Contact (${criteriaText})` 
+          : `Find Contact (${criteriaText})`;
+        steps.push({
+          id: node.id,
+          label,
+          stepNumber: stepNum,
+        });
+      }
+    });
+    return steps;
+  }, [nodes]);
+
+  // Dynamically inject Search & Find Contact category ONLY if at least one FIND_CONTACT step exists in graph
+  const conditionFields = React.useMemo(() => {
+    if (findContactSteps.length === 0) {
+      return CONDITION_FIELDS;
+    }
+    return [
+      {
+        group: 'Search & Find Contact',
+        items: [
+          { value: 'find_contact_status', label: 'Contact Search Outcome' },
+          { value: 'find_contact_found', label: 'Contact Was Found' },
+          { value: 'find_contact_created', label: 'New Contact Auto-Created' },
+        ],
+      },
+      ...CONDITION_FIELDS,
+    ];
+  }, [findContactSteps.length]);
+
   // Initialize with at least one group and condition if empty
   const activeGroups = React.useMemo(() => {
     if (groups && groups.length > 0) return groups;
@@ -456,6 +521,18 @@ export function ConditionsBuilder({
             merged.qrId = undefined;
             merged.shortPath = undefined;
             merged.pageId = undefined;
+            if (updates.field.startsWith('find_contact_')) {
+              merged.stepId = findContactSteps.length > 1 ? findContactSteps[0]?.id : undefined;
+              if (updates.field === 'find_contact_status') {
+                merged.operator = 'is_found';
+                merged.value = 'found';
+              } else {
+                merged.operator = 'is_true';
+                merged.value = 'true';
+              }
+            } else {
+              merged.stepId = undefined;
+            }
           }
 
           if (updates.surveyId) {
@@ -577,7 +654,7 @@ export function ConditionsBuilder({
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent className="rounded-xl">
-                                {CONDITION_FIELDS.map((category) => (
+                                {conditionFields.map((category) => (
                                   <SelectGroup key={category.group}>
                                     <SelectLabel className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/60">{category.group}</SelectLabel>
                                     {category.items.map((field) => (
@@ -590,6 +667,35 @@ export function ConditionsBuilder({
                               </SelectContent>
                             </Select>
                           </div>
+
+                          {/* Dynamic Target Search Step Selection when multiple search steps exist on canvas */}
+                          {cond.field?.startsWith('find_contact_') && findContactSteps.length > 1 && (
+                            <div className="flex-1 min-w-[140px] space-y-1">
+                              <Label className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/80">Target Search Step</Label>
+                              <Select
+                                value={cond.stepId || findContactSteps[0]?.id || ''}
+                                onValueChange={(val) => updateConditionValue(group.id, cond.id, { stepId: val })}
+                              >
+                                <SelectTrigger className="h-8 min-h-[44px] rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full active:scale-[0.97] transition-all">
+                                  <SelectValue placeholder="Select search step..." />
+                                </SelectTrigger>
+                                <SelectContent className="rounded-xl">
+                                  {findContactSteps.map((step) => (
+                                    <SelectItem key={step.id} value={step.id} className="text-[10px] font-bold">
+                                      {step.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+
+                          {/* Fallback warning if previously selected search step was deleted from canvas */}
+                          {cond.field?.startsWith('find_contact_') && cond.stepId && !findContactSteps.some(s => s.id === cond.stepId) && (
+                            <div className="w-full text-[9px] text-amber-600 dark:text-amber-400 font-medium px-1">
+                              ⚠️ Referenced search step was removed. Defaulting to available search step.
+                            </div>
+                          )}
 
                           {/* Dynamic Custom Field Selection */}
                           {valueType === 'app_field' && (
@@ -777,10 +883,33 @@ export function ConditionsBuilder({
                            cond.operator !== 'answered' && 
                            cond.operator !== 'not_answered' && 
                            cond.operator !== 'submitted' && 
-                           cond.operator !== 'not_submitted' && (
+                           cond.operator !== 'not_submitted' && 
+                           cond.operator !== 'is_found' && 
+                           cond.operator !== 'is_created' && 
+                           cond.operator !== 'not_found' && 
+                           cond.operator !== 'successful' && 
+                           cond.operator !== 'is_true' && 
+                           cond.operator !== 'is_false' && (
                             <div className="flex-grow min-w-[180px] space-y-1">
                               <Label className="text-[8px] font-black uppercase tracking-wider text-muted-foreground/80">Value Criteria</Label>
                               
+                              {/* 0. Find Contact Status Outcome Selection for 'is' / 'is_not' */}
+                              {cond.field === 'find_contact_status' && (cond.operator === 'is' || cond.operator === 'is_not') && (
+                                <Select
+                                  value={String(cond.value || 'found')}
+                                  onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
+                                >
+                                  <SelectTrigger className="h-8 min-h-[44px] rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full active:scale-[0.97] transition-all">
+                                    <SelectValue placeholder="Select outcome..." />
+                                  </SelectTrigger>
+                                  <SelectContent className="rounded-xl">
+                                    <SelectItem value="found" className="text-[10px] font-bold">Existing Contact Found</SelectItem>
+                                    <SelectItem value="created" className="text-[10px] font-bold">New Contact Auto-Created</SelectItem>
+                                    <SelectItem value="not_found" className="text-[10px] font-bold">Contact Not Found</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              )}
+
                               {/* 1. TagSelector for Tags */}
                               {valueType === 'tags' && (
                                 <TagSelector

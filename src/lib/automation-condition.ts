@@ -16,7 +16,8 @@ export interface ConditionItem {
   id: string;
   field: string;
   operator: string;
-  value?: any;
+  value?: unknown;
+  stepId?: string;
   emailTemplateId?: string;
   linkUrl?: string;
   surveyId?: string;
@@ -29,7 +30,7 @@ export interface ConditionItem {
   qrId?: string;
   shortPath?: string;
   pageId?: string;
-  [key: string]: any;
+  [key: string]: unknown;
 }
 
 export interface ConditionGroup {
@@ -428,6 +429,85 @@ async function evaluateSingleCondition(
       const urls = clickedLinks[String(targetTemplateId)] || [];
       const hasClickedActivity = urls.length > 0;
       return !(hasClickedLog || hasClickedActivity);
+    }
+
+    return false;
+  }
+
+  // Case C.3: Find Contact step outcome checks (ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol)
+  // Evaluates outcomes from upstream FIND_CONTACT action step.
+  // Supports targeting a specific step via cond.stepId or falling back to most recent search results in payload.
+  if (field === 'find_contact_status' || field === 'find_contact_found' || field === 'find_contact_created') {
+    const targetStepId = cond.stepId;
+
+    // Resolve outcomes either from specific step payload (e.g. payload['step_123.contactFound']) or fallback to top-level payload
+    let isFound: boolean;
+    let isCreated: boolean;
+    let status: string;
+
+    // Check if step-scoped outcome keys exist in payload (e.g. payload['step_123.contactFound'])
+    const hasStepSpecificData = Boolean(
+      targetStepId && (
+        payload[`${targetStepId}.contactFound`] !== undefined ||
+        payload[`${targetStepId}.findContactStatus`] !== undefined ||
+        payload[`${targetStepId}.contactCreated`] !== undefined
+      )
+    );
+
+    const hasAnySearchData = hasStepSpecificData ||
+      payload.contactFound !== undefined ||
+      payload.findContactStatus !== undefined ||
+      payload.contactCreated !== undefined;
+
+    // If no search action was ever executed in this flow, evaluate to false safely
+    if (!hasAnySearchData) {
+      return false;
+    }
+
+    if (hasStepSpecificData && targetStepId) {
+      isFound = Boolean(payload[`${targetStepId}.contactFound`]);
+      isCreated = Boolean(payload[`${targetStepId}.contactCreated`] || payload[`${targetStepId}.isNew`]);
+      status = String(payload[`${targetStepId}.findContactStatus`] || (isFound ? 'found' : isCreated ? 'created' : 'not_found'));
+    } else {
+      isFound = Boolean(payload.contactFound);
+      isCreated = Boolean(payload.contactCreated || payload.isNew);
+      status = String(payload.findContactStatus || (isFound ? 'found' : isCreated ? 'created' : 'not_found'));
+    }
+
+    // 1. Specific Boolean Condition: find_contact_found
+    if (field === 'find_contact_found') {
+      if (operator === 'is_true' || operator === 'is' || operator === 'equals') return isFound === true;
+      if (operator === 'is_false' || operator === 'is_not' || operator === 'not_equals') return isFound === false;
+      return isFound;
+    }
+
+    // 2. Specific Boolean Condition: find_contact_created
+    if (field === 'find_contact_created') {
+      if (operator === 'is_true' || operator === 'is' || operator === 'equals') return isCreated === true;
+      if (operator === 'is_false' || operator === 'is_not' || operator === 'not_equals') return isCreated === false;
+      return isCreated;
+    }
+
+    // 3. Status Outcome Condition: find_contact_status
+    if (field === 'find_contact_status') {
+      if (operator === 'is_found') return isFound;
+      if (operator === 'is_created') return isCreated;
+      if (operator === 'not_found') return !isFound && !isCreated;
+      if (operator === 'successful') return isFound || isCreated;
+      if (operator === 'is' || operator === 'equals') {
+        const expected = String(value || '').toLowerCase();
+        if (expected === 'found') return isFound;
+        if (expected === 'created') return isCreated;
+        if (expected === 'not_found') return !isFound && !isCreated;
+        return status === expected;
+      }
+      if (operator === 'is_not' || operator === 'not_equals') {
+        const expected = String(value || '').toLowerCase();
+        if (expected === 'found') return !isFound;
+        if (expected === 'created') return !isCreated;
+        if (expected === 'not_found') return isFound || isCreated;
+        return status !== expected;
+      }
     }
 
     return false;

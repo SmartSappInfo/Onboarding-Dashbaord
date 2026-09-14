@@ -944,6 +944,8 @@ export interface FindContactConfig {
   onNotFoundAction?: 'halt' | 'continue';
 }
 
+export type FindContactStatus = 'found' | 'created' | 'not_found';
+
 export interface FindContactResult {
   entityId?: string;
   entityName?: string;
@@ -955,6 +957,7 @@ export interface FindContactResult {
   contactFound: boolean;
   contactCreated?: boolean;
   isNew?: boolean;
+  findContactStatus?: FindContactStatus;
   __halt?: boolean;
   reason?: string;
   [key: string]: unknown;
@@ -1238,6 +1241,12 @@ export async function handleFindContact(
         context.payload.contactPhone = matchedContact.phone || '';
       }
 
+      // Populate standardized find contact status variables on payload
+      context.payload.findContactStatus = 'found';
+      context.payload.contactFound = true;
+      context.payload.contactCreated = false;
+      context.payload.isNew = false;
+
       // Update automation_runs document in Firestore so activity logs link to the bound entity
       if (context.runId) {
         await adminDb.collection('automation_runs').doc(context.runId).update({
@@ -1257,7 +1266,9 @@ export async function handleFindContact(
         contactEmail: matchedContact?.email || '',
         contactPhone: matchedContact?.phone || '',
         contactFound: true,
+        contactCreated: false,
         isNew: false,
+        findContactStatus: 'found',
       };
     }
   }
@@ -1311,6 +1322,12 @@ export async function handleFindContact(
     context.payload.contactEmail = targetContactEmail;
     context.payload.contactPhone = targetContactPhone;
 
+    // Populate standardized find contact status variables on payload
+    context.payload.findContactStatus = 'created';
+    context.payload.contactFound = false;
+    context.payload.contactCreated = true;
+    context.payload.isNew = true;
+
     if (context.runId) {
       await adminDb.collection('automation_runs').doc(context.runId).update({
         entityId: newEntityId,
@@ -1331,14 +1348,22 @@ export async function handleFindContact(
       contactFound: false,
       contactCreated: true,
       isNew: true,
+      findContactStatus: 'created',
     };
   }
 
   // Auto-creation is disabled and contact was not found
+  context.payload.findContactStatus = 'not_found';
+  context.payload.contactFound = false;
+  context.payload.contactCreated = false;
+  context.payload.isNew = false;
+
   if (onNotFoundAction === 'halt') {
     return {
       contactFound: false,
+      contactCreated: false,
       isNew: false,
+      findContactStatus: 'not_found',
       __halt: true,
       reason: 'Find Contact: No matching contact or entity found in workspace (halted).',
     };
@@ -1346,6 +1371,8 @@ export async function handleFindContact(
 
   return {
     contactFound: false,
+    contactCreated: false,
     isNew: false,
+    findContactStatus: 'not_found',
   };
 }

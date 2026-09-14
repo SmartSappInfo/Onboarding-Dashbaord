@@ -71,29 +71,70 @@ export function ConditionNode({ id, data, selected }: ConditionNodeProps) {
             return val ?? '';
         };
 
+        // ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol
+        // Formats single condition rules cleanly on canvas cards, providing friendly labels
+        // for search outcome evaluations as well as general CRM/tag conditions.
+        const formatSingleCondition = (c: { field?: string; operator?: string; value?: unknown }) => {
+            const field = c.field || '';
+            const op = c.operator || '';
+            const val = c.value;
+
+            if (field === 'find_contact_status') {
+                if (op === 'is_found') return 'If Contact was found';
+                if (op === 'is_created') return 'If Contact was auto-created';
+                if (op === 'not_found') return 'If Contact was not found';
+                if (op === 'successful') return 'If Contact resolved (found or created)';
+                if (op === 'is' || op === 'equals') {
+                    if (val === 'found') return 'If Contact was found (Existing)';
+                    if (val === 'created') return 'If Contact was auto-created (New)';
+                    if (val === 'not_found') return 'If Contact was not found';
+                    return `If Search outcome is "${String(val)}"`;
+                }
+                if (op === 'is_not' || op === 'not_equals') {
+                    if (val === 'found') return 'If Contact was not an existing contact';
+                    if (val === 'created') return 'If Contact was not auto-created';
+                    if (val === 'not_found') return 'If Contact was found or created';
+                    return `If Search outcome is not "${String(val)}"`;
+                }
+            }
+
+            if (field === 'find_contact_found') {
+                if (op === 'is_true' || op === 'is' || op === 'equals') return 'If Contact was found';
+                if (op === 'is_false' || op === 'is_not' || op === 'not_equals') return 'If Contact was not found';
+                return 'If Contact was found';
+            }
+
+            if (field === 'find_contact_created') {
+                if (op === 'is_true' || op === 'is' || op === 'equals') return 'If Contact was auto-created';
+                if (op === 'is_false' || op === 'is_not' || op === 'not_equals') return 'If Contact was not auto-created';
+                return 'If Contact was auto-created';
+            }
+
+            return `If "${field}" ${op.replace('_', ' ')} "${getFormattedValue(field, val)}"`;
+        };
+
         if (groups.length === 0) {
             const legacyConditions = config.conditions || [];
             if (legacyConditions.length === 0) {
                 if (config.field && config.operator) {
-                    return `If "${config.field}" ${config.operator.replace('_', ' ')} "${getFormattedValue(config.field, config.value)}"`;
+                    return formatSingleCondition({ field: config.field, operator: config.operator, value: config.value });
                 }
                 return 'Awaiting condition rules';
             }
             if (legacyConditions.length === 1) {
-                const c = legacyConditions[0];
-                return `If "${c.field}" ${c.operator?.replace('_', ' ') || ''} "${getFormattedValue(c.field, c.value)}"`;
+                return formatSingleCondition(legacyConditions[0]);
             }
             return `If ${legacyConditions.length} rules match (${(config.relation || 'and').toUpperCase()})`;
         }
 
         let totalConditions = 0;
-        groups.forEach((g: any) => {
+        groups.forEach((g: { conditions?: Array<{ field?: string; operator?: string; value?: unknown }> }) => {
             totalConditions += (g.conditions || []).length;
         });
 
         if (totalConditions === 1) {
             const firstCond = groups[0]?.conditions?.[0] || {};
-            return `If "${firstCond.field}" ${firstCond.operator?.replace('_', ' ') || ''} "${getFormattedValue(firstCond.field, firstCond.value)}"`;
+            return formatSingleCondition(firstCond);
         }
 
         const relation = (config.relation || 'and').toUpperCase();
