@@ -227,6 +227,7 @@ export function MappableInputField({
   const inputRef = React.useRef<HTMLInputElement | HTMLTextAreaElement>(null);
   const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
+  const listContainerRef = React.useRef<HTMLDivElement>(null);
   const [anchorWidth, setAnchorWidth] = React.useState<number | null>(null);
 
   const slashTriggerActiveRef = React.useRef(false);
@@ -235,6 +236,15 @@ export function MappableInputField({
   React.useEffect(() => {
     setSelectedIndex(0);
   }, [searchQuery]);
+
+  // Auto-scroll the active highlighted variable into view during keyboard navigation
+  React.useEffect(() => {
+    if (!open) return;
+    const activeBtn = listContainerRef.current?.querySelector<HTMLButtonElement>('[data-selected-variable="true"]');
+    if (activeBtn) {
+      activeBtn.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [selectedIndex, open]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -433,15 +443,9 @@ export function MappableInputField({
     if (e.key === '/') {
       const target = e.currentTarget;
       const start = target.selectionStart ?? target.value.length;
-      const textBefore = target.value.substring(0, start);
-      const charBefore = textBefore.length > 0 ? textBefore[textBefore.length - 1] : '';
+      const textWithSlash = target.value.substring(0, start) + '/' + target.value.substring(start);
 
-      const isValidSlashTrigger =
-        textBefore.length === 0 ||
-        /\s/.test(charBefore) ||
-        /[\(\[\{:,=>]/.test(charBefore);
-
-      if (isValidSlashTrigger) {
+      if (isSlashTriggerMatch(textWithSlash, start + 1)) {
         slashTriggerActiveRef.current = true;
         slashTriggerIndexRef.current = start;
         setSearchQuery('');
@@ -457,14 +461,7 @@ export function MappableInputField({
 
     // Detect slash typed via virtual keyboard, copy-paste single character, or fast IME input
     if (cursorPos > 0 && newVal[cursorPos - 1] === '/') {
-      const textBeforeSlash = newVal.substring(0, cursorPos - 1);
-      const charBefore = textBeforeSlash.length > 0 ? textBeforeSlash[textBeforeSlash.length - 1] : '';
-      const isValidSlashTrigger =
-        textBeforeSlash.length === 0 ||
-        /\s/.test(charBefore) ||
-        /[\(\[\{:,=>]/.test(charBefore);
-
-      if (isValidSlashTrigger && !open) {
+      if (isSlashTriggerMatch(newVal, cursorPos) && !open) {
         slashTriggerActiveRef.current = true;
         slashTriggerIndexRef.current = cursorPos - 1;
         setSearchQuery('');
@@ -709,7 +706,7 @@ export function MappableInputField({
 
           {/* Accordion List */}
           <ScrollArea hideHorizontal className="h-72 w-full overflow-x-hidden [&>div>div]:!block [&>div>div]:!w-full">
-            <div className="p-3 w-full overflow-hidden space-y-1.5">
+            <div ref={listContainerRef} className="p-3 w-full overflow-hidden space-y-1.5">
               {filteredVariables.length === 0 ? (
                 <div className="py-8 text-center text-xs text-muted-foreground/60 flex flex-col items-center justify-center gap-1">
                   <HelpCircle className="h-6 w-6 text-muted-foreground/30" />
@@ -737,6 +734,7 @@ export function MappableInputField({
                             <button
                               key={v.key}
                               type="button"
+                              data-selected-variable={isSelected ? "true" : undefined}
                               onClick={() => insertVariable(v.key)}
                               onMouseEnter={() => {
                                 const idx = filteredVariables.findIndex((item) => item.key === v.key);
@@ -792,6 +790,7 @@ export function MappableInputField({
                             <button
                               key={v.key}
                               type="button"
+                              data-selected-variable={isSelected ? "true" : undefined}
                               onClick={() => insertVariable(v.key)}
                               onMouseEnter={() => {
                                 const idx = filteredVariables.findIndex((item) => item.key === v.key);
@@ -847,6 +846,7 @@ export function MappableInputField({
                             <button
                               key={v.key}
                               type="button"
+                              data-selected-variable={isSelected ? "true" : undefined}
                               onClick={() => insertVariable(v.key)}
                               onMouseEnter={() => {
                                 const idx = filteredVariables.findIndex((item) => item.key === v.key);
