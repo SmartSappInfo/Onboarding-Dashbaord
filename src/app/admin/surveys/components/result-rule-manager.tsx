@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Trash2, Plus, GripVertical, Mail, Smartphone, Pencil, PlusCircle, ArrowUp, ShieldCheck, Tag, Zap, GitMerge, Sparkles, MessageCircle } from 'lucide-react';
-import type { SurveyResultPage, SenderProfile, SurveyElement, SurveyQuestion } from '@/lib/types';
+import type { SurveyResultPage, SurveyElement, SurveyQuestion } from '@/lib/types';
 import { PipelineStageSelector } from './PipelineStageSelector';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
@@ -33,7 +33,6 @@ function SortableRuleItem({
     index, 
     pages, 
     remove, 
-    profiles, 
     automations, 
     _surveyId 
 }: { 
@@ -41,7 +40,6 @@ function SortableRuleItem({
     index: number; 
     pages: SurveyResultPage[]; 
     remove: (i: number) => void; 
-    profiles?: SenderProfile[]; 
     automations?: SurveyAutomationOption[]; 
     _surveyId?: string; 
 }) {
@@ -665,18 +663,6 @@ export default function ResultRuleManager() {
     const sensors = useSensors(useSensor(PointerSensor));
     const { activeOrganization, activeWorkspaceId } = useWorkspace();
 
-    const profilesQuery = useMemoFirebase(() => {
-        const orgId = activeOrganization?.id;
-        if (!firestore || !orgId) return null;
-        return query(
-            collection(firestore, 'sender_profiles'),
-            where('organizationId', '==', orgId),
-            where('isActive', '==', true),
-        );
-    }, [firestore, activeOrganization?.id]);
-
-    const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
-
     const automationsQuery = useMemoFirebase(() => {
         if (!firestore || !activeWorkspaceId) return null;
         return query(
@@ -721,7 +707,6 @@ export default function ResultRuleManager() {
                                         index={index} 
                                         pages={resultPages} 
                                         remove={remove} 
-                                        profiles={profiles || []}
                                         automations={automations || []}
                                         _surveyId={surveyId}
                                     />

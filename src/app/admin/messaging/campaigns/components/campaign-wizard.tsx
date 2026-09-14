@@ -1452,6 +1452,13 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
 
             case 5: {
                 const senderProfile = senderProfiles?.find(p => p.id === state.senderProfileId);
+                const isWhatsappSender = state.channel === 'whatsapp' || state.senderProfileId === 'whatsapp';
+                const senderDisplayName = isWhatsappSender 
+                    ? 'WhatsApp Business Account' 
+                    : (senderProfile?.name || 'Not selected');
+                const senderDisplayIdentifier = isWhatsappSender 
+                    ? 'Direct Phone' 
+                    : (senderProfile?.identifier || state.senderProfileId || 'No ID');
                 const resolvedHtml = state.channel === 'email' 
                     ? getResolvedHtml(state.customBody, state.customBlocks || [], state.styleId, state.contentMode === 'rich_builder')
                     : '';
@@ -1479,7 +1486,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                     </div>
                                     <div className="space-y-1">
                                         <p className="text-[8px] font-bold text-muted-foreground uppercase">Sender</p>
-                                        <p className="text-[10px] font-semibold truncate">{senderProfile?.name || 'Not selected'} ({senderProfile?.identifier || state.senderProfileId || 'No ID'})</p>
+                                        <p className="text-[10px] font-semibold truncate">{senderDisplayName} ({senderDisplayIdentifier})</p>
                                     </div>
                                 </CardContent>
                             </Card>

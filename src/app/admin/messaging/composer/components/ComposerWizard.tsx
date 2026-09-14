@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, SenderProfile, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle } from '@/lib/types';
+import type { MessageTemplate, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle } from '@/lib/types';
 import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { resolveContact } from '@/lib/contact-adapter';
@@ -264,6 +264,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             tagSegmentInclude: [], tagSegmentExclude: [], tagSegmentLogic: 'OR',
             selectedContacts: [],
             customBody: '', customSubject: 'Important Update',
+            senderProfileId: 'default',
         },
     });
 
@@ -377,17 +378,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
 
     // ── Firestore queries ──────────────────────────────────────────────────────
 
-    const profilesQuery = useMemoFirebase(() =>
-        (firestore && activeOrganizationId)
-            ? query(
-                collection(firestore, 'sender_profiles'),
-                where('organizationId', '==', activeOrganizationId),
-                where('isActive', '==', true),
-                where('channel', '==', watchedChannel),
-              )
-            : null,
-    [firestore, activeOrganizationId, watchedChannel]);
-
     const stylesQuery = useMemoFirebase(() =>
         (firestore && activeWorkspaceId)
             ? query(collection(firestore, 'message_styles'), where('workspaceIds', 'array-contains', activeWorkspaceId))
@@ -418,7 +408,6 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             : null,
     [firestore, watchedSourcePdfId]);
 
-    const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
     const { data: styles } = useCollection<MessageStyle>(stylesQuery);
     const { data: _meetings } = useCollection<Meeting>(meetingsQuery);
     const { data: _surveys } = useCollection<Survey>(surveysQuery);
@@ -435,28 +424,16 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         fetchSmsBalanceAction(activeOrganizationId).then(r => { if (r.success) setSmsBalance(r.balance ?? 0); });
     }, [activeOrganizationId]);
 
-    // Auto-select default sender profile on Publish step load
+    // Keep sender profile sentinel in sync with active channel
     React.useEffect(() => {
-        if (step !== 5) return;
         if (watchedChannel === 'whatsapp') {
             if (watchedSenderProfileId !== 'whatsapp') {
                 setValue('senderProfileId', 'whatsapp');
             }
-            return;
+        } else if (!watchedSenderProfileId || watchedSenderProfileId === 'whatsapp') {
+            setValue('senderProfileId', 'default');
         }
-        if (!profiles || profiles.length === 0) return;
-        
-        const isValidSelected =
-            watchedSenderProfileId === 'default' ||
-            watchedSenderProfileId === 'whatsapp' ||
-            profiles.some(p => p.id === watchedSenderProfileId);
-        if (!isValidSelected) {
-            const defaultProfile = profiles.find(p => p.isDefault) || profiles[0];
-            if (defaultProfile) {
-                setValue('senderProfileId', defaultProfile.id);
-            }
-        }
-    }, [step, watchedChannel, profiles, watchedSenderProfileId, setValue]);
+    }, [watchedChannel, watchedSenderProfileId, setValue]);
 
     React.useEffect(() => {
         if (!searchParams) return;
