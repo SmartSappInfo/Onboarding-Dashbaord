@@ -944,7 +944,7 @@ export function ConditionsBuilder({
                                 }
                                 return (
                                   <Input
-                                    value={cond.value || ''}
+                                    value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                     onChange={(e) => updateConditionValue(group.id, cond.id, { value: e.target.value })}
                                     placeholder="Compare Value"
                                     className="h-8 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner w-full"
@@ -982,7 +982,7 @@ export function ConditionsBuilder({
                                 }
                                 return (
                                   <Input
-                                    value={cond.value || ''}
+                                    value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                     onChange={(e) => updateConditionValue(group.id, cond.id, { value: e.target.value })}
                                     placeholder="Compare Value"
                                     className="h-8 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner w-full"
@@ -993,7 +993,7 @@ export function ConditionsBuilder({
                               {/* 4. Form Field value criteria */}
                               {valueType === 'form_field' && (
                                 <Input
-                                  value={cond.value || ''}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                   onChange={(e) => updateConditionValue(group.id, cond.id, { value: e.target.value })}
                                   placeholder="Compare Value"
                                   className="h-8 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner w-full"
@@ -1003,7 +1003,7 @@ export function ConditionsBuilder({
                               {/* 5. Deal Stage Selection */}
                               {cond.field === 'deal_stage' && (
                                 <Select
-                                  value={cond.value || ''}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
                                   disabled={!cond.pipelineId}
                                 >
@@ -1029,7 +1029,7 @@ export function ConditionsBuilder({
                               {/* 6. Deal Owner Selection */}
                               {cond.field === 'deal_owner' && (
                                 <Select
-                                  value={cond.value || ''}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1051,7 +1051,7 @@ export function ConditionsBuilder({
                               {/* 7. Deal Status Selection */}
                               {cond.field === 'deal_status' && (
                                 <Select
-                                  value={cond.value || 'open'}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : 'open'}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1069,7 +1069,7 @@ export function ConditionsBuilder({
                               {cond.field === 'deal_value' && (
                                 <Input
                                   type="number"
-                                  value={cond.value ?? ''}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                   onChange={(e) => updateConditionValue(group.id, cond.id, { value: e.target.value })}
                                   placeholder="Amount"
                                   className="h-8 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner w-full"
@@ -1080,7 +1080,7 @@ export function ConditionsBuilder({
                               {cond.field === 'campaign_action' && (
                                 <div className="space-y-2">
                                   <Select
-                                    value={cond.emailTemplateId || cond.value || ''}
+                                    value={cond.emailTemplateId || (cond.value !== undefined && cond.value !== null ? String(cond.value) : '')}
                                     onValueChange={(val) => updateConditionValue(group.id, cond.id, { emailTemplateId: val, value: val })}
                                   >
                                     <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1116,7 +1116,7 @@ export function ConditionsBuilder({
                               {(cond.field === 'email_action' || cond.field === 'sms_action' || cond.field === 'whatsapp_action') && (
                                 <div className="space-y-2 w-full min-w-0">
                                   <Select
-                                    value={cond.emailTemplateId || cond.value || ''}
+                                    value={cond.emailTemplateId || (cond.value !== undefined && cond.value !== null ? String(cond.value) : '')}
                                     onValueChange={(val) => updateConditionValue(group.id, cond.id, { emailTemplateId: val, value: val })}
                                   >
                                     <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full text-left truncate">
@@ -1154,7 +1154,7 @@ export function ConditionsBuilder({
                               {/* 10. Landing Page Selection */}
                               {cond.field === 'landing_page_action' && (
                                 <Select
-                                  value={cond.pageId || cond.value || ''}
+                                  value={cond.pageId || (cond.value !== undefined && cond.value !== null ? String(cond.value) : '')}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { pageId: val, value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1176,7 +1176,7 @@ export function ConditionsBuilder({
                               {/* 11. Scanned QR Code Selector */}
                               {cond.field === 'scanned_qr' && (
                                 <Select
-                                  value={cond.qrId || cond.value || ''}
+                                  value={cond.qrId || (cond.value !== undefined && cond.value !== null ? String(cond.value) : '')}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { qrId: val, value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1198,7 +1198,7 @@ export function ConditionsBuilder({
                               {/* 12. Shortlink Selector */}
                               {cond.field === 'short_link' && (
                                 <Select
-                                  value={cond.shortPath || cond.value || ''}
+                                  value={cond.shortPath || (cond.value !== undefined && cond.value !== null ? String(cond.value) : '')}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { shortPath: val, value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1236,7 +1236,7 @@ export function ConditionsBuilder({
                               {/* 14. Entity Type selector */}
                               {cond.field === 'entityType' && (
                                 <Select
-                                  value={cond.value || 'person'}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : 'person'}
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1253,7 +1253,7 @@ export function ConditionsBuilder({
                               {/* 15. Saved Segment / Audience Selector */}
                               {valueType === 'audience' && (
                                 <Select 
-                                  value={cond.value || ''} 
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''} 
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1275,7 +1275,7 @@ export function ConditionsBuilder({
                               {/* 15.1. Automation Status Selector */}
                               {valueType === 'automation' && (
                                 <Select 
-                                  value={cond.value || ''} 
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''} 
                                   onValueChange={(val) => updateConditionValue(group.id, cond.id, { value: val })}
                                 >
                                   <SelectTrigger className="h-8 rounded-lg bg-background border-none font-bold text-[10px] px-2 shadow-inner w-full">
@@ -1297,7 +1297,7 @@ export function ConditionsBuilder({
                               {/* 16. Default Text Value Input */}
                               {valueType === 'text' && (
                                 <Input
-                                  value={cond.value || ''}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                   onChange={(e) => updateConditionValue(group.id, cond.id, { value: e.target.value })}
                                   placeholder="Compare Value"
                                   className="h-8 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner w-full"
@@ -1308,7 +1308,7 @@ export function ConditionsBuilder({
                               {valueType === 'number' && cond.field !== 'deal_value' && (
                                 <Input
                                   type="number"
-                                  value={cond.value ?? ''}
+                                  value={cond.value !== undefined && cond.value !== null ? String(cond.value) : ''}
                                   onChange={(e) => updateConditionValue(group.id, cond.id, { value: e.target.value })}
                                   placeholder="Compare Number"
                                   className="h-8 rounded-lg bg-background border-none text-[10px] px-2 shadow-inner w-full"

@@ -18,6 +18,7 @@ export interface ConditionItem {
   operator: string;
   value?: unknown;
   stepId?: string;
+  fieldName?: string;
   emailTemplateId?: string;
   linkUrl?: string;
   surveyId?: string;

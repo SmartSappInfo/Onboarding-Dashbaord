@@ -140,6 +140,78 @@ function parseVariables(text: string) {
   return parts;
 }
 
+/**
+ * ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol
+ * Checks whether typing '/' at the specified cursor position should trigger the
+ * variables and values palette.
+ * 
+ * Triggers when '/' is:
+ * - At the beginning of the text (pos === 1)
+ * - Preceded by whitespace (space, tab, newline)
+ * - Preceded by opening punctuation/delimiters (e.g. '(', '[', '{', ':', ',', '=', '>')
+ * 
+ * Does NOT trigger when '/' is:
+ * - Embedded inside a word (e.g. 'and/or', 'w/o')
+ * - Part of a URL or double-slash (e.g. 'http://', '//')
+ * - Preceded by digits (e.g. '1/2', '2024/09')
+ */
+export function isSlashTriggerMatch(text: string, cursorPos: number): boolean {
+  if (cursorPos <= 0 || cursorPos > text.length) return false;
+  if (text[cursorPos - 1] !== '/') return false;
+
+  if (cursorPos === 1) return true;
+
+  const charBefore = text[cursorPos - 2];
+
+  // If preceded by another slash, do not trigger (e.g. '//')
+  if (charBefore === '/') return false;
+
+  // If preceded by whitespace (newline, space, tab), trigger
+  if (/\s/.test(charBefore)) return true;
+
+  // If preceded by opening brackets '(', '[', '{', trigger
+  if (/[\(\[\{]/.test(charBefore)) return true;
+
+  // Otherwise, do not trigger for letters, digits, colons, or punctuation
+  return false;
+}
+
+/**
+ * ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol
+ * Resolves the next text value and cursor position when inserting a variable token `{{varName}}`.
+ * If the insertion was triggered by a slash command or there is a '/' immediately before
+ * the insertion point, the triggering '/' is replaced cleanly by the token.
+ */
+export function resolveSlashInsertion(
+  value: string,
+  cursorStart: number,
+  cursorEnd: number,
+  varName: string,
+  isSlashTrigger: boolean,
+  slashIndex: number | null
+): { nextValue: string; nextCursorPos: number } {
+  const insertion = `{{${varName}}}`;
+  const start = Math.max(0, Math.min(cursorStart, value.length));
+  const end = Math.max(start, Math.min(cursorEnd, value.length));
+
+  let replaceStart = start;
+  let replaceEnd = end;
+
+  if (isSlashTrigger && slashIndex !== null && slashIndex >= 0 && slashIndex < value.length && value[slashIndex] === '/') {
+    replaceStart = slashIndex;
+    replaceEnd = Math.max(end, slashIndex + 1);
+  } else if (isSlashTrigger || (start > 0 && value[start - 1] === '/')) {
+    if (start > 0 && value[start - 1] === '/') {
+      replaceStart = start - 1;
+    }
+  }
+
+  const nextValue = value.substring(0, replaceStart) + insertion + value.substring(replaceEnd);
+  const nextCursorPos = replaceStart + insertion.length;
+
+  return { nextValue, nextCursorPos };
+}
+
 export function MappableInputField({
   value = '',
   onChange,
@@ -151,9 +223,18 @@ export function MappableInputField({
 }: MappableInputFieldProps) {
   const [open, setOpen] = React.useState(false);
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
   const inputRef = React.useRef<HTMLInputElement | HTMLTextAreaElement>(null);
+  const searchInputRef = React.useRef<HTMLInputElement>(null);
   const containerRef = React.useRef<HTMLDivElement>(null);
   const [anchorWidth, setAnchorWidth] = React.useState<number | null>(null);
+
+  const slashTriggerActiveRef = React.useRef(false);
+  const slashTriggerIndexRef = React.useRef<number | null>(null);
+
+  React.useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery]);
 
   React.useEffect(() => {
     if (!open) return;
@@ -301,23 +382,38 @@ export function MappableInputField({
 
   const insertVariable = (varName: string) => {
     const el = inputRef.current;
-    const insertion = `{{${varName}}}`;
+    const isTrigger = slashTriggerActiveRef.current;
+    const slashIdx = slashTriggerIndexRef.current;
+
     if (!el) {
-      onChange(value + insertion);
+      const cleanVal = (isTrigger && value.endsWith('/')) ? value.slice(0, -1) : value;
+      onChange(cleanVal + `{{${varName}}}`);
       setOpen(false);
+      slashTriggerActiveRef.current = false;
+      slashTriggerIndexRef.current = null;
       return;
     }
 
     const start = el.selectionStart ?? value.length;
     const end = el.selectionEnd ?? value.length;
-    const nextVal = value.substring(0, start) + insertion + value.substring(end);
-    onChange(nextVal);
+
+    const { nextValue, nextCursorPos } = resolveSlashInsertion(
+      value,
+      start,
+      end,
+      varName,
+      isTrigger,
+      slashIdx
+    );
+
+    onChange(nextValue);
     setOpen(false);
+    slashTriggerActiveRef.current = false;
+    slashTriggerIndexRef.current = null;
 
     setTimeout(() => {
       el.focus();
-      const nextPos = start + insertion.length;
-      el.setSelectionRange(nextPos, nextPos);
+      el.setSelectionRange(nextCursorPos, nextCursorPos);
     }, 50);
   };
 
@@ -333,6 +429,60 @@ export function MappableInputField({
   const showPillsView = !isFocused && !open && typeof value === 'string' && value.includes('{{');
 
   let inputElement = null;
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (e.key === '/') {
+      const target = e.currentTarget;
+      const start = target.selectionStart ?? target.value.length;
+      const textBefore = target.value.substring(0, start);
+      const charBefore = textBefore.length > 0 ? textBefore[textBefore.length - 1] : '';
+
+      const isValidSlashTrigger =
+        textBefore.length === 0 ||
+        /\s/.test(charBefore) ||
+        /[\(\[\{:,=>]/.test(charBefore);
+
+      if (isValidSlashTrigger) {
+        slashTriggerActiveRef.current = true;
+        slashTriggerIndexRef.current = start;
+        setSearchQuery('');
+        setOpen(true);
+      }
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const newVal = e.target.value;
+    const target = e.target;
+    const cursorPos = target.selectionStart ?? newVal.length;
+
+    // Detect slash typed via virtual keyboard, copy-paste single character, or fast IME input
+    if (cursorPos > 0 && newVal[cursorPos - 1] === '/') {
+      const textBeforeSlash = newVal.substring(0, cursorPos - 1);
+      const charBefore = textBeforeSlash.length > 0 ? textBeforeSlash[textBeforeSlash.length - 1] : '';
+      const isValidSlashTrigger =
+        textBeforeSlash.length === 0 ||
+        /\s/.test(charBefore) ||
+        /[\(\[\{:,=>]/.test(charBefore);
+
+      if (isValidSlashTrigger && !open) {
+        slashTriggerActiveRef.current = true;
+        slashTriggerIndexRef.current = cursorPos - 1;
+        setSearchQuery('');
+        setOpen(true);
+      }
+    }
+
+    onChange(newVal);
+  };
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      slashTriggerActiveRef.current = false;
+      slashTriggerIndexRef.current = null;
+    }
+  };
+
   if (showPillsView) {
     const parts = parseVariables(value);
     inputElement = (
@@ -442,7 +592,8 @@ export function MappableInputField({
       <Textarea
         ref={inputRef as React.RefObject<HTMLTextAreaElement>}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleInputChange}
+        onKeyDown={handleInputKeyDown}
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         className={cn('pr-10 rounded-xl bg-card border font-semibold text-xs min-h-[80px] shadow-sm leading-relaxed', inputClassName)}
@@ -451,7 +602,8 @@ export function MappableInputField({
       <Input
         ref={inputRef as React.RefObject<HTMLInputElement>}
         value={value}
-        onChange={(e) => onChange(e.target.value)}
+        onChange={handleInputChange}
+        onKeyDown={handleInputKeyDown}
         onBlur={() => setIsFocused(false)}
         placeholder={placeholder}
         className={cn('pr-10 rounded-xl bg-card border font-semibold text-xs h-10 shadow-sm', inputClassName)}
@@ -460,7 +612,7 @@ export function MappableInputField({
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverAnchor asChild>
         <div 
           ref={containerRef}
@@ -473,10 +625,10 @@ export function MappableInputField({
               variant="ghost"
               size="icon"
               className={cn(
-                'absolute right-1.5 h-7 w-7 rounded-lg hover:bg-muted/80 text-muted-foreground/60 hover:text-primary transition-colors z-10',
+                'absolute right-1.5 h-7 w-7 rounded-lg hover:bg-muted/80 text-muted-foreground/60 hover:text-primary transition-colors z-10 active:scale-[0.97]',
                 isTextArea ? 'top-1.5' : 'top-1/2 -translate-y-1/2'
               )}
-              title="Map dynamic variable"
+              title="Map dynamic variable (or type /)"
             >
               <Brackets className="h-4 w-4" />
             </Button>
@@ -492,14 +644,63 @@ export function MappableInputField({
         }}
       >
         <div className="flex flex-col w-full overflow-hidden">
-          {/* Search Input */}
+          {/* Search Input with Keyboard Controls */}
           <div className="border-b p-3 bg-muted/20 w-full overflow-hidden">
             <div className="relative w-full">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/60 pointer-events-none" />
               <Input
+                ref={searchInputRef}
                 placeholder="Search variables & values..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    setSelectedIndex((prev) => (prev + 1 < filteredVariables.length ? prev + 1 : prev));
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    setSelectedIndex((prev) => (prev - 1 >= 0 ? prev - 1 : 0));
+                  } else if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (filteredVariables.length > 0) {
+                      const selectedItem = filteredVariables[selectedIndex] || filteredVariables[0];
+                      insertVariable(selectedItem.key);
+                    }
+                  } else if (e.key === 'Backspace' && searchQuery === '') {
+                    // Backspace on empty search closes popover, removes triggering slash, and focuses back
+                    if (slashTriggerActiveRef.current) {
+                      e.preventDefault();
+                      setOpen(false);
+                      const el = inputRef.current;
+                      if (el) {
+                        const start = el.selectionStart ?? value.length;
+                        const end = el.selectionEnd ?? value.length;
+                        let delStart = start > 0 ? start - 1 : 0;
+                        if (slashTriggerIndexRef.current !== null && value[slashTriggerIndexRef.current] === '/') {
+                          delStart = slashTriggerIndexRef.current;
+                        }
+                        if (delStart < value.length && value[delStart] === '/') {
+                          const nextVal = value.substring(0, delStart) + value.substring(delStart + 1);
+                          onChange(nextVal);
+                          setTimeout(() => {
+                            el.focus();
+                            el.setSelectionRange(delStart, delStart);
+                          }, 50);
+                        } else {
+                          setTimeout(() => el.focus(), 50);
+                        }
+                      }
+                      slashTriggerActiveRef.current = false;
+                      slashTriggerIndexRef.current = null;
+                    }
+                  } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    setOpen(false);
+                    slashTriggerActiveRef.current = false;
+                    slashTriggerIndexRef.current = null;
+                    setTimeout(() => inputRef.current?.focus(), 50);
+                  }
+                }}
                 className="pl-9 pr-8 h-9 rounded-lg bg-background text-xs w-full"
                 autoFocus
               />
@@ -515,7 +716,7 @@ export function MappableInputField({
                   <span>No mapping variables found</span>
                 </div>
               ) : (
-                <Accordion type="multiple" defaultValue={['webhook_item', 'entity_item']} className="w-full space-y-1.5 overflow-hidden">
+                <Accordion type="multiple" defaultValue={['webhook_item', 'entity_item', 'workspace_item']} className="w-full space-y-1.5 overflow-hidden">
                   {webhookGroup.length > 0 && (
                     <AccordionItem value="webhook_item" className="border rounded-xl bg-card px-3 shadow-none overflow-hidden w-full">
                       <AccordionTrigger className="hover:no-underline py-2.5 w-full">
@@ -530,28 +731,43 @@ export function MappableInputField({
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-3 space-y-1 w-full overflow-hidden">
-                        {webhookGroup.map((v) => (
-                          <button
-                            key={v.key}
-                            type="button"
-                            onClick={() => insertVariable(v.key)}
-                            className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-blue-500/5 hover:border-blue-500/20 rounded-xl transition-all border border-border/40 group text-left min-w-0 overflow-hidden"
-                          >
-                            <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
-                              <span className="font-semibold text-xs text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors truncate block">
-                                {v.label}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
-                                {`{{${v.key}}}`}
-                              </span>
-                            </div>
-                            <div className="shrink-0 flex items-center gap-1.5 ml-2">
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
-                                {v.val}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                        {webhookGroup.map((v) => {
+                          const isSelected = filteredVariables[selectedIndex]?.key === v.key;
+                          return (
+                            <button
+                              key={v.key}
+                              type="button"
+                              onClick={() => insertVariable(v.key)}
+                              onMouseEnter={() => {
+                                const idx = filteredVariables.findIndex((item) => item.key === v.key);
+                                if (idx >= 0) setSelectedIndex(idx);
+                              }}
+                              className={cn(
+                                'w-full flex items-center justify-between px-2.5 py-2 rounded-xl transition-all border group text-left min-w-0 overflow-hidden active:scale-[0.97]',
+                                isSelected
+                                  ? 'bg-blue-500/10 border-blue-500/30 ring-1 ring-blue-500/30 shadow-xs'
+                                  : 'border-border/40 hover:bg-blue-500/5 hover:border-blue-500/20'
+                              )}
+                            >
+                              <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
+                                <span className={cn(
+                                  "font-semibold text-xs transition-colors truncate block",
+                                  isSelected ? "text-blue-600 dark:text-blue-400" : "text-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400"
+                                )}>
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
+                                  {v.val}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </AccordionContent>
                     </AccordionItem>
                   )}
@@ -570,28 +786,43 @@ export function MappableInputField({
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-3 space-y-1 w-full overflow-hidden">
-                        {entityGroup.map((v) => (
-                          <button
-                            key={v.key}
-                            type="button"
-                            onClick={() => insertVariable(v.key)}
-                            className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-emerald-500/5 hover:border-emerald-500/20 rounded-xl transition-all border border-border/40 group text-left min-w-0 overflow-hidden"
-                          >
-                            <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
-                              <span className="font-semibold text-xs text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors truncate block">
-                                {v.label}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
-                                {`{{${v.key}}}`}
-                              </span>
-                            </div>
-                            <div className="shrink-0 flex items-center gap-1.5 ml-2">
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
-                                {v.val}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                        {entityGroup.map((v) => {
+                          const isSelected = filteredVariables[selectedIndex]?.key === v.key;
+                          return (
+                            <button
+                              key={v.key}
+                              type="button"
+                              onClick={() => insertVariable(v.key)}
+                              onMouseEnter={() => {
+                                const idx = filteredVariables.findIndex((item) => item.key === v.key);
+                                if (idx >= 0) setSelectedIndex(idx);
+                              }}
+                              className={cn(
+                                'w-full flex items-center justify-between px-2.5 py-2 rounded-xl transition-all border group text-left min-w-0 overflow-hidden active:scale-[0.97]',
+                                isSelected
+                                  ? 'bg-emerald-500/10 border-emerald-500/30 ring-1 ring-emerald-500/30 shadow-xs'
+                                  : 'border-border/40 hover:bg-emerald-500/5 hover:border-emerald-500/20'
+                              )}
+                            >
+                              <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
+                                <span className={cn(
+                                  "font-semibold text-xs transition-colors truncate block",
+                                  isSelected ? "text-emerald-600 dark:text-emerald-400" : "text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400"
+                                )}>
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
+                                  {v.val}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </AccordionContent>
                     </AccordionItem>
                   )}
@@ -610,28 +841,43 @@ export function MappableInputField({
                         </div>
                       </AccordionTrigger>
                       <AccordionContent className="pt-1 pb-3 space-y-1 w-full overflow-hidden">
-                        {workspaceGroup.map((v) => (
-                          <button
-                            key={v.key}
-                            type="button"
-                            onClick={() => insertVariable(v.key)}
-                            className="w-full flex items-center justify-between px-2.5 py-2 hover:bg-indigo-500/5 hover:border-indigo-500/20 rounded-xl transition-all border border-border/40 group text-left min-w-0 overflow-hidden"
-                          >
-                            <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
-                              <span className="font-semibold text-xs text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors truncate block">
-                                {v.label}
-                              </span>
-                              <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
-                                {`{{${v.key}}}`}
-                              </span>
-                            </div>
-                            <div className="shrink-0 flex items-center gap-1.5 ml-2">
-                              <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
-                                {v.val}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
+                        {workspaceGroup.map((v) => {
+                          const isSelected = filteredVariables[selectedIndex]?.key === v.key;
+                          return (
+                            <button
+                              key={v.key}
+                              type="button"
+                              onClick={() => insertVariable(v.key)}
+                              onMouseEnter={() => {
+                                const idx = filteredVariables.findIndex((item) => item.key === v.key);
+                                if (idx >= 0) setSelectedIndex(idx);
+                              }}
+                              className={cn(
+                                'w-full flex items-center justify-between px-2.5 py-2 rounded-xl transition-all border group text-left min-w-0 overflow-hidden active:scale-[0.97]',
+                                isSelected
+                                  ? 'bg-indigo-500/10 border-indigo-500/30 ring-1 ring-indigo-500/30 shadow-xs'
+                                  : 'border-border/40 hover:bg-indigo-500/5 hover:border-indigo-500/20'
+                              )}
+                            >
+                              <div className="flex flex-col min-w-0 pr-2 overflow-hidden flex-1">
+                                <span className={cn(
+                                  "font-semibold text-xs transition-colors truncate block",
+                                  isSelected ? "text-indigo-600 dark:text-indigo-400" : "text-foreground group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
+                                )}>
+                                  {v.label}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground/70 truncate mt-0.5 font-mono block">
+                                  {`{{${v.key}}}`}
+                                </span>
+                              </div>
+                              <div className="shrink-0 flex items-center gap-1.5 ml-2">
+                                <span className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted/60 text-muted-foreground max-w-[130px] truncate block text-right" title={String(v.val)}>
+                                  {v.val}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
                       </AccordionContent>
                     </AccordionItem>
                   )}
@@ -639,6 +885,28 @@ export function MappableInputField({
               )}
             </div>
           </ScrollArea>
+
+          {/* Keyboard shortcut footer */}
+          <div className="border-t px-3 py-2 bg-muted/30 flex items-center justify-between text-[10px] text-muted-foreground select-none">
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/60 font-mono text-[9px] shadow-2xs">↑</kbd>
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/60 font-mono text-[9px] shadow-2xs">↓</kbd>
+                <span>navigate</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/60 font-mono text-[9px] shadow-2xs">↵</kbd>
+                <span>select</span>
+              </span>
+              <span className="flex items-center gap-1">
+                <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border/60 font-mono text-[9px] shadow-2xs">esc</kbd>
+                <span>dismiss</span>
+              </span>
+            </div>
+            <span className="text-[10px] opacity-75 font-mono">
+              {filteredVariables.length} variable{filteredVariables.length === 1 ? '' : 's'}
+            </span>
+          </div>
         </div>
       </PopoverContent>
 
