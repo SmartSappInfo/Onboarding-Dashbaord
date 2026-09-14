@@ -16,8 +16,9 @@ import { PageEditor, PagePreviewModal } from './result-page-builder';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
-import type { SenderProfile, SurveyResultBlock } from '@/lib/types';
+import type { SurveyResultBlock } from '@/lib/types';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
 import { fetchTemplatesCached } from '../../components/template-cache-manager';
 import { useWorkspace } from '@/context/WorkspaceContext';
 
@@ -103,22 +104,6 @@ export function MinimalRespondentMessage() {
         return () => { isMounted = false; };
     }, [activeWorkspaceId, activeOrganization?.id, setValue, watch]);
 
-    const profilesQuery = useMemoFirebase(() => {
-        const orgId = activeOrganization?.id;
-        if (!firestore || !orgId) return null;
-        return query(
-            collection(firestore, 'sender_profiles'),
-            where('organizationId', '==', orgId),
-            where('isActive', '==', true),
-        );
-    }, [firestore, activeOrganization?.id]);
-
-    const { data: profiles } = useCollection<SenderProfile>(profilesQuery);
-
-    const smsProfiles = profiles?.filter(p => p.channel === 'sms' && p.isActive);
-    const emailProfiles = profiles?.filter(p => p.channel === 'email' && p.isActive);
-    const whatsappProfiles = profiles?.filter(p => p.channel === 'whatsapp' && p.isActive);
-
     const selectedEmailId = watch(`resultRules.0.emailTemplateId`);
     const selectedSmsId = watch(`resultRules.0.smsTemplateId`);
     const selectedWhatsappId = watch(`resultRules.0.whatsappTemplateId`);
@@ -189,18 +174,17 @@ export function MinimalRespondentMessage() {
                                     name={`resultRules.0.emailSenderProfileId`}
                                     control={control}
                                     render={({ field }) => (
-                                        <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-card border-blue-200 text-[10px] font-bold text-blue-700/60 flex items-center gap-2">
-                                                <ShieldCheck className="h-3 w-3" />
-                                                <SelectValue placeholder="Resolved From Identity" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
-                                                {emailProfiles?.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <SenderProfileSelector
+                                            channel="email"
+                                            value={field.value || 'none'}
+                                            onChange={field.onChange}
+                                            defaultSentinelValue="none"
+                                            defaultLabel="Auto-Resolve (Default)"
+                                            organizationId={activeOrganization?.id}
+                                            workspaceId={activeWorkspaceId}
+                                            compact
+                                            triggerClassName="border-blue-200 text-[10px] font-bold text-blue-700/60"
+                                        />
                                     )}
                                 />
                             )}
@@ -258,18 +242,17 @@ export function MinimalRespondentMessage() {
                                     name={`resultRules.0.smsSenderProfileId`}
                                     control={control}
                                     render={({ field }) => (
-                                        <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-card border-orange-200 text-[10px] font-bold text-orange-700/60 flex items-center gap-2">
-                                                <ShieldCheck className="h-3 w-3" />
-                                                <SelectValue placeholder="Resolved From Identity" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
-                                                {smsProfiles?.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <SenderProfileSelector
+                                            channel="sms"
+                                            value={field.value || 'none'}
+                                            onChange={field.onChange}
+                                            defaultSentinelValue="none"
+                                            defaultLabel="Auto-Resolve (Default)"
+                                            organizationId={activeOrganization?.id}
+                                            workspaceId={activeWorkspaceId}
+                                            compact
+                                            triggerClassName="border-orange-200 text-[10px] font-bold text-orange-700/60"
+                                        />
                                     )}
                                 />
                             )}
@@ -327,18 +310,17 @@ export function MinimalRespondentMessage() {
                                     name={`resultRules.0.whatsappSenderProfileId`}
                                     control={control}
                                     render={({ field }) => (
-                                        <Select value={field.value || 'none'} onValueChange={field.onChange}>
-                                            <SelectTrigger className="h-9 bg-card border-emerald-200 dark:border-emerald-900/50 text-[10px] font-bold text-emerald-700/60 dark:text-emerald-400/60 flex items-center gap-2">
-                                                <ShieldCheck className="h-3 w-3" />
-                                                <SelectValue placeholder="Resolved From Identity" />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="none">Auto-Resolve (Default)</SelectItem>
-                                                {whatsappProfiles?.map(p => (
-                                                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                                                ))}
-                                            </SelectContent>
-                                        </Select>
+                                        <SenderProfileSelector
+                                            channel="whatsapp"
+                                            value={field.value || 'none'}
+                                            onChange={field.onChange}
+                                            defaultSentinelValue="none"
+                                            defaultLabel="Auto-Resolve (Default)"
+                                            organizationId={activeOrganization?.id}
+                                            workspaceId={activeWorkspaceId}
+                                            compact
+                                            triggerClassName="border-emerald-200 dark:border-emerald-900/50 text-[10px] font-bold text-emerald-700/60 dark:text-emerald-400/60"
+                                        />
                                     )}
                                 />
                             )}

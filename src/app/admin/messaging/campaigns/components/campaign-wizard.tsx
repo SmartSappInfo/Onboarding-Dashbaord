@@ -37,6 +37,7 @@ import {
 import { cn } from '@/lib/utils';
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
+import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { motion } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -809,33 +810,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                         {/* Sender Profile (R5/R7 fix) */}
                         <div className="space-y-2">
                             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Sender Profile</Label>
-                            <Select value={state.senderProfileId} onValueChange={v => setField('senderProfileId', v)}>
-                                <SelectTrigger className="h-12 rounded-xl bg-card border-border/50 font-bold">
-                                    <SelectValue placeholder="Select sender..." />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl">
-                                    {state.channel === 'whatsapp' ? (
-                                        // WhatsApp sends from the org's WABA (resolved server-side); no
-                                        // SenderProfile needed. Offer a synthetic, auto-selected option.
-                                        <SelectItem value="whatsapp" className="text-xs font-semibold">
-                                            WhatsApp Business Account
-                                        </SelectItem>
-                                    ) : (
-                                        <>
-                                            {(senderProfiles || []).filter(p => p.channel === state.channel).map(p => (
-                                                <SelectItem key={p.id} value={p.id} className="text-xs font-semibold">
-                                                    {p.name} ({p.identifier})
-                                                </SelectItem>
-                                            ))}
-                                            {!(senderProfiles || []).some(p => p.channel === state.channel) ? (
-                                                <SelectItem value="_none" disabled className="text-xs text-muted-foreground">
-                                                    No {state.channel} profiles available
-                                                </SelectItem>
-                                            ) : null}
-                                        </>
-                                    )}
-                                </SelectContent>
-                            </Select>
+                            <SenderProfileSelector
+                                channel={state.channel}
+                                value={state.senderProfileId}
+                                onChange={v => setField('senderProfileId', v)}
+                                workspaceId={activeWorkspaceId}
+                                defaultSentinelValue={state.channel === 'whatsapp' ? 'whatsapp' : 'default'}
+                                defaultLabel={state.channel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Active Profile'}
+                                allowDefault={state.channel === 'whatsapp'}
+                                triggerClassName="h-12 font-bold"
+                            />
                         </div>
                     </div>
                 );

@@ -23,8 +23,9 @@ import { TagSelector } from '@/components/tags';
 import { cn } from '@/lib/utils';
 import { createFieldAction } from '@/lib/fields-actions';
 import { MessagingTemplateSelector } from '../../components/MessagingTemplateSelector';
+import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
 import { MappableInputField } from './MappableInputField';
-import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, SenderProfile, MessageResendConfig, MessageTemplate } from '@/lib/types';
+import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, MessageResendConfig, MessageTemplate } from '@/lib/types';
 import { ResendConfigSection } from './ResendConfigSection';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
@@ -791,20 +792,6 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   };
 
   const firestore = useFirestore();
-  const profilesQuery = useMemoFirebase(() => {
-    const orgId = activeWorkspace?.organizationId;
-    if (!firestore || !orgId) return null;
-    const targetChannel = actionType === 'DIRECT_EMAIL' ? 'email' : 'sms';
-    return query(
-      collection(firestore, 'sender_profiles'),
-      where('organizationId', '==', orgId),
-      where('isActive', '==', true),
-      where('channel', '==', targetChannel)
-    );
-  }, [firestore, activeWorkspace?.organizationId, actionType]);
-
-  const { data: senderProfiles } = useCollection<SenderProfile>(profilesQuery);
-
   const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
 
   React.useEffect(() => {
@@ -1050,22 +1037,21 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
               Sender Profile
             </Label>
-            <Select
+            <SenderProfileSelector
+              channel={
+                actionType === 'DIRECT_EMAIL'
+                  ? 'email'
+                  : actionType === 'DIRECT_SMS'
+                  ? 'sms'
+                  : 'whatsapp'
+              }
               value={(config.senderProfileId as string) || 'default'}
-              onValueChange={(v) => updateConfig({ senderProfileId: v })}
-            >
-              <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-bold px-4 active:scale-[0.97] transition-all duration-150 ease-out">
-                <SelectValue placeholder="Default Profile" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl">
-                <SelectItem value="default">Default Active Profile</SelectItem>
-                {senderProfiles?.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.name} ({profile.identifier})
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(v) => updateConfig({ senderProfileId: v })}
+              organizationId={activeWorkspace?.organizationId}
+              workspaceId={activeWorkspace?.id}
+              defaultSentinelValue="default"
+              defaultLabel="Default Active Profile"
+            />
           </div>
 
           {/* Subject Input (DIRECT_EMAIL only) */}

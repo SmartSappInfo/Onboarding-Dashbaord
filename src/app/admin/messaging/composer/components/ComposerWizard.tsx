@@ -53,6 +53,7 @@ import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { EntitySelector } from './EntitySelector';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
+import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
 import { useAudiences } from '@/lib/audience-hooks';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import type { InvitationRecipient } from '@/lib/contacts/contact-repository';
@@ -445,7 +446,10 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         }
         if (!profiles || profiles.length === 0) return;
         
-        const isValidSelected = profiles.some(p => p.id === watchedSenderProfileId);
+        const isValidSelected =
+            watchedSenderProfileId === 'default' ||
+            watchedSenderProfileId === 'whatsapp' ||
+            profiles.some(p => p.id === watchedSenderProfileId);
         if (!isValidSelected) {
             const defaultProfile = profiles.find(p => p.isDefault) || profiles[0];
             if (defaultProfile) {
@@ -1402,21 +1406,18 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                     <div className="space-y-2">
                                         <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Sender Profile</Label>
                                         <Controller name="senderProfileId" control={control} render={({ field }) => (
-                                            <Select onValueChange={field.onChange} value={field.value || ''}>
-                                                <SelectTrigger className="h-12 rounded-xl bg-muted/20 border-border/50 font-semibold">
-                                                    <SelectValue placeholder="Select sender..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl">
-                                                    {profiles?.map(p => (
-                                                        <SelectItem key={p.id} value={p.id} className="rounded-lg my-0.5">
-                                                            <div className="flex items-center gap-3">
-                                                                <span className="font-semibold">{p.name}</span>
-                                                                <span className="text-[9px] font-semibold text-muted-foreground bg-muted px-2 py-0.5 rounded-md">{p.identifier}</span>
-                                                            </div>
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <SenderProfileSelector
+                                                channel={watchedChannel}
+                                                value={field.value}
+                                                onChange={field.onChange}
+                                                organizationId={activeOrganizationId}
+                                                workspaceId={activeWorkspaceId}
+                                                defaultSentinelValue={watchedChannel === 'whatsapp' ? 'whatsapp' : 'default'}
+                                                defaultLabel={watchedChannel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Active Profile'}
+                                                allowDefault={true}
+                                                placeholder="Select sender..."
+                                                triggerClassName="h-12 rounded-xl bg-muted/20 border-border/50 font-semibold"
+                                            />
                                         )} />
                                     </div>
 
