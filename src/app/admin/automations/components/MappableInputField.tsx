@@ -178,6 +178,17 @@ export function isSlashTriggerMatch(text: string, cursorPos: number): boolean {
 
 /**
  * ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol
+ * Sanitizes search queries inside the variable mapping palette.
+ * Strips any leading '/' characters so that typing '/' or starting the palette
+ * from a slash command never filters down to only items containing '/'.
+ */
+export function sanitizeSearchQuery(query: string): string {
+  if (typeof query !== 'string') return '';
+  return query.trim().replace(/^\/+/, '').trim();
+}
+
+/**
+ * ARCHITECTURAL NOTE: Rule 10 Maintainer Protocol
  * Resolves the next text value and cursor position when inserting a variable token `{{varName}}`.
  * If the insertion was triggered by a slash command or there is a '/' immediately before
  * the insertion point, the triggering '/' is replaced cleanly by the token.
@@ -380,7 +391,7 @@ export function MappableInputField({
   }, [webhookVariables, entityVariables, workspaceVariables]);
 
   const filteredVariables = React.useMemo<VariableItem[]>(() => {
-    const q = searchQuery.toLowerCase().trim();
+    const q = sanitizeSearchQuery(searchQuery).toLowerCase();
     if (!q) return allVariables;
     return allVariables.filter(v => 
       v.key.toLowerCase().includes(q) || 
@@ -449,7 +460,10 @@ export function MappableInputField({
         slashTriggerActiveRef.current = true;
         slashTriggerIndexRef.current = start;
         setSearchQuery('');
-        setOpen(true);
+        // Schedule opening on next microtask so the character '/' commits to parent input first
+        setTimeout(() => {
+          setOpen(true);
+        }, 0);
       }
     }
   };
@@ -474,7 +488,9 @@ export function MappableInputField({
 
   const handleOpenChange = (nextOpen: boolean) => {
     setOpen(nextOpen);
-    if (!nextOpen) {
+    if (nextOpen) {
+      setSearchQuery('');
+    } else {
       slashTriggerActiveRef.current = false;
       slashTriggerIndexRef.current = null;
     }
@@ -636,6 +652,12 @@ export function MappableInputField({
         className="p-0 border border-border shadow-2xl rounded-2xl bg-card/95 backdrop-blur-md z-[100] overflow-hidden w-[var(--radix-popper-anchor-width,var(--radix-popover-trigger-width))] max-w-[var(--radix-popover-content-available-width,calc(100vw-2rem))] min-w-[min(100%,320px)]" 
         align="start"
         sideOffset={6}
+        onOpenAutoFocus={(e) => {
+          e.preventDefault();
+          requestAnimationFrame(() => {
+            searchInputRef.current?.focus();
+          });
+        }}
         style={{
           width: anchorWidth ? `${anchorWidth}px` : 'var(--radix-popper-anchor-width, var(--radix-popover-trigger-width))',
         }}
@@ -649,7 +671,11 @@ export function MappableInputField({
                 ref={searchInputRef}
                 placeholder="Search variables & values..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  const rawVal = e.target.value;
+                  // Strip leading '/' so the search box starts and remains clean of '/'
+                  setSearchQuery(rawVal.replace(/^\/+/, ''));
+                }}
                 onKeyDown={(e) => {
                   if (e.key === 'ArrowDown') {
                     e.preventDefault();
@@ -699,7 +725,6 @@ export function MappableInputField({
                   }
                 }}
                 className="pl-9 pr-8 h-9 rounded-lg bg-background text-xs w-full"
-                autoFocus
               />
             </div>
           </div>

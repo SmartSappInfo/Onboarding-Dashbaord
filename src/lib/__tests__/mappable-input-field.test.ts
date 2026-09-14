@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   isSlashTriggerMatch,
   resolveSlashInsertion,
+  sanitizeSearchQuery,
 } from '@/app/admin/automations/components/MappableInputField';
 
 /**
@@ -112,6 +113,28 @@ describe('MappableInputField - Slash Trigger Engine', () => {
 
       expect(result.nextValue).toBe('Hello {{first_name}} world');
       expect(result.nextCursorPos).toBe('Hello {{first_name}}'.length);
+    });
+  });
+
+  describe('sanitizeSearchQuery', () => {
+    it('strips single or multiple leading slashes from search query', () => {
+      expect(sanitizeSearchQuery('/')).toBe('');
+      expect(sanitizeSearchQuery('//')).toBe('');
+      expect(sanitizeSearchQuery('///')).toBe('');
+      expect(sanitizeSearchQuery('/email')).toBe('email');
+      expect(sanitizeSearchQuery('//phone')).toBe('phone');
+    });
+
+    it('preserves query strings without leading slashes', () => {
+      expect(sanitizeSearchQuery('first_name')).toBe('first_name');
+      expect(sanitizeSearchQuery('headers.accept')).toBe('headers.accept');
+      expect(sanitizeSearchQuery('active entity')).toBe('active entity');
+    });
+
+    it('trims surrounding whitespace while stripping leading slash', () => {
+      expect(sanitizeSearchQuery('   /name   ')).toBe('name');
+      expect(sanitizeSearchQuery('   /   ')).toBe('');
+      expect(sanitizeSearchQuery('')).toBe('');
     });
   });
 });
