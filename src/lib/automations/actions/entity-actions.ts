@@ -976,10 +976,17 @@ export async function handleFindContact(
   context: ExecutionContext,
   _nodeId?: string
 ): Promise<FindContactResult> {
-  const searchPhone = typeof config.searchPhone === 'string' ? config.searchPhone.trim() : '';
-  const searchEmail = typeof config.searchEmail === 'string' ? config.searchEmail.trim() : '';
-  const searchName = typeof config.searchName === 'string' ? config.searchName.trim() : '';
-  const searchEntityName = typeof config.searchEntityName === 'string' ? config.searchEntityName.trim() : '';
+  // Helper to sanitize unresolvable double-brace tokens if a trigger variable was not present in payload
+  const cleanParam = (val: unknown): string => {
+    if (typeof val !== 'string') return '';
+    const trimmed = val.trim();
+    return /\{\{.*?\}\}/.test(trimmed) ? '' : trimmed;
+  };
+
+  const searchPhone = cleanParam(config.searchPhone);
+  const searchEmail = cleanParam(config.searchEmail);
+  const searchName = cleanParam(config.searchName);
+  const searchEntityName = cleanParam(config.searchEntityName);
   const matchStrategy = (config.matchStrategy || 'priority') as 'priority' | 'any' | 'all';
   const createIfNotFound = config.createIfNotFound !== false;
   const onNotFoundAction = (config.onNotFoundAction || 'halt') as 'halt' | 'continue';
@@ -1101,33 +1108,31 @@ export async function handleFindContact(
     const results: CandidateResult[] = [];
     if (!nameStr) return results;
 
-    const snap = await adminDb
-      .collection('workspace_entities')
-      .where('workspaceId', '==', context.workspaceId)
-      .where('displayName', '==', nameStr)
-      .limit(10)
-      .get();
-
-    snap.docs.forEach((doc) => {
-      const d = doc.data();
-      if (d.entityId) results.push({ entityId: d.entityId as string });
-    });
-
-    if (results.length === 0 && caseInsensitive) {
-      const allEntitiesSnap = await adminDb
+    if (caseInsensitive) {
+      const { toSearchKey } = await import('../../entities/entity-cache-domain');
+      const snap = await adminDb
         .collection('workspace_entities')
         .where('workspaceId', '==', context.workspaceId)
-        .limit(100)
+        .where('displayNameLower', '==', toSearchKey(nameStr))
+        .limit(10)
         .get();
 
-      const lowerTarget = nameStr.toLowerCase();
-      for (const doc of allEntitiesSnap.docs) {
+      snap.docs.forEach((doc) => {
         const d = doc.data();
-        if (d.displayName && typeof d.displayName === 'string' && d.displayName.toLowerCase() === lowerTarget) {
-          if (d.entityId) results.push({ entityId: d.entityId as string });
-          break;
-        }
-      }
+        if (d.entityId) results.push({ entityId: d.entityId as string });
+      });
+    } else {
+      const snap = await adminDb
+        .collection('workspace_entities')
+        .where('workspaceId', '==', context.workspaceId)
+        .where('displayName', '==', nameStr)
+        .limit(10)
+        .get();
+
+      snap.docs.forEach((doc) => {
+        const d = doc.data();
+        if (d.entityId) results.push({ entityId: d.entityId as string });
+      });
     }
 
     return results;
@@ -1143,7 +1148,7 @@ export async function handleFindContact(
     if (candidateResults.length === 0 && searchName) candidateResults = await queryByContactName(searchName);
     if (candidateResults.length === 0 && searchEntityName) candidateResults = await queryByEntityName(searchEntityName);
   } else if (matchStrategy === 'all') {
-    // Strategy: AND logic - find records matching primary field, then verify other fields match
+    // Strategy: AND logic - find candidate records by most specific field, then verify other fields in memory
     if (normalizedPhone) {
       candidateResults = await queryByPhone(normalizedPhone);
     } else if (searchEmail) {
@@ -1173,8 +1178,7 @@ export async function handleFindContact(
   }
 
   // 5. Load and verify entity data if candidate found
-  if (candidateResults.length > 0) {
-    const candidate = candidateResults[0];
+  for (const candidate of candidateResults) {
     const entitySnap = await adminDb.collection('entities').doc(candidate.entityId).get();
 
     if (entitySnap.exists) {
@@ -1202,6 +1206,25 @@ export async function handleFindContact(
       }
       if (!matchedContact) {
         matchedContact = entityContacts.find((c) => c.isPrimary) || entityContacts[0];
+      }
+
+      // If matchStrategy is 'all' (AND), strictly assert that all non-empty search criteria match this candidate
+      if (matchStrategy === 'all') {
+        const emailMatches = !searchEmail || (matchedContact?.email?.toLowerCase() === searchEmail.toLowerCase());
+        const nameMatches = !searchName || (matchedContact?.name?.toLowerCase() === searchName.toLowerCase());
+        const phoneMatches = !normalizedPhone || (
+          matchedContact?.phone
+            ? (normalizePhoneNumber(matchedContact.phone, defaultCountryCode).e164 || matchedContact.phone) === normalizedPhone
+            : false
+        );
+        const entityMatches = !searchEntityName || (
+          caseInsensitive
+            ? entityData.name?.trim().toLowerCase() === searchEntityName.toLowerCase()
+            : entityData.name?.trim() === searchEntityName
+        );
+        if (!emailMatches || !nameMatches || !phoneMatches || !entityMatches) {
+          continue; // Try next candidate or fall through to not found
+        }
       }
 
       // Context Mutation & Binding

@@ -2104,7 +2104,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 placeholder="e.g. {{1.body.phone}} or +233..."
                 value={(config.searchPhone as string) || ''}
                 onChange={(val) => updateConfig({ searchPhone: val })}
-                inputClassName="h-10 rounded-xl font-medium text-xs"
+                inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
               />
               <span className="text-[9px] font-medium text-muted-foreground leading-none ml-1 opacity-70 block">
                 Normalized to E.164 automatically before querying.
@@ -2117,7 +2117,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 placeholder="e.g. {{1.body.email}} or lead@company.com"
                 value={(config.searchEmail as string) || ''}
                 onChange={(val) => updateConfig({ searchEmail: val })}
-                inputClassName="h-10 rounded-xl font-medium text-xs"
+                inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
               />
             </div>
 
@@ -2127,7 +2127,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 placeholder="e.g. {{1.body.name}} or Full Name"
                 value={(config.searchName as string) || ''}
                 onChange={(val) => updateConfig({ searchName: val })}
-                inputClassName="h-10 rounded-xl font-medium text-xs"
+                inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
               />
             </div>
 
@@ -2137,7 +2137,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 placeholder="e.g. {{1.body.company}} or Organization Name"
                 value={(config.searchEntityName as string) || ''}
                 onChange={(val) => updateConfig({ searchEntityName: val })}
-                inputClassName="h-10 rounded-xl font-medium text-xs"
+                inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
               />
             </div>
 
@@ -2147,7 +2147,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                 value={(config.matchStrategy as string) || 'priority'}
                 onValueChange={(val) => updateConfig({ matchStrategy: val })}
               >
-                <SelectTrigger className="h-10 rounded-xl bg-card border font-semibold text-xs">
+                <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
@@ -2159,7 +2159,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </div>
 
             <div className="pt-2">
-              <label className="flex items-center gap-2.5 cursor-pointer select-none">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none min-h-[44px]">
                 <input
                   type="checkbox"
                   checked={config.caseInsensitive !== false}
@@ -2181,7 +2181,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
             </h4>
 
             <div className="pt-1">
-              <label className="flex items-start gap-2.5 cursor-pointer select-none">
+              <label className="flex items-start gap-2.5 cursor-pointer select-none min-h-[44px]">
                 <input
                   type="checkbox"
                   checked={config.createIfNotFound !== false}
@@ -2205,7 +2205,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                     value={(config.newEntityType as string) || 'person'}
                     onValueChange={(val) => updateConfig({ newEntityType: val })}
                   >
-                    <SelectTrigger className="h-10 rounded-xl bg-card border font-semibold text-xs">
+                    <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
@@ -2222,7 +2222,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                     placeholder="Defaults to Contact Name or Company"
                     value={(config.newEntityName as string) || ''}
                     onChange={(val) => updateConfig({ newEntityName: val })}
-                    inputClassName="h-10 rounded-xl font-medium text-xs"
+                    inputClassName="min-h-[44px] rounded-xl font-medium text-xs"
                   />
                 </div>
 
@@ -2232,7 +2232,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                     placeholder="e.g. Lead, Prospect, Primary"
                     value={(config.newContactRole as string) || ''}
                     onChange={(e) => updateConfig({ newContactRole: e.target.value })}
-                    className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs"
+                    className="min-h-[44px] rounded-xl bg-card border shadow-sm font-semibold text-xs"
                   />
                 </div>
 
@@ -2242,7 +2242,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                     value={(config.assignedTo as string) || 'auto'}
                     onValueChange={(val) => updateConfig({ assignedTo: val })}
                   >
-                    <SelectTrigger className="h-10 rounded-xl bg-card border shadow-sm font-semibold text-xs">
+                    <SelectTrigger className="min-h-[44px] rounded-xl bg-card border shadow-sm font-semibold text-xs">
                       <SelectValue placeholder="Auto-Resolve" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl border shadow-md text-xs font-medium max-h-[250px]">
@@ -2269,7 +2269,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                   value={(config.onNotFoundAction as string) || 'halt'}
                   onValueChange={(val) => updateConfig({ onNotFoundAction: val })}
                 >
-                  <SelectTrigger className="h-10 rounded-xl bg-card border font-semibold text-xs">
+                  <SelectTrigger className="min-h-[44px] rounded-xl bg-card border font-semibold text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl border shadow-md text-xs font-medium">
