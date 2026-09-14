@@ -206,6 +206,7 @@ export interface ExtractedContactDetails {
   primaryContactPhone: string;
   isLiveCrm: boolean;
   entityId?: string | null;
+  contactId?: string;
   locationString?: string;
   zoneName?: string;
   roleOrTitle?: string;
@@ -459,6 +460,38 @@ export function extractResponseContactDetails(
 
   const isLiveCrm = Boolean(response.entityId && (contact || response.entityId));
 
+  // Accurately resolve contactId: match against entity contacts by email, phone, or name.
+  // Never falsely attribute a respondent's details to the primary entity contact.
+  let matchedContactId: string | undefined = undefined;
+  if (contact?.entityContacts && contact.entityContacts.length > 0) {
+    const emailMatch = primaryContactEmail
+      ? contact.entityContacts.find(
+          (c) => c.email && c.email.trim().toLowerCase() === primaryContactEmail.trim().toLowerCase()
+        )
+      : undefined;
+    const phoneDigits = primaryContactPhone.replace(/\D/g, '');
+    const phoneMatch = phoneDigits
+      ? contact.entityContacts.find(
+          (c) => c.phone && c.phone.replace(/\D/g, '') === phoneDigits
+        )
+      : undefined;
+    const nameMatch = primaryContactName
+      ? contact.entityContacts.find(
+          (c) => c.name.trim().toLowerCase() === primaryContactName.trim().toLowerCase()
+        )
+      : undefined;
+
+    const matched = emailMatch || phoneMatch || nameMatch;
+    if (matched) {
+      matchedContactId = matched.id;
+    } else if (!primaryContactName && !primaryContactEmail && !primaryContactPhone && primaryEntityContact) {
+      // Only fallback to primary entity contact if no specific respondent contact was extracted
+      matchedContactId = primaryEntityContact.id;
+    }
+  } else if (!primaryContactName && !primaryContactEmail && !primaryContactPhone && primaryEntityContact) {
+    matchedContactId = primaryEntityContact.id;
+  }
+
   return {
     entityName,
     primaryContactName,
@@ -466,6 +499,7 @@ export function extractResponseContactDetails(
     primaryContactPhone,
     isLiveCrm,
     entityId: response.entityId || null,
+    contactId: matchedContactId,
     locationString: contact?.locationString,
     zoneName: contact?.zoneName,
     roleOrTitle,

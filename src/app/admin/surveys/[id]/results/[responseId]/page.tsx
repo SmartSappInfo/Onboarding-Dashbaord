@@ -156,7 +156,7 @@ function ResponseContactCard({ response, survey, onTagEntity, onMoveEntity }: Re
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation"
+                                    className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation"
                                     onClick={() => onTagEntity && onTagEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
                                 >
                                     <TagIcon className="h-3.5 w-3.5 text-primary" />
@@ -165,8 +165,17 @@ function ResponseContactCard({ response, survey, onTagEntity, onMoveEntity }: Re
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation"
-                                    onClick={() => onMoveEntity && onMoveEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
+                                    className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation"
+                                    onClick={() => onMoveEntity && onMoveEntity({ 
+                                        id: details.entityId!, 
+                                        name: details.entityName || 'Identified Entity',
+                                        contactId: details.contactId,
+                                        contactName: details.primaryContactName || undefined,
+                                        contactEmail: details.primaryContactEmail || undefined,
+                                        contactPhone: details.primaryContactPhone || undefined,
+                                        contactRole: details.roleOrTitle || undefined,
+                                        responseId: response.id,
+                                    })}
                                 >
                                     <GitPullRequest className="h-3.5 w-3.5 text-emerald-500" />
                                     <span>Move Stage</span>
@@ -174,7 +183,7 @@ function ResponseContactCard({ response, survey, onTagEntity, onMoveEntity }: Re
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    className="h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation hidden sm:inline-flex"
+                                    className="min-h-[44px] sm:min-h-[32px] h-auto sm:h-8 px-2.5 text-xs font-bold rounded-xl gap-1.5 active:scale-[0.97] touch-manipulation hidden sm:inline-flex"
                                     onClick={() => router.push(`/admin/meetings/new?entityId=${details.entityId}`)}
                                 >
                                     <CalendarDays className="h-3.5 w-3.5 text-blue-500" />
@@ -182,7 +191,7 @@ function ResponseContactCard({ response, survey, onTagEntity, onMoveEntity }: Re
                                 </Button>
                                 <DropdownMenu modal={false}>
                                     <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" aria-label="Entity options" className="h-8 w-8 rounded-xl active:scale-[0.97]">
+                                        <Button variant="ghost" size="icon" aria-label="Entity options" className="min-h-[44px] min-w-[44px] sm:min-h-[32px] sm:min-w-[32px] sm:h-8 sm:w-8 rounded-xl active:scale-[0.97]">
                                             <MoreHorizontal className="h-4 w-4" />
                                         </Button>
                                     </DropdownMenuTrigger>
@@ -204,7 +213,16 @@ function ResponseContactCard({ response, survey, onTagEntity, onMoveEntity }: Re
                                             <TagIcon className="h-4 w-4 text-primary" /> Apply Tags
                                         </DropdownMenuItem>
                                         <DropdownMenuItem 
-                                            onClick={() => onMoveEntity && onMoveEntity({ id: details.entityId!, name: details.entityName || 'Identified Entity' })}
+                                            onClick={() => onMoveEntity && onMoveEntity({ 
+                                                id: details.entityId!, 
+                                                name: details.entityName || 'Identified Entity',
+                                                contactId: details.contactId,
+                                                contactName: details.primaryContactName || undefined,
+                                                contactEmail: details.primaryContactEmail || undefined,
+                                                contactPhone: details.primaryContactPhone || undefined,
+                                                contactRole: details.roleOrTitle || undefined,
+                                                responseId: response.id,
+                                            })}
                                             className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
                                         >
                                             <GitPullRequest className="h-4 w-4 text-emerald-500" /> Move Pipeline Stage

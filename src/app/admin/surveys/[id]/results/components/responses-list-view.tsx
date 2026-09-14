@@ -1264,7 +1264,31 @@ function ResponsesListView({
                                                 <TagIcon className="h-4 w-4 text-primary" /> Apply Tags
                                             </DropdownMenuItem>
                                             <DropdownMenuItem 
-                                                onClick={() => setMovingEntity({ id: response.entityId!, name: response.entityName || 'Identified Entity' })}
+                                                onClick={() => {
+                                                    const cached = clientContactCache.get(`${response.entityId}_${activeWorkspaceId || ''}`);
+                                                    const details = extractResponseContactDetails(
+                                                        response, 
+                                                        cached || null, 
+                                                        survey.elements, 
+                                                        survey.entityMapping
+                                                    );
+                                                    const matchedContact = cached?.entityContacts?.find(c => 
+                                                        (details.primaryContactEmail && c.email?.toLowerCase() === details.primaryContactEmail.toLowerCase()) ||
+                                                        (details.primaryContactPhone && c.phone && c.phone.replace(/\D/g, '') === details.primaryContactPhone.replace(/\D/g, '')) ||
+                                                        (details.primaryContactName && c.name?.toLowerCase() === details.primaryContactName.toLowerCase())
+                                                    );
+
+                                                    setMovingEntity({ 
+                                                        id: response.entityId!, 
+                                                        name: details.entityName || response.entityName || 'Identified Entity',
+                                                        contactId: matchedContact?.id || details.contactId,
+                                                        contactName: details.primaryContactName || undefined,
+                                                        contactEmail: details.primaryContactEmail || undefined,
+                                                        contactPhone: details.primaryContactPhone || undefined,
+                                                        contactRole: details.roleOrTitle || matchedContact?.typeLabel || undefined,
+                                                        responseId: response.id,
+                                                    });
+                                                }}
                                                 className="rounded-lg py-2 cursor-pointer gap-2 font-medium"
                                             >
                                                 <GitPullRequest className="h-4 w-4 text-emerald-500" /> Move Pipeline Stage

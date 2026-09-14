@@ -46,7 +46,7 @@ describe('getForecastUrgency', () => {
   it('flags more than 7 days out as "ok" (green)', () => {
     const result = getForecastUrgency(iso(addDays(new Date(), 30)));
     expect(result.level).toBe('ok');
-    expect(result.label).toBe('30d');
+    expect(result.label).toBe('30d left');
     expect(result.colorClass).toBe('text-emerald-600');
   });
 

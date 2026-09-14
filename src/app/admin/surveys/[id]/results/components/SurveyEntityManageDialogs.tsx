@@ -26,11 +26,13 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy } from 'firebase/firestore';
-import { Tag as TagIcon, Loader2, GitPullRequest } from 'lucide-react';
+import { Tag as TagIcon, Loader2, GitPullRequest, User, Crown, Info } from 'lucide-react';
 import { 
   bulkApplyTagsToSurveyEntitiesAction, 
   bulkMoveSurveyEntitiesStageAction 
 } from '@/lib/survey-entity-actions';
+import { getEntityContactsAction } from '@/app/actions/entity-contact-actions';
+import type { EntityContact } from '@/lib/types';
 
 interface PipelineStageDoc {
   id: string;
@@ -47,6 +49,13 @@ export interface ManagedEntityTarget {
   id: string;
   name: string;
   currentTagIds?: string[];
+  // Contact-centric pipeline parameters (PRD Section 122 & Rules 5, 10)
+  contactId?: string;
+  contactName?: string;
+  contactEmail?: string;
+  contactPhone?: string;
+  contactRole?: string;
+  responseId?: string;
 }
 
 interface SurveyEntityManageDialogsProps {
@@ -73,6 +82,11 @@ export default function SurveyEntityManageDialogs({
   const [selectedStageId, setSelectedStageId] = React.useState<string>('');
   const [isExecuting, setIsExecuting] = React.useState(false);
 
+  // Contact-Centric Deal Selection State
+  const [entityContacts, setEntityContacts] = React.useState<EntityContact[]>([]);
+  const [isLoadingContacts, setIsLoadingContacts] = React.useState(false);
+  const [selectedContactId, setSelectedContactId] = React.useState<string>('');
+
   // Sync initial tag IDs when tagging entity changes
   React.useEffect(() => {
     if (taggingEntity) {
@@ -82,12 +96,82 @@ export default function SurveyEntityManageDialogs({
     }
   }, [taggingEntity]);
 
-  // Reset pipeline & stage selections when moving entity changes
+  // Reset and load contacts when moving entity changes
   React.useEffect(() => {
-    if (!movingEntity) {
+    let isMounted = true;
+    if (movingEntity) {
       setSelectedPipelineId('');
       setSelectedStageId('');
+      setIsLoadingContacts(true);
+
+      getEntityContactsAction(movingEntity.id)
+        .then((contacts) => {
+          if (!isMounted) return;
+          setEntityContacts(contacts);
+
+          // 1. If explicit contactId provided and found in entityContacts:
+          if (movingEntity.contactId && contacts.some((c) => c.id === movingEntity.contactId)) {
+            setSelectedContactId(movingEntity.contactId);
+          }
+          // 2. Or match by email / phone against entityContacts:
+          else if (movingEntity.contactEmail || movingEntity.contactPhone) {
+            const emailLower = movingEntity.contactEmail?.trim().toLowerCase();
+            const phoneDigits = movingEntity.contactPhone?.replace(/\D/g, '');
+            const matched = contacts.find((c) => {
+              if (emailLower && c.email && c.email.trim().toLowerCase() === emailLower) return true;
+              if (phoneDigits && c.phone && c.phone.replace(/\D/g, '') === phoneDigits) return true;
+              return false;
+            });
+            if (matched) {
+              setSelectedContactId(matched.id);
+            } else if (movingEntity.contactName) {
+              setSelectedContactId('respondent');
+            } else if (contacts.length > 0) {
+              const primary = contacts.find((c) => c.isPrimary) || contacts[0];
+              setSelectedContactId(primary.id);
+            }
+          }
+          // 3. Or if respondent name provided without email match:
+          else if (movingEntity.contactName) {
+            const matchedByName = contacts.find(
+              (c) => c.name.trim().toLowerCase() === movingEntity.contactName?.trim().toLowerCase()
+            );
+            if (matchedByName) {
+              setSelectedContactId(matchedByName.id);
+            } else {
+              setSelectedContactId('respondent');
+            }
+          }
+          // 4. Default to entity primary or first contact:
+          else if (contacts.length > 0) {
+            const primary = contacts.find((c) => c.isPrimary) || contacts[0];
+            setSelectedContactId(primary.id);
+          } else {
+            setSelectedContactId('');
+          }
+        })
+        .catch((err) => {
+          if (!isMounted) return;
+          console.error('[SurveyEntityManageDialogs] Failed to load entity contacts:', err);
+          if (movingEntity.contactName) {
+            setSelectedContactId('respondent');
+          }
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsLoadingContacts(false);
+          }
+        });
+    } else {
+      setSelectedPipelineId('');
+      setSelectedStageId('');
+      setEntityContacts([]);
+      setSelectedContactId('');
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [movingEntity]);
 
   // Query workspace pipelines
@@ -175,21 +259,48 @@ export default function SurveyEntityManageDialogs({
 
     setIsExecuting(true);
     try {
+      let targetContactId: string | undefined = undefined;
+      let targetContactName: string | undefined = movingEntity.contactName;
+      let targetContactEmail: string | undefined = movingEntity.contactEmail;
+      let targetContactPhone: string | undefined = movingEntity.contactPhone;
+      let targetContactRole: string | undefined = movingEntity.contactRole;
+
+      if (selectedContactId === 'respondent') {
+        targetContactId = undefined;
+      } else if (selectedContactId) {
+        const found = entityContacts.find((c) => c.id === selectedContactId);
+        if (found) {
+          targetContactId = found.id;
+          targetContactName = found.name;
+          targetContactEmail = found.email;
+          targetContactPhone = found.phone;
+          targetContactRole = found.typeLabel || found.typeKey;
+        }
+      }
+
       const res = await bulkMoveSurveyEntitiesStageAction({
         workspaceId: activeWorkspaceId,
         entityIds: [movingEntity.id],
         pipelineId: selectedPipelineId,
         stageId: selectedStageId,
+        targetContactId,
+        targetContactName,
+        targetContactEmail,
+        targetContactPhone,
+        targetContactRole,
+        responseId: movingEntity.responseId,
       });
 
       if (res.success) {
+        const contactDisplay = targetContactName ? ` (${targetContactName})` : '';
         toast({
           title: 'Pipeline Stage Updated',
-          description: `${movingEntity.name} moved to the selected pipeline stage.`,
+          description: `${movingEntity.name}${contactDisplay} is now positioned in the selected pipeline stage.`,
           actionConfig: {
             path: '/admin/pipeline',
             label: 'View in Pipeline',
           },
+          duration: 15000,
         });
         onCloseMoving();
         if (onComplete) onComplete();
@@ -240,6 +351,7 @@ export default function SurveyEntityManageDialogs({
               variant="ghost"
               onClick={onCloseTagging}
               disabled={isExecuting}
+              className="min-h-[44px] md:min-h-[36px]"
             >
               Cancel
             </Button>
@@ -247,7 +359,7 @@ export default function SurveyEntityManageDialogs({
               type="button"
               onClick={handleApplyTags}
               disabled={isExecuting || selectedTagIds.length === 0}
-              className="font-semibold px-6 rounded-xl active:scale-[0.97]"
+              className="min-h-[44px] md:min-h-[36px] font-semibold px-6 rounded-xl active:scale-[0.97]"
             >
               {isExecuting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <TagIcon className="mr-2 h-4 w-4" />}
               Save Tags
@@ -262,14 +374,84 @@ export default function SurveyEntityManageDialogs({
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-base font-bold">
               <GitPullRequest className="h-5 w-5 text-emerald-500" />
-              Move Entity in Pipeline
+              Move Contact & Entity in Pipeline
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Select destination pipeline and stage for <strong>{movingEntity?.name}</strong>.
+              Select target contact, destination pipeline, and stage for <strong>{movingEntity?.name}</strong>.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
+            {/* Target Contact Selector */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Deal Owner Contact</Label>
+                {isLoadingContacts && (
+                  <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Loading contacts...
+                  </span>
+                )}
+              </div>
+              <Select
+                value={selectedContactId}
+                onValueChange={setSelectedContactId}
+                disabled={isLoadingContacts}
+              >
+                <SelectTrigger className="h-11 rounded-xl">
+                  <SelectValue placeholder="Select target contact for deal..." />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl">
+                  {/* Respondent option if passed from survey */}
+                  {movingEntity?.contactName && !entityContacts.some(c => 
+                    c.name.trim().toLowerCase() === movingEntity.contactName?.trim().toLowerCase() ||
+                    (movingEntity.contactEmail && c.email && c.email.trim().toLowerCase() === movingEntity.contactEmail.trim().toLowerCase()) ||
+                    (movingEntity.contactPhone && c.phone && c.phone.replace(/\D/g, '') === movingEntity.contactPhone.replace(/\D/g, ''))
+                  ) && (
+                    <SelectItem value="respondent">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-emerald-600 shrink-0" />
+                        <span className="font-semibold">{movingEntity.contactName}</span>
+                        <span className="text-[11px] text-muted-foreground">
+                          ({movingEntity.contactRole || 'Survey Respondent'})
+                        </span>
+                      </div>
+                    </SelectItem>
+                  )}
+                  {entityContacts.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-primary shrink-0" />
+                        <span className="font-semibold">{c.name}</span>
+                        {c.isPrimary && (
+                          <span className="inline-flex items-center gap-0.5 text-[10px] bg-amber-500/10 text-amber-700 font-bold px-1.5 py-0.5 rounded">
+                            <Crown className="h-3 w-3 text-amber-600 fill-amber-500 shrink-0" /> Primary
+                          </span>
+                        )}
+                        {c.typeLabel && (
+                          <span className="text-[11px] text-muted-foreground">({c.typeLabel})</span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
+                  {entityContacts.length === 0 && !movingEntity?.contactName && (
+                    <SelectItem value="default_entity_contact">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <span>{movingEntity?.name || 'Primary Contact'}</span>
+                      </div>
+                    </SelectItem>
+                  )}
+                </SelectContent>
+              </Select>
+              <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2 rounded-lg border border-border/50">
+                <Info className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                <span>
+                  Deals are contact-based. This operation creates or updates the specific deal attached to this contact under <strong>{movingEntity?.name}</strong>.
+                </span>
+              </div>
+            </div>
+
+            {/* Pipeline Selector */}
             <div className="space-y-2">
               <Label className="text-xs font-semibold">Select Pipeline</Label>
               <Select
@@ -298,6 +480,7 @@ export default function SurveyEntityManageDialogs({
               </Select>
             </div>
 
+            {/* Stage Selector */}
             {selectedPipelineId && (
               <div className="space-y-2 animate-in fade-in slide-in-from-top-1">
                 <Label className="text-xs font-semibold">Select Target Stage</Label>
@@ -329,6 +512,7 @@ export default function SurveyEntityManageDialogs({
               variant="ghost"
               onClick={onCloseMoving}
               disabled={isExecuting}
+              className="min-h-[44px] md:min-h-[36px]"
             >
               Cancel
             </Button>
@@ -336,7 +520,7 @@ export default function SurveyEntityManageDialogs({
               type="button"
               onClick={handleMoveStage}
               disabled={isExecuting || !selectedPipelineId || !selectedStageId}
-              className="font-semibold px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97]"
+              className="min-h-[44px] md:min-h-[36px] font-semibold px-6 rounded-xl bg-emerald-600 hover:bg-emerald-700 active:scale-[0.97]"
             >
               {isExecuting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <GitPullRequest className="mr-2 h-4 w-4" />}
               Move to Stage

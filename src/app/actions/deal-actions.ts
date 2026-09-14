@@ -730,6 +730,7 @@ export async function updateDealDetailsAction(
         description?: string | null;
         assignedTo?: { userId: string | null; name: string | null; email: string | null } | null;
         focalContacts?: DealFocalContact[];
+        primaryContactId?: string | null;
         customFields?: Record<string, unknown>;
     }
 ): Promise<{ success: boolean; error?: string }> {
@@ -743,12 +744,16 @@ export async function updateDealDetailsAction(
         const deal = dealSnap.data() as Deal;
 
         const timestamp = new Date().toISOString();
-        const finalUpdates: Record<string, unknown> = {
-            ...updates,
-            updatedAt: timestamp
-        };
+        // ARCHITECTURAL POINTER (Rule 10): Strip undefined values so Firestore does not reject with invalid argument
+        const cleanUpdates: Record<string, unknown> = {};
+        for (const [k, v] of Object.entries(updates)) {
+            if (v !== undefined) {
+                cleanUpdates[k] = v;
+            }
+        }
+        cleanUpdates.updatedAt = timestamp;
 
-        await dealRef.update(finalUpdates);
+        await dealRef.update(cleanUpdates);
 
         // Simple activity logging for general updates
         await logActivity({
@@ -796,7 +801,8 @@ export async function addDealContactAction(
             entityId,
             role,
             name: entity.displayName || entity.entityName || 'Unknown',
-            email: entity.primaryEmail || ''
+            email: entity.primaryEmail || '',
+            phone: entity.primaryPhone || entity.entityContacts?.find(ec => ec.isPrimary)?.phone || ''
         };
 
         const updatedContacts = [...currentContacts, newContact];
@@ -2145,12 +2151,14 @@ export async function convertLeadToDealAction(
                     email: c.email,
                     phone: c.phone,
                     role: c.role || c.typeLabel || 'Primary Contact',
+                    isPrimary: index === 0 || cId === focalContactIds[0],
                 });
             } else {
                 dealContacts.push({
                     entityId: cId,
                     name: c.name || 'Unnamed Contact',
                     email: c.email,
+                    phone: c.phone,
                     role: c.role || c.typeLabel || 'Stakeholder',
                 });
             }
@@ -2178,6 +2186,7 @@ export async function convertLeadToDealAction(
             campaignId: entityRecord.campaignId || entityRecord.utmCampaign || undefined,
             leadId: leadEntityId,
             assignedTo: assignedTo || null,
+            primaryContactId: focalContacts.find(fc => fc.isPrimary)?.id || focalContacts[0]?.id || null,
             focalContacts,
             contacts: dealContacts,
             expectedCloseDate: resolvedCloseDate,

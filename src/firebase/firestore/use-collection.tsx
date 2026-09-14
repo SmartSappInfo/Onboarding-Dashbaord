@@ -92,25 +92,34 @@ export function useCollection<T = any>(
         setSettledQuery(memoizedTargetRefOrQuery);
       },
       (_error: FirestoreError) => {
+        // Log original Firestore error to preserve index creation links and technical diagnostic details
+        console.error(`[Firestore useCollection Error] (${_error.code || 'unknown'}):`, _error.message || _error);
+
         // This logic extracts the path from either a ref or a query
         const path: string =
           memoizedTargetRefOrQuery.type === 'collection'
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
 
-        const contextualError = new FirestorePermissionError({
-          operation: 'list',
-          path,
-        })
+        if (_error.code === 'permission-denied') {
+          const contextualError = new FirestorePermissionError({
+            operation: 'list',
+            path,
+          });
 
-        setError(contextualError)
-        setData(null)
-        setSettledQuery(memoizedTargetRefOrQuery)
+          setError(contextualError);
 
-        // trigger global error propagation only if authenticated
-        if (auth.currentUser) {
-          errorEmitter.emit('permission-error', contextualError);
+          // trigger global error propagation only if authenticated
+          if (auth.currentUser) {
+            errorEmitter.emit('permission-error', contextualError);
+          }
+        } else {
+          // For indexing errors (failed-precondition) or network issues, retain original error without false security rule banner
+          setError(_error);
         }
+
+        setData(null);
+        setSettledQuery(memoizedTargetRefOrQuery);
       }
     );
 

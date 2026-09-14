@@ -33,8 +33,19 @@ import {
     ExternalLink,
     Loader2,
     Repeat,
-    FileCheck
+    FileCheck,
+    Phone,
+    PhoneCall,
+    Mail,
+    Crown,
+    Copy,
+    GitMerge,
+    Archive,
+    RotateCcw,
+    MoreVertical,
+    AlertTriangle
 } from 'lucide-react';
+import { useCallModal } from '@/context/CallModalContext';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -67,14 +78,6 @@ import {
 } from '@/components/ui/dropdown-menu';
 import DuplicateDealModal from '../../pipeline/components/DuplicateDealModal';
 import MergeDealsModal from '../../pipeline/components/MergeDealsModal';
-import {
-    Copy,
-    GitMerge,
-    Archive,
-    RotateCcw,
-    MoreVertical,
-    AlertTriangle
-} from 'lucide-react';
 import { createTaskAction, updateTaskAction, deleteTaskAction } from '@/lib/task-server-actions';
 import { useEntitySearch } from '@/hooks/use-entity-search';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -115,9 +118,13 @@ export default function DealDetailsPage() {
     const [expectedCloseDate, setExpectedCloseDate] = React.useState('');
     const [isSaving, setIsSaving] = React.useState(false);
 
+    // Call Centre context integration (Phase 3 CRM Call Centre & Interactive Scripts)
+    const { openCallModal } = useCallModal();
+
     // Focal contacts (persons from the deal's own entity)
     const [entityContacts, setEntityContacts] = React.useState<EntityContact[]>([]);
     const [selectedFocalContactIds, setSelectedFocalContactIds] = React.useState<string[]>([]);
+    const [primaryFocalContactId, setPrimaryFocalContactId] = React.useState<string>('');
 
     // Custom fields state
     const [customKey, setCustomKey] = React.useState('');
@@ -535,6 +542,10 @@ export default function DealDetailsPage() {
             setStatus(deal.status || 'open');
             setAssignedToUserId(deal.assignedTo?.userId || 'unassigned');
             setSelectedFocalContactIds((deal.focalContacts ?? []).map(fc => fc.id));
+            const existingOwnerId = deal.primaryContactId || deal.focalContacts?.find(fc => fc.isPrimary)?.id || '';
+            if (existingOwnerId) {
+                setPrimaryFocalContactId(existingOwnerId);
+            }
 
             if (deal.pipelineId) {
                 setPipelineId(deal.pipelineId);
@@ -582,20 +593,35 @@ export default function DealDetailsPage() {
         }
     }, [deal, rawStages, stageOptions, stageId]);
 
-    // Load the entity's contacts so focal persons can be (de)selected.
+    // Load the entity's contacts so focal persons can be (de)selected and ownership resolved
     React.useEffect(() => {
         if (!deal?.entityId) return;
         let cancelled = false;
         getEntityContactsAction(deal.entityId).then(contacts => {
-            if (!cancelled) setEntityContacts(contacts);
+            if (!cancelled) {
+                setEntityContacts(contacts);
+                setPrimaryFocalContactId(prev => {
+                    if (prev) return prev;
+                    const dealFocalPrimary = deal?.focalContacts?.find(fc => fc.isPrimary)?.id;
+                    const entityPrimary = contacts.find(c => c.isPrimary)?.id;
+                    const firstFocal = deal?.focalContacts?.[0]?.id;
+                    return dealFocalPrimary || entityPrimary || firstFocal || '';
+                });
+            }
         });
         return () => { cancelled = true; };
-    }, [deal?.entityId]);
+    }, [deal?.entityId, deal?.focalContacts]);
 
     const toggleFocalContact = (id: string) => {
         setSelectedFocalContactIds(prev =>
             prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
         );
+    };
+
+    const handleSetDealOwner = (id: string) => {
+        setPrimaryFocalContactId(prev => (prev === id ? '' : id));
+        // Ensure that designating as deal owner also includes the contact in focal contacts
+        setSelectedFocalContactIds(prev => prev.includes(id) ? prev : [...prev, id]);
     };
 
     const handleUpdateDeal = async (e: React.FormEvent) => {
@@ -625,7 +651,15 @@ export default function DealDetailsPage() {
                 .map<DealFocalContact | null>(id => {
                     const c = entityContacts.find(ec => ec.id === id);
                     if (!c) return null;
-                    return { id: c.id, name: c.name, email: c.email, phone: c.phone, role: c.typeLabel };
+                    const isFocalPrimary = id === primaryFocalContactId || (!primaryFocalContactId && Boolean(c.isPrimary));
+                    return { 
+                        id: c.id, 
+                        name: c.name, 
+                        email: c.email, 
+                        phone: c.phone, 
+                        role: c.typeLabel,
+                        isPrimary: isFocalPrimary
+                    };
                 })
                 .filter((c): c is DealFocalContact => c !== null);
 
@@ -633,8 +667,10 @@ export default function DealDetailsPage() {
                 ? (parseSafeDate(expectedCloseDate)?.toISOString() || null)
                 : (effectiveCloseDate || null);
 
+            const resolvedPrimaryContactId = primaryFocalContactId || (entityContacts.find(c => c.isPrimary)?.id ?? null);
+
             // ARCHITECTURAL POINTER (Rule 10 - Sequential Stage Transition Integrity):
-            // 1. Update Core Details FIRST so updated commercial attributes (e.g. value, close date, contacts)
+            // 1. Update Core Details FIRST so updated commercial attributes (e.g. value, close date, contacts, primary owner)
             // are persisted before the stage entry validation gate executes.
             const detailsRes = await updateDealDetailsAction(deal.id, {
                 name,
@@ -643,7 +679,8 @@ export default function DealDetailsPage() {
                 pipelineId: pipelineId || deal.pipelineId,
                 expectedCloseDate: resolvedCloseDate,
                 assignedTo,
-                focalContacts
+                focalContacts,
+                primaryContactId: resolvedPrimaryContactId
             });
 
             if (detailsRes.error) throw new Error(detailsRes.error);
@@ -965,34 +1002,227 @@ export default function DealDetailsPage() {
                                                 </div>
                                             </div>
 
+                                            {/* ARCHITECTURAL POINTER (Rule 10 CRM Contact Persons & Deal Ownership):
+                                                - Displays all Entity Contacts with high visibility for Email and Phone numbers.
+                                                - Bridges each contact directly to the Call Centre via openCallModal() and Message Composer via relative route.
+                                                - Allows toggling/designating which entity contact owns the deal with clear crown badges.
+                                                - Strict typing, touch targets >= 44px on mobile, zero 'any'.
+                                            */}
                                             {entityContacts.length > 0 && (
-                                                <div className="space-y-2">
-                                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase flex items-center gap-1.5"><User className="h-3 w-3" /> Contact Persons</Label>
-                                                    <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto p-1.5 rounded-xl bg-muted/20 border border-primary/10">
+                                                <div className="space-y-3">
+                                                    <div className="flex items-center justify-between flex-wrap gap-2 ml-1">
+                                                        <Label className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1.5">
+                                                            <User className="h-3.5 w-3.5 text-primary" /> Contact Persons & Stakeholders
+                                                        </Label>
+                                                        <span className="text-[10px] font-medium text-muted-foreground">
+                                                            {selectedFocalContactIds.length} of {entityContacts.length} linked to deal
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex flex-col gap-2.5 max-h-[380px] overflow-y-auto p-2 rounded-2xl bg-muted/15 border border-primary/10">
                                                         {entityContacts.map(c => {
                                                             const selected = selectedFocalContactIds.includes(c.id);
+                                                            const isOwner = primaryFocalContactId
+                                                                ? c.id === primaryFocalContactId
+                                                                : (deal?.primaryContactId
+                                                                    ? c.id === deal.primaryContactId
+                                                                    : (deal?.focalContacts?.some(fc => fc.isPrimary)
+                                                                        ? deal.focalContacts.find(fc => fc.isPrimary)?.id === c.id
+                                                                        : (entityContacts.some(ec => ec.isPrimary)
+                                                                            ? Boolean(c.isPrimary)
+                                                                            : selectedFocalContactIds.length > 0 && selectedFocalContactIds[0] === c.id)));
+
                                                             return (
-                                                                <button
+                                                                <div
                                                                     key={c.id}
-                                                                    type="button"
-                                                                    onClick={() => toggleFocalContact(c.id)}
                                                                     className={cn(
-                                                                        "flex items-center gap-2 p-2 rounded-lg text-left transition-colors",
-                                                                        selected ? "bg-primary/10 ring-1 ring-primary/30" : "hover:bg-muted/60"
+                                                                        "group relative flex flex-col md:flex-row items-start md:items-center justify-between gap-3 p-3.5 rounded-2xl border transition-all duration-200",
+                                                                        selected 
+                                                                            ? "bg-card border-primary/30 shadow-xs ring-1 ring-primary/10" 
+                                                                            : "bg-card/60 border-border/60 hover:border-border hover:bg-card"
                                                                     )}
                                                                 >
-                                                                    <span className={cn(
-                                                                        "flex h-4 w-4 items-center justify-center rounded-md border shrink-0 transition-colors",
-                                                                        selected ? "bg-primary border-primary text-primary-foreground" : "border-muted-foreground/30"
-                                                                    )}>
-                                                                        {selected && <Check className="h-3 w-3" />}
-                                                                    </span>
-                                                                    <UserCircle2 className="h-4 w-4 text-primary/40 shrink-0" />
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <p className="text-xs font-bold truncate leading-tight">{c.name || 'Unnamed'}</p>
-                                                                        <p className="text-[9px] font-semibold text-muted-foreground truncate">{[c.typeLabel, c.email].filter(Boolean).join(' • ') || 'No details'}</p>
+                                                                    {/* Left Section: Checkbox, Avatar, Identity, Phone & Email */}
+                                                                    <div className="flex items-start gap-3 min-w-0 flex-1 w-full">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => toggleFocalContact(c.id)}
+                                                                            className={cn(
+                                                                                "flex h-5 w-5 mt-0.5 items-center justify-center rounded-md border shrink-0 transition-all cursor-pointer active:scale-95",
+                                                                                selected 
+                                                                                    ? "bg-primary border-primary text-primary-foreground shadow-xs" 
+                                                                                    : "border-muted-foreground/30 hover:border-primary/50 bg-background"
+                                                                            )}
+                                                                            title={selected ? "Remove from deal focal contacts" : "Include in deal focal contacts"}
+                                                                            aria-label={selected ? `Remove ${c.name} from deal` : `Include ${c.name} in deal`}
+                                                                        >
+                                                                            {selected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
+                                                                        </button>
+
+                                                                        <div className={cn(
+                                                                            "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold transition-all shadow-2xs",
+                                                                            isOwner 
+                                                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" 
+                                                                                : "bg-primary/10 text-primary border border-primary/15"
+                                                                        )}>
+                                                                            {isOwner ? (
+                                                                                <Crown className="h-4 w-4 text-amber-500 animate-in zoom-in-50" />
+                                                                            ) : (
+                                                                                c.name ? c.name.slice(0, 2).toUpperCase() : <User className="h-4 w-4" />
+                                                                            )}
+                                                                        </div>
+
+                                                                        <div className="min-w-0 flex-1 space-y-1.5">
+                                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                                <span className="text-xs font-bold text-foreground truncate">{c.name || 'Unnamed Contact'}</span>
+                                                                                {c.typeLabel && (
+                                                                                    <Badge variant="secondary" className="text-[9px] font-semibold h-4 px-1.5 rounded-md border-none">
+                                                                                        {c.typeLabel}
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {isOwner && (
+                                                                                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-bold text-[9px] h-4 px-2 gap-1 rounded-full shadow-2xs">
+                                                                                        <Crown className="h-2.5 w-2.5 text-amber-500 fill-amber-500/40" /> Deal Owner
+                                                                                    </Badge>
+                                                                                )}
+                                                                                {c.isPrimary && !isOwner && (
+                                                                                    <Badge variant="outline" className="text-[9px] font-semibold text-muted-foreground border-border/70 h-4 px-1.5 rounded-md">
+                                                                                        Entity Primary
+                                                                                    </Badge>
+                                                                                )}
+                                                                            </div>
+
+                                                                            {/* Email & Phone numbers clearly and visibly displayed */}
+                                                                            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs">
+                                                                                {/* Phone number */}
+                                                                                {c.phone ? (
+                                                                                    <div className="flex items-center gap-1.5 font-medium text-foreground/90 bg-emerald-500/5 px-2 py-0.5 rounded-lg border border-emerald-500/15">
+                                                                                        <Phone className="h-3 w-3 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                                                        <a 
+                                                                                            href={`tel:${c.phone}`} 
+                                                                                            onClick={e => e.stopPropagation()} 
+                                                                                            className="hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors font-mono text-[11px]"
+                                                                                            title="Direct dial"
+                                                                                        >
+                                                                                            {c.phone}
+                                                                                        </a>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                navigator.clipboard.writeText(c.phone || '');
+                                                                                                toast({ title: 'Phone Copied', description: `${c.phone} copied to clipboard.` });
+                                                                                            }}
+                                                                                            className="opacity-60 hover:opacity-100 transition-opacity p-0.5 cursor-pointer ml-0.5"
+                                                                                            title="Copy phone"
+                                                                                        >
+                                                                                            <Copy className="h-2.5 w-2.5" />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 italic">
+                                                                                        <Phone className="h-3 w-3 shrink-0 opacity-40" />
+                                                                                        <span>No phone</span>
+                                                                                    </div>
+                                                                                )}
+
+                                                                                {/* Email address */}
+                                                                                {c.email ? (
+                                                                                    <div className="flex items-center gap-1.5 font-medium text-foreground/90 bg-primary/5 px-2 py-0.5 rounded-lg border border-primary/15 min-w-0 max-w-full">
+                                                                                        <Mail className="h-3 w-3 text-primary/70 shrink-0" />
+                                                                                        <a 
+                                                                                            href={`mailto:${c.email}`} 
+                                                                                            onClick={e => e.stopPropagation()} 
+                                                                                            className="hover:text-primary transition-colors text-[11px] truncate max-w-[200px]"
+                                                                                            title={`Email ${c.email}`}
+                                                                                        >
+                                                                                            {c.email}
+                                                                                        </a>
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={(e) => {
+                                                                                                e.stopPropagation();
+                                                                                                navigator.clipboard.writeText(c.email || '');
+                                                                                                toast({ title: 'Email Copied', description: `${c.email} copied to clipboard.` });
+                                                                                            }}
+                                                                                            className="opacity-60 hover:opacity-100 transition-opacity p-0.5 cursor-pointer ml-0.5 shrink-0"
+                                                                                            title="Copy email"
+                                                                                        >
+                                                                                            <Copy className="h-2.5 w-2.5" />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                ) : (
+                                                                                    <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground/50 italic">
+                                                                                        <Mail className="h-3 w-3 shrink-0 opacity-40" />
+                                                                                        <span>No email</span>
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                        </div>
                                                                     </div>
-                                                                </button>
+
+                                                                    {/* Right Section: One-click Actions (Owner Toggle, Call Centre, Compose Flow) */}
+                                                                    <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-border/40 w-full md:w-auto justify-end">
+                                                                        {/* Deal Owner Designation Button */}
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant={isOwner ? "secondary" : "ghost"}
+                                                                            size="sm"
+                                                                            onClick={() => handleSetDealOwner(c.id)}
+                                                                            className={cn(
+                                                                                "min-h-[44px] md:min-h-[32px] h-8 px-2.5 rounded-xl font-semibold text-[10px] gap-1 cursor-pointer transition-all active:scale-[0.97]",
+                                                                                isOwner 
+                                                                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 border border-amber-500/30" 
+                                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                                                                            )}
+                                                                            title={isOwner ? "Currently designated as Deal Owner (click to remove)" : "Click to designate this contact as the Deal Owner"}
+                                                                        >
+                                                                            <Crown className={cn("h-3 w-3", isOwner ? "text-amber-500 fill-amber-500/40" : "text-muted-foreground/60")} />
+                                                                            <span>{isOwner ? 'Owner' : 'Make Owner'}</span>
+                                                                        </Button>
+
+                                                                        {/* Call Centre Action Button */}
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            disabled={!c.phone}
+                                                                            onClick={() => {
+                                                                                if (!c.phone) return;
+                                                                                openCallModal({
+                                                                                    entityId: deal.entityId,
+                                                                                    dealId: deal.id,
+                                                                                    contactId: c.id,
+                                                                                    contactName: c.name,
+                                                                                    phone: c.phone,
+                                                                                    email: c.email
+                                                                                });
+                                                                            }}
+                                                                            className="min-h-[44px] md:min-h-[32px] h-8 px-2.5 rounded-xl font-bold text-[10px] gap-1.5 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 cursor-pointer transition-all active:scale-[0.97]"
+                                                                            title={c.phone ? `Start Call Centre session with ${c.name}` : 'No phone number available to call'}
+                                                                        >
+                                                                            <PhoneCall className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                                                                            <span>Call</span>
+                                                                        </Button>
+
+                                                                        {/* Compose Message Flow Action Button */}
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="outline"
+                                                                            size="sm"
+                                                                            disabled={!c.email && !c.phone}
+                                                                            onClick={() => {
+                                                                                const recipient = c.email || c.phone || '';
+                                                                                router.push(`/admin/messaging/composer?entityId=${encodeURIComponent(deal.entityId)}&recipient=${encodeURIComponent(recipient)}&name=${encodeURIComponent(c.name || '')}&dealId=${encodeURIComponent(deal.id)}`);
+                                                                            }}
+                                                                            className="min-h-[44px] md:min-h-[32px] h-8 px-2.5 rounded-xl font-bold text-[10px] gap-1.5 border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary cursor-pointer transition-all active:scale-[0.97]"
+                                                                            title={c.email || c.phone ? `Compose message to ${c.name}` : 'No email or phone available'}
+                                                                        >
+                                                                            <MessageSquare className="h-3 w-3" />
+                                                                            <span>Message</span>
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
                                                             );
                                                         })}
                                                     </div>
@@ -1076,31 +1306,94 @@ export default function DealDetailsPage() {
                                                 {deal.contacts.map(c => (
                                                     <div 
                                                         key={c.entityId} 
-                                                        className="flex items-center justify-between p-4 rounded-xl border bg-muted/10 hover:bg-muted/20 transition-all hover:border-primary/20"
+                                                        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 p-3.5 rounded-xl border bg-muted/10 hover:bg-muted/20 transition-all hover:border-primary/20"
                                                     >
-                                                        <div className="flex items-center gap-3 min-w-0">
-                                                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                                                        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                                                            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                                                                 <User className="h-4 w-4 text-primary" />
                                                             </div>
-                                                            <div className="min-w-0">
-                                                                <Link 
-                                                                    href={`/admin/entities/${c.entityId}`} 
-                                                                    className="text-xs font-bold text-foreground hover:text-primary transition-colors flex items-center gap-1"
-                                                                >
-                                                                    {c.name} <LinkIcon className="h-3 w-3 opacity-40" />
-                                                                </Link>
-                                                                <p className="text-[10px] text-muted-foreground font-semibold truncate">{c.email || 'No email'}</p>
+                                                            <div className="min-w-0 space-y-1">
+                                                                <div className="flex items-center gap-2 flex-wrap">
+                                                                    <Link 
+                                                                        href={`/admin/entities/${c.entityId}`} 
+                                                                        className="text-xs font-bold text-foreground hover:text-primary transition-colors flex items-center gap-1"
+                                                                    >
+                                                                        {c.name} <LinkIcon className="h-3 w-3 opacity-40" />
+                                                                    </Link>
+                                                                    <Badge variant="outline" className="text-[8px] font-bold h-4 px-1.5 bg-primary/10 text-primary border-none uppercase rounded-sm">
+                                                                        {c.role}
+                                                                    </Badge>
+                                                                </div>
+                                                                
+                                                                {/* Email & Phone display */}
+                                                                <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+                                                                    {c.phone ? (
+                                                                        <div className="flex items-center gap-1 text-[11px] font-medium text-foreground/80">
+                                                                            <Phone className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                                                                            <a href={`tel:${c.phone}`} className="hover:text-primary font-mono">{c.phone}</a>
+                                                                        </div>
+                                                                    ) : null}
+                                                                    {c.email ? (
+                                                                        <div className="flex items-center gap-1 text-[11px] font-medium text-foreground/80">
+                                                                            <Mail className="h-2.5 w-2.5 text-primary/70 shrink-0" />
+                                                                            <a href={`mailto:${c.email}`} className="hover:text-primary truncate max-w-[180px]">{c.email}</a>
+                                                                        </div>
+                                                                    ) : (
+                                                                        !c.phone && <span className="text-[10px] text-muted-foreground/60 italic">No contact details</span>
+                                                                    )}
+                                                                </div>
                                                             </div>
                                                         </div>
-                                                        <div className="flex items-center gap-4">
-                                                            <Badge variant="outline" className="text-[8px] font-bold h-5 px-2 bg-primary/10 text-primary border-none uppercase rounded-sm">
-                                                                {c.role}
-                                                            </Badge>
+
+                                                        {/* Action Buttons */}
+                                                        <div className="flex items-center gap-1.5 self-end sm:self-center shrink-0">
+                                                            {/* Call Centre Action */}
                                                             <Button 
+                                                                type="button" 
+                                                                variant="outline" 
+                                                                size="sm" 
+                                                                disabled={!c.phone}
+                                                                onClick={() => {
+                                                                    if (!c.phone) return;
+                                                                    openCallModal({
+                                                                        entityId: c.entityId || deal.entityId,
+                                                                        dealId: deal.id,
+                                                                        contactName: c.name,
+                                                                        phone: c.phone,
+                                                                        email: c.email
+                                                                    });
+                                                                }}
+                                                                className="min-h-[44px] sm:min-h-[30px] h-7 px-2.5 rounded-lg font-bold text-[10px] gap-1 border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 cursor-pointer active:scale-95"
+                                                                title={c.phone ? `Call ${c.name}` : 'No phone number'}
+                                                            >
+                                                                <PhoneCall className="h-2.5 w-2.5 text-emerald-600 dark:text-emerald-400" />
+                                                                <span>Call</span>
+                                                            </Button>
+
+                                                            {/* Compose Message Action */}
+                                                            <Button 
+                                                                type="button" 
+                                                                variant="outline" 
+                                                                size="sm" 
+                                                                disabled={!c.email && !c.phone}
+                                                                onClick={() => {
+                                                                    const recipient = c.email || c.phone || '';
+                                                                    router.push(`/admin/messaging/composer?entityId=${encodeURIComponent(c.entityId || deal.entityId)}&recipient=${encodeURIComponent(recipient)}&name=${encodeURIComponent(c.name || '')}&dealId=${encodeURIComponent(deal.id)}`);
+                                                                }}
+                                                                className="min-h-[44px] sm:min-h-[30px] h-7 px-2.5 rounded-lg font-bold text-[10px] gap-1 border-primary/30 bg-primary/10 hover:bg-primary/20 text-primary cursor-pointer active:scale-95"
+                                                                title={c.email || c.phone ? `Message ${c.name}` : 'No email or phone'}
+                                                            >
+                                                                <MessageSquare className="h-2.5 w-2.5" />
+                                                                <span>Message</span>
+                                                            </Button>
+
+                                                            <Button 
+                                                                type="button"
                                                                 variant="ghost" 
                                                                 size="icon" 
                                                                 onClick={() => handleRemoveContact(c.entityId)}
-                                                                className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg shrink-0"
+                                                                className="min-h-[44px] min-w-[44px] sm:min-h-[28px] sm:min-w-[28px] h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-500/10 rounded-lg shrink-0"
+                                                                title="Remove associated contact"
                                                             >
                                                                 <Trash2 className="h-3.5 w-3.5" />
                                                             </Button>

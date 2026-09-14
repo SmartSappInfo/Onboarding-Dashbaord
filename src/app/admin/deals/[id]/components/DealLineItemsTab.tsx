@@ -142,7 +142,11 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
 
   const sortedQuotes = React.useMemo(() => {
     if (!quotesData) return [];
-    return [...quotesData].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return [...quotesData].sort((a, b) => {
+      const timeA = parseSafeDate(a.createdAt)?.getTime() ?? 0;
+      const timeB = parseSafeDate(b.createdAt)?.getTime() ?? 0;
+      return timeB - timeA;
+    });
   }, [quotesData]);
 
   // Quote Generation Modal state
@@ -803,11 +807,11 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                       {getStatusBadge(quote.status)}
                       <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
                         <Calendar className="h-3 w-3 opacity-60" />
-                        {new Date(quote.createdAt).toLocaleDateString()}
+                        {formatSafeLocaleDate(quote.createdAt, 'Recent')}
                       </span>
                       {quote.validUntil && (
                         <span className="text-[10px] text-muted-foreground">
-                          • Valid until {new Date(quote.validUntil).toLocaleDateString()}
+                          • Valid until {formatSafeLocaleDate(quote.validUntil, 'Open')}
                         </span>
                       )}
                     </div>
@@ -954,7 +958,7 @@ export default function DealLineItemsTab({ deal, onDealUpdated }: DealLineItemsT
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Valid Until:</span>
-                  <span className="font-bold text-foreground">{new Date(createdQuote.validUntil).toLocaleDateString()}</span>
+                  <span className="font-bold text-foreground">{formatSafeLocaleDate(createdQuote.validUntil, 'Open')}</span>
                 </div>
               </div>
 

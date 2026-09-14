@@ -24,6 +24,7 @@ import { isAutomationLinkedToStage } from '@/lib/automation-stage-helpers';
 import { formatCurrency } from '@/lib/currency-utils';
 import { calculateWeightedValue, calculateDaysInStage } from '@/lib/deals/deal-health-engine';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import type { CachedEntity } from '@/context/EntityCacheContext';
 
 interface StageColumnProps {
     stage: OnboardingStage;
@@ -36,6 +37,7 @@ interface StageColumnProps {
     automations?: Automation[];
     isDraggingDeal?: boolean;
     showDealTotals?: boolean;
+    entitiesById?: Map<string, CachedEntity>;
 }
 
 /**
@@ -56,7 +58,8 @@ export default function StageColumn({
     pipelineId, 
     automations, 
     isDraggingDeal,
-    showDealTotals = true
+    showDealTotals = true,
+    entitiesById
 }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
     const [isClearing, setIsClearing] = React.useState(false);
@@ -354,7 +357,12 @@ export default function StageColumn({
                         <div className="min-h-[100px] flex flex-col items-stretch w-full min-w-0">
                             {deals.map(deal => (
                                 <div key={deal.id} className="w-full min-w-0">
-                                    <DealCard deal={deal} stage={stage} taskStats={tasksByDealId?.[deal.id]} />
+                                    <DealCard 
+                                        deal={deal} 
+                                        stage={stage} 
+                                        taskStats={tasksByDealId?.[deal.id]} 
+                                        clientName={entitiesById?.get(deal.entityId)?.displayName}
+                                    />
                                 </div>
                             ))}
 

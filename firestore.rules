@@ -465,6 +465,12 @@ service cloud.firestore {
       allow get: if isAuthorized() && (isSystemAdmin() || isOrgMatch(resource.data.organizationId));
       allow list: if isSignedIn() && (request.auth.token.admin == true || isAuthorized());
       allow write: if isAuthorized() && (request.auth.token.admin == true || isSystemAdmin());
+
+      // Workspace configuration & feature settings (e.g. company_brain timeline & AI settings)
+      match /settings/{settingId} {
+        allow read: if isAuthorized();
+        allow write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(workspaceId));
+      }
     }
 
     // --- Operational Layer (Workspace Shared Array) ---

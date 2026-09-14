@@ -2452,11 +2452,14 @@ export interface WorkspaceEntity {
 }
 
 export interface DealContact {
+  id?: string;
   contactId?: string;
   entityId: string;
   role: string;          // e.g., 'Decision Maker', 'Billing', 'Evaluator', 'Parent'
   name?: string;
   email?: string;
+  phone?: string;
+  isPrimary?: boolean;
 }
 
 /**
@@ -2464,6 +2467,8 @@ export interface DealContact {
  * `entityContacts[]`. Distinct from `DealContact` (which links contacts from
  * OTHER entities). Captured at deal creation; the `id` mirrors the source
  * `EntityContact.id`.
+ * ARCHITECTURAL NOTE (Rule 10): isPrimary indicates if this focal contact
+ * is designated as the primary owner for this deal.
  */
 export interface DealFocalContact {
   id: string;            // Source EntityContact.id within the entity
@@ -2472,6 +2477,7 @@ export interface DealFocalContact {
   email?: string;
   phone?: string;
   role?: string;         // EntityContact.typeLabel (e.g., 'Decision Maker', 'Primary Parent')
+  isPrimary?: boolean;   // Whether this contact is designated as the primary owner for this deal
 }
 
 /**
@@ -2492,6 +2498,7 @@ export interface Deal {
   propertyId?: string;        // Optional property reference for real estate deals
   status: 'open' | 'won' | 'lost';
   lostReason?: string | null; // Captures why the deal was closed lost
+  primaryContactId?: string | null; // Explicit ID of the contact who owns/leads this deal
   contacts?: DealContact[];   // Associated secondary contacts (from OTHER entities)
   focalContacts?: DealFocalContact[]; // Focal persons from THIS deal's entity
   assignedTo?: {
@@ -2501,7 +2508,7 @@ export interface Deal {
   } | null;
   expectedCloseDate?: string | null;
   description?: string | null;
-  source?: 'manual' | 'bulk_import' | 'automation' | 'marketing_campaign' | 'call_centre' | 'lead_conversion';
+  source?: 'manual' | 'bulk_import' | 'automation' | 'marketing_campaign' | 'call_centre' | 'lead_conversion' | 'survey_response';
   campaignId?: string;
   leadId?: string;
   isBulkImport?: boolean;

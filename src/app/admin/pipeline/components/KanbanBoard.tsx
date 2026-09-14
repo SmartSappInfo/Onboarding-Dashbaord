@@ -499,6 +499,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
                   automations={automations}
                   isDraggingDeal={!!activeElement && !('order' in activeElement)}
                   showDealTotals={showDealTotals}
+                  entitiesById={entitiesById}
                 />
               </div>
             ))}
@@ -518,6 +519,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
               tasksByDealId={tasksByDealId}
               automations={automations}
               showDealTotals={showDealTotals}
+              entitiesById={entitiesById}
             />
           ) : (
             <div className="w-72 pointer-events-none">
@@ -525,6 +527,7 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
                 deal={activeElement as Deal} 
                 isOverlay 
                 taskStats={tasksByDealId[(activeElement as Deal).id]}
+                clientName={entitiesById.get((activeElement as Deal).entityId)?.displayName}
               />
             </div>
           )

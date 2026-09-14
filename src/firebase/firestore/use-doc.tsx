@@ -77,19 +77,26 @@ export function useDoc<T = any>(
         setSettledRef(memoizedDocRef);
       },
       (_error: FirestoreError) => {
-        const contextualError = new FirestorePermissionError({
-          operation: 'get',
-          path: memoizedDocRef.path,
-        })
+        console.error(`[Firestore useDoc Error] (${_error.code || 'unknown'}):`, _error.message || _error);
 
-        setError(contextualError)
-        setData(null)
-        setSettledRef(memoizedDocRef)
+        if (_error.code === 'permission-denied') {
+          const contextualError = new FirestorePermissionError({
+            operation: 'get',
+            path: memoizedDocRef.path,
+          });
 
-        // trigger global error propagation only if authenticated
-        if (auth.currentUser) {
-          errorEmitter.emit('permission-error', contextualError);
+          setError(contextualError);
+
+          // trigger global error propagation only if authenticated
+          if (auth.currentUser) {
+            errorEmitter.emit('permission-error', contextualError);
+          }
+        } else {
+          setError(_error);
         }
+
+        setData(null);
+        setSettledRef(memoizedDocRef);
       }
     );
 

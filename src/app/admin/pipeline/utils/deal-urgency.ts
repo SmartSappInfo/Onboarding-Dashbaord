@@ -51,5 +51,5 @@ export function getForecastUrgency(dateStr: string | null | undefined): Forecast
   if (diff <= 7) {
     return { label: `${diff}d left`, level: 'soon', colorClass: 'text-amber-500', sortWeight: diff };
   }
-  return { label: `${diff}d`, level: 'ok', colorClass: 'text-emerald-600', sortWeight: diff };
+  return { label: `${diff}d left`, level: 'ok', colorClass: 'text-emerald-600', sortWeight: diff };
 }

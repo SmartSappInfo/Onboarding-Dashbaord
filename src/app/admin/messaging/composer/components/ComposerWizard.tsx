@@ -458,6 +458,12 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
         if (!searchParams) return;
         const r = searchParams.get('recipient');
         if (r) setValue('recipient', r);
+
+        const entityIdParam = searchParams.get('entityId');
+        if (entityIdParam) {
+            setValue('entityId', entityIdParam);
+            setValue('selectedEntityIds', [entityIdParam]);
+        }
         
         // Parse contactRoles from directory link and pre-populate contact type filter
         const rolesParam = searchParams.get('contactRoles');

@@ -17,7 +17,7 @@
 import * as React from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Deal, DealStage } from '@/lib/types';
+import type { Deal, DealStage, Entity } from '@/lib/types';
 import { AsyncEntityAvatar } from '../../components/AsyncEntityAvatar';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import {
@@ -31,13 +31,13 @@ import {
     Clock,
     CalendarCheck,
     CalendarOff,
-    Target,
     Copy,
     Archive,
     RotateCcw,
-    Repeat
+    Crown,
+    Building2,
+    Phone
 } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import { cn, toTitleCase } from '@/lib/utils';
 import { getForecastUrgency, type UrgencyLevel } from '../utils/deal-urgency';
 import {
@@ -54,15 +54,15 @@ import Link from 'next/link';
 import { useTerminology } from '@/hooks/use-terminology';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { useToast } from '@/hooks/use-toast';
-import { useUser } from '@/firebase';
+import { useUser, useDoc, useFirestore } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { deleteDealAction, archiveDealAction, unarchiveDealAction } from '@/app/actions/deal-actions';
 import { formatCurrency } from '@/lib/currency-utils';
-import { calculateDealHealth, calculateDaysInStage, calculateWeightedValue } from '@/lib/deals/deal-health-engine';
+import { calculateDealHealth } from '@/lib/deals/deal-health-engine';
 import QuickEditDealModal from './QuickEditDealModal';
 import DuplicateDealModal from './DuplicateDealModal';
 import { useCallModal } from '@/context/CallModalContext';
-import { Phone } from 'lucide-react';
 
 const URGENCY_ICON: Record<UrgencyLevel, React.ComponentType<{ className?: string }>> = {
     overdue: AlertCircle,
@@ -77,6 +77,8 @@ interface DealCardProps {
     stage?: DealStage;
     isOverlay?: boolean;
     onDelete?: (dealId: string) => void;
+    /** Resolved Client/Entity display name passed from parent cache */
+    clientName?: string;
     /**
      * @deprecated Retained for caller compatibility (StageColumn / DragOverlay).
      * No longer rendered — task stats were removed from the card per the
@@ -88,12 +90,23 @@ interface DealCardProps {
 /**
  * @fileOverview High-fidelity Deal Card for Kanban boards.
  */
-export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: _taskStats }: DealCardProps) {
+export default function DealCard({ deal, stage, isOverlay, onDelete, clientName, taskStats: _taskStats }: DealCardProps) {
   const { openCallModal } = useCallModal();
   const { singular } = useTerminology();
   const confirm = useConfirm();
   const { toast } = useToast();
   const { user } = useUser();
+  const firestore = useFirestore();
+
+  // Reactive fallback to resolve client/entity name if not provided by parent cache
+  const entityRef = React.useMemo(() => {
+    return firestore && deal.entityId && !clientName
+      ? doc(firestore, 'entities', deal.entityId)
+      : null;
+  }, [firestore, deal.entityId, clientName]);
+  const { data: fallbackEntityDoc } = useDoc<Entity>(entityRef);
+
+  const resolvedClientName = clientName || fallbackEntityDoc?.name;
   const { activeWorkspaceId } = useWorkspace();
   const [isDeleting, setIsDeleting] = React.useState(false);
   const [isQuickEditOpen, setIsQuickEditOpen] = React.useState(false);
@@ -151,22 +164,38 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
   };
 
   const displayName = deal.name || 'Unnamed Deal';
-  const statusColor = getStatusColor(deal.status);
 
   const urgency = getForecastUrgency(deal.expectedCloseDate);
   const UrgencyIcon = URGENCY_ICON[urgency.level];
-  const focalContacts = deal.focalContacts ?? [];
+  
+  // Prioritize focal contact designated as deal owner (Rule 10 CRM Ownership)
+  const sortedFocalContacts = React.useMemo(() => {
+    const list = [...(deal.focalContacts ?? [])];
+    return list.sort((a, b) => {
+      const aIsPrimary = a.isPrimary || a.id === deal.primaryContactId ? 1 : 0;
+      const bIsPrimary = b.isPrimary || b.id === deal.primaryContactId ? 1 : 0;
+      return bIsPrimary - aIsPrimary;
+    });
+  }, [deal.focalContacts, deal.primaryContactId]);
+
+  // Resolve primary linked contact for the deal header (focal or secondary associated)
+  const linkedContact = React.useMemo(() => {
+    if (sortedFocalContacts.length > 0) return sortedFocalContacts[0];
+    if (deal.contacts && deal.contacts.length > 0) {
+      const primary = deal.contacts.find(c => c.isPrimary || c.id === deal.primaryContactId || c.contactId === deal.primaryContactId);
+      return primary || deal.contacts[0];
+    }
+    return null;
+  }, [sortedFocalContacts, deal.contacts, deal.primaryContactId]);
+
+  const additionalContactsCount = React.useMemo(() => {
+    const total = (deal.focalContacts?.length || 0) + (deal.contacts?.length || 0);
+    return total > 1 ? total - 1 : 0;
+  }, [deal.focalContacts, deal.contacts]);
 
   const health = React.useMemo(() => {
     return calculateDealHealth(deal, stage, deal.updatedAt);
   }, [deal, stage]);
-
-  const daysInStage = React.useMemo(() => {
-    return calculateDaysInStage(deal.stageEnteredAt, deal.createdAt);
-  }, [deal.stageEnteredAt, deal.createdAt]);
-
-  const probability = deal.probability ?? stage?.probability ?? 50;
-  const weightedVal = calculateWeightedValue(deal.value, probability);
 
   /**
    * Triggers confirmation dialog and handles deal deletion.
@@ -230,7 +259,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
                 <div className="relative shrink-0">
                     <AsyncEntityAvatar 
                         entityId={deal.entityId}
-                        name={deal.name} 
+                        name={resolvedClientName || deal.name} 
                         className="h-10 w-10 shadow-sm transition-transform duration-500 group-hover/card:scale-105 ring-2 ring-background"
                     />
                     <Tooltip>
@@ -251,6 +280,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
                     </Tooltip>
                 </div>
                 <div className="min-w-0 flex-1 text-left">
+                    {/* Deal Name (Prominent & Stands Out - Rule 10) */}
                     <Tooltip>
                         <TooltipTrigger asChild>
                             <Link
@@ -258,7 +288,7 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
                                 onPointerDown={e => e.stopPropagation()}
                                 className="block w-full min-w-0"
                             >
-                                <CardTitle className="text-xs font-bold truncate text-foreground group-hover/card:text-primary transition-colors leading-none mb-1 block w-full text-left hover:underline underline-offset-2 cursor-pointer">
+                                <CardTitle className="text-xs sm:text-[13px] font-black tracking-tight truncate text-foreground group-hover/card:text-primary transition-colors leading-tight block w-full text-left hover:underline underline-offset-2 cursor-pointer">
                                     {displayName}
                                 </CardTitle>
                             </Link>
@@ -267,27 +297,57 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
                             <p className="font-bold text-xs">{displayName}</p>
                         </TooltipContent>
                     </Tooltip>
-                    <div className="flex items-center gap-1 text-[8px] font-bold text-muted-foreground opacity-60 min-w-0">
-                        <UserCircle2 className="h-2 w-2 text-primary/40 shrink-0" />
-                        <span className="truncate block flex-1">{toTitleCase(deal.assignedTo?.name || 'Unassigned')}</span>
-                    </div>
-                    {focalContacts.length > 0 && (
-                        <div className="flex flex-wrap items-center gap-1 mt-1.5">
-                            {focalContacts.slice(0, 2).map(fc => (
-                                <span
-                                    key={fc.id}
-                                    className="inline-flex items-center gap-1 bg-muted/60 rounded-full px-1.5 py-0.5 max-w-[90px]"
-                                    title={fc.role ? `${fc.name} · ${fc.role}` : fc.name}
+
+                    {/* Row 2: Linked Contact's Name (Replaces Entity Name per user specification) */}
+                    {linkedContact ? (
+                        (() => {
+                            const contactKey = ('id' in linkedContact && linkedContact.id) ? linkedContact.id : ('contactId' in linkedContact ? linkedContact.contactId : undefined);
+                            const isPrimaryContact = Boolean(linkedContact.isPrimary || (contactKey && contactKey === deal.primaryContactId));
+                            return (
+                                <div 
+                                    className="flex items-center gap-1 text-xs font-semibold text-muted-foreground truncate leading-snug mt-0.5" 
+                                    title={`Linked Contact: ${linkedContact.name}${linkedContact.role ? ` (${linkedContact.role})` : ''}`}
                                 >
-                                    <UserCircle2 className="h-2 w-2 shrink-0 text-primary/40" />
-                                    <span className="truncate text-[8px] font-semibold text-foreground/70">{fc.name}</span>
-                                </span>
-                            ))}
-                            {focalContacts.length > 2 && (
-                                <span className="text-[8px] font-semibold text-muted-foreground">+{focalContacts.length - 2}</span>
-                            )}
+                                    {isPrimaryContact ? (
+                                        <Crown className="h-3 w-3 text-amber-500 fill-amber-500/40 shrink-0" />
+                                    ) : (
+                                        <UserCircle2 className="h-3 w-3 text-primary/60 shrink-0" />
+                                    )}
+                                    <span className="truncate text-foreground/90">{linkedContact.name}</span>
+                                    {linkedContact.role && (
+                                        <span className="text-[10px] text-muted-foreground/60 shrink-0 font-normal truncate max-w-[85px]">
+                                            · {linkedContact.role}
+                                        </span>
+                                    )}
+                                    {additionalContactsCount > 0 && (
+                                        <span className="text-[8px] font-semibold text-muted-foreground/70 bg-muted/70 rounded-full px-1.5 py-0.2 shrink-0">
+                                            +{additionalContactsCount}
+                                        </span>
+                                    )}
+                                </div>
+                            );
+                        })()
+                    ) : resolvedClientName ? (
+                        <div className="flex items-center gap-1 text-xs font-semibold text-muted-foreground truncate leading-snug mt-0.5" title={`Client: ${resolvedClientName}`}>
+                            <Building2 className="h-3 w-3 text-muted-foreground/60 shrink-0" />
+                            <Link
+                                href={`/admin/entities/${deal.entityId}`}
+                                onPointerDown={e => e.stopPropagation()}
+                                className="hover:text-primary hover:underline transition-colors truncate"
+                            >
+                                {resolvedClientName}
+                            </Link>
                         </div>
-                    )}
+                    ) : null}
+
+                    {/* Row 3: Deal Owner / Assignee */}
+                    <div className="flex items-center gap-1 text-[10px] font-medium text-muted-foreground mt-1 min-w-0">
+                        <UserCircle2 className="h-2.5 w-2.5 text-primary/50 shrink-0" />
+                        <span className="shrink-0 text-muted-foreground/80">Assigned to:</span>
+                        <span className="font-semibold text-foreground truncate">
+                            {deal.assignedTo?.name ? toTitleCase(deal.assignedTo.name) : 'Unassigned'}
+                        </span>
+                    </div>
                 </div>
             </div>
             
@@ -377,80 +437,42 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
             </DropdownMenu>
         </CardHeader>
 
-        <CardContent className="p-4 pt-2.5 space-y-2.5">
-            <div className="flex items-center justify-between gap-2 overflow-hidden">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="flex flex-col text-left shrink-0">
-                        <div className="flex items-center gap-1">
-                            <Banknote className="h-2.5 w-2.5 text-primary/40" />
-                            <span className="text-[10px] font-semibold tabular-nums tracking-tighter leading-none">{formatCurrency(deal.value)}</span>
-                        </div>
-                        <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5">Value</span>
-                    </div>
-                    
-                    <div className="h-6 w-px bg-border/50 shrink-0" />
-
-                    <div className="flex flex-col text-left min-w-0 flex-1">
-                        <div className="flex items-center gap-1 min-w-0">
-                            {UrgencyIcon && <UrgencyIcon className={cn("h-2.5 w-2.5 shrink-0", urgency.colorClass)} />}
-                            <span className={cn("text-[9px] font-bold truncate leading-none", urgency.colorClass)}>{urgency.label}</span>
-                        </div>
-                        <span className="text-[7px] font-semibold text-muted-foreground tracking-tighter opacity-40 mt-0.5">Forecast Date</span>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-1.5 shrink-0">
-                    <Badge
-                        variant="outline"
-                        className="h-4 text-[7px] font-semibold border-none px-1.5 rounded-sm shadow-inner shrink-0 uppercase tracking-wider"
-                        style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
-                    >
-                        {deal.status}
-                    </Badge>
-                </div>
-            </div>
-
-            {/* Velocity, Probability & MRR Badges */}
-            <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-border/40 text-[9px] flex-wrap">
-                <div className="flex items-center gap-1.5">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <div className={cn(
-                                "flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md border",
-                                health.isSlaBreached 
-                                    ? "bg-destructive/10 border-destructive/30 text-destructive"
-                                    : "bg-muted/40 border-border/40 text-muted-foreground"
-                            )}>
-                                <Clock className="h-2.5 w-2.5 shrink-0" />
-                                <span>{daysInStage}d</span>
-                                {stage?.slaDays ? <span className="opacity-60 text-[8px]">/{stage.slaDays}d</span> : null}
-                            </div>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="text-[10px]">
-                            <span>Time in current stage: {daysInStage} days {stage?.slaDays ? `(SLA: ${stage.slaDays}d)` : ''}</span>
-                        </TooltipContent>
-                    </Tooltip>
-
+        {/* ARCHITECTURAL POINTER (Rule 10 Compact 2-Row Kanban Card):
+            - Re-designs card to 2 compact rows (down from 3) for ~50% height reduction.
+            - Eliminates redundant 'OPEN' status badge and static '50%' probability pill.
+            - Unifies Value & MRR on the left and Urgency & Days in stage on the right.
+        */}
+        <CardContent className="px-3.5 pb-3 pt-0">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/40 text-xs">
+                {/* Left: Value & MRR */}
+                <div className="flex items-center gap-1.5 min-w-0">
+                    <Banknote className="h-3 w-3 text-primary/60 shrink-0" />
+                    <span className="text-[11px] font-extrabold tabular-nums tracking-tight text-foreground">
+                        {formatCurrency(deal.value)}
+                    </span>
                     {typeof deal.mrr === 'number' && deal.mrr > 0 && (
-                        <div className="flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400">
-                            <Repeat className="h-2.5 w-2.5 shrink-0" />
-                            <span>{formatCurrency(deal.mrr, deal.currency)}/m</span>
-                        </div>
+                        <span className="text-[9px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-md shrink-0">
+                            +{formatCurrency(deal.mrr, deal.currency)}/m
+                        </span>
                     )}
                 </div>
 
-                <Tooltip>
-                    <TooltipTrigger asChild>
-                        <div className="flex items-center gap-1 font-semibold px-1.5 py-0.5 rounded-md bg-primary/5 border border-primary/20 text-primary cursor-help">
-                            <Target className="h-2.5 w-2.5 shrink-0" />
-                            <span>{probability}%</span>
-                        </div>
-                    </TooltipTrigger>
-                    <TooltipContent side="bottom" className="text-[10px]">
-                        <p className="font-bold">Win Probability: {probability}%</p>
-                        <p className="text-muted-foreground">Weighted: {formatCurrency(weightedVal)}</p>
-                    </TooltipContent>
-                </Tooltip>
+                {/* Right: Forecast Urgency Countdown & Overdue */}
+                <div className="flex items-center gap-1.5 shrink-0">
+                    {deal.expectedCloseDate && (
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <div className={cn("flex items-center gap-1 text-[10px] font-semibold cursor-help", urgency.colorClass)}>
+                                    {UrgencyIcon && <UrgencyIcon className="h-2.5 w-2.5 shrink-0" />}
+                                    <span className="truncate max-w-[95px]">{urgency.label}</span>
+                                </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="bottom" className="text-[10px]">
+                                <span>Expected Close: {urgency.label}</span>
+                            </TooltipContent>
+                        </Tooltip>
+                    )}
+                </div>
             </div>
         </CardContent>
         </Card>
@@ -467,12 +489,4 @@ export default function DealCard({ deal, stage, isOverlay, onDelete, taskStats: 
         </div>
     </TooltipProvider>
   );
-}
-
-function getStatusColor(status?: 'open' | 'won' | 'lost'): string {
-    switch (status) {
-        case 'won': return '#10b981';
-        case 'lost': return '#ef4444';
-        default: return '#3b82f6';
-    }
 }

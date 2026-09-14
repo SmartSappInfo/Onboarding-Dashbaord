@@ -6,7 +6,7 @@ import { formatSafeDate, formatSafeRelativeTime } from '@/lib/date-utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bot, Building, Users, User, Flame, Sparkles } from 'lucide-react';
+import { Building, Users, User, Flame, Sparkles } from 'lucide-react';
 import { getActivityIcon } from '@/lib/activity-icons';
 
 interface ActivityItemProps {
@@ -35,7 +35,7 @@ const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[
  * Requirements: 4.3, 4.5, 23.1, 23.3, 23.5 (Task 35.2)
  */
 export default function ActivityItem({ activity, user, showEntityName = false }: ActivityItemProps) {
-  const Icon = getActivityIcon(activity.type);
+  const Icon = getActivityIcon(activity.type, activity.metadata, activity.description);
   const isSystemEvent = !activity.userId || activity.source === 'system';
   
   const hasContent: boolean = Boolean(
@@ -57,14 +57,10 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
 
   return (
     <div className="relative pl-10 group/item">
-      {/* Icon on the timeline */}
-      <div className="absolute left-4 top-0 -translate-x-1/2 z-10">
-        <div className="flex h-9 w-9 items-center justify-center rounded-2xl bg-primary/10 text-primary shadow-sm ring-4 ring-background transition-all group-hover/item:scale-110 group-hover/item:bg-primary group-hover/item:text-white">
-          {isSystemEvent && activity.type !== 'campaign_event' && activity.type !== 'automation_entered' ? (
-            <Bot className="h-4 w-4" />
-          ) : (
-            <Icon className="h-4 w-4" />
-          )}
+      {/* Minimalist Icon on the timeline */}
+      <div className="absolute left-4 top-0.5 -translate-x-1/2 z-10">
+        <div className="flex h-6 w-6 items-center justify-center rounded-full border border-border/80 bg-background text-muted-foreground ring-2 ring-background transition-colors duration-150 group-hover/item:border-primary/60 group-hover/item:text-primary">
+          <Icon className="h-3 w-3" />
         </div>
       </div>
       
@@ -81,8 +77,7 @@ export default function ActivityItem({ activity, user, showEntityName = false }:
                     <span className="font-black text-foreground">{user?.name}</span>
                 </div>
             ) : (
-                <span className="font-black flex items-center gap-2 text-primary opacity-60">
-                  <Bot className="h-3.5 w-3.5" /> 
+                <span className="font-black text-primary opacity-60">
                   System Core
                 </span>
             )}
