@@ -63,9 +63,9 @@ export class FieldsVariablesService {
 
     // 1. Fetch Workspace & Org Details
     let contactScope: 'institution' | 'family' | 'person' = 'institution';
-    let industry = 'common';
+    let _industry = 'common';
     let singularTerm = 'Campus';
-    let pluralTerm = 'Campuses';
+    let _pluralTerm = 'Campuses';
 
     try {
       const wsSnap = await adminDb.collection('workspaces').doc(params.workspaceId).get();
@@ -73,10 +73,10 @@ export class FieldsVariablesService {
         const wsData = wsSnap.data();
         if (wsData) {
           contactScope = wsData.contactScope ?? 'institution';
-          industry = wsData.industry ?? 'common';
+          _industry = wsData.industry ?? 'common';
           if (wsData.terminology) {
             singularTerm = wsData.terminology.singular ?? singularTerm;
-            pluralTerm = wsData.terminology.plural ?? pluralTerm;
+            _pluralTerm = wsData.terminology.plural ?? _pluralTerm;
           }
         }
       }
@@ -86,7 +86,7 @@ export class FieldsVariablesService {
 
     if (params.terminology) {
       singularTerm = params.terminology.singular;
-      pluralTerm = params.terminology.plural;
+      _pluralTerm = params.terminology.plural;
     }
 
     // 2. Add Core Static System Variables

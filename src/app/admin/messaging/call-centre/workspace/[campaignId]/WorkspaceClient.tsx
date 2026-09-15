@@ -27,7 +27,7 @@ import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
 import { Switch } from '@/components/ui/switch';
 import { useCollection, useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, doc, updateDoc, getDocs } from 'firebase/firestore';
-import type { ScriptNode, EntityContact, UserProfile, CallOutcomeAutomation, CallCampaign } from '@/lib/types';
+import type { ScriptNode, EntityContact, UserProfile, CallOutcomeAutomation, CallCampaign, EntityType } from '@/lib/types';
 import {
   isJsonGraph,
   parseGraph,
@@ -150,7 +150,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
 
   const usersQuery = useMemoFirebase(() => {
@@ -594,7 +594,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
 
   const subObjections = React.useMemo(() => {
     if (currentNode?.type !== 'objection') return [];
-    return (currentNode.data as any)?.objectionConfig?.objections || [
+    const objConfig = (currentNode.data as { objectionConfig?: { objections?: Array<{ title: string; description: string }> } })?.objectionConfig;
+    return objConfig?.objections || [
       { title: currentNode.data.label || 'Objection', description: currentNode.data.text || '' }
     ];
   }, [currentNode]);
@@ -1599,7 +1600,7 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
         organizationId: currentItem.organizationId,
         workspaceId: activeWorkspaceId,
         entityId: currentItem.entityId,
-        entityType: (currentItem.entityType as any) || 'contact',
+        entityType: (currentItem.entityType as EntityType) || 'contact',
         userId: user.uid,
         type: 'call_completed',
         source: 'call_campaign',
@@ -2948,7 +2949,8 @@ export function WorkspaceClient({ campaignId }: WorkspaceClientProps) {
                 ) : (
                   <div className="space-y-4">
                     {filteredObjections.map((node) => {
-                      const subObjs = (node.data as any)?.objectionConfig?.objections || [
+                      const nodeObjConfig = (node.data as { objectionConfig?: { objections?: Array<{ title: string; description: string }> } })?.objectionConfig;
+                      const subObjs = nodeObjConfig?.objections || [
                         { title: node.data.label || 'Objection', description: node.data.text || '' }
                       ];
                       return (

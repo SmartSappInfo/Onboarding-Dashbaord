@@ -263,7 +263,8 @@ function DeletableEdge({
   let displayLabel = '';
   if (sourceNode?.type === 'question' && sourceHandleId?.startsWith('option-')) {
     const idx = parseInt(sourceHandleId.replace('option-', ''), 10);
-    const options = (sourceNode.data as any)?.options || ['Yes', 'No'];
+    const nodeData = sourceNode.data as { options?: string[] } | undefined;
+    const options = Array.isArray(nodeData?.options) ? nodeData.options : ['Yes', 'No'];
     displayLabel = options[idx] || '';
   }
 

@@ -81,6 +81,7 @@ const FEATURE_DESCRIPTIONS: Record<AppFeatureId, string> = {
   surveys: 'Create satisfaction, NPS, and intake surveys.',
   pdfs: 'Prepare documents and collect e-signatures.',
   messaging: 'Run bulk SMS/email campaigns and conversations.',
+  call_centre: 'Manage outreach scripts, dialer queues, and calling campaigns.',
   tags: 'Segment records with tags and labels.',
   forms: 'Build dynamic intake and data-collection forms.',
   qr_studio: 'Generate and brand QR codes.',

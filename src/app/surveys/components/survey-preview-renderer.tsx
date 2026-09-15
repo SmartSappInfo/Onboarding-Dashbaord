@@ -16,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
 import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
+import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
 
 const isQuestion = (element: SurveyElement): element is SurveyQuestion => 'isRequired' in element;
 
@@ -68,7 +69,8 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                         {question.type === 'date' && <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}><Button variant="outline" disabled className="w-[280px] justify-start text-left font-normal"><CalendarIcon className="mr-2 h-4" /><span>Pick a date</span></Button></div>}
                         {question.type === 'time' && <div className={cn("flex", textAlign === 'center' ? 'justify-center' : textAlign === 'right' ? 'justify-end' : 'justify-start')}><Input type="time" step="1" disabled className="w-fit bg-background appearance-none [&::-webkit-calendar-picker-indicator]:hidden [&::-webkit-calendar-picker-indicator]:appearance-none" /></div>}
                         {question.type === 'file-upload' && (
-                            <div className={cn("w-full max-w-2xl", textAlign === 'center' ? 'mx-auto' : textAlign === 'right' ? 'ml-auto' : 'mr-auto')}>
+                            <div className={cn("w-full max-w-2xl space-y-3", textAlign === 'center' ? 'mx-auto' : textAlign === 'right' ? 'ml-auto' : 'mr-auto')}>
+                                <SurveySampleFileCard question={question} isDesignMode={true} />
                                 <div className="p-6 sm:p-8 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-center flex flex-col items-center justify-center space-y-3">
                                     <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                                         <Upload className="h-6 w-6" />

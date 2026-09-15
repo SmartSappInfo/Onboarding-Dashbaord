@@ -132,7 +132,7 @@ export default function SurveyPreviewRenderer({ element }: { element: SurveyElem
                                   * so a response can be read in the context it was collected in.
                                   * Same shared component as the public form — see SurveySampleFileCard.
                                   */}
-                                <SurveySampleFileCard question={question} />
+                                <SurveySampleFileCard question={question} isDesignMode={true} />
                                 <div className="p-6 sm:p-8 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-center flex flex-col items-center justify-center space-y-3">
                                     <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary">
                                         <Upload className="h-6 w-6" />

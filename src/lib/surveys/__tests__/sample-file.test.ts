@@ -63,21 +63,37 @@ describe('resolveSampleFile', () => {
   describe('returns null when there is nothing to show', () => {
     it('when the sample is not enabled', () => {
       expect(resolveSampleFile({ sampleFileEnabled: false, sampleFileUrl: STORAGE_URL })).toBeNull();
-    });
-
-    it('when enabled but no file has been chosen yet', () => {
-      expect(resolveSampleFile({ sampleFileEnabled: true })).toBeNull();
-      expect(resolveSampleFile({ sampleFileEnabled: true, sampleFileUrl: '   ' })).toBeNull();
-    });
-
-    it('when the URL fails the host allowlist', () => {
-      expect(
-        resolveSampleFile({ sampleFileEnabled: true, sampleFileUrl: 'https://evil.test/x.xlsx' }),
-      ).toBeNull();
+      expect(resolveSampleFile({ sampleFileEnabled: 'false', sampleFileUrl: STORAGE_URL })).toBeNull();
+      expect(resolveSampleFile({ sampleFileEnabled: false }, { isDesignMode: true })).toBeNull();
+      expect(resolveSampleFile({ sampleFileEnabled: 'false' }, { isDesignMode: true })).toBeNull();
+      expect(resolveSampleFile({ sampleFileEnabled: false }, { isPreviewMode: true })).toBeNull();
+      expect(resolveSampleFile({ sampleFileEnabled: 'false' }, { isPreviewMode: true })).toBeNull();
     });
 
     it('for an empty question object', () => {
       expect(resolveSampleFile({})).toBeNull();
+    });
+  });
+
+  describe('consistent surface showing when enabled', () => {
+    it('when enabled but no file has been chosen yet, resolves fallback view-model across client, design, and preview', () => {
+      const liveResult = resolveSampleFile({ sampleFileEnabled: true });
+      expect(liveResult).not.toBeNull();
+      expect(liveResult?.url).toBe('#');
+      expect(liveResult?.title).toBeTruthy();
+      expect(liveResult?.buttonText).toBe(SAMPLE_FILE_DEFAULT_BUTTON_TEXT);
+      expect(liveResult?.extension).toBe('.xlsx');
+
+      const whitespaceResult = resolveSampleFile({ sampleFileEnabled: true, sampleFileUrl: '   ' });
+      expect(whitespaceResult).not.toBeNull();
+      expect(whitespaceResult?.url).toBe('#');
+    });
+
+    it('when the URL fails the host allowlist, falls back safely to # without leaking untrusted URL', () => {
+      const result = resolveSampleFile({ sampleFileEnabled: true, sampleFileUrl: 'https://evil.test/x.xlsx' });
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe('#');
+      expect(result?.fileName).toBeTruthy();
     });
   });
 
@@ -182,6 +198,96 @@ describe('resolveSampleFile', () => {
       });
       expect(result?.fileName).toBeTruthy();
       expect(result?.title).toBeTruthy();
+    });
+  });
+
+  describe('trusted cloud document hosts', () => {
+    it('accepts Google Drive and Docs URLs', () => {
+      expect(isSafeSampleFileUrl('https://drive.google.com/file/d/12345/view')).toBe(true);
+      expect(isSafeSampleFileUrl('https://docs.google.com/spreadsheets/d/12345/export')).toBe(true);
+    });
+
+    it('accepts Dropbox URLs', () => {
+      expect(isSafeSampleFileUrl('https://dropbox.com/s/12345/template.xlsx?dl=1')).toBe(true);
+      expect(isSafeSampleFileUrl('https://dl.dropboxusercontent.com/s/12345/template.xlsx')).toBe(true);
+    });
+
+    it('accepts Microsoft OneDrive and SharePoint URLs', () => {
+      expect(isSafeSampleFileUrl('https://1drv.ms/x/s!12345')).toBe(true);
+      expect(isSafeSampleFileUrl('https://onedrive.live.com/download?cid=12345')).toBe(true);
+      expect(isSafeSampleFileUrl('https://sharepoint.com/sites/doc/template.xlsx')).toBe(true);
+    });
+
+    it('accepts AWS S3, Cloudinary, appspot, and GitHub URLs', () => {
+      expect(isSafeSampleFileUrl('https://s3.amazonaws.com/my-bucket/template.xlsx')).toBe(true);
+      expect(isSafeSampleFileUrl('https://cloudinary.com/templates/sample.pdf')).toBe(true);
+      expect(isSafeSampleFileUrl('https://my-app.appspot.com/sample.xlsx')).toBe(true);
+      expect(isSafeSampleFileUrl('https://raw.githubusercontent.com/org/repo/main/template.csv')).toBe(true);
+    });
+  });
+
+  describe('design mode and live preview resolution', () => {
+    it('resolves a preview view-model in design mode when no file is uploaded yet', () => {
+      const result = resolveSampleFile({ sampleFileEnabled: true }, { isDesignMode: true });
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe('#');
+      expect(result?.title).toBeTruthy();
+      expect(result?.buttonText).toBe(SAMPLE_FILE_DEFAULT_BUTTON_TEXT);
+      expect(result?.extension).toBe('.xlsx');
+    });
+
+    it('resolves a preview view-model in live preview mode when no file is uploaded yet', () => {
+      const result = resolveSampleFile({ sampleFileEnabled: true }, { isPreviewMode: true });
+      expect(result).not.toBeNull();
+      expect(result?.url).toBe('#');
+      expect(result?.title).toBeTruthy();
+      expect(result?.buttonText).toBe(SAMPLE_FILE_DEFAULT_BUTTON_TEXT);
+      expect(result?.extension).toBe('.xlsx');
+    });
+
+    it('resolves a preview view-model in live preview mode when author provides a title without uploading a URL', () => {
+      const result = resolveSampleFile(
+        {
+          sampleFileEnabled: true,
+          sampleFileTitle: 'Staff data template',
+          sampleFileDescription: 'Fill this in and upload it below.',
+        },
+        { isPreviewMode: true }
+      );
+      expect(result).not.toBeNull();
+      expect(result?.title).toBe('Staff data template');
+      expect(result?.fileName).toBe('Staff_data_template.xlsx');
+      expect(result?.description).toBe('Fill this in and upload it below.');
+      expect(result?.url).toBe('#');
+    });
+
+    it('resolves a preview view-model in design mode when author provides a title without uploading a URL', () => {
+      const result = resolveSampleFile(
+        {
+          sampleFileEnabled: true,
+          sampleFileTitle: 'Staff data template',
+          sampleFileDescription: 'Fill this in and upload it below.',
+        },
+        { isDesignMode: true }
+      );
+      expect(result).not.toBeNull();
+      expect(result?.title).toBe('Staff data template');
+      expect(result?.fileName).toBe('Staff_data_template.xlsx');
+      expect(result?.description).toBe('Fill this in and upload it below.');
+      expect(result?.url).toBe('#');
+    });
+
+    it('resolves fallback template card on live public survey when offer sample is turned on even if no file URL is attached yet', () => {
+      const result = resolveSampleFile({
+        sampleFileEnabled: true,
+        sampleFileTitle: 'Staff data template',
+        sampleFileDescription: 'Fill this in and upload it below.',
+      });
+      expect(result).not.toBeNull();
+      expect(result?.title).toBe('Staff data template');
+      expect(result?.fileName).toBe('Staff_data_template.xlsx');
+      expect(result?.description).toBe('Fill this in and upload it below.');
+      expect(result?.url).toBe('#');
     });
   });
 });

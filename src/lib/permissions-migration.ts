@@ -12,6 +12,7 @@ import {
   getDocs, 
   query, 
   where,
+  type Firestore,
 } from 'firebase/firestore';
 
 /**
@@ -174,6 +175,7 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
   surveys: { section: 'studios', feature: 'surveys' },
   pdfs: { section: 'studios', feature: 'docSigning' },
   messaging: { section: 'studios', feature: 'messaging' },
+  call_centre: { section: 'studios', feature: 'callCentre' },
   tags: { section: 'studios', feature: 'tags' },
   forms: { section: 'studios', feature: 'forms' },
   qr_studio: { section: 'studios', feature: 'qrStudio' },
@@ -194,7 +196,7 @@ const featureMapping: Record<AppFeatureId, { section: keyof PermissionsSchema; f
  * @returns count of updated documents
  */
 export async function migrateAllPermissions(
-  firestore: any, 
+  firestore: Firestore, 
   organizationId: string
 ): Promise<{ rolesUpdated: number, usersUpdated: number }> {
   const batch = writeBatch(firestore);

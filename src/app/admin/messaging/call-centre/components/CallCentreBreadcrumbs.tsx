@@ -16,7 +16,7 @@ interface CallCentreBreadcrumbsProps {
 
 export function CallCentreBreadcrumbs({ items }: CallCentreBreadcrumbsProps) {
   const router = useRouter();
-  const { activeWorkspaceId } = useWorkspace() as any;
+  const { activeWorkspaceId } = useWorkspace();
 
   const handleNavigate = (href: string) => {
     if (!href) return;

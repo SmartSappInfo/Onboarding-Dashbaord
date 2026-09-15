@@ -21,18 +21,19 @@ describe('SurveySampleFileCard', () => {
       expect(container).toBeEmptyDOMElement();
     });
 
-    it('renders nothing when no file is chosen', () => {
-      const { container } = render(<SurveySampleFileCard question={{ sampleFileEnabled: true }} />);
-      expect(container).toBeEmptyDOMElement();
+    it('renders fallback template card when sample is enabled even before a file is uploaded', () => {
+      render(<SurveySampleFileCard question={{ sampleFileEnabled: true }} />);
+      expect(screen.getByRole('link')).toBeInTheDocument();
     });
 
-    it('renders nothing when the URL is not allowlisted', () => {
-      const { container } = render(
+    it('renders safe fallback card when the URL is not allowlisted without navigating to untrusted URL', () => {
+      render(
         <SurveySampleFileCard
           question={{ sampleFileEnabled: true, sampleFileUrl: 'https://evil.test/x.xlsx' }}
         />,
       );
-      expect(container).toBeEmptyDOMElement();
+      expect(screen.getByRole('link')).toBeInTheDocument();
+      expect(screen.getByRole('link')).toHaveAttribute('href', '#');
     });
 
     it('renders the card when a valid sample is configured', () => {
@@ -132,6 +133,88 @@ describe('SurveySampleFileCard', () => {
     it('is not a button, so it can never submit the surrounding form', () => {
       render(<SurveySampleFileCard question={enabled} />);
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('separator framing & layout', () => {
+    it('renders top and bottom section separators by default', () => {
+      render(<SurveySampleFileCard question={enabled} />);
+      expect(screen.getByText('Template & Sample File')).toBeInTheDocument();
+      expect(screen.getByText('Upload Completed File')).toBeInTheDocument();
+    });
+
+    it('omits section separators when withSeparators is false', () => {
+      render(<SurveySampleFileCard question={enabled} withSeparators={false} />);
+      expect(screen.queryByText('Template & Sample File')).not.toBeInTheDocument();
+      expect(screen.queryByText('Upload Completed File')).not.toBeInTheDocument();
+      expect(screen.getByRole('link')).toBeInTheDocument();
+    });
+  });
+
+  describe('design mode preview', () => {
+    it('renders a live canvas preview when in design mode even without uploaded file', () => {
+      render(<SurveySampleFileCard question={{ sampleFileEnabled: true }} isDesignMode={true} />);
+      expect(screen.getByText('Canvas Preview')).toBeInTheDocument();
+      expect(screen.getByRole('link')).toBeInTheDocument();
+    });
+
+    it('renders author-typed title in design mode preview', () => {
+      render(
+        <SurveySampleFileCard
+          question={{
+            sampleFileEnabled: true,
+            sampleFileTitle: 'Staff data template',
+            sampleFileDescription: 'Fill this in and upload it below.',
+          }}
+          isDesignMode={true}
+        />,
+      );
+      expect(screen.getByText('Staff data template')).toBeInTheDocument();
+      expect(screen.getByText('Fill this in and upload it below.')).toBeInTheDocument();
+      expect(screen.getByText('Canvas Preview')).toBeInTheDocument();
+    });
+
+    it('renders live preview without canvas preview badge when in preview mode', () => {
+      render(
+        <SurveySampleFileCard
+          question={{
+            sampleFileEnabled: true,
+            sampleFileTitle: 'Staff data template',
+            sampleFileDescription: 'Fill this in and upload it below.',
+          }}
+          isPreviewMode={true}
+        />,
+      );
+      expect(screen.getByText('Staff data template')).toBeInTheDocument();
+      expect(screen.getByText('Fill this in and upload it below.')).toBeInTheDocument();
+      expect(screen.queryByText('Canvas Preview')).not.toBeInTheDocument();
+      expect(screen.getByRole('link')).toBeInTheDocument();
+    });
+
+    it('renders nothing when sampleFileEnabled is false even with isDesignMode or isPreviewMode', () => {
+      const { container: c1 } = render(
+        <SurveySampleFileCard
+          question={{ sampleFileEnabled: false, sampleFileTitle: 'Disabled template' }}
+          isDesignMode={true}
+        />
+      );
+      expect(c1).toBeEmptyDOMElement();
+
+      const { container: c2 } = render(
+        <SurveySampleFileCard
+          question={{ sampleFileEnabled: false, sampleFileTitle: 'Disabled template' }}
+          isPreviewMode={true}
+        />
+      );
+      expect(c2).toBeEmptyDOMElement();
+
+      const { container: c3 } = render(
+        <SurveySampleFileCard
+          question={{ sampleFileEnabled: 'false', sampleFileTitle: 'Disabled template' }}
+          isDesignMode={true}
+        />
+      );
+      expect(c3).toBeEmptyDOMElement();
     });
   });
 });

@@ -55,6 +55,9 @@ import {
   X,
   RefreshCw,
   Lock,
+  UserPlus,
+  Activity,
+  Settings2,
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -596,46 +599,11 @@ export function SurveyCrmEngineCard() {
           </div>
         </div>
 
-        {/* ─── QUICK-SYNC MODIFIER CHIPS ─── */}
-        {createEntity && (
-          <div className="pt-3 mt-3 border-t border-border/40 grid grid-cols-1 sm:grid-cols-3 gap-2 animate-in fade-in duration-300">
-            <div className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-muted/20">
-              <div className="space-y-0.5">
-                <span className="text-[11px] font-bold text-foreground block">Auto-Upsert</span>
-                <span className="text-[9px] text-muted-foreground block">Match by email/phone</span>
-              </div>
-              <Switch
-                checked={crmConfig.autoUpsertContact !== false}
-                onCheckedChange={(checked) => setValue('crmConfig.autoUpsertContact', checked, { shouldDirty: true })}
-                className="scale-75"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-muted/20">
-              <div className="space-y-0.5">
-                <span className="text-[11px] font-bold text-foreground block">Custom Fields</span>
-                <span className="text-[9px] text-muted-foreground block">Update entity schema</span>
-              </div>
-              <Switch
-                checked={crmConfig.autoUpsertEntity !== false}
-                onCheckedChange={(checked) => setValue('crmConfig.autoUpsertEntity', checked, { shouldDirty: true })}
-                className="scale-75"
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-2.5 rounded-xl border border-border/60 bg-muted/20">
-              <div className="space-y-0.5">
-                <span className="text-[11px] font-bold text-foreground block">Timeline Cards</span>
-                <span className="text-[9px] text-muted-foreground block">Log submission activity</span>
-              </div>
-              <Switch
-                checked={crmConfig.timelineLoggingEnabled !== false}
-                onCheckedChange={(checked) => setValue('crmConfig.timelineLoggingEnabled', checked, { shouldDirty: true })}
-                className="scale-75"
-              />
-            </div>
-          </div>
-        )}
+        {/* ─── ARCHITECTURAL NOTE (Rule 6 Single Source of Truth & Rule 10 Maintainer Guidance) ───
+            Quick-sync modifier chips previously rendered here have been consolidated into the 
+            "Dynamic Field Mappings" tab body (SurveyCrmMappingTab) under Execution & Contact Settings 
+            to prevent duplicate controls, eliminate cognitive clutter in the header, and ensure 
+            a single source of truth for CRM execution parameters. ─── */}
       </CardHeader>
 
       <CardContent className="p-4 sm:p-6 space-y-6">
@@ -1538,6 +1506,58 @@ export function SurveyCrmEngineCard() {
                     </div>
                   </div>
                 )}
+
+                {/* ─── ADVANCED SYNC & EXECUTION CONTROLS (Rule 6 Single Source of Truth & Rule 7 Ergonomics) ─── */}
+                <div className="space-y-4 pt-4 border-t border-border/40">
+                  <div className="flex items-center gap-2">
+                    <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                      <Settings2 className="h-3.5 w-3.5 text-primary" /> Advanced Sync &amp; Execution Controls
+                    </Label>
+                    <CardInfoTooltip text="Fine-tune whether unknown respondents automatically create new CRM contacts and whether activity timeline events are logged upon submission." />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-muted/10 min-h-[52px] transition-all duration-150 ease-out hover:border-border/80">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-background text-muted-foreground shrink-0 border border-border/40">
+                          <UserPlus className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label htmlFor="routing-auto-upsert-contact" className="text-xs font-bold text-foreground cursor-pointer">
+                            Auto-Upsert Contacts
+                          </Label>
+                          <p className="text-[10px] text-muted-foreground">Match &amp; create contacts by email/phone</p>
+                        </div>
+                      </div>
+                      <Switch
+                        id="routing-auto-upsert-contact"
+                        checked={crmConfig.autoUpsertContact !== false}
+                        onCheckedChange={(checked) => setValue('crmConfig.autoUpsertContact', checked, { shouldDirty: true })}
+                        className="data-[state=checked]:bg-primary"
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3.5 rounded-xl border border-border/60 bg-muted/10 min-h-[52px] transition-all duration-150 ease-out hover:border-border/80">
+                      <div className="flex items-center gap-2.5">
+                        <div className="p-1.5 rounded-lg bg-background text-muted-foreground shrink-0 border border-border/40">
+                          <Activity className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <Label htmlFor="routing-timeline-logging" className="text-xs font-bold text-foreground cursor-pointer">
+                            Timeline Activity Cards
+                          </Label>
+                          <p className="text-[10px] text-muted-foreground">Log rich cards in CRM activity streams</p>
+                        </div>
+                      </div>
+                      <Switch
+                        id="routing-timeline-logging"
+                        checked={crmConfig.timelineLoggingEnabled !== false}
+                        onCheckedChange={(checked) => setValue('crmConfig.timelineLoggingEnabled', checked, { shouldDirty: true })}
+                        className="data-[state=checked]:bg-primary"
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </TabsContent>
           </Tabs>

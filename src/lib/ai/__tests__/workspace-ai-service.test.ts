@@ -175,7 +175,7 @@ describe('getModel (Workspace-Aware Resolution)', () => {
 
   it('should normalize legacy string input passed to getModel', async () => {
     const resolved = await getModel('gemini-2.5-flash');
-    expect(resolved.modelString).toBe('googleai/gemini-3.6-flash');
+    expect(resolved.modelString).toBe('googleai/gemini-2.5-flash');
     expect(resolved.modelId).toBe('gemini-3.6-flash');
   });
 });

@@ -31,13 +31,13 @@ export function evaluatePlatformHealth(
 
   let hasCritical = false;
   let hasDegraded = false;
-  let totalLatency = 0;
+  let _totalLatency = 0;
   let totalErrorRate = 0;
 
   for (const m of metrics) {
     if (m.status === 'critical') hasCritical = true;
     if (m.status === 'degraded') hasDegraded = true;
-    totalLatency += m.latencyMs;
+    _totalLatency += m.latencyMs;
     totalErrorRate += m.errorRate;
   }
 

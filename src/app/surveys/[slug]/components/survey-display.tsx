@@ -537,6 +537,7 @@ export default function SurveyDisplay({
                                     respondentEntityId={respondentEntityId}
                                     channel={channel}
                                     isInModal={isInModal}
+                                    isPreview={isPreviewMode}
                                 />
                             </motion.div>
                         )}

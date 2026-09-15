@@ -41,7 +41,11 @@ import {
     GripVertical,
     Upload,
     PanelLeftClose,
-    PanelLeftOpen
+    PanelLeftOpen,
+    AlertCircle,
+    AlertTriangle,
+    Users,
+    Wrench
 } from 'lucide-react';
 import { cn, stripHtml } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -139,13 +143,93 @@ import TestDispatchDialog from '../../components/TestDispatchDialog';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useTerminology } from '@/hooks/use-terminology';
 import { MultiSelect } from '@/components/ui/multi-select';
-import { validateTemplateVariables } from '@/lib/template-validator';
-import { Users, AlertTriangle, AlertCircle } from 'lucide-react';
+import { validateTemplateVariables, type ValidationError } from '@/lib/template-validator';
 import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { VariablesPanel } from '@/components/shared/VariablesPanel';
 import { HeadlineIQOptimizer } from '@/components/shared/HeadlineIQOptimizer';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
 import UnifiedPromptInput from '@/components/shared/UnifiedPromptInput';
+
+/** Helper to escape regex special characters in variable names or tokens */
+const escapeRegex = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Helper to recursively replace variable tokens across all textual properties and nested column blocks */
+function replaceVariablesInBlocks(blocks: MessageBlock[], regex: RegExp, replacement: string): MessageBlock[] {
+    return blocks.map(b => {
+        const updated: MessageBlock = {
+            ...b,
+            content: b.content ? b.content.replace(regex, replacement) : b.content,
+            title: b.title ? b.title.replace(regex, replacement) : b.title,
+            url: b.url ? b.url.replace(regex, replacement) : b.url,
+            link: b.link ? b.link.replace(regex, replacement) : b.link,
+            pillText: b.pillText ? b.pillText.replace(regex, replacement) : b.pillText,
+            scoreValue: b.scoreValue ? b.scoreValue.replace(regex, replacement) : b.scoreValue,
+            audioTitle: b.audioTitle ? b.audioTitle.replace(regex, replacement) : b.audioTitle,
+            items: Array.isArray(b.items) ? b.items.map(item => (typeof item === 'string' ? item.replace(regex, replacement) : item)) : b.items,
+        };
+        if (Array.isArray(b.columns)) {
+            updated.columns = b.columns.map(col => ({
+                ...col,
+                blocks: replaceVariablesInBlocks(col.blocks || [], regex, replacement),
+            }));
+        }
+        return updated;
+    });
+}
+
+/** Helper to recursively remove footer blocks even when placed inside column layouts */
+function removeFooterBlocksRecursively(blocks: MessageBlock[]): MessageBlock[] {
+    return blocks
+        .filter(b => b.type !== 'footer')
+        .map(b => {
+            if (Array.isArray(b.columns)) {
+                return {
+                    ...b,
+                    columns: b.columns.map(col => ({
+                        ...col,
+                        blocks: removeFooterBlocksRecursively(col.blocks || []),
+                    })),
+                };
+            }
+            return b;
+        });
+}
+
+/** Helper to recursively find and append unsubscribe link to a footer block */
+function addUnsubscribeToBlocksRecursively(blocks: MessageBlock[]): { updated: MessageBlock[]; added: boolean } {
+    let added = false;
+    const update = (list: MessageBlock[]): MessageBlock[] => {
+        return list.map(b => {
+            if (b.type === 'footer' && !added) {
+                const current = b.content || '';
+                if (current.includes('{{unsubscribe_link}}')) {
+                    added = true;
+                    return b;
+                }
+                const addition = current.trim()
+                    ? '<br/><span style="font-size: 11px; opacity: 0.85;">Don\'t want to receive these emails? <a href="{{unsubscribe_link}}" style="text-decoration: underline;">Unsubscribe</a></span>'
+                    : 'Don\'t want to receive these emails? <a href="{{unsubscribe_link}}" style="text-decoration: underline;">Unsubscribe</a>';
+                added = true;
+                return {
+                    ...b,
+                    content: `${current}${addition}`,
+                };
+            }
+            if (Array.isArray(b.columns)) {
+                return {
+                    ...b,
+                    columns: b.columns.map(col => ({
+                        ...col,
+                        blocks: update(col.blocks || []),
+                    })),
+                };
+            }
+            return b;
+        });
+    };
+    const updated = update(blocks);
+    return { updated, added };
+}
 
 async function uploadArchitectImage(file: File, workspaceId: string): Promise<string> {
     if (!file.type.startsWith('image/')) {
@@ -4135,9 +4219,9 @@ export function TemplateWorkshop({
         return resolved;
     }, [contentMode, blocks, body, activeSimVariables, styleId, styles, channel, target]);
 
-    const filteredVars = React.useMemo(() => {
-        // 1. Initial category/feature scoping
-        let list = variables.filter(v => {
+    const authoritativeVars = React.useMemo(() => {
+        // 1. Category and platform feature scoping (independent of simulation state)
+        return variables.filter(v => {
             const cat = v.category;
             
             // Core, common, contact, and custom fields are always available in all templates
@@ -4183,8 +4267,12 @@ export function TemplateWorkshop({
 
             return cat === category;
         });
+    }, [variables, category]);
 
-        // 2. Active simulation context-aware variable filtering
+    const filteredVars = React.useMemo(() => {
+        let list = authoritativeVars;
+
+        // 2. Active simulation context-aware variable filtering for autocomplete & simulator preview
         if (simRecordId !== 'none') {
             list = list.filter(v => {
                 const cat = v.category;
@@ -4212,7 +4300,7 @@ export function TemplateWorkshop({
             });
         }
         return list;
-    }, [variables, category, simEntity, simRecordId]);
+    }, [authoritativeVars, simEntity, simRecordId]);
 
     const validationErrors = React.useMemo(() => {
         const tmpl: Partial<MessageTemplate> = {
@@ -4224,11 +4312,108 @@ export function TemplateWorkshop({
             channel: channel as MessageTemplate['channel'],
             category: category as MessageTemplate['category']
         };
-        return validateTemplateVariables(tmpl, filteredVars);
-    }, [subject, previewText, body, blocks, category, filteredVars, styleId, channel]);
+        // Authoritative validation must use authoritativeVars so simulation filters do not produce false positives
+        return validateTemplateVariables(tmpl, authoritativeVars);
+    }, [subject, previewText, body, blocks, category, authoritativeVars, styleId, channel]);
 
     const errorCount = React.useMemo(() => validationErrors.filter(e => e.type === 'error').length, [validationErrors]);
     const warningCount = React.useMemo(() => validationErrors.filter(e => e.type === 'warning').length, [validationErrors]);
+
+    const handleAutoFixValidationError = React.useCallback((err: ValidationError) => {
+        if (!err.fixAction) return;
+
+        switch (err.fixAction.actionType) {
+            case 'add_footer_block': {
+                const footerBlock: MessageBlock = {
+                    id: `blk_footer_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                    type: 'footer',
+                    content: '© {{org_name}}. All rights reserved.',
+                    style: {
+                        paddingTop: '24px',
+                        paddingBottom: '24px',
+                    },
+                };
+                if (blocks && blocks.length > 0) {
+                    setBlocks(prev => [...prev, footerBlock]);
+                } else {
+                    const footerHtml = '\n<p style="font-size: 11px; text-align: center; color: #888888; margin-top: 24px;">© {{org_name}}. All rights reserved.</p>';
+                    setBody(prev => prev ? `${prev}${footerHtml}` : footerHtml);
+                    setBlocks([footerBlock]);
+                }
+                toast({
+                    title: 'Footer Added',
+                    description: 'Copyright Info Footer block has been added to your template.',
+                });
+                break;
+            }
+            case 'remove_footer_block': {
+                setBlocks(prev => removeFooterBlocksRecursively(prev));
+                toast({
+                    title: 'Footer Removed',
+                    description: 'Duplicate footer block was removed in favor of the style wrapper.',
+                });
+                break;
+            }
+            case 'add_unsubscribe_link': {
+                if (blocks && blocks.length > 0) {
+                    const { updated, added } = addUnsubscribeToBlocksRecursively(blocks);
+                    if (added) {
+                        setBlocks(updated);
+                    } else {
+                        const footerBlock: MessageBlock = {
+                            id: `blk_footer_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+                            type: 'footer',
+                            content: '© {{org_name}}. All rights reserved.<br/><span style="font-size: 11px; opacity: 0.85;">Don\'t want to receive these emails? <a href="{{unsubscribe_link}}" style="text-decoration: underline;">Unsubscribe</a></span>',
+                            style: {
+                                paddingTop: '24px',
+                                paddingBottom: '24px',
+                            },
+                        };
+                        setBlocks(prev => [...prev, footerBlock]);
+                    }
+                } else {
+                    const unsubsHtml = '\n<p style="font-size: 11px; text-align: center; color: #888888; margin-top: 12px;">Don\'t want to receive these emails? <a href="{{unsubscribe_link}}" style="text-decoration: underline;">Unsubscribe</a></p>';
+                    setBody(prev => prev ? `${prev}${unsubsHtml}` : unsubsHtml);
+                }
+                toast({
+                    title: 'Unsubscribe Link Added',
+                    description: 'The {{unsubscribe_link}} opt-out token has been added to your template.',
+                });
+                break;
+            }
+            case 'replace_variable': {
+                if (!err.fixAction.targetVariable || !err.fixAction.suggestedVariable) return;
+                const target = err.fixAction.targetVariable;
+                const replacement = err.fixAction.suggestedVariable;
+                const regex = new RegExp(`\\{\\{\\s*${escapeRegex(target)}\\s*\\}\\}`, 'g');
+
+                setSubject(prev => prev.replace(regex, `{{${replacement}}}`));
+                setPreviewText(prev => prev.replace(regex, `{{${replacement}}}`));
+                setBody(prev => prev.replace(regex, `{{${replacement}}}`));
+                setBlocks(prev => replaceVariablesInBlocks(prev, regex, `{{${replacement}}}`));
+                toast({
+                    title: 'Variable Replaced',
+                    description: `Replaced {{${target}}} with {{${replacement}}}.`,
+                });
+                break;
+            }
+            case 'remove_variable': {
+                if (!err.fixAction.targetVariable) return;
+                const target = err.fixAction.targetVariable;
+                const regex = new RegExp(`\\{\\{\\s*${escapeRegex(target)}\\s*\\}\\}`, 'g');
+
+                setSubject(prev => prev.replace(regex, ''));
+                setPreviewText(prev => prev.replace(regex, ''));
+                setBody(prev => prev.replace(regex, ''));
+                setBlocks(prev => replaceVariablesInBlocks(prev, regex, ''));
+                toast({
+                    title: 'Variable Removed',
+                    description: `Removed {{${target}}} from template content.`,
+                });
+                break;
+            }
+        }
+    }, [blocks, setBlocks, setBody, setSubject, setPreviewText, toast]);
 
     const contactVars = React.useMemo(() => {
         return filteredVars.filter(v => v.key.startsWith('contact_') || v.category === 'contact');
@@ -5068,7 +5253,7 @@ export function TemplateWorkshop({
                                                                         </span>
                                                                         <div className="space-y-1.5">
                                                                             {validationErrors.filter(e => e.type === 'error').map((err, i) => (
-                                                                                <div key={i} className="p-3 rounded-xl border border-red-100 bg-red-50/30 text-left space-y-1">
+                                                                                <div key={i} className="p-3 rounded-xl border border-red-100 bg-red-50/30 text-left space-y-1.5">
                                                                                     <div className="flex items-center gap-1.5 text-red-700 font-bold text-[10px] font-mono">
                                                                                         <AlertCircle className="h-3.5 w-3.5" />
                                                                                         <span>{`{{${err.variable}}}`}</span>
@@ -5076,6 +5261,20 @@ export function TemplateWorkshop({
                                                                                     <p className="text-[9px] text-red-600/90 leading-relaxed font-semibold">
                                                                                         {err.message}
                                                                                     </p>
+                                                                                    {err.fixAction && (
+                                                                                        <div className="pt-1">
+                                                                                            <Button
+                                                                                                type="button"
+                                                                                                size="sm"
+                                                                                                onClick={() => handleAutoFixValidationError(err)}
+                                                                                                aria-label={`Fix validation error: ${err.fixAction.label}`}
+                                                                                                className="min-h-[44px] sm:min-h-[32px] px-3 py-1.5 rounded-lg text-[11px] sm:text-[10px] font-bold bg-white text-red-700 border border-red-200 shadow-sm hover:bg-red-50 hover:border-red-300 active:scale-[0.97] transition-all flex items-center gap-1.5 touch-manipulation focus-visible:ring-2 focus-visible:ring-red-500/20"
+                                                                                            >
+                                                                                                <Wrench className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-red-600 shrink-0" />
+                                                                                                Fix: {err.fixAction.label}
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             ))}
                                                                         </div>
@@ -5088,7 +5287,7 @@ export function TemplateWorkshop({
                                                                         </span>
                                                                         <div className="space-y-1.5">
                                                                             {validationErrors.filter(e => e.type === 'warning').map((err, i) => (
-                                                                                <div key={i} className="p-3 rounded-xl border border-amber-100 bg-amber-50/30 text-left space-y-1">
+                                                                                <div key={i} className="p-3 rounded-xl border border-amber-100 bg-amber-50/30 text-left space-y-1.5">
                                                                                     <div className="flex items-center gap-1.5 text-amber-700 font-bold text-[10px] font-mono">
                                                                                         <AlertTriangle className="h-3.5 w-3.5" />
                                                                                         <span>{`{{${err.variable}}}`}</span>
@@ -5096,6 +5295,20 @@ export function TemplateWorkshop({
                                                                                     <p className="text-[9px] text-amber-600/90 leading-relaxed font-semibold">
                                                                                         {err.message}
                                                                                     </p>
+                                                                                    {err.fixAction && (
+                                                                                        <div className="pt-1">
+                                                                                            <Button
+                                                                                                type="button"
+                                                                                                size="sm"
+                                                                                                onClick={() => handleAutoFixValidationError(err)}
+                                                                                                aria-label={`Fix validation warning: ${err.fixAction.label}`}
+                                                                                                className="min-h-[44px] sm:min-h-[32px] px-3 py-1.5 rounded-lg text-[11px] sm:text-[10px] font-bold bg-white text-amber-700 border border-amber-200 shadow-sm hover:bg-amber-50 hover:border-amber-300 active:scale-[0.97] transition-all flex items-center gap-1.5 touch-manipulation focus-visible:ring-2 focus-visible:ring-amber-500/20"
+                                                                                            >
+                                                                                                <Wrench className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-amber-600 shrink-0" />
+                                                                                                Fix: {err.fixAction.label}
+                                                                                            </Button>
+                                                                                        </div>
+                                                                                    )}
                                                                                 </div>
                                                                             ))}
                                                                         </div>
@@ -5522,7 +5735,7 @@ export function TemplateWorkshop({
                                                                 </span>
                                                                 <div className="space-y-1.5">
                                                                     {validationErrors.filter(e => e.type === 'error').map((err, i) => (
-                                                                        <div key={i} className="p-3 rounded-xl border border-red-100 bg-red-50/30 text-left space-y-1">
+                                                                        <div key={i} className="p-3 rounded-xl border border-red-100 bg-red-50/30 text-left space-y-1.5">
                                                                             <div className="flex items-center gap-1.5 text-red-700 font-bold text-[10px] font-mono">
                                                                                 <AlertCircle className="h-3.5 w-3.5" />
                                                                                 <span>{`{{${err.variable}}}`}</span>
@@ -5530,6 +5743,20 @@ export function TemplateWorkshop({
                                                                             <p className="text-[9px] text-red-600/90 leading-relaxed font-semibold">
                                                                                 {err.message}
                                                                             </p>
+                                                                            {err.fixAction && (
+                                                                                <div className="pt-1">
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        size="sm"
+                                                                                        onClick={() => handleAutoFixValidationError(err)}
+                                                                                        aria-label={`Fix validation error: ${err.fixAction.label}`}
+                                                                                        className="min-h-[44px] sm:min-h-[32px] px-3 py-1.5 rounded-lg text-[11px] sm:text-[10px] font-bold bg-white text-red-700 border border-red-200 shadow-sm hover:bg-red-50 hover:border-red-300 active:scale-[0.97] transition-all flex items-center gap-1.5 touch-manipulation focus-visible:ring-2 focus-visible:ring-red-500/20"
+                                                                                    >
+                                                                                        <Wrench className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-red-600 shrink-0" />
+                                                                                        Fix: {err.fixAction.label}
+                                                                                    </Button>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     ))}
                                                                 </div>
@@ -5542,7 +5769,7 @@ export function TemplateWorkshop({
                                                                 </span>
                                                                 <div className="space-y-1.5">
                                                                     {validationErrors.filter(e => e.type === 'warning').map((err, i) => (
-                                                                        <div key={i} className="p-3 rounded-xl border border-amber-100 bg-amber-50/30 text-left space-y-1">
+                                                                        <div key={i} className="p-3 rounded-xl border border-amber-100 bg-amber-50/30 text-left space-y-1.5">
                                                                             <div className="flex items-center gap-1.5 text-amber-700 font-bold text-[10px] font-mono">
                                                                                 <AlertTriangle className="h-3.5 w-3.5" />
                                                                                 <span>{`{{${err.variable}}}`}</span>
@@ -5550,6 +5777,20 @@ export function TemplateWorkshop({
                                                                             <p className="text-[9px] text-amber-600/90 leading-relaxed font-semibold">
                                                                                 {err.message}
                                                                             </p>
+                                                                            {err.fixAction && (
+                                                                                <div className="pt-1">
+                                                                                    <Button
+                                                                                        type="button"
+                                                                                        size="sm"
+                                                                                        onClick={() => handleAutoFixValidationError(err)}
+                                                                                        aria-label={`Fix validation warning: ${err.fixAction.label}`}
+                                                                                        className="min-h-[44px] sm:min-h-[32px] px-3 py-1.5 rounded-lg text-[11px] sm:text-[10px] font-bold bg-white text-amber-700 border border-amber-200 shadow-sm hover:bg-amber-50 hover:border-amber-300 active:scale-[0.97] transition-all flex items-center gap-1.5 touch-manipulation focus-visible:ring-2 focus-visible:ring-amber-500/20"
+                                                                                    >
+                                                                                        <Wrench className="h-3.5 w-3.5 sm:h-3 sm:w-3 text-amber-600 shrink-0" />
+                                                                                        Fix: {err.fixAction.label}
+                                                                                    </Button>
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     ))}
                                                                 </div>

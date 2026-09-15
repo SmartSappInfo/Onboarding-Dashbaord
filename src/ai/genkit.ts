@@ -12,10 +12,44 @@ import {
 } from '@/lib/ai/model-registry';
 import { WorkspaceAiService } from '@/lib/ai/services/workspace-ai-service';
 
+interface ActionLike {
+  __action?: {
+    actionType?: string;
+    name?: string;
+  };
+  constructor?: {
+    name?: string;
+  };
+}
+
+/**
+ * Creates a hardened Google AI plugin instance that filters out
+ * BackgroundActionImpl instances (Veo / Deep Research) from plugin.init().
+ * Due to cross-boundary duplicate @genkit-ai/core instances in package managers,
+ * resolvedAction instanceof BackgroundActionImpl fails in Genkit, causing
+ * "INVALID_ARGUMENT: Unknown action type returned from plugin googleai".
+ */
+export function createSafeGoogleAIPlugin(options?: Parameters<typeof googleAI>[0]) {
+  const plugin = googleAI(options);
+  return {
+    ...plugin,
+    init: async () => {
+      const actions = (await plugin.init?.()) || [];
+      return actions.filter((action: unknown) => {
+        if (!action || typeof action !== 'object') return false;
+        const act = action as ActionLike;
+        if (act.constructor?.name === 'BackgroundActionImpl') return false;
+        if (act.__action?.actionType === 'background-model') return false;
+        return true;
+      });
+    },
+  };
+}
+
 // System default instance using environment variables
 export const ai = genkit({
   plugins: [
-    googleAI({ apiKey: process.env.GEMINI_API_KEY }),
+    createSafeGoogleAIPlugin({ apiKey: process.env.GEMINI_API_KEY }),
     anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'placeholder-key-to-prevent-load-time-error' }), // System default Anthropic
   ],
   model: 'anthropic/claude-3-5-sonnet-20241022',
@@ -33,7 +67,7 @@ function getOrCreateGenkitInstance(provider: string, apiKey: string): ReturnType
   let instance: ReturnType<typeof genkit>;
   if (provider === 'googleai') {
     instance = genkit({
-      plugins: [googleAI({ apiKey })],
+      plugins: [createSafeGoogleAIPlugin({ apiKey })],
     });
   } else if (provider === 'anthropic') {
     instance = genkit({

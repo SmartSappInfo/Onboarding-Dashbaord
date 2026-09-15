@@ -472,9 +472,9 @@ export default function SurveyFormBuilder() {
                                                 ...watchedForm,
                                                 id: surveyId,
                                                 slug: watchedForm.slug || 'preview',
-                                                elements: watchedForm.elements || [],
+                                                elements: (watch('elements') || elements || watchedForm.elements || []).map((el: SurveyElement) => ({ ...el })),
                                                 status: watchedForm.status || 'draft'
-                                            } as any} 
+                                            } as unknown as Survey} 
                                             onSubmitted={() => setIsPreviewMode(false)}
                                             isPreview
                                             resolvedLogoUrl={displayLogoUrl !== 'none' ? displayLogoUrl : undefined}

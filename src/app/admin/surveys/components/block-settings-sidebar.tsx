@@ -32,7 +32,9 @@ import { Button } from '@/components/ui/button';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { MediaSelect } from '../../entities/components/media-select';
+import { DocumentUploader } from '@/components/shared/document-uploader';
 import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
 import { bridgeSampleFileFields, type SampleFileBridgeSource } from '@/lib/surveys/sample-file-bridge';
 import { SurveyHealthOverview } from './inspector/SurveyHealthOverview';
@@ -73,6 +75,7 @@ export default function BlockSettingsSidebar({
     onOpenVersionHistory,
     onAddQuestion,
 }: BlockSettingsSidebarProps) {
+    const { activeWorkspaceId } = useWorkspace();
     const { watch, setValue, control, register, getValues: _getValues } = useFormContext();
     const elements = watch('elements') || [];
     
@@ -577,8 +580,8 @@ export default function BlockSettingsSidebar({
                                   * Lets the author attach a blank template the respondent downloads,
                                   * fills in offline and re-uploads through this same question.
                                   *
-                                  * Reuses `MediaSelect` (library pick OR direct upload) rather than a
-                                  * bespoke uploader: it already writes to `media/**`, which is the only
+                                  * Uses `DocumentUploader` (unified uploader supporting files, workspace media
+                                  * documents, and cloud links): it writes to `media/**`, which is the only
                                   * storage prefix a signed-out respondent can read
                                   * (`storage.rules` → `match /media/{allPaths=**}` is `read: if true`).
                                   * `survey-uploads/**` requires sign-in to read and CANNOT serve this.
@@ -604,8 +607,15 @@ export default function BlockSettingsSidebar({
                                             render={({ field }) => (
                                                 <Switch
                                                     id="file-sample-enabled"
-                                                    checked={Boolean(field.value)}
-                                                    onCheckedChange={field.onChange}
+                                                    checked={Boolean(field.value) && field.value !== 'false'}
+                                                    onCheckedChange={(checked) => {
+                                                        field.onChange(checked);
+                                                        setValue(
+                                                            `elements.${activeIndex}.sampleFileEnabled`,
+                                                            checked,
+                                                            { shouldDirty: true, shouldTouch: true }
+                                                        );
+                                                    }}
                                                 />
                                             )}
                                         />
@@ -615,7 +625,8 @@ export default function BlockSettingsSidebar({
                                         control={control}
                                         name={`elements.${activeIndex}.sampleFileEnabled`}
                                         render={({ field }) => {
-                                            if (!field.value) return <></>;
+                                            const isEnabled = Boolean(field.value) && field.value !== 'false';
+                                            if (!isEnabled) return <></>;
                                             return (
                                                 <div className="space-y-4 pt-1">
                                                     <div className="space-y-2">
@@ -623,26 +634,43 @@ export default function BlockSettingsSidebar({
                                                         <Controller
                                                             control={control}
                                                             name={`elements.${activeIndex}.sampleFileUrl`}
-                                                            render={({ field: urlField }) => (
-                                                                <MediaSelect
-                                                                    value={urlField.value}
-                                                                    onValueChange={(nextUrl) => {
-                                                                        urlField.onChange(nextUrl);
-                                                                        // Store the readable name alongside the URL so the
-                                                                        // card stays correct even if the URL shape changes.
-                                                                        setValue(
-                                                                            `elements.${activeIndex}.sampleFileName`,
-                                                                            nextUrl ? extractFileNameFromStorageUrl(nextUrl) : '',
-                                                                            { shouldDirty: true }
-                                                                        );
-                                                                    }}
-                                                                    filterType="document"
-                                                                />
-                                                            )}
+                                                            render={({ field: urlField }) => {
+                                                                const currentFileName = (watch(`elements.${activeIndex}.sampleFileName`) as string) || '';
+                                                                return (
+                                                                    <div className="space-y-1.5">
+                                                                        <DocumentUploader
+                                                                            value={urlField.value}
+                                                                            fileName={currentFileName}
+                                                                            workspaceId={activeWorkspaceId || undefined}
+                                                                            onValueChange={(nextUrl, derivedName) => {
+                                                                                urlField.onChange(nextUrl);
+                                                                                const fileNameToSave = derivedName || (nextUrl ? extractFileNameFromStorageUrl(nextUrl) : '');
+                                                                                setValue(
+                                                                                    `elements.${activeIndex}.sampleFileName`,
+                                                                                    fileNameToSave,
+                                                                                    { shouldDirty: true }
+                                                                                );
+                                                                                // Auto-populate Title if currently blank
+                                                                                const currentTitle = (watch(`elements.${activeIndex}.sampleFileTitle`) as string) || '';
+                                                                                if (!currentTitle && fileNameToSave) {
+                                                                                    const cleanTitle = fileNameToSave.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+                                                                                    setValue(
+                                                                                        `elements.${activeIndex}.sampleFileTitle`,
+                                                                                        cleanTitle,
+                                                                                        { shouldDirty: true }
+                                                                                    );
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                        {!urlField.value && (
+                                                                            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1 pt-1">
+                                                                                <span>Remember to upload or link your template file before finalizing.</span>
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                );
+                                                            }}
                                                         />
-                                                        <p className="text-[10px] text-muted-foreground font-medium">
-                                                            Pick from your library or upload a new one.
-                                                        </p>
                                                     </div>
 
                                                     <div className="space-y-2">
@@ -1246,10 +1274,28 @@ export default function BlockSettingsSidebar({
                                         control={control}
                                         name={`elements.${activeIndex}.url`}
                                         render={({ field }) => (
-                                            <MediaSelect 
+                                            <DocumentUploader 
                                                 value={field.value} 
-                                                onValueChange={field.onChange}
-                                                filterType="document"
+                                                fileName={(watch(`elements.${activeIndex}.fileName`) as string) || ''}
+                                                workspaceId={activeWorkspaceId || undefined}
+                                                onValueChange={(nextUrl, derivedName) => {
+                                                    field.onChange(nextUrl);
+                                                    const fileNameToSave = derivedName || (nextUrl ? extractFileNameFromStorageUrl(nextUrl) : '');
+                                                    setValue(
+                                                        `elements.${activeIndex}.fileName`,
+                                                        fileNameToSave,
+                                                        { shouldDirty: true }
+                                                    );
+                                                    const currentTitle = (watch(`elements.${activeIndex}.title`) as string) || '';
+                                                    if (!currentTitle && fileNameToSave) {
+                                                        const cleanTitle = fileNameToSave.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+                                                        setValue(
+                                                            `elements.${activeIndex}.title`,
+                                                            cleanTitle,
+                                                            { shouldDirty: true }
+                                                        );
+                                                    }
+                                                }}
                                             />
                                         )}
                                     />
@@ -1261,7 +1307,7 @@ export default function BlockSettingsSidebar({
                                     <Input 
                                         {...register(`elements.${activeIndex}.title`)} 
                                         placeholder="e.g. School Data Spreadsheet Template"
-                                        className="h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+                                        className="min-h-[44px] h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
                                     />
                                 </div>
                                 <div className="space-y-2">
@@ -1281,7 +1327,7 @@ export default function BlockSettingsSidebar({
                                     <Input 
                                         {...register(`elements.${activeIndex}.buttonText`)} 
                                         placeholder="Download Template (Default: Download Document)"
-                                        className="h-10 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
+                                        className="min-h-[44px] h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/20 rounded-xl"
                                     />
                                 </div>
                             </div>

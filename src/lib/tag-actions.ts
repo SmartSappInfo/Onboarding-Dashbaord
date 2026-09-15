@@ -1281,7 +1281,7 @@ export async function bulkRemoveTagsAction(
     const errors: string[] = [];
     const _total = contactIds.length;
     const partialFailures: string[] = [];
-    const weToResync: Array<Record<string, unknown>> = [];
+    const _weToResync: Array<Record<string, unknown>> = [];
     const allContactRemovedTags: BulkTagChange[] = [];
 
     // Pre-fetch all tag documents in parallel to construct an in-memory O(1) map

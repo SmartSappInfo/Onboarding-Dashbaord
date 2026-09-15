@@ -85,8 +85,13 @@ export interface SurveyCrmInboundTriggerConfig {
 
 export interface SurveyCrmConfig {
   enabled: boolean;
-  autoUpsertContact: boolean;
-  autoUpsertEntity: boolean;
+  autoUpsertContact?: boolean;
+  /**
+   * @deprecated ARCHITECTURAL NOTE (Rule 6 Single Source of Truth & Rule 10 Maintainer Guidance):
+   * Entity custom field updates are natively governed by explicit field mappings targeting entity fields.
+   * Retained as optional boolean for backwards compatibility with historical survey configurations.
+   */
+  autoUpsertEntity?: boolean;
   fieldMappings: SurveyCrmFieldMapping[];
   taskRules: SurveyCrmTaskRule[];
   dealRules: SurveyCrmDealRule[];
@@ -97,7 +102,7 @@ export interface SurveyCrmConfig {
     pointsForPromoter?: number;
     pointsForDetractor?: number;
   };
-  timelineLoggingEnabled: boolean;
+  timelineLoggingEnabled?: boolean;
 }
 
 export interface SurveyCrmFieldDefinition {

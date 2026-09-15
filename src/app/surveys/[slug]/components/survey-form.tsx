@@ -23,7 +23,6 @@ import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
-  Asterisk,
   Bell,
   Building2,
   CalendarIcon,
@@ -38,7 +37,6 @@ import {
   Info,
   Loader2,
   Mail,
-  Plus,
   Smartphone,
   Star,
   Trash2,
@@ -337,9 +335,11 @@ interface FileUploadProps {
    * no substitution logic is duplicated inside the card.
    */
   interpolateText?: (text: string) => string;
+  /** Whether the survey is being previewed in the studio or preview route. */
+  isPreview?: boolean;
 }
 
-const FileUpload = ({ value, onChange, disabled, surveyId, question, interpolateText }: FileUploadProps) => {
+const FileUpload = ({ value, onChange, disabled, surveyId, question, interpolateText, isPreview = false }: FileUploadProps) => {
   const [stagedFiles, setStagedFiles] = React.useState<StagedUploadFile[]>([]);
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [generalError, setGeneralError] = React.useState<string | null>(null);
@@ -599,7 +599,11 @@ const FileUpload = ({ value, onChange, disabled, surveyId, question, interpolate
         * Renders nothing unless the author configured a sample, so questions that predate
         * this feature are visually unchanged.
         */}
-      <SurveySampleFileCard question={question} interpolate={interpolateText} />
+      <SurveySampleFileCard
+        question={question}
+        interpolate={interpolateText}
+        isPreviewMode={isPreview}
+      />
 
       {/* 1. Drag and Drop Zone */}
       {canAddMore && (
@@ -768,7 +772,8 @@ const ElementRenderer = ({
     onAutoAdvance,
     clearError,
     survey,
-    simulatedValues
+    simulatedValues,
+    isPreview = false,
 }: { 
     element: SurveyElement; 
     control: Control<FieldValues>; 
@@ -780,6 +785,7 @@ const ElementRenderer = ({
     clearError: (id: string) => void;
     survey: Survey;
     simulatedValues?: Record<string, string>;
+    isPreview?: boolean;
 }) => {
 
     const interpolateText = (text: string | undefined | null): string => {
@@ -1107,6 +1113,7 @@ const ElementRenderer = ({
                                             // card renders into text sinks, so values must never be
                                             // HTML-escaped for a sink that will not decode them.
                                             interpolateText={interpolateText}
+                                            isPreview={isPreview}
                                         />
                                     </div>
                                 )}
@@ -3003,6 +3010,7 @@ export default function SurveyForm({
                                                     clearError={(id) => form.clearErrors(id)}
                                                     survey={survey}
                                                     simulatedValues={simulatedValues}
+                                                    isPreview={isPreview}
                                                 />
                                             )
                                         })}

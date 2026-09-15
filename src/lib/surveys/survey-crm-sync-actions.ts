@@ -219,7 +219,10 @@ export async function executeSurveyCrmSyncAction(
       }
 
       await adminDb.collection('contacts').doc(resolvedContactId).update(safeContactUpdates);
-    } else if (crmConfig?.autoUpsertContact && (normalizedEmail || normalizedPhone || responseData.respondentName)) {
+    } else if (crmConfig?.autoUpsertContact !== false && (normalizedEmail || normalizedPhone || responseData.respondentName)) {
+      // ARCHITECTURAL NOTE (Rule 2 Resilience & Rule 10 Maintainer Guidance):
+      // When autoUpsertContact is omitted or true (default), unknown respondents with an email,
+      // phone, or name automatically create a new CRM contact record. Only explicit 'false' suppresses this.
       const newContactRef = adminDb.collection('contacts').doc();
       resolvedContactId = newContactRef.id;
       const newContactPayload = {
@@ -240,6 +243,10 @@ export async function executeSurveyCrmSyncAction(
     }
 
     // Update Entity Custom Fields if linked
+    // ARCHITECTURAL NOTE (Rule 6 Single Source of Truth & Rule 10 Maintainer Guidance):
+    // Entity custom field sync is self-governed by whether the survey administrator explicitly mapped
+    // any questions to entity custom fields (entityCustomUpdates). The legacy top-level autoUpsertEntity
+    // flag is deprecated as explicit field mappings provide the sole source of truth.
     if (cleanEntityId && Object.keys(entityCustomUpdates).length > 0) {
       const entityRef = adminDb.collection('workspace_entities').doc(`${workspaceId}_${cleanEntityId}`);
       const entityDoc = await entityRef.get();

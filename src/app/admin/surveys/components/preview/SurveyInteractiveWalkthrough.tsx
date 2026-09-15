@@ -9,11 +9,12 @@
 import * as React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { ArrowLeft, Check, CornerDownLeft } from 'lucide-react';
+import { ArrowLeft, Check, CornerDownLeft, Upload } from 'lucide-react';
 import type { SurveyElement, SurveyQuestion } from '@/lib/types';
 import { cn, stripHtml } from '@/lib/utils';
 import VideoHero from '@/components/video-hero';
 import { getContrastButtonStyles } from '../inspector/contrast-utils';
+import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
 
 export interface SurveyInteractiveWalkthroughProps {
   elements?: SurveyElement[];
@@ -213,10 +214,20 @@ export function SurveyInteractiveWalkthrough({
 
         {/* Interactive Dummy Input Field */}
         <div className="space-y-3">
-          {currentQuestion?.options && currentQuestion.options.length > 0 ? (
+          {currentQuestion?.type === 'file-upload' ? (
+            <div className="space-y-3">
+              <SurveySampleFileCard question={currentQuestion} isPreviewMode={true} />
+              <div className="p-6 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-center flex flex-col items-center justify-center space-y-2">
+                <Upload className="h-5 w-5 text-primary" />
+                <p className="text-xs font-bold text-foreground">Click to upload or drag and drop</p>
+                <p className="text-[11px] font-semibold text-muted-foreground">Any format • Max 25MB</p>
+              </div>
+            </div>
+          ) : currentQuestion?.options && currentQuestion.options.length > 0 ? (
             <div className="space-y-2">
-              {currentQuestion.options.map((opt: any, i: number) => {
-                const optLabel = typeof opt === 'string' ? opt : (opt as { label?: string; text?: string })?.label || (opt as any)?.text || `Option ${i + 1}`;
+              {currentQuestion.options.map((opt: unknown, i: number) => {
+                const optObj = typeof opt === 'object' && opt !== null ? (opt as { label?: string; text?: string }) : null;
+                const optLabel = typeof opt === 'string' ? opt : optObj?.label || optObj?.text || `Option ${i + 1}`;
                 return (
                   <div
                     key={i}

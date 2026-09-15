@@ -82,7 +82,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
   const router = useRouter();
   const firestore = useFirestore();
   const { user } = useUser();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
 
   const { scripts } = useCallScripts(activeWorkspaceId);
@@ -186,7 +186,8 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
           if (mode === 'tags') {
             mode = 'advanced';
           }
-          setAudienceMode(mode as any);
+          const validModes: Array<'all' | 'advanced' | 'saved' | 'manual'> = ['all', 'advanced', 'saved', 'manual'];
+          setAudienceMode(validModes.includes(mode as 'all' | 'advanced' | 'saved' | 'manual') ? (mode as 'all' | 'advanced' | 'saved' | 'manual') : 'all');
           
           let campaignFilters = audDef.filters || [];
           if (campaignFilters.length === 0 && audDef.mode === 'tags') {
@@ -337,7 +338,7 @@ export function CampaignWizardClient({ campaignId, initialStep, initialScriptId 
 
       const queueResult = await generateCampaignQueueAction(currentCampaignId, activeWorkspaceId, user?.uid || '');
       if (queueResult.success) {
-        toast({ title: 'Campaign Launched', description: `Queue initialized with ${(queueResult as any).count} contacts.` });
+        toast({ title: 'Campaign Launched', description: `Queue initialized with ${queueResult.count} contacts.` });
         router.push(wrapHref(`/admin/messaging/call-centre/workspace/${currentCampaignId}`));
       } else {
         toast({ variant: 'destructive', title: 'Queue Generation Failed', description: queueResult.error });

@@ -606,6 +606,55 @@ export const CANONICAL_PERMISSIONS_CATALOG: PermissionDefinition[] = [
     legacyPermissionId: 'messaging_delete',
   },
   {
+    /**
+     * ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10):
+     * Call Centre permissions (Authorization 2.0).
+     * Configured as view for all profiles for now, and full access for superadmin.
+     */
+    id: 'studios.callCentre.view',
+    name: 'View Call Centre',
+    section: 'studios',
+    feature: 'callCentre',
+    action: 'view',
+    description: 'View outbound call campaigns, queues, scripts, and dialer analytics.',
+    riskLevel: 'low',
+    dependencies: [],
+    legacyPermissionId: 'call_centre_view',
+  },
+  {
+    id: 'studios.callCentre.create',
+    name: 'Create Call Campaigns & Scripts',
+    section: 'studios',
+    feature: 'callCentre',
+    action: 'create',
+    description: 'Design interactive call scripts and provision dialer campaigns.',
+    riskLevel: 'high',
+    dependencies: ['studios.callCentre.view'],
+    legacyPermissionId: 'call_centre_manage',
+  },
+  {
+    id: 'studios.callCentre.edit',
+    name: 'Edit Call Campaigns & Scripts',
+    section: 'studios',
+    feature: 'callCentre',
+    action: 'edit',
+    description: 'Update call scripts, dialogue nodes, and campaign configurations.',
+    riskLevel: 'medium',
+    dependencies: ['studios.callCentre.view'],
+    legacyPermissionId: 'call_centre_manage',
+  },
+  {
+    id: 'studios.callCentre.delete',
+    name: 'Delete Call Campaigns & Scripts',
+    section: 'studios',
+    feature: 'callCentre',
+    action: 'delete',
+    description: 'Permanently remove call scripts and purge dialer queue items.',
+    riskLevel: 'high',
+    dependencies: ['studios.callCentre.view'],
+    legacyPermissionId: 'call_centre_manage',
+  },
+  {
     id: 'studios.forms.view',
     name: 'View Form Studio',
     section: 'studios',

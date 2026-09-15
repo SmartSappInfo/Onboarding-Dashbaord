@@ -6,7 +6,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 
 export default function ScriptsRedirectPage() {
   const router = useRouter();
-  const { activeWorkspaceId } = useWorkspace() as any;
+  const { activeWorkspaceId } = useWorkspace();
 
   useEffect(() => {
     const track = activeWorkspaceId ? `?track=${activeWorkspaceId}` : '';

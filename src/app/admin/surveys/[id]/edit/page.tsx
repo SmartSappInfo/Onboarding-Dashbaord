@@ -17,11 +17,19 @@ import {
     Share2,
     Settings2,
     Layout,
-    BarChart3
+    BarChart3,
+    UserCheck,
 } from 'lucide-react';
-import { type Survey, type SurveyElement, type SurveyResultPage } from '@/lib/types';
+import { 
+    type Survey, 
+    type SurveyElement, 
+    type SurveyResultPage,
+    type SurveyResultRule,
+    type SurveyCrmConfig,
+    type SurveyDecisionConfig,
+} from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, type Path } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { useUndoRedo } from '@/hooks/use-undo-redo';
@@ -39,8 +47,9 @@ import { surveyToSeoFormFields, migrateSurveyFormSeo } from '@/lib/seo';
 // Extracted Modular Components
 import Step1Details from '../../components/step-1-details';
 import SurveyFormBuilder from '../../components/survey-form-builder';
-import SubmissionBehaviorStep from '../../components/submission-behavior-step';
+import LeadCaptureStep from '../../components/lead-capture-step';
 import ResultsStep from '../../components/results-step';
+import SubmissionBehaviorStep from '../../components/submission-behavior-step';
 import Step4Publish from '../../components/step-4-publish';
 import LivePreviewPane from '../../components/live-preview-pane';
 import ValidationErrorModal, { type ValidationError } from '../../components/validation-error-modal';
@@ -73,8 +82,13 @@ const formSchema = z.object({
   scoringEnabled: z.boolean().default(false),
   scoreDisplayMode: z.enum(['points', 'percentage']).default('points'),
   maxScore: z.number().min(0).default(100),
-  resultRules: z.array(z.custom<any>((val) => typeof val === 'object' && val !== null)).default([]),
+  resultRules: z.array(z.custom<SurveyResultRule>((val) => typeof val === 'object' && val !== null)).default([]),
   resultPages: z.array(z.custom<SurveyResultPage>((val) => typeof val === 'object' && val !== null)).default([]),
+  crmConfig: z.custom<SurveyCrmConfig>().optional(),
+  decisionConfig: z.custom<SurveyDecisionConfig>().optional(),
+  existingEntityCorePolicy: z.enum(['update', 'preserve']).optional(),
+  adminAlertChannels: z.array(z.string()).optional(),
+  externalAlertChannels: z.array(z.string()).optional(),
   startButtonText: z.string().optional(),
   submitButtonText: z.string().optional(),
   embedRedirectMode: z.enum(['modal', 'parent']).default('modal'),
@@ -152,7 +166,7 @@ const formSchema = z.object({
   seoOgImage: z.string().url().optional().or(z.literal('')),
   seoOgImageMode: z.enum(['survey_banner', 'entity_logo', 'custom']).default('survey_banner'),
   seoUseSurveyFallback: z.boolean().default(true),
-});
+}).passthrough();
 
 type FormData = z.infer<typeof formSchema>;
 
@@ -160,9 +174,10 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
     const steps = [
         { n: 1, label: 'Details', icon: Settings2 },
         { n: 2, label: 'Builder', icon: Layout },
-        { n: 3, label: 'Results', icon: BarChart3 },
-        { n: 4, label: 'Automations', icon: Zap },
-        { n: 5, label: 'Publish', icon: Share2 }
+        { n: 3, label: 'Lead Capture', icon: UserCheck },
+        { n: 4, label: 'Results', icon: BarChart3 },
+        { n: 5, label: 'Automations', icon: Zap },
+        { n: 6, label: 'Publish', icon: Share2 }
     ];
 
     return (
@@ -180,7 +195,7 @@ const Stepper = ({ currentStep, onStepClick }: { currentStep: number, onStepClic
                                 onClick={() => onStepClick(step.n)}
                                 title={`${step.n}. ${step.label}`}
                                 className={cn(
-                                    'flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs font-bold transition-all duration-200 outline-none active:scale-[0.97] shrink-0',
+                                    'flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 min-h-[36px] sm:min-h-[40px] rounded-full text-xs font-bold transition-all duration-200 outline-none active:scale-[0.97] shrink-0',
                                     isActive
                                         ? 'bg-primary text-primary-foreground shadow-sm shadow-primary/20'
                                         : isCompleted
@@ -274,7 +289,7 @@ export default function EditSurveyPage() {
         canUndo,
         canRedo,
         reset: resetHistory
-    } = useUndoRedo<any>([]);
+    } = useUndoRedo<SurveyElement[]>([]);
 
     const isProgrammaticChange = React.useRef(false);
     const debouncedFields = useDebounce(watch('elements'), 800);
@@ -319,7 +334,7 @@ export default function EditSurveyPage() {
                 ...surveyToSeoFormFields(survey),
             };
 
-            reset(initialData as any);
+            reset(initialData as unknown as FormData);
             resetHistory(initialData.elements);
 
             if (firestore) {
@@ -337,8 +352,12 @@ export default function EditSurveyPage() {
         const urlStep = searchParams.get('step');
         if (urlStep) {
             const parsed = parseInt(urlStep, 10);
-            if (!isNaN(parsed) && parsed >= 1 && parsed <= 4) setStep(parsed);
+            if (!isNaN(parsed) && parsed >= 1 && parsed <= 6) {
+                setStep(parsed);
+                return;
+            }
         }
+        setStep(1);
     }, [searchParams]);
 
     React.useEffect(() => {
@@ -365,7 +384,7 @@ export default function EditSurveyPage() {
             
             // Delete removed pages from Firestore subcollection
             const existingPagesSnap = await getDocs(pagesCol);
-            const formPageIds = new Set(resultPages.map((p: any) => p.id));
+            const formPageIds = new Set(resultPages.map((p: SurveyResultPage) => p.id));
             for (const docSnap of existingPagesSnap.docs) {
                 if (!formPageIds.has(docSnap.id)) {
                     await deleteDoc(doc(pagesCol, docSnap.id));
@@ -451,7 +470,7 @@ export default function EditSurveyPage() {
             
             // Delete removed pages from Firestore subcollection
             const existingPagesSnap = await getDocs(pagesCol);
-            const formPageIds = new Set(resultPages.map((p: any) => p.id));
+            const formPageIds = new Set(resultPages.map((p: SurveyResultPage) => p.id));
             for (const docSnap of existingPagesSnap.docs) {
                 if (!formPageIds.has(docSnap.id)) {
                     await deleteDoc(doc(pagesCol, docSnap.id));
@@ -476,11 +495,10 @@ export default function EditSurveyPage() {
         }
     };
 
-    const handleNext = async () => {
-        let fieldsToValidate: (keyof FormData)[] = [];
-        if (step === 1) fieldsToValidate = ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
-        if (step === 2) fieldsToValidate = ['elements'];
-        if (step === 3) fieldsToValidate = [
+    const getStepFieldsToValidate = (currentStepNum: number): Path<FormData>[] => {
+        if (currentStepNum === 1) return ['internalName', 'title', 'description', 'videoUrl', 'videoCaption', 'logoUrl', 'bannerImageUrl'];
+        if (currentStepNum === 2) return ['elements'];
+        if (currentStepNum === 3) return [
             'createEntity', 
             'entityMapping', 
             'leadCaptureMode', 
@@ -490,9 +508,19 @@ export default function EditSurveyPage() {
             'assignmentEnabled', 
             'assignedUsers', 
             'autoTags', 
-            'autoAutomations'
+            'autoAutomations',
+            'autoPipelineEnabled',
+            'autoPipelineId',
+            'autoPipelineStageId',
+            'autoPipelineMode'
         ];
-        if (step === 4) fieldsToValidate = ['resultRules', 'resultPages'];
+        if (currentStepNum === 4) return ['resultRules', 'resultPages'];
+        if (currentStepNum === 5) return ['adminAlertsEnabled', 'externalAlertsEnabled', 'webhookEnabled'];
+        return [];
+    };
+
+    const handleNext = async () => {
+        const fieldsToValidate = getStepFieldsToValidate(step);
         
         const isStepValid = await trigger(fieldsToValidate);
         if (!isStepValid) {
@@ -508,8 +536,12 @@ export default function EditSurveyPage() {
     const handleStepChange = async (target: number) => {
         if (target === step) return;
         if (target > step) {
-            const isStepValid = await trigger();
-            if (!isStepValid) return;
+            const fieldsToValidate = getStepFieldsToValidate(step);
+            const isStepValid = await trigger(fieldsToValidate);
+            if (!isStepValid) {
+                toast({ variant: 'destructive', title: 'Validation Incomplete', description: 'Please complete the current step before advancing.' });
+                return;
+            }
         }
         setStep(target);
         router.push(`${target === 1 ? pathname : `${pathname}?step=${target}`}`, { scroll: false });
@@ -547,20 +579,26 @@ export default function EditSurveyPage() {
                                 </motion.div>
                             )}
 
-                            { step === 3 && (
+                            {step === 3 && (
                                 <motion.div key="step3" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                    <ResultsStep />
+                                    <LeadCaptureStep />
                                 </motion.div>
                             )}
 
                             {step === 4 && (
                                 <motion.div key="step4" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                    <SubmissionBehaviorStep />
+                                    <ResultsStep />
                                 </motion.div>
                             )}
 
                             {step === 5 && (
-                                <motion.div key="step5" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+                                <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
+                                    <SubmissionBehaviorStep />
+                                </motion.div>
+                            )}
+
+                            {step === 6 && (
+                                <motion.div key="step6" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
                                     <Step4Publish />
                                 </motion.div>
                             )}
@@ -571,13 +609,29 @@ export default function EditSurveyPage() {
  <Button type="button" variant="ghost" onClick={() => router.push('/admin/surveys')} className="font-bold text-muted-foreground rounded-xl px-6 h-12">Cancel</Button>
  <div className="flex items-center gap-4 text-left">
  {step > 1 && <Button type="button" variant="outline" onClick={() => handleStepChange(step - 1)} className="font-bold border-border/50 rounded-xl px-6 h-12 gap-2"><ArrowLeft className="h-4 w-4" /> Back</Button>}
-                                    {step < 5 ? (
+                                    {step < 6 ? (
  <Button type="button" onClick={handleNext} className="gap-2 px-10 h-12 font-semibold shadow-xl rounded-xl transition-all active:scale-95 group">
  Next Phase <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" />
                                         </Button>
                                     ) : (
- <Button type="submit" disabled={isSaving} onClick={form.handleSubmit(onPublishAndExit)} className="gap-2 px-12 h-14 font-semibold shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg">
- {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-4 w-4" />} 
+                                        <Button 
+                                            type="submit" 
+                                            disabled={isSaving} 
+                                            onClick={form.handleSubmit(onPublishAndExit, (errors) => {
+                                                const errList: ValidationError[] = Object.entries(errors).map(([field, err]) => ({
+                                                    elementId: field,
+                                                    blockTitle: field.charAt(0).toUpperCase() + field.slice(1),
+                                                    field,
+                                                    message: (err && typeof err === 'object' && 'message' in err && typeof err.message === 'string')
+                                                        ? err.message
+                                                        : 'Invalid value',
+                                                }));
+                                                _setValidationErrors(errList);
+                                                setIsErrorModalOpen(true);
+                                            })} 
+                                            className="gap-2 px-12 h-14 font-semibold shadow-2xl bg-primary text-white hover:bg-primary/90 rounded-[1.25rem] transition-all active:scale-95 text-lg"
+                                        >
+                                            {isSaving ? <Loader2 className="h-6 w-6 animate-spin" /> : <Save className="h-4 w-4" />} 
                                             Finalize &amp; Publish
                                         </Button>
                                     )}

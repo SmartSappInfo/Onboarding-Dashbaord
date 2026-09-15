@@ -5,6 +5,7 @@ import * as React from 'react';
 
 import { useRouter } from 'next/navigation';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { usePermissions } from '@/hooks/use-permissions';
 import { useUser } from '@/firebase';
 import { useCallCampaigns, useCallScripts } from '@/lib/call-centre-hooks';
 import {
@@ -102,8 +103,16 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   const router = useRouter();
   const { user } = useUser();
   useSetBreadcrumb('Call Centre');
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  // Rule 5: Strict typing - useWorkspace() returns TenantContextType natively
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
+
+  // Rule 10 & RBAC: Call Centre access controls
+  // 'view' is default-granted for all profiles. Mutations require explicit roles or superadmin privilege.
+  const { can, isSystemAdmin } = usePermissions();
+  const canCreate = isSystemAdmin || can('studios', 'callCentre', 'create');
+  const canEdit = isSystemAdmin || can('studios', 'callCentre', 'edit');
+  const canDelete = isSystemAdmin || can('studios', 'callCentre', 'delete');
 
   const { campaigns, isLoading: campaignsLoading } = useCallCampaigns(activeWorkspaceId);
   const { scripts, isLoading: scriptsLoading } = useCallScripts(activeWorkspaceId);
@@ -233,6 +242,18 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   };
 
   const performDeleteScript = async (scriptId: string) => {
+    if (!canDelete) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Denied',
+        description: 'You do not have permission to delete call centre scripts.',
+        actionConfig: {
+          path: '/admin/users/roles',
+          label: 'View Permissions',
+        },
+      });
+      return;
+    }
     try {
       const result = await deleteCallScriptAction(scriptId, activeWorkspaceId, user?.uid || '');
       if (result.success) {
@@ -248,6 +269,18 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
   };
 
   const performDeleteCampaign = async (campaignId: string) => {
+    if (!canDelete) {
+      toast({
+        variant: 'destructive',
+        title: 'Action Denied',
+        description: 'You do not have permission to delete call campaigns.',
+        actionConfig: {
+          path: '/admin/users/roles',
+          label: 'View Permissions',
+        },
+      });
+      return;
+    }
     try {
       const result = await deleteCallCampaignAction(campaignId, activeWorkspaceId, user?.uid || '');
       if (result.success) {
@@ -343,7 +376,9 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
               {activeTab === 'campaigns' ? (
                 <Button
                   onClick={() => router.push(wrapHref('/admin/messaging/call-centre/campaigns/new'))}
-                  className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white"
+                  disabled={!canCreate}
+                  title={!canCreate ? 'Requires Call Centre create permission' : undefined}
+                  className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white disabled:opacity-50"
                 >
                   <Plus className="h-3.5 w-3.5" /> New Campaign
                 </Button>
@@ -363,15 +398,18 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                   <Button
                     variant="outline"
                     onClick={() => importInputRef.current?.click()}
-                    disabled={isImporting}
-                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 border-border bg-muted hover:bg-accent text-muted-foreground"
+                    disabled={isImporting || !canCreate}
+                    title={!canCreate ? 'Requires Call Centre create permission' : undefined}
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 border-border bg-muted hover:bg-accent text-muted-foreground disabled:opacity-50"
                   >
                     {isImporting ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
                     Import Script
                   </Button>
                   <Button
                     onClick={() => router.push(wrapHref('/admin/messaging/call-centre/scripts/new'))}
-                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white"
+                    disabled={!canCreate}
+                    title={!canCreate ? 'Requires Call Centre create permission' : undefined}
+                    className="h-9 px-4 rounded-xl font-bold text-[10px] uppercase tracking-wider gap-2 bg-primary hover:bg-primary/95 text-white disabled:opacity-50"
                   >
                     <FileText className="h-3.5 w-3.5" /> New Script
                   </Button>
@@ -590,74 +628,80 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                               </DropdownMenuItem>
                             )}
 
-                            <DropdownMenuItem 
-                              onClick={() => handleCloneCampaign(camp.id)}
-                              disabled={isCloningId === camp.id}
-                              className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
-                            >
-                              {isCloningId === camp.id ? (
-                                <RefreshCw className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <RefreshCw className="h-4 w-4 text-violet-500" />
-                              )}
-                              Clone Campaign
-                            </DropdownMenuItem>
-
-                            <DropdownMenuSeparator className="my-1 bg-border/50" />
-
-                            <DropdownMenuItem 
-                              onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${camp.id}`))}
-                              className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
-                            >
-                              <Edit3 className="h-4 w-4 text-amber-500" />
-                              Edit Settings
-                            </DropdownMenuItem>
-
-                            <DropdownMenuItem 
-                              onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${camp.id}&step=3`))}
-                              className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
-                            >
-                              <Settings className="h-4 w-4 text-blue-500" />
-                              Audience Management
-                            </DropdownMenuItem>
-
-                            {/* Add Contacts (Dynamic vs Fixed Audience) */}
-                            {camp.allowAddContactsAfterLaunch === false && camp.status !== 'draft' ? (
-                              <TooltipProvider delayDuration={150}>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="opacity-50 pointer-events-none">
-                                      <DropdownMenuItem 
-                                        disabled
-                                        className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
-                                      >
-                                        <UserPlus className="h-4 w-4 text-emerald-500" />
-                                        Add Contacts
-                                      </DropdownMenuItem>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent side="left">
-                                    <p className="text-[10px] font-bold">Audience is fixed after launch.</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                              </TooltipProvider>
-                            ) : (
+                            {canCreate && (
                               <DropdownMenuItem 
-                                onClick={() => setCampaignForAddContacts(camp)}
+                                onClick={() => handleCloneCampaign(camp.id)}
+                                disabled={isCloningId === camp.id}
                                 className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
                               >
-                                <UserPlus className="h-4 w-4 text-emerald-500" />
-                                Add Contacts
+                                {isCloningId === camp.id ? (
+                                  <RefreshCw className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <RefreshCw className="h-4 w-4 text-violet-500" />
+                                )}
+                                Clone Campaign
                               </DropdownMenuItem>
                             )}
 
-                            <DropdownMenuItem 
-                              onClick={() => setCampaignForManageContacts(camp)}
-                              className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
-                            >
-                              <UserPlus className="h-4 w-4 text-violet-500" />
-                              Manage Contacts
-                            </DropdownMenuItem>
+                            {canEdit && (
+                              <>
+                                <DropdownMenuSeparator className="my-1 bg-border/50" />
+
+                                <DropdownMenuItem 
+                                  onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${camp.id}`))}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                >
+                                  <Edit3 className="h-4 w-4 text-amber-500" />
+                                  Edit Settings
+                                </DropdownMenuItem>
+
+                                <DropdownMenuItem 
+                                  onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?id=${camp.id}&step=3`))}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                >
+                                  <Settings className="h-4 w-4 text-blue-500" />
+                                  Audience Management
+                                </DropdownMenuItem>
+
+                                {/* Add Contacts (Dynamic vs Fixed Audience) */}
+                                {camp.allowAddContactsAfterLaunch === false && camp.status !== 'draft' ? (
+                                  <TooltipProvider delayDuration={150}>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <div className="opacity-50 pointer-events-none">
+                                          <DropdownMenuItem 
+                                            disabled
+                                            className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                          >
+                                            <UserPlus className="h-4 w-4 text-emerald-500" />
+                                            Add Contacts
+                                          </DropdownMenuItem>
+                                        </div>
+                                      </TooltipTrigger>
+                                      <TooltipContent side="left">
+                                        <p className="text-[10px] font-bold">Audience is fixed after launch.</p>
+                                      </TooltipContent>
+                                    </Tooltip>
+                                  </TooltipProvider>
+                                ) : (
+                                  <DropdownMenuItem 
+                                    onClick={() => setCampaignForAddContacts(camp)}
+                                    className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                  >
+                                    <UserPlus className="h-4 w-4 text-emerald-500" />
+                                    Add Contacts
+                                  </DropdownMenuItem>
+                                )}
+
+                                <DropdownMenuItem 
+                                  onClick={() => setCampaignForManageContacts(camp)}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs"
+                                >
+                                  <UserPlus className="h-4 w-4 text-violet-500" />
+                                  Manage Contacts
+                                </DropdownMenuItem>
+                              </>
+                            )}
 
                             <DropdownMenuSeparator className="my-1 bg-border/50" />
 
@@ -691,16 +735,18 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                                 Archive Campaign
                               </DropdownMenuItem>
                             ) : (
-                              <DropdownMenuItem 
-                                onClick={() => handleDeleteCampaign(camp.id)}
-                                className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:text-rose-600"
-                              >
-                                <Trash2 className="h-4 w-4 text-rose-500" />
-                                Delete Campaign
-                              </DropdownMenuItem>
+                              canDelete && (
+                                <DropdownMenuItem 
+                                  onClick={() => handleDeleteCampaign(camp.id)}
+                                  className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:text-rose-600"
+                                >
+                                  <Trash2 className="h-4 w-4 text-rose-500" />
+                                  Delete Campaign
+                                </DropdownMenuItem>
+                              )
                             )}
 
-                            {camp.status === 'draft' && (
+                            {camp.status === 'draft' && canDelete && (
                               <DropdownMenuItem 
                                 onClick={() => handleDeleteCampaign(camp.id)}
                                 className="rounded-lg p-2.5 gap-2.5 cursor-pointer font-bold text-xs text-rose-600 focus:text-rose-600"
@@ -769,24 +815,28 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-lg text-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                          onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?scriptId=${script.id}`))}
-                          title="Use Script to Create Campaign"
-                        >
-                          <Play className="h-4 w-4 fill-current" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                          onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/scripts/new?id=${script.id}`))}
-                          title="Edit Script"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </Button>
+                        {canCreate && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg text-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
+                            onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?scriptId=${script.id}`))}
+                            title="Use Script to Create Campaign"
+                          >
+                            <Play className="h-4 w-4 fill-current" />
+                          </Button>
+                        )}
+                        {canEdit && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
+                            onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/scripts/new?id=${script.id}`))}
+                            title="Edit Script"
+                          >
+                            <Edit3 className="h-4 w-4" />
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"
@@ -796,15 +846,17 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
                         >
                           <Download className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-rose-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
-                          onClick={() => handleDeleteScript(script.id)}
-                          title="Delete Script"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-rose-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
+                            onClick={() => handleDeleteScript(script.id)}
+                            title="Delete Script"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
 

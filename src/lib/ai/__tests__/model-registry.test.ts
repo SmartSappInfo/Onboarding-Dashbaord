@@ -161,13 +161,13 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
     it('should return the provider SDK wire format for a model', () => {
       expect(
         AiModelRegistry.getWireModelString('gemini-3.6-flash', 'googleai')
-      ).toBe('googleai/gemini-3.6-flash');
+      ).toBe('googleai/gemini-2.5-flash');
       expect(
         AiModelRegistry.getWireModelString('claude-3-5-sonnet', 'anthropic')
       ).toBe('claude-3-5-sonnet-20241022');
       expect(
         AiModelRegistry.getWireModelString('gemini-2.5-flash', 'googleai')
-      ).toBe('googleai/gemini-3.6-flash');
+      ).toBe('googleai/gemini-2.5-flash');
     });
   });
 });

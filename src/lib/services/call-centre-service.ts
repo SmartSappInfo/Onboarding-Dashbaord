@@ -1426,23 +1426,23 @@ export class CallCentreService {
             : contactsList.find(c => c.isPrimary) || contactsList[0];
 
           // Fetch active agent user details
-          let agentName = 'Agent';
+          let _agentName = 'Agent';
           if (userId) {
             const userSnap = await adminDb.collection('users').doc(userId).get();
             if (userSnap.exists) {
-              agentName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
+              _agentName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
             }
           }
 
           // Fetch any active deal linked to this entity
-          let dealData = null;
+          let _dealData = null;
           const dealsSnap = await adminDb.collection('deals')
             .where('entityId', '==', entityId)
             .where('status', '==', 'open')
             .limit(1)
             .get();
           if (!dealsSnap.empty) {
-            dealData = dealsSnap.docs[0].data();
+            _dealData = dealsSnap.docs[0].data();
           }
 
           // Compile variables
@@ -1501,23 +1501,23 @@ export class CallCentreService {
             : contactsList.find(c => c.isPrimary) || contactsList[0];
 
           // Fetch active agent user details
-          let agentName = 'Agent';
+          let _agentName = 'Agent';
           if (userId) {
             const userSnap = await adminDb.collection('users').doc(userId).get();
             if (userSnap.exists) {
-              agentName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
+              _agentName = userSnap.data()?.displayName || userSnap.data()?.name || 'Agent';
             }
           }
 
           // Fetch any active deal linked to this entity
-          let dealData = null;
+          let _dealData = null;
           const dealsSnap = await adminDb.collection('deals')
             .where('entityId', '==', entityId)
             .where('status', '==', 'open')
             .limit(1)
             .get();
           if (!dealsSnap.empty) {
-            dealData = dealsSnap.docs[0].data();
+            _dealData = dealsSnap.docs[0].data();
           }
 
           // Compile variables for subject and HTML body

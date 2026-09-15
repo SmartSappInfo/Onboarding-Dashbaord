@@ -165,7 +165,7 @@ function getPrimarySourceHandle(
 export function ScriptBuilderClient({ scriptId, returnCampaignId }: ScriptBuilderClientProps) {
   const router = useRouter();
   const { user } = useUser();
-  const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+  const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const firestore = useFirestore();
   const { toast } = useToast();
 

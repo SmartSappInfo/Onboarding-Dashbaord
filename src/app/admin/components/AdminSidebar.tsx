@@ -221,7 +221,7 @@ export function AdminSidebar({ className }: { className?: string } = {}) {
     { href: wrapHref('/admin/surveys'), icon: ClipboardList, label: 'Surveys', visible: isFeatureEnabled('surveys'), disabled: !can('studios', 'surveys', 'view') },
     { href: wrapHref('/admin/pdfs'), icon: FileText, label: 'Doc Signing', visible: isFeatureEnabled('pdfs'), disabled: !can('studios', 'docSigning', 'view') },
     { href: wrapHref('/admin/messaging'), icon: MessageSquareText, label: 'Messaging', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
-    { href: wrapHref('/admin/messaging/call-centre'), icon: PhoneCall, label: 'Call Centre', visible: isFeatureEnabled('messaging'), disabled: !can('studios', 'messaging', 'view') },
+    { href: wrapHref('/admin/messaging/call-centre'), icon: PhoneCall, label: 'Call Centre', visible: isFeatureEnabled('call_centre') && isFeatureEnabled('messaging'), disabled: !can('studios', 'callCentre', 'view') },
     { href: wrapHref('/admin/forms'), icon: ClipboardSignature, label: 'Forms', visible: isFeatureEnabled('forms'), disabled: !can('studios', 'forms', 'view') },
     { href: wrapHref('/admin/contacts/tags'), icon: Tags, label: 'Tags', visible: isFeatureEnabled('tags'), disabled: !can('studios', 'tags', 'view') },
     { href: wrapHref('/admin/qr-studio'), icon: QrCode, label: 'QR Studio', visible: isFeatureEnabled('qr_studio'), disabled: !can('studios', 'qrStudio', 'view') },

@@ -217,5 +217,50 @@ describe('permissions-engine', () => {
       const migrated = migrateToPermissionsSchema([]);
       expect(migrated).toEqual(getBlankPermissions());
     });
+
+    it('should correctly map legacy call_centre permissions to callCentre in studios', () => {
+      const legacyPerms = ['call_centre_view', 'call_centre_manage'];
+      const migrated = migrateToPermissionsSchema(legacyPerms as any);
+
+      expect(migrated.studios.enabled).toBe(true);
+      expect(migrated.studios.features.callCentre.view).toBe(true);
+      expect(migrated.studios.features.callCentre.edit).toBe(true);
+    });
+  });
+
+  describe('Call Centre RBAC & Default Access Controls', () => {
+    it('should grant full access to superadmin (view, create, edit, delete)', () => {
+      const adminSchema = getFullAdminPermissions();
+      expect(adminSchema.studios.features.callCentre).toEqual({
+        view: true,
+        create: true,
+        edit: true,
+        delete: true,
+      });
+
+      expect(evaluatePermission(adminSchema, 'studios', 'callCentre', 'view')).toBe(true);
+      expect(evaluatePermission(adminSchema, 'studios', 'callCentre', 'create')).toBe(true);
+      expect(evaluatePermission(adminSchema, 'studios', 'callCentre', 'edit')).toBe(true);
+      expect(evaluatePermission(adminSchema, 'studios', 'callCentre', 'delete')).toBe(true);
+    });
+
+    it('should default view: true for all profiles even when callCentre is omitted from schema (backward compatibility)', () => {
+      // Legacy or standard profile where studios.callCentre was not explicitly stored
+      const legacyProfileSchema: PermissionsSchema = {
+        ...getBlankPermissions(),
+        studios: {
+          enabled: true,
+          features: {
+            messaging: { view: true, create: false, edit: false, delete: false },
+          } as any,
+        },
+      };
+
+      // Default view access is true
+      expect(evaluatePermission(legacyProfileSchema, 'studios', 'callCentre', 'view')).toBe(true);
+      // Mutations remain false without explicit grant
+      expect(evaluatePermission(legacyProfileSchema, 'studios', 'callCentre', 'create')).toBe(false);
+      expect(evaluatePermission(legacyProfileSchema, 'studios', 'callCentre', 'delete')).toBe(false);
+    });
   });
 });

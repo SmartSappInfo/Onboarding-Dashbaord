@@ -64,6 +64,7 @@ const SECTION_FEATURES: Record<keyof PermissionsSchema, { id: string; label: str
   studios: [
     { id: 'publicPortals', label: 'Public Portals' },
     { id: 'messaging', label: 'Messaging Studio' },
+    { id: 'callCentre', label: 'Call Centre' },
     { id: 'forms', label: 'Form Studio' },
     { id: 'tags', label: 'Workspace Tags' },
     { id: 'media', label: 'Media Library' },

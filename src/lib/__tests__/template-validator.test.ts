@@ -1,33 +1,42 @@
 import { describe, it, expect } from 'vitest';
 import { validateTemplateVariables } from '../template-validator';
-import type { VariableDefinition } from '../types';
+import type { MessageBlock, VariableDefinition } from '../types';
+
+const createMockVariable = (overrides: Partial<VariableDefinition> & { key: string; category: string }): VariableDefinition => ({
+  id: overrides.key,
+  label: overrides.key,
+  source: overrides.category,
+  entity: 'test',
+  path: overrides.key,
+  type: 'string',
+  ...overrides,
+});
+
+const createMockBlock = (overrides: Partial<MessageBlock> & { type: MessageBlock['type'] }): MessageBlock => ({
+  id: `block_${Math.random()}`,
+  ...overrides,
+});
 
 describe('validateTemplateVariables', () => {
   const mockValidVariables: VariableDefinition[] = [
-    {
+    createMockVariable({
       id: 'meeting_title',
       key: 'meeting_title',
-      name: 'meeting_title',
       label: 'Meeting Title',
       category: 'meetings',
-      dataType: 'string',
-    } as any,
-    {
+    }),
+    createMockVariable({
       id: 'survey_title',
       key: 'survey_title',
-      name: 'survey_title',
       label: 'Survey Title',
       category: 'surveys',
-      dataType: 'string',
-    } as any,
-    {
+    }),
+    createMockVariable({
       id: 'app_name',
       key: 'app_name',
-      name: 'app_name',
       label: 'Application Name',
       category: 'common',
-      dataType: 'string',
-    } as any,
+    }),
   ];
 
   it('should identify valid variables correctly', () => {
@@ -123,7 +132,7 @@ describe('validateTemplateVariables', () => {
         styleId: 'some_style_id',
         subject: 'Subject Line',
         blocks: [
-          { id: '1', type: 'footer' } as any
+          createMockBlock({ id: '1', type: 'footer' })
         ],
       };
 
@@ -161,7 +170,7 @@ describe('validateTemplateVariables', () => {
         subject: 'Subject Line',
         body: 'Unsubscribe link here: {{unsubscribe_link}}',
         blocks: [
-          { id: '1', type: 'footer' } as any
+          createMockBlock({ id: '1', type: 'footer' })
         ],
       };
 
@@ -181,6 +190,19 @@ describe('validateTemplateVariables', () => {
       const errors = validateTemplateVariables(template, mockValidVariables);
       expect(errors).toEqual([]);
     });
+
+    it('should pass if unsubscribe link includes whitespace and filter pipe', () => {
+      const template = {
+        channel: 'email' as const,
+        styleId: 'none',
+        subject: 'Subject Line',
+        body: 'All rights reserved. Opt out: {{ unsubscribe_link | default: "" }}',
+        blocks: [],
+      };
+
+      const errors = validateTemplateVariables(template, mockValidVariables);
+      expect(errors).toEqual([]);
+    });
   });
 
   describe('context compatibility mapping', () => {
@@ -194,14 +216,76 @@ describe('validateTemplateVariables', () => {
 
       // Set up variables registry variables mock
       const vars: VariableDefinition[] = [
-        { key: 'respondent_name', name: 'respondent_name', category: 'forms' } as any,
-        { key: 'completion_date', name: 'completion_date', category: 'surveys' } as any,
-        { key: 'score', name: 'score', category: 'surveys' } as any,
-        { key: 'result_message', name: 'result_message', category: 'surveys' } as any,
+        createMockVariable({ key: 'respondent_name', category: 'forms' }),
+        createMockVariable({ key: 'completion_date', category: 'surveys' }),
+        createMockVariable({ key: 'score', category: 'surveys' }),
+        createMockVariable({ key: 'result_message', category: 'surveys' }),
       ];
 
       const errors = validateTemplateVariables(template, vars);
       expect(errors.filter(e => e.type === 'warning')).toHaveLength(0);
+    });
+  });
+
+  describe('validation fix actions', () => {
+    it('should generate replace_variable fixAction with closest fuzzy match for typo', () => {
+      const template = {
+        category: 'meetings' as const,
+        subject: 'Reminder: {{meeting_titel}} is starting',
+      };
+
+      const errors = validateTemplateVariables(template, mockValidVariables);
+      const typoError = errors.find(e => e.variable === 'meeting_titel');
+
+      expect(typoError).toBeDefined();
+      expect(typoError?.fixAction).toEqual({
+        actionType: 'replace_variable',
+        targetVariable: 'meeting_titel',
+        suggestedVariable: 'meeting_title',
+        label: 'Change to {{meeting_title}}',
+      });
+    });
+
+    it('should generate add_footer_block fixAction when email template lacks footer', () => {
+      const template = {
+        channel: 'email' as const,
+        styleId: 'none',
+        subject: 'Welcome',
+        body: 'Hello world',
+        blocks: [],
+      };
+
+      const errors = validateTemplateVariables(template, mockValidVariables);
+      const footerError = errors.find(e => e.variable === 'footer');
+
+      expect(footerError).toBeDefined();
+      expect(footerError?.fixAction).toEqual({
+        actionType: 'add_footer_block',
+        targetVariable: 'footer',
+        label: 'Add Footer Block',
+        description: 'Inserts a branded Copyright Info Footer block.',
+      });
+    });
+
+    it('should generate add_unsubscribe_link fixAction when email template lacks unsubscribe link', () => {
+      const template = {
+        channel: 'email' as const,
+        styleId: 'none',
+        subject: 'Welcome',
+        body: 'All rights reserved.',
+        blocks: [],
+      };
+
+      const errors = validateTemplateVariables(template, mockValidVariables);
+      const unsubError = errors.find(e => e.variable === 'unsubscribe_link');
+
+      expect(unsubError).toBeDefined();
+      expect(unsubError?.fixAction).toEqual({
+        actionType: 'add_unsubscribe_link',
+        targetVariable: 'unsubscribe_link',
+        label: 'Add Unsubscribe Link',
+        description: 'Appends opt-out link token into the footer or body.',
+      });
     });
   });
 });

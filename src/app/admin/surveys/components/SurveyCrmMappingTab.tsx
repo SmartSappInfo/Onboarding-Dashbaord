@@ -27,7 +27,6 @@ import {
   CrmTaskTriggerCondition,
 } from '@/lib/types';
 import { getSurveyCrmFieldDefinitionsAction } from '@/lib/surveys/survey-crm-sync-actions';
-import { SurveyCrmInboundTriggersCard } from './SurveyCrmInboundTriggersCard';
 import { useToast } from '@/hooks/use-toast';
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -52,6 +51,9 @@ import {
   Database,
   Layers,
   Clock,
+  UserPlus,
+  Activity,
+  Info,
 } from 'lucide-react';
 
 export interface SurveyCrmMappingTabProps {
@@ -158,7 +160,11 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
 
   return (
     <div className="space-y-6 lg:space-y-8">
-      {/* Overview & Master Toggles */}
+      {/* Overview & Execution Settings */}
+      {/* ARCHITECTURAL NOTE (Rule 6 Single Source of Truth & Rule 10 Maintainer Guidance):
+          Consolidated execution modifiers here. Removed duplicate header quick-chips and the 
+          redundant/dormant 'autoUpsertEntity' toggle. Entity custom fields are synced automatically
+          whenever field mappings target entity fields below. */}
       <Card className="rounded-2xl border-border bg-card shadow-sm">
         <CardHeader className="pb-4">
           <div className="flex items-center gap-3">
@@ -166,46 +172,60 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
               <Database className="h-5 w-5" />
             </div>
             <div className="flex items-center gap-2">
-              <CardTitle className="text-base font-bold">CRM Intelligence &amp; Two-Way Sync</CardTitle>
-              <CardInfoTooltip text="Map question answers directly to CRM contacts, entity custom fields, and deal attributes upon submission." />
+              <CardTitle className="text-base font-bold">CRM Intelligence &amp; Execution Settings</CardTitle>
+              <CardInfoTooltip text="Configure how survey submissions interact with CRM contacts and activity feeds upon submission." />
             </div>
           </div>
         </CardHeader>
 
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20">
-              <div className="space-y-0.5">
-                <Label className="text-xs font-bold text-foreground">Auto-Upsert Contacts</Label>
-                <p className="text-[11px] text-muted-foreground">Match & update contacts by email/phone</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20 min-h-[56px] transition-all duration-150 ease-out hover:border-border/80">
+              <div className="flex items-center gap-3 space-y-0">
+                <div className="p-2 rounded-lg bg-background text-muted-foreground shrink-0">
+                  <UserPlus className="h-4 w-4 text-primary" />
+                </div>
+                <div className="space-y-0.5">
+                  <Label htmlFor="crm-auto-upsert-contact" className="text-xs font-bold text-foreground cursor-pointer">
+                    Auto-Upsert Contacts
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">Match &amp; create contacts by email/phone</p>
+                </div>
               </div>
               <Switch
+                id="crm-auto-upsert-contact"
                 checked={crmConfig.autoUpsertContact !== false}
                 onCheckedChange={(checked) => setValue('crmConfig.autoUpsertContact', checked, { shouldDirty: true })}
+                className="data-[state=checked]:bg-primary"
               />
             </div>
 
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20">
-              <div className="space-y-0.5">
-                <Label className="text-xs font-bold text-foreground">Sync Entity Custom Fields</Label>
-                <p className="text-[11px] text-muted-foreground">Update custom fields on matched entities</p>
+            <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20 min-h-[56px] transition-all duration-150 ease-out hover:border-border/80">
+              <div className="flex items-center gap-3 space-y-0">
+                <div className="p-2 rounded-lg bg-background text-muted-foreground shrink-0">
+                  <Activity className="h-4 w-4 text-primary" />
+                </div>
+                <div className="space-y-0.5">
+                  <Label htmlFor="crm-timeline-logging" className="text-xs font-bold text-foreground cursor-pointer">
+                    Timeline Activity Cards
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">Log rich cards in CRM activity streams</p>
+                </div>
               </div>
               <Switch
-                checked={crmConfig.autoUpsertEntity !== false}
-                onCheckedChange={(checked) => setValue('crmConfig.autoUpsertEntity', checked, { shouldDirty: true })}
-              />
-            </div>
-
-            <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-muted/20">
-              <div className="space-y-0.5">
-                <Label className="text-xs font-bold text-foreground">Timeline Activity Cards</Label>
-                <p className="text-[11px] text-muted-foreground">Log rich cards in CRM activity streams</p>
-              </div>
-              <Switch
+                id="crm-timeline-logging"
                 checked={crmConfig.timelineLoggingEnabled !== false}
                 onCheckedChange={(checked) => setValue('crmConfig.timelineLoggingEnabled', checked, { shouldDirty: true })}
+                className="data-[state=checked]:bg-primary"
               />
             </div>
+          </div>
+
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-primary/5 border border-primary/10 text-muted-foreground text-[11px]">
+            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+            <p>
+              <strong className="text-foreground font-semibold">Entity Custom Fields:</strong> Custom fields on linked entities are synced automatically whenever questions are mapped to entity fields in the table below.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -459,9 +479,6 @@ export function SurveyCrmMappingTab({ workspaceId }: SurveyCrmMappingTabProps) {
           )}
         </CardContent>
       </Card>
-
-      {/* Inbound CRM Triggers Card (CRM -> Survey) */}
-      <SurveyCrmInboundTriggersCard workspaceId={workspaceId} />
     </div>
   );
 }

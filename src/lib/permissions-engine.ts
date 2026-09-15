@@ -34,12 +34,21 @@ export function evaluatePermission(
   
   // Rule: Feature Must Exist
   if (!featurePerm) {
+    // ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10):
+    // Call Centre default: configured as view for all profiles for now, and full access for superadmin.
+    // If a profile or role schema from Firestore omits explicit 'callCentre', default view to true.
+    if (section === 'studios' && feature === 'callCentre' && action === 'view') {
+      return true;
+    }
     return false;
   }
 
   // Rule: View is required for everything
   // If view is false, you can't even see the module, let alone act on it.
   if (action === 'view') {
+    if (section === 'studios' && feature === 'callCentre' && featurePerm.view === undefined) {
+      return true;
+    }
     return featurePerm.view;
   }
 
@@ -102,6 +111,7 @@ export function getFullAdminPermissions(): PermissionsSchema {
         surveys: { view: true, create: true, edit: true, delete: true },
         docSigning: { view: true, create: true, edit: true, delete: true },
         messaging: { view: true, create: true, edit: true, delete: true },
+        callCentre: { view: true, create: true, edit: true, delete: true },
         forms: { view: true, create: true, edit: true, delete: true },
         tags: { view: true, create: true, edit: true, delete: true },
         qrStudio: { view: true, create: true, edit: true, delete: true },
@@ -152,6 +162,7 @@ export function getMarketingPermissions(): PermissionsSchema {
       media: { view: true, create: true, edit: true, delete: true },
       surveys: { view: true, create: true, edit: true, delete: false },
       messaging: { view: true, create: true, edit: true, delete: false },
+      callCentre: { view: true, create: false, edit: false, delete: false },
       forms: { view: true, create: true, edit: true, delete: false },
       tags: { view: true, create: true, edit: true, delete: false },
       docSigning: { view: false },
@@ -201,6 +212,7 @@ export const featureToCoordinates: Record<AppFeatureId, { section: keyof Permiss
   messaging: { section: 'studios', feature: 'messaging' },
   tags: { section: 'studios', feature: 'tags' },
   forms: { section: 'studios', feature: 'forms' },
+  call_centre: { section: 'studios', feature: 'callCentre' },
   qr_studio: { section: 'studios', feature: 'qrStudio' },
   verify_studio: { section: 'studios', feature: 'verifyStudio' },
   social_intelligence: { section: 'studios', feature: 'socialIntelligence' },
@@ -283,6 +295,13 @@ export function normalizePermissionsSchema(raw: unknown): PermissionsSchema {
     }
   }
 
+  // ARCHITECTURAL GUIDANCE FOR MAINTAINERS (Rule 10):
+  // Call Centre default: configured as view for all profiles for now, and full access for superadmin.
+  // If studios is enabled and callCentre is not explicitly provided in the source schema, default view to true.
+  if (base.studios.enabled && !base.studios.features.callCentre) {
+    base.studios.features.callCentre = { view: true, create: false, edit: false, delete: false };
+  }
+
   return base;
 }
 
@@ -324,6 +343,8 @@ export function flattenPermissionsSchema(schema: PermissionsSchema): string[] {
     if (std.forms?.create || std.forms?.edit || std.forms?.delete) perms.add('forms_manage');
     if (std.tags?.view) perms.add('tags_view');
     if (std.tags?.create || std.tags?.edit || std.tags?.delete) perms.add('tags_manage');
+    if (std.callCentre?.view) perms.add('call_centre_view');
+    if (std.callCentre?.create || std.callCentre?.edit || std.callCentre?.delete) perms.add('call_centre_manage');
   }
 
   // Management
@@ -401,8 +422,7 @@ export function migrateToPermissionsSchema(legacyPermissions: string[]): Permiss
     schema.finance.features.billingSetup = { view: true, create: canManage, edit: canManage, delete: false };
   }
 
-  // Studios
-  if (perms.has('studios_view') || perms.has('studios_edit') || perms.has('forms_manage') || perms.has('tags_view') || perms.has('tags_manage')) {
+  if (perms.has('studios_view') || perms.has('studios_edit') || perms.has('forms_manage') || perms.has('tags_view') || perms.has('tags_manage') || perms.has('call_centre_view') || perms.has('call_centre_manage')) {
     schema.studios.enabled = true;
     const canEditStudios = perms.has('studios_edit');
 
@@ -421,6 +441,12 @@ export function migrateToPermissionsSchema(legacyPermissions: string[]): Permiss
     if (perms.has('tags_view') || perms.has('tags_manage')) {
       schema.studios.features.tags = { view: true, create: perms.has('tags_manage'), edit: perms.has('tags_manage'), delete: false };
     }
+    schema.studios.features.callCentre = {
+      view: true,
+      create: perms.has('call_centre_manage'),
+      edit: perms.has('call_centre_manage'),
+      delete: false,
+    };
   }
 
   // Management

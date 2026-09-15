@@ -261,6 +261,8 @@ const HTML_SNIPPET_PRESETS: Array<{ label: string; description: string; code: st
 ];
 import type { MessageBlock, VariableDefinition, MessageTemplate, TemplateVariable, VariableContext } from '@/lib/types';
 import { MediaSelect } from '@/app/admin/entities/components/media-select';
+import { ImageUploader } from '@/components/shared/image-uploader';
+import { VideoUploader, type VideoUploaderValue } from '@/components/shared/video-uploader';
 import { cn } from '@/lib/utils';
 import { blockIcons } from './block-icons';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
@@ -1240,22 +1242,21 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                     {/* Image Settings */}
                     {block.type === 'image' && (
                         <div className="space-y-4">
-                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                                Image File Source
-                            </Label>
-                            <MediaSelect 
-                                value={block.url} 
-                                onValueChange={(val) => onUpdate({ url: val })}
-                                filterType="image"
-                                className="rounded-xl border-none shadow-none bg-muted/20"
+                            <ImageUploader
+                                value={block.url || ''}
+                                onChange={(url) => onUpdate({ url })}
+                                label="Image File Source"
+                                description="Upload an image, pick from library, or enter a web link"
+                                category="Templates"
+                                aspectRatio="auto"
                             />
-                            <div className="space-y-2 pt-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Or Paste Direct URL Link</Label>
+                            <div className="space-y-2 pt-1 border-t">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Dynamic Image Variable / URL</Label>
                                 <SlashInput 
                                     value={block.url || ''} 
                                     onChange={val => onUpdate({ url: val })} 
                                     variables={autocompleteVariables}
-                                    placeholder="https://..."
+                                    placeholder="https://... or {{custom_image_url}}"
                                     className="h-10 rounded-xl text-xs font-mono bg-muted/10"
                                 />
                             </div>
@@ -1265,37 +1266,30 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                     {/* Video Player Settings */}
                     {block.type === 'video' && (
                         <div className="space-y-4">
-                            {/* Video Source URL */}
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Video File Source</Label>
+                            <VideoUploader
+                                value={{
+                                    videoUrl: block.url || '',
+                                    thumbnailUrl: block.videoThumbnailUrl || ''
+                                }}
+                                onChange={(val: VideoUploaderValue) => {
+                                    onUpdate({
+                                        url: val.videoUrl,
+                                        videoThumbnailUrl: val.thumbnailUrl
+                                    });
+                                }}
+                                label="Video Media & Poster"
+                                description="Upload MP4, embed YouTube/Vimeo, and configure video thumbnail poster"
+                            />
+
+                            <div className="space-y-2 pt-1 border-t">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Dynamic Video Variable / URL</Label>
                                 <SlashInput 
                                     value={block.url || ''} 
                                     onChange={val => onUpdate({ url: val })} 
                                     variables={autocompleteVariables}
-                                    placeholder="https://example.com/video.mp4"
+                                    placeholder="https://example.com/video.mp4 or {{video_url}}"
                                     className="h-10 rounded-xl text-xs font-mono bg-muted/10"
                                 />
-                            </div>
-
-                            {/* Video Thumbnail Image */}
-                            <div className="space-y-4 pt-2 border-t">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Video Poster Thumbnail</Label>
-                                <MediaSelect 
-                                    value={block.videoThumbnailUrl} 
-                                    onValueChange={val => onUpdate({ videoThumbnailUrl: val })}
-                                    filterType="image"
-                                    className="rounded-xl border-none shadow-none bg-muted/20"
-                                />
-                                <div className="space-y-2 pt-2">
-                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Or Paste Thumbnail URL</Label>
-                                    <SlashInput 
-                                        value={block.videoThumbnailUrl || ''} 
-                                        onChange={val => onUpdate({ videoThumbnailUrl: val })} 
-                                        variables={autocompleteVariables}
-                                        placeholder="https://example.com/poster.jpg"
-                                        className="h-10 rounded-xl text-xs font-mono bg-muted/10"
-                                    />
-                                </div>
                             </div>
 
                             {/* Play Action Behavior */}
@@ -1568,13 +1562,21 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                     {/* Logo Settings */}
                     {block.type === 'logo' && (
                         <div className="space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Logo URL</Label>
+                            <ImageUploader
+                                value={block.url || ''}
+                                onChange={(url) => onUpdate({ url })}
+                                label="Brand Logo Source"
+                                description="Upload brand logo, pick from library, or enter a web link"
+                                category="Branding"
+                                aspectRatio="square"
+                            />
+                            <div className="space-y-2 pt-1 border-t">
+                                <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Dynamic Logo Variable / URL</Label>
                                 <SlashInput 
                                     value={block.url || ''} 
                                     onChange={val => onUpdate({ url: val })} 
                                     variables={autocompleteVariables}
-                                    placeholder="Paste logo image link..."
+                                    placeholder="Paste logo image link or {{school_logo}}..."
                                     className="h-10 rounded-xl text-xs bg-muted/10 font-mono"
                                 />
                             </div>

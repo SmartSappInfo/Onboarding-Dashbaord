@@ -923,6 +923,8 @@ export const APP_PERMISSIONS = [
   { id: 'tags_apply', label: 'Apply Tags to Contacts', category: 'Operations' },
   { id: 'forms_manage', label: 'Manage Forms', category: 'Studios' },
   { id: 'fields_manage', label: 'Manage Fields', category: 'Management' },
+  { id: 'call_centre_view', label: 'View Call Centre', category: 'Studios' },
+  { id: 'call_centre_manage', label: 'Manage Call Centre', category: 'Studios' },
 ] as const;
 
 export type AppPermissionId = typeof APP_PERMISSIONS[number]['id'];
@@ -5973,6 +5975,7 @@ export const APP_FEATURES = [
   { id: 'messaging', label: 'Messaging', category: 'Studios', icon: 'MessageSquareText', defaultEnabled: true },
   { id: 'tags', label: 'Tags', category: 'Studios', icon: 'Tags', defaultEnabled: true },
   { id: 'forms', label: 'Forms', category: 'Studios', icon: 'ClipboardSignature', defaultEnabled: true },
+  { id: 'call_centre', label: 'Call Centre', category: 'Studios', icon: 'PhoneCall', defaultEnabled: true },
   { id: 'qr_studio', label: 'QR Studio', category: 'Studios', icon: 'QrCode', defaultEnabled: true },
   { id: 'verify_studio', label: 'Verify Studio', category: 'Studios', icon: 'ShieldCheck', defaultEnabled: true },
   // Finance

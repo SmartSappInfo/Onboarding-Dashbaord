@@ -491,6 +491,8 @@ function mapLegacyPermissionToCoordinates(permission: AppPermissionId): { sectio
     tags_apply: { section: 'studios', feature: 'tags', action: 'view' }, // Using view as proxy
     forms_manage: { section: 'studios', feature: 'forms', action: 'edit' },
     fields_manage: { section: 'management', feature: 'fields', action: 'edit' },
+    call_centre_view: { section: 'studios', feature: 'callCentre', action: 'view' },
+    call_centre_manage: { section: 'studios', feature: 'callCentre', action: 'edit' },
     system_admin: { section: 'management', feature: 'users', action: 'view' }, // Dummy mapping, usually bypassed
     system_user_switch: { section: 'management', feature: 'users', action: 'edit' },
   };

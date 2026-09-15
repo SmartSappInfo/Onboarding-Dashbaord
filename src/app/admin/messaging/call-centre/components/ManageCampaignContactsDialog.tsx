@@ -24,7 +24,7 @@ interface ManageCampaignContactsDialogProps {
 
 export function ManageCampaignContactsDialog({ campaign, open, onOpenChange }: ManageCampaignContactsDialogProps) {
   const { user } = useUser();
-  const { activeWorkspaceId } = useWorkspace() as any;
+  const { activeWorkspaceId } = useWorkspace();
   const { toast } = useToast();
   
   const { queueItems, isLoading: queueLoading } = useCallQueueItems(campaign?.id || '');

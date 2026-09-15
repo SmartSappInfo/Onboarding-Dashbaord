@@ -58,7 +58,7 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
     id: 'gemini-3.6-flash',
     name: 'Gemini 3.6 Flash',
     provider: 'googleai',
-    providerModelString: 'googleai/gemini-3.6-flash',
+    providerModelString: 'googleai/gemini-2.5-flash',
     description: 'Active flagship model. High-speed, exceptional structured output & low latency.',
     tier: 'default',
     capabilities: {
@@ -74,7 +74,7 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
     id: 'gemini-3.1-flash-lite',
     name: 'Gemini 3.1 Flash-Lite',
     provider: 'googleai',
-    providerModelString: 'googleai/gemini-3.1-flash-lite',
+    providerModelString: 'googleai/gemini-3.1-flash-lite-preview',
     description: 'Ultra-fast, cost-efficient model for high-frequency lightweight tasks.',
     tier: 'fast',
     capabilities: {

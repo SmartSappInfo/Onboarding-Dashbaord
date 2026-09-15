@@ -68,6 +68,8 @@ import { useFieldArray } from 'react-hook-form';
 import { useSlashAutocomplete, convertToCleanHtml } from '@/hooks/use-slash-autocomplete';
 import { sanitizeHtml } from '@/lib/survey-variable-utils';
 import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
+import { DocumentUploader } from '@/components/shared/document-uploader';
+import { extractFileNameFromStorageUrl } from '@/lib/survey-response-utils';
 import { createPortal } from 'react-dom';
 import { FallbackEditorModal } from '@/components/shared/FallbackEditorModal';
 import { FILE_TYPE_PRESETS } from '@/lib/survey-file-utils';
@@ -1449,12 +1451,64 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
     onSelect: (id: string, isMulti: boolean, isRange: boolean) => void;
     isAccordion: boolean;
 }) {
+  const { activeWorkspaceId } = useWorkspace();
   const { watch, control, setValue, getValues: _getValues, formState: { errors } } = useFormContext();
   const element = watch(`elements.${index}`);
   const isSelected = selectedBlockIds.includes(element?.id);
   const isPrimaryActive = selectedBlockIds.length === 1 && isSelected;
   const isCollapsed = isAccordion && !isPrimaryActive;
   const hasErrors = !!(errors.elements as Record<string, unknown> | undefined)?.[index];
+
+  // Real-time reactive subscriptions for sample file properties so canvas updates immediately
+  // when the author toggles the switch or modifies sample file metadata in Block Settings.
+  const watchedSampleFileEnabled = useWatch({
+    control,
+    name: `elements.${index}.sampleFileEnabled`,
+  });
+  const watchedSampleFileTitle = useWatch({
+    control,
+    name: `elements.${index}.sampleFileTitle`,
+  });
+  const watchedSampleFileDescription = useWatch({
+    control,
+    name: `elements.${index}.sampleFileDescription`,
+  });
+  const watchedSampleFileUrl = useWatch({
+    control,
+    name: `elements.${index}.sampleFileUrl`,
+  });
+  const watchedSampleFileName = useWatch({
+    control,
+    name: `elements.${index}.sampleFileName`,
+  });
+  const watchedSampleFileButtonText = useWatch({
+    control,
+    name: `elements.${index}.sampleFileButtonText`,
+  });
+
+  const rawSampleFileEnabled = watchedSampleFileEnabled ?? (element as SurveyQuestion)?.sampleFileEnabled;
+  const isSampleFileActive = Boolean(rawSampleFileEnabled) && rawSampleFileEnabled !== 'false';
+
+  const liveSampleFileQuestion = React.useMemo(() => {
+    const q = element as SurveyQuestion;
+    return {
+      ...q,
+      sampleFileEnabled: isSampleFileActive,
+      sampleFileTitle: watchedSampleFileTitle ?? q?.sampleFileTitle,
+      sampleFileDescription: watchedSampleFileDescription ?? q?.sampleFileDescription,
+      sampleFileUrl: watchedSampleFileUrl ?? q?.sampleFileUrl,
+      sampleFileName: watchedSampleFileName ?? q?.sampleFileName,
+      sampleFileButtonText: watchedSampleFileButtonText ?? q?.sampleFileButtonText,
+    };
+  }, [
+    element,
+    isSampleFileActive,
+    watchedSampleFileTitle,
+    watchedSampleFileDescription,
+    watchedSampleFileUrl,
+    watchedSampleFileName,
+    watchedSampleFileButtonText,
+  ]);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
   
@@ -1826,10 +1880,11 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                           * No interpolator is passed — design mode shows the raw
                                           * {{variable}} template, which is what an author wants to see.
                                           */}
-                                        {element.type === 'file-upload' && (
-                                            <div className="mb-3">
-                                                <SurveySampleFileCard question={element as SurveyQuestion} />
-                                            </div>
+                                        {element.type === 'file-upload' && isSampleFileActive && (
+                                            <SurveySampleFileCard
+                                                question={liveSampleFileQuestion}
+                                                isDesignMode={true}
+                                            />
                                         )}
                                         {element.type === 'file-upload' && (
                                             <div className="p-6 rounded-2xl border-2 border-dashed border-primary/30 bg-primary/5 text-center flex flex-col items-center justify-center space-y-2.5">
@@ -2116,10 +2171,28 @@ function SortableSurveyElement({ id, index, remove, swap, insert, requestAddElem
                                             name={`elements.${index}.url`}
                                             control={control}
                                             render={({ field }) => (
-                                                <MediaSelect 
+                                                <DocumentUploader 
                                                     value={field.value} 
-                                                    onValueChange={field.onChange}
-                                                    filterType="document"
+                                                    fileName={(watch(`elements.${index}.fileName`) as string) || ''}
+                                                    workspaceId={activeWorkspaceId || undefined}
+                                                    onValueChange={(nextUrl, derivedName) => {
+                                                        field.onChange(nextUrl);
+                                                        const fileNameToSave = derivedName || (nextUrl ? extractFileNameFromStorageUrl(nextUrl) : '');
+                                                        setValue(
+                                                            `elements.${index}.fileName`,
+                                                            fileNameToSave,
+                                                            { shouldDirty: true }
+                                                        );
+                                                        const currentTitle = (watch(`elements.${index}.title`) as string) || '';
+                                                        if (!currentTitle && fileNameToSave) {
+                                                            const cleanTitle = fileNameToSave.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+                                                            setValue(
+                                                                `elements.${index}.title`,
+                                                                cleanTitle,
+                                                                { shouldDirty: true }
+                                                            );
+                                                        }
+                                                    }}
                                                 />
                                             )}
                                         />

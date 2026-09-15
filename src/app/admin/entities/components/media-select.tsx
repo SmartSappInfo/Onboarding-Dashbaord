@@ -1,170 +1,231 @@
 'use client';
 
+/**
+ * @fileOverview Standardized MediaSelect Component — Single Source of Truth Dispatcher
+ * 
+ * Automatically delegates to the unified ImageUploader, VideoUploader, or DocumentUploader
+ * based on filterType to provide complete cross-platform consistency.
+ * 
+ * Strict compliance with Workspace Rules:
+ * - Strict Typing: Zero 'any' or 'any[]'.
+ * - Accessible: Proper ARIA labels, focus outlines, minimum touch targets.
+ */
+
+import * as React from 'react';
 import { useState } from 'react';
+import { ImageUploader } from '@/components/shared/image-uploader';
+import { VideoUploader, type VideoUploaderValue } from '@/components/shared/video-uploader';
+import { DocumentUploader } from '@/components/shared/document-uploader';
+import MediaSelectorDialog from '../../media/components/media-selector-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { ImageIcon, Video, AudioWaveform, FileText, AlertCircle, Upload, Library } from 'lucide-react';
-import MediaSelectorDialog from '../../media/components/media-selector-dialog';
-import MediaUploader from '../../media/components/media-uploader';
+import { AudioWaveform, Library } from 'lucide-react';
 import type { MediaAsset } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import * as React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
 
-export interface MediaSelectProps extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> {
-    value?: string;
-    onValueChange?: (value: string) => void;
-    onChange?: (...event: any[]) => void; // From react-hook-form
-    filterType?: MediaAsset['type'];
+export interface MediaSelectProps {
+  value?: string;
+  onValueChange?: (value: string) => void;
+  onChange?: ((value: string) => void) | ((event: React.ChangeEvent<HTMLInputElement>) => void);
+  filterType?: MediaAsset['type'];
+  label?: string;
+  description?: string;
+  category?: string;
+  className?: string;
+  placeholder?: string;
+  disabled?: boolean;
+  workspaceId?: string;
+  aspectRatio?: 'video' | 'square' | 'banner' | 'auto';
+  name?: string;
+  id?: string;
 }
 
-const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
-  ({ className, value, onValueChange, onChange, filterType = 'image', ...props }, ref) => {
-  const [isLibraryOpen, setIsLibraryOpen] = useState(false);
-  const [isUploadOpen, setIsUploadOpen] = useState(false);
+export const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
+  (
+    {
+      className,
+      value,
+      onValueChange,
+      onChange,
+      filterType = 'image',
+      label,
+      description,
+      category = 'General',
+      workspaceId,
+      aspectRatio = 'auto',
+      placeholder: _placeholder,
+      disabled: _disabled,
+      ..._rest
+    }: MediaSelectProps,
+    _ref
+  ) => {
+    const [audioLibraryOpen, setAudioLibraryOpen] = useState(false);
+    const hiddenInputRef = React.useRef<HTMLInputElement | null>(null);
 
-  const triggerChange = (newValue: string) => {
-    if (onValueChange) {
-        onValueChange(newValue);
-    }
-    if (onChange) {
-        onChange(newValue);
-    }
-  }
+    React.useImperativeHandle(_ref, () => hiddenInputRef.current as HTMLInputElement);
 
-  const handleSelect = (asset: MediaAsset) => {
-    triggerChange(asset.url);
-    setIsLibraryOpen(false);
-  };
+    const triggerChange = React.useCallback(
+      (newValue: string) => {
+        if (hiddenInputRef.current) {
+          hiddenInputRef.current.value = newValue;
+        }
+        if (onValueChange) {
+          onValueChange(newValue);
+        }
+        if (onChange) {
+          try {
+            (onChange as (val: string) => void)(newValue);
+          } catch {
+            // Safety fallback for React Hook Form or synthetic event handlers
+            if (hiddenInputRef.current) {
+              const syntheticEvent = {
+                target: hiddenInputRef.current,
+                currentTarget: hiddenInputRef.current,
+                preventDefault: () => {},
+                stopPropagation: () => {},
+              } as unknown as React.ChangeEvent<HTMLInputElement>;
+              try {
+                (onChange as (e: React.ChangeEvent<HTMLInputElement>) => void)(syntheticEvent);
+              } catch (e) {
+                console.warn('[MediaSelect] onChange invocation failed:', e);
+              }
+            }
+          }
+        }
+      },
+      [onValueChange, onChange]
+    );
 
-  const handleUploadComplete = (asset: MediaAsset) => {
-    triggerChange(asset.url);
-    // Note: MediaUploader handles its own success state, we just need to wait or close
-  };
-  
-  const PreviewIcon = () => {
-    switch (filterType) {
- case 'video': return <Video className="w-8 h-8 text-muted-foreground" />;
- case 'audio': return <AudioWaveform className="w-8 h-8 text-muted-foreground" />;
- case 'document': return <FileText className="w-8 h-8 text-muted-foreground" />;
- default: return <ImageIcon className="w-8 h-8 text-muted-foreground" />;
-    }
-  };
-
-  const isLikelyImage = (url?: string) => {
-    if (!url) return false;
-    const isVideoHost = url.includes('youtube.com') || url.includes('youtu.be') || url.includes('vimeo.com');
-    if (isVideoHost) return false;
-    return url.match(/\.(jpeg|jpg|gif|png|webp|svg|avif)$/i) || 
-           url.includes('firebasestorage.googleapis.com') ||
-           url.includes('picsum.photos') ||
-           url.includes('unsplash.com') ||
-           url.includes('logo.clearbit.com') ||
-           url.includes('dribbble.com');
-  };
-
-  const isInvalid = value && filterType === 'image' && !isLikelyImage(value);
-
-  return (
-    <>
- <div className={cn("space-y-2 w-full", className)}>
- <div className="flex items-start gap-3">
- <div className={cn(
-                "relative w-24 h-24 border-2 rounded-2xl flex items-center justify-center bg-muted shrink-0 transition-all duration-300",
-                isInvalid ? "border-rose-500/50 bg-rose-50" : "border-border hover:border-primary/20"
-            )}>
-            {value && filterType === 'image' && isLikelyImage(value) ? (
-                /* Use standard img for external URLs to avoid unconfigured host errors */
-                <img 
-                    src={value} 
-                    alt="Preview" 
- className="w-full h-full object-contain rounded-[inherit] p-2" 
-                />
-            ) : (
-                <PreviewIcon />
-            )}
-            </div>
- <div className="flex-grow space-y-3 min-w-0">
-                <Input 
-                    value={value || ''}
-                    onChange={(e) => triggerChange(e.target.value)}
-                    placeholder="https://... or use buttons below"
- className={cn(
-                        "h-11 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 transition-all font-medium",
-                        isInvalid ? "focus:ring-rose-500/30" : "focus:ring-primary/20"
-                    )}
-                    ref={ref}
-                    {...props}
-                />
- <div className="flex items-center gap-2">
- <Button type="button" variant="outline" size="sm" onClick={() => setIsUploadOpen(true)} className="rounded-xl font-semibold border-primary/10 text-[10px] h-9 px-4 hover:bg-primary/5 hover:text-primary transition-all">
- <Upload className="mr-2 h-3.5 w-3.5" /> Upload New
-                    </Button>
- <Button type="button" variant="outline" size="sm" onClick={() => setIsLibraryOpen(true)} className="rounded-xl font-semibold border-primary/10 text-[10px] h-9 px-4 hover:bg-primary/5 hover:text-primary transition-all">
- <Library className="mr-2 h-3.5 w-3.5" /> Library
-                    </Button>
-                </div>
-            </div>
-        </div>
-        
-        <AnimatePresence>
-            {isInvalid && (
-                <motion.div 
-                    initial={{ opacity: 0, height: 0 }} 
-                    animate={{ opacity: 1, height: 'auto' }} 
-                    exit={{ opacity: 0, height: 0 }}
- className="flex items-center gap-2 p-2 rounded-lg bg-rose-50 text-rose-600 border border-rose-100 overflow-hidden"
-                >
- <AlertCircle className="h-3 w-3 shrink-0" />
- <p className="text-[9px] font-semibold tracking-tight leading-none">
-                        Format Mismatch: Image expected, but link looks like a video or external page.
-                    </p>
-                </motion.div>
-            )}
-        </AnimatePresence>
-      </div>
-
-      <MediaSelectorDialog 
-        open={isLibraryOpen}
-        onOpenChange={setIsLibraryOpen}
-        onSelectAsset={handleSelect}
-        filterType={filterType}
+    const hiddenInput = (
+      <input
+        type="hidden"
+        ref={hiddenInputRef}
+        value={value || ''}
+        name={_rest.name}
+        id={_rest.id}
       />
+    );
 
-      <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
-        <DialogContent className="w-screen h-[100dvh] max-w-none p-0 m-0 border-none rounded-none flex flex-col shadow-2xl overflow-hidden bg-background">
-          <DialogHeader className="p-8 border-b bg-muted/10 shrink-0 relative">
-            <div className="flex items-center gap-4 w-2/3">
-              <div className="p-3 bg-primary text-white rounded-2xl shadow-xl shadow-primary/20">
-                <Upload className="h-6 w-6" />
+    // Video media selection
+    if (filterType === 'video') {
+      return (
+        <div className={cn('w-full', className)}>
+          {hiddenInput}
+          <VideoUploader
+            value={value || ''}
+            onChange={(val: VideoUploaderValue) => triggerChange(val.videoUrl)}
+            label={label}
+            description={description}
+            workspaceId={workspaceId}
+          />
+        </div>
+      );
+    }
+
+    // Document media selection
+    if (filterType === 'document') {
+      return (
+        <div className={cn('w-full space-y-1.5', className)}>
+          {label && (
+            <label className="text-xs font-semibold text-foreground">
+              {label}
+            </label>
+          )}
+          {description && (
+            <p className="text-[11px] text-muted-foreground">
+              {description}
+            </p>
+          )}
+          {hiddenInput}
+          <DocumentUploader
+            value={value || ''}
+            onChange={(url: string) => triggerChange(url)}
+            workspaceId={workspaceId}
+          />
+        </div>
+      );
+    }
+
+    // Audio media selection
+    if (filterType === 'audio') {
+      return (
+        <>
+          <div className={cn('space-y-2 w-full', className)}>
+            {hiddenInput}
+            {label && (
+              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
+                {label}
+              </label>
+            )}
+            {value ? (
+              <div className="p-3 rounded-xl border border-border bg-muted/20 flex items-center justify-between gap-3">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AudioWaveform className="w-5 h-5 text-primary shrink-0" />
+                  <audio controls src={value} className="h-8 max-w-[260px]" />
+                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => triggerChange('')}
+                  className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
+                >
+                  Remove
+                </Button>
               </div>
-              <div className="text-left">
-                <DialogTitle className="text-2xl font-semibold tracking-tight">Direct Upload</DialogTitle>
-                <DialogDescription className="text-xs font-bold text-muted-foreground">Upload and optimize institutional branding assets.</DialogDescription>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Input
+                  value={value || ''}
+                  onChange={(e) => triggerChange(e.target.value)}
+                  placeholder="Paste audio URL (.mp3, .wav)..."
+                  className="h-10 rounded-xl bg-muted/20 border-border text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAudioLibraryOpen(true)}
+                  className="h-10 rounded-xl text-xs font-semibold gap-1.5 shrink-0"
+                >
+                  <Library className="w-4 h-4" /> Media Library
+                </Button>
               </div>
-            </div>
-            <div id="uploader-header-portal" className="absolute top-10 right-16 z-[100]"></div>
-          </DialogHeader>
-          <div className="flex-1 p-8 overflow-y-auto bg-background">
-            <MediaUploader 
-                onUploadSuccess={() => setIsUploadOpen(false)} 
-                onUploadComplete={handleUploadComplete}
-                acceptedFileTypes={[filterType as any]}
-            />
+            )}
+            {description && (
+              <p className="text-[10px] text-muted-foreground">{description}</p>
+            )}
           </div>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-});
+          <MediaSelectorDialog
+            open={audioLibraryOpen}
+            onOpenChange={setAudioLibraryOpen}
+            onSelectAsset={(asset) => {
+              triggerChange(asset.url);
+              setAudioLibraryOpen(false);
+            }}
+            filterType="audio"
+            workspaceId={workspaceId}
+          />
+        </>
+      );
+    }
+
+    // Default: Unified Image Uploader
+    return (
+      <div className={cn('w-full', className)}>
+        {hiddenInput}
+        <ImageUploader
+          value={value || ''}
+          onChange={triggerChange}
+          label={label}
+          description={description}
+          category={category}
+          workspaceId={workspaceId}
+          aspectRatio={aspectRatio}
+        />
+      </div>
+    );
+  }
+);
 
 MediaSelect.displayName = 'MediaSelect';
-
-export { MediaSelect };

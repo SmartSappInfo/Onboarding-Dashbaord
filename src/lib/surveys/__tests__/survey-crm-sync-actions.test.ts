@@ -240,4 +240,33 @@ describe('Survey CRM Sync Actions (Phase 6)', () => {
     expect(res.success).toBe(true);
     expect(mockUpdate).toHaveBeenCalledTimes(1);
   });
+
+  it('suppresses new contact creation when autoUpsertContact is explicitly false', async () => {
+    // Unmatched contact
+    mockGet.mockResolvedValueOnce({ empty: true, docs: [] });
+
+    const surveyWithDisabledUpsert = {
+      ...mockSurvey,
+      crmConfig: {
+        ...mockSurvey.crmConfig,
+        autoUpsertContact: false,
+      },
+    };
+
+    const res = await executeSurveyCrmSyncAction({
+      survey: surveyWithDisabledUpsert as unknown as Survey,
+      responseId: 'res_003',
+      responseData: {
+        answers: [{ questionId: 'q_name', value: 'Anonymous Lead' }],
+        score: 70,
+        respondentName: 'Anonymous Lead',
+        respondentEmail: 'lead@example.com',
+      },
+      workspaceId: 'ws1',
+      organizationId: 'org1',
+    });
+
+    expect(res.success).toBe(true);
+    expect(mockSet).not.toHaveBeenCalled();
+  });
 });
