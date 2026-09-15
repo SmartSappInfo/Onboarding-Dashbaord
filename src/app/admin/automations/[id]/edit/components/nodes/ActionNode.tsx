@@ -34,7 +34,9 @@ const ACTION_NAMES: Record<string, string> = {
     END_AUTOMATION: 'End Automation',
     TRIGGER_OUTBOUND_WEBHOOK: 'Outbound Webhook',
     SEND_NOTIFICATION_EMAIL: 'Send Notification (Email)',
+    DIRECT_NOTIFICATION_EMAIL: 'Direct Notification (Email)',
     SEND_NOTIFICATION_SMS: 'Send Notification (SMS)',
+    DIRECT_NOTIFICATION_SMS: 'Direct Notification (SMS)',
     SEND_NOTIFICATION_IN_APP: 'Send Notification (In-App)',
     SEND_NOTIFICATION_PUSH: 'Send Notification (Push)',
     RUN_AUTOMATION: 'Run Automation',
@@ -96,9 +98,11 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                 return MessageSquare;
             case 'DIRECT_EMAIL':
             case 'SEND_NOTIFICATION_EMAIL':
+            case 'DIRECT_NOTIFICATION_EMAIL':
                 return Mail;
             case 'DIRECT_SMS':
             case 'SEND_NOTIFICATION_SMS':
+            case 'DIRECT_NOTIFICATION_SMS':
             case 'SEND_NOTIFICATION_PUSH':
                 return Smartphone;
             case 'SEND_NOTIFICATION_IN_APP':
@@ -226,6 +230,21 @@ export function ActionNode({ id, data, selected }: { id: string; data: ActionNod
                     ? (String(config.directBody).substring(0, 20) + (String(config.directBody).length > 20 ? '...' : '')) 
                     : 'Direct WhatsApp';
                 return `WhatsApp "${snippet}" to ${recipients || 'recipients'}`;
+            }
+            case 'DIRECT_NOTIFICATION_EMAIL':
+            case 'DIRECT_NOTIFICATION_SMS': {
+                const channel = actionType === 'DIRECT_NOTIFICATION_EMAIL' ? 'Email' : 'SMS';
+                const targets = (config.notificationTargets || []).map((t: string) => {
+                    if (t === 'assignee') return 'Assignee';
+                    if (t === 'users') return 'Team Members';
+                    if (t === 'custom') return config.customRecipient || 'Custom Address';
+                    return t;
+                }).join(', ');
+                const rawSnippet = actionType === 'DIRECT_NOTIFICATION_EMAIL'
+                    ? (config.directSubject || config.directBody || 'Direct Notification')
+                    : (config.directBody || 'Direct SMS Alert');
+                const snippet = String(rawSnippet).substring(0, 20) + (String(rawSnippet).length > 20 ? '...' : '');
+                return `Notify (${channel}) ${targets || 'team'}: "${snippet}"`;
             }
             case 'SEND_NOTIFICATION_EMAIL':
             case 'SEND_NOTIFICATION_SMS':

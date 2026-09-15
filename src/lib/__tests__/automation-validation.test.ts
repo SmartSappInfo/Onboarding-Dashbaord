@@ -384,4 +384,188 @@ describe('validateAutomationBlueprint', () => {
       ).rejects.toThrow(/must select at least one recipient target/i);
     });
   });
+
+  describe('DIRECT_NOTIFICATION_EMAIL and DIRECT_NOTIFICATION_SMS validation', () => {
+    it('passes DIRECT_NOTIFICATION_EMAIL with targets, subject, and body without templateId', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff Email',
+                actionType: 'DIRECT_NOTIFICATION_EMAIL',
+                config: {
+                  notificationTargets: ['assignee'],
+                  directSubject: 'Internal Staff Alert',
+                  directBody: 'New student onboarded successfully.',
+                },
+              },
+            },
+          ],
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('rejects DIRECT_NOTIFICATION_EMAIL when notificationTargets is empty', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff Email',
+                actionType: 'DIRECT_NOTIFICATION_EMAIL',
+                config: {
+                  notificationTargets: [],
+                  directSubject: 'Alert',
+                  directBody: 'Body',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/requires at least one target destination selected/i);
+    });
+
+    it('rejects DIRECT_NOTIFICATION_EMAIL when "users" target is set but no userIds provided', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff Email',
+                actionType: 'DIRECT_NOTIFICATION_EMAIL',
+                config: {
+                  notificationTargets: ['users'],
+                  notificationUserIds: [],
+                  directSubject: 'Alert',
+                  directBody: 'Body',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/no users are selected/i);
+    });
+
+    it('rejects DIRECT_NOTIFICATION_EMAIL when "custom" target is set but no custom recipient provided', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff Email',
+                actionType: 'DIRECT_NOTIFICATION_EMAIL',
+                config: {
+                  notificationTargets: ['custom'],
+                  customRecipient: '',
+                  directSubject: 'Alert',
+                  directBody: 'Body',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/no custom recipient value is set/i);
+    });
+
+    it('rejects DIRECT_NOTIFICATION_EMAIL when directSubject is missing', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff Email',
+                actionType: 'DIRECT_NOTIFICATION_EMAIL',
+                config: {
+                  notificationTargets: ['assignee'],
+                  directBody: 'Body',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must specify a subject line/i);
+    });
+
+    it('rejects DIRECT_NOTIFICATION_EMAIL when directBody is missing', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff Email',
+                actionType: 'DIRECT_NOTIFICATION_EMAIL',
+                config: {
+                  notificationTargets: ['assignee'],
+                  directSubject: 'Subject',
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must specify a message body/i);
+    });
+
+    it('passes DIRECT_NOTIFICATION_SMS with targets and body without subject or templateId', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff SMS',
+                actionType: 'DIRECT_NOTIFICATION_SMS',
+                config: {
+                  notificationTargets: ['custom'],
+                  customRecipient: '+1234567890, +0987654321',
+                  directBody: 'Direct notification SMS body.',
+                },
+              },
+            },
+          ],
+        })
+      ).resolves.toBeUndefined();
+    });
+
+    it('rejects DIRECT_NOTIFICATION_SMS when directBody is missing', async () => {
+      await expect(
+        validateAutomationBlueprint({
+          triggers: [{ id: 't1', type: 'ENTITY_CREATED', config: {} }],
+          nodes: [
+            {
+              id: 'a1',
+              type: 'actionNode',
+              data: {
+                label: 'Notify Staff SMS',
+                actionType: 'DIRECT_NOTIFICATION_SMS',
+                config: {
+                  notificationTargets: ['assignee'],
+                },
+              },
+            },
+          ],
+        })
+      ).rejects.toThrow(/must specify a message body/i);
+    });
+  });
 });

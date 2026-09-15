@@ -13,10 +13,12 @@ describe('Messaging Step Category Resolver', () => {
     expect(getMessagingCategory('DIRECT_SMS')).toBe('SMS');
     expect(getMessagingCategory('SEND_SMS')).toBe('SMS');
     expect(getMessagingCategory('SEND_NOTIFICATION_SMS')).toBe('SMS');
+    expect(getMessagingCategory('DIRECT_NOTIFICATION_SMS')).toBe('SMS');
 
     expect(getMessagingCategory('DIRECT_EMAIL')).toBe('EMAIL');
     expect(getMessagingCategory('SEND_EMAIL')).toBe('EMAIL');
     expect(getMessagingCategory('SEND_NOTIFICATION_EMAIL')).toBe('EMAIL');
+    expect(getMessagingCategory('DIRECT_NOTIFICATION_EMAIL')).toBe('EMAIL');
 
     expect(getMessagingCategory('DIRECT_WHATSAPP')).toBe('WHATSAPP');
     expect(getMessagingCategory('SEND_WHATSAPP')).toBe('WHATSAPP');

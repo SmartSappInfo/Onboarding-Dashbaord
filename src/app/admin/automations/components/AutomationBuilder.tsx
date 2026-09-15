@@ -1230,6 +1230,14 @@ export default function AutomationBuilder({ initialNodes, initialEdges, triggers
             data.config.channel = item.channel || (item.actionType === 'DIRECT_SMS' ? 'sms' : (item.actionType === 'SEND_WHATSAPP' || item.actionType === 'DIRECT_WHATSAPP') ? 'whatsapp' : 'email');
             data.config.recipientTargets = ['triggering'];
         }
+        if (item.actionType === 'DIRECT_NOTIFICATION_EMAIL' || item.actionType === 'DIRECT_NOTIFICATION_SMS' || item.actionType === 'SEND_NOTIFICATION_EMAIL' || item.actionType === 'SEND_NOTIFICATION_SMS') {
+            data.config.channel = (item.actionType === 'DIRECT_NOTIFICATION_SMS' || item.actionType === 'SEND_NOTIFICATION_SMS') ? 'sms' : 'email';
+            data.config.notificationTargets = ['assignee'];
+            data.config.senderProfileId = 'default';
+            if (item.actionType === 'DIRECT_NOTIFICATION_EMAIL') {
+                data.config.useBrandLayout = true;
+            }
+        }
         if (item.config) {
             data.config = {
                 ...data.config,

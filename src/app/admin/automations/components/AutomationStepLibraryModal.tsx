@@ -177,6 +177,15 @@ const LIBRARY_ITEMS = [
     payload: { type: 'actionNode', label: 'Send Notification (Email)', actionType: 'SEND_NOTIFICATION_EMAIL' }
   },
   {
+    id: 'direct_notification_email',
+    title: 'Direct Notification (Email)',
+    description: 'Send an email notification directly to workspace assignees, selected team members or custom emails without a template.',
+    category: 'sending_options',
+    icon: Mail,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Direct Notification (Email)', actionType: 'DIRECT_NOTIFICATION_EMAIL' }
+  },
+  {
     id: 'send_notification_sms',
     title: 'Send Notification (SMS)',
     description: 'Deliver an administrative SMS text alert to assignees, team members or custom numbers.',
@@ -184,6 +193,15 @@ const LIBRARY_ITEMS = [
     icon: Smartphone,
     nodeType: 'actionNode',
     payload: { type: 'actionNode', label: 'Send Notification (SMS)', actionType: 'SEND_NOTIFICATION_SMS' }
+  },
+  {
+    id: 'direct_notification_sms',
+    title: 'Direct Notification (SMS)',
+    description: 'Deliver an administrative SMS text alert directly to assignees, team members or custom numbers without a template.',
+    category: 'sending_options',
+    icon: Smartphone,
+    nodeType: 'actionNode',
+    payload: { type: 'actionNode', label: 'Direct Notification (SMS)', actionType: 'DIRECT_NOTIFICATION_SMS' }
   },
   {
     id: 'send_notification_in_app',

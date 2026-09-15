@@ -194,6 +194,53 @@ function validateActionNodeConfigs(actionNodes: BlueprintNode[], allNodes: Bluep
         }
         break;
       }
+      case 'DIRECT_NOTIFICATION_EMAIL': {
+        const targets = config.notificationTargets as string[] | undefined;
+        if (!targets || targets.length === 0) {
+          throw new AutomationValidationError(
+            `Direct Notification (Email) in "${label}" requires at least one target destination selected.`
+          );
+        }
+        if (targets.includes('users') && (!config.notificationUserIds || (config.notificationUserIds as string[]).length === 0)) {
+          throw new AutomationValidationError(
+            `Direct Notification (Email) in "${label}" has "Selected Team Members" target active but no users are selected.`
+          );
+        }
+        if (targets.includes('custom') && (!config.customRecipient || String(config.customRecipient).trim() === '')) {
+          throw new AutomationValidationError(
+            `Direct Notification (Email) in "${label}" has "Custom Destination Address" active but no custom recipient value is set.`
+          );
+        }
+        if (!config.directSubject || String(config.directSubject).trim() === '') {
+          throw new AutomationValidationError(`Direct Notification (Email) in "${label}" must specify a subject line.`);
+        }
+        if (!config.directBody || String(config.directBody).trim() === '') {
+          throw new AutomationValidationError(`Direct Notification (Email) in "${label}" must specify a message body.`);
+        }
+        break;
+      }
+      case 'DIRECT_NOTIFICATION_SMS': {
+        const targets = config.notificationTargets as string[] | undefined;
+        if (!targets || targets.length === 0) {
+          throw new AutomationValidationError(
+            `Direct Notification (SMS) in "${label}" requires at least one target destination selected.`
+          );
+        }
+        if (targets.includes('users') && (!config.notificationUserIds || (config.notificationUserIds as string[]).length === 0)) {
+          throw new AutomationValidationError(
+            `Direct Notification (SMS) in "${label}" has "Selected Team Members" target active but no users are selected.`
+          );
+        }
+        if (targets.includes('custom') && (!config.customRecipient || String(config.customRecipient).trim() === '')) {
+          throw new AutomationValidationError(
+            `Direct Notification (SMS) in "${label}" has "Custom Destination Address" active but no custom recipient value is set.`
+          );
+        }
+        if (!config.directBody || String(config.directBody).trim() === '') {
+          throw new AutomationValidationError(`Direct Notification (SMS) in "${label}" must specify a message body.`);
+        }
+        break;
+      }
       case 'SEND_NOTIFICATION_EMAIL':
       case 'SEND_NOTIFICATION_SMS':
       case 'SEND_NOTIFICATION_IN_APP':

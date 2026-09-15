@@ -28,8 +28,8 @@ import { MappableInputField } from './MappableInputField';
 import type { UserProfile, OnboardingStage, VariableDefinition, Pipeline, Automation, Tag, AppField, Workspace, MessageResendConfig, MessageTemplate } from '@/lib/types';
 import { ResendConfigSection } from './ResendConfigSection';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 import { useCallCampaigns } from '@/lib/call-centre-hooks';
 import {
   getMessagingCategory,
@@ -757,6 +757,8 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
     'DIRECT_EMAIL',
     'DIRECT_SMS',
     'DIRECT_WHATSAPP',
+    'DIRECT_NOTIFICATION_EMAIL',
+    'DIRECT_NOTIFICATION_SMS',
     'SEND_NOTIFICATION_EMAIL',
     'SEND_NOTIFICATION_SMS',
     'SEND_NOTIFICATION_IN_APP',
@@ -820,7 +822,13 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
     ) {
       onUpdateConfig({ recipientTargets: config.contactScope ? [config.contactScope] : ['triggering'] });
     }
-  }, [actionType, config.recipientTargets, config.contactScope, onUpdateConfig]);
+    if (
+      (actionType.startsWith('SEND_NOTIFICATION_') || actionType.startsWith('DIRECT_NOTIFICATION_')) &&
+      config.notificationTargets === undefined
+    ) {
+      onUpdateConfig({ notificationTargets: ['assignee'] });
+    }
+  }, [actionType, config.recipientTargets, config.notificationTargets, config.contactScope, onUpdateConfig]);
 
   const updateConfig = (updates: Partial<AutomationConfig>) => {
     onUpdateConfig(updates);
@@ -1203,15 +1211,83 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
         </div>
       ) : null}
 
-      {actionType.startsWith('SEND_NOTIFICATION_') ? (
-        <div className="space-y-6">
+      {actionType === 'DIRECT_NOTIFICATION_EMAIL' || actionType === 'DIRECT_NOTIFICATION_SMS' ? (
+        <div className="space-y-6 text-left">
+          {/* Sender Profile Selector */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+              Sender Profile
+            </Label>
+            <SenderProfileSelector
+              channel={actionType === 'DIRECT_NOTIFICATION_EMAIL' ? 'email' : 'sms'}
+              value={(config.senderProfileId as string) || 'default'}
+              onChange={(v) => updateConfig({ senderProfileId: v })}
+              organizationId={activeWorkspace?.organizationId}
+              workspaceId={activeWorkspace?.id}
+              defaultSentinelValue="default"
+              defaultLabel="Default Active Profile"
+            />
+          </div>
+
+          {/* Subject Line (DIRECT_NOTIFICATION_EMAIL only) */}
+          {actionType === 'DIRECT_NOTIFICATION_EMAIL' ? (
+            <div className="space-y-2">
+              <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+                Subject Line
+              </Label>
+              <MappableInputField
+                placeholder="e.g. Internal Alert: Update for {{entity.displayName}}"
+                value={(config.directSubject as string) || ''}
+                onChange={(val) => updateConfig({ directSubject: val })}
+                inputClassName="font-semibold text-xs px-4"
+                appFields={appFields}
+              />
+            </div>
+          ) : null}
+
+          {/* Notification Body Input */}
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">
+              Notification Body
+            </Label>
+            <MappableInputField
+              placeholder={
+                actionType === 'DIRECT_NOTIFICATION_EMAIL'
+                  ? "Write your internal notification email here..."
+                  : "Write your administrative SMS alert here..."
+              }
+              value={(config.directBody as string) || ''}
+              onChange={(val) => updateConfig({ directBody: val })}
+              isTextArea={true}
+              inputClassName="font-medium text-xs px-4 min-h-[120px]"
+              appFields={appFields}
+            />
+          </div>
+
+          {/* Wrap in Brand Layout (DIRECT_NOTIFICATION_EMAIL only) */}
+          {actionType === 'DIRECT_NOTIFICATION_EMAIL' ? (
+            <div className="flex items-center space-x-2 pt-2">
+              <input
+                type="checkbox"
+                id="useBrandLayoutDirectNotification"
+                checked={config.useBrandLayout !== false}
+                onChange={(e) => updateConfig({ useBrandLayout: e.target.checked })}
+                className="h-4 w-4 rounded border-border text-primary focus:ring-primary cursor-pointer active:scale-95 transition-transform"
+              />
+              <label htmlFor="useBrandLayoutDirectNotification" className="text-xs font-semibold cursor-pointer select-none">
+                Wrap message in brand email layout/wrapper
+              </label>
+            </div>
+          ) : null}
+
+          {/* Direct Notification To */}
           <div className="space-y-2">
             <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Direct Notification To</Label>
             <div className="space-y-2.5 p-4 rounded-2xl bg-muted/20 border border-border/50">
               {[
                 { key: 'assignee', label: 'Workspace Assignee', desc: 'Direct to the designated owner/manager of the entity' },
                 { key: 'users', label: 'Selected Team Members', desc: 'Direct to specific workspace team members' },
-                { key: 'custom', label: 'Custom Destination Address', desc: actionType === 'SEND_NOTIFICATION_SMS' ? 'Direct to a custom mobile number' : 'Direct to a custom email address' },
+                { key: 'custom', label: 'Custom Destination Address(es)', desc: actionType === 'DIRECT_NOTIFICATION_SMS' ? 'Direct to custom mobile number(s)' : 'Direct to custom email address(es)' },
               ].map((target) => {
                 const isChecked = (config.notificationTargets || []).includes(target.key as any);
                 return (
@@ -1283,14 +1359,120 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
                     {target.key === 'custom' && isChecked ? (
                       <div className="pl-6 pt-2 animate-in slide-in-from-top-1 duration-200">
                         <Label className="text-[9px] font-bold text-primary ml-1 block mb-1">
-                          {actionType === 'SEND_NOTIFICATION_SMS' ? 'Custom Mobile Number' : 'Custom Email Address'}
+                          {actionType === 'DIRECT_NOTIFICATION_SMS' ? 'Custom Mobile Number(s)' : 'Custom Email Address(es)'}
                         </Label>
                         <MappableInputField 
-                          placeholder={actionType === 'SEND_NOTIFICATION_SMS' ? 'e.g. {{phone}}' : 'e.g. {{email}}'} 
+                          placeholder={actionType === 'DIRECT_NOTIFICATION_SMS' ? 'e.g. +1234567890, {{phone}}' : 'e.g. alerts@company.com, {{email}}'} 
                           value={config.customRecipient || ''} 
                           onChange={(val) => updateConfig({ customRecipient: val })} 
                           inputClassName="font-mono text-xs px-4"
+                          appFields={appFields}
                         />
+                        <p className="text-[9px] text-muted-foreground mt-1 ml-1">
+                          Separate multiple external addresses with commas. Dynamic variables like &#123;&#123;email&#125;&#125; are supported.
+                        </p>
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {actionType.startsWith('SEND_NOTIFICATION_') ? (
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Direct Notification To</Label>
+            <div className="space-y-2.5 p-4 rounded-2xl bg-muted/20 border border-border/50">
+              {[
+                { key: 'assignee', label: 'Workspace Assignee', desc: 'Direct to the designated owner/manager of the entity' },
+                { key: 'users', label: 'Selected Team Members', desc: 'Direct to specific workspace team members' },
+                { key: 'custom', label: 'Custom Destination Address(es)', desc: actionType === 'SEND_NOTIFICATION_SMS' ? 'Direct to custom mobile number(s)' : 'Direct to custom email address(es)' },
+              ].map((target) => {
+                const isChecked = (config.notificationTargets || []).includes(target.key as any);
+                return (
+                  <div key={target.key} className="flex flex-col space-y-1.5 animate-in fade-in duration-200">
+                    <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={(e) => {
+                          const current = config.notificationTargets || [];
+                          const updated = e.target.checked
+                            ? [...current, target.key]
+                            : current.filter((k: string) => k !== target.key);
+                          updateConfig({ notificationTargets: updated });
+                        }}
+                        className="h-4 w-4 rounded border-border text-primary focus:ring-primary mt-0.5"
+                      />
+                      <div className="flex flex-col text-left">
+                        <span className="text-xs font-bold leading-none mb-0.5 text-foreground">{target.label}</span>
+                        <span className="text-[9px] font-medium text-muted-foreground leading-none">{target.desc}</span>
+                      </div>
+                    </label>
+
+                    {target.key === 'users' && isChecked ? (
+                      <div className="pl-6 pt-2 space-y-2 animate-in slide-in-from-top-1 duration-200">
+                        <Label className="text-[9px] font-bold text-primary ml-1 block mb-1">Target Workspace Users</Label>
+                        <div className="flex flex-wrap gap-1.5 mb-1.5">
+                          {(config.notificationUserIds || []).map((uid: string) => {
+                            const u = users?.find((user) => user.id === uid);
+                            return (
+                              <Badge key={uid} variant="secondary" className="pl-2 pr-1 py-1 flex items-center gap-1 rounded-lg bg-primary/10 text-primary border-none animate-in zoom-in-95 duration-150">
+                                <span className="text-[10px] font-bold tracking-tight">{u?.name || uid}</span>
+                                <Button 
+                                  type="button"
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-4 w-4 rounded-md hover:bg-primary/20"
+                                  onClick={() => updateConfig({ notificationUserIds: (config.notificationUserIds || []).filter((id: string) => id !== uid) })}
+                                >
+                                  <XIcon className="h-3 w-3" />
+                                </Button>
+                              </Badge>
+                            );
+                          })}
+                        </div>
+                        <Select 
+                          value="" 
+                          onValueChange={(v) => {
+                            const current = config.notificationUserIds || [];
+                            if (!current.includes(v)) {
+                              updateConfig({ notificationUserIds: [...current, v] });
+                            }
+                          }}
+                        >
+                          <SelectTrigger className="h-9 rounded-lg bg-background text-xs border border-border/50 px-3">
+                            <SelectValue placeholder="Add workspace users..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-none shadow-2xl p-2 max-h-[250px] overflow-y-auto">
+                            {(users || []).map((u) => (
+                              <SelectItem key={u.id} value={u.id} className="rounded-lg p-2 font-semibold">
+                                {u.name} ({u.email})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ) : null}
+
+                    {target.key === 'custom' && isChecked ? (
+                      <div className="pl-6 pt-2 animate-in slide-in-from-top-1 duration-200">
+                        <Label className="text-[9px] font-bold text-primary ml-1 block mb-1">
+                          {actionType === 'SEND_NOTIFICATION_SMS' ? 'Custom Mobile Number(s)' : 'Custom Email Address(es)'}
+                        </Label>
+                        <MappableInputField 
+                          placeholder={actionType === 'SEND_NOTIFICATION_SMS' ? 'e.g. +1234567890, {{phone}}' : 'e.g. alerts@company.com, {{email}}'} 
+                          value={config.customRecipient || ''} 
+                          onChange={(val) => updateConfig({ customRecipient: val })} 
+                          inputClassName="font-mono text-xs px-4"
+                          appFields={appFields}
+                        />
+                        <p className="text-[9px] text-muted-foreground mt-1 ml-1">
+                          Separate multiple external addresses with commas. Dynamic variables like &#123;&#123;email&#125;&#125; are supported.
+                        </p>
                       </div>
                     ) : null}
                   </div>

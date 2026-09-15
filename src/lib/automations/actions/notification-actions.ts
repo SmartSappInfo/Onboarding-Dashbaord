@@ -30,6 +30,38 @@ function compileTemplate(tmpl: string, payload: Record<string, unknown>): string
   });
 }
 
+/**
+ * Splits a manual recipient string (supporting comma, semicolon, or newline delimiters)
+ * and resolves any embedded {{variable}} tokens using the payload map.
+ */
+export function parseManualRecipients(
+  rawInput: string | undefined | null,
+  payload: Record<string, unknown>,
+  isPhone: boolean
+): string[] {
+  if (!rawInput || typeof rawInput !== 'string') return [];
+
+  // Interpolate double-brace placeholders first
+  const interpolated = rawInput.replace(/\{\{([^}]+)\}\}/g, (_match, key) => {
+    const trimmed = (key as string).trim();
+    return trimmed in payload ? String(payload[trimmed]) : '';
+  });
+
+  // Split by comma, semicolon, or newline
+  const tokens = interpolated
+    .split(/[,;\n]+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length > 0);
+
+  if (isPhone) {
+    // Clean and normalize phone numbers (digits, optional leading +)
+    return tokens.map((t) => t.replace(/[^\d+]/g, '')).filter((t) => t.length > 0);
+  }
+
+  // Filter basic email structure (contains @)
+  return tokens.filter((t) => t.includes('@'));
+}
+
 export async function handleSendNotification(
   actionType: string,
   config: Record<string, unknown>,
@@ -111,12 +143,14 @@ export async function handleSendNotification(
     }
   }
 
-  // 3. Custom Destination
+  // 3. Custom Destination (multi-delimiter + variable-aware)
   if (targets.includes('custom') && customRec) {
-    if (actionType === 'SEND_NOTIFICATION_SMS') {
-      phones.push(customRec);
+    const isSmsAction = actionType === 'SEND_NOTIFICATION_SMS';
+    const parsedCustom = parseManualRecipients(customRec, context.payload, isSmsAction);
+    if (isSmsAction) {
+      phones.push(...parsedCustom);
     } else {
-      emails.push(customRec);
+      emails.push(...parsedCustom);
     }
   }
 
@@ -208,4 +242,215 @@ export async function handleSendNotification(
       logNotificationFailure({ userIds: uniqueUserIds, channel: 'push', error: pushResult?.errors ? String(pushResult.errors) : 'OneSignal credentials missing or send failed' });
     }
   }
+}
+
+/**
+ * Dispatches un-templated direct notifications (DIRECT_NOTIFICATION_EMAIL, DIRECT_NOTIFICATION_SMS)
+ * to internal workspace staff (assignee, selected team members) and manually entered external addresses.
+ *
+ * ARCHITECTURAL GUIDELINES (Rule 10 Maintainer Protocol):
+ * 1. Non-Blocking Execution: Internal delivery hiccups (e.g. invalid external address, gateway issue)
+ *    are recorded to `automation-log` with actionType & recipient details, but NEVER throw to halt
+ *    the customer/student's workflow journey.
+ * 2. Recipient Deduplication: If a staff member is both the entity assignee and in selected users,
+ *    recipients are deduplicated via Set to guarantee exactly 1 dispatch per unique address.
+ * 3. Brand Layout Wrapper: DIRECT_NOTIFICATION_EMAIL wraps messages in the organization's branded
+ *    HTML layout by default (unless useBrandLayout === false).
+ * 4. Multi-Address Support: `customRecipient` accepts comma-, semicolon-, or newline-separated addresses,
+ *    and interpolates dynamic tokens like `{{manager_email}}`.
+ */
+export async function handleDirectNotification(
+  actionType: 'DIRECT_NOTIFICATION_EMAIL' | 'DIRECT_NOTIFICATION_SMS' | string,
+  config: Record<string, unknown>,
+  context: ExecutionContext,
+  nodeId?: string
+): Promise<void> {
+  const isEmail = actionType === 'DIRECT_NOTIFICATION_EMAIL';
+  const isSms = actionType === 'DIRECT_NOTIFICATION_SMS';
+  const channel: 'email' | 'sms' = isEmail ? 'email' : 'sms';
+
+  const targets = (config.notificationTargets || []) as string[];
+  const userIds = (config.notificationUserIds || []) as string[];
+  const customRec = config.customRecipient as string | undefined;
+
+  if (targets.length === 0) return;
+
+  // Fetch workspace context
+  const workspaceSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
+  if (!workspaceSnap.exists) {
+    throw new Error(`Workspace ${context.workspaceId} not found`);
+  }
+  const orgId = (workspaceSnap.data()!.organizationId as string) || context.organizationId || '';
+
+  // Resolve recipient destinations
+  const resolvedRecipients = new Set<string>();
+
+  // 1. Workspace Assignee
+  if (targets.includes('assignee') && context.entityId) {
+    try {
+      const contact = await resolveContact(context.entityId, context.workspaceId);
+      const assigneeUserId = resolveAssigneeUserId(contact?.assignedTo);
+      if (assigneeUserId) {
+        const userSnap = await adminDb.collection('users').doc(assigneeUserId).get();
+        if (userSnap.exists) {
+          const u = userSnap.data()!;
+          const val = isEmail ? (u.email as string | undefined) : (u.phone as string | undefined);
+          if (val && typeof val === 'string' && val.trim()) {
+            resolvedRecipients.add(val.trim());
+          }
+        }
+      }
+    } catch (err) {
+      console.warn(`[notification-actions] Error resolving assignee for entity ${context.entityId}:`, err);
+    }
+  }
+
+  // 2. Selected Team Members
+  if (targets.includes('users') && userIds.length > 0) {
+    for (const uid of userIds) {
+      try {
+        const userSnap = await adminDb.collection('users').doc(uid).get();
+        if (userSnap.exists) {
+          const u = userSnap.data()!;
+          const val = isEmail ? (u.email as string | undefined) : (u.phone as string | undefined);
+          if (val && typeof val === 'string' && val.trim()) {
+            resolvedRecipients.add(val.trim());
+          }
+        }
+      } catch (err) {
+        console.warn(`[notification-actions] Error resolving user ${uid}:`, err);
+      }
+    }
+  }
+
+  // 3. Custom Destination / External Addresses
+  if (targets.includes('custom') && customRec) {
+    const customList = parseManualRecipients(customRec, context.payload, isSms);
+    for (const item of customList) {
+      resolvedRecipients.add(item);
+    }
+  }
+
+  const recipientList = Array.from(resolvedRecipients);
+  if (recipientList.length === 0) {
+    console.warn(
+      `[notification-actions] Direct ${channel.toUpperCase()} notification resolved zero recipients. automationId=${context.automationId}`
+    );
+    return;
+  }
+
+  const { sendRawMessage } = await import('../../messaging-engine');
+  const { buildVariableMap } = await import('../../template-resolver');
+  const { renderTemplate } = await import('../../template-utils');
+
+  const senderProfileId = (config.senderProfileId as string) || 'default';
+
+  // Build variable map once
+  const vars = await buildVariableMap('common', {
+    entityId: context.entityId,
+    workspaceId: context.workspaceId,
+    extraVars: { ...context.payload },
+  });
+
+  const rawSubject = isEmail ? String(config.directSubject || 'Internal Notification') : undefined;
+  const rawBody = String(config.directBody || '');
+
+  const resolvedSubject = rawSubject ? renderTemplate(rawSubject, vars) : undefined;
+  const resolvedBodyContent = renderTemplate(rawBody, vars);
+
+  // Email brand layout wrapping
+  let finalEmailBody = resolvedBodyContent;
+  if (isEmail && config.useBrandLayout !== false) {
+    const primaryColor = String(vars.brand_primary_color || '#3B5FFF');
+    const orgName = String(vars.organization_name || vars.workspace_name || 'SmartSapp');
+    const logoUrl = vars.org_logo_url ? String(vars.org_logo_url) : null;
+    const logoHtml = logoUrl
+      ? `<img src="${logoUrl}" alt="${orgName} Logo" style="max-height: 48px; margin-bottom: 24px; display: block;" />`
+      : `<h2 style="color: ${primaryColor}; margin: 0 0 24px 0; font-family: Figtree, sans-serif; font-size: 24px; font-weight: 800; letter-spacing: -0.5px;">${orgName}</h2>`;
+
+    finalEmailBody = `
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${resolvedSubject || 'Internal Notification'}</title>
+</head>
+<body style="margin: 0; padding: 0; background-color: #F8FAFC; font-family: Figtree, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale;">
+  <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #F8FAFC; padding: 48px 16px;">
+    <tr>
+      <td align="center">
+        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 600px; background-color: #FFFFFF; border: 1px solid #E2E8F0; border-radius: 24px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.025);">
+          <!-- Header -->
+          <tr>
+            <td style="padding: 40px 40px 20px 40px;">
+              ${logoHtml}
+            </td>
+          </tr>
+          <!-- Content -->
+          <tr>
+            <td style="padding: 0 40px 40px 40px; font-size: 15px; line-height: 1.625; color: #334155; font-family: Figtree, sans-serif;">
+              ${resolvedBodyContent.replace(/\n/g, '<br />')}
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>
+    `.trim();
+  }
+
+  // Non-blocking dispatch to all resolved recipients in parallel via Promise.allSettled
+  await Promise.allSettled(
+    recipientList.map(async (recipient) => {
+      try {
+        const result = await sendRawMessage({
+          channel,
+          recipient,
+          body: isEmail ? finalEmailBody : resolvedBodyContent,
+          ...(resolvedSubject && { subject: resolvedSubject }),
+          senderProfileId,
+          organizationId: orgId,
+          variables: { ...context.payload },
+          workspaceIds: [context.workspaceId],
+          messageType: 'transactional',
+          entityId: context.entityId,
+          entityType: context.entityType,
+          isAutomation: true,
+          automationId: context.automationId,
+          runId: context.runId,
+          ...(nodeId ? { nodeId } : {}),
+        });
+
+        if (!result.success) {
+          console.warn(`[notification-actions] Direct ${channel} notification to ${recipient} failed: ${result.error}`);
+          logAutomationEvent('warn', 'direct_notification_delivery_failed', {
+            automationId: context.automationId,
+            runId: context.runId,
+            workspaceId: context.workspaceId,
+            entityId: context.entityId,
+            recipient,
+            channel,
+            actionType,
+            error: result.error || 'Failed raw send',
+          });
+        }
+      } catch (err: unknown) {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        console.error(`[notification-actions] Error sending direct notification to ${recipient}:`, errorMsg);
+        logAutomationEvent('error', 'direct_notification_dispatch_error', {
+          automationId: context.automationId,
+          runId: context.runId,
+          workspaceId: context.workspaceId,
+          entityId: context.entityId,
+          recipient,
+          channel,
+          actionType,
+          error: errorMsg,
+        });
+      }
+    })
+  );
 }

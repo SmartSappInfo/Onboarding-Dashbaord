@@ -15,7 +15,7 @@ import { handleCreateTask, handleUpdateTask } from './task-actions';
 import { handleUpdateEntity, handleAssignEntity, handleAddNote, handleCreateEntity, handleCreateContactForEntity, handleUpdateContact, handleFindContact } from './entity-actions';
 import { handleTriggerOutboundWebhook } from './webhook-actions';
 import { handleRunAutomation } from './run-automation';
-import { handleSendNotification } from './notification-actions';
+import { handleSendNotification, handleDirectNotification } from './notification-actions';
 import { logAutomationEvent } from '../../automation-log';
 import { handleUpdateLeadScore } from './score-automation-actions';
 
@@ -76,6 +76,9 @@ export async function processActionNode(
     case 'DIRECT_SMS':
     case 'DIRECT_WHATSAPP':
       return await handleDirectMessage(actionType as 'DIRECT_EMAIL' | 'DIRECT_SMS' | 'DIRECT_WHATSAPP', resolvedConfig, context, node.id);
+    case 'DIRECT_NOTIFICATION_EMAIL':
+    case 'DIRECT_NOTIFICATION_SMS':
+      return await handleDirectNotification(actionType, resolvedConfig, context, node.id);
     case 'SEND_NOTIFICATION_EMAIL':
     case 'SEND_NOTIFICATION_SMS':
     case 'SEND_NOTIFICATION_IN_APP':

@@ -32,11 +32,11 @@ export function getMessagingCategory(
     return 'EMAIL'; // Default channel for SEND_MESSAGE when channel is email or unspecified
   }
 
-  if (type === 'DIRECT_SMS' || type === 'SEND_SMS' || type === 'SEND_NOTIFICATION_SMS') {
+  if (type === 'DIRECT_SMS' || type === 'SEND_SMS' || type === 'SEND_NOTIFICATION_SMS' || type === 'DIRECT_NOTIFICATION_SMS') {
     return 'SMS';
   }
 
-  if (type === 'DIRECT_EMAIL' || type === 'SEND_EMAIL' || type === 'SEND_NOTIFICATION_EMAIL') {
+  if (type === 'DIRECT_EMAIL' || type === 'SEND_EMAIL' || type === 'SEND_NOTIFICATION_EMAIL' || type === 'DIRECT_NOTIFICATION_EMAIL') {
     return 'EMAIL';
   }
 
