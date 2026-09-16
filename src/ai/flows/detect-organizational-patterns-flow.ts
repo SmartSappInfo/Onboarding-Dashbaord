@@ -268,7 +268,7 @@ Return valid JSON conforming to the output schema. Keep descriptions actionable,
 
       const { modelString, customAi } = await getModel({
         workspaceId: input.workspaceId,
-        tier: 'default',
+        tier: 'fast',
       });
       const generator = customAi || ai;
       const response = await generator.generate({
@@ -283,7 +283,8 @@ Return valid JSON conforming to the output schema. Keep descriptions actionable,
 
       return detectOrganizationalPatternsDeterministic(input);
     } catch (err) {
-      console.warn('[detectOrganizationalPatternsFlow] AI inference failed, falling back to deterministic analysis:', err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[detectOrganizationalPatternsFlow] AI inference notice (${errMsg.slice(0, 100)}), engaging deterministic pattern detection.`);
       return detectOrganizationalPatternsDeterministic(input);
     }
   }

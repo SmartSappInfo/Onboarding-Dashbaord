@@ -148,7 +148,8 @@ export class AutonomousObservationEngine {
     try {
       flowOutput = await detectOrganizationalPatternsFlow(flowInput);
     } catch (err) {
-      console.warn('[AutonomousObservationEngine] Genkit flow fallback triggered:', err);
+      const errMsg = err instanceof Error ? err.message : String(err);
+      console.warn(`[AutonomousObservationEngine] Genkit flow fallback triggered (${errMsg.slice(0, 100)}), engaging deterministic patterns.`);
     }
 
     if (!flowOutput || !Array.isArray(flowOutput.risks)) {

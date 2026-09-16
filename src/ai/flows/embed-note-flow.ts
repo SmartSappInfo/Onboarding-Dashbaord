@@ -11,7 +11,7 @@ import { googleAI } from '@genkit-ai/google-genai';
  * D3 (locked): model `text-embedding-004`, dimension 768 — this MUST match the
  * Firestore vector index created out-of-band (see scripts/NOTE_INDEX_VECTOR_README.md).
  */
-export const EMBED_MODEL = 'text-embedding-004';
+export const EMBED_MODEL = 'gemini-embedding-001' as const;
 export const EMBED_DIMENSIONS = 768;
 
 /** Returns the embedding vector for a piece of text, or [] for empty input. */

@@ -15,12 +15,23 @@ import { Skeleton } from '@/components/ui/skeleton';
 import * as LucideIcons from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+interface DiagnosticVariable {
+  id: string;
+  name: string;
+  label: string;
+  category: string;
+  featureContext: string;
+  source: string;
+  dataType?: string;
+  description: string;
+}
+
 export default function TemplateDiagnosticsPage() {
   const router = useRouter();
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useTenant();
   
-  const [workspaceVariables, setWorkspaceVariables] = React.useState<any[]>([]);
+  const [workspaceVariables, setWorkspaceVariables] = React.useState<DiagnosticVariable[]>([]);
   const [isLoadingVars, setIsLoadingVars] = React.useState(true);
   const [filterTab, setFilterTab] = React.useState<'all' | 'errors' | 'warnings' | 'healthy'>('all');
 
@@ -60,12 +71,12 @@ export default function TemplateDiagnosticsPage() {
         });
         
         // Map to format required by diagnostics page
-        const mapped = res.map((v) => ({
+        const mapped: DiagnosticVariable[] = res.map((v) => ({
           id: v.key,
           name: v.key,
           label: v.label,
           category: v.category === 'contact_specific' ? 'contact' : v.category,
-          featureContext: v.featureContext,
+          featureContext: v.featureContext || 'general',
           source: v.source,
           dataType: v.dataType,
           description: v.description || ''
@@ -103,25 +114,40 @@ export default function TemplateDiagnosticsPage() {
   const diagnostics = React.useMemo(() => {
     if (!templates.length || isLoadingVars) return [];
 
+    const categoryContextMap: Record<string, string[]> = {
+      meetings: ['meeting', 'meetings', 'common'],
+      surveys: ['survey', 'surveys', 'form', 'forms', 'common'],
+      forms: ['form', 'forms', 'survey', 'surveys', 'common'],
+      agreements: ['agreement', 'agreements', 'finance', 'common'],
+      finance: ['agreement', 'agreements', 'finance', 'common'],
+      tasks: ['task', 'tasks', 'reminder', 'reminders', 'common'],
+      automations: ['automation', 'automations', 'common'],
+      reminders: ['reminder', 'reminders', 'meeting', 'meetings', 'task', 'tasks', 'common'],
+      qr_codes: ['qr_code', 'qr_codes', 'common'],
+      users: ['users', 'user', 'common'],
+      campaigns: ['campaign', 'campaigns', 'marketing', 'common'],
+      marketing: ['campaign', 'campaigns', 'marketing', 'common'],
+      general: ['meeting', 'meetings', 'survey', 'surveys', 'form', 'forms', 'agreement', 'agreements', 'finance', 'task', 'tasks', 'automation', 'automations', 'reminder', 'reminders', 'qr_code', 'qr_codes', 'users', 'user', 'campaign', 'campaigns', 'common'],
+      onboarding: ['meeting', 'meetings', 'survey', 'surveys', 'form', 'forms', 'agreement', 'agreements', 'finance', 'task', 'tasks', 'automation', 'automations', 'reminder', 'reminders', 'qr_code', 'qr_codes', 'users', 'user', 'campaign', 'campaigns', 'common'],
+    };
+
     return templates.map((template) => {
       // Filter workspace variables matching this template's category
+      const allowedContexts = categoryContextMap[template.category || 'general'] || [];
       const filteredVars = workspaceVariables.filter(v => {
         if (
           v.category === 'core' ||
           v.category === 'common' ||
           v.category === 'contact' ||
-          v.category === 'custom'
+          v.category === 'custom' ||
+          v.category === 'industry' ||
+          v.featureContext === 'common' ||
+          v.featureContext === 'all'
         ) {
           return true;
         }
-        if (template.category === 'meetings') {
-          return v.category === 'meetings' || v.featureContext === 'meeting';
-        }
-        if (template.category === 'surveys') {
-          return v.category === 'surveys' || v.featureContext === 'survey';
-        }
-        if (template.category === 'forms' || template.category === 'agreements') {
-          return v.category === 'forms' || v.category === 'agreements' || v.featureContext === 'form' || v.featureContext === 'agreement';
+        if (allowedContexts.includes(v.featureContext) || allowedContexts.includes(v.category)) {
+          return true;
         }
         return false;
       });
@@ -135,7 +161,7 @@ export default function TemplateDiagnosticsPage() {
         source: v.source,
         entity: 'Entity',
         path: '',
-        type: v.dataType
+        type: v.dataType || 'string'
       }));
 
       const errors = validateTemplateVariables(template, mappedVars);
@@ -289,7 +315,7 @@ export default function TemplateDiagnosticsPage() {
                 "rounded-xl text-xs font-bold px-4 h-9 shadow-none gap-2",
                 filterTab === tab.id ? "" : tab.color
               )}
-              onClick={() => setFilterTab(tab.id as any)}
+              onClick={() => setFilterTab(tab.id as 'all' | 'errors' | 'warnings' | 'healthy')}
             >
               {tab.label}
               <Badge 
@@ -415,16 +441,17 @@ export default function TemplateDiagnosticsPage() {
                           <div>
                             <div className="flex items-center gap-1.5">
                               <span className="font-mono text-xs font-bold text-foreground">
-                                {`{{${err.variable}}}`}
+                                {err.isCompliance ? (err.complianceTitle || 'Compliance Requirement') : `{{${err.variable}}}`}
                               </span>
                               <Badge 
                                 variant="outline" 
                                 className={cn(
                                   "text-[8px] h-3.5 font-bold uppercase",
+                                  err.isCompliance ? "border-purple-200 text-purple-600 bg-purple-500/[0.05]" :
                                   err.type === 'error' ? "border-red-200 text-red-600 bg-red-500/[0.03]" : "border-amber-200 text-amber-600 bg-amber-500/[0.03]"
                                 )}
                               >
-                                {err.type === 'error' ? 'Typo / Unrecognized' : 'Context Mismatch'}
+                                {err.isCompliance ? 'Compliance' : err.type === 'error' ? 'Typo / Unrecognized' : 'Context Mismatch'}
                               </Badge>
                             </div>
                             <p className="text-[10px] text-muted-foreground leading-relaxed font-semibold mt-1">

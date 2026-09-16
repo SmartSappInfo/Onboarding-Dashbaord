@@ -22,6 +22,7 @@ import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import type { MessageBlock, TemplateVariable } from '@/lib/types';
 import { resolveVariables, sanitizeEmailCustomHtml } from '@/lib/messaging-utils';
+import { resolveOrgFooter, buildOrgFooterVars } from '@/lib/services/org-footer-service';
 import { useDroppable } from '@dnd-kit/core';
 import { blockIcons } from './block-icons';
 import { SlashInput, SlashTextarea } from '@/components/messaging/SlashInput';
@@ -415,7 +416,7 @@ export function VisualBlock({
     const align = s.textAlign || 'left';
     
     const _resolvedTitle = resolveVariables(block.title || '', simulationVars);
-    const resolvedContent = resolveVariables(block.content || '', simulationVars);
+    const _resolvedContent = resolveVariables(block.content || '', simulationVars);
     const resolvedUrl = resolveVariables(block.url || '', simulationVars);
 
     const alignmentClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : align === 'justify' ? 'text-justify' : 'text-left';
@@ -1249,15 +1250,133 @@ export function VisualBlock({
             );
         }
         case 'footer': {
+            /**
+             * FOOTER BLOCK CANVAS RENDERER (Rule 10 Maintainer Guidance):
+             * Supports 5 distinct variants:
+             * - 'organization': Renders live Organization Settings footer with live badge and disabled banner.
+             * - 'contact': Centered org name, address, email | phone, copyright.
+             * - 'minimal': Clean single-line copyright notice.
+             * - 'split': Two-column layout with org address on left and unsubscribe link on right.
+             * - 'centered': Centered legal disclaimer, unsubscribe copy, and opt-out link.
+             *
+             * SECURITY (Rule 8): HTML rendered through sanitizeEmailCustomHtml.
+             * ACCESSIBILITY (Rule 6): Interactive elements have min-h-[44px] touch targets.
+             * TESTABILITY: Verified in visual-block.formatting.test.tsx.
+             */
+            const styleVariant = block.footerStyle || (block.content ? 'minimal' : 'organization');
             const fName = resolveVariables('{{org_name}}', simulationVars);
             const fEmail = resolveVariables('{{org_email}}', simulationVars);
             const fPhone = resolveVariables('{{org_phone}}', simulationVars);
-            const _fAddr = resolveVariables('{{org_address}}', simulationVars);
+            const fAddr = resolveVariables('{{org_address}}', simulationVars);
+            const fYear = resolveVariables('{{current_year}}', simulationVars) || new Date().getFullYear().toString();
+            const fUnsubCopy = resolveVariables('{{unsubscribe_copy}}', simulationVars) || 'You are receiving this email because you are registered with our services.';
+            const displayName = (!fName || fName.includes('{{')) ? 'Organization Name' : fName;
+            const displayEmail = (!fEmail || fEmail.includes('{{')) ? 'email@org.com' : fEmail;
+            const displayPhone = (!fPhone || fPhone.includes('{{')) ? '+1 234 567 890' : fPhone;
+            const displayAddr = (!fAddr || fAddr.includes('{{')) ? '123 Main Street, Suite 100' : fAddr;
+
+            if (styleVariant === 'organization') {
+                const stringVars: Record<string, string> = {};
+                for (const [key, val] of Object.entries(simulationVars || {})) {
+                    if (val !== undefined && val !== null) {
+                        stringVars[key] = String(val);
+                    }
+                }
+                const footerHtml = typeof simulationVars?.org_footer_html === 'string' ? simulationVars.org_footer_html : undefined;
+                const footerEnabled = simulationVars?.org_footer_enabled !== 'false';
+                const orgFooterVars = buildOrgFooterVars(stringVars);
+                // In canvas mode, even if disabled, render the default/custom footer so the admin can design it,
+                // but display an explicit amber banner informing them that footer is disabled in Org Settings.
+                const rawRenderedHtml = resolveOrgFooter(footerHtml, true, orgFooterVars);
+                const sanitizedHtml = sanitizeEmailCustomHtml(rawRenderedHtml);
+
+                return (
+                    <div className="w-full pt-4 mt-6 border-t border-border/40 space-y-3">
+                        <div className="flex items-center justify-between px-3 py-1.5 bg-blue-500/10 border border-blue-500/20 rounded-xl">
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs">🏛️</span>
+                                <span className="text-[11px] font-bold text-blue-700 dark:text-blue-400">
+                                    Organization Settings Footer
+                                </span>
+                            </div>
+                            <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-background/80 text-blue-600 border-blue-500/30">
+                                Live Synced
+                            </Badge>
+                        </div>
+
+                        {!footerEnabled && (
+                            <div className="flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-700 dark:text-amber-400 text-xs font-medium">
+                                <span>⚠️</span>
+                                <span>Email footer is currently disabled in Organization Settings. It will be hidden during email dispatch.</span>
+                            </div>
+                        )}
+
+                        <div 
+                            className="w-full overflow-x-auto select-text pointer-events-none opacity-95"
+                            dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
+                        />
+                    </div>
+                );
+            }
+
+            if (styleVariant === 'minimal') {
+                return (
+                    <div className="w-full pt-4 mt-6 border-t border-border/30 text-center space-y-2">
+                        {isEditing && onContentUpdate ? (
+                            <div className="max-w-md mx-auto">
+                                <SlashInput
+                                    value={block.content || '© {{current_year}} {{org_name}}. All rights reserved.'}
+                                    onChange={(val) => onContentUpdate({ content: val })}
+                                    variables={autocompleteVariables}
+                                    className="text-xs text-center font-medium bg-muted/20 border border-border/40 rounded-xl h-10"
+                                    placeholder="Enter copyright notice..."
+                                />
+                            </div>
+                        ) : (
+                            <p className="text-xs font-medium text-muted-foreground/70">
+                                {block.content ? resolveVariables(block.content, simulationVars) : `© ${fYear} ${displayName}. All rights reserved.`}
+                            </p>
+                        )}
+                    </div>
+                );
+            }
+
+            if (styleVariant === 'split') {
+                return (
+                    <div className="w-full pt-6 mt-6 border-t border-border/30">
+                        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
+                            <div className="text-left space-y-0.5 text-center sm:text-left">
+                                <p className="font-bold text-foreground/80">{displayName}</p>
+                                <p className="text-[11px] text-muted-foreground/60">{displayAddr} &bull; &copy; {fYear}</p>
+                            </div>
+                            <div className="text-right">
+                                <span className="text-xs font-semibold text-primary underline cursor-pointer">
+                                    Unsubscribe
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (styleVariant === 'centered') {
+                return (
+                    <div className="w-full pt-6 mt-6 border-t border-border/30 text-center space-y-2 max-w-lg mx-auto">
+                        <p className="text-xs font-bold text-foreground/80">{displayName}</p>
+                        <p className="text-[11px] leading-relaxed text-muted-foreground/70">{fUnsubCopy}</p>
+                        <p className="text-[11px] text-primary underline cursor-pointer">Unsubscribe / Manage Preferences</p>
+                        <p className="text-[10px] font-medium text-muted-foreground/50 pt-1">&copy; {fYear} {displayName}. All rights reserved.</p>
+                    </div>
+                );
+            }
+
+            // 'contact' style
             return (
                 <div className="w-full pt-6 mt-6 border-t border-border/30 text-center space-y-1.5">
-                    <p className="text-xs font-bold text-muted-foreground/80">{fName.includes('{{') ? 'Organization Name' : fName}</p>
-                    <p className="text-[10px] text-muted-foreground/60">{fEmail.includes('{{') ? 'email@org.com' : fEmail} | {fPhone.includes('{{') ? '+1 234 567 890' : fPhone}</p>
-                    <p className="text-[9px] text-muted-foreground/40">&copy; {new Date().getFullYear()} {fName.includes('{{') ? 'Organization' : fName}</p>
+                    <p className="text-xs font-bold text-muted-foreground/80">{displayName}</p>
+                    <p className="text-[11px] text-muted-foreground/60">{displayAddr}</p>
+                    <p className="text-[10px] text-muted-foreground/60">{displayEmail} | {displayPhone}</p>
+                    <p className="text-[9px] text-muted-foreground/40">&copy; {fYear} {displayName}. All rights reserved.</p>
                 </div>
             );
         }

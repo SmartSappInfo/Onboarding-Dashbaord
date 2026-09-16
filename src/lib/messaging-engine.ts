@@ -716,14 +716,14 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             footerEnabled,
             buildOrgFooterVars(finalVariables as Record<string, string>),
         );
-        if (renderedFooter) {
-            if (styleWrapper.includes('{{org_footer}}')) {
-                // Style wrapper has an explicit footer slot — replace the token
-                resolvedBody = resolvedBody.replace('{{org_footer}}', renderedFooter);
-            } else if (!htmlContainsFooter(resolvedBody)) {
-                // No footer detected — auto-append after body content
-                resolvedBody = resolvedBody + renderedFooter;
-            }
+        if (styleWrapper.includes('{{org_footer}}')) {
+            // If body already contains an in-template footer block, strip the wrapper's {{org_footer}}
+            // to prevent duplicate footers. Otherwise, inject renderedFooter (or empty string if disabled).
+            const bodyHasFooterBlock = htmlContainsFooter(resolvedBody.replace('{{org_footer}}', ''));
+            resolvedBody = resolvedBody.replace('{{org_footer}}', bodyHasFooterBlock ? '' : (renderedFooter || ''));
+        } else if (renderedFooter && !htmlContainsFooter(resolvedBody)) {
+            // No footer detected in body or wrapper — auto-append after body content
+            resolvedBody = resolvedBody + renderedFooter;
         }
     }
 
@@ -1264,8 +1264,8 @@ export async function sendRawMessage(input: {
         const { mnotifyKey, resendKey, resendDomain } = await resolveOrgProviderKeys(finalOrgId);
 
         // Dispatch Delivery
-        let providerId = null;
-        let dispatchError: any = null;
+        let providerId: string | null = null;
+        let dispatchError: unknown = null;
         try {
           if (channel === 'sms') {
               await sendSms({ recipient, message: resolvedBody, sender: sender.identifier, apiKey: mnotifyKey });
@@ -1331,7 +1331,6 @@ export async function sendRawMessage(input: {
                 }
             }
 
-            let providerResponse: any;
             try {
                 await sendEmail({ 
                     from: `${sender.name} <${sender.identifier}>`, 
@@ -1370,7 +1369,7 @@ export async function sendRawMessage(input: {
             workspaceId: baseWorkspaceId,
             entityId: entityId || null,
             entityType: entityType || null,
-            providerId: null,
+            providerId: providerId || null,
             providerStatus: 'delivered',
             hasAttachments: false,
             attachmentCount: 0,
@@ -1412,12 +1411,12 @@ export async function sendRawMessage(input: {
                 logId: logRef.id,
                 channel,
                 isAutomation: isAutomation || true,
-                error: dispatchError?.message
+                error: dispatchError ? getErrorMessage(dispatchError) : undefined
             }
         });
 
         if (dispatchError) {
-            return { success: false, error: dispatchError.message, logId: logRef.id };
+            return { success: false, error: getErrorMessage(dispatchError), logId: logRef.id };
         }
 
         return { success: true, logId: logRef.id };

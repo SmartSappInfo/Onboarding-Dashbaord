@@ -1,3 +1,25 @@
+/**
+ * @fileOverview Unified AI Genkit Runtime Engine.
+ * 
+ * ARCHITECTURAL INVARIANTS:
+ * - Single point of model resolution (`getModel`) across the entire platform.
+ * - Key Resolution Hierarchy: Organization Custom Key -> Backoffice DB Key -> Environment Variable -> System Default.
+ * - Instance caching in `genkitInstancesRegistry` prevents redundant plugin initialization overhead.
+ * - Transparent proxy fallback handling intercepts authentication (401/403/UNAUTHENTICATED),
+ *   model not found (404), quota exhaustion (429), and service unavailability (503 / high demand),
+ *   gracefully downgrading to resilient models (Gemini 3 Flash or Gemini 3.1 Flash-Lite) without
+ *   breaking user workflows.
+ * - Strict typing throughout: zero `any` or `any[]`.
+ * 
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Do NOT wrap `googleAI({ apiKey })` in shallow object spreads; Genkit v2 verifies plugin
+ *   instance symbols/prototypes, and shallow copying destroys plugin registration causing 404 NOT_FOUND.
+ * - All organization and system API keys stored in Firestore are sealed (encrypted at rest).
+ *   Always decrypt via `openSecret()` before passing to provider plugins.
+ * 
+ * @testability Exported `getModel` function can be exercised directly or tested against mock keys.
+ */
+
 import { genkit } from 'genkit';
 import { googleAI } from '@genkit-ai/google-genai';
 import { anthropic } from '@genkit-ai/anthropic';
@@ -12,44 +34,10 @@ import {
 } from '@/lib/ai/model-registry';
 import { WorkspaceAiService } from '@/lib/ai/services/workspace-ai-service';
 
-interface ActionLike {
-  __action?: {
-    actionType?: string;
-    name?: string;
-  };
-  constructor?: {
-    name?: string;
-  };
-}
-
-/**
- * Creates a hardened Google AI plugin instance that filters out
- * BackgroundActionImpl instances (Veo / Deep Research) from plugin.init().
- * Due to cross-boundary duplicate @genkit-ai/core instances in package managers,
- * resolvedAction instanceof BackgroundActionImpl fails in Genkit, causing
- * "INVALID_ARGUMENT: Unknown action type returned from plugin googleai".
- */
-export function createSafeGoogleAIPlugin(options?: Parameters<typeof googleAI>[0]) {
-  const plugin = googleAI(options);
-  return {
-    ...plugin,
-    init: async () => {
-      const actions = (await plugin.init?.()) || [];
-      return actions.filter((action: unknown) => {
-        if (!action || typeof action !== 'object') return false;
-        const act = action as ActionLike;
-        if (act.constructor?.name === 'BackgroundActionImpl') return false;
-        if (act.__action?.actionType === 'background-model') return false;
-        return true;
-      });
-    },
-  };
-}
-
 // System default instance using environment variables
 export const ai = genkit({
   plugins: [
-    createSafeGoogleAIPlugin({ apiKey: process.env.GEMINI_API_KEY }),
+    googleAI({ apiKey: process.env.GEMINI_API_KEY }),
     anthropic({ apiKey: process.env.ANTHROPIC_API_KEY || 'placeholder-key-to-prevent-load-time-error' }), // System default Anthropic
   ],
   model: 'anthropic/claude-3-5-sonnet-20241022',
@@ -67,7 +55,7 @@ function getOrCreateGenkitInstance(provider: string, apiKey: string): ReturnType
   let instance: ReturnType<typeof genkit>;
   if (provider === 'googleai') {
     instance = genkit({
-      plugins: [createSafeGoogleAIPlugin({ apiKey })],
+      plugins: [googleAI({ apiKey })],
     });
   } else if (provider === 'anthropic') {
     instance = genkit({
@@ -183,16 +171,24 @@ export async function getModel(
       }
 
       if (!requestedModelId) {
-        if (tier === 'reasoning') {
-          requestedModelId = wsSettings.reasoningModelId || wsSettings.preferredModelId;
-        } else if (tier === 'fast') {
-          requestedModelId = wsSettings.fastModelId || wsSettings.preferredModelId;
-        } else {
-          requestedModelId = wsSettings.preferredModelId;
-        }
-
         if (!provider) {
           provider = wsSettings.preferredProvider;
+        }
+
+        if (tier === 'reasoning') {
+          requestedModelId = wsSettings.reasoningModelId || AiModelRegistry.getDefaultModelForTier('reasoning', provider).id;
+        } else if (tier === 'fast') {
+          requestedModelId = wsSettings.fastModelId || AiModelRegistry.getDefaultModelForTier('fast', provider).id;
+        } else {
+          // Tier 'default' or unspecified
+          const prefId = wsSettings.preferredModelId;
+          const prefDef = prefId ? AiModelRegistry.getModelById(prefId) : undefined;
+          // If preferred model is a deep reasoning model (which lacks free tier quota), avoid forcing it for default tier tasks
+          if (prefDef && prefDef.tier === 'reasoning' && tier === 'default') {
+            requestedModelId = AiModelRegistry.getDefaultModelForTier('default', provider).id;
+          } else {
+            requestedModelId = prefId || AiModelRegistry.getDefaultModelForTier('default', provider).id;
+          }
         }
       }
     } catch (wsErr) {
@@ -233,9 +229,9 @@ export async function getModel(
       const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
       if (orgDoc.exists) {
         const data = orgDoc.data();
-        if (finalProvider === 'googleai') apiKey = data?.geminiApiKey;
-        else if (finalProvider === 'anthropic') apiKey = data?.claudeApiKey;
-        else if (finalProvider === 'openrouter') apiKey = data?.openRouterApiKey;
+        if (finalProvider === 'googleai') apiKey = openSecret(data?.geminiApiKey);
+        else if (finalProvider === 'anthropic') apiKey = openSecret(data?.claudeApiKey);
+        else if (finalProvider === 'openrouter') apiKey = openSecret(data?.openRouterApiKey);
 
         if (apiKey) {
           console.log(`[AI] Using Organization-specific key for provider "${finalProvider}" (Org: ${organizationId})`);
@@ -285,7 +281,7 @@ export async function getModel(
   // 8. Get or create cached Genkit instance with custom API key
   const customAi = getOrCreateGenkitInstance(finalProvider, apiKey);
 
-  // Wrap customAi in a Proxy to intercept and automatically recover from auth/deprecated errors
+  // Wrap customAi in a Proxy to intercept and automatically recover from auth, quota, or deprecated errors
   const wrappedAi = new Proxy(customAi, {
     get(target, prop, receiver) {
       if (prop === 'generate') {
@@ -294,6 +290,7 @@ export async function getModel(
           try {
             return await originalGenerate(options);
           } catch (error) {
+            const resolvedOptions = await options;
             const errorMsg = error instanceof Error ? error.message : String(error);
             const lowerError = errorMsg.toLowerCase();
             const isAuthOrNotFoundError = 
@@ -311,11 +308,23 @@ export async function getModel(
               lowerError.includes('not found') ||
               lowerError.includes('no model') ||
               lowerError.includes('notfound');
+
+            const isQuotaError = 
+              errorMsg.includes('429') || 
+              lowerError.includes('quota') || 
+              lowerError.includes('resource_exhausted') ||
+              lowerError.includes('rate limit');
+
+            const isUnavailableError =
+              errorMsg.includes('503') ||
+              lowerError.includes('unavailable') ||
+              lowerError.includes('high demand') ||
+              lowerError.includes('overloaded');
                                 
-            if (isAuthOrNotFoundError) {
-              console.warn(`[AI] Custom API key generation failed with error: "${errorMsg}". Falling back to flagship model.`);
-              const defaultModel = AiModelRegistry.getFlagshipModel().providerModelString;
-              
+            if (isAuthOrNotFoundError || isQuotaError || isUnavailableError) {
+              const summaryErr = errorMsg.length > 120 ? `${errorMsg.slice(0, 117)}...` : errorMsg;
+              console.warn(`[AI] Primary generation failed (${summaryErr}). Initiating resilient multi-model fallback.`);
+
               // Non-blocking telemetry log
               logBackofficeAction(
                 { userId: 'system_proxy', email: 'system@smartsapp.com', name: 'AI Key Proxy', role: 'super_admin' },
@@ -326,35 +335,69 @@ export async function getModel(
                   scope: organizationId ? 'organization' : 'platform',
                   scopeId: organizationId,
                   metadata: {
-                    error: errorMsg,
+                    error: summaryErr,
                     modelId: normalizedModelId,
-                    fallbackModel: defaultModel
                   }
                 }
-              ).catch((e) => console.error('[AI] Telemetry logging failed:', e));
+              ).catch((e: unknown) => console.error('[AI] Telemetry logging failed:', e));
 
+              // Ordered fallback candidate models on current key:
+              // 1. Flagship: Gemini 3 Flash (High speed, balanced)
+              // 2. High-Capacity Fast: Gemini 3.1 Flash-Lite (High throughput, unaffected by Pro quota locks)
+              // 3. Stable Fallback: Gemini 2.5 Flash
+              const fallbackCandidates: string[] = [
+                'googleai/gemini-3-flash-preview',
+                'googleai/gemini-3.1-flash-lite-preview',
+                'googleai/gemini-2.5-flash',
+              ].filter((candidate) => candidate !== resolvedOptions.model);
+
+              // Attempt fallback across candidates on CURRENT key
+              for (const candidate of fallbackCandidates) {
+                try {
+                  console.log(`[AI] Attempting resilient fallback model on current key: "${candidate}"`);
+                  return await originalGenerate({
+                    ...resolvedOptions,
+                    model: candidate,
+                  });
+                } catch (candidateErr) {
+                  const candidateMsg = candidateErr instanceof Error ? candidateErr.message : String(candidateErr);
+                  console.warn(`[AI] Fallback candidate "${candidate}" unavailable (${candidateMsg.slice(0, 80)}). Trying next candidate...`);
+                }
+              }
+
+              // If current key exhausted candidates, attempt with global Backoffice key if distinct
               try {
                 const globalKeys = await getGlobalBackofficeKeys();
                 const geminiKey = globalKeys.geminiApiKey || process.env.GEMINI_API_KEY;
                 if (geminiKey && geminiKey !== apiKey) {
                   const fallbackInstance = getOrCreateGenkitInstance('googleai', geminiKey);
-                  return await fallbackInstance.generate({
-                    ...options,
-                    model: defaultModel
-                  } as Parameters<typeof fallbackInstance.generate>[0]);
+                  for (const candidate of fallbackCandidates) {
+                    try {
+                      return await fallbackInstance.generate({
+                        ...resolvedOptions,
+                        model: candidate,
+                      });
+                    } catch {
+                      // Continue to next candidate on global key
+                    }
+                  }
                 }
               } catch (fallbackErr) {
-                console.warn('[AI] Resolved Gemini fallback failed:', fallbackErr);
+                const fbMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr);
+                console.warn(`[AI] Global Backoffice fallback resolution notice: ${fbMsg.slice(0, 80)}`);
               }
 
+              // If environment key is distinct, attempt final fallback
               if (process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY !== apiKey) {
-                try {
-                  return await ai.generate({
-                    ...options,
-                    model: defaultModel
-                  } as Parameters<typeof ai.generate>[0]);
-                } catch (defaultErr) {
-                  console.warn('[AI] System default Gemini generation failed:', defaultErr);
+                for (const candidate of fallbackCandidates) {
+                  try {
+                    return await ai.generate({
+                      ...resolvedOptions,
+                      model: candidate,
+                    });
+                  } catch {
+                    // Continue
+                  }
                 }
               }
             }

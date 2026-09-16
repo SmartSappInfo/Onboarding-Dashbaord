@@ -1,6 +1,5 @@
 'use server';
 
-import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { createEntityAction } from './entity-actions';
 import type { InstitutionData, EntityContact } from './types';
@@ -43,9 +42,9 @@ export interface SignupInput {
   referee?: string;
   includeDroneFootage?: boolean;
   
-  // Pipeline assignment
-  pipelineId: string;
-  stageId: string;
+  // Pipeline assignment (optional for public signups)
+  pipelineId?: string;
+  stageId?: string;
   
   // User context for activity logging
   userId?: string;
@@ -69,11 +68,6 @@ export async function handleSignupAction(input: SignupInput) {
   try {
     const _timestamp = new Date().toISOString();
     
-    // Generate unique entityId using format entity_<random_id>
-    // Using Firestore's auto-generated ID as the random component (Requirement 10.4)
-    const tempRef = adminDb.collection('_temp').doc();
-    const randomId = tempRef.id;
-    const entityId = `entity_${randomId}`;
     
     // Prepare institution data
     const institutionData: InstitutionData = {
@@ -140,8 +134,8 @@ export async function handleSignupAction(input: SignupInput) {
         location: input.location,
         implementationDate: input.implementationDate,
         referee: input.referee,
-        pipelineId: input.pipelineId,
-        stageId: input.stageId,
+        ...(input.pipelineId ? { pipelineId: input.pipelineId } : {}),
+        ...(input.stageId ? { stageId: input.stageId } : {}),
       },
     });
     

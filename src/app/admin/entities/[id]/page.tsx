@@ -104,6 +104,7 @@ import EntityAutomationsTab from '../components/EntityAutomationsTab';
 import EntitySurveysTab from '../components/EntitySurveysTab';
 import EntityGraphTab from '../components/EntityGraphTab';
 import EntityContextTab from '../components/EntityContextTab';
+import EntityHeaderCard from './components/EntityHeaderCard';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import TaskEditor from '../../tasks/components/TaskEditor';
 import { createTaskAction } from '@/lib/task-server-actions';
@@ -121,7 +122,14 @@ const AddToCampaignDialog = dynamic(
   { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
 );
 
-const getStatusBadgeVariant = (status: any) => {
+/**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ * =======================================
+ * EntityDetailPage is the Console View for inspecting an entity's tabs (Insights, Deals, Meetings, Tasks, Billing, Surveys, Automations, Relationships).
+ * It uses `<EntityHeaderCard mode="console" />` to render the persistent top header card.
+ */
+
+const getStatusBadgeVariant = (status: string | undefined): 'default' | 'outline' | 'secondary' => {
     switch (status) {
         case 'active':
         case 'Active': return 'default';
@@ -129,7 +137,7 @@ const getStatusBadgeVariant = (status: any) => {
         case 'Archived': return 'outline';
         default: return 'secondary';
     }
-}
+};
 
 const getInitials = (name?: string | null) => name ? name.split(' ').map(n => n[0]).join('').toUpperCase() : '?';
 
@@ -221,9 +229,9 @@ export default function EntityDetailPage() {
     const [nameInput, setNameInput] = React.useState('');
     const [isSavingName, setIsSavingName] = React.useState(false);
 
-    const handleSaveName = async () => {
+    const handleSaveName = async (newName?: string) => {
         if (!firestore || !entityId || isSavingName) return;
-        const trimmed = nameInput.trim();
+        const trimmed = (newName !== undefined ? newName : nameInput).trim();
         const currentName = entityData?.name || weData?.displayName || '';
         if (!trimmed) {
             toast({ variant: 'destructive', title: 'Invalid Name', description: 'Entity name cannot be empty.' });
@@ -626,230 +634,21 @@ export default function EntityDetailPage() {
         <PageContainerFluid className={cn(weData.status === 'archived' && "grayscale opacity-80")}>
             <div className="space-y-6 w-full">
 
-            <div className="relative overflow-visible rounded-2xl border border-border/50 bg-card/40 backdrop-blur-xl shadow-lg">
-                <div className="p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-                    
-                    {/* Identity & Logo */}
-                    <div className="flex items-center gap-6">
-                        <div 
-                            className="relative h-20 w-20 md:h-24 md:w-24 rounded-2xl bg-card p-1 shadow-sm ring-1 ring-border/50 overflow-hidden shrink-0 group cursor-pointer"
-                            onClick={() => setIsLogoDialogOpen(true)}
-                        >
-                            {isInstitution && logoUrl ? (
-                                <Image src={logoUrl} alt={displayName} fill sizes="(min-width: 768px) 6rem, 5rem" className="object-contain p-2" />
-                            ) : (
-                                <div className="h-full w-full flex items-center justify-center bg-primary/5 text-primary text-2xl font-semibold">{getInitials(displayName)}</div>
-                            )}
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white"><Camera className="h-6 w-6" /></div>
-                        </div>
-
-                        <div className="space-y-1.5 flex-1">
-                            <div className="flex flex-wrap items-center gap-3">
-                                {isEditingName ? (
-                                    <div className="flex items-center gap-1.5 w-full max-w-md">
-                                        <Input
-                                            value={nameInput}
-                                            onChange={(e) => setNameInput(e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter') {
-                                                    e.preventDefault();
-                                                    handleSaveName();
-                                                } else if (e.key === 'Escape') {
-                                                    setIsEditingName(false);
-                                                }
-                                            }}
-                                            autoFocus
-                                            disabled={isSavingName}
-                                            placeholder="Entity name"
-                                            className="h-10 px-3 text-lg md:text-xl font-bold rounded-xl bg-background border-border shadow-2xs text-foreground focus-visible:ring-1 focus-visible:ring-primary"
-                                        />
-                                        <Button
-                                            type="button"
-                                            size="icon"
-                                            disabled={isSavingName || !nameInput.trim()}
-                                            onClick={handleSaveName}
-                                            className="h-10 w-10 shrink-0 rounded-xl bg-foreground text-background hover:bg-foreground/90 shadow-2xs active:scale-[0.97]"
-                                            title="Save name (Enter)"
-                                        >
-                                            {isSavingName ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            variant="ghost"
-                                            size="icon"
-                                            disabled={isSavingName}
-                                            onClick={() => setIsEditingName(false)}
-                                            className="h-10 w-10 shrink-0 rounded-xl text-muted-foreground hover:text-foreground active:scale-[0.97]"
-                                            title="Cancel (Esc)"
-                                        >
-                                            <X className="h-4 w-4" />
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center gap-2.5 flex-wrap">
-                                        <div
-                                            role="button"
-                                            tabIndex={0}
-                                            onClick={() => {
-                                                setNameInput(displayName || '');
-                                                setIsEditingName(true);
-                                            }}
-                                            onKeyDown={(e) => {
-                                                if (e.key === 'Enter' || e.key === ' ') {
-                                                    e.preventDefault();
-                                                    setNameInput(displayName || '');
-                                                    setIsEditingName(true);
-                                                }
-                                            }}
-                                            className="group/name flex items-center gap-2 cursor-pointer select-none rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                                            title="Click to edit name"
-                                        >
-                                            <h2 className="text-2xl md:text-3xl font-bold tracking-tight text-foreground group-hover/name:text-primary transition-colors">
-                                                {displayName}
-                                            </h2>
-                                            <span className="p-1 rounded-md text-muted-foreground/50 group-hover/name:text-foreground group-hover/name:bg-muted/60 transition-all">
-                                                <Pencil className="h-3.5 w-3.5" />
-                                            </span>
-                                        </div>
-                                        <Badge variant={getStatusBadgeVariant(weData.status)} className="h-5 px-2 text-[10px] font-semibold uppercase tracking-wider">
-                                            {weData.status}
-                                        </Badge>
-                                    </div>
-                                )}
-                            </div>
-                            <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground font-medium">
-                                <span>
-                                  {countryFlag ? <span className="mr-1.5">{countryFlag}</span> : <MapPin className="h-3.5 w-3.5 inline mr-1" />}
-                                  {displayLocation}
-                                </span>
-                            </div>
-
-                            {/* Summary Metrics Row */}
-                            <div className="pt-3 flex flex-wrap items-center gap-3">
-                                {capacity > 0 && (
-                                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-primary/5 border border-primary/15 rounded-xl">
-                                        <Users className="h-3.5 w-3.5 text-primary" />
-                                        <span className="text-xs font-bold text-primary tabular-nums">{capacity.toLocaleString()}</span>
-                                        <span className="text-[10px] font-semibold text-primary/60">Capacity</span>
-                                    </div>
-                                )}
-                                {weData.leadScore !== undefined && (
-                                    <div className={cn(
-                                        "flex items-center gap-1.5 px-3 py-1.5 border rounded-xl",
-                                        weData.leadScore >= 80 
-                                            ? "bg-rose-500/5 border-rose-500/20 text-rose-500" 
-                                            : weData.leadScore >= 15 
-                                                ? "bg-amber-500/5 border-amber-500/20 text-amber-500" 
-                                                : "bg-slate-500/5 border-slate-500/20 text-slate-500"
-                                    )}>
-                                        <span className="text-sm">
-                                            {weData.leadScore >= 80 ? '🔥' : weData.leadScore >= 15 ? '⚡' : '❄️'}
-                                        </span>
-                                        <span className="text-xs font-black tabular-nums">{weData.leadScore}</span>
-                                        <span className="text-[10px] font-bold uppercase opacity-75">Lead Score</span>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* Top Actions */}
-                    <TooltipProvider delayDuration={200}>
-                        <div className="flex items-center gap-2.5 flex-wrap md:flex-nowrap w-full md:w-auto mt-4 md:mt-0 shrink-0">
-                            {(!weData.isConverted) && (
-                                <Button 
-                                    variant="outline" 
-                                    className="rounded-xl font-semibold h-10 px-4 text-xs md:text-sm bg-primary/10 hover:bg-primary/20 text-primary border-primary/30 shadow-2xs gap-2 active:scale-[0.97]" 
-                                    onClick={() => setConvertModalOpen(true)}
-                                >
-                                    <Zap className="h-4 w-4 text-primary" /> New Deal
-                                </Button>
-                            )}
-
-                            {/* Grouped Call Dropdown */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button 
-                                        variant="outline" 
-                                        className="rounded-xl font-semibold h-10 px-4 text-xs md:text-sm bg-card hover:bg-muted/40 border-border shadow-2xs gap-2 active:scale-[0.97]"
-                                    >
-                                        <PhoneCall className="h-4 w-4 text-indigo-500" />
-                                        <span>Call</span>
-                                        <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl border-border shadow-lg min-w-[175px] p-1">
-                                    <DropdownMenuItem 
-                                        onClick={() => openCallModal({ entityId: params.id as string })}
-                                        className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg py-2"
-                                    >
-                                        <PhoneCall className="h-4 w-4 text-indigo-500" />
-                                        <span>Call Now</span>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                        onClick={() => setIsCampaignDialogOpen(true)}
-                                        className="gap-2.5 text-xs font-medium cursor-pointer rounded-lg py-2"
-                                    >
-                                        <PhoneForwarded className="h-4 w-4 text-indigo-500" />
-                                        <span>Add to Call Campaign</span>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {/* Export Dropdown Menu */}
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button 
-                                        variant="outline" 
-                                        disabled={isGeneratingPdf}
-                                        className="rounded-xl font-semibold h-10 px-3.5 text-xs md:text-sm bg-card hover:bg-muted/40 border-border shadow-2xs gap-1.5 active:scale-[0.97]"
-                                    >
-                                        {isGeneratingPdf ? (
-                                            <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                                        ) : (
-                                            <Download className="h-4 w-4 text-foreground" />
-                                        )}
-                                        <span>Export</span>
-                                        <ChevronDown className="h-3.5 w-3.5 opacity-60 ml-0.5" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl border-border shadow-lg min-w-[220px] p-1.5">
-                                    <DropdownMenuItem 
-                                        onClick={handleExportJSON}
-                                        className="gap-3 text-xs font-medium cursor-pointer rounded-lg py-2"
-                                    >
-                                        <FileCode className="h-4 w-4 text-emerald-500 shrink-0" />
-                                        <div className="flex flex-col text-left">
-                                            <span className="font-semibold text-foreground">Export JSON (.json)</span>
-                                            <span className="text-[10px] text-muted-foreground">Raw data & metadata backup</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem 
-                                        onClick={handleExportPDF}
-                                        disabled={isGeneratingPdf}
-                                        className="gap-3 text-xs font-medium cursor-pointer rounded-lg py-2"
-                                    >
-                                        <Sparkles className="h-4 w-4 text-indigo-500 shrink-0" />
-                                        <div className="flex flex-col text-left">
-                                            <span className="font-semibold text-foreground">Executive Dossier (.pdf)</span>
-                                            <span className="text-[10px] text-muted-foreground">Full report & AI strategic briefing</span>
-                                        </div>
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-
-                            {/* Primary Action: Edit */}
-                            <Button 
-                                className="rounded-xl font-semibold h-10 px-4 text-xs md:text-sm shadow-2xs bg-foreground text-background hover:bg-foreground/90 active:scale-[0.97] gap-2" 
-                                onClick={() => router.push(`/admin/entities/${entityId}/edit`)}
-                            >
-                                <PenSquare className="h-4 w-4" />
-                                <span>Edit</span>
-                            </Button>
-                        </div>
-                    </TooltipProvider>
-                </div>
-            </div>
+            <EntityHeaderCard
+                entityId={entityId}
+                displayName={displayName}
+                entityData={entityData}
+                weData={weData}
+                mode="console"
+                onConvertModalOpen={() => setConvertModalOpen(true)}
+                onCallNow={() => openCallModal({ entityId: params.id as string })}
+                onAddToCallCampaign={() => setIsCampaignDialogOpen(true)}
+                onExportJSON={handleExportJSON}
+                onExportPDF={handleExportPDF}
+                onLogoClick={() => setIsLogoDialogOpen(true)}
+                onSaveName={handleSaveName}
+                isGeneratingPdf={isGeneratingPdf}
+            />
 
  <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
  <div className="lg:col-span-3">

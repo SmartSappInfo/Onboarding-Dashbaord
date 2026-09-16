@@ -192,9 +192,9 @@ const modifySurveyFlow = ai.defineFlow(
                 // Automatically switch to Google Gemini for multimodal (image/PDF) requests 
                 // since the older Anthropic/compat plugins do not support Genkit's media part structure natively.
                 if (input.docDataUri && provider !== 'googleai') {
-                    console.log(`[AI] Multimodal input detected. Routing to Google Gemini (gemini-2.5-pro) to process visual data.`);
+                    console.log(`[AI] Multimodal input detected. Routing to Google Gemini (gemini-3-flash) to process visual data.`);
                     provider = 'googleai';
-                    modelId = 'gemini-2.5-pro';
+                    modelId = 'gemini-3-flash';
                 }
 
                 // Resolve the model instance with the correct API key for this organization

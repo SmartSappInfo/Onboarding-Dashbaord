@@ -18,6 +18,8 @@ export interface ValidationError {
   type: 'error' | 'warning';
   message: string;
   variable: string;
+  isCompliance?: boolean;
+  complianceTitle?: string;
   fixAction?: ValidationFixAction;
 }
 
@@ -70,24 +72,27 @@ export function validateTemplateVariables(
 
   // 1. Email Channel footer / unsubscribe compliance validation
   if (template.channel === 'email') {
-    const hasFooterBlock = template.blocks?.some(b => b.type === 'footer');
+    const footerBlocks = template.blocks?.filter(b => b.type === 'footer') || [];
+    const hasFooterBlock = footerBlocks.length > 0;
 
-    if (template.styleId !== 'none') {
-      // Style wrapper is added: MUST NOT have custom footer block inside email body to avoid double footer
-      if (hasFooterBlock) {
-        errors.push({
-          type: 'error',
-          variable: 'footer',
-          message: 'A style wrapper is selected, but your template also contains a Copyright Info Footer block. Remove this block to avoid duplicate footers in sent emails.',
-          fixAction: {
-            label: 'Remove Footer Block',
-            description: 'Removes duplicate footer block so the style wrapper handles footer styling.',
-            actionType: 'remove_footer_block',
-            targetVariable: 'footer',
-          },
-        });
-      }
-    } else {
+    // Duplicate footer validation: templates must not contain multiple footer blocks
+    if (footerBlocks.length > 1) {
+      errors.push({
+        type: 'error',
+        variable: 'footer',
+        isCompliance: true,
+        complianceTitle: 'Duplicate Footer Blocks',
+        message: 'Your template contains multiple footer blocks. Remove duplicate footer blocks to avoid multiple footers in sent emails.',
+        fixAction: {
+          label: 'Remove Duplicate Footer',
+          description: 'Removes duplicate footer blocks so only one footer remains.',
+          actionType: 'remove_footer_block',
+          targetVariable: 'footer',
+        },
+      });
+    }
+
+    if (template.styleId === 'none') {
       // No style wrapper is added: MUST have physical address + copyright info, and MUST have unsubscribe link
       const bodyText = template.body?.toLowerCase() || '';
       const blocksJson = JSON.stringify(template.blocks || '').toLowerCase();
@@ -99,6 +104,8 @@ export function validateTemplateVariables(
         errors.push({
           type: 'error',
           variable: 'footer',
+          isCompliance: true,
+          complianceTitle: 'Missing Copyright Footer',
           message: 'No style wrapper is selected. You must add a "Copyright Info Footer" block or include physical address and copyright details in the email body.',
           fixAction: {
             label: 'Add Footer Block',
@@ -109,14 +116,19 @@ export function validateTemplateVariables(
         });
       }
 
-      // Check for unsubscribe variable token
+      // Check for unsubscribe variable token or self-contained footer styles (organization, split, centered)
+      const hasSelfContainedFooter = template.blocks?.some(
+        b => b.type === 'footer' && (b.footerStyle === 'organization' || b.footerStyle === 'split' || b.footerStyle === 'centered')
+      );
       const content = `${template.subject || ''} ${template.previewText || ''} ${template.body || ''} ${JSON.stringify(template.blocks || [])}`;
-      const hasUnsubscribe = /\{\{\s*unsubscribe_link(?:\s*\|[^{}]*)?\s*\}\}/.test(content);
+      const hasUnsubscribe = hasSelfContainedFooter || /\{\{\s*unsubscribe_link(?:\s*\|[^{}]*)?\s*\}\}/.test(content);
       if (!hasUnsubscribe) {
         errors.push({
           type: 'error',
           variable: 'unsubscribe_link',
-          message: 'No style wrapper is selected. You must include the "{{unsubscribe_link}}" variable to allow recipients to opt out.',
+          isCompliance: true,
+          complianceTitle: 'Missing Unsubscribe Link',
+          message: 'No style wrapper is selected. You must include the "{{unsubscribe_link}}" variable or a footer block to allow recipients to opt out.',
           fixAction: {
             label: 'Add Unsubscribe Link',
             description: 'Appends opt-out link token into the footer or body.',
@@ -156,11 +168,19 @@ export function validateTemplateVariables(
     const isDynamicSubmissionField = 
       varName.startsWith('registration_') || 
       varName.startsWith('form_fields.') || 
-      varName.startsWith('survey_fields.');
+      varName.startsWith('survey_fields.') ||
+      varName.startsWith('q_') ||
+      varName.startsWith('question_') ||
+      varName.startsWith('custom_');
 
     const isSystemVariable = varName === 'encrypted_recipient_token';
 
     if (isDynamicContactRole || isDynamicSubmissionField || isSystemVariable) {
+      continue;
+    }
+
+    // 2b. WhatsApp positional numeric tokens (e.g. {{1}}, {{2}})
+    if (template.channel === 'whatsapp' && /^\d+$/.test(varName)) {
       continue;
     }
 
@@ -173,11 +193,20 @@ export function validateTemplateVariables(
 
       // Context compatibility mapping (plural category -> allowed singular contexts)
       const contextMap: Record<string, string[]> = {
-        meetings: ['meeting', 'meetings'],
-        surveys: ['survey', 'surveys', 'form', 'forms'], // surveys can access form context vars too
-        forms: ['form', 'forms'],
-        agreements: ['agreement', 'agreements'],
-        general: []
+        meetings: ['meeting', 'meetings', 'common'],
+        surveys: ['survey', 'surveys', 'form', 'forms', 'common'],
+        forms: ['form', 'forms', 'survey', 'surveys', 'common'],
+        agreements: ['agreement', 'agreements', 'finance', 'common'],
+        finance: ['agreement', 'agreements', 'finance', 'common'],
+        tasks: ['task', 'tasks', 'reminder', 'reminders', 'common'],
+        automations: ['automation', 'automations', 'common'],
+        reminders: ['reminder', 'reminders', 'meeting', 'meetings', 'task', 'tasks', 'common'],
+        qr_codes: ['qr_code', 'qr_codes', 'common'],
+        users: ['users', 'user', 'common'],
+        campaigns: ['campaign', 'campaigns', 'marketing', 'common'],
+        marketing: ['campaign', 'campaigns', 'marketing', 'common'],
+        general: ['meeting', 'meetings', 'survey', 'surveys', 'form', 'forms', 'agreement', 'agreements', 'finance', 'task', 'tasks', 'automation', 'automations', 'reminder', 'reminders', 'qr_code', 'qr_codes', 'users', 'user', 'campaign', 'campaigns', 'common'],
+        onboarding: ['meeting', 'meetings', 'survey', 'surveys', 'form', 'forms', 'agreement', 'agreements', 'finance', 'task', 'tasks', 'automation', 'automations', 'reminder', 'reminders', 'qr_code', 'qr_codes', 'users', 'user', 'campaign', 'campaigns', 'common'],
       };
 
       const allowedContexts = contextMap[template.category || 'general'] || [];

@@ -263,7 +263,7 @@ Rules:
         const geminiModel = await getModel({
           organizationId: params.organizationId,
           provider: 'googleai',
-          modelId: 'gemini-3.5-flash',
+          modelId: 'gemini-3-flash',
         });
         const fallbackAi = geminiModel.customAi || ai;
         usedIsAnthropic = false;
@@ -342,7 +342,7 @@ Available template variables (use double curly braces): entity_name, entity_emai
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text);
-    } catch (_e) {
+    } catch {
       console.error('[CAMPAIGN-AI] Failed to parse campaign copy JSON:', text);
       return { success: false, error: 'AI output was not valid JSON' };
     }
@@ -640,7 +640,7 @@ AESTHETIC RULES:
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text);
-    } catch (_e) {
+    } catch {
       console.error('[CAMPAIGN-AI] Failed to parse email blocks result JSON:', text);
       return { success: false, error: 'AI output was not valid JSON' };
     }
@@ -747,7 +747,7 @@ CRITICAL RULES:
     let parsedJson: unknown;
     try {
       parsedJson = JSON.parse(text);
-    } catch (_e) {
+    } catch {
       console.error('[CAMPAIGN-AI] Failed to parse HeadlineIQ result JSON:', text);
       return { success: false, error: 'AI output was not valid JSON' };
     }

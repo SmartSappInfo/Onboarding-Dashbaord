@@ -3,6 +3,7 @@ import { parseMarkdownLinksToHtml } from './utils/markdown-link-parser';
 import { getBaseUrl } from './utils/url-helpers';
 import { resolveTextWithMap } from './utils/variable-replacer';
 import { escapeHtml } from './template-utils';
+import { resolveOrgFooter, buildOrgFooterVars } from './services/org-footer-service';
 
 /**
  * UTF-8 safe Base64 encoding.
@@ -961,19 +962,96 @@ export function renderBlocksToHtml(
       }
 
       case 'footer': {
+        /**
+         * FOOTER BLOCK STYLES ARCHITECTURE (Rule 10 Maintainer Guidance):
+         * Supports 5 distinct variants:
+         * 1. 'organization' (Default): Pulls live Organization Settings footer via resolveOrgFooter.
+         * 2. 'contact': Centered organization name, address, email | phone, and copyright.
+         * 3. 'minimal': Clean single-line copyright notice.
+         * 4. 'split': Responsive two-column table with org details on left and unsubscribe link on right.
+         * 5. 'centered': Legal disclaimer, unsubscribe copy, and opt-out link.
+         *
+         * CAUTION: Always embed `data-block-type="footer"` and ORG_FOOTER_SENTINEL so that
+         * messaging-engine Phase 8 htmlContainsFooter() detects the existing footer and
+         * avoids appending a duplicate footer during outbound dispatch.
+         * TESTABILITY: Covered in visual-block.formatting.test.tsx and org-footer-service.test.ts.
+         */
+        const styleVariant = block.footerStyle || (block.content ? 'minimal' : 'organization');
         const fName = resolveVariables('{{org_name}}', variables);
         const fEmail = resolveVariables('{{org_email}}', variables);
         const fPhone = resolveVariables('{{org_phone}}', variables);
         const fAddr = resolveVariables('{{org_address}}', variables);
         const fYear = resolveVariables('{{current_year}}', variables) || new Date().getFullYear().toString();
-        blockHtml = `
-          <div data-block-type="footer" style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
-            <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
-            <p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fAddr}</p>
-            <p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fEmail} | ${fPhone}</p>
-            <p style="margin: 0; font-size: 10px; font-weight: 600; color: ${isDark ? '#4b5563' : '#cbd5e1'};">&copy; ${fYear} ${fName}. All rights reserved.</p>
-          </div>
-        `;
+        const fUnsubCopy = resolveVariables('{{unsubscribe_copy}}', variables) || 'You are receiving this email because you are registered with our services.';
+        let fUnsubLink = resolveVariables('{{unsubscribe_link}}', variables) || '#';
+        if (fUnsubLink.startsWith('/')) {
+          fUnsubLink = `${getBaseUrl()}${fUnsubLink}`;
+        }
+        const primaryColor = options?.style?.primaryColor || '#3B5FFF';
+
+        if (styleVariant === 'organization') {
+          const stringVars: Record<string, string> = {};
+          for (const [key, val] of Object.entries(variables)) {
+            if (val !== undefined && val !== null) {
+              stringVars[key] = String(val);
+            }
+          }
+          const footerHtml = typeof variables.org_footer_html === 'string' ? variables.org_footer_html : undefined;
+          const footerEnabled = variables.org_footer_enabled !== 'false';
+          const orgFooterVars = buildOrgFooterVars(stringVars);
+          const resolvedFooter = resolveOrgFooter(footerHtml, footerEnabled, orgFooterVars);
+          const safeFooter = sanitizeEmailCustomHtml(resolvedFooter);
+
+          blockHtml = `
+            <div data-block-type="footer" style="padding: 16px 0; margin-top: 24px; font-family: '${fontFam}', sans-serif;">
+              ${safeFooter}
+            </div>
+          `;
+        } else if (styleVariant === 'contact') {
+          blockHtml = `
+            <div data-block-type="footer" style="padding: 32px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
+              <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
+              ${fAddr ? `<p style="margin: 0 0 4px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${fAddr}</p>` : ''}
+              ${(fEmail || fPhone) ? `<p style="margin: 0 0 8px; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${[fEmail, fPhone].filter(Boolean).join(' | ')}</p>` : ''}
+              <p style="margin: 0; font-size: 10px; font-weight: 600; color: ${isDark ? '#4b5563' : '#cbd5e1'};">&copy; ${fYear} ${fName}. All rights reserved.</p>
+            </div>
+          `;
+        } else if (styleVariant === 'minimal') {
+          const content = resolveVariables(block.content || '© {{current_year}} {{org_name}}. All rights reserved.', variables);
+          blockHtml = `
+            <div data-block-type="footer" style="padding: 24px 0 16px; margin-top: 20px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
+              <p style="margin: 0; font-size: 11px; font-weight: 500; color: ${isDark ? '#6b7280' : '#94a3b8'};">${content}</p>
+            </div>
+          `;
+        } else if (styleVariant === 'split') {
+          blockHtml = `
+            <div data-block-type="footer" style="padding: 24px 0 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; font-family: '${fontFam}', sans-serif;">
+              <table border="0" cellpadding="0" cellspacing="0" width="100%" style="border-collapse: collapse;">
+                <tr>
+                  <td valign="middle" align="left" style="font-size: 11px; color: ${isDark ? '#6b7280' : '#94a3b8'}; font-family: '${fontFam}', sans-serif;">
+                    <p style="margin: 0 0 2px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
+                    <p style="margin: 0;">${fAddr ? `${fAddr} &bull; ` : ''}&copy; ${fYear}</p>
+                  </td>
+                  <td valign="middle" align="right" style="font-size: 11px; color: ${isDark ? '#6b7280' : '#94a3b8'}; font-family: '${fontFam}', sans-serif;">
+                    <a href="${fUnsubLink}" style="color: ${primaryColor}; text-decoration: underline; font-weight: 500;">Unsubscribe</a>
+                  </td>
+                </tr>
+              </table>
+            </div>
+          `;
+        } else {
+          // 'centered'
+          blockHtml = `
+            <div data-block-type="footer" style="padding: 28px 20px 16px; margin-top: 24px; border-top: 1px solid ${dividerColor}; text-align: center; font-family: '${fontFam}', sans-serif;">
+              <p style="margin: 0 0 6px; font-size: 12px; font-weight: 700; color: ${isDark ? '#9ca3af' : '#475569'};">${fName}</p>
+              <p style="margin: 0 0 6px; font-size: 11px; line-height: 1.5; color: ${isDark ? '#6b7280' : '#94a3b8'}; max-width: 480px; margin-left: auto; margin-right: auto;">${fUnsubCopy}</p>
+              <p style="margin: 0 0 8px; font-size: 11px; color: ${isDark ? '#6b7280' : '#94a3b8'};">
+                <a href="${fUnsubLink}" style="color: ${primaryColor}; text-decoration: underline;">Unsubscribe / Manage Preferences</a>
+              </p>
+              <p style="margin: 0; font-size: 10px; font-weight: 500; color: ${isDark ? '#4b5563' : '#cbd5e1'};">&copy; ${fYear} ${fName}. All rights reserved.</p>
+            </div>
+          `;
+        }
         break;
       }
 

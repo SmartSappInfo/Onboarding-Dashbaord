@@ -26,7 +26,7 @@ import {
   type DocumentChunk,
 } from '../semantic-types';
 
-export const EMBEDDING_MODEL_NAME = 'text-embedding-004';
+export const EMBEDDING_MODEL_NAME = 'gemini-embedding-001' as const;
 
 interface CacheEntry {
   vector: number[];

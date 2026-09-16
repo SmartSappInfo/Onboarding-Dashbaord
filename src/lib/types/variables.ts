@@ -9,15 +9,21 @@ export interface UnifiedVariable {
   source: 'static' | 'custom_field' | 'contact_role' | 'feature_system' | 'dynamic_form';
   path?: string;          // Path to resolve on target documents (e.g. "entityContacts[isPrimary].email")
   isDeprecated?: boolean;
-  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign';
+  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'task' | 'automation' | 'reminder' | 'qr_code' | 'user' | 'finance' | 'general' | string;
   exampleValue?: string;  // For sandbox previews
   fallbackValue?: string; // Predefined fallback value
+  groupId?: string;       // Reference to FieldGroup.id
+  groupName?: string;     // Display name of field group (e.g. "General Identity", "School Details")
+  groupSlug?: string;     // Slug of field group (e.g. "entity_details", "location_data")
+  groupOrder?: number;    // Display sort order
+  groupIcon?: string;     // Lucide icon name
+  isCustom?: boolean;     // Whether this is an organization custom field
 }
 
 export interface GetVariablesParams {
   workspaceId: string;
   organizationId?: string;
-  featureContext?: 'all' | 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign';
+  featureContext?: 'all' | 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'task' | 'automation' | 'reminder' | 'qr_code' | 'user' | 'finance' | 'general' | string;
   sourceId?: string; // formId or surveyId
   terminology?: { singular: string; plural: string }; // Client-side terminology overrides
 }

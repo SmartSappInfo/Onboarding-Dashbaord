@@ -299,8 +299,11 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
             org_phone: activeOrganization?.phone || '',
             org_address: activeOrganization?.address || '',
             current_year: new Date().getFullYear().toString(),
-            unsubscribe_copy: 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
-            unsubscribe_link: '#'
+            unsubscribe_copy: activeOrganization?.unsubscribeCopy || 'You are receiving this email because you subscribed to our services. Click here to unsubscribe.',
+            unsubscribe_link: '#',
+            org_footer_html: activeOrganization?.footerHtml || '',
+            org_footer_enabled: String(activeOrganization?.footerEnabled !== false),
+            brand_primary_color: activeOrganization?.brandPrimaryColor || activeOrganization?.primaryColor || '#3B5FFF'
         };
 
         detectedVars.forEach(v => {
@@ -310,7 +313,7 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
         });
 
         // Add helper functions needed for resolving variables/blocks
-        const resolveVars = (str: string, vars: Record<string, any>) => {
+        const resolveVars = (str: string, vars: Record<string, unknown>) => {
             if (!str) return '';
             return str.replace(/\{\{([^{}]+?)\}\}/g, (match, key) => {
                 const trimmedKey = key.trim();
@@ -343,7 +346,7 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
             resolved = plainTextToHtml(resolved);
         }
         return resolved;
-    }, [template, styles]);
+    }, [template, styles, activeOrganization, activeOrganizationId, activeWorkspaceId]);
 
     return (
         <Card className={cn("group relative border-2 transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-2xl border-border/50 flex flex-col h-[420px]", cloningId === template.id ? "opacity-50 scale-[0.98] grayscale" : "")}>

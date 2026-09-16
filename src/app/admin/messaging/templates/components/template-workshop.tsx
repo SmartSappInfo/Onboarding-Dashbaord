@@ -201,6 +201,10 @@ function addUnsubscribeToBlocksRecursively(blocks: MessageBlock[]): { updated: M
     const update = (list: MessageBlock[]): MessageBlock[] => {
         return list.map(b => {
             if (b.type === 'footer' && !added) {
+                if (b.footerStyle === 'organization' || b.footerStyle === 'split' || b.footerStyle === 'centered') {
+                    added = true;
+                    return b;
+                }
                 const current = b.content || '';
                 if (current.includes('{{unsubscribe_link}}')) {
                     added = true;
@@ -1488,13 +1492,70 @@ const blockTypeTemplates: Record<string, Array<{
     ],
     footer: [
         {
-            name: 'Copyright Info Footer',
-            description: 'Branded copyright notice text block',
+            name: 'Organization Settings Footer',
+            description: 'Live synced footer configured in Organization Settings with address & unsubscribe link',
+            aspectRatio: 'aspect-[16/7]',
+            create: () => ({
+                id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'footer',
+                footerStyle: 'organization',
+                style: {
+                    paddingTop: '20px',
+                    paddingBottom: '20px'
+                }
+            })
+        },
+        {
+            name: 'Contact & Brand Details',
+            description: 'Centered organization name, address, email, phone, and copyright notice',
+            aspectRatio: 'aspect-[16/6]',
+            create: () => ({
+                id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'footer',
+                footerStyle: 'contact',
+                style: {
+                    paddingTop: '24px',
+                    paddingBottom: '24px'
+                }
+            })
+        },
+        {
+            name: 'Minimal Copyright Notice',
+            description: 'Clean single-line copyright notice text block',
+            aspectRatio: 'aspect-[16/3]',
+            create: () => ({
+                id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'footer',
+                footerStyle: 'minimal',
+                content: '© {{current_year}} {{org_name}}. All rights reserved.',
+                style: {
+                    paddingTop: '16px',
+                    paddingBottom: '16px'
+                }
+            })
+        },
+        {
+            name: 'Split Two-Column Footer',
+            description: 'Two-column layout with organization details on left and unsubscribe link on right',
             aspectRatio: 'aspect-[16/4]',
             create: () => ({
                 id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
                 type: 'footer',
-                content: '© {{org_name}}. All rights reserved.',
+                footerStyle: 'split',
+                style: {
+                    paddingTop: '20px',
+                    paddingBottom: '20px'
+                }
+            })
+        },
+        {
+            name: 'Centered Legal & Unsubscribe',
+            description: 'Centered legal disclaimer, compliance copy, and preference management link',
+            aspectRatio: 'aspect-[16/6]',
+            create: () => ({
+                id: `blk_footer_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+                type: 'footer',
+                footerStyle: 'centered',
                 style: {
                     paddingTop: '24px',
                     paddingBottom: '24px'
@@ -2571,6 +2632,70 @@ function BlockTemplatePreview({ block }: { block: MessageBlock }) {
                 </div>
             );
         }
+        case 'footer': {
+            const footerStyle = block.footerStyle || (block.content ? 'minimal' : 'organization');
+            
+            if (footerStyle === 'organization') {
+                return (
+                    <div className="w-full p-2 bg-slate-50 border border-blue-200/60 rounded-lg text-left space-y-1 shadow-sm">
+                        <div className="flex items-center justify-between text-[5px] font-bold text-blue-800 pb-0.5 border-b border-blue-100">
+                            <span className="flex items-center gap-0.5">🏛️ Org Footer</span>
+                            <span className="text-[4px] bg-blue-100/70 text-blue-700 px-1 rounded-full uppercase font-extrabold">Synced</span>
+                        </div>
+                        <div className="space-y-0.5 text-[4.5px] text-slate-500">
+                            <div className="font-bold text-slate-700">Acme Academy</div>
+                            <div>123 Innovation Way • support@acme.edu</div>
+                            <div className="text-blue-600 underline">Unsubscribe preferences</div>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (footerStyle === 'contact') {
+                return (
+                    <div className="w-full p-2 bg-white border border-slate-200 rounded-lg text-center space-y-0.5 shadow-sm">
+                        <div className="text-[6px] font-bold text-slate-700">Acme Academy</div>
+                        <div className="text-[4.5px] text-slate-400">123 Innovation Way</div>
+                        <div className="text-[4.5px] text-slate-400">support@acme.edu | +1 (555) 019-2834</div>
+                        <div className="text-[4px] text-slate-300">&copy; 2026 Acme Academy</div>
+                    </div>
+                );
+            }
+
+            if (footerStyle === 'minimal') {
+                return (
+                    <div className="w-full p-2 bg-white border border-slate-200 rounded-lg text-center flex items-center justify-center shadow-sm">
+                        <div className="text-[5.5px] font-medium text-slate-500 truncate">
+                            {block.content || '© 2026 Acme Academy. All rights reserved.'}
+                        </div>
+                    </div>
+                );
+            }
+
+            if (footerStyle === 'split') {
+                return (
+                    <div className="w-full p-2 bg-white border border-slate-200 rounded-lg shadow-sm flex items-center justify-between text-[5px]">
+                        <div className="text-left space-y-0.5">
+                            <div className="font-bold text-slate-700">Acme Academy</div>
+                            <div className="text-[4px] text-slate-400">Suite 400 &bull; &copy; 2026</div>
+                        </div>
+                        <div className="text-right text-blue-600 underline font-semibold">
+                            Unsubscribe
+                        </div>
+                    </div>
+                );
+            }
+
+            // 'centered'
+            return (
+                <div className="w-full p-2 bg-white border border-slate-200 rounded-lg text-center space-y-0.5 shadow-sm">
+                    <div className="text-[6px] font-bold text-slate-700">Acme Academy</div>
+                    <div className="text-[4px] text-slate-400 line-clamp-1">You are receiving this email because you registered...</div>
+                    <div className="text-[4.5px] text-blue-600 underline">Unsubscribe / Preferences</div>
+                    <div className="text-[3.5px] text-slate-300">&copy; 2026 Acme Academy</div>
+                </div>
+            );
+        }
         default:
             return <div className="text-[8px] text-slate-400">Preview</div>;
     }
@@ -3100,7 +3225,12 @@ export function TemplateWorkshop({
             org_phone: orgPhone,
             org_address: orgAddress,
             org_website: orgWebsite,
-            current_year: new Date().getFullYear().toString()
+            current_year: new Date().getFullYear().toString(),
+            org_footer_html: activeOrganization?.footerHtml || '',
+            org_footer_enabled: String(activeOrganization?.footerEnabled !== false),
+            unsubscribe_copy: activeOrganization?.unsubscribeCopy || 'You are receiving this email because you are registered with our services.',
+            unsubscribe_link: '#',
+            brand_primary_color: activeOrganization?.brandPrimaryColor || activeOrganization?.primaryColor || '#3B5FFF'
         };
     }, [activeOrganization, activeWorkspace]);
 
@@ -3915,12 +4045,28 @@ export function TemplateWorkshop({
                 setArchitectPrompt('');
                 setArchitectImageUrl('');
             } else {
-                toast({ title: 'Architect Failed', description: res.error || 'Unable to build blocks.', variant: 'destructive' });
+                toast({
+                    title: 'Architect Failed',
+                    description: res.error || 'Unable to build blocks.',
+                    variant: 'destructive',
+                    actionConfig: {
+                        path: '/admin/settings',
+                        label: 'Check Settings',
+                    },
+                });
             }
         } catch (err: unknown) {
             if (controller.signal.aborted) return;
             const msg = err instanceof Error ? err.message : 'Action trigger error';
-            toast({ title: 'Error', description: msg, variant: 'destructive' });
+            toast({
+                title: 'Error',
+                description: msg,
+                variant: 'destructive',
+                actionConfig: {
+                    path: '/admin/settings',
+                    label: 'Check Settings',
+                },
+            });
         } finally {
             if (architectAbortControllerRef.current === controller) {
                 architectAbortControllerRef.current = null;
@@ -4065,8 +4211,8 @@ export function TemplateWorkshop({
             phone: activeSimVariables.org_phone || activeOrganization?.phone || '',
             address: activeSimVariables.org_address || activeOrganization?.address || '',
             website: activeSimVariables.org_website || activeOrganization?.website || '',
-            footerHtml: activeStyle.footerHtml,
-            footerEnabled: activeStyle.footerEnabled !== false
+            footerHtml: activeStyle.footerHtml ?? activeOrganization?.footerHtml,
+            footerEnabled: activeStyle.footerEnabled ?? (activeOrganization?.footerEnabled !== false)
         };
         const styleOverrides = {
             primaryColor: activeStyle.primaryColor,
@@ -4123,8 +4269,8 @@ export function TemplateWorkshop({
             phone: activeSimVariables.org_phone || activeOrganization?.phone || '',
             address: activeSimVariables.org_address || activeOrganization?.address || '',
             website: activeSimVariables.org_website || activeOrganization?.website || '',
-            footerHtml: activeStyle.footerHtml,
-            footerEnabled: activeStyle.footerEnabled !== false
+            footerHtml: activeStyle.footerHtml ?? activeOrganization?.footerHtml,
+            footerEnabled: activeStyle.footerEnabled ?? (activeOrganization?.footerEnabled !== false)
         };
         const styleOverrides = {
             primaryColor: activeStyle.primaryColor,
@@ -4184,8 +4330,8 @@ export function TemplateWorkshop({
                 phone: activeSimVariables.org_phone || activeOrganization?.phone || '',
                 address: activeSimVariables.org_address || activeOrganization?.address || '',
                 website: activeSimVariables.org_website || activeOrganization?.website || '',
-                footerHtml: activeStyle.footerHtml,
-                footerEnabled: activeStyle.footerEnabled !== false
+                footerHtml: activeStyle.footerHtml ?? activeOrganization?.footerHtml,
+                footerEnabled: activeStyle.footerEnabled ?? (activeOrganization?.footerEnabled !== false)
             };
             const styleOverrides = {
                 primaryColor: activeStyle.primaryColor,
@@ -4217,7 +4363,7 @@ export function TemplateWorkshop({
             resolved = plainTextToHtml(resolved);
         }
         return resolved;
-    }, [contentMode, blocks, body, activeSimVariables, styleId, styles, channel, target]);
+    }, [contentMode, blocks, body, activeSimVariables, styleId, styles, channel, target, activeOrganization, activeOrganizationId, activeWorkspaceId]);
 
     const authoritativeVars = React.useMemo(() => {
         // 1. Category and platform feature scoping (independent of simulation state)
@@ -4232,6 +4378,7 @@ export function TemplateWorkshop({
                 cat === 'general' ||
                 cat === 'common' ||
                 cat === 'custom' ||
+                cat === 'industry' ||
                 cat === 'regional' ||
                 cat === 'financial' ||
                 cat === 'interests'
@@ -4241,10 +4388,20 @@ export function TemplateWorkshop({
 
             // Map template category to variable context/category keys
             const contextMap: Record<string, string[]> = {
-                meetings: ['meeting', 'meetings'],
-                surveys: ['survey', 'surveys'],
-                forms: ['form', 'forms'],
-                agreements: ['agreement', 'agreements']
+                meetings: ['meeting', 'meetings', 'common'],
+                surveys: ['survey', 'surveys', 'form', 'forms', 'common'],
+                forms: ['form', 'forms', 'survey', 'surveys', 'common'],
+                agreements: ['agreement', 'agreements', 'finance', 'common'],
+                finance: ['agreement', 'agreements', 'finance', 'common'],
+                tasks: ['task', 'tasks', 'reminder', 'reminders', 'common'],
+                automations: ['automation', 'automations', 'common'],
+                reminders: ['reminder', 'reminders', 'meeting', 'meetings', 'task', 'tasks', 'common'],
+                qr_codes: ['qr_code', 'qr_codes', 'common'],
+                users: ['users', 'user', 'common'],
+                campaigns: ['campaign', 'campaigns', 'marketing', 'common'],
+                marketing: ['campaign', 'campaigns', 'marketing', 'common'],
+                general: ['meeting', 'meetings', 'survey', 'surveys', 'form', 'forms', 'agreement', 'agreements', 'finance', 'task', 'tasks', 'automation', 'automations', 'reminder', 'reminders', 'qr_code', 'qr_codes', 'users', 'user', 'campaign', 'campaigns', 'common'],
+                onboarding: ['meeting', 'meetings', 'survey', 'surveys', 'form', 'forms', 'agreement', 'agreements', 'finance', 'task', 'tasks', 'automation', 'automations', 'reminder', 'reminders', 'qr_code', 'qr_codes', 'users', 'user', 'campaign', 'campaigns', 'common'],
             };
 
             const allowedContexts = contextMap[category] || [];
@@ -4265,7 +4422,7 @@ export function TemplateWorkshop({
                 );
             }
 
-            return cat === category;
+            return cat === category || ('featureContext' in v && allowedContexts.includes((v as unknown as { featureContext?: string }).featureContext || '')) || allowedContexts.includes(cat);
         });
     }, [variables, category]);
 
@@ -5219,7 +5376,13 @@ export function TemplateWorkshop({
                                                     category === 'meetings' ? 'meeting' :
                                                     category === 'surveys' ? 'survey' :
                                                     category === 'forms' ? 'form' :
-                                                    category === 'agreements' ? 'agreement' : 'common'
+                                                    category === 'agreements' ? 'agreement' :
+                                                    category === 'tasks' ? 'task' :
+                                                    category === 'automations' ? 'automation' :
+                                                    category === 'reminders' ? 'reminder' :
+                                                    category === 'qr_codes' ? 'qr_code' :
+                                                    category === 'users' ? 'user' :
+                                                    category === 'campaigns' ? 'campaign' : 'common'
                                                 }
                                                 terminology={entityTerminology ? { singular: entityTerminology, plural: `${entityTerminology}s` } : undefined}
                                                 onSelect={(key) => handleVariableInsert(key.replace(/[{}]/g, ''))}

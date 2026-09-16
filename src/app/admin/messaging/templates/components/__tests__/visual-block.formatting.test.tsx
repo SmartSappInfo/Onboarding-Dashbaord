@@ -6,6 +6,7 @@ import { convertToVisualHtml, convertToCleanHtml, SlashInput, SlashTextarea } fr
 import { sanitizeBlocksContainerHtml } from '../template-workshop';
 import { renderBlocksToHtml } from '@/lib/messaging-utils';
 import type { MessageBlock } from '@/lib/types';
+import { htmlContainsFooter } from '@/lib/services/org-footer-service';
 
 // Setup helper to render ReactNode in a container to verify HTML output
 function renderNode(node: React.ReactNode): HTMLElement {
@@ -115,6 +116,151 @@ describe('renderHtmlWithVariablePills', () => {
     expect(unsafeHtml).not.toContain('<script>');
     expect(unsafeHtml).toContain('&lt;script&gt;');
     expect(unsafeHtml).toContain('Unsafe &lt;b&gt;Badge&lt;&#x2F;b&gt;');
+  });
+});
+
+describe('Footer Block Styles & Organization Footer Integration', () => {
+  it('renders organization footer style with custom org_footer_html and resolved variables', () => {
+    const block: MessageBlock = {
+      id: 'footer-org-1',
+      type: 'footer',
+      footerStyle: 'organization'
+    };
+
+    const vars = {
+      org_name: 'St. Jude College',
+      org_footer_html: '<table width="100%"><tr><td>Custom Org Footer for {{org_name}}</td></tr></table>',
+      org_footer_enabled: 'true'
+    };
+
+    const html = renderBlocksToHtml([block], vars);
+    expect(html).toContain('Custom Org Footer for St. Jude College');
+    expect(html).toContain('data-block-type="footer"');
+    expect(html).toContain('<!-- org-footer-sentinel -->');
+  });
+
+  it('renders canonical default organization footer when org_footer_html is not set', () => {
+    const block: MessageBlock = {
+      id: 'footer-org-2',
+      type: 'footer',
+      footerStyle: 'organization'
+    };
+
+    const vars = {
+      org_name: 'St. Jude College',
+      org_address: '100 University Ave',
+      unsubscribe_copy: 'Unsubscribe compliance notice',
+      unsubscribe_link: 'https://example.com/unsub'
+    };
+
+    const html = renderBlocksToHtml([block], vars);
+    expect(html).toContain('St. Jude College');
+    expect(html).toContain('100 University Ave');
+    expect(html).toContain('Unsubscribe compliance notice');
+    expect(html).toContain('https://example.com/unsub');
+    expect(html).toContain('data-block-type="footer"');
+  });
+
+  it('renders contact footer style correctly with name, address, email and phone', () => {
+    const block: MessageBlock = {
+      id: 'footer-contact',
+      type: 'footer',
+      footerStyle: 'contact'
+    };
+
+    const vars = {
+      org_name: 'Acme Prep',
+      org_address: '456 Elm St',
+      org_email: 'hello@acme.edu',
+      org_phone: '+1 555-1234'
+    };
+
+    const html = renderBlocksToHtml([block], vars);
+    expect(html).toContain('Acme Prep');
+    expect(html).toContain('456 Elm St');
+    expect(html).toContain('hello@acme.edu | +1 555-1234');
+    expect(html).toContain('data-block-type="footer"');
+  });
+
+  it('renders minimal footer style with custom copyright content', () => {
+    const block: MessageBlock = {
+      id: 'footer-minimal',
+      type: 'footer',
+      footerStyle: 'minimal',
+      content: '© {{current_year}} {{org_name}}. Custom legal notice.'
+    };
+
+    const vars = {
+      org_name: 'Global Tech',
+      current_year: '2026'
+    };
+
+    const html = renderBlocksToHtml([block], vars);
+    expect(html).toContain('© 2026 Global Tech. Custom legal notice.');
+    expect(html).toContain('data-block-type="footer"');
+  });
+
+  it('renders split footer style with org details on left and unsubscribe link on right', () => {
+    const block: MessageBlock = {
+      id: 'footer-split',
+      type: 'footer',
+      footerStyle: 'split'
+    };
+
+    const vars = {
+      org_name: 'Oakridge School',
+      org_address: '789 Oak Rd',
+      unsubscribe_link: 'https://example.com/optout'
+    };
+
+    const html = renderBlocksToHtml([block], vars);
+    expect(html).toContain('Oakridge School');
+    expect(html).toContain('789 Oak Rd');
+    expect(html).toContain('Unsubscribe');
+    expect(html).toContain('href="https://example.com/optout"');
+    expect(html).toContain('data-block-type="footer"');
+  });
+
+  it('renders centered footer style with legal disclaimer and preference management link', () => {
+    const block: MessageBlock = {
+      id: 'footer-centered',
+      type: 'footer',
+      footerStyle: 'centered'
+    };
+
+    const vars = {
+      org_name: 'Alpha Academy',
+      unsubscribe_copy: 'Click here to stop receiving messages.',
+      unsubscribe_link: 'https://example.com/manage'
+    };
+
+    const html = renderBlocksToHtml([block], vars);
+    expect(html).toContain('Alpha Academy');
+    expect(html).toContain('Click here to stop receiving messages.');
+    expect(html).toContain('Unsubscribe / Manage Preferences');
+    expect(html).toContain('href="https://example.com/manage"');
+    expect(html).toContain('data-block-type="footer"');
+  });
+
+  it('ensures all 5 footer styles output data-block-type="footer" to satisfy htmlContainsFooter', () => {
+    const styles: Array<'organization' | 'contact' | 'minimal' | 'split' | 'centered'> = [
+      'organization',
+      'contact',
+      'minimal',
+      'split',
+      'centered'
+    ];
+
+    styles.forEach((footerStyle) => {
+      const block: MessageBlock = {
+        id: `footer-check-${footerStyle}`,
+        type: 'footer',
+        footerStyle
+      };
+
+      const compiledHtml = renderBlocksToHtml([block], { org_name: 'Acme', org_footer_enabled: 'true' });
+      expect(htmlContainsFooter(compiledHtml)).toBe(true);
+    });
   });
 });
 

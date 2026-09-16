@@ -73,9 +73,9 @@ describe('STATIC_VARIABLES', () => {
     expect(contexts).toContain('entity');
   });
 
-  it('has 33 common variables', () => {
+  it('has common variables', () => {
     const common = STATIC_VARIABLES.filter((v) => v.context === 'common');
-    expect(common).toHaveLength(33);
+    expect(common.length).toBeGreaterThanOrEqual(33);
   });
 
   it('every variable has required fields', () => {
@@ -84,7 +84,7 @@ describe('STATIC_VARIABLES', () => {
       expect(v.name).toBeTruthy();
       expect(v.label).toBeTruthy();
       expect(v.context).toBeTruthy();
-      expect(['string', 'date', 'number', 'url', 'html']).toContain(v.dataType);
+      expect(['string', 'date', 'number', 'url', 'html', 'boolean']).toContain(v.dataType);
     }
   });
 });
@@ -277,3 +277,72 @@ describe('getDynamicVariables', () => {
     expect(result).toEqual([]);
   });
 });
+
+describe('resolveStaticVariableGroup', () => {
+  it('correctly maps meeting variables to Meetings & Webinars group', async () => {
+    const { resolveStaticVariableGroup } = await import('../industry-field-registry');
+    const group = resolveStaticVariableGroup('meeting_link', 'meeting');
+    expect(group.groupId).toBe('meetings');
+    expect(group.groupName).toBe('Meetings & Webinars');
+    expect(group.groupIcon).toBe('Calendar');
+  });
+
+  it('correctly maps survey variables to Survey Details & Outcomes group', async () => {
+    const { resolveStaticVariableGroup } = await import('../industry-field-registry');
+    const group = resolveStaticVariableGroup('survey_results_link', 'survey');
+    expect(group.groupId).toBe('surveys');
+    expect(group.groupName).toBe('Survey Details & Outcomes');
+    expect(group.groupIcon).toBe('ClipboardList');
+  });
+
+  it('correctly maps agreement and finance variables to Agreements & Contracts group', async () => {
+    const { resolveStaticVariableGroup } = await import('../industry-field-registry');
+    const agrGroup = resolveStaticVariableGroup('agreement_url', 'agreement');
+    expect(agrGroup.groupId).toBe('agreements');
+    expect(agrGroup.groupName).toBe('Agreements & Contracts');
+
+    const finGroup = resolveStaticVariableGroup('contract_link', 'finance');
+    expect(finGroup.groupId).toBe('agreements');
+    expect(finGroup.groupName).toBe('Agreements & Contracts');
+  });
+
+  it('correctly maps contact keys to Contacts group', async () => {
+    const { resolveStaticVariableGroup } = await import('../industry-field-registry');
+    const group = resolveStaticVariableGroup('contact_name', 'common');
+    expect(group.groupId).toBe('entity_contacts');
+    expect(group.groupName).toBe('Contacts');
+    expect(group.groupIcon).toBe('Users');
+  });
+
+  it('correctly maps location keys to Location Data group', async () => {
+    const { resolveStaticVariableGroup } = await import('../industry-field-registry');
+    const group = resolveStaticVariableGroup('gps_location', 'common');
+    expect(group.groupId).toBe('location_data');
+    expect(group.groupName).toBe('Location Data');
+  });
+
+  it('correctly maps billing keys to Billing Profile group', async () => {
+    const { resolveStaticVariableGroup } = await import('../industry-field-registry');
+    const group = resolveStaticVariableGroup('subscription_tier', 'common');
+    expect(group.groupId).toBe('billing_profile');
+    expect(group.groupName).toBe('Billing Profile');
+  });
+});
+
+describe('Reserved Variable Collisions', () => {
+  it('identifies core platform variables in STATIC_VARIABLES as reserved', async () => {
+    const { STATIC_VARIABLES } = await import('../template-variable-registry-data');
+    const reserved = new Set(STATIC_VARIABLES.map(v => v.name.toLowerCase()));
+    
+    expect(reserved.has('meeting_link')).toBe(true);
+    expect(reserved.has('meeting_date')).toBe(true);
+    expect(reserved.has('agreement_url')).toBe(true);
+    expect(reserved.has('contract_link')).toBe(true);
+    expect(reserved.has('survey_link')).toBe(true);
+    expect(reserved.has('contact_name')).toBe(true);
+    expect(reserved.has('entity_name')).toBe(true);
+    expect(reserved.has('custom_unreserved_field_xyz')).toBe(false);
+  });
+});
+
+

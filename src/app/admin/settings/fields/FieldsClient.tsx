@@ -4,12 +4,12 @@ import * as React from 'react';
 import { collection, doc, query, where, orderBy } from 'firebase/firestore';
 import { useCollection, useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
-import type { AppField, FieldGroup, EntityType, Workspace } from '@/lib/types';
+import type { AppField, FieldGroup, EntityType, Workspace, IndustryVertical } from '@/lib/types';
 import { seedNativeFieldsAction, createFieldAction, updateFieldAction, deleteFieldAction, createFieldGroupAction, updateFieldGroupAction, deleteFieldGroupAction, reorderFieldGroupsAction, listIndustryPredefinedGroupsAction, installPredefinedIndustryGroupsAction } from '@/lib/fields-actions';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Label } from '@/components/ui/label';
@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { STATIC_VARIABLES } from '@/lib/template-variable-registry-data';
+import { resolveStaticVariableGroup, type IndustryGroupDef } from '@/lib/industry-field-registry';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, verticalListSortingStrategy, useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -70,6 +71,53 @@ const _SCOPE_OPTIONS = [
   { value: 'submission-only', label: 'Submission Only' },
 ];
 
+/**
+ * Type-safe Lucide icon resolver to avoid dynamic unchecked any property access.
+ */
+function getLucideIcon(iconName?: string): React.ComponentType<{ className?: string }> {
+  if (!iconName) return LucideIcons.Database;
+  const icons = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
+  return icons[iconName] || LucideIcons.Database;
+}
+
+/**
+ * Visual styling token resolver for variable data types.
+ */
+function getDataTypeBadgeVariant(dataType?: string): { className: string } {
+  switch (dataType) {
+    case 'number':
+    case 'currency':
+      return { className: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20' };
+    case 'date':
+    case 'datetime':
+      return { className: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20' };
+    case 'url':
+      return { className: 'bg-sky-500/10 text-sky-600 dark:text-sky-400 border-sky-500/20' };
+    case 'boolean':
+    case 'yes_no':
+      return { className: 'bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/20' };
+    case 'email':
+    case 'phone':
+      return { className: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20' };
+    default:
+      return { className: 'bg-muted text-muted-foreground border-border/60' };
+  }
+}
+
+export interface OrganizationVariableItem {
+  id: string;
+  name: string;
+  label: string;
+  context: string;
+  description: string;
+  exampleValue?: string;
+  source: 'system' | 'custom';
+  groupId?: string;
+  groupName: string;
+  groupIcon?: string;
+  dataType?: string;
+}
+
 type FieldFormData = {
   groupId: string;
   label: string;
@@ -77,7 +125,7 @@ type FieldFormData = {
   type: AppField['type'];
   helpText: string;
   placeholder: string;
-  compatibilityScope: string[];
+  compatibilityScope: AppField['compatibilityScope'];
   validationRequired: boolean;
   options: { label: string; value: string }[];
 };
@@ -139,9 +187,14 @@ function SortableGroupAccordionItem({
   onCopyVariable: (v: string) => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: group.id });
-  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 1 : 0, position: isDragging ? 'relative' : 'static' as any };
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 1 : 0,
+    position: isDragging ? 'relative' : 'static',
+  };
   
-  const Icon = (LucideIcons as any)[group.icon] || LucideIcons.Database;
+  const Icon = getLucideIcon(group.icon);
 
   return (
     <AccordionItem ref={setNodeRef} style={style} value={group.id} className={cn("bg-card border rounded-lg mb-3 overflow-hidden shadow-sm", isDragging && "opacity-50 ring-2 ring-primary")}>
@@ -263,7 +316,7 @@ function SortableGroupAccordionItem({
 
 export default function FieldsClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId, activeOrganizationId, isSuperAdmin: _isSuperAdmin } = useTenant();
+  const { activeWorkspaceId, activeOrganizationId, activeOrganization, activeWorkspace, isSuperAdmin: _isSuperAdmin } = useTenant();
   const { user } = useUser();
   const { toast } = useToast();
 
@@ -288,7 +341,10 @@ export default function FieldsClient() {
   }, [firestore, activeWorkspaceId]);
 
   const { data: workspace } = useDoc<Workspace>(workspaceDocRef);
-  const enabledFeatures = (workspace?.enabledFeatures || {}) as Record<string, boolean | undefined>;
+  const enabledFeatures = React.useMemo(
+    () => (workspace?.enabledFeatures || {}) as Record<string, boolean | undefined>,
+    [workspace?.enabledFeatures]
+  );
 
   const [isSyncing, setIsSyncing] = React.useState(false);
 
@@ -314,11 +370,31 @@ export default function FieldsClient() {
       }
       runAutoSeed();
     }
-  }, [rawGroups, loadingGroups, activeWorkspaceId, activeOrganizationId, user?.uid, isSyncing]);
+  }, [rawGroups, loadingGroups, activeWorkspaceId, activeOrganizationId, user, isSyncing]);
 
+  const [systemVarSearch, setSystemVarSearch] = React.useState<string>('');
+  const [systemVarSource, setSystemVarSource] = React.useState<'all' | 'system' | 'custom'>('all');
   const [systemVarContext, setSystemVarContext] = React.useState<string>('all');
+  const [copiedVarName, setCopiedVarName] = React.useState<string | null>(null);
 
-  const filteredStaticVariables = React.useMemo(() => {
+  const [groups, setGroups] = React.useState<FieldGroup[]>([]);
+  React.useEffect(() => {
+    if (rawGroups) setGroups(rawGroups);
+  }, [rawGroups]);
+
+  // Map of group ID to group Name for resolving custom field groups
+  const groupMap = React.useMemo(() => {
+    const map = new Map<string, string>();
+    groups.forEach(g => map.set(g.id, g.name));
+    return map;
+  }, [groups]);
+
+  // Combined Organization Variables (System Defaults + Workspace Custom Fields)
+  const allOrgVariables = React.useMemo<OrganizationVariableItem[]>(() => {
+    const items: OrganizationVariableItem[] = [];
+    const seenKeys = new Set<string>();
+
+    // 1. System Variables from registry
     const contextToFeatureMap: Record<string, string> = {
       meeting: 'meetings',
       survey: 'surveys',
@@ -327,27 +403,109 @@ export default function FieldsClient() {
       users: 'users',
     };
 
-    return STATIC_VARIABLES.filter(v => {
-      // 1. Filter by workspace feature toggle
+    STATIC_VARIABLES.forEach(v => {
       const featureId = contextToFeatureMap[v.context];
       if (featureId && enabledFeatures[featureId] === false) {
+        return;
+      }
+
+      const keyNorm = v.name.toLowerCase().trim();
+      if (!keyNorm || seenKeys.has(keyNorm)) {
+        return;
+      }
+      seenKeys.add(keyNorm);
+
+      const groupInfo = resolveStaticVariableGroup(v.name, v.context);
+
+      items.push({
+        id: `sys_${v.id}`,
+        name: v.name,
+        label: v.label,
+        context: v.context,
+        description: v.description,
+        exampleValue: v.exampleValue,
+        source: 'system',
+        groupId: v.groupId || groupInfo.groupId,
+        groupName: v.groupName || groupInfo.groupName,
+        groupIcon: v.groupIcon || groupInfo.groupIcon,
+        dataType: v.dataType,
+      });
+    });
+
+    // 2. Organization Custom Fields from active workspace app_fields
+    if (fields && fields.length > 0) {
+      fields.forEach(f => {
+        const keyNorm = (f.variableName || '').toLowerCase().trim();
+        if (!keyNorm || seenKeys.has(keyNorm)) {
+          return;
+        }
+        seenKeys.add(keyNorm);
+
+        const matchedGroup = f.groupId ? groups.find(g => g.id === f.groupId) : undefined;
+        const groupName = matchedGroup?.name || (f.groupId ? (groupMap.get(f.groupId) || 'Custom Group') : 'Custom Fields');
+        const groupIcon = matchedGroup?.icon || 'Database';
+        const isSystemField = f.isNative === true;
+        const scope = f.compatibilityScope?.[0] || 'common';
+        
+        items.push({
+          id: `field_${f.id}`,
+          name: f.variableName,
+          label: f.label || f.name,
+          context: scope,
+          description: f.helpText || f.description || `Custom ${f.type.replace(/_/g, ' ')} field from ${groupName}`,
+          exampleValue: f.placeholder || `{{${f.variableName}}}`,
+          source: isSystemField ? 'system' : 'custom',
+          groupId: f.groupId,
+          groupName,
+          groupIcon,
+          dataType: f.type,
+        });
+      });
+    }
+
+    return items;
+  }, [enabledFeatures, fields, groupMap, groups]);
+
+  // Filtered list based on search, context, and source
+  const filteredOrgVariables = React.useMemo(() => {
+    const search = systemVarSearch.toLowerCase().trim();
+    return allOrgVariables.filter(item => {
+      // Source filter
+      if (systemVarSource !== 'all' && item.source !== systemVarSource) {
         return false;
       }
-      // 2. Filter by selected context tab/dropdown
-      if (systemVarContext !== 'all' && v.context !== systemVarContext) {
+      // Context filter
+      if (systemVarContext !== 'all' && item.context !== systemVarContext) {
         return false;
+      }
+      // Search filter
+      if (search) {
+        const matchesName = item.name.toLowerCase().includes(search);
+        const matchesLabel = item.label.toLowerCase().includes(search);
+        const matchesDesc = item.description.toLowerCase().includes(search);
+        const matchesGroup = item.groupName.toLowerCase().includes(search);
+        if (!matchesName && !matchesLabel && !matchesDesc && !matchesGroup) {
+          return false;
+        }
       }
       return true;
     });
-  }, [enabledFeatures, systemVarContext]);
+  }, [allOrgVariables, systemVarSearch, systemVarSource, systemVarContext]);
 
-  const [groups, setGroups] = React.useState<FieldGroup[]>([]);
-  React.useEffect(() => {
-    if (rawGroups) setGroups(rawGroups);
-  }, [rawGroups]);
+  const handleCopyVar = React.useCallback((varName: string) => {
+    navigator.clipboard.writeText(`{{${varName}}}`);
+    setCopiedVarName(varName);
+    toast({
+      title: 'Copied to Clipboard',
+      description: `{{${varName}}} is ready to paste into your templates or messages.`,
+    });
+    setTimeout(() => {
+      setCopiedVarName(prev => (prev === varName ? null : prev));
+    }, 2000);
+  }, [toast]);
 
   // Predefined industry groups states
-  const [predefinedGroups, setPredefinedGroups] = React.useState<any[]>([]);
+  const [predefinedGroups, setPredefinedGroups] = React.useState<IndustryGroupDef[]>([]);
   const [selectedGroupSlugs, setSelectedGroupSlugs] = React.useState<string[]>([]);
   const [loadingPredefined, setLoadingPredefined] = React.useState(false);
   const [isInitializing, setIsInitializing] = React.useState(false);
@@ -357,8 +515,8 @@ export default function FieldsClient() {
       async function fetchPredefined() {
         setLoadingPredefined(true);
         try {
-          const industry = workspace?.industry || 'SchoolEnrollment';
-          const res = await listIndustryPredefinedGroupsAction(industry as any);
+          const industry = (workspace?.industry || 'SchoolEnrollment') as IndustryVertical;
+          const res = await listIndustryPredefinedGroupsAction(industry);
           if (res.success && res.data) {
             setPredefinedGroups(res.data);
             setSelectedGroupSlugs(res.data.map(g => g.slug));
@@ -568,7 +726,7 @@ export default function FieldsClient() {
         section: 'common', // legacy fallback
         helpText: fieldForm.helpText || undefined,
         placeholder: fieldForm.placeholder || undefined,
-        compatibilityScope: fieldForm.compatibilityScope as any,
+        compatibilityScope: fieldForm.compatibilityScope,
         validationRules: { required: fieldForm.validationRequired },
         options,
       };
@@ -580,8 +738,24 @@ export default function FieldsClient() {
           setFieldModalOpen(false);
         } else throw new Error(res.error);
       } else {
-        const createPayload = { ...payload, workspaceId: activeWorkspaceId, organizationId: activeOrganizationId, isNative: false, status: 'active' as const, name: fieldForm.label };
-        const res = await createFieldAction(createPayload as any, user.uid);
+        const createPayload: Omit<AppField, 'id' | 'createdAt' | 'updatedAt'> = {
+          workspaceId: activeWorkspaceId,
+          organizationId: activeOrganizationId,
+          name: fieldForm.label,
+          label: fieldForm.label,
+          variableName,
+          type: fieldForm.type,
+          groupId: fieldForm.groupId,
+          section: 'common',
+          isNative: false,
+          status: 'active',
+          compatibilityScope: fieldForm.compatibilityScope,
+          validationRules: { required: fieldForm.validationRequired },
+          helpText: fieldForm.helpText || undefined,
+          placeholder: fieldForm.placeholder || undefined,
+          options,
+        };
+        const res = await createFieldAction(createPayload, user.uid);
         if (res.success) {
           toast({ title: 'Field Created' });
           setFieldModalOpen(false);
@@ -713,7 +887,7 @@ export default function FieldsClient() {
             <div className="space-y-3">
               {predefinedGroups.map(pg => {
                 const isSelected = selectedGroupSlugs.includes(pg.slug);
-                const GroupIcon = (LucideIcons as any)[pg.icon] || LucideIcons.Database;
+                const GroupIcon = getLucideIcon(pg.icon);
                 return (
                   <div
                     key={pg.slug}
@@ -747,7 +921,7 @@ export default function FieldsClient() {
                       {/* Fields inside the group */}
                       {pg.fields && pg.fields.length > 0 && (
                         <div className="flex flex-wrap gap-1.5 mt-3">
-                          {pg.fields.map((f: any) => (
+                          {pg.fields.map(f => (
                             <Badge
                               key={f.variableName}
                               variant="outline"
@@ -830,73 +1004,335 @@ export default function FieldsClient() {
       )}
         </TabsContent>
 
-        <TabsContent value="system" className="mt-4">
-          <Card className="border-border">
-            <CardHeader className="bg-muted/30 border-b border-border pb-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-left">
-                <div className="space-y-1">
-                  <CardTitle className="text-xl flex items-center gap-2">
-                    <LucideIcons.Terminal className="h-5 w-5 text-blue-500" />
-                    System & Organization Variables
-                  </CardTitle>
-                  <CardDescription>
-                    These variables are automatically available in the messaging engine and templates.
-                    Use the <code className="bg-muted px-1.5 py-0.5 rounded text-blue-500">{"{{"}variable_name{"}}"}</code> syntax to inject them into content.
-                  </CardDescription>
+        <TabsContent value="system" className="mt-4 space-y-4">
+          {/* Unified Action Deck: Compact, high-density toolbar */}
+          <div className="bg-card border border-border/80 rounded-2xl p-4 shadow-xs space-y-3.5">
+            {/* Top row: Tenant metadata & Source Filter segmented pills */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+              {/* Scope & Tenant Identity */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 text-xs font-semibold">
+                  <LucideIcons.Building2 className="h-3.5 w-3.5" />
+                  <span>{activeOrganization?.name || 'Organization'}</span>
                 </div>
-                <div className="shrink-0 min-w-[180px]">
-                  <Select value={systemVarContext} onValueChange={setSystemVarContext}>
-                    <SelectTrigger className="w-full bg-background border shadow-sm rounded-xl">
-                      <SelectValue placeholder="Filter Context..." />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                      <SelectItem value="all">All Contexts</SelectItem>
-                      <SelectItem value="common">Common</SelectItem>
-                      {enabledFeatures.meetings !== false && <SelectItem value="meeting">Meetings</SelectItem>}
-                      {enabledFeatures.surveys !== false && <SelectItem value="survey">Surveys</SelectItem>}
-                      {enabledFeatures.forms !== false && <SelectItem value="form">Forms</SelectItem>}
-                      {enabledFeatures.agreements !== false && <SelectItem value="agreement">Agreements</SelectItem>}
-                      {enabledFeatures.users !== false && <SelectItem value="users">Users</SelectItem>}
-                    </SelectContent>
-                  </Select>
+                {activeWorkspace?.name && (
+                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 text-muted-foreground border border-border/60 text-xs font-medium">
+                    <LucideIcons.Layers className="h-3.5 w-3.5" />
+                    <span>Workspace: {activeWorkspace.name}</span>
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground hidden sm:inline-flex items-center gap-1.5 pl-1">
+                  <span>•</span>
+                  <span>
+                    Showing <strong className="text-foreground font-semibold">{filteredOrgVariables.length}</strong> of{' '}
+                    <strong className="text-foreground font-semibold">{allOrgVariables.length}</strong> variables
+                  </span>
                 </div>
               </div>
-            </CardHeader>
+
+              {/* Source Filter Segmented Pill Control (Replaces bulky static cards) */}
+              <div 
+                role="radiogroup" 
+                aria-label="Filter variables by source"
+                className="inline-flex items-center p-1 bg-muted/60 dark:bg-muted/40 border border-border/60 rounded-xl self-start sm:self-auto"
+              >
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={systemVarSource === 'all'}
+                  onClick={() => setSystemVarSource('all')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer min-h-[36px] sm:min-h-0 active:scale-[0.97]",
+                    systemVarSource === 'all'
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  )}
+                >
+                  <LucideIcons.Layers className="h-3.5 w-3.5" />
+                  <span>All Variables</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
+                    systemVarSource === 'all' ? "bg-muted text-foreground" : "bg-muted/60 text-muted-foreground"
+                  )}>
+                    {allOrgVariables.length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={systemVarSource === 'system'}
+                  onClick={() => setSystemVarSource('system')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer min-h-[36px] sm:min-h-0 active:scale-[0.97]",
+                    systemVarSource === 'system'
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  )}
+                >
+                  <LucideIcons.Terminal className="h-3.5 w-3.5 text-blue-500" />
+                  <span>System Defaults</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
+                    systemVarSource === 'system' ? "bg-blue-500/15 text-blue-600 dark:text-blue-400" : "bg-muted/60 text-muted-foreground"
+                  )}>
+                    {allOrgVariables.filter(v => v.source === 'system').length}
+                  </span>
+                </button>
+
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={systemVarSource === 'custom'}
+                  onClick={() => setSystemVarSource('custom')}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer min-h-[36px] sm:min-h-0 active:scale-[0.97]",
+                    systemVarSource === 'custom'
+                      ? "bg-background text-foreground shadow-xs font-semibold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background/40"
+                  )}
+                >
+                  <LucideIcons.Sparkles className="h-3.5 w-3.5 text-purple-500" />
+                  <span>Workspace Custom</span>
+                  <span className={cn(
+                    "text-[10px] px-1.5 py-0.5 rounded-full font-semibold",
+                    systemVarSource === 'custom' ? "bg-purple-500/15 text-purple-600 dark:text-purple-400" : "bg-muted/60 text-muted-foreground"
+                  )}>
+                    {allOrgVariables.filter(v => v.source === 'custom').length}
+                  </span>
+                </button>
+              </div>
+            </div>
+
+            {/* Middle row: Search Bar & Context Select */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 pt-0.5">
+              {/* Search with clear button */}
+              <div className="relative flex-1">
+                <LucideIcons.Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <Input
+                  placeholder="Search by variable name, label, description, or group..."
+                  value={systemVarSearch}
+                  onChange={e => setSystemVarSearch(e.target.value)}
+                  className="pl-9 pr-8 h-10 text-xs rounded-xl bg-background border-border/80 focus-visible:ring-1"
+                />
+                {systemVarSearch && (
+                  <button
+                    type="button"
+                    onClick={() => setSystemVarSearch('')}
+                    aria-label="Clear search"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full hover:bg-muted flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                  >
+                    <LucideIcons.X className="h-3 w-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* Context Selector Dropdown */}
+              <div className="w-full sm:w-[220px]">
+                <Select value={systemVarContext} onValueChange={setSystemVarContext}>
+                  <SelectTrigger className="h-10 text-xs bg-background border-border/80 rounded-xl">
+                    <SelectValue placeholder="All Contexts" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all">All Contexts</SelectItem>
+                    <SelectItem value="common">Common / General</SelectItem>
+                    {enabledFeatures.meetings !== false && <SelectItem value="meeting">Meetings & Webinars</SelectItem>}
+                    {enabledFeatures.surveys !== false && <SelectItem value="survey">Surveys & Feedback</SelectItem>}
+                    {enabledFeatures.forms !== false && <SelectItem value="form">Forms & Submissions</SelectItem>}
+                    {enabledFeatures.agreements !== false && <SelectItem value="agreement">Agreements & Contracts</SelectItem>}
+                    {enabledFeatures.tasks !== false && <SelectItem value="task">Tasks & Assignments</SelectItem>}
+                    {enabledFeatures.automations !== false && <SelectItem value="automation">Automations</SelectItem>}
+                    {enabledFeatures.qr_codes !== false && <SelectItem value="qr_code">QR Codes</SelectItem>}
+                    {enabledFeatures.reminders !== false && <SelectItem value="reminder">Reminders</SelectItem>}
+                    {enabledFeatures.users !== false && <SelectItem value="users">Users & Team</SelectItem>}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Reset button if any filter active */}
+              {(systemVarSearch !== '' || systemVarSource !== 'all' || systemVarContext !== 'all') && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSystemVarSearch('');
+                    setSystemVarSource('all');
+                    setSystemVarContext('all');
+                  }}
+                  className="h-10 text-xs text-muted-foreground hover:text-foreground shrink-0 rounded-xl active:scale-[0.97]"
+                >
+                  <LucideIcons.RotateCcw className="h-3.5 w-3.5 mr-1" />
+                  Reset
+                </Button>
+              )}
+            </div>
+
+            {/* Quick Context Filter Chips for fast 1-click access */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5 pt-0.5 text-xs">
+              <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wider mr-1 shrink-0">
+                Quick Filter:
+              </span>
+              {[
+                { id: 'all', label: 'All' },
+                { id: 'common', label: 'Common' },
+                ...(enabledFeatures.meetings !== false ? [{ id: 'meeting', label: 'Meetings' }] : []),
+                ...(enabledFeatures.surveys !== false ? [{ id: 'survey', label: 'Surveys' }] : []),
+                ...(enabledFeatures.agreements !== false ? [{ id: 'agreement', label: 'Agreements' }] : []),
+                ...(enabledFeatures.forms !== false ? [{ id: 'form', label: 'Forms' }] : []),
+                ...(enabledFeatures.tasks !== false ? [{ id: 'task', label: 'Tasks' }] : []),
+                ...(enabledFeatures.automations !== false ? [{ id: 'automation', label: 'Automations' }] : []),
+              ].map(chip => (
+                <button
+                  key={chip.id}
+                  type="button"
+                  onClick={() => setSystemVarContext(chip.id)}
+                  className={cn(
+                    "px-2.5 py-1 rounded-lg text-xs font-medium shrink-0 transition-all cursor-pointer active:scale-[0.97]",
+                    systemVarContext === chip.id
+                      ? "bg-primary text-primary-foreground font-semibold shadow-2xs"
+                      : "bg-muted/60 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/40"
+                  )}
+                >
+                  {chip.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Variables Table Card */}
+          <Card className="border-border/80 shadow-xs overflow-hidden rounded-2xl">
             <CardContent className="p-0">
               <Table>
-                <TableHeader className="bg-muted/10">
+                <TableHeader className="bg-muted/30 border-b border-border/80">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-1/4">Variable</TableHead>
-                    <TableHead className="w-1/4">Context</TableHead>
-                    <TableHead className="w-1/2">Description & Example</TableHead>
+                    <TableHead className="w-[35%] text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3">Variable & Token</TableHead>
+                    <TableHead className="w-[42%] text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3">Description & Example</TableHead>
+                    <TableHead className="w-[23%] text-xs font-semibold uppercase tracking-wider text-muted-foreground py-3">Group & Context</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredStaticVariables.map(variable => (
-                    <TableRow key={variable.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono text-sm text-blue-600 dark:text-blue-400">
-                        {"{{"}{variable.name}{"}}"}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="capitalize bg-muted">
-                          {variable.context}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <p className="text-sm font-medium">{variable.label}</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">{variable.description}</p>
-                        {variable.exampleValue && (
-                          <p className="text-[10px] text-muted-foreground mt-1">
-                            <span className="font-semibold">Example:</span> {variable.exampleValue}
-                          </p>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                  {filteredStaticVariables.length === 0 && (
+                  {filteredOrgVariables.map(variable => {
+                    const isCopied = copiedVarName === variable.name;
+                    return (
+                      <TableRow 
+                        key={variable.id} 
+                        className="hover:bg-muted/30 transition-colors group/row border-b border-border/50"
+                      >
+                        {/* Col 1: Variable Identity & Token */}
+                        <TableCell className="align-top py-3.5">
+                          <div className="space-y-1.5">
+                            {/* Label + Data Type + Source */}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span className="font-semibold text-sm text-foreground tracking-tight">
+                                {variable.label}
+                              </span>
+                              {variable.dataType && (
+                                <Badge 
+                                  variant="outline" 
+                                  className={cn("text-[10px] px-1.5 py-0 font-mono font-normal uppercase", getDataTypeBadgeVariant(variable.dataType).className)}
+                                >
+                                  {variable.dataType}
+                                </Badge>
+                              )}
+                              {variable.source === 'custom' ? (
+                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-purple-500/10 text-purple-600 dark:text-purple-400 font-medium border border-purple-500/20">
+                                  <LucideIcons.Sparkles className="h-2.5 w-2.5" />
+                                  Custom
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground font-normal border border-border/40">
+                                  <LucideIcons.Terminal className="h-2.5 w-2.5" />
+                                  System
+                                </span>
+                              )}
+                            </div>
+
+                            {/* 1-Click Copy Token Pill */}
+                            <div className="flex items-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleCopyVar(variable.name)}
+                                title="Click to copy token syntax"
+                                className={cn(
+                                  "group/btn inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-mono text-xs font-semibold transition-all border active:scale-[0.97] cursor-pointer min-h-[32px]",
+                                  isCopied
+                                    ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                                    : "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 hover:bg-blue-500/20"
+                                )}
+                              >
+                                <span>{"{{"}{variable.name}{"}}"}</span>
+                                {isCopied ? (
+                                  <LucideIcons.Check className="h-3 w-3 text-emerald-500 shrink-0" />
+                                ) : (
+                                  <LucideIcons.Copy className="h-3 w-3 opacity-50 group-hover/btn:opacity-100 shrink-0 transition-opacity" />
+                                )}
+                              </button>
+                            </div>
+                          </div>
+                        </TableCell>
+
+                        {/* Col 2: Description & Example */}
+                        <TableCell className="align-top py-3.5">
+                          <div className="space-y-1.5">
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              {variable.description}
+                            </p>
+                            {variable.exampleValue && (
+                              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground pt-0.5">
+                                <span className="text-[10px] font-semibold text-muted-foreground/70 uppercase tracking-wider">Example:</span>
+                                <code className="px-1.5 py-0.5 rounded-md bg-muted/60 dark:bg-muted/40 font-mono text-[11px] text-foreground border border-border/40 max-w-sm truncate">
+                                  {variable.exampleValue}
+                                </code>
+                              </div>
+                            )}
+                          </div>
+                        </TableCell>
+
+                        {/* Col 3: Group & Context */}
+                        <TableCell className="align-top py-3.5">
+                          <div className="space-y-1.5">
+                            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/50 border border-border/60 text-xs font-medium text-foreground">
+                              {React.createElement(getLucideIcon(variable.groupIcon), { className: "h-3.5 w-3.5 text-muted-foreground shrink-0" })}
+                              <span className="truncate max-w-[150px]">{variable.groupName}</span>
+                            </div>
+                            <div>
+                              <Badge variant="outline" className="text-[10px] px-2 py-0.5 capitalize text-muted-foreground bg-transparent border-dashed">
+                                {variable.context}
+                              </Badge>
+                            </div>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+
+                  {filteredOrgVariables.length === 0 && (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center p-8 text-muted-foreground">
-                        No variables found for this filter.
+                      <TableCell colSpan={3} className="text-center py-16 text-muted-foreground">
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          <div className="h-12 w-12 rounded-full bg-muted/60 flex items-center justify-center">
+                            <LucideIcons.SearchX className="h-6 w-6 text-muted-foreground/60" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-sm font-semibold text-foreground">No matching variables found</p>
+                            <p className="text-xs text-muted-foreground max-w-sm mx-auto">
+                              We couldn&apos;t find any variables matching &quot;{systemVarSearch || systemVarContext}&quot;. Try adjusting your search query or reset your filters.
+                            </p>
+                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSystemVarSearch('');
+                              setSystemVarSource('all');
+                              setSystemVarContext('all');
+                            }}
+                            className="text-xs rounded-xl active:scale-[0.97]"
+                          >
+                            <LucideIcons.RotateCcw className="h-3.5 w-3.5 mr-1.5" />
+                            Clear all filters
+                          </Button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   )}
@@ -931,7 +1367,7 @@ export default function FieldsClient() {
                     <SelectValue placeholder="Select an icon">
                       {groupForm.icon && (
                         <div className="flex items-center gap-2">
-                          {React.createElement((LucideIcons as any)[groupForm.icon] || LucideIcons.Database, { className: "h-4 w-4" })}
+                          {React.createElement(getLucideIcon(groupForm.icon), { className: "h-4 w-4" })}
                           <span className="truncate">{groupForm.icon}</span>
                         </div>
                       )}
@@ -941,8 +1377,7 @@ export default function FieldsClient() {
                     <ScrollArea className="h-64">
                       <div className="grid grid-cols-2 gap-1 p-1">
                         {COMMON_GROUP_ICONS.map(iconName => {
-                          const IconComponent = (LucideIcons as any)[iconName];
-                          if (!IconComponent) return null;
+                          const IconComponent = getLucideIcon(iconName);
                           return (
                             <SelectItem key={iconName} value={iconName} className="cursor-pointer">
                               <div className="flex items-center gap-2">
@@ -1003,7 +1438,7 @@ export default function FieldsClient() {
                 </div>
                 <div className="space-y-2">
                   <Label>Field Type</Label>
-                  <Select value={fieldForm.type} onValueChange={v => setFieldForm({...fieldForm, type: v as any})}>
+                  <Select value={fieldForm.type} onValueChange={v => setFieldForm({...fieldForm, type: v as AppField['type']})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       {FIELD_TYPES.map(t => (

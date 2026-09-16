@@ -4990,9 +4990,13 @@ export interface TemplateVariable {
   name: string;
   label: string;
   description: string;
-  dataType: 'string' | 'date' | 'number' | 'url' | 'html';
+  dataType: 'string' | 'date' | 'number' | 'url' | 'html' | 'boolean';
   context: VariableContext;
   exampleValue: string;
+  category?: string;
+  groupId?: string;
+  groupName?: string;
+  groupIcon?: string;
   // Dynamic variables (from form/survey fields)
   isDynamic: boolean;
   sourceFormId?: string;
@@ -5205,6 +5209,20 @@ export interface MessageBlock {
    * RELATED SURFACES: visual-block.tsx, messaging-utils.ts, block-inspector.tsx.
    */
   scoreValue?: string;
+  /**
+   * Style variant for footer blocks.
+   * - 'organization': Inherits live HTML and compliance copy from Organization Settings (default).
+   * - 'contact': Centered organization name, address, email, phone, and copyright.
+   * - 'minimal': Clean single-line copyright notice.
+   * - 'split': Two-column layout with org address on left and unsubscribe link on right.
+   * - 'centered': Centered legal disclaimer, unsubscribe copy, and opt-out link.
+   *
+   * PURPOSE: Allows users to choose between live Organization Settings Footer and styled layout alternatives.
+   * CAUTION: When 'organization' is selected, variables are populated from activeOrganization / vars.org_footer_html.
+   * TESTABILITY: Covered in visual-block.formatting.test.tsx and org-footer-service.test.ts.
+   * RELATED SURFACES: visual-block.tsx, messaging-utils.ts, block-inspector.tsx, template-workshop.tsx.
+   */
+  footerStyle?: 'organization' | 'contact' | 'minimal' | 'split' | 'centered';
   rsvpDateLabel?: string;
   rsvpTimeLabel?: string;
   rsvpLocationLabel?: string;
@@ -7019,7 +7037,7 @@ export interface AppField {
   description?: string;
   helpText?: string;
   placeholder?: string;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | string[] | null;
   options?: { value: string; label: string }[]; // For select/radio
   validationRules?: {
     required?: boolean;

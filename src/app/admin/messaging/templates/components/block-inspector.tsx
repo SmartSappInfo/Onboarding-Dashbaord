@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
+import Link from 'next/link';
 import { 
     AlignLeft, 
     AlignCenter, 
@@ -19,7 +20,8 @@ import {
     Palette,
     Layers,
     X,
-    Code2
+    Code2,
+    ExternalLink
 } from 'lucide-react';
 
 const HTML_SNIPPET_PRESETS: Array<{ label: string; description: string; code: string }> = [
@@ -330,6 +332,7 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
     const scoreCardSubRef = React.useRef<HTMLInputElement>(null);
     const scoreCardValRef = React.useRef<HTMLInputElement>(null);
     const htmlCodeRef = React.useRef<HTMLTextAreaElement>(null);
+    const footerCopyrightRef = React.useRef<HTMLInputElement>(null);
 
     if (!block) return null;
 
@@ -1773,6 +1776,110 @@ export function BlockInspector({ block, variables, onUpdate, templateCategory }:
                             </div>
                         </div>
                     )}
+
+                    {/* Footer Block Settings */}
+                    {block.type === 'footer' && (() => {
+                        /**
+                         * FOOTER INSPECTOR ARCHITECTURE (Rule 10 Maintainer Guidance):
+                         * Allows selecting between 5 footer styles:
+                         * - 'organization': Live sync with Organization Settings.
+                         * - 'contact': Centered address, phone, email & copyright.
+                         * - 'minimal': Clean single-line copyright notice.
+                         * - 'split': Two-column with address on left, unsubscribe on right.
+                         * - 'centered': Centered legal disclaimer & unsubscribe link.
+                         *
+                         * ACTIONABLE NAVIGATION (Rule 4): Links directly to '/admin/settings?tab=branding'
+                         * with active:scale-[0.97] (Rule 7) and min-h-[44px] touch target (Rule 6).
+                         */
+                        const currentStyle = block.footerStyle || (block.content ? 'minimal' : 'organization');
+                        const footerStyleOptions = [
+                            { value: 'organization', label: 'Organization Settings Footer', desc: 'Live synced footer from Organization Settings' },
+                            { value: 'contact', label: 'Contact & Brand Details', desc: 'Centered name, address, phone & email' },
+                            { value: 'minimal', label: 'Minimal Copyright Notice', desc: 'Clean single-line copyright notice' },
+                            { value: 'split', label: 'Split Two-Column Footer', desc: 'Address on left, unsubscribe on right' },
+                            { value: 'centered', label: 'Centered Legal & Unsubscribe', desc: 'Disclaimer, unsubscribe copy & preferences link' },
+                        ] as const;
+
+                        return (
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Footer Layout Style</Label>
+                                    <Select
+                                        value={currentStyle}
+                                        onValueChange={(val: 'organization' | 'contact' | 'minimal' | 'split' | 'centered') => onUpdate({ footerStyle: val })}
+                                    >
+                                        <SelectTrigger className="h-11 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 font-semibold text-xs">
+                                            <SelectValue placeholder="Select footer style..." />
+                                        </SelectTrigger>
+                                        <SelectContent className="rounded-xl">
+                                            {footerStyleOptions.map((opt) => (
+                                                <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                                    <div className="flex flex-col text-left py-0.5">
+                                                        <span className="font-bold text-foreground">{opt.label}</span>
+                                                        <span className="text-[10px] text-muted-foreground line-clamp-1">{opt.desc}</span>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {currentStyle === 'organization' && (
+                                    <div className="p-3.5 bg-blue-500/10 border border-blue-500/20 rounded-xl space-y-3">
+                                        <div className="flex items-start gap-2.5">
+                                            <span className="text-base mt-0.5">🏛️</span>
+                                            <div className="space-y-1 text-left">
+                                                <h4 className="text-xs font-bold text-blue-900 dark:text-blue-300">Live Organization Footer</h4>
+                                                <p className="text-[11px] text-blue-700/80 dark:text-blue-400 leading-relaxed">
+                                                    This block dynamically pulls the footer HTML, physical address, and unsubscribe preferences configured in Organization Settings.
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Link
+                                            href="/admin/settings?tab=branding"
+                                            className="w-full flex items-center justify-center gap-2 min-h-[44px] rounded-xl font-semibold text-xs active:scale-[0.97] transition-all bg-background hover:bg-background/80 text-blue-600 dark:text-blue-400 border border-blue-500/30 shadow-sm"
+                                        >
+                                            <span>Configure in Organization Settings</span>
+                                            <ExternalLink className="h-3.5 w-3.5" />
+                                        </Link>
+                                    </div>
+                                )}
+
+                                {currentStyle === 'minimal' && (
+                                    <div className="space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Copyright Content</Label>
+                                            <InlineVariablePicker
+                                                targetRef={footerCopyrightRef}
+                                                currentValue={block.content || ''}
+                                                onFieldChange={val => onUpdate({ content: val })}
+                                            />
+                                        </div>
+                                        <SlashInput
+                                            ref={footerCopyrightRef}
+                                            value={block.content || '© {{current_year}} {{org_name}}. All rights reserved.'}
+                                            onChange={val => onUpdate({ content: val })}
+                                            variables={autocompleteVariables}
+                                            className="rounded-xl h-11 bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-blue-500/20 font-medium text-xs"
+                                            placeholder="e.g. © {{current_year}} {{org_name}}. All rights reserved."
+                                            onKeyDown={(e) => e.stopPropagation()}
+                                        />
+                                    </div>
+                                )}
+
+                                {(currentStyle === 'contact' || currentStyle === 'split' || currentStyle === 'centered') && (
+                                    <div className="p-3 bg-muted/20 border border-border/40 rounded-xl space-y-1.5 text-left">
+                                        <p className="text-[11px] font-semibold text-foreground/80">
+                                            Automatic Variable Resolution
+                                        </p>
+                                        <p className="text-[10px] text-muted-foreground leading-relaxed">
+                                            This layout automatically resolves <code className="font-mono text-blue-600 bg-blue-500/10 px-1 py-0.5 rounded">{'{{org_name}}'}</code>, <code className="font-mono text-blue-600 bg-blue-500/10 px-1 py-0.5 rounded">{'{{org_address}}'}</code>, and <code className="font-mono text-blue-600 bg-blue-500/10 px-1 py-0.5 rounded">{'{{unsubscribe_link}}'}</code> from your organization settings upon dispatch.
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
+                        );
+                    })()}
                 </div>
 
                 {/* 2. Collapsible Visual Layout Accordions (Filtered by Block Type Relevance) */}

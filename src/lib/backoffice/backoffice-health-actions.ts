@@ -286,7 +286,7 @@ export async function getSystemEngineManifestAction(idToken: string): Promise<{
       reactVersion: '19.2.1',
       timestamp: new Date().toISOString(),
       engines: {
-        ai: { status: 'operational', provider: 'googleai/gemini-2.5-pro' },
+        ai: { status: 'operational', provider: 'googleai/gemini-3-flash-preview' },
         pdf: { status: 'operational', engines: ['pdf-lib', 'jspdf'] },
         qr: { status: 'operational', modes: ['headless-qrcode', 'interactive-qr-studio'] },
         media: { status: 'operational', pipeline: 'html5-canvas' },

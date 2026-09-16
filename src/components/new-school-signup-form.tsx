@@ -172,8 +172,8 @@ export default function NewSchoolSignupForm() {
         implementationDate: data.implementationDate.toISOString(),
         referee: data.referee,
         includeDroneFootage: data.includeDroneFootage,
-        pipelineId: 'default_pipeline', // TODO: Get default pipeline for onboarding workspace
-        stageId: 'welcome', // Default stage for new signups
+        // Decoupled: Pipeline & stage assignment is handled dynamically via workspace automations
+        // (Trigger: ENTITY_CREATED -> Action: CREATE_DEAL) to allow per-workspace configuration.
         userId: 'system', // TODO: Get from user context if available
       });
 

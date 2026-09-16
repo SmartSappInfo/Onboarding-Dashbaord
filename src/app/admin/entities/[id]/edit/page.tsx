@@ -1,14 +1,13 @@
-'use client';
-
 import * as React from 'react';
+import dynamic from 'next/dynamic';
 import { useForm, FormProvider, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { Loader2, Building, MapPin, User, Plus, UserCheck, ShieldCheck, Banknote, CreditCard, Wallet, Percent, Target, Layout, Camera, Share2, Globe, Hash, Network } from 'lucide-react';
 import { useRouter, useParams, usePathname } from 'next/navigation';
-import { doc, collection, query, orderBy, where } from 'firebase/firestore';
+import { doc, collection, query, orderBy, where, writeBatch, updateDoc, getDocs, limit } from 'firebase/firestore';
 
-import type { Entity, WorkspaceEntity, UserProfile, SubscriptionPackage } from '@/lib/types';
+import type { Entity, WorkspaceEntity, UserProfile, SubscriptionPackage, Deal, EntityContact, EntityNote } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import {
   FormControl,
@@ -45,6 +44,36 @@ import EntityNotesTab from '../../components/EntityNotesTab';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { useWorkspaceVisibility } from '@/hooks/use-workspace-visibility';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { useCallModal } from '@/context/CallModalContext';
+import { serializeEntityToImportRow } from '@/lib/import-export/export-service';
+import { generateEntityDossierSummaryAction } from '@/app/actions/entity-dossier-actions';
+import { generateEntityDossierPdf } from '@/lib/services/entity-dossier-pdf-service';
+import { resolveEntityContacts } from '@/lib/entity-contact-helpers';
+import EntityHeaderCard from '../components/EntityHeaderCard';
+import ConvertLeadModal from '../../components/ConvertLeadModal';
+import { PageContainerFluid } from '@/components/ui/page-container';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+const AddToCampaignDialog = dynamic(
+  () => import('../../components/AddToCampaignDialog').then(m => m.AddToCampaignDialog),
+  { ssr: false, loading: () => <Skeleton className="h-10 w-full rounded-xl" /> }
+);
 
 const entityEditSchema = z.object({
   name: z.string().min(2, { message: 'Name must be at least 2 characters.' }),
@@ -63,7 +92,7 @@ const entityEditSchema = z.object({
   currentNeeds: z.string().optional(),
   currentChallenges: z.string().optional(),
   interests: z.string().optional(),
-  customData: z.record(z.any()).optional(),
+  customData: z.record(z.unknown()).optional(),
   entityContacts: z.array(z.object({
     name: z.string().min(2, 'Name required.'),
     email: z.string().email('Invalid email.').optional().or(z.literal('')),
@@ -111,6 +140,25 @@ interface EditFormProps {
   entityId: string;
 }
 
+interface AppFieldItem {
+  id: string;
+  groupId?: string;
+  status?: string;
+  type?: string;
+  variableName?: string;
+  label?: string;
+  placeholder?: string;
+  options?: Array<{ label: string; value: string }>;
+  compatibilityScope?: string[];
+}
+
+interface FieldGroupItem {
+  id: string;
+  name: string;
+  order?: number;
+  isSystem?: boolean;
+}
+
 function EditEntityForm({ entityId }: EditFormProps) {
   const { toast } = useToast();
   const router = useRouter();
@@ -125,6 +173,14 @@ function EditEntityForm({ entityId }: EditFormProps) {
   const [hasInitialized, setHasInitialized] = React.useState(false);
   const [locationValue, setLocationValue] = React.useState<LocationValue>({});
   const defaultCountryId = activeOrganization?.defaultCountryId || 'GH';
+
+  const { openCallModal } = useCallModal();
+  const [isGeneratingPdf, setIsGeneratingPdf] = React.useState(false);
+  const [convertModalOpen, setConvertModalOpen] = React.useState(false);
+  const [isCampaignDialogOpen, setIsCampaignDialogOpen] = React.useState(false);
+  const [isLogoDialogOpen, setIsLogoDialogOpen] = React.useState(false);
+  const [isUpdatingLogo, setIsUpdatingLogo] = React.useState(false);
+  const [showConfirmLeaveModal, setShowConfirmLeaveModal] = React.useState(false);
 
   // 1. Subscribe to Global Entity
   const entityDocRef = useMemoFirebase(() => {
@@ -173,7 +229,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
         where('status', '==', 'active')
     );
   }, [firestore, activeWorkspaceId]);
-  const { data: appFields } = useCollection<any>(fieldsQuery);
+  const { data: appFields } = useCollection<AppFieldItem>(fieldsQuery);
 
   const groupsQuery = useMemoFirebase(() => {
     if (!firestore || !activeWorkspaceId) return null;
@@ -183,7 +239,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
         orderBy('order', 'asc')
     );
   }, [firestore, activeWorkspaceId]);
-  const { data: fieldGroups } = useCollection<any>(groupsQuery);
+  const { data: fieldGroups } = useCollection<FieldGroupItem>(groupsQuery);
 
   const contactScope = activeWorkspace?.contactScope || 'institution';
 
@@ -191,7 +247,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
       if (!fieldGroups || !appFields) return [];
       
       return fieldGroups.map(group => {
-          const groupFields = appFields.filter((f: any) => 
+          const groupFields = appFields.filter((f) => 
               f.groupId === group.id && 
               f.status === 'active' && 
               f.type !== 'hidden' &&
@@ -398,6 +454,136 @@ function EditEntityForm({ entityId }: EditFormProps) {
     }
   };
 
+  const handleConsoleToggle = () => {
+    if (methods.formState.isDirty) {
+      setShowConfirmLeaveModal(true);
+    } else {
+      router.push(`/admin/entities/${entityId}`);
+    }
+  };
+
+  const handleSaveName = async (newName?: string) => {
+    if (!firestore || !entityId) return;
+    const targetName = (newName || '').trim();
+    if (!targetName) return;
+    try {
+      const batch = writeBatch(firestore);
+      const entityRef = doc(firestore, 'entities', entityId);
+      batch.update(entityRef, { name: targetName, updatedAt: new Date().toISOString() });
+      if (activeWorkspaceId) {
+        const weRef = doc(firestore, 'workspace_entities', workspaceEntityId);
+        batch.update(weRef, { displayName: targetName, updatedAt: new Date().toISOString() });
+      }
+      await batch.commit();
+      methods.setValue('name', targetName, { shouldDirty: false });
+      toast({ title: 'Name Updated', description: `Entity name updated to "${targetName}".` });
+    } catch (err: unknown) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(err) });
+    }
+  };
+
+  const handleLogoUpdate = async (newLogoUrl: string) => {
+    if (!firestore || !entityId || isUpdatingLogo) return;
+    setIsUpdatingLogo(true);
+    try {
+      await updateDoc(doc(firestore, 'entities', entityId), {
+        logoUrl: newLogoUrl,
+        updatedAt: new Date().toISOString(),
+      });
+      methods.setValue('logoUrl', newLogoUrl, { shouldDirty: false });
+      toast({ title: 'Image Updated', description: `${singular} brand image has been updated.` });
+      setIsLogoDialogOpen(false);
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Update Failed', description: getErrorMessage(e) });
+    } finally {
+      setIsUpdatingLogo(false);
+    }
+  };
+
+  const handleExportJSON = () => {
+    if (!entityData) return;
+    try {
+      const rowData = serializeEntityToImportRow(entityData, weData || undefined);
+      const jsonString = JSON.stringify(rowData, null, 2);
+      const blob = new Blob([jsonString], { type: 'application/json;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      const formattedName = (entityData.name || weData?.displayName || 'entity').replace(/[^a-zA-Z0-9_-]/g, '_');
+      link.setAttribute('download', `${formattedName}_data_${new Date().toISOString().slice(0, 10)}.json`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: 'Export Complete', description: `Data exported to JSON format.` });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: getErrorMessage(e) });
+    }
+  };
+
+  const handleExportPDF = async () => {
+    if (!entityData || !firestore || isGeneratingPdf) return;
+    setIsGeneratingPdf(true);
+    toast({ title: 'Generating Executive Dossier', description: 'Synthesizing AI intelligence & compiling PDF report...' });
+    try {
+      let notesList: EntityNote[] = [];
+      try {
+        const notesSnap = await getDocs(query(collection(firestore, 'entity_notes'), where('entityId', '==', entityId), limit(50)));
+        notesList = notesSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as EntityNote))
+          .filter(n => !activeWorkspaceId || !n.workspaceId || n.workspaceId === activeWorkspaceId)
+          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+          .slice(0, 25);
+      } catch (err) {
+        console.warn('Could not fetch notes for PDF export:', err);
+      }
+
+      let dealsList: Deal[] = [];
+      try {
+        const dealsSnap = await getDocs(query(collection(firestore, 'deals'), where('entityId', '==', entityId), limit(50)));
+        dealsList = dealsSnap.docs
+          .map(d => ({ id: d.id, ...d.data() } as Deal))
+          .filter(d => !activeWorkspaceId || !d.workspaceId || d.workspaceId === activeWorkspaceId)
+          .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+          .slice(0, 20);
+      } catch (err) {
+        console.warn('Could not fetch deals for PDF export:', err);
+      }
+
+      const contactsList: EntityContact[] = resolveEntityContacts(entityData);
+      const stageName = (weData as unknown as Record<string, unknown>).currentStageName as string | undefined || weData?.track;
+      const dossierSummaryRes = await generateEntityDossierSummaryAction({
+        entityName: entityData.name || weData?.displayName || '',
+        entityType: entityData.entityType,
+        stageName,
+        leadScore: weData?.leadScore,
+        notes: notesList.map(n => ({ content: n.content, noteType: n.noteType, createdByName: n.createdByName, createdAt: n.createdAt })),
+        deals: dealsList.map(d => ({ name: d.name, stageName: d.stageName, amount: d.value })),
+        tasks: [],
+        workspaceId: activeWorkspaceId || undefined,
+        organizationId: activeOrganizationId || undefined,
+      });
+
+      await generateEntityDossierPdf({
+        entity: entityData,
+        workspaceEntity: weData,
+        summary: dossierSummaryRes.summary,
+        contacts: contactsList,
+        tasks: [],
+        deals: dealsList,
+        organization: activeOrganization ? { name: activeOrganization.name, logoUrl: activeOrganization.logoUrl } : null,
+        generatedByName: user?.displayName || user?.email || 'CRM Member',
+        terminologySingular: singular,
+      });
+
+      toast({ title: 'Executive Dossier Exported', description: `PDF briefing report downloaded.` });
+    } catch (e: unknown) {
+      toast({ variant: 'destructive', title: 'Export Failed', description: getErrorMessage(e) });
+    } finally {
+      setIsGeneratingPdf(false);
+    }
+  };
+
   const isGlobalLoading = isLoadingEntity || isLoadingWE || isUsersLoading || !hasInitialized;
 
   if (isGlobalLoading) {
@@ -421,9 +607,27 @@ function EditEntityForm({ entityId }: EditFormProps) {
 
   return (
     <FormProvider {...methods}>
- <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
- <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
- <div className="lg:col-span-2 space-y-8">
+      <div className="space-y-6 w-full">
+        <EntityHeaderCard
+          entityId={entityId}
+          displayName={entityData.name || weData.displayName}
+          entityData={entityData}
+          weData={weData}
+          mode="edit"
+          onModeToggle={handleConsoleToggle}
+          onConvertModalOpen={() => setConvertModalOpen(true)}
+          onCallNow={() => openCallModal({ entityId })}
+          onAddToCallCampaign={() => setIsCampaignDialogOpen(true)}
+          onExportJSON={handleExportJSON}
+          onExportPDF={handleExportPDF}
+          onLogoClick={() => setIsLogoDialogOpen(true)}
+          onSaveName={handleSaveName}
+          isGeneratingPdf={isGeneratingPdf}
+        />
+
+        <form onSubmit={methods.handleSubmit(handleFormSubmit)} className="space-y-8 pb-24 text-left">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-8">
             {/* General Identity Card */}
             <Card className="border border-border/50 shadow-sm rounded-2xl overflow-hidden bg-card/50 text-left">
               <CardHeader className="bg-transparent border-b border-border/50 pb-4 pt-5 px-6 text-left">
@@ -860,22 +1064,22 @@ function EditEntityForm({ entityId }: EditFormProps) {
                   </div>
                 </CardHeader>
                 <CardContent className="p-6 text-left grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {group.fields.map((field: any) => (
+                  {group.fields.map((field: AppFieldItem) => (
                     <FormField key={field.id} control={methods.control} name={`customData.${field.variableName}`} render={({ field: formField }) => (
                       <FormItem className="text-left">
                         <FormLabel className="text-[10px] font-semibold text-muted-foreground/60 ml-1 text-left">{field.label}</FormLabel>
                         <FormControl>
                           {field.type === 'long_text' ? (
-                            <Textarea {...formField} value={formField.value || ''} placeholder={field.placeholder || ''} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4 text-left" />
+                            <Textarea {...formField} value={typeof formField.value === 'string' ? formField.value : ''} placeholder={field.placeholder || ''} className="min-h-[80px] rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 text-sm p-4 text-left" />
                           ) : (field.type === 'select' || field.type === 'dropdown') ? (
-                            <Select onValueChange={formField.onChange} value={formField.value || ''}>
+                            <Select onValueChange={formField.onChange} value={typeof formField.value === 'string' ? formField.value : ''}>
                               <FormControl>
                                 <SelectTrigger className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 transition-colors hover:border-border/60 font-semibold text-left">
                                   <SelectValue placeholder={field.placeholder || "Select option..."} />
                                 </SelectTrigger>
                               </FormControl>
                               <SelectContent className="rounded-xl shadow-2xl border-none">
-                                {(field.options || []).map((opt: any) => (
+                                {(field.options || []).map((opt: { label: string; value: string }) => (
                                   <SelectItem key={opt.value} value={opt.value} className="font-semibold">
                                     {opt.label}
                                   </SelectItem>
@@ -884,15 +1088,15 @@ function EditEntityForm({ entityId }: EditFormProps) {
                             </Select>
                           ) : field.type === 'multi_select' ? (
                             <MultiSelect
-                              options={(field.options || []).map((opt: any) => ({ label: opt.label, value: opt.value }))}
-                              value={Array.isArray(formField.value) ? formField.value : (formField.value ? [formField.value] : [])}
+                              options={(field.options || []).map((opt: { label: string; value: string }) => ({ label: opt.label, value: opt.value }))}
+                              value={Array.isArray(formField.value) ? formField.value : (formField.value ? [String(formField.value)] : [])}
                               onChange={formField.onChange}
                               placeholder={field.placeholder || "Select options..."}
                             />
                           ) : (
                             <Input
                               {...formField}
-                              value={formField.value || ''}
+                              value={typeof formField.value === 'string' || typeof formField.value === 'number' ? String(formField.value) : ''}
                               type={
                                 field.type === 'number' || field.type === 'currency'
                                   ? 'number'
@@ -909,7 +1113,7 @@ function EditEntityForm({ entityId }: EditFormProps) {
                                   : 'text'
                               }
                               placeholder={field.placeholder || ''}
-                              className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus:ring-1 focus:ring-primary/30 focus:border-primary/40 transition-colors hover:border-border/60 placeholder:text-muted-foreground/40 font-semibold text-left"
+                              className="h-11 rounded-xl bg-muted/30 border border-border/40 shadow-none focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:border-primary/40 transition-colors hover:border-border/60 font-medium text-sm px-4 text-left"
                             />
                           )}
                         </FormControl>
@@ -978,6 +1182,61 @@ function EditEntityForm({ entityId }: EditFormProps) {
           </div>
         </div>
       </form>
+
+        {/* Modals & Dialogs */}
+        {convertModalOpen && weData && (
+          <ConvertLeadModal
+            entity={weData}
+            open={convertModalOpen}
+            onOpenChange={setConvertModalOpen}
+          />
+        )}
+
+        {isCampaignDialogOpen && (
+          <AddToCampaignDialog
+            entityIds={[entityId]}
+            entityName={entityData.name || weData.displayName}
+            workspaceId={activeWorkspaceId || ''}
+            open={isCampaignDialogOpen}
+            onOpenChange={setIsCampaignDialogOpen}
+          />
+        )}
+
+        <Dialog open={isLogoDialogOpen} onOpenChange={setIsLogoDialogOpen}>
+          <DialogContent className="sm:max-w-[425px] rounded-2xl p-6">
+            <DialogHeader>
+              <DialogTitle className="text-lg font-bold">{singular} Brand Image</DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">Select or upload a logo image.</DialogDescription>
+            </DialogHeader>
+            <MediaSelect
+              value={entityData?.logoUrl || ''}
+              onValueChange={handleLogoUpdate}
+              filterType="image"
+              className="rounded-2xl mt-4"
+            />
+          </DialogContent>
+        </Dialog>
+
+        <AlertDialog open={showConfirmLeaveModal} onOpenChange={setShowConfirmLeaveModal}>
+          <AlertDialogContent className="rounded-2xl">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="text-lg font-bold">Unsaved Changes</AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground">
+                You have unsaved edits in the Entity Design Studio. Switching to Console View will lose your unsaved changes.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel className="rounded-xl min-h-[44px]">Keep Editing</AlertDialogCancel>
+              <AlertDialogAction
+                className="rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 min-h-[44px]"
+                onClick={() => router.push(`/admin/entities/${entityId}`)}
+              >
+                Discard & Open Console
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </div>
     </FormProvider>
   );
 }
@@ -988,10 +1247,16 @@ export default function EditEntityPage() {
   const { singular } = useTerminology();
 
   return (
-        <div className="h-full overflow-y-auto">
- <div className="max-w-5xl mx-auto space-y-8">
- {entityId ? <EditEntityForm entityId={entityId} /> : <p className="text-center py-20 text-muted-foreground font-medium">{singular} context not found.</p>}
+    <PageContainerFluid>
+      <div className="space-y-8">
+        {entityId ? (
+          <EditEntityForm entityId={entityId} />
+        ) : (
+          <p className="text-center py-20 text-muted-foreground font-medium">
+            {singular} context not found.
+          </p>
+        )}
       </div>
-    </div>
+    </PageContainerFluid>
   );
 }

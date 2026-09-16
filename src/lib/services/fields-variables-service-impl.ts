@@ -11,6 +11,8 @@ import type { EntityContact, Entity } from '../types';
 import { getBaseUrl } from '../utils/url-helpers';
 import { resolveTextWithMap } from '../utils/variable-replacer';
 
+import { PLATFORM_FIELD_GROUPS, resolveStaticVariableGroup } from '../industry-field-registry';
+
 // Request-scoped document lookup caches to prevent redundant round-trips
 const getWorkspaceDocCached = cache(async (id: string) => {
   return adminDb.collection('workspaces').doc(id).get();
@@ -90,20 +92,26 @@ export class FieldsVariablesService {
     }
 
     // 2. Add Core Static System Variables
+    const requestedCtxNorm = (params.featureContext || 'all').toLowerCase().replace(/s$/, '');
+
     STATIC_VARIABLES.forEach((v) => {
       // Exclude school or focal person or deprecated variables
       if (
         v.name.startsWith('school_') || 
-        v.name.includes('focal_person') || 
-        v.name === 'entity_email' || 
-        v.name === 'entity_phone'
+        v.name.includes('focal_person')
       ) {
         return;
       }
 
       // Filter by featureContext
       const isCommon = v.context === 'common';
-      const matchesContext = !params.featureContext || params.featureContext === 'all' || v.context === params.featureContext;
+      const varCtxNorm = (v.context || '').toLowerCase().replace(/s$/, '');
+      const matchesContext = 
+        !params.featureContext || 
+        params.featureContext === 'all' || 
+        varCtxNorm === requestedCtxNorm ||
+        (requestedCtxNorm === 'finance' && varCtxNorm === 'agreement') ||
+        (requestedCtxNorm === 'agreement' && varCtxNorm === 'finance');
 
       if (!isCommon && !matchesContext) {
         return;
@@ -117,6 +125,8 @@ export class FieldsVariablesService {
         label = label.replace(/Entity/g, singularTerm).replace(/entity/g, singularTerm.toLowerCase());
       }
 
+      const groupInfo = resolveStaticVariableGroup(v.name, v.context);
+
       safePush({
         key: v.name,
         label,
@@ -124,18 +134,24 @@ export class FieldsVariablesService {
         dataType: (v.dataType as 'string' | 'number' | 'date' | 'url' | 'boolean' | 'html') ?? 'string',
         description: v.description,
         source: 'static',
-        featureContext: v.context as 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign',
+        featureContext: v.context as UnifiedVariable['featureContext'],
         exampleValue: v.exampleValue ? String(v.exampleValue) : undefined,
         fallbackValue: v.fallbackValue,
+        groupId: groupInfo.groupId,
+        groupName: groupInfo.groupName,
+        groupSlug: groupInfo.groupSlug,
+        groupOrder: groupInfo.groupOrder,
+        groupIcon: groupInfo.groupIcon,
+        isCustom: false,
       });
     });
 
     // 3. Add Core Generic Contact Variables
     const coreContacts: Omit<UnifiedVariable, 'key' | 'label'>[] = [
-      { category: 'core', dataType: 'string', description: 'Full name of the active contact', source: 'static' },
-      { category: 'core', dataType: 'string', description: 'Email address of the active contact', source: 'static' },
-      { category: 'core', dataType: 'string', description: 'Phone number of the active contact', source: 'static' },
-      { category: 'core', dataType: 'string', description: 'Role or type key of the active contact', source: 'static' }
+      { category: 'core', dataType: 'string', description: 'Full name of the active contact', source: 'static', groupId: 'entity_contacts', groupName: 'Contacts', groupSlug: 'entity_contacts', groupOrder: 5, groupIcon: 'Users', isCustom: false },
+      { category: 'core', dataType: 'string', description: 'Email address of the active contact', source: 'static', groupId: 'entity_contacts', groupName: 'Contacts', groupSlug: 'entity_contacts', groupOrder: 5, groupIcon: 'Users', isCustom: false },
+      { category: 'core', dataType: 'string', description: 'Phone number of the active contact', source: 'static', groupId: 'entity_contacts', groupName: 'Contacts', groupSlug: 'entity_contacts', groupOrder: 5, groupIcon: 'Users', isCustom: false },
+      { category: 'core', dataType: 'string', description: 'Role or type key of the active contact', source: 'static', groupId: 'entity_contacts', groupName: 'Contacts', groupSlug: 'entity_contacts', groupOrder: 5, groupIcon: 'Users', isCustom: false }
     ];
     
     safePush({ key: 'contact_name', label: 'Contact Name', ...coreContacts[0], fallbackValue: 'there' });
@@ -161,6 +177,12 @@ export class FieldsVariablesService {
           dataType: 'string',
           description: `Full name of the designated ${key} contact`,
           source: 'contact_role',
+          groupId: 'entity_contacts',
+          groupName: 'Contacts',
+          groupSlug: 'entity_contacts',
+          groupOrder: 5,
+          groupIcon: 'Users',
+          isCustom: false,
         });
         safePush({
           key: `contact_email_${key}`,
@@ -169,6 +191,12 @@ export class FieldsVariablesService {
           dataType: 'string',
           description: `Email address of the designated ${key} contact`,
           source: 'contact_role',
+          groupId: 'entity_contacts',
+          groupName: 'Contacts',
+          groupSlug: 'entity_contacts',
+          groupOrder: 5,
+          groupIcon: 'Users',
+          isCustom: false,
         });
         safePush({
           key: `contact_phone_${key}`,
@@ -177,6 +205,12 @@ export class FieldsVariablesService {
           dataType: 'string',
           description: `Phone number of the designated ${key} contact`,
           source: 'contact_role',
+          groupId: 'entity_contacts',
+          groupName: 'Contacts',
+          groupSlug: 'entity_contacts',
+          groupOrder: 5,
+          groupIcon: 'Users',
+          isCustom: false,
         });
         safePush({
           key: `contact_role_${key}`,
@@ -185,18 +219,42 @@ export class FieldsVariablesService {
           dataType: 'string',
           description: `Effective role label of the designated ${key} contact`,
           source: 'contact_role',
+          groupId: 'entity_contacts',
+          groupName: 'Contacts',
+          groupSlug: 'entity_contacts',
+          groupOrder: 5,
+          groupIcon: 'Users',
+          isCustom: false,
         });
       });
     } catch (err) {
       console.warn('[FieldsVariablesService] Failed to load role-based contact variables:', err);
     }
 
-    // 5. Load Custom & Industry Fields from app_fields
+    // 5. Load Custom & Industry Fields from app_fields + field_groups
     try {
-      const fieldsSnap = await adminDb.collection('app_fields')
-        .where('workspaceId', '==', params.workspaceId)
-        .where('status', '==', 'active')
-        .get();
+      const [fieldsSnap, groupsSnap] = await Promise.all([
+        adminDb.collection('app_fields')
+          .where('workspaceId', '==', params.workspaceId)
+          .where('status', '==', 'active')
+          .get(),
+        adminDb.collection('field_groups')
+          .where('workspaceId', '==', params.workspaceId)
+          .get()
+      ]);
+
+      const groupMap = new Map<string, { name: string; slug: string; order: number; icon: string }>();
+      PLATFORM_FIELD_GROUPS.forEach((g) => {
+        groupMap.set(g.slug, { name: g.name, slug: g.slug, order: g.order, icon: g.icon || 'Database' });
+      });
+      groupsSnap.docs.forEach((doc) => {
+        const d = doc.data();
+        if (d) {
+          const info = { name: d.name || 'Custom Group', slug: d.slug || doc.id, order: d.order ?? 20, icon: d.icon || 'Folder' };
+          groupMap.set(doc.id, info);
+          if (d.slug) groupMap.set(d.slug, info);
+        }
+      });
 
       fieldsSnap.docs.forEach((doc) => {
         const field = doc.data();
@@ -213,6 +271,9 @@ export class FieldsVariablesService {
         const isNative = !!field.isNative;
         const isIndustry = !!field.industryOrigin && field.industryOrigin !== 'common';
 
+        const groupKey = field.groupId || field.section || '';
+        const groupInfo = groupMap.get(groupKey);
+
         safePush({
           key: field.variableName,
           label: field.label || field.name,
@@ -222,6 +283,12 @@ export class FieldsVariablesService {
                     field.type === 'url' ? 'url' : 'string',
           description: field.helpText || `Custom ${field.label || field.name} field`,
           source: 'custom_field',
+          groupId: field.groupId || groupInfo?.slug,
+          groupName: groupInfo?.name || (isIndustry ? 'Industry Fields' : 'Custom Fields'),
+          groupSlug: groupInfo?.slug || 'custom_fields',
+          groupOrder: groupInfo?.order ?? 20,
+          groupIcon: groupInfo?.icon || 'Settings2',
+          isCustom: !isNative,
         });
       });
     } catch (err) {
@@ -229,97 +296,116 @@ export class FieldsVariablesService {
     }
 
     // 6. Load Dynamic Form / Survey Fields from template_variables
-    if (params.featureContext === 'survey' && params.sourceId) {
-      try {
-        const surveySnap = await adminDb.collection('surveys').doc(params.sourceId).get();
-        if (surveySnap.exists) {
-          const surveyData = surveySnap.data();
-          if (surveyData) {
-            // Expose standard Computed Survey Variables
-            const surveyStaticVars = [
-              { key: 'survey_title', label: 'Survey Title', desc: 'Title of the survey' },
-              { key: 'survey_score', label: 'Survey Score (Points)', desc: 'Respondent\'s total score in points' },
-              { key: 'score', label: 'Score', desc: 'Alias for survey score' },
-              { key: 'max_score', label: 'Survey Max Score', desc: 'Total possible score in the survey' },
-              { key: 'outcome_label', label: 'Outcome Label', desc: 'Name of the matched outcome rule' },
-              { key: 'submission_date', label: 'Submission Date', desc: 'Formatted date of survey submission' },
-              { key: 'contact_name', label: 'Contact Name (Captured)', desc: 'Contact name captured on lead sheet' },
-              { key: 'contact_email', label: 'Contact Email (Captured)', desc: 'Contact email captured on lead sheet' },
-              { key: 'contact_phone', label: 'Contact Phone (Captured)', desc: 'Contact phone captured on lead sheet' },
-              { key: 'result_url', label: 'Survey Results Link', desc: 'Personalized URL to view results' },
-              { key: 'survey_results_link', label: 'Survey Results Link (Alias)', desc: 'Personalized URL to view results' },
-              { key: 'respondent_name', label: 'Respondent Name', desc: 'Name of the person who filled or is filling out the survey' },
-              { key: 'result_message', label: 'Result Message', desc: 'Message or label generated by matched outcome rule' },
-              { key: 'result_title', label: 'Result Title', desc: 'Title of the matched outcome rule' },
-              { key: 'result_description', label: 'Result Description', desc: 'Description of the matched outcome rule' },
-              { key: 'survey_result', label: 'Survey Result', desc: 'Summary result text of the survey outcome' },
-              { key: 'survey_link', label: 'Public Survey Link', desc: 'Direct URL to taking the survey' },
-              { key: 'dashboard_link', label: 'Personalized Dashboard Link', desc: 'Admin URL to view dashboard for survey, meeting, or contract' },
-              { key: 'dashboard_url', label: 'Dashboard URL', desc: 'Admin URL to view survey submission dashboard' },
-              { key: 'submission_link', label: 'Submission Link', desc: 'Direct URL to view individual survey response' },
-            ];
+    const isSurveyCtx = requestedCtxNorm === 'survey' || requestedCtxNorm === 'all';
+    if (isSurveyCtx) {
+      // Expose standard Computed Survey Variables
+      const surveyStaticVars = [
+        { key: 'survey_title', label: 'Survey Title', desc: 'Title of the survey' },
+        { key: 'survey_score', label: 'Survey Score (Points)', desc: "Respondent's total score in points" },
+        { key: 'score', label: 'Score', desc: 'Alias for survey score' },
+        { key: 'max_score', label: 'Survey Max Score', desc: 'Total possible score in the survey' },
+        { key: 'outcome_label', label: 'Outcome Label', desc: 'Name of the matched outcome rule' },
+        { key: 'submission_date', label: 'Submission Date', desc: 'Formatted date of survey submission' },
+        { key: 'contact_name', label: 'Contact Name (Captured)', desc: 'Contact name captured on lead sheet' },
+        { key: 'contact_email', label: 'Contact Email (Captured)', desc: 'Contact email captured on lead sheet' },
+        { key: 'contact_phone', label: 'Contact Phone (Captured)', desc: 'Contact phone captured on lead sheet' },
+        { key: 'result_url', label: 'Survey Results Link', desc: 'Personalized URL to view results' },
+        { key: 'survey_results_link', label: 'Survey Results Link (Alias)', desc: 'Personalized URL to view results' },
+        { key: 'respondent_name', label: 'Respondent Name', desc: 'Name of the person who filled or is filling out the survey' },
+        { key: 'result_message', label: 'Result Message', desc: 'Message or label generated by matched outcome rule' },
+        { key: 'result_title', label: 'Result Title', desc: 'Title of the matched outcome rule' },
+        { key: 'result_description', label: 'Result Description', desc: 'Description of the matched outcome rule' },
+        { key: 'survey_result', label: 'Survey Result', desc: 'Summary result text of the survey outcome' },
+        { key: 'survey_link', label: 'Public Survey Link', desc: 'Direct URL to taking the survey' },
+        { key: 'dashboard_link', label: 'Personalized Dashboard Link', desc: 'Admin URL to view dashboard for survey, meeting, or contract' },
+        { key: 'dashboard_url', label: 'Dashboard URL', desc: 'Admin URL to view survey submission dashboard' },
+        { key: 'submission_link', label: 'Submission Link', desc: 'Direct URL to view individual survey response' },
+      ];
 
-            surveyStaticVars.forEach((sv) => {
-              safePush({
-                key: sv.key,
-                label: sv.label,
-                category: 'feature',
-                dataType: sv.key.includes('score') ? 'number' : 'string',
-                description: sv.desc,
-                source: 'dynamic_form',
-                featureContext: 'survey',
+      surveyStaticVars.forEach((sv) => {
+        safePush({
+          key: sv.key,
+          label: sv.label,
+          category: 'feature',
+          dataType: sv.key.includes('score') ? 'number' : sv.key.includes('link') || sv.key.includes('url') ? 'url' : 'string',
+          description: sv.desc,
+          source: 'dynamic_form',
+          featureContext: 'survey',
+          groupId: 'surveys',
+          groupName: 'Survey Details & Outcomes',
+          groupSlug: 'surveys',
+          groupOrder: 0,
+          groupIcon: 'ClipboardList',
+          isCustom: false,
+        });
+      });
+
+      if (params.sourceId) {
+        try {
+          const surveySnap = await adminDb.collection('surveys').doc(params.sourceId).get();
+          if (surveySnap.exists) {
+            const surveyData = surveySnap.data();
+            if (surveyData) {
+              const elements = (surveyData.elements || []) as Array<{
+                id?: string;
+                title?: string;
+                text?: string;
+                type?: string;
+                isRequired?: boolean;
+              }>;
+
+              elements.forEach((el, index) => {
+                if (!el) return;
+                const qId = el.id || `q_${index}`;
+                const qLabel = el.title || el.text || `Question ${index + 1}`;
+                const varKey = `q_${qId.replace(/[^a-zA-Z0-9_]/g, '_')}`;
+
+                safePush({
+                  key: varKey,
+                  label: qLabel,
+                  category: 'feature',
+                  dataType: 'string',
+                  description: `Response to question: "${qLabel}"`,
+                  source: 'dynamic_form',
+                  featureContext: 'survey',
+                  groupId: 'survey_questions',
+                  groupName: 'Survey Question Responses',
+                  groupSlug: 'survey_questions',
+                  groupOrder: 0,
+                  groupIcon: 'HelpCircle',
+                  isCustom: true,
+                });
               });
-            });
 
-            // Expose each question answer dynamically
-            const elements = (surveyData.elements || []) as Array<{
-              id?: string;
-              title?: string;
-              text?: string;
-              type?: string;
-              isRequired?: boolean;
-            }>;
-            elements.forEach((el) => {
-              if (el && el.id && (el.title || el.text)) {
-                // Determine if it is a question
-                const isQ = 'isRequired' in el || ['text', 'long-text', 'email', 'phone', 'number', 'link', 'yes-no', 'multiple-choice', 'checkboxes'].includes(el.type || '');
-                if (isQ) {
-                  const plainText = (el.title || el.text || '').replace(/<[^>]*>/gm, '').trim();
-                  safePush({
-                    key: el.id,
-                    label: `Q: ${plainText.substring(0, 50)}${plainText.length > 50 ? '...' : ''}`,
-                    category: 'feature',
-                    dataType: 'string',
-                    description: `User's response to question: "${plainText}"`,
-                    source: 'dynamic_form',
-                    featureContext: 'survey',
-                  });
+              // Expose custom lead capture fields dynamically
+              const leadFields = (surveyData.leadCaptureFieldsConfig || {}) as Record<string, { label?: string; show?: boolean }>;
+              Object.keys(leadFields).forEach((fKey) => {
+                if (fKey !== 'name' && fKey !== 'email' && fKey !== 'phone' && fKey !== 'company') {
+                  const fCfg = leadFields[fKey];
+                  if (fCfg && fCfg.show) {
+                    safePush({
+                      key: fKey,
+                      label: `Lead: ${fCfg.label || fKey}`,
+                      category: 'feature',
+                      dataType: 'string',
+                      description: `Captured lead value: "${fCfg.label || fKey}"`,
+                      source: 'dynamic_form',
+                      featureContext: 'survey',
+                      groupId: 'survey_questions',
+                      groupName: 'Survey Question Responses',
+                      groupSlug: 'survey_questions',
+                      groupOrder: 0,
+                      groupIcon: 'HelpCircle',
+                      isCustom: true,
+                    });
+                  }
                 }
-              }
-            });
-
-            // Expose custom lead capture fields dynamically
-            const leadFields = surveyData.leadCaptureFieldsConfig || {};
-            Object.keys(leadFields).forEach((fKey) => {
-              if (fKey !== 'name' && fKey !== 'email' && fKey !== 'phone' && fKey !== 'company') {
-                const fCfg = leadFields[fKey];
-                if (fCfg && fCfg.show) {
-                  safePush({
-                    key: fKey,
-                    label: `Lead: ${fCfg.label || fKey}`,
-                    category: 'feature',
-                    dataType: 'string',
-                    description: `Captured lead value: "${fCfg.label || fKey}"`,
-                    source: 'dynamic_form',
-                    featureContext: 'survey',
-                  });
-                }
-              }
-            });
+              });
+            }
           }
+        } catch (err) {
+          console.warn('[FieldsVariablesService] Failed to load survey questions for sourceId:', err);
         }
-      } catch (err) {
-        console.warn('[FieldsVariablesService] Failed to load survey questions for variables:', err);
       }
     } else if (params.featureContext === 'form' || params.featureContext === 'survey') {
       try {
@@ -1101,11 +1187,16 @@ export class FieldsVariablesService {
     if (context.agreementId && agreementSnap?.exists) {
       try {
         const contract = agreementSnap.data()!;
-        valuesMap.set('contract_name', contract.name ?? contract.title ?? '');
-        valuesMap.set('contract_link', contract.signingUrl ?? contract.publicUrl ?? '');
+        const agrUrl = contract.signingUrl ?? contract.publicUrl ?? '';
+        const agrName = contract.name ?? contract.title ?? '';
+        valuesMap.set('contract_name', agrName);
+        valuesMap.set('contract_link', agrUrl);
+        valuesMap.set('agreement_url', agrUrl);
+        valuesMap.set('agreement_name', agrName);
         valuesMap.set('signatory_name', contract.signatoryName ?? '');
         valuesMap.set('deadline', contract.deadline ?? '');
         valuesMap.set('contract_status', contract.status ?? '');
+        valuesMap.set('agreement_status', contract.status ?? '');
         valuesMap.set('signing_date', contract.signedAt ? new Date(contract.signedAt).toLocaleDateString() : '');
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching contract data for rendering:', err);
@@ -1146,6 +1237,49 @@ export class FieldsVariablesService {
       Object.entries(context.extraVars).forEach(([k, v]) => {
         valuesMap.set(k, v !== null && v !== undefined ? String(v) : '');
       });
+    }
+
+    // 10. Shorthand & Legacy Aliases Resolution (SSOT Protocol - Symmetrical Bidirectional)
+    // Meeting aliases (bidirectional)
+    if (!valuesMap.has('date') && valuesMap.has('meeting_date')) {
+      valuesMap.set('date', valuesMap.get('meeting_date') ?? '');
+    } else if (!valuesMap.has('meeting_date') && valuesMap.has('date')) {
+      valuesMap.set('meeting_date', valuesMap.get('date') ?? '');
+    }
+
+    if (!valuesMap.has('time') && valuesMap.has('meeting_time')) {
+      valuesMap.set('time', valuesMap.get('meeting_time') ?? '');
+    } else if (!valuesMap.has('meeting_time') && valuesMap.has('time')) {
+      valuesMap.set('meeting_time', valuesMap.get('time') ?? '');
+    }
+
+    if (!valuesMap.has('link') && valuesMap.has('meeting_link')) {
+      valuesMap.set('link', valuesMap.get('meeting_link') ?? '');
+    } else if (!valuesMap.has('meeting_link') && valuesMap.has('link')) {
+      valuesMap.set('meeting_link', valuesMap.get('link') ?? '');
+    }
+
+    // Agreement aliases (bidirectional)
+    if (!valuesMap.has('agreement_url') && valuesMap.has('contract_link')) {
+      valuesMap.set('agreement_url', valuesMap.get('contract_link') ?? '');
+    } else if (!valuesMap.has('contract_link') && valuesMap.has('agreement_url')) {
+      valuesMap.set('contract_link', valuesMap.get('agreement_url') ?? '');
+    }
+
+    if (!valuesMap.has('agreement_name') && valuesMap.has('contract_name')) {
+      valuesMap.set('agreement_name', valuesMap.get('contract_name') ?? '');
+    } else if (!valuesMap.has('contract_name') && valuesMap.has('agreement_name')) {
+      valuesMap.set('contract_name', valuesMap.get('agreement_name') ?? '');
+    }
+
+    if (!valuesMap.has('agreement_status') && valuesMap.has('contract_status')) {
+      valuesMap.set('agreement_status', valuesMap.get('contract_status') ?? '');
+    } else if (!valuesMap.has('contract_status') && valuesMap.has('agreement_status')) {
+      valuesMap.set('contract_status', valuesMap.get('agreement_status') ?? '');
+    }
+
+    if (!valuesMap.has('agent_name')) {
+      valuesMap.set('agent_name', valuesMap.get('user_name') ?? valuesMap.get('assigned_to') ?? '');
     }
 
     // 9.5. Populate encrypted_recipient_token

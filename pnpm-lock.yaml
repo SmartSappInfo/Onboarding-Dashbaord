@@ -35,11 +35,11 @@ importers:
         specifier: ^0.3.0
         version: 0.3.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))(zod@3.25.76)
       '@genkit-ai/compat-oai':
-        specifier: ^1.20.0
-        version: 1.31.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))(ws@8.19.0)(zod@3.25.76)
+        specifier: ^1.42.0
+        version: 1.42.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))(ws@8.21.3)(zod@3.25.76)
       '@genkit-ai/google-genai':
-        specifier: ^1.20.0
-        version: 1.30.1(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))
+        specifier: ^1.42.0
+        version: 1.42.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))
       '@google-cloud/tasks':
         specifier: ^6.2.3
         version: 6.2.3
@@ -1269,10 +1269,10 @@ packages:
     peerDependencies:
       genkit: ^1.36.0
 
-  '@genkit-ai/compat-oai@1.31.0':
-    resolution: {integrity: sha512-imXWaVoxQsXzXny9CTE0+lqAsynNaQMldSO2z+G70qocuSmqZ/vSsI1RmHfuPt5oGNPgyib1xu8J+lEpTD/0lA==}
+  '@genkit-ai/compat-oai@1.42.0':
+    resolution: {integrity: sha512-itLh7NMAXMx6Qk2TDNkZV2035SgdLkjCuTCOJyQStmghD5DdLFv3b/5Vd2FOAvPXz+vYFl1NZ2fZUJ3gp9CX7A==}
     peerDependencies:
-      genkit: ^1.31.0
+      genkit: ^1.42.0
 
   '@genkit-ai/core@1.42.0':
     resolution: {integrity: sha512-UYTty6exDYUtDWMUxbSijvyZ8tn7Bf+e0CnTFEo2qUO7IpOPgPFaXyUsLWD+EvsxhXWkLhVW2V/e/st60p792g==}
@@ -1293,10 +1293,10 @@ packages:
     peerDependencies:
       genkit: ^1.42.0
 
-  '@genkit-ai/google-genai@1.30.1':
-    resolution: {integrity: sha512-sOL8nt+0rVJayqCkYXw43tOuxgr4mnx8k4htqQgT19c6w3sCETT0fsc2bPSHapQ53aoBLdJq9EEoCZrzhHOp7Q==}
+  '@genkit-ai/google-genai@1.42.0':
+    resolution: {integrity: sha512-Tly/vRCGQxM7qu38Pl4uurAItoWjR+yEh3UvLRUaYScaNkaYpPPPMno7Nsn0ighwoC8+LmzQFdgg+pb8DVTcbA==}
     peerDependencies:
-      genkit: ^1.30.1
+      genkit: ^1.42.0
 
   '@genkit-ai/telemetry-server@1.42.0':
     resolution: {integrity: sha512-v8KsjKlXIGUP6uDKhzGBrXrCOPOGXFJdf3/7+wztdNwOdzUrvsKHEOg1CrjXn+J1oOmO5bztrBooYtx9Z9G/PQ==}
@@ -9420,10 +9420,10 @@ snapshots:
     transitivePeerDependencies:
       - zod
 
-  '@genkit-ai/compat-oai@1.31.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))(ws@8.19.0)(zod@3.25.76)':
+  '@genkit-ai/compat-oai@1.42.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))(ws@8.21.3)(zod@3.25.76)':
     dependencies:
       genkit: 1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0)
-      openai: 4.104.0(ws@8.19.0)(zod@3.25.76)
+      openai: 4.104.0(ws@8.21.3)(zod@3.25.76)
     transitivePeerDependencies:
       - encoding
       - ws
@@ -9504,7 +9504,7 @@ snapshots:
       - supports-color
     optional: true
 
-  '@genkit-ai/google-genai@1.30.1(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))':
+  '@genkit-ai/google-genai@1.42.0(genkit@1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0))':
     dependencies:
       genkit: 1.42.0(@google-cloud/firestore@7.11.6)(firebase-admin@12.7.0)(firebase@11.10.0)
       google-auth-library: 9.15.1
@@ -9746,7 +9746,7 @@ snapshots:
   '@grpc/grpc-js@1.9.15':
     dependencies:
       '@grpc/proto-loader': 0.7.15
-      '@types/node': 20.19.39
+      '@types/node': 20.19.43
 
   '@grpc/proto-loader@0.7.15':
     dependencies:
@@ -12523,7 +12523,7 @@ snapshots:
 
   '@types/bunyan@1.8.9':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
     optional: true
 
   '@types/canvas-confetti@1.9.0': {}
@@ -12532,12 +12532,12 @@ snapshots:
 
   '@types/connect@3.4.36':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
     optional: true
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
 
   '@types/d3-array@3.2.2': {}
 
@@ -12685,23 +12685,23 @@ snapshots:
 
   '@types/memcached@2.2.10':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
     optional: true
 
   '@types/ms@2.1.0': {}
 
   '@types/mysql@2.15.22':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
     optional: true
 
   '@types/mysql@2.15.27':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
 
   '@types/node-fetch@2.6.13':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 20.19.43
       form-data: 4.0.5
 
   '@types/node@18.19.130':
@@ -12741,13 +12741,13 @@ snapshots:
 
   '@types/pg@8.15.6':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
       pg-protocol: 1.13.0
       pg-types: 2.2.0
 
   '@types/pg@8.6.1':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
       pg-protocol: 1.16.0
       pg-types: 2.2.0
     optional: true
@@ -12787,7 +12787,7 @@ snapshots:
 
   '@types/tedious@4.0.14':
     dependencies:
-      '@types/node': 20.19.37
+      '@types/node': 20.19.43
 
   '@types/three@0.183.1':
     dependencies:
@@ -12812,7 +12812,7 @@ snapshots:
 
   '@types/yauzl@2.10.3':
     dependencies:
-      '@types/node': 20.19.39
+      '@types/node': 20.19.43
     optional: true
 
   '@typescript-eslint/eslint-plugin@8.57.1(@typescript-eslint/parser@8.57.1(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3))(eslint@9.39.4(jiti@1.21.7))(typescript@5.9.3)':
@@ -14733,7 +14733,6 @@ snapshots:
       node-fetch: 3.3.2
     transitivePeerDependencies:
       - supports-color
-    optional: true
 
   gcp-metadata@6.1.1:
     dependencies:
@@ -14746,7 +14745,7 @@ snapshots:
 
   gcp-metadata@8.1.2:
     dependencies:
-      gaxios: 7.1.4
+      gaxios: 7.3.1
       google-logging-utils: 1.1.3
       json-bigint: 1.0.0
     transitivePeerDependencies:
@@ -15932,7 +15931,7 @@ snapshots:
     dependencies:
       is-wsl: 1.1.0
 
-  openai@4.104.0(ws@8.19.0)(zod@3.25.76):
+  openai@4.104.0(ws@8.21.3)(zod@3.25.76):
     dependencies:
       '@types/node': 18.19.130
       '@types/node-fetch': 2.6.13
@@ -15942,7 +15941,7 @@ snapshots:
       formdata-node: 4.4.1
       node-fetch: 2.7.0
     optionalDependencies:
-      ws: 8.19.0
+      ws: 8.21.3
       zod: 3.25.76
     transitivePeerDependencies:
       - encoding
@@ -16298,7 +16297,7 @@ snapshots:
       '@protobufjs/path': 1.1.2
       '@protobufjs/pool': 1.1.0
       '@protobufjs/utf8': 1.1.0
-      '@types/node': 20.19.39
+      '@types/node': 20.19.43
       long: 5.3.2
 
   protobufjs@7.6.6:

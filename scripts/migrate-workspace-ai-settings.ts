@@ -84,10 +84,12 @@ async function runMigration(): Promise<void> {
         let fastModelId: string | undefined = undefined;
 
         if (!existingSettings || !existingSettings.preferredModelId) {
-          // Missing entirely - provision flagship defaults
+          // Missing entirely - provision flagship defaults and standard tiers
           needsUpdate = true;
           targetProvider = flagship.provider;
           targetModelId = flagship.id;
+          fastModelId = AiModelRegistry.getDefaultModelForTier('fast', targetProvider).id;
+          reasoningModelId = AiModelRegistry.getDefaultModelForTier('reasoning', targetProvider).id;
         } else {
           // Existing settings present - check provider validity
           const validProvider: AiProviderId =
@@ -95,7 +97,20 @@ async function runMigration(): Promise<void> {
               ? existingSettings.preferredProvider
               : 'googleai';
 
-          const normalizedModelId = AiModelRegistry.normalizeModelId(existingSettings.preferredModelId);
+          let normalizedModelId = AiModelRegistry.normalizeModelId(existingSettings.preferredModelId);
+
+          // Check if preferredModelId was configured as or mapped to a reasoning model (e.g. gemini-2.5-pro -> gemini-3.1-pro).
+          // General workspace operations must route through the balanced flagship model (gemini-3-flash)
+          // to protect against free-tier 0-quota exhaustion, while setting reasoningModelId to gemini-3.1-pro.
+          const modelDef = AiModelRegistry.getModelById(normalizedModelId);
+          if (modelDef?.tier === 'reasoning') {
+            if (!reasoningModelId) {
+              reasoningModelId = normalizedModelId;
+            }
+            normalizedModelId = AiModelRegistry.getDefaultModelForTier('default', validProvider).id;
+            needsUpdate = true;
+          }
+
           if (
             validProvider !== existingSettings.preferredProvider ||
             normalizedModelId !== existingSettings.preferredModelId
@@ -112,6 +127,9 @@ async function runMigration(): Promise<void> {
               needsUpdate = true;
             }
             reasoningModelId = normalizedReasoning;
+          } else if (!reasoningModelId) {
+            reasoningModelId = AiModelRegistry.getDefaultModelForTier('reasoning', targetProvider).id;
+            needsUpdate = true;
           }
 
           if (existingSettings.fastModelId) {
@@ -120,6 +138,9 @@ async function runMigration(): Promise<void> {
               needsUpdate = true;
             }
             fastModelId = normalizedFast;
+          } else {
+            fastModelId = AiModelRegistry.getDefaultModelForTier('fast', targetProvider).id;
+            needsUpdate = true;
           }
         }
 
@@ -139,7 +160,7 @@ async function runMigration(): Promise<void> {
           console.log(
             `[ENRICH] Workspace "${workspaceId}": ${
               existingSettings?.preferredModelId || 'NONE'
-            } -> ${targetModelId} (${targetProvider})`
+            } -> ${targetModelId} (${targetProvider}) [fast: ${fastModelId}, reasoning: ${reasoningModelId}]`
           );
 
           if (!DRY_RUN) {

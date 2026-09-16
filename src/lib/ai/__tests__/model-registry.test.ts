@@ -37,7 +37,7 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
     expect(allModels.length).toBeGreaterThan(5);
 
     const flagship = AiModelRegistry.getFlagshipModel();
-    expect(flagship.id).toBe('gemini-3.6-flash');
+    expect(flagship.id).toBe('gemini-3-flash');
     expect(flagship.provider).toBe('googleai');
     expect(flagship.isFlagship).toBe(true);
 
@@ -55,18 +55,20 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
   });
 
   describe('normalizeModelId (Evolutionary Normalization)', () => {
-    it('should map deprecated Gemini models to gemini-3.6-flash', () => {
-      expect(AiModelRegistry.normalizeModelId('gemini-2.5-flash')).toBe('gemini-3.6-flash');
-      expect(AiModelRegistry.normalizeModelId('gemini-3.5-flash')).toBe('gemini-3.6-flash');
-      expect(AiModelRegistry.normalizeModelId('gemini-2.0-flash')).toBe('gemini-3.6-flash');
-      expect(AiModelRegistry.normalizeModelId('gemini-1.5-flash')).toBe('gemini-3.6-flash');
-      expect(AiModelRegistry.normalizeModelId('googleai/gemini-2.5-flash')).toBe('gemini-3.6-flash');
-      expect(AiModelRegistry.normalizeModelId('googleai/gemini-3.6-flash')).toBe('gemini-3.6-flash');
+    it('should map deprecated Gemini models to gemini-3-flash', () => {
+      expect(AiModelRegistry.normalizeModelId('gemini-2.5-flash')).toBe('gemini-3-flash');
+      expect(AiModelRegistry.normalizeModelId('gemini-3.5-flash')).toBe('gemini-3-flash');
+      expect(AiModelRegistry.normalizeModelId('gemini-2.0-flash')).toBe('gemini-3-flash');
+      expect(AiModelRegistry.normalizeModelId('gemini-1.5-flash')).toBe('gemini-3-flash');
+      expect(AiModelRegistry.normalizeModelId('googleai/gemini-2.5-flash')).toBe('gemini-3-flash');
+      expect(AiModelRegistry.normalizeModelId('googleai/gemini-3.6-flash')).toBe('gemini-3-flash');
     });
 
-    it('should map deprecated Pro models to gemini-2.5-pro', () => {
-      expect(AiModelRegistry.normalizeModelId('gemini-1.5-pro')).toBe('gemini-2.5-pro');
-      expect(AiModelRegistry.normalizeModelId('googleai/gemini-1.5-pro')).toBe('gemini-2.5-pro');
+    it('should map deprecated Pro models to gemini-3.1-pro', () => {
+      expect(AiModelRegistry.normalizeModelId('gemini-1.5-pro')).toBe('gemini-3.1-pro');
+      expect(AiModelRegistry.normalizeModelId('gemini-2.5-pro')).toBe('gemini-3.1-pro');
+      expect(AiModelRegistry.normalizeModelId('googleai/gemini-1.5-pro')).toBe('gemini-3.1-pro');
+      expect(AiModelRegistry.normalizeModelId('googleai/gemini-2.5-pro')).toBe('gemini-3.1-pro');
     });
 
     it('should normalize Anthropic aliases to canonical claude IDs', () => {
@@ -78,7 +80,7 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
     it('should map legacy OpenAI models to Claude 3.5 Sonnet / Gemini', () => {
       expect(AiModelRegistry.normalizeModelId('gpt-4o')).toBe('claude-3-5-sonnet');
       expect(AiModelRegistry.normalizeModelId('gpt-4')).toBe('claude-3-5-sonnet');
-      expect(AiModelRegistry.normalizeModelId('gpt-3.5-turbo')).toBe('gemini-3.6-flash');
+      expect(AiModelRegistry.normalizeModelId('gpt-3.5-turbo')).toBe('gemini-3-flash');
     });
 
     it('should correctly strip openrouter prefix without falling back to Gemini', () => {
@@ -91,10 +93,10 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
     });
 
     it('should safely fall back to flagship model for undefined or unknown input', () => {
-      expect(AiModelRegistry.normalizeModelId(undefined)).toBe('gemini-3.6-flash');
-      expect(AiModelRegistry.normalizeModelId('')).toBe('gemini-3.6-flash');
+      expect(AiModelRegistry.normalizeModelId(undefined)).toBe('gemini-3-flash');
+      expect(AiModelRegistry.normalizeModelId('')).toBe('gemini-3-flash');
       expect(AiModelRegistry.normalizeModelId('non-existent-hallucinated-model-xyz')).toBe(
-        'gemini-3.6-flash'
+        'gemini-3-flash'
       );
     });
   });
@@ -102,7 +104,7 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
   describe('getDefaultModelForTier', () => {
     it('should resolve the correct default model by tier', () => {
       const defaultTier = AiModelRegistry.getDefaultModelForTier('default');
-      expect(defaultTier.id).toBe('gemini-3.6-flash');
+      expect(defaultTier.id).toBe('gemini-3-flash');
 
       const fastTier = AiModelRegistry.getDefaultModelForTier('fast');
       expect(fastTier.tier).toBe('fast');
@@ -160,14 +162,17 @@ describe('AiModelRegistry (Single Source of Truth)', () => {
   describe('getWireModelString', () => {
     it('should return the provider SDK wire format for a model', () => {
       expect(
+        AiModelRegistry.getWireModelString('gemini-3-flash', 'googleai')
+      ).toBe('googleai/gemini-3-flash-preview');
+      expect(
         AiModelRegistry.getWireModelString('gemini-3.6-flash', 'googleai')
-      ).toBe('googleai/gemini-2.5-flash');
+      ).toBe('googleai/gemini-3-flash-preview');
       expect(
         AiModelRegistry.getWireModelString('claude-3-5-sonnet', 'anthropic')
       ).toBe('claude-3-5-sonnet-20241022');
       expect(
         AiModelRegistry.getWireModelString('gemini-2.5-flash', 'googleai')
-      ).toBe('googleai/gemini-2.5-flash');
+      ).toBe('googleai/gemini-3-flash-preview');
     });
   });
 });
@@ -181,7 +186,7 @@ describe('WorkspaceAiService', () => {
     const settings = await WorkspaceAiService.getSettings('test-ws-1');
     expect(settings).toBeDefined();
     expect(settings.preferredProvider).toBe('googleai');
-    expect(settings.preferredModelId).toBe('gemini-3.6-flash');
+    expect(settings.preferredModelId).toBe('gemini-3-flash');
   });
 
   it('should cache settings in memory on subsequent calls', async () => {

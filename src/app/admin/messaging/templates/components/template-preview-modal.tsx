@@ -49,7 +49,12 @@ const MOCK_VARIABLES: Record<string, string> = {
     org_address: '123 Innovation Way, Suite 400',
     current_year: new Date().getFullYear().toString(),
     score: '92',
-    max_score: '100'
+    max_score: '100',
+    org_footer_html: '',
+    org_footer_enabled: 'true',
+    unsubscribe_copy: 'You are receiving this email because you are registered with our services.',
+    unsubscribe_link: '#',
+    brand_primary_color: '#3B5FFF'
 };
 
 interface TemplatePreviewModalProps {
@@ -110,7 +115,12 @@ export function TemplatePreviewModal({
             org_email: activeOrganization?.email || '',
             org_phone: activeOrganization?.phone || '',
             org_address: activeOrganization?.address || '',
-            org_website: activeOrganization?.website || ''
+            org_website: activeOrganization?.website || '',
+            org_footer_html: activeOrganization?.footerHtml || '',
+            org_footer_enabled: String(activeOrganization?.footerEnabled !== false),
+            unsubscribe_copy: activeOrganization?.unsubscribeCopy || 'You are receiving this email because you are registered with our services.',
+            unsubscribe_link: '#',
+            brand_primary_color: activeOrganization?.brandPrimaryColor || activeOrganization?.primaryColor || '#3B5FFF'
         };
         detectedVars.forEach(v => {
             if (!(v in mergedMocks)) {
@@ -133,8 +143,8 @@ export function TemplatePreviewModal({
                 phone: activeOrganization?.phone || mergedMocks.org_phone || '',
                 address: activeOrganization?.address || mergedMocks.org_address || '',
                 website: activeOrganization?.website || mergedMocks.org_website || '',
-                footerHtml: activeStyle.footerHtml,
-                footerEnabled: activeStyle.footerEnabled !== false
+                footerHtml: activeStyle.footerHtml ?? activeOrganization?.footerHtml,
+                footerEnabled: activeStyle.footerEnabled ?? (activeOrganization?.footerEnabled !== false)
             };
             const styleOverrides = {
                 primaryColor: activeStyle.primaryColor,
@@ -178,7 +188,7 @@ export function TemplatePreviewModal({
             resolved = plainTextToHtml(resolved);
         }
         return resolved;
-    }, [template, styles]);
+    }, [template, styles, activeOrganization, activeOrganizationId, activeWorkspaceId]);
 
     // Character cost & segment analysis for SMS
     const smsAnalysis = React.useMemo(() => {

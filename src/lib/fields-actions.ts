@@ -18,6 +18,8 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 
 const REVALIDATION_PATH = '/admin/settings/fields';
 
+const RESERVED_VARIABLE_NAMES = new Set(STATIC_VARIABLES.map(v => v.name.toLowerCase()));
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Field Group Actions
 // ─────────────────────────────────────────────────────────────────────────────
@@ -227,6 +229,15 @@ export async function createFieldAction(data: Omit<AppField, 'id' | 'createdAt' 
       return { success: false, error: permission.reason };
     }
 
+    // 0.5. Reserved System Variable Collision Prevention
+    const cleanVarName = (data.variableName || '').toLowerCase().trim();
+    if (RESERVED_VARIABLE_NAMES.has(cleanVarName)) {
+      return {
+        success: false,
+        error: `The variable name "${data.variableName}" is reserved as a platform system variable. Please choose a custom name.`,
+      };
+    }
+
     // Validate unique variableName within workspace
     const existing = await adminDb
       .collection('app_fields')
@@ -290,8 +301,16 @@ export async function updateFieldAction(id: string, data: Partial<AppField>, use
       data = allowed;
     }
 
-    // If variableName changed (custom field only), validate uniqueness
+    // If variableName changed (custom field only), validate uniqueness and reserved status
     if (data.variableName && data.variableName !== existing.variableName) {
+      const cleanVarName = data.variableName.toLowerCase().trim();
+      if (RESERVED_VARIABLE_NAMES.has(cleanVarName)) {
+        return {
+          success: false,
+          error: `The variable name "${data.variableName}" is reserved as a platform system variable. Please choose a custom name.`,
+        };
+      }
+
       const dup = await adminDb
         .collection('app_fields')
         .where('workspaceId', '==', existing.workspaceId)

@@ -37,6 +37,18 @@ const contextLabels: Record<string, string> = {
   regional: 'Regional Metadata',
   financial: 'Financial Configuration',
   interests: 'Interests',
+  meeting: 'Meeting Details',
+  survey: 'Survey Details',
+  form: 'Form Details',
+  agreement: 'Agreement & Finance',
+  finance: 'Agreement & Finance',
+  task: 'Task Details',
+  automation: 'Automation Details',
+  reminder: 'Reminder Details',
+  qr_code: 'QR Code Details',
+  user: 'User & Team Details',
+  users: 'User & Team Details',
+  campaign: 'Campaign & Marketing',
 };
 
 /**

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import * as LucideIcons from 'lucide-react';
 import { 
   Search, 
   ChevronDown, 
@@ -10,21 +11,34 @@ import {
   Check, 
   Eye, 
   EyeOff, 
-  RefreshCw,
-  MapPin,
-  CreditCard,
-  Heart,
-  Settings2,
-  ClipboardList,
-  User2
+  RefreshCw
 } from 'lucide-react';
 import type { UnifiedVariable } from '@/lib/types/variables';
 import { getVariablesAction } from '@/lib/services/fields-variables-service';
+import { cn } from '@/lib/utils';
+
+/**
+ * Type-safe Lucide icon resolver to avoid unchecked any property access.
+ */
+function getLucideIcon(iconName?: string): React.ComponentType<{ className?: string }> {
+  if (!iconName) return LucideIcons.Database;
+  const icons = LucideIcons as unknown as Record<string, React.ComponentType<{ className?: string }>>;
+  return icons[iconName] || LucideIcons.Database;
+}
+
+export interface VariableGroupBucket {
+  id: string;
+  name: string;
+  order: number;
+  iconName?: string;
+  isPrimaryFeature?: boolean;
+  variables: UnifiedVariable[];
+}
 
 export interface VariablesPanelProps {
   workspaceId: string;
   organizationId?: string;
-  featureContext?: 'common' | 'meeting' | 'form' | 'survey' | 'agreement' | 'campaign' | 'all';
+  featureContext?: UnifiedVariable['featureContext'];
   sourceId?: string;
   terminology?: { singular: string; plural: string };
   onSelect?: (key: string) => void;
@@ -47,14 +61,7 @@ export function VariablesPanel({
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   
   // Accordion state
-  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({
-    generalIdentity: true,
-    regionalMetadata: false,
-    financialConfiguration: false,
-    interests: false,
-    customFields: false,
-    dynamicFeature: false,
-  });
+  const [openSections, setOpenSections] = React.useState<Record<string, boolean>>({});
 
   const terminologySingular = terminology?.singular;
   const terminologyPlural = terminology?.plural;
@@ -109,151 +116,115 @@ export function VariablesPanel({
     });
   }, [variables, searchQuery, showSpecificContacts]);
 
-  // Group variables for layout
-  const groupedVars = React.useMemo(() => {
-    const groups = {
-      generalIdentity: [] as UnifiedVariable[],
-      regionalMetadata: [] as UnifiedVariable[],
-      financialConfiguration: [] as UnifiedVariable[],
-      interests: [] as UnifiedVariable[],
-      customFields: {
-        currentSituation: [] as UnifiedVariable[],
-        onlinePresence: [] as UnifiedVariable[],
-        general: [] as UnifiedVariable[],
-      },
-      dynamicFeature: [] as UnifiedVariable[],
-    };
+  // Group variables dynamically by field groups and purpose context
+  const groupedVars = React.useMemo<VariableGroupBucket[]>(() => {
+    const groupMap = new Map<string, VariableGroupBucket>();
 
     filteredVariables.forEach((v) => {
-      const key = v.key.toLowerCase();
-      
+      // Determine canonical group name and metadata
+      let groupName = v.groupName;
+      let order = v.groupOrder ?? 50;
+      let iconName = v.groupIcon;
+      let isPrimaryFeature = false;
+
       // Classify dynamic template variables (e.g. from forms/surveys)
-      if (v.source === 'dynamic_form' || v.category === 'feature') {
-        groups.dynamicFeature.push(v);
-        return;
-      }
-
-      // 1. General Identity
-      const isGeneralIdentity = 
-        v.category === 'core' || 
-        v.category === 'contact_specific' ||
-        v.source === 'contact_role' ||
-        key.includes('name') || 
-        key.includes('email') || 
-        key.includes('phone') || 
-        key.includes('initials') || 
-        key.includes('slogan') || 
-        key.includes('motto') || 
-        key.includes('tag') || 
-        key.includes('status') ||
-        key.includes('year') ||
-        key.includes('date') ||
-        key.includes('time') ||
-        key.includes('user') ||
-        key.includes('logo') ||
-        key.includes('organization') ||
-        key.includes('workspace');
-
-      if (isGeneralIdentity) {
-        groups.generalIdentity.push(v);
-        return;
-      }
-
-      // 2. Regional Metadata
-      const isRegional = 
-        key.includes('location') || 
-        key.includes('zone') || 
-        key.includes('address') || 
-        key.includes('latitude') || 
-        key.includes('longitude') || 
-        key.includes('gps') || 
-        key.includes('city') || 
-        key.includes('country') || 
-        key.includes('region') || 
-        key.includes('state') || 
-        key.includes('suburb');
-
-      if (isRegional) {
-        groups.regionalMetadata.push(v);
-        return;
-      }
-
-      // 3. Financial Configuration
-      const isFinancial = 
-        key.includes('subscription') || 
-        key.includes('currency') || 
-        key.includes('discount') || 
-        key.includes('rate') || 
-        key.includes('billing') || 
-        key.includes('arrears') || 
-        key.includes('credit') || 
-        key.includes('balance') || 
-        key.includes('package') || 
-        key.includes('price') || 
-        key.includes('fee') || 
-        key.includes('bank') || 
-        key.includes('account') || 
-        key.includes('payment') || 
-        key.includes('capacity');
-
-      if (isFinancial) {
-        groups.financialConfiguration.push(v);
-        return;
-      }
-
-      // 4. Interests
-      const isInterests = 
-        key.includes('interest') || 
-        key.includes('module') || 
-        key.includes('subject') || 
-        key.includes('preference') || 
-        key.includes('topic');
-
-      if (isInterests) {
-        groups.interests.push(v);
-        return;
-      }
-
-      // 5. Custom Fields: Current Situation & Online Presence
-      if (v.source === 'custom_field' || v.category === 'custom') {
-        const isOnlinePresence = 
-          key.includes('website') || 
-          key.includes('online') || 
-          key.includes('presence') || 
-          key.includes('facebook') || 
-          key.includes('instagram') || 
-          key.includes('linkedin') || 
-          key.includes('twitter') || 
-          key.includes('youtube') || 
-          key.includes('social') || 
-          key.includes('handle');
-
-        const isCurrentSituation = 
-          key.includes('situation') || 
-          key.includes('challenge') || 
-          key.includes('objective') || 
-          key.includes('goal') || 
-          key.includes('current') || 
-          key.includes('status') || 
-          key.includes('needs') || 
-          key.includes('requirement');
-
-        if (isOnlinePresence) {
-          groups.customFields.onlinePresence.push(v);
-        } else if (isCurrentSituation) {
-          groups.customFields.currentSituation.push(v);
+      if (v.source === 'dynamic_form') {
+        groupName = groupName || 'Dynamic Form Questions';
+        iconName = iconName || 'ClipboardList';
+        order = 99;
+      } else if (!groupName) {
+        // Fallback categorization based on context
+        if (v.featureContext === 'meeting') {
+          groupName = 'Meeting Details';
+          iconName = 'Calendar';
+          order = 5;
+        } else if (v.featureContext === 'survey') {
+          groupName = 'Survey Details';
+          iconName = 'ClipboardList';
+          order = 5;
+        } else if (v.featureContext === 'agreement' || v.featureContext === 'finance') {
+          groupName = 'Agreement & Finance';
+          iconName = 'FileText';
+          order = 5;
+        } else if (v.featureContext === 'task') {
+          groupName = 'Task Details';
+          iconName = 'CheckSquare';
+          order = 5;
+        } else if (v.featureContext === 'automation') {
+          groupName = 'Automation Details';
+          iconName = 'Activity';
+          order = 5;
+        } else if (v.featureContext === 'reminder') {
+          groupName = 'Reminder Details';
+          iconName = 'Clock';
+          order = 5;
+        } else if (v.featureContext === 'qr_code') {
+          groupName = 'QR Code Details';
+          iconName = 'QrCode';
+          order = 5;
+        } else if (v.featureContext === 'user') {
+          groupName = 'User & Team';
+          iconName = 'User';
+          order = 5;
         } else {
-          groups.customFields.general.push(v);
+          groupName = 'General Identity';
+          iconName = 'User2';
+          order = 10;
         }
-        return;
       }
 
-      // Fallback
-      groups.generalIdentity.push(v);
+      // Check if this group matches the active template purpose / featureContext
+      if (
+        featureContext && 
+        featureContext !== 'all' && 
+        featureContext !== 'common' &&
+        (v.featureContext === featureContext || (featureContext === 'agreement' && v.featureContext === 'finance'))
+      ) {
+        isPrimaryFeature = true;
+        order = -100; // Pin to top
+      }
+
+      const groupId = groupName.toLowerCase().replace(/[^a-z0-9]+/g, '_');
+      const existing = groupMap.get(groupId);
+
+      if (existing) {
+        existing.variables.push(v);
+        if (isPrimaryFeature) existing.isPrimaryFeature = true;
+      } else {
+        groupMap.set(groupId, {
+          id: groupId,
+          name: groupName,
+          order,
+          iconName,
+          isPrimaryFeature,
+          variables: [v],
+        });
+      }
     });
 
-    return groups;
-  }, [filteredVariables]);
+    // Sort: Primary feature group first, then by order, then alphabetically by name
+    return Array.from(groupMap.values()).sort((a, b) => {
+      if (a.isPrimaryFeature && !b.isPrimaryFeature) return -1;
+      if (!a.isPrimaryFeature && b.isPrimaryFeature) return 1;
+      if (a.order !== b.order) return a.order - b.order;
+      return a.name.localeCompare(b.name);
+    });
+  }, [filteredVariables, featureContext]);
+
+  // Auto-expand primary feature group and first common groups
+  React.useEffect(() => {
+    if (groupedVars.length > 0) {
+      setOpenSections(prev => {
+        const next = { ...prev };
+        groupedVars.forEach((g, idx) => {
+          if (next[g.id] === undefined) {
+            next[g.id] = g.isPrimaryFeature || idx === 0 || idx === 1;
+          }
+        });
+        return next;
+      });
+    }
+  }, [groupedVars]);
 
   const handleSelect = (key: string) => {
     if (onSelect) {
@@ -272,12 +243,21 @@ export function VariablesPanel({
     return (
       <div 
         key={v.key}
+        role="button"
+        tabIndex={0}
+        aria-label={`Insert variable tag ${v.label}`}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleSelect(v.key);
+          }
+        }}
         draggable
         onDragStart={(e) => {
           e.dataTransfer.setData('text/plain', `{{${v.key}}}`);
           e.dataTransfer.effectAllowed = 'copy';
         }}
-        className="group relative flex flex-col p-2.5 rounded-lg border border-border bg-card/30 hover:bg-accent/85 hover:border-primary/40 hover:shadow-sm transition-all duration-200 cursor-grab active:cursor-grabbing select-none active:scale-[0.98]"
+        className="group relative flex flex-col justify-center min-h-[44px] p-2.5 rounded-lg border border-border bg-card/30 hover:bg-accent/85 hover:border-primary/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/40 transition-all duration-200 cursor-grab active:cursor-grabbing select-none active:scale-[0.97]"
         onClick={() => handleSelect(v.key)}
       >
         <div className="flex items-center justify-between">
@@ -305,10 +285,15 @@ export function VariablesPanel({
           )}
         </div>
         
-        <div className="mt-1">
-          <code className="text-[11px] font-mono text-primary/70 group-hover:text-primary transition-colors duration-150">
+        <div className="mt-1 flex items-center justify-between gap-1">
+          <code className="text-[11px] font-mono text-primary/70 group-hover:text-primary transition-colors duration-150 truncate">
             {`{{${v.key}}}`}
           </code>
+          {v.isCustom && (
+            <span className="text-[9px] font-medium px-1.5 py-0.2 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 shrink-0">
+              Custom
+            </span>
+          )}
         </div>
       </div>
     );
@@ -324,10 +309,12 @@ export function VariablesPanel({
             <h3 className="font-semibold text-sm tracking-wide text-foreground">Available Variables</h3>
           </div>
           <button 
+            type="button"
             onClick={fetchVariables}
-            className="p-1 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors duration-150"
+            className="min-h-[44px] min-w-[44px] p-2 rounded-md text-muted-foreground hover:text-foreground hover:bg-accent flex items-center justify-center transition-colors duration-150 active:scale-[0.97]"
             disabled={loading}
             title="Refresh variables"
+            aria-label="Refresh variables"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin' : ''}`} />
           </button>
@@ -340,12 +327,12 @@ export function VariablesPanel({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search variable tags..."
-            className="w-full pl-9 pr-4 py-2 text-xs bg-accent/40 rounded-lg border border-border hover:border-accent-foreground/20 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200"
+            className="w-full min-h-[44px] pl-9 pr-4 py-2 text-xs bg-accent/40 rounded-lg border border-border hover:border-accent-foreground/20 focus:border-primary focus:ring-1 focus:ring-primary focus:outline-none transition-all duration-200"
           />
         </div>
       </div>
 
-      {/* Variables List / Accordions */}
+      {/* Variables List / Dynamic Accordions */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {loading ? (
           <div className="flex flex-col items-center justify-center py-12 gap-3 text-muted-foreground">
@@ -357,210 +344,82 @@ export function VariablesPanel({
             No active variables match your query.
           </div>
         ) : (
-          <>
-            {/* General Identity Section */}
-            {groupedVars.generalIdentity.length > 0 && (
-              <div className="border border-border/80 rounded-lg overflow-hidden bg-card/10">
+          groupedVars.map((group) => {
+            const isOpen = openSections[group.id] ?? false;
+            const IconComponent = getLucideIcon(group.iconName);
+            const isContactGroup = group.id === 'contacts' || group.id === 'entity_contacts';
+
+            return (
+              <div
+                key={group.id}
+                className={cn(
+                  "border rounded-lg overflow-hidden transition-all duration-200",
+                  group.isPrimaryFeature
+                    ? "border-primary/40 bg-primary/[0.03] shadow-sm"
+                    : "border-border/80 bg-card/10"
+                )}
+              >
                 <button
-                  onClick={() => toggleSection('generalIdentity')}
-                  className="w-full flex items-center justify-between p-3 text-xs font-bold text-foreground bg-accent/20 hover:bg-accent/40 transition-colors duration-150"
+                  type="button"
+                  onClick={() => toggleSection(group.id)}
+                  className={cn(
+                    "w-full min-h-[44px] flex items-center justify-between p-3 text-xs font-bold transition-colors duration-150 active:scale-[0.99]",
+                    group.isPrimaryFeature
+                      ? "text-primary bg-primary/10 hover:bg-primary/15"
+                      : "text-foreground bg-accent/20 hover:bg-accent/40"
+                  )}
                 >
-                  <span className="flex items-center gap-2">
-                    {openSections.generalIdentity ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    <User2 className="w-3.5 h-3.5 text-primary" />
-                    General Identity & Contacts
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground">
-                    {groupedVars.generalIdentity.length}
-                  </span>
-                </button>
-                {openSections.generalIdentity && (
-                  <div className="p-3 grid grid-cols-1 gap-2 border-t border-border/60 transition-all duration-300">
-                    {groupedVars.generalIdentity.map(renderVariableItem)}
-                    
-                    {/* Specific Contacts Toggle Switch */}
-                    <div className="mt-2 pt-3 border-t border-border/60 flex items-center justify-between">
-                      <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
-                        {showSpecificContacts ? <Eye className="w-3.5 h-3.5 text-primary" /> : <EyeOff className="w-3.5 h-3.5" />}
-                        Show specific roles & contacts
+                  <span className="flex items-center gap-2 min-w-0">
+                    {isOpen ? <ChevronDown className="w-3.5 h-3.5 shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 shrink-0" />}
+                    <IconComponent className={cn("w-3.5 h-3.5 shrink-0", group.isPrimaryFeature ? "text-primary" : "text-muted-foreground")} />
+                    <span className="truncate">{group.name}</span>
+                    {group.isPrimaryFeature && (
+                      <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded-full bg-primary/20 text-primary uppercase tracking-wider shrink-0">
+                        Purpose
                       </span>
-                      <button
-                        onClick={() => setShowSpecificContacts(!showSpecificContacts)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-1 focus:ring-primary focus:ring-offset-1 ${showSpecificContacts ? 'bg-primary' : 'bg-muted-foreground/35'}`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out ${showSpecificContacts ? 'translate-x-4' : 'translate-x-0'}`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Regional Metadata Section */}
-            {groupedVars.regionalMetadata.length > 0 && (
-              <div className="border border-border/80 rounded-lg overflow-hidden bg-card/10">
-                <button
-                  onClick={() => toggleSection('regionalMetadata')}
-                  className="w-full flex items-center justify-between p-3 text-xs font-bold text-foreground bg-accent/20 hover:bg-accent/40 transition-colors duration-150"
-                >
-                  <span className="flex items-center gap-2">
-                    {openSections.regionalMetadata ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    <MapPin className="w-3.5 h-3.5 text-emerald-500" />
-                    Regional Metadata
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground">
-                    {groupedVars.regionalMetadata.length}
-                  </span>
-                </button>
-                {openSections.regionalMetadata && (
-                  <div className="p-3 grid grid-cols-1 gap-2 border-t border-border/60">
-                    {groupedVars.regionalMetadata.map(renderVariableItem)}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Financial Configuration Section */}
-            {groupedVars.financialConfiguration.length > 0 && (
-              <div className="border border-border/80 rounded-lg overflow-hidden bg-card/10">
-                <button
-                  onClick={() => toggleSection('financialConfiguration')}
-                  className="w-full flex items-center justify-between p-3 text-xs font-bold text-foreground bg-accent/20 hover:bg-accent/40 transition-colors duration-150"
-                >
-                  <span className="flex items-center gap-2">
-                    {openSections.financialConfiguration ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    <CreditCard className="w-3.5 h-3.5 text-amber-500" />
-                    Financial Configuration
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground">
-                    {groupedVars.financialConfiguration.length}
-                  </span>
-                </button>
-                {openSections.financialConfiguration && (
-                  <div className="p-3 grid grid-cols-1 gap-2 border-t border-border/60">
-                    {groupedVars.financialConfiguration.map(renderVariableItem)}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Interests Section */}
-            {groupedVars.interests.length > 0 && (
-              <div className="border border-border/80 rounded-lg overflow-hidden bg-card/10">
-                <button
-                  onClick={() => toggleSection('interests')}
-                  className="w-full flex items-center justify-between p-3 text-xs font-bold text-foreground bg-accent/20 hover:bg-accent/40 transition-colors duration-150"
-                >
-                  <span className="flex items-center gap-2">
-                    {openSections.interests ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    <Heart className="w-3.5 h-3.5 text-rose-500" />
-                    Interests
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground">
-                    {groupedVars.interests.length}
-                  </span>
-                </button>
-                {openSections.interests && (
-                  <div className="p-3 grid grid-cols-1 gap-2 border-t border-border/60">
-                    {groupedVars.interests.map(renderVariableItem)}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Workspace Custom Fields Section */}
-            {(groupedVars.customFields.currentSituation.length > 0 ||
-              groupedVars.customFields.onlinePresence.length > 0 ||
-              groupedVars.customFields.general.length > 0) && (
-              <div className="border border-border/80 rounded-lg overflow-hidden bg-card/10">
-                <button
-                  onClick={() => toggleSection('customFields')}
-                  className="w-full flex items-center justify-between p-3 text-xs font-bold text-foreground bg-accent/20 hover:bg-accent/40 transition-colors duration-150"
-                >
-                  <span className="flex items-center gap-2">
-                    {openSections.customFields ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    <Settings2 className="w-3.5 h-3.5 text-blue-500" />
-                    Workspace Custom Fields
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground">
-                    {groupedVars.customFields.currentSituation.length +
-                      groupedVars.customFields.onlinePresence.length +
-                      groupedVars.customFields.general.length}
-                  </span>
-                </button>
-                {openSections.customFields && (
-                  <div className="p-3 border-t border-border/60 space-y-4">
-                    {/* Current Situation Sub-category */}
-                    {groupedVars.customFields.currentSituation.length > 0 && (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-1.5 px-1 py-0.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-blue-600" />
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Current Situation</span>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          {groupedVars.customFields.currentSituation.map(renderVariableItem)}
-                        </div>
-                      </div>
                     )}
+                  </span>
+                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground font-mono shrink-0">
+                    {group.variables.length}
+                  </span>
+                </button>
 
-                    {/* Online Presence Sub-category */}
-                    {groupedVars.customFields.onlinePresence.length > 0 && (
-                      <div className="space-y-1.5 pt-2 border-t border-dashed border-border/60">
-                        <div className="flex items-center gap-1.5 px-1 py-0.5">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Online Presence</span>
-                        </div>
-                        <div className="grid grid-cols-1 gap-2">
-                          {groupedVars.customFields.onlinePresence.map(renderVariableItem)}
-                        </div>
-                      </div>
-                    )}
+                {isOpen && (
+                  <div className="p-3 grid grid-cols-1 gap-2 border-t border-border/60 transition-all duration-300">
+                    {group.variables.map(renderVariableItem)}
 
-                    {/* General Custom Fields */}
-                    {groupedVars.customFields.general.length > 0 && (
-                      <div className="space-y-1.5 pt-2 border-t border-dashed border-border/60">
-                        {(groupedVars.customFields.currentSituation.length > 0 || groupedVars.customFields.onlinePresence.length > 0) && (
-                          <div className="flex items-center gap-1.5 px-1 py-0.5">
-                            <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground/60" />
-                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Other Custom Fields</span>
-                          </div>
-                        )}
-                        <div className="grid grid-cols-1 gap-2">
-                          {groupedVars.customFields.general.map(renderVariableItem)}
-                        </div>
+                    {/* Specific Contacts Toggle Switch inside Contacts Group */}
+                    {isContactGroup && (
+                      <div className="mt-2 pt-3 border-t border-border/60 flex items-center justify-between min-h-[44px]">
+                        <span className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+                          {showSpecificContacts ? <Eye className="w-3.5 h-3.5 text-primary" /> : <EyeOff className="w-3.5 h-3.5" />}
+                          Show specific roles & contacts
+                        </span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={showSpecificContacts}
+                          aria-label="Show specific roles and contacts"
+                          onClick={() => setShowSpecificContacts(!showSpecificContacts)}
+                          className={cn(
+                            "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-1 active:scale-[0.97]",
+                            showSpecificContacts ? 'bg-primary' : 'bg-muted-foreground/35'
+                          )}
+                        >
+                          <span
+                            className={cn(
+                              "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out",
+                              showSpecificContacts ? 'translate-x-4' : 'translate-x-0'
+                            )}
+                          />
+                        </button>
                       </div>
                     )}
                   </div>
                 )}
               </div>
-            )}
-
-            {/* Form & Survey Variables Section */}
-            {groupedVars.dynamicFeature.length > 0 && (
-              <div className="border border-border/80 rounded-lg overflow-hidden bg-card/10">
-                <button
-                  onClick={() => toggleSection('dynamicFeature')}
-                  className="w-full flex items-center justify-between p-3 text-xs font-bold text-foreground bg-accent/20 hover:bg-accent/40 transition-colors duration-150"
-                >
-                  <span className="flex items-center gap-2">
-                    {openSections.dynamicFeature ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-                    <ClipboardList className="w-3.5 h-3.5 text-purple-500" />
-                    Form & Survey Variables
-                  </span>
-                  <span className="px-1.5 py-0.5 text-[10px] rounded-full bg-border text-muted-foreground">
-                    {groupedVars.dynamicFeature.length}
-                  </span>
-                </button>
-                {openSections.dynamicFeature && (
-                  <div className="p-3 grid grid-cols-1 gap-2 border-t border-border/60">
-                    {groupedVars.dynamicFeature.map(renderVariableItem)}
-                  </div>
-                )}
-              </div>
-            )}
-          </>
+            );
+          })
         )}
       </div>
     </div>

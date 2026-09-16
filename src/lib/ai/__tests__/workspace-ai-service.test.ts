@@ -57,7 +57,7 @@ describe('WorkspaceAiService', () => {
     }); // system_settings/ai_config
 
     const settings = await WorkspaceAiService.getSettings('ws-test-1');
-    expect(settings.preferredModelId).toBe('gemini-3.6-flash');
+    expect(settings.preferredModelId).toBe('gemini-3-flash');
     expect(settings.preferredProvider).toBe('googleai');
   });
 
@@ -76,7 +76,7 @@ describe('WorkspaceAiService', () => {
     });
 
     const settings = await WorkspaceAiService.getSettings('ws-test-1');
-    expect(settings.preferredModelId).toBe('gemini-3.6-flash');
+    expect(settings.preferredModelId).toBe('gemini-3-flash');
     expect(settings.reasoningModelId).toBe('claude-3-5-sonnet');
     expect(settings.fastModelId).toBe('gemini-3.1-flash-lite');
     expect(settings.organizationId).toBe('org-456');
@@ -159,8 +159,8 @@ describe('getModel (Workspace-Aware Resolution)', () => {
       data: () => ({
         aiSettings: {
           preferredProvider: 'googleai',
-          preferredModelId: 'gemini-3.6-flash',
-          reasoningModelId: 'gemini-2.5-pro',
+          preferredModelId: 'gemini-3-flash',
+          reasoningModelId: 'gemini-3.1-pro',
         },
       }),
     });
@@ -169,13 +169,13 @@ describe('getModel (Workspace-Aware Resolution)', () => {
       workspaceId: 'ws-genkit-1',
       tier: 'reasoning',
     });
-    expect(resolved.modelString).toBe('googleai/gemini-2.5-pro');
-    expect(resolved.modelId).toBe('gemini-2.5-pro');
+    expect(resolved.modelString).toBe('googleai/gemini-3.1-pro-preview');
+    expect(resolved.modelId).toBe('gemini-3.1-pro');
   });
 
   it('should normalize legacy string input passed to getModel', async () => {
     const resolved = await getModel('gemini-2.5-flash');
-    expect(resolved.modelString).toBe('googleai/gemini-2.5-flash');
-    expect(resolved.modelId).toBe('gemini-3.6-flash');
+    expect(resolved.modelString).toBe('googleai/gemini-3-flash-preview');
+    expect(resolved.modelId).toBe('gemini-3-flash');
   });
 });

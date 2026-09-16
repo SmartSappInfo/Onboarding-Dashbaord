@@ -55,11 +55,11 @@ export interface AiProviderDefinition {
 export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
   // --- Google Gemini Models ---
   {
-    id: 'gemini-3.6-flash',
-    name: 'Gemini 3.6 Flash',
+    id: 'gemini-3-flash',
+    name: 'Gemini 3 Flash',
     provider: 'googleai',
-    providerModelString: 'googleai/gemini-2.5-flash',
-    description: 'Active flagship model. High-speed, exceptional structured output & low latency.',
+    providerModelString: 'googleai/gemini-3-flash-preview',
+    description: 'Active flagship model. High-speed, multimodal, exceptional structured output & low latency.',
     tier: 'default',
     capabilities: {
       structuredOutput: true,
@@ -86,11 +86,11 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
     },
   },
   {
-    id: 'gemini-2.5-pro',
-    name: 'Gemini 2.5 Pro',
+    id: 'gemini-3.1-pro',
+    name: 'Gemini 3.1 Pro',
     provider: 'googleai',
-    providerModelString: 'googleai/gemini-2.5-pro',
-    description: 'Deep analytical reasoning and comprehensive multi-modal understanding.',
+    providerModelString: 'googleai/gemini-3.1-pro-preview',
+    description: 'Deep analytical reasoning, complex code generation, and rich multimodal logic.',
     tier: 'reasoning',
     capabilities: {
       structuredOutput: true,
@@ -233,25 +233,45 @@ export const ACTIVE_AI_MODELS: readonly AiModelDefinition[] = [
  * Guarantees that stale Firestore preferences or legacy config tokens never cause 404s.
  */
 const LEGACY_MODEL_NORMALIZATION_MAP: Record<string, string> = {
-  // Deprecated Google Gemini models -> Flagship Gemini 3.6 Flash
-  'gemini-2.5-flash': 'gemini-3.6-flash',
-  'gemini-3.5-flash': 'gemini-3.6-flash',
-  'gemini-2.0-flash': 'gemini-3.6-flash',
-  'gemini-2.0-flash-exp': 'gemini-3.6-flash',
-  'gemini-1.5-flash': 'gemini-3.6-flash',
+  // Deprecated Google Gemini models -> Flagship Gemini 3 Flash
+  'gemini-3.6-flash': 'gemini-3-flash',
+  'gemini-2.5-flash': 'gemini-3-flash',
+  'gemini-3.5-flash': 'gemini-3-flash',
+  'gemini-2.0-flash': 'gemini-3-flash',
+  'gemini-2.0-flash-exp': 'gemini-3-flash',
+  'gemini-1.5-flash': 'gemini-3-flash',
   'gemini-1.5-flash-8b': 'gemini-3.1-flash-lite',
-  'gemini-3.0-flash': 'gemini-3.6-flash',
-  'googleai/gemini-2.5-flash': 'gemini-3.6-flash',
-  'googleai/gemini-3.5-flash': 'gemini-3.6-flash',
-  'googleai/gemini-2.0-flash': 'gemini-3.6-flash',
-  'googleai/gemini-1.5-flash': 'gemini-3.6-flash',
+  'gemini-3.0-flash': 'gemini-3-flash',
+  'gemini-3-flash-preview': 'gemini-3-flash',
+  'gemini-flash-latest': 'gemini-3-flash',
+  'googleai/gemini-3.6-flash': 'gemini-3-flash',
+  'googleai/gemini-2.5-flash': 'gemini-3-flash',
+  'googleai/gemini-3.5-flash': 'gemini-3-flash',
+  'googleai/gemini-2.0-flash': 'gemini-3-flash',
+  'googleai/gemini-1.5-flash': 'gemini-3-flash',
   'googleai/gemini-1.5-flash-8b': 'gemini-3.1-flash-lite',
-  'googleai/gemini-3.6-flash': 'gemini-3.6-flash',
+  'googleai/gemini-3-flash-preview': 'gemini-3-flash',
+  'googleai/gemini-flash-latest': 'gemini-3-flash',
 
-  // Pro tier normalization
-  'gemini-1.5-pro': 'gemini-2.5-pro',
-  'googleai/gemini-1.5-pro': 'gemini-2.5-pro',
-  'googleai/gemini-2.5-pro': 'gemini-2.5-pro',
+  // Pro tier normalization -> Gemini 3.1 Pro
+  'gemini-3.1-pro': 'gemini-3.1-pro',
+  'gemini-2.5-pro': 'gemini-3.1-pro',
+  'gemini-1.5-pro': 'gemini-3.1-pro',
+  'gemini-3.1-pro-preview': 'gemini-3.1-pro',
+  'gemini-pro-latest': 'gemini-3.1-pro',
+  'googleai/gemini-3.1-pro': 'gemini-3.1-pro',
+  'googleai/gemini-1.5-pro': 'gemini-3.1-pro',
+  'googleai/gemini-2.5-pro': 'gemini-3.1-pro',
+  'googleai/gemini-3.1-pro-preview': 'gemini-3.1-pro',
+  'googleai/gemini-pro-latest': 'gemini-3.1-pro',
+
+  // Flash-lite normalization
+  'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
+  'gemini-flash-lite-latest': 'gemini-3.1-flash-lite',
+  'gemini-3.1-flash-lite-preview': 'gemini-3.1-flash-lite',
+  'googleai/gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
+  'googleai/gemini-flash-lite-latest': 'gemini-3.1-flash-lite',
+  'googleai/gemini-3.1-flash-lite-preview': 'gemini-3.1-flash-lite',
 
   // Anthropic aliases
   'claude-3.5-sonnet': 'claude-3-5-sonnet',
@@ -260,11 +280,11 @@ const LEGACY_MODEL_NORMALIZATION_MAP: Record<string, string> = {
   'anthropic/claude-3-5-haiku': 'claude-3-5-haiku',
   'anthropic/claude-3-opus': 'claude-3-opus',
 
-  // Legacy OpenAI mappings -> Claude 3.5 Sonnet
+  // Legacy OpenAI mappings -> Claude 3.5 Sonnet / Gemini 3 Flash
   'gpt-4o': 'claude-3-5-sonnet',
   'gpt-4': 'claude-3-5-sonnet',
   'gpt-4-turbo': 'claude-3-5-sonnet',
-  'gpt-3.5-turbo': 'gemini-3.6-flash',
+  'gpt-3.5-turbo': 'gemini-3-flash',
 };
 
 /**
@@ -419,12 +439,12 @@ export const AiModelRegistry = {
   },
 
   /**
-   * Returns the system-wide flagship balanced model (Gemini 3.6 Flash).
+   * Returns the system-wide flagship balanced model (Gemini 3 Flash).
    */
   getFlagshipModel(): AiModelDefinition {
-    const flagship = ACTIVE_AI_MODELS.find((m) => m.id === 'gemini-3.6-flash');
+    const flagship = ACTIVE_AI_MODELS.find((m) => m.id === 'gemini-3-flash');
     if (!flagship) {
-      throw new Error('[AiModelRegistry] Invariant violation: Flagship model gemini-3.6-flash missing');
+      throw new Error('[AiModelRegistry] Invariant violation: Flagship model gemini-3-flash missing');
     }
     return flagship;
   },

@@ -126,13 +126,14 @@ describe('validateTemplateVariables', () => {
       expect(errors).toEqual([]);
     });
 
-    it('should fail if style wrapper is selected but a duplicate footer block is present', () => {
+    it('should fail if multiple duplicate footer blocks are present', () => {
       const template = {
         channel: 'email' as const,
         styleId: 'some_style_id',
         subject: 'Subject Line',
         blocks: [
-          createMockBlock({ id: '1', type: 'footer' })
+          createMockBlock({ id: '1', type: 'footer' }),
+          createMockBlock({ id: '2', type: 'footer' })
         ],
       };
 
@@ -140,7 +141,22 @@ describe('validateTemplateVariables', () => {
       const footerErrors = errors.filter(e => e.variable === 'footer');
       expect(footerErrors).toHaveLength(1);
       expect(footerErrors[0].type).toBe('error');
-      expect(footerErrors[0].message).toContain('Remove this block to avoid duplicate footers');
+      expect(footerErrors[0].message).toContain('Remove duplicate footer blocks to avoid multiple footers');
+    });
+
+    it('should pass when a single organization footer block is present with a style wrapper', () => {
+      const template = {
+        channel: 'email' as const,
+        styleId: 'some_style_id',
+        subject: 'Subject Line',
+        blocks: [
+          createMockBlock({ id: '1', type: 'footer', footerStyle: 'organization' })
+        ],
+      };
+
+      const errors = validateTemplateVariables(template, mockValidVariables);
+      const footerErrors = errors.filter(e => e.variable === 'footer');
+      expect(footerErrors).toHaveLength(0);
     });
 
     it('should fail if no style wrapper is selected and both footer and unsubscribe are missing', () => {
@@ -286,6 +302,75 @@ describe('validateTemplateVariables', () => {
         label: 'Add Unsubscribe Link',
         description: 'Appends opt-out link token into the footer or body.',
       });
+      expect(unsubError?.isCompliance).toBe(true);
+      expect(unsubError?.complianceTitle).toBe('Missing Unsubscribe Link');
+    });
+
+    it('should correctly validate agreement_url in finance/agreement templates without typo errors', () => {
+      const template = {
+        category: 'agreements' as const,
+        subject: 'Service Agreement Ready',
+        body: 'Please review and sign your agreement at {{agreement_url}} for {{agreement_name}}',
+      };
+
+      const errors = validateTemplateVariables(template, []);
+      const typoErrors = errors.filter(e => e.type === 'error');
+      const warnings = errors.filter(e => e.type === 'warning');
+
+      expect(typoErrors).toHaveLength(0);
+      expect(warnings).toHaveLength(0);
+    });
+
+    it('should correctly accept date, time, and link aliases in meetings templates', () => {
+      const template = {
+        category: 'meetings' as const,
+        subject: 'Meeting Reminder',
+        body: 'Your meeting is scheduled for {{date}} at {{time}}. Join here: {{link}}',
+      };
+
+      const errors = validateTemplateVariables(template, []);
+      const typoErrors = errors.filter(e => e.type === 'error');
+      const warnings = errors.filter(e => e.type === 'warning');
+
+      expect(typoErrors).toHaveLength(0);
+      expect(warnings).toHaveLength(0);
+    });
+
+    it('should bypass WhatsApp numeric positional placeholders without flagging typos', () => {
+      const template = {
+        channel: 'whatsapp' as const,
+        category: 'general' as const,
+        body: 'Hello {{1}}, your appointment at {{2}} has been confirmed. Code: {{3}}',
+      };
+
+      const errors = validateTemplateVariables(template, []);
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should bypass dynamic survey question tokens prefixed with q_ or question_', () => {
+      const template = {
+        category: 'surveys' as const,
+        body: 'Thank you for answering: {{q_service_rating}} and {{question_comments}}',
+      };
+
+      const errors = validateTemplateVariables(template, []);
+      expect(errors).toHaveLength(0);
+    });
+
+    it('should correctly validate task and automation variables in their respective templates', () => {
+      const taskTemplate = {
+        category: 'tasks' as const,
+        body: 'Task: {{task_name}} is assigned to {{assignee_name}} with priority {{task_priority}}',
+      };
+      const taskErrors = validateTemplateVariables(taskTemplate, []);
+      expect(taskErrors.filter(e => e.type === 'error')).toHaveLength(0);
+
+      const autoTemplate = {
+        category: 'automations' as const,
+        body: 'Workflow {{workflow_name}} failed with error: {{error_message}}',
+      };
+      const autoErrors = validateTemplateVariables(autoTemplate, []);
+      expect(autoErrors.filter(e => e.type === 'error')).toHaveLength(0);
     });
   });
 });

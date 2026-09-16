@@ -43,6 +43,72 @@ export function resolveGroupIcon(groupName: string): string {
   return 'Database'; // Default fallback
 }
 
+export interface StaticVariableGroupInfo {
+  groupId: string;
+  groupName: string;
+  groupSlug: string;
+  groupOrder: number;
+  groupIcon: string;
+}
+
+/**
+ * ARCHITECTURAL HELPER (Rule 1 & Rule 10 SSOT):
+ * Maps static variable keys and contexts to their canonical platform field group definitions
+ * so they can be grouped, badged, and displayed cleanly across VariablesPanel, Fields Hub, and Services.
+ */
+export function resolveStaticVariableGroup(varName: string, varContext?: string): StaticVariableGroupInfo {
+  const normCtx = (varContext || '').toLowerCase().replace(/s$/, '');
+  if (normCtx === 'meeting') {
+    return { groupId: 'meetings', groupName: 'Meetings & Webinars', groupSlug: 'meetings', groupOrder: 0, groupIcon: 'Calendar' };
+  }
+  if (normCtx === 'survey') {
+    return { groupId: 'surveys', groupName: 'Survey Details & Outcomes', groupSlug: 'surveys', groupOrder: 0, groupIcon: 'ClipboardList' };
+  }
+  if (normCtx === 'form') {
+    return { groupId: 'forms', groupName: 'Form & Submission Details', groupSlug: 'forms', groupOrder: 0, groupIcon: 'FileText' };
+  }
+  if (normCtx === 'agreement' || normCtx === 'finance') {
+    return { groupId: 'agreements', groupName: 'Agreements & Contracts', groupSlug: 'agreements', groupOrder: 0, groupIcon: 'FileCheck' };
+  }
+  if (normCtx === 'task') {
+    return { groupId: 'tasks', groupName: 'Tasks & Assignments', groupSlug: 'tasks', groupOrder: 0, groupIcon: 'CheckSquare' };
+  }
+  if (normCtx === 'automation') {
+    return { groupId: 'automations', groupName: 'Automation & System', groupSlug: 'automations', groupOrder: 0, groupIcon: 'Zap' };
+  }
+  if (normCtx === 'qr_code' || normCtx === 'qrcode') {
+    return { groupId: 'qr_codes', groupName: 'QR Code Details', groupSlug: 'qr_codes', groupOrder: 0, groupIcon: 'QrCode' };
+  }
+  if (normCtx === 'reminder') {
+    return { groupId: 'reminders', groupName: 'Reminder Details', groupSlug: 'reminders', groupOrder: 0, groupIcon: 'Bell' };
+  }
+  if (normCtx === 'user') {
+    return { groupId: 'users', groupName: 'User Account Details', groupSlug: 'users', groupOrder: 0, groupIcon: 'Shield' };
+  }
+
+  const k = varName.toLowerCase();
+  if (k.startsWith('contact_') || k.startsWith('recipient_') || k.startsWith('signatory_')) {
+    return { groupId: 'entity_contacts', groupName: 'Contacts', groupSlug: 'entity_contacts', groupOrder: 5, groupIcon: 'Users' };
+  }
+  if (k.includes('location') || k.includes('zone') || k.includes('address') || k.includes('gps')) {
+    return { groupId: 'location_data', groupName: 'Location Data', groupSlug: 'location_data', groupOrder: 2, groupIcon: 'MapPin' };
+  }
+  if (k.includes('subscription') || k.includes('currency') || k.includes('discount') || k.includes('balance') || k.includes('rate') || k.includes('capacity')) {
+    return { groupId: 'billing_profile', groupName: 'Billing Profile', groupSlug: 'billing_profile', groupOrder: 3, groupIcon: 'CreditCard' };
+  }
+  if (k.includes('website') || k.includes('facebook') || k.includes('whatsapp') || k.includes('instagram') || k.includes('linkedin') || k.includes('youtube') || k.includes('tiktok') || k.includes('map')) {
+    return { groupId: 'online_presence', groupName: 'Online Presence', groupSlug: 'online_presence', groupOrder: 8, groupIcon: 'Globe' };
+  }
+  if (k.includes('date') || k.includes('time') || k.includes('year') || k.includes('token') || k.includes('tag')) {
+    return { groupId: 'system_datetime', groupName: 'System & Date/Time', groupSlug: 'system_datetime', groupOrder: 9, groupIcon: 'Clock' };
+  }
+  if (k.includes('assigned_to') || k.includes('assigner_name') || k.includes('stage') || k.includes('status')) {
+    return { groupId: 'account_ownership', groupName: 'Account Ownership & Lifecycle', groupSlug: 'account_ownership', groupOrder: 4, groupIcon: 'Briefcase' };
+  }
+
+  return { groupId: 'entity_details', groupName: 'General Identity', groupSlug: 'entity_details', groupOrder: 1, groupIcon: 'Building' };
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
 // ─────────────────────────────────────────────────────────────────────────────
@@ -54,7 +120,7 @@ export interface IndustryFieldDef {
   compatibilityScope: AppField['compatibilityScope'];
   helpText?: string;
   placeholder?: string;
-  defaultValue?: any;
+  defaultValue?: string | number | boolean | string[] | null;
   options?: { label: string; value: string }[];
   validationRules?: AppField['validationRules'];
 }
@@ -65,6 +131,7 @@ export interface IndustryGroupDef {
   description: string;
   entityTypes: EntityType[];
   order: number;
+  icon?: string;
   fields: IndustryFieldDef[];
 }
 
