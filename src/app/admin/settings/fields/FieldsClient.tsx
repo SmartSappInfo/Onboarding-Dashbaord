@@ -210,7 +210,9 @@ function SortableGroupAccordionItem({
               </div>
               <div className="flex flex-col items-start text-left">
                 <span className="font-semibold text-sm">
-                  {group.slug === 'entity_details' ? `${singularTerm} Details` : group.name}
+                  {group.slug === 'entity_details' || group.slug === 'campus_details' || group.name === 'General Identity' || group.name === 'Campus Details'
+                    ? `${singularTerm} Identity & Details`
+                    : group.name}
                 </span>
                 <span className="text-xs text-muted-foreground">{fields.length} field{fields.length !== 1 ? 's' : ''}</span>
               </div>
@@ -987,12 +989,12 @@ export default function FieldsClient() {
                     {isInitializing ? (
                       <>
                         <LucideIcons.Loader2 className="h-3.5 w-3.5 animate-spin" />
-                        Initializing...
+                        Adding Fields...
                       </>
                     ) : (
                       <>
                         <LucideIcons.Sparkles className="h-3.5 w-3.5" />
-                        Initialize Selected ({selectedGroupSlugs.length})
+                        More Fields ({selectedGroupSlugs.length})
                       </>
                     )}
                   </Button>

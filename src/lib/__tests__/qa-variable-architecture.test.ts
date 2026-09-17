@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { STATIC_VARIABLES } from '../template-variable-registry-data';
-import { resolveStaticVariableGroup } from '../industry-field-registry';
-import { validateTemplateVariables } from '../template-validator';
+import { resolveStaticVariableGroup, PLATFORM_FIELD_GROUPS, INDUSTRY_FIELD_REGISTRY } from '../industry-field-registry';
+import { validateTemplateVariables, DEPRECATED_VARIABLES_MAP } from '../template-validator';
 import type { MessageTemplate, VariableDefinition } from '../types';
 
 describe('QA Full Regression: Variable Architecture & Diagnostics', () => {
@@ -137,10 +137,76 @@ describe('QA Full Regression: Variable Architecture & Diagnostics', () => {
       expect(upperMeeting.groupId).toBe('meetings');
       expect(upperMeeting.groupName).toBe('Meetings & Webinars');
     });
+
+    it('has globally unique IDs across all STATIC_VARIABLES', () => {
+      const seenIds = new Set<string>();
+      const duplicates: string[] = [];
+      STATIC_VARIABLES.forEach(v => {
+        if (seenIds.has(v.id)) {
+          duplicates.push(v.id);
+        }
+        seenIds.add(v.id);
+      });
+      expect(duplicates).toEqual([]);
+    });
+
+    it('has unique variable names within each context in STATIC_VARIABLES', () => {
+      const contextKeyMap = new Map<string, Set<string>>();
+      const duplicates: string[] = [];
+      STATIC_VARIABLES.forEach(v => {
+        const keys = contextKeyMap.get(v.context) || new Set<string>();
+        if (keys.has(v.name)) {
+          duplicates.push(`${v.context}:${v.name}`);
+        }
+        keys.add(v.name);
+        contextKeyMap.set(v.context, keys);
+      });
+      expect(duplicates).toEqual([]);
+    });
+
+    it('has unique variable names across all PLATFORM_FIELD_GROUPS', () => {
+      const seenVars = new Set<string>();
+      const duplicates: string[] = [];
+      PLATFORM_FIELD_GROUPS.forEach(group => {
+        group.fields.forEach(field => {
+          if (seenVars.has(field.variableName)) {
+            duplicates.push(`${group.slug}:${field.variableName}`);
+          }
+          seenVars.add(field.variableName);
+        });
+      });
+      expect(duplicates).toEqual([]);
+    });
+
+    it('correctly routes lifecycle vs ownership variables in resolveStaticVariableGroup', () => {
+      const stageGroup = resolveStaticVariableGroup('new_stage', 'entity');
+      expect(stageGroup.groupId).toBe('entity_lifecycle');
+
+      const statusGroup = resolveStaticVariableGroup('old_status', 'entity');
+      expect(statusGroup.groupId).toBe('entity_lifecycle');
+
+      const assignedGroup = resolveStaticVariableGroup('assigned_to', 'entity');
+      expect(assignedGroup.groupId).toBe('account_ownership');
+
+      const assignerGroup = resolveStaticVariableGroup('assigner_name', 'entity');
+      expect(assignerGroup.groupId).toBe('account_ownership');
+    });
+
+    it('uses seat_capacity in SaaS vertical to prevent collision with billing capacity', () => {
+      const saasGroup = INDUSTRY_FIELD_REGISTRY.SaaS.find(g => g.slug === 'saas_operations');
+      const capacityField = saasGroup?.fields.find(f => f.variableName === 'seat_capacity');
+      expect(capacityField).toBeDefined();
+
+      const collidingField = saasGroup?.fields.find(f => f.variableName === 'capacity');
+      expect(collidingField).toBeUndefined();
+    });
   });
 
   describe('3. Reserved System Variable Collision Set', () => {
-    const RESERVED_NAMES = new Set(STATIC_VARIABLES.map(v => v.name.toLowerCase()));
+    const RESERVED_NAMES = new Set([
+      ...STATIC_VARIABLES.map(v => v.name.toLowerCase()),
+      ...Object.keys(DEPRECATED_VARIABLES_MAP).map(k => k.toLowerCase())
+    ]);
 
     it('protects core system variables against custom field collisions', () => {
       const prohibitedKeys = [
@@ -243,6 +309,78 @@ describe('QA Full Regression: Variable Architecture & Diagnostics', () => {
       const map = new Map<string, unknown>([['meeting_date', 0]]);
       resolveAliases(map);
       expect(map.get('date')).toBe(0);
+    });
+  });
+
+  describe('5. Unified Variable Selector (<VariablesPanel>) & Runtime Resolution Alignment', () => {
+    it('guarantees zero recipient_* variables in STATIC_VARIABLES', () => {
+      const recipientVars = STATIC_VARIABLES.filter(v => v.name.startsWith('recipient_') || v.id.startsWith('recipient_'));
+      expect(recipientVars).toHaveLength(0);
+    });
+
+    it('guarantees canonical first_name and contact_role exist in STATIC_VARIABLES', () => {
+      const firstNameVar = STATIC_VARIABLES.find(v => v.name === 'first_name');
+      expect(firstNameVar).toBeDefined();
+      expect(firstNameVar?.context).toBe('common');
+
+      const contactRoleVar = STATIC_VARIABLES.find(v => v.name === 'contact_role');
+      expect(contactRoleVar).toBeDefined();
+      expect(contactRoleVar?.context).toBe('common');
+    });
+
+    it('guarantees all survey static variables route to Surveys & Feedback group in resolveStaticVariableGroup', () => {
+      const surveyVars = STATIC_VARIABLES.filter(v => v.context === 'survey');
+      expect(surveyVars.length).toBeGreaterThan(0);
+
+      surveyVars.forEach(sv => {
+        const group = resolveStaticVariableGroup(sv.name, sv.context);
+        expect(group.groupId).toBe('surveys');
+        expect(group.groupName).toBe('Surveys & Feedback');
+        expect(group.groupOrder).toBe(52);
+      });
+    });
+
+    it('resolves first_name, user-defined fallbacks, and legacy recipient_* aliases in resolveTextWithMap', async () => {
+      const { resolveTextWithMap } = await import('../utils/variable-replacer');
+
+      const valuesMap = new Map<string, unknown>([
+        ['contact_name', 'Sarah Connor'],
+        ['first_name', 'Sarah'],
+        ['entity_name', 'Cyberdyne Systems'],
+      ]);
+
+      // 1. Canonical first_name resolution
+      expect(resolveTextWithMap('Hello {{first_name}}!', valuesMap, false)).toBe('Hello Sarah!');
+
+      // 2. User-defined inline fallback
+      expect(resolveTextWithMap('Hi {{unknown_var|Friend}}!', valuesMap, false)).toBe('Hi Friend!');
+
+      // 3. User-defined inline fallback with whitespace
+      expect(resolveTextWithMap('Hi {{ unknown_var | Valued Member }}!', valuesMap, false)).toBe('Hi Valued Member!');
+
+      // 4. Legacy recipient_* fallback alias resolution
+      expect(resolveTextWithMap('Recipient: {{recipient_name}} ({{recipient_first_name}})', valuesMap, false)).toBe('Recipient: Sarah Connor (Sarah)');
+    });
+
+    it('normalizes multi-query url strings in resolveTextWithMap', async () => {
+      const { resolveTextWithMap } = await import('../utils/variable-replacer');
+
+      const valuesMap = new Map<string, unknown>([
+        ['link', 'https://smartsapp.com/booking?team=1'],
+        ['ref_token', 'enc123'],
+      ]);
+
+      const rendered = resolveTextWithMap('{{link}}?ref={{ref_token}}', valuesMap, false);
+      expect(rendered).toBe('https://smartsapp.com/booking?team=1&ref=enc123');
+    });
+
+    it('renderTemplate in template-utils delegates cleanly to resolveTextWithMap', async () => {
+      const { renderTemplate } = await import('../template-utils');
+
+      const rendered = renderTemplate('Hi {{first_name|there}}, welcome to {{entity_name}}!', {
+        entity_name: 'SmartSapp',
+      });
+      expect(rendered).toBe('Hi there, welcome to SmartSapp!');
     });
   });
 });

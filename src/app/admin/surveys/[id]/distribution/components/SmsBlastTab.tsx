@@ -45,7 +45,7 @@ export function SmsBlastTab({
   const [selectedTagIds, setSelectedTagIds] = React.useState<string[]>([]);
   const [audienceCount, setAudienceCount] = React.useState(0);
   const [messageBody, setMessageBody] = React.useState(
-    'Hello {{recipient_name}}, please take 2 minutes to fill out our survey: {{survey_link}}'
+    'Hello {{contact_name}}, please take 2 minutes to fill out our survey: {{survey_link}}'
   );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [lastResult, setLastResult] = React.useState<{ dispatched: number; failed: number } | null>(null);
@@ -209,8 +209,8 @@ export function SmsBlastTab({
             <div className="w-[280px] rounded-[32px] border-[6px] border-slate-800 bg-slate-100 p-3 shadow-xl text-left text-xs">
               <div className="bg-blue-600 text-white p-3 rounded-2xl rounded-br-none shadow-sm text-xs leading-relaxed">
                 {messageBody
-                  .replace('{{recipient_name}}', 'Jane')
-                  .replace('{{survey_link}}', defaultUrl)}
+                  .replace(/\{\{(contact_name|recipient_name)\}\}/g, 'Jane')
+                  .replace(/\{\{survey_link\}\}/g, defaultUrl)}
               </div>
               <span className="text-[10px] text-slate-400 block text-right mt-1">Delivered</span>
             </div>

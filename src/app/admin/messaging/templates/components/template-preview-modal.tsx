@@ -28,8 +28,9 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 
 // Premium high-fidelity mock variables for rendering exact state without unresolved curly braces
 const MOCK_VARIABLES: Record<string, string> = {
-    recipient_name: 'Alex Rivera',
     contact_name: 'Alex Rivera',
+    first_name: 'Alex',
+    recipient_name: 'Alex Rivera',
     user_name: 'Alex Rivera',
     workspace_name: 'Acme Corporation',
     organization_name: 'Acme Corporation',
@@ -443,7 +444,7 @@ export function TemplatePreviewModal({
                                             </div>
                                             <div>
                                                 <p className="text-[9px] font-bold text-zinc-800 dark:text-zinc-200 leading-tight">SmartSapp Intelligence</p>
-                                                <p className="text-[7px] text-zinc-400 font-medium leading-none">To: {MOCK_VARIABLES.recipient_name}</p>
+                                                <p className="text-[7px] text-zinc-400 font-medium leading-none">To: {MOCK_VARIABLES.contact_name}</p>
                                             </div>
                                         </div>
                                         <span className="text-[7px] text-zinc-400 font-semibold">9:41 AM</span>

@@ -2348,6 +2348,9 @@ export interface Entity {
   // Online Presence & Social Media
   onlinePresence?: OnlinePresence;
   leadScore?: number;
+
+  /** IDs of all workspaces this entity is associated with */
+  workspaceIds?: string[];
 }
 
 /**

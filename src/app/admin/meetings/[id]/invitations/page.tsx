@@ -155,7 +155,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
     successCount: number;
     skippedCount: number;
     failedCount: number;
-    skippedRecipients: { name: string; email?: string; phone?: string; status: string }[];
+    skippedRecipients: { name: string; email?: string; phone?: string; status?: string }[];
     failedRecipients: { name: string; email?: string; phone?: string; entityId?: string; entityName?: string; error: string; failedChannels: ('email' | 'sms')[] }[];
   } | null>(null);
   const [modalActiveTab, setModalActiveTab] = React.useState<'skipped' | 'failed'>('failed');
@@ -2127,7 +2127,7 @@ export default function UnifiedInvitationsAndRegistrantsPage() {
                           </div>
                           <div className="shrink-0 ml-2">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase tracking-wider bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                              {recipient.status}
+                              {recipient.status || 'Registered'}
                             </span>
                           </div>
                         </div>

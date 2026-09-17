@@ -51,6 +51,82 @@ const contextLabels: Record<string, string> = {
   campaign: 'Campaign & Marketing',
 };
 
+export interface AutocompleteDropdownCoords {
+  top: number;
+  left: number;
+  width: number;
+}
+
+/**
+ * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+ * Calculates exact Caret-Anchored viewport/page coordinates for the Slash Command Popover.
+ * - Anchors immediately below the line/row where '/' was typed (caretRect.bottom + window.scrollY + 4).
+ * - Viewport Flip: If insufficient space below the caret line in the viewport (< 260px) and ample space above,
+ *   flips cleanly above the line (caretRect.top + window.scrollY - 260 - 4).
+ * - Horizontal Clamping: Aligns left edge with '/', clamped between left viewport margin and right margin
+ *   so the dropdown never clips offscreen.
+ * - Container Fallback: If caretRect cannot be determined, falls back to containerRect.
+ *
+ * TESTABILITY: Covered in visual-block.formatting.test.tsx.
+ */
+export function calculateDropdownCoords(
+  caretRect: DOMRect | null,
+  containerEl: HTMLElement | null
+): AutocompleteDropdownCoords {
+  const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+  const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+  const scrollX = typeof window !== 'undefined' ? window.scrollX : 0;
+  const scrollY = typeof window !== 'undefined' ? window.scrollY : 0;
+
+  const containerRect = containerEl?.getBoundingClientRect();
+  const containerWidth = containerRect ? containerRect.width : 340;
+
+  // Responsive, comfortable dropdown width:
+  // Between 280px and 360px, clamped by screen width minus padding
+  const dropdownWidth = Math.min(360, Math.max(280, containerWidth - 16), Math.max(240, screenWidth - 32));
+  const dropdownHeight = 260; // max-h-60 (240px) + padding + borders
+
+  // If we have an exact caret / slash character DOMRect:
+  if (caretRect && (caretRect.width > 0 || caretRect.height > 0 || caretRect.top > 0 || caretRect.bottom > 0)) {
+    const spaceBelow = screenHeight - caretRect.bottom;
+    const spaceAbove = caretRect.top;
+
+    let top: number;
+    if (spaceBelow < dropdownHeight && spaceAbove > spaceBelow) {
+      // Flip above the row where '/' was typed
+      top = caretRect.top + scrollY - dropdownHeight - 4;
+    } else {
+      // Appear immediately below the row where '/' was typed
+      top = caretRect.bottom + scrollY + 4;
+    }
+
+    let left = caretRect.left + scrollX;
+    const minLeft = scrollX + 16;
+    const maxLeft = scrollX + screenWidth - dropdownWidth - 16;
+    left = Math.max(minLeft, Math.min(left, maxLeft));
+
+    return { top, left, width: dropdownWidth };
+  }
+
+  // Fallback: Position relative to container
+  if (containerRect) {
+    const spaceBelow = screenHeight - containerRect.bottom;
+    let top = containerRect.bottom + scrollY + 4;
+    if (spaceBelow < dropdownHeight && containerRect.top > dropdownHeight) {
+      top = containerRect.top + scrollY - dropdownHeight - 4;
+    }
+
+    let left = containerRect.left + scrollX;
+    const minLeft = scrollX + 16;
+    const maxLeft = scrollX + screenWidth - dropdownWidth - 16;
+    left = Math.max(minLeft, Math.min(left, maxLeft));
+
+    return { top, left, width: dropdownWidth };
+  }
+
+  return { top: 0, left: 0, width: dropdownWidth };
+}
+
 /**
  * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
  * Escapes HTML entities to prevent Stored XSS attacks when raw text strings
@@ -476,12 +552,14 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
       showAutocomplete,
       autocompleteCoords: _autocompleteCoords,
       autocompleteIndex,
+      autocompleteQuery,
       filteredVars,
       handleKeyDown,
       handleInputChange,
       handleSelectChange,
       selectAndInsert,
       setShowAutocomplete,
+      getSlashCaretRect,
     } = useSlashAutocomplete({
       variables,
       value,
@@ -558,15 +636,10 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
     }, [activePillElement, enableFormatting, onChange]);
 
     const updateCoords = React.useCallback(() => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setCoords({
-          top: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: Math.max(250, rect.width),
-        });
-      }
-    }, []);
+      const caretRect = getSlashCaretRect(localRef.current);
+      const newCoords = calculateDropdownCoords(caretRect, containerRef.current);
+      setCoords(newCoords);
+    }, [getSlashCaretRect]);
 
     React.useEffect(() => {
       if (showAutocomplete) {
@@ -578,7 +651,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
         window.removeEventListener('scroll', updateCoords, true);
         window.removeEventListener('resize', updateCoords);
       };
-    }, [showAutocomplete, updateCoords]);
+    }, [showAutocomplete, updateCoords, autocompleteQuery]);
 
     React.useEffect(() => {
       if (localRef.current) {
@@ -614,6 +687,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
       lastValueRef.current = cleanVal;
       onChange(cleanVal);
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
+      requestAnimationFrame(updateCoords);
     };
 
     const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -643,6 +717,7 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
       lastValueRef.current = cleanVal;
       onChange(cleanVal);
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
+      requestAnimationFrame(updateCoords);
     };
 
     return (
@@ -713,12 +788,14 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
             if (enableFormatting) {
               formatting.checkSelection();
             }
+            requestAnimationFrame(updateCoords);
           }}
           onMouseUp={(e) => {
             handleSelectChange(e as unknown as React.SyntheticEvent<HTMLDivElement>);
             if (enableFormatting) {
               formatting.checkSelection();
             }
+            requestAnimationFrame(updateCoords);
           }}
           onSelect={(_e) => {
             if (enableFormatting) {
@@ -752,7 +829,6 @@ export const SlashInput = React.forwardRef<HTMLInputElement, SlashInputProps>(
               top: `${coords.top}px`,
               left: `${coords.left}px`,
               width: `${coords.width}px`,
-              marginTop: '4px',
               zIndex: 10000,
             }}
             className="max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"
@@ -846,12 +922,14 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
       showAutocomplete,
       autocompleteCoords: _autocompleteCoords,
       autocompleteIndex,
+      autocompleteQuery,
       filteredVars,
       handleKeyDown,
       handleInputChange,
       handleSelectChange,
       selectAndInsert,
       setShowAutocomplete,
+      getSlashCaretRect,
     } = useSlashAutocomplete({
       variables,
       value,
@@ -928,15 +1006,10 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
     }, [activePillElement, enableFormatting, onChange]);
 
     const updateCoords = React.useCallback(() => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        setCoords({
-          top: rect.bottom + window.scrollY,
-          left: rect.left + window.scrollX,
-          width: Math.max(250, rect.width),
-        });
-      }
-    }, []);
+      const caretRect = getSlashCaretRect(localRef.current);
+      const newCoords = calculateDropdownCoords(caretRect, containerRef.current);
+      setCoords(newCoords);
+    }, [getSlashCaretRect]);
 
     React.useEffect(() => {
       if (showAutocomplete) {
@@ -948,7 +1021,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
         window.removeEventListener('scroll', updateCoords, true);
         window.removeEventListener('resize', updateCoords);
       };
-    }, [showAutocomplete, updateCoords]);
+    }, [showAutocomplete, updateCoords, autocompleteQuery]);
 
     React.useEffect(() => {
       if (localRef.current) {
@@ -984,6 +1057,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
       lastValueRef.current = cleanVal;
       onChange(cleanVal);
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
+      requestAnimationFrame(updateCoords);
     };
 
     const handlePaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
@@ -1010,6 +1084,7 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
       lastValueRef.current = cleanVal;
       onChange(cleanVal);
       handleInputChange({ target: el } as unknown as React.ChangeEvent<HTMLInputElement>);
+      requestAnimationFrame(updateCoords);
     };
 
     return (
@@ -1078,12 +1153,14 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
             if (enableFormatting) {
               formatting.checkSelection();
             }
+            requestAnimationFrame(updateCoords);
           }}
           onMouseUp={(e) => {
             handleSelectChange(e as unknown as React.SyntheticEvent<HTMLDivElement>);
             if (enableFormatting) {
               formatting.checkSelection();
             }
+            requestAnimationFrame(updateCoords);
           }}
           onSelect={(_e) => {
             if (enableFormatting) {
@@ -1117,7 +1194,6 @@ export const SlashTextarea = React.forwardRef<HTMLTextAreaElement, SlashTextarea
               top: `${coords.top}px`,
               left: `${coords.left}px`,
               width: `${coords.width}px`,
-              marginTop: '4px',
               zIndex: 10000,
             }}
             className="max-h-60 overflow-y-auto rounded-xl border border-border bg-popover/95 backdrop-blur-md shadow-2xl p-1.5 text-left text-popover-foreground scrollbar-thin scrollbar-thumb-muted"

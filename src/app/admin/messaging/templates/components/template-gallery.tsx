@@ -291,9 +291,13 @@ function TemplateCard({ template, styles, cloningId, onPreview, onEdit, onClone,
 
         // Dynamic Tenant-Aware MOCK_VARIABLES for thumbnail gallery rendering
         const mergedMocks: Record<string, string> = {
-            recipient_name: 'Recipient Name',
             contact_name: 'Recipient Name',
+            first_name: 'Recipient',
+            recipient_name: 'Recipient Name',
+            organization_name: activeOrganization?.name || 'Your Organization',
             org_name: activeOrganization?.name || 'Your Organization',
+            sender_name: 'Staff Member',
+            user_name: 'Staff Member',
             org_logo_url: activeOrganization?.logoUrl || '',
             org_email: activeOrganization?.email || '',
             org_phone: activeOrganization?.phone || '',

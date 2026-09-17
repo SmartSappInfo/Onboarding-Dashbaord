@@ -291,7 +291,7 @@ describe('resolveStaticVariableGroup', () => {
     const { resolveStaticVariableGroup } = await import('../industry-field-registry');
     const group = resolveStaticVariableGroup('survey_results_link', 'survey');
     expect(group.groupId).toBe('surveys');
-    expect(group.groupName).toBe('Survey Details & Outcomes');
+    expect(group.groupName).toBe('Surveys & Feedback');
     expect(group.groupIcon).toBe('ClipboardList');
   });
 

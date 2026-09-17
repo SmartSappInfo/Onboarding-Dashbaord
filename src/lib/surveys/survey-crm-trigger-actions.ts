@@ -317,7 +317,10 @@ export async function sendSurveyToContactAction(
       variables: {
         survey_title: survey.title,
         survey_url: surveyUrl,
+        survey_link: surveyUrl,
         surveyUrl,
+        contact_name: recipientName,
+        first_name: recipientName.trim().split(' ')[0],
         recipient_name: recipientName,
         recipientName,
         entity_name: entityName,

@@ -321,7 +321,7 @@ describe('validateTemplateVariables', () => {
       expect(warnings).toHaveLength(0);
     });
 
-    it('should correctly accept date, time, and link aliases in meetings templates', () => {
+    it('should correctly flag deprecated date, time, and link aliases with fix actions in meetings templates', () => {
       const template = {
         category: 'meetings' as const,
         subject: 'Meeting Reminder',
@@ -333,7 +333,8 @@ describe('validateTemplateVariables', () => {
       const warnings = errors.filter(e => e.type === 'warning');
 
       expect(typoErrors).toHaveLength(0);
-      expect(warnings).toHaveLength(0);
+      expect(warnings).toHaveLength(3);
+      expect(warnings.every(w => w.fixAction?.actionType === 'replace_variable')).toBe(true);
     });
 
     it('should bypass WhatsApp numeric positional placeholders without flagging typos', () => {

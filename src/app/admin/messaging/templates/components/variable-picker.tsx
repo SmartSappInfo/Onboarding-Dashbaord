@@ -15,7 +15,7 @@ interface VariablePickerProps {
 
 export function VariablePicker({ variables, templateCategory, onSelect, align = 'end' }: VariablePickerProps) {
     const entityVars = React.useMemo(() => {
-        return variables.filter(v => v.key.startsWith('contact_') || v.category === 'contact' || v.category === 'custom');
+        return variables.filter(v => v.key.startsWith('contact_') || v.key === 'first_name' || v.category === 'contact' || v.category === 'custom');
     }, [variables]);
 
     const brandingVars = React.useMemo(() => {

@@ -39,6 +39,8 @@ vi.mock('../firebase-admin', () => {
         if (collectionName === 'entities') {
           return {
             doc: vi.fn((id: string) => ({
+              _docId: id,
+              _collection: 'entities',
               get: vi.fn().mockImplementation(async () => {
                 const data = entities.get(id);
                 return {
@@ -124,16 +126,25 @@ vi.mock('../firebase-admin', () => {
         const updates: Array<{ docId: string; data: any }> = [];
         return {
           update: vi.fn((ref: any, data: any) => {
-            // Extract document ID from the ref object
             const docId = ref._docId;
+            if (docId) {
+              updates.push({ docId, data });
+            }
+          }),
+          set: vi.fn((ref: any, data: any) => {
+            const docId = ref._docId || data.id;
             if (docId) {
               updates.push({ docId, data });
             }
           }),
           commit: vi.fn().mockImplementation(async () => {
             updates.forEach(({ docId, data }) => {
-              const existing = workspaceEntities.get(docId);
-              if (existing) {
+              if (entities.has(docId)) {
+                const existing = entities.get(docId) || {};
+                entities.set(docId, { ...existing, ...data });
+              }
+              if (workspaceEntities.has(docId)) {
+                const existing = workspaceEntities.get(docId) || {};
                 workspaceEntities.set(docId, { ...existing, ...data });
               }
             });

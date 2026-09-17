@@ -55,7 +55,7 @@ export async function syncDenormalizedFieldsToWorkspaceEntities(
     }
 
     // 2. Build the update object
-    const denormalizedUpdates: any = {
+    const denormalizedUpdates: Record<string, unknown> = {
       updatedAt: timestamp,
     };
 

@@ -6,6 +6,8 @@
  * to avoid Next.js Server Action constraints.
  */
 
+import { resolveTextWithMap } from './utils/variable-replacer';
+
 // ---------------------------------------------------------------------------
 // renderTemplate
 // ---------------------------------------------------------------------------
@@ -27,13 +29,9 @@
  * // Result: "Hello John, welcome to SmartSapp!"
  * ```
  */
-export function renderTemplate(body: string, variables: Record<string, any>): string {
-  return body.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
-    const trimmed = key.trim();
-    const value = variables[trimmed];
-    if (value === undefined || value === null) return '';
-    return String(value);
-  });
+export function renderTemplate(body: string, variables: Record<string, unknown>): string {
+  const map = new Map<string, unknown>(Object.entries(variables));
+  return resolveTextWithMap(body, map, false);
 }
 
 /**
@@ -132,12 +130,12 @@ export function escapeHtml(value: string): string {
  */
 export function renderTemplateWithEscaping(
   body: string,
-  variables: Record<string, any>
+  variables: Record<string, unknown>
 ): string {
-  return body.replace(/\{\{([^}]+)\}\}/g, (_, key: string) => {
-    const trimmed = key.trim();
-    const value = variables[trimmed];
-    if (value === undefined || value === null) return '';
-    return escapeHtml(String(value));
-  });
+  const escapedVars: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(variables)) {
+    escapedVars[k] = v === null || v === undefined ? '' : escapeHtml(String(v));
+  }
+  const map = new Map<string, unknown>(Object.entries(escapedVars));
+  return resolveTextWithMap(body, map, false);
 }

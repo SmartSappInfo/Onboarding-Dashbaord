@@ -46,7 +46,7 @@ export function EmailCampaignTab({
   const [selectedTagIds, setSelectedTagIds] = React.useState<string[]>([]);
   const [audienceCount, setAudienceCount] = React.useState(0);
   const [messageBody, setMessageBody] = React.useState(
-    'Hi {{recipient_name}},\n\nWe value your opinion and would appreciate it if you could take a few moments to complete our brief survey:\n\n{{survey_link}}\n\nThank you for your time!'
+    'Hi {{contact_name}},\n\nWe value your opinion and would appreciate it if you could take a few moments to complete our brief survey:\n\n{{survey_link}}\n\nThank you for your time!'
   );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [lastResult, setLastResult] = React.useState<{ dispatched: number; failed: number } | null>(null);
@@ -220,8 +220,8 @@ export function EmailCampaignTab({
 
               <div className="text-slate-700 text-xs whitespace-pre-wrap leading-relaxed">
                 {messageBody
-                  .replace('{{recipient_name}}', 'Jane Doe')
-                  .replace('{{survey_link}}', defaultUrl)}
+                  .replace(/\{\{(contact_name|recipient_name)\}\}/g, 'Jane Doe')
+                  .replace(/\{\{survey_link\}\}/g, defaultUrl)}
               </div>
 
               <div className="pt-2">

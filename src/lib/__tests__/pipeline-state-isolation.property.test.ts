@@ -305,8 +305,9 @@ describe('Property 2: Pipeline State Isolation Invariant', () => {
         async (entityId, workspace1Id, workspace2Id, pipelineId, initialStageId, newStage1Id, newStage2Id, userId) => {
           // Ensure workspaces are different
           if (workspace1Id === workspace2Id) return;
-          // Ensure stages are different from initial
+          // Ensure stages are different from initial and from each other
           if (initialStageId === newStage1Id || initialStageId === newStage2Id) return;
+          if (newStage1Id === newStage2Id) return;
 
           // Setup: Create entity
           testStorage.entities.set(entityId, {

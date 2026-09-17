@@ -17,6 +17,7 @@ import { extractPrimaryContactFields } from './entity-contact-helpers';
 import { filterAndSortEntities, type FilterStateInput } from './utils/entity-filter-util';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { EntitySyncGateway } from '@/lib/services/entity-sync-gateway';
 
 /**
  * @fileOverview Server actions for workspace-entity relationship management.
@@ -208,13 +209,22 @@ export async function linkEntityToWorkspaceAction(input: LinkEntityToWorkspaceIn
       entityContacts: entity.entityContacts || [],
     });
 
-    await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData, { merge: true });
-
-    // Atomically append target workspace to master entity's workspaceIds
-    await adminDb.collection('entities').doc(input.entityId).update({
-      workspaceIds: FieldValue.arrayUnion(input.workspaceId),
-      updatedAt: timestamp,
-    });
+    // Atomically write workspace_entities and append target workspace to master entity's workspaceIds
+    if (typeof adminDb.batch === 'function') {
+      const linkBatch = adminDb.batch();
+      linkBatch.set(adminDb.collection('workspace_entities').doc(workspaceEntityId), workspaceEntityData, { merge: true });
+      linkBatch.update(adminDb.collection('entities').doc(input.entityId), {
+        workspaceIds: FieldValue.arrayUnion(input.workspaceId),
+        updatedAt: timestamp,
+      });
+      await linkBatch.commit();
+    } else {
+      await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData, { merge: true });
+      await adminDb.collection('entities').doc(input.entityId).update({
+        workspaceIds: FieldValue.arrayUnion(input.workspaceId),
+        updatedAt: timestamp,
+      });
+    }
 
     // Project contacts into workspace_contacts (Phase 6.1) — read-model, non-blocking
     await syncContactProjectionForWE(workspaceEntityData).catch((projErr: Error) => {
@@ -336,11 +346,19 @@ export async function unlinkEntityFromWorkspaceAction(input: UnlinkEntityFromWor
     const entitySnap = await entityRef.get();
     const entity = entitySnap.exists ? ({ id: entitySnap.id, ...entitySnap.data() } as Entity) : null;
 
-    // 3. Delete workspace_entities document
-    await workspaceEntityRef.delete();
+    // 3. Atomically unlink from workspace, remove workspaceId from entities.workspaceIds, and clean projections
+    const unlinkRes = await EntitySyncGateway.unlinkEntityFromWorkspace(
+      workspaceEntity.workspaceId,
+      workspaceEntity.entityId,
+      workspaceEntity.id
+    );
 
-    // Cascade-delete projected contacts for this entity (Phase 6.1)
-    await deleteContactProjectionForEntity(workspaceEntity.workspaceId, workspaceEntity.entityId);
+    if (!unlinkRes.success) {
+      return {
+        success: false,
+        error: unlinkRes.error || 'Failed to unlink entity from workspace',
+      };
+    }
 
     // 4. Log audit trail (Requirement 29.4)
     await logWorkspaceEntityDeleted({

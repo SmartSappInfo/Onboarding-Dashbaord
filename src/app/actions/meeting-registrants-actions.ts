@@ -8,6 +8,7 @@ import { scheduleRemindersForNewRegistrant } from '@/lib/reminder-actions';
 import { resolveActiveTemplate } from '@/lib/template-resolver';
 import { requireAuth } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import type { Meeting } from '@/lib/types';
 
 export async function deleteRegistrantAction(meetingId: string, registrantId: string) {
   try {
@@ -230,7 +231,7 @@ export async function adminRegisterParticipantAction(
     if (!meetingSnap.exists) {
       throw new Error('Meeting not found');
     }
-    const meeting = meetingSnap.data()!;
+    const meeting = meetingSnap.data() as unknown as Meeting;
 
     const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
 
@@ -245,7 +246,7 @@ export async function adminRegisterParticipantAction(
 
     const token = generateRegistrantToken();
     const baseUrl = await getRequestBaseUrl();
-    const personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl, { id: meetingSnap.id, ...meeting } as any, token);
+    const personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl, { ...meeting, id: meetingSnap.id }, token);
 
     const now = new Date().toISOString();
 
@@ -267,7 +268,7 @@ export async function adminRegisterParticipantAction(
     const docRef = await registrantsRef.add(registrantData);
 
     const orgId = meeting.organizationId || 'default';
-    void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, docRef.id, orgId).catch(err => {
+    void scheduleRemindersForNewRegistrant({ ...meeting, id: meetingId }, docRef.id, orgId).catch(err => {
       console.warn('[ADMIN-REGISTER] Failed to schedule reminders:', getErrorMessage(err));
     });
 
@@ -297,27 +298,32 @@ export async function adminRegisterParticipantAction(
   }
 }
 
-interface SingleRecipientResult {
+export interface InviteeRecipient {
+  entityId: string;
+  name: string;
+  email?: string;
+  phone?: string;
+  entityName?: string;
+  isRetry?: boolean;
+  channels?: ('email' | 'sms')[];
+  status?: string;
+}
+
+export interface SingleRecipientResult {
   success: boolean;
   skipped?: boolean;
-  registrantId?: string | null;
+  reason?: string;
+  registrantId?: string;
   sentChannels: ('email' | 'sms')[];
   failedChannels: { channel: 'email' | 'sms'; error: string }[];
-  recipient: {
-    entityId: string;
-    name: string;
-    email?: string;
-    phone?: string;
-    entityName?: string;
-    status?: string;
-  };
+  recipient: InviteeRecipient;
 }
 
 async function dispatchSingleRecipient(
   meetingId: string,
-  meeting: any,
+  meeting: Partial<Meeting> & { type?: unknown; meetingSlug?: string; entitySlug?: string },
   workspaceId: string,
-  rec: { entityId: string; name: string; email?: string; phone?: string; entityName?: string },
+  rec: InviteeRecipient,
   channels: ('email' | 'sms')[],
   emailTemplateId?: string,
   smsTemplateId?: string,
@@ -328,14 +334,15 @@ async function dispatchSingleRecipient(
 ): Promise<SingleRecipientResult> {
   const registrantsRef = adminDb.collection(`meetings/${meetingId}/registrants`);
   let typeSlug = 'parent-engagement';
-  const mType = meeting.type as any;
-  if (mType) {
-    if (typeof mType === 'string') {
-      typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
-    } else if (mType.slug) {
-      typeSlug = mType.slug === 'parent' ? 'parent-engagement' : mType.slug;
-    } else if (mType.id) {
-      typeSlug = mType.id === 'parent' ? 'parent-engagement' : mType.id;
+  const mType = meeting.type;
+  if (typeof mType === 'string') {
+    typeSlug = mType === 'parent' ? 'parent-engagement' : mType;
+  } else if (typeof mType === 'object' && mType !== null) {
+    const obj = mType as { slug?: string; id?: string };
+    if (obj.slug) {
+      typeSlug = obj.slug === 'parent' ? 'parent-engagement' : obj.slug;
+    } else if (obj.id) {
+      typeSlug = obj.id === 'parent' ? 'parent-engagement' : obj.id;
     }
   }
   const meetingSlug = meeting.meetingSlug || meeting.entitySlug || meetingId;
@@ -414,7 +421,7 @@ async function dispatchSingleRecipient(
       }
     } else {
       token = generateRegistrantToken();
-      personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl || '', { id: meetingId, ...meeting } as any, token);
+      personalizedMeetingUrl = getPersonalizedMeetingUrl(baseUrl || '', { id: meetingId, ...meeting }, token);
 
       const docRef = await registrantsRef.add({
         meetingId,
@@ -480,7 +487,9 @@ async function dispatchSingleRecipient(
               rsvpDeclinedUrl,
               rsvpLaterUrl,
               meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
-              meeting_time: new Date(meeting.meetingTime).toLocaleString(),
+              meeting_time: meeting.meetingTime ? new Date(meeting.meetingTime).toLocaleString() : '',
+              contact_name: rec.name,
+              first_name: rec.name ? rec.name.trim().split(' ')[0] : '',
               recipient_name: rec.name,
               meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
               rsvp_going_url: rsvpGoingUrl,
@@ -509,13 +518,15 @@ async function dispatchSingleRecipient(
                 rsvpDeclinedUrl,
                 rsvpLaterUrl,
                 meeting_title: meeting.heroTitle || meeting.entityName || 'Meeting',
-                meeting_time: new Date(meeting.meetingTime).toLocaleString(),
+                meeting_time: meeting.meetingTime ? new Date(meeting.meetingTime).toLocaleString() : '',
+                contact_name: rec.name,
+                first_name: rec.name ? rec.name.trim().split(' ')[0] : '',
                 recipient_name: rec.name,
                 meeting_registrant_one_click_link: `${baseUrl}/meetings/${typeSlug}/${meetingSlug}?token=${token}`,
                 rsvp_going_url: rsvpGoingUrl,
                 rsvp_declined_url: rsvpDeclinedUrl,
                 rsvp_later_url: rsvpLaterUrl,
-                isRetry: (rec as any).isRetry ? 'true' : undefined
+                isRetry: 'isRetry' in rec && (rec as { isRetry?: boolean }).isRetry ? 'true' : undefined
               },
               entityId: rec.entityId,
               workspaceId,
@@ -536,7 +547,7 @@ async function dispatchSingleRecipient(
   <p style="font-size: 14px; color: #475569; line-height: 1.6;">You are cordially invited to the upcoming session: <strong>${meeting.heroTitle || 'Meeting Session'}</strong>.</p>
   
   <div style="margin: 24px 0; padding: 16px; background-color: #f8fafc; border-radius: 12px; border: 1px solid #f1f5f9;">
-    <p style="font-size: 13px; margin: 0 0 8px 0; color: #64748b;"><strong>Date & Time:</strong> ${new Date(meeting.meetingTime).toLocaleString()}</p>
+    <p style="font-size: 13px; margin: 0 0 8px 0; color: #64748b;"><strong>Date & Time:</strong> ${meeting.meetingTime ? new Date(meeting.meetingTime).toLocaleString() : 'TBD'}</p>
     <p style="font-size: 13px; margin: 0; color: #64748b;"><strong>Platform:</strong> SmartSapp Portal</p>
   </div>
 
@@ -553,7 +564,7 @@ async function dispatchSingleRecipient(
 </div>
               `;
             } else {
-              body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${new Date(meeting.meetingTime).toLocaleString()}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
+              body = `Invitation: ${meeting.heroTitle || 'Meeting'}\nTime: ${meeting.meetingTime ? new Date(meeting.meetingTime).toLocaleString() : 'TBD'}\nRSVP:\nGoing: ${rsvpGoingUrl}\nNo: ${rsvpDeclinedUrl}`;
             }
 
             const res = await sendRawMessage({
@@ -562,7 +573,7 @@ async function dispatchSingleRecipient(
               subject: channel === 'email' ? subject : undefined,
               body,
               variables: {
-                isRetry: (rec as any).isRetry ? 'true' : undefined
+                isRetry: rec.isRetry ? 'true' : undefined
               },
               workspaceIds: [workspaceId],
             });
@@ -580,7 +591,7 @@ async function dispatchSingleRecipient(
 
     // Dynamic logging of successes in the Invited Guest Ledger
     if (sentChannels.length > 0) {
-      const updateData: Record<string, any> = {
+      const updateData: Record<string, unknown> = {
         lastInviteSentAt: new Date().toISOString(),
       };
       if (stageId) {
@@ -665,7 +676,7 @@ async function dispatchSingleRecipient(
 export async function sendMeetingInvitationsAction(
   meetingId: string,
   workspaceId: string,
-  recipients: { entityId: string; name: string; email?: string; phone?: string; entityName?: string }[],
+  recipients: InviteeRecipient[],
   channels: ('email' | 'sms')[],
   emailTemplateId?: string,
   smsTemplateId?: string,
@@ -680,7 +691,7 @@ export async function sendMeetingInvitationsAction(
     if (!meetingSnap.exists) {
       throw new Error('Meeting not found');
     }
-    const meeting = meetingSnap.data()!;
+    const meeting = meetingSnap.data() as unknown as Meeting;
     const baseUrl = await getRequestBaseUrl();
     const isScheduled = !!scheduleTime && new Date(scheduleTime) > new Date();
 
@@ -690,7 +701,7 @@ export async function sendMeetingInvitationsAction(
     for (let i = 0; i < recipients.length; i += CHUNK_SIZE) {
       const chunk = recipients.slice(i, i + CHUNK_SIZE);
       const chunkPromises = chunk.map((rec) => {
-        const activeChannels = (rec as any).channels || channels;
+        const activeChannels = rec.channels || channels;
         return dispatchSingleRecipient(
           meetingId,
           meeting,
@@ -709,9 +720,14 @@ export async function sendMeetingInvitationsAction(
       results.push(...chunkResults);
     }
 
-    const successList: any[] = [];
-    const skippedList: any[] = [];
-    const failedList: any[] = [];
+    interface FailedInviteeEntry extends InviteeRecipient {
+      failedChannels: ('email' | 'sms')[];
+      error: string;
+    }
+
+    const successList: InviteeRecipient[] = [];
+    const skippedList: InviteeRecipient[] = [];
+    const failedList: FailedInviteeEntry[] = [];
 
     results.forEach((val) => {
       if (val.success) {
@@ -780,7 +796,7 @@ export async function submitRsvpResponseAction(
       targetStatus = 'cancelled';
     }
 
-    let updatedFields: Record<string, any> = {
+    let updatedFields: Record<string, unknown> = {
       rsvpStatus: responseStatus,
       status: targetStatus,
       source: targetSource,
@@ -797,8 +813,8 @@ export async function submitRsvpResponseAction(
 
         if (entitySnap.exists) {
           const entityData = entitySnap.data()!;
-          const contacts = entityData.entityContacts || entityData.contacts || [];
-          const matchedContact = contacts.find((c: any) => 
+          const contacts = (entityData.entityContacts || entityData.contacts || []) as Array<{ email?: string; phone?: string; name?: string }>;
+          const matchedContact = contacts.find(c => 
             (c.email && c.email.toLowerCase().trim() === regData.email?.toLowerCase().trim()) ||
             (c.phone && c.phone === regData.phone)
           );
@@ -819,9 +835,9 @@ export async function submitRsvpResponseAction(
     if (responseStatus === 'going') {
       const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
       if (meetingSnap.exists) {
-        const meeting = meetingSnap.data()!;
+        const meeting = meetingSnap.data() as unknown as Meeting;
         const orgId = meeting.organizationId || 'default';
-        void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, regDoc.id, orgId).catch(err => {
+        void scheduleRemindersForNewRegistrant({ ...meeting, id: meetingId }, regDoc.id, orgId).catch(err => {
           console.warn('[RSVP-GOING] Failed to schedule reminders:', getErrorMessage(err));
         });
 
@@ -892,7 +908,7 @@ export async function manuallyUpdateGuestStatusAction(
   targetState: 'going' | 'cancelled' | 'pending'
 ) {
   try {
-    let updateFields: Record<string, any> = {};
+    let updateFields: Record<string, unknown> = {};
     if (targetState === 'going') {
       updateFields = {
         rsvpStatus: 'going',
@@ -920,9 +936,9 @@ export async function manuallyUpdateGuestStatusAction(
     if (targetState === 'going') {
       const meetingSnap = await adminDb.collection('meetings').doc(meetingId).get();
       if (meetingSnap.exists) {
-        const meeting = meetingSnap.data()!;
+        const meeting = meetingSnap.data() as unknown as Meeting;
         const orgId = meeting.organizationId || 'default';
-        void scheduleRemindersForNewRegistrant({ id: meetingId, ...meeting } as any, registrantId, orgId).catch(err => {
+        void scheduleRemindersForNewRegistrant({ ...meeting, id: meetingId }, registrantId, orgId).catch(err => {
           console.warn('[MANUAL-STATUS-GOING] Failed to schedule reminders:', getErrorMessage(err));
         });
       }

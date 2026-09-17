@@ -66,6 +66,7 @@ import { getVariablesAction } from '@/lib/services/fields-variables-service';
 import { FormMessage } from '@/components/ui/form';
 import { useFieldArray } from 'react-hook-form';
 import { useSlashAutocomplete, convertToCleanHtml } from '@/hooks/use-slash-autocomplete';
+import { calculateDropdownCoords } from '@/components/messaging/SlashInput';
 import { sanitizeHtml } from '@/lib/survey-variable-utils';
 import { SurveySampleFileCard } from '@/components/surveys/SurveySampleFileCard';
 import { DocumentUploader } from '@/components/shared/document-uploader';
@@ -180,12 +181,14 @@ const RichTextEditor = ({
       showAutocomplete,
       autocompleteCoords: _autocompleteCoords,
       autocompleteIndex,
+      autocompleteQuery,
       filteredVars,
       handleKeyDown: hookKeyDown,
       handleInputChange,
       handleSelectChange,
       selectAndInsert,
       setShowAutocomplete,
+      getSlashCaretRect,
     } = useSlashAutocomplete({
       variables,
       value,
@@ -193,26 +196,10 @@ const RichTextEditor = ({
     });
 
     const updateCoords = React.useCallback(() => {
-      if (containerRef.current) {
-        const rect = containerRef.current.getBoundingClientRect();
-        const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
-        const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
-        const width = Math.max(250, rect.width);
-        
-        let left = rect.left + window.scrollX;
-        if (left + width > screenWidth - 16) {
-          left = Math.max(8, screenWidth - width - 16);
-        }
-        
-        const dropdownHeight = 240;
-        let top = rect.bottom + window.scrollY;
-        if (rect.bottom + dropdownHeight > screenHeight - 16) {
-          top = Math.max(8, rect.top + window.scrollY - dropdownHeight - 8);
-        }
-
-        setCoords({ top, left, width });
-      }
-    }, []);
+      const caretRect = getSlashCaretRect(editorRef.current);
+      const newCoords = calculateDropdownCoords(caretRect, containerRef.current);
+      setCoords(newCoords);
+    }, [getSlashCaretRect]);
 
     React.useEffect(() => {
       if (showAutocomplete) {
@@ -224,7 +211,7 @@ const RichTextEditor = ({
         window.removeEventListener('resize', updateCoords);
         window.removeEventListener('scroll', updateCoords, { capture: true });
       };
-    }, [showAutocomplete, updateCoords]);
+    }, [showAutocomplete, updateCoords, autocompleteQuery]);
 
     // Sync external value to editor (only if visual representation differs)
     React.useEffect(() => {
@@ -659,12 +646,14 @@ function OptionInput({
   const {
     showAutocomplete,
     autocompleteIndex,
+    autocompleteQuery,
     filteredVars,
     handleKeyDown: hookKeyDown,
     handleInputChange,
     handleSelectChange,
     selectAndInsert,
     setShowAutocomplete,
+    getSlashCaretRect,
   } = useSlashAutocomplete({
     variables,
     value: localVal,
@@ -675,26 +664,10 @@ function OptionInput({
   });
 
   const updateCoords = React.useCallback(() => {
-    if (containerRef.current) {
-      const rect = containerRef.current.getBoundingClientRect();
-      const screenWidth = typeof window !== 'undefined' ? window.innerWidth : 800;
-      const screenHeight = typeof window !== 'undefined' ? window.innerHeight : 600;
-      const width = Math.max(250, rect.width);
-      
-      let left = rect.left + window.scrollX;
-      if (left + width > screenWidth - 16) {
-        left = Math.max(8, screenWidth - width - 16);
-      }
-      
-      const dropdownHeight = 240;
-      let top = rect.bottom + window.scrollY;
-      if (rect.bottom + dropdownHeight > screenHeight - 16) {
-        top = Math.max(8, rect.top + window.scrollY - dropdownHeight - 8);
-      }
-
-      setCoords({ top, left, width });
-    }
-  }, []);
+    const caretRect = getSlashCaretRect(inputRef.current);
+    const newCoords = calculateDropdownCoords(caretRect, containerRef.current);
+    setCoords(newCoords);
+  }, [getSlashCaretRect]);
 
   React.useEffect(() => {
     if (showAutocomplete) {
@@ -706,7 +679,7 @@ function OptionInput({
       window.removeEventListener('resize', updateCoords);
       window.removeEventListener('scroll', updateCoords, { capture: true });
     };
-  }, [showAutocomplete, updateCoords]);
+  }, [showAutocomplete, updateCoords, autocompleteQuery]);
 
   const handleBlur = () => {
     if (localVal !== value) {

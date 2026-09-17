@@ -18,6 +18,7 @@ import { requireAuth } from '@/lib/auth/require-auth';
 
 export interface VariableResolutionContext {
   entityId?: string;
+  recipientContact?: string;
   meetingId?: string;
   formId?: string;
   surveyId?: string;
@@ -122,10 +123,11 @@ export async function resolveActiveTemplate(
 export async function buildVariableMap(
   context: VariableContext,
   resolutionCtx: VariableResolutionContext,
-): Promise<Record<string, any>> {
+): Promise<Record<string, unknown>> {
   const unifiedMap = await FieldsVariablesService.getVariableValuesMap({
     workspaceId: resolutionCtx.workspaceId || 'onboarding',
     entityId: resolutionCtx.entityId,
+    recipientContact: resolutionCtx.recipientContact,
     meetingId: resolutionCtx.meetingId,
     formId: resolutionCtx.formId,
     surveyId: resolutionCtx.surveyId,

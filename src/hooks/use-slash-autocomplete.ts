@@ -34,13 +34,41 @@ export function useSlashAutocomplete({
   const [autocompleteIndex, setAutocompleteIndex] = React.useState(0);
   const [autocompleteCoords, setAutocompleteCoords] = React.useState({ top: 0, left: 0 });
 
+  const savedRangeRef = React.useRef<{ container: Node; lastSlashIdx: number; offset: number } | null>(null);
+  const savedInputPosRef = React.useRef<{ lastSlashIdx: number; selectionEnd: number } | null>(null);
+
   // Get caret coordinates relative to parent container
   const getCaretCoordinates = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement, position: number) => {
     if (element instanceof HTMLDivElement) {
-      const selection = window.getSelection();
-      if (selection && selection.rangeCount > 0) {
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
+      let rect: DOMRect | null = null;
+      if (savedRangeRef.current && savedRangeRef.current.container.isConnected) {
+        const { container, lastSlashIdx } = savedRangeRef.current;
+        const text = container.textContent || '';
+        if (lastSlashIdx >= 0 && lastSlashIdx < text.length) {
+          try {
+            const range = document.createRange();
+            range.setStart(container, lastSlashIdx);
+            range.setEnd(container, Math.min(lastSlashIdx + 1, text.length));
+            if (typeof range.getBoundingClientRect === 'function') {
+              rect = range.getBoundingClientRect();
+            }
+          } catch {
+            // fallback to selection
+          }
+        }
+      }
+
+      if (!rect) {
+        const selection = window.getSelection();
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          if (typeof range.getBoundingClientRect === 'function') {
+            rect = range.getBoundingClientRect();
+          }
+        }
+      }
+
+      if (rect) {
         const parentRect = element.parentElement?.getBoundingClientRect();
         if (parentRect) {
           return {
@@ -55,7 +83,7 @@ export function useSlashAutocomplete({
     const div = document.createElement('div');
     const style = window.getComputedStyle(element);
     
-    const properties = [
+    const properties: Array<keyof CSSStyleDeclaration> = [
       'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontVariant', 'fontStretch',
       'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
       'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
@@ -65,7 +93,10 @@ export function useSlashAutocomplete({
     ];
     
     properties.forEach((p) => {
-      div.style[p as any] = style[p as any];
+      const val = style[p];
+      if (typeof val === 'string') {
+        (div.style as unknown as Record<string, string>)[p as string] = val;
+      }
     });
     
     div.style.position = 'absolute';
@@ -97,8 +128,124 @@ export function useSlashAutocomplete({
     }
   }, []);
 
-  const savedRangeRef = React.useRef<{ container: Node; lastSlashIdx: number; offset: number } | null>(null);
-  const savedInputPosRef = React.useRef<{ lastSlashIdx: number; selectionEnd: number } | null>(null);
+  /**
+   * ARCHITECTURAL NOTE (Rule 10 Maintainer Guidance):
+   * Measures the exact DOMRect of the '/' trigger character in viewport coordinates.
+   * Enables Caret-Anchored positioning so that variable autocomplete dropdowns open
+   * immediately below the specific line/row where the '/' was typed, instead of dropping
+   * down to the bottom of the entire multiline block.
+   */
+  const getSlashCaretRect = React.useCallback((element?: HTMLElement | null): DOMRect | null => {
+    if (typeof window === 'undefined') return null;
+
+    // 1. ContentEditable: Measure exact Range spanning the '/' character in savedRangeRef
+    if (savedRangeRef.current && savedRangeRef.current.container.isConnected) {
+      const { container, lastSlashIdx } = savedRangeRef.current;
+      const text = container.textContent || '';
+      if (lastSlashIdx >= 0 && lastSlashIdx < text.length && text[lastSlashIdx] === '/') {
+        try {
+          const range = document.createRange();
+          range.setStart(container, lastSlashIdx);
+          range.setEnd(container, lastSlashIdx + 1);
+          if (typeof range.getBoundingClientRect === 'function') {
+            const rect = range.getBoundingClientRect();
+            if (rect && (rect.width > 0 || rect.height > 0)) {
+              return rect;
+            }
+          }
+        } catch {
+          // Range creation fallback
+        }
+      }
+    }
+
+    // 2. Active Window Selection inside element
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      if (!element || element.contains(range.startContainer)) {
+        if (range.startContainer.nodeType === Node.TEXT_NODE) {
+          const text = range.startContainer.textContent || '';
+          const offset = range.startOffset;
+          const slashIdx = text.lastIndexOf('/', Math.max(0, offset - 1));
+          if (slashIdx !== -1) {
+            try {
+              const r = document.createRange();
+              r.setStart(range.startContainer, slashIdx);
+              r.setEnd(range.startContainer, Math.min(slashIdx + 1, text.length));
+              if (typeof r.getBoundingClientRect === 'function') {
+                const rect = r.getBoundingClientRect();
+                if (rect && (rect.width > 0 || rect.height > 0)) {
+                  return rect;
+                }
+              }
+            } catch {
+              // fallback
+            }
+          }
+        }
+        try {
+          if (typeof range.getBoundingClientRect === 'function') {
+            const rect = range.getBoundingClientRect();
+            if (rect && (rect.width > 0 || rect.height > 0)) {
+              return rect;
+            }
+          }
+        } catch {
+          // fallback
+        }
+      }
+    }
+
+    // 3. Textarea / Input: Calculate via mirror div
+    if (element instanceof HTMLTextAreaElement || element instanceof HTMLInputElement) {
+      const lastSlashIdx = savedInputPosRef.current?.lastSlashIdx ?? -1;
+      if (lastSlashIdx !== -1) {
+        const div = document.createElement('div');
+        const style = window.getComputedStyle(element);
+        
+        const properties: Array<keyof CSSStyleDeclaration> = [
+          'fontFamily', 'fontSize', 'fontWeight', 'fontStyle', 'fontVariant', 'fontStretch',
+          'lineHeight', 'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+          'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+          'textTransform', 'textIndent', 'letterSpacing', 'wordSpacing', 'textRendering',
+          'width', 'height', 'boxSizing', 'wordBreak', 'wordWrap', 'whiteSpace',
+          'overflowY', 'overflowX'
+        ];
+        
+        properties.forEach((p) => {
+          const val = style[p];
+          if (typeof val === 'string') {
+            (div.style as unknown as Record<string, string>)[p as string] = val;
+          }
+        });
+        
+        div.style.position = 'absolute';
+        div.style.visibility = 'hidden';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.wordWrap = 'break-word';
+        div.style.top = `${element.offsetTop}px`;
+        div.style.left = `${element.offsetLeft}px`;
+        
+        div.textContent = element.value.substring(0, lastSlashIdx);
+        
+        const span = document.createElement('span');
+        span.textContent = element.value.substring(lastSlashIdx, lastSlashIdx + 1) || '/';
+        div.appendChild(span);
+        
+        const parent = element.parentElement || document.body;
+        parent.appendChild(div);
+        
+        try {
+          return span.getBoundingClientRect();
+        } finally {
+          parent.removeChild(div);
+        }
+      }
+    }
+
+    return null;
+  }, []);
 
   const checkTrigger = React.useCallback((element: HTMLTextAreaElement | HTMLInputElement | HTMLDivElement) => {
     if (element instanceof HTMLDivElement) {
@@ -268,7 +415,7 @@ export function useSlashAutocomplete({
         range.setStart(container, lastSlashIdx);
         range.setEnd(container, Math.min(offset, text.length));
         range.deleteContents();
-      } catch (_e) {
+      } catch {
         // Range creation fallback
       }
 
@@ -298,7 +445,7 @@ export function useSlashAutocomplete({
           selection.removeAllRanges();
           selection.addRange(newRange);
         }
-      } catch (_e) {
+      } catch {
         element.appendChild(pill);
       }
 
@@ -389,11 +536,13 @@ export function useSlashAutocomplete({
     showAutocomplete,
     autocompleteCoords,
     autocompleteIndex,
+    autocompleteQuery,
     filteredVars,
     handleKeyDown,
     handleInputChange,
     handleSelectChange,
     selectAndInsert,
     setShowAutocomplete,
+    getSlashCaretRect,
   };
 }

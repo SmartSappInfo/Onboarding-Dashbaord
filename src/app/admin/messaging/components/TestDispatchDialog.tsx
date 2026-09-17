@@ -232,6 +232,8 @@ export default function TestDispatchDialog({
             const lower = tag.toLowerCase();
             if (lower.includes('entity') || lower.includes('school') || lower === 'name' || lower === 'displayname') {
                 resolvedVars[tag] = entityName;
+            } else if (lower.includes('first_name')) {
+                resolvedVars[tag] = (primaryContact?.name || entityName).trim().split(' ')[0] || '';
             } else if (lower.includes('contact') || lower.includes('recipient_name')) {
                 resolvedVars[tag] = primaryContact?.name || entityName;
             } else if (lower.includes('email')) {

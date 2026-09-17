@@ -4,6 +4,7 @@ import { adminDb } from './firebase-admin';
 import type { EntityContact } from './types';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { EntitySyncGateway } from '@/lib/services/entity-sync-gateway';
 
 /**
  * Profile Update Actions
@@ -22,6 +23,7 @@ interface UpdateProfileInput {
     // Identity fields (go to entities)
     name?: string;
     contacts?: EntityContact[];
+    entityContacts?: EntityContact[];
     globalTags?: string[];
     
     // Operational fields (go to workspace_entities)
@@ -33,50 +35,88 @@ interface UpdateProfileInput {
       email: string | null;
     };
     workspaceTags?: string[];
+    status?: 'active' | 'archived';
     
-    // Legacy school fields (for backward compatibility)
-    [key: string]: any;
+    // Additional domain fields (strictly typed Record)
+    [key: string]: unknown;
   };
 }
 
 /**
- * Update profile with proper routing to entities and workspace_entities collections
+ * Update profile with atomic synchronization to entities and workspace_entities collections.
+ * Routes identity modifications through EntitySyncGateway to guarantee that all linked
+ * tenant workspace projections remain in lockstep.
  * 
- * @param input - Profile update input with field routing
- * @returns Success status
+ * Requirements: 11.4, 11.5, Rule 10 (Strict Typing & Zero-Drift Guarantee)
  */
 export async function updateProfile(input: UpdateProfileInput): Promise<{ success: boolean; error?: string }> {
   try {
     const { entityId, workspaceId, updates } = input;
     
     // Separate identity and operational fields
-    const identityFields: Record<string, any> = {};
-    const operationalFields: Record<string, any> = {};
-    const legacyFields: Record<string, any> = {};
+    const identityFields: Record<string, unknown> = {};
+    const operationalFields: Record<string, unknown> = {};
+    const extraFields: Record<string, unknown> = {};
     
-    // Route fields to appropriate collections
     for (const [key, value] of Object.entries(updates)) {
-      if (key === 'name' || key === 'contacts' || key === 'globalTags') {
+      if (key === 'name' || key === 'contacts' || key === 'entityContacts' || key === 'globalTags') {
         identityFields[key] = value;
-      } else if (key === 'pipelineId' || key === 'stageId' || key === 'assignedTo' || key === 'workspaceTags') {
+      } else if (key === 'pipelineId' || key === 'stageId' || key === 'assignedTo' || key === 'workspaceTags' || key === 'status') {
         operationalFields[key] = value;
       } else {
-        legacyFields[key] = value;
+        extraFields[key] = value;
       }
     }
     
-    // Update entities collection if we have identity fields and entityId
+    // If identity fields are present, route through EntitySyncGateway for atomic batch synchronization
     if (entityId && Object.keys(identityFields).length > 0) {
-      const entityRef = adminDb.collection('entities').doc(entityId);
-      await entityRef.update({
-        ...identityFields,
-        updatedAt: new Date().toISOString()
-      });
+      const contactsToSync = (identityFields.entityContacts || identityFields.contacts) as EntityContact[] | undefined;
+      const syncRes = await EntitySyncGateway.syncEntityAndWorkspaces(
+        entityId,
+        {
+          name: identityFields.name as string | undefined,
+          entityContacts: contactsToSync,
+          globalTags: identityFields.globalTags as string[] | undefined,
+          customData: Object.keys(extraFields).length > 0 ? extraFields : undefined,
+        },
+        {
+          sourceWorkspaceId: workspaceId,
+          workspaceUpdates: {
+            assignedTo: operationalFields.assignedTo as UpdateProfileInput['updates']['assignedTo'],
+            workspaceTags: operationalFields.workspaceTags as string[] | undefined,
+            status: operationalFields.status as 'active' | 'archived' | undefined,
+          },
+        }
+      );
+
+      if (!syncRes.success) {
+        return { success: false, error: syncRes.error };
+      }
+
+      // If there are remaining operational fields like pipelineId or stageId, update workspace_entity doc
+      if (operationalFields.pipelineId !== undefined || operationalFields.stageId !== undefined) {
+        const weQuery = await adminDb
+          .collection('workspace_entities')
+          .where('entityId', '==', entityId)
+          .where('workspaceId', '==', workspaceId)
+          .limit(1)
+          .get();
+
+        if (!weQuery.empty) {
+          const opsUpdate: Record<string, unknown> = {
+            updatedAt: new Date().toISOString(),
+          };
+          if (operationalFields.pipelineId !== undefined) opsUpdate.pipelineId = operationalFields.pipelineId;
+          if (operationalFields.stageId !== undefined) opsUpdate.stageId = operationalFields.stageId;
+          await weQuery.docs[0].ref.update(opsUpdate);
+        }
+      }
+
+      return { success: true };
     }
     
-    // Update workspace_entities collection if we have operational fields and entityId
+    // Operational-only updates (no identity changes)
     if (entityId && Object.keys(operationalFields).length > 0) {
-      // Find workspace_entity record
       const weQuery = await adminDb
         .collection('workspace_entities')
         .where('entityId', '==', entityId)
@@ -93,8 +133,6 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
       }
     }
     
-    // Legacy school sync removed — entities + workspace_entities are the canonical stores
-    
     return { success: true };
   } catch (error: unknown) {
     console.error('[PROFILE] Update failed:', error);
@@ -103,7 +141,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<{ succes
 }
 
 /**
- * Update only identity fields (routes to entities collection)
+ * Update only identity fields (routes to entities collection and atomically propagates
+ * to all linked workspace_entities via EntitySyncGateway).
  * 
  * @param entityId - Entity ID
  * @param updates - Identity field updates
@@ -114,6 +153,7 @@ export async function updateEntityIdentity(
   updates: {
     name?: string;
     contacts?: EntityContact[];
+    entityContacts?: EntityContact[];
     globalTags?: string[];
   }
 ): Promise<{ success: boolean; error?: string }> {
@@ -121,12 +161,16 @@ export async function updateEntityIdentity(
   await requireAuth();
 
   try {
-    const entityRef = adminDb.collection('entities').doc(entityId);
-    await entityRef.update({
-      ...updates,
-      updatedAt: new Date().toISOString()
+    const syncRes = await EntitySyncGateway.syncEntityAndWorkspaces(entityId, {
+      name: updates.name,
+      entityContacts: updates.entityContacts || updates.contacts,
+      globalTags: updates.globalTags,
     });
-    
+
+    if (!syncRes.success) {
+      return { success: false, error: syncRes.error };
+    }
+
     return { success: true };
   } catch (error: unknown) {
     console.error('[PROFILE] Entity identity update failed:', error);

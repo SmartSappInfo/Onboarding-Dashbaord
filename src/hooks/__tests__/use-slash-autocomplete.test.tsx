@@ -3,13 +3,24 @@ import { renderHook, act } from '@testing-library/react';
 import { useSlashAutocomplete } from '../use-slash-autocomplete';
 import type { TemplateVariable } from '@/lib/types';
 
-// Mock getComputedStyle for jsdom caret coordinates measurement
+import { calculateDropdownCoords } from '@/components/messaging/SlashInput';
+
+// Mock getComputedStyle and Range.prototype.getBoundingClientRect for jsdom caret coordinates measurement
 beforeEach(() => {
   window.getComputedStyle = vi.fn().mockImplementation(() => ({
     fontFamily: 'monospace',
     fontSize: '14px',
     lineHeight: '20px',
-  } as any));
+  } as unknown as CSSStyleDeclaration));
+
+  Range.prototype.getBoundingClientRect = vi.fn().mockReturnValue({
+    top: 100,
+    bottom: 124,
+    left: 200,
+    right: 210,
+    width: 10,
+    height: 24,
+  } as DOMRect);
 });
 
 const mockVariables: TemplateVariable[] = [
@@ -238,5 +249,127 @@ describe('useSlashAutocomplete Hook', () => {
     });
 
     expect(result.current.showAutocomplete).toBe(false);
+  });
+
+  describe('Caret-Anchored Slash Command Autocomplete Positioning', () => {
+    it('should position dropdown immediately below the slash caret line', () => {
+      const mockCaretRect = {
+        top: 120,
+        bottom: 144,
+        left: 280,
+        right: 290,
+        width: 10,
+        height: 24,
+      } as DOMRect;
+
+      const coords = calculateDropdownCoords(mockCaretRect, null);
+      // Immediately below row: caretRect.bottom + scrollY + 4 = 144 + 0 + 4 = 148
+      expect(coords.top).toBe(148);
+      // Aligned with slash character: caretRect.left = 280
+      expect(coords.left).toBe(280);
+      expect(coords.width).toBeGreaterThanOrEqual(280);
+      expect(coords.width).toBeLessThanOrEqual(360);
+    });
+
+    it('should flip dropdown cleanly above the row when near the bottom of viewport', () => {
+      // caretRect positioned at bottom of 768px viewport
+      const mockCaretRect = {
+        top: 680,
+        bottom: 704,
+        left: 280,
+        right: 290,
+        width: 10,
+        height: 24,
+      } as DOMRect;
+
+      const coords = calculateDropdownCoords(mockCaretRect, null);
+      // Flips above row: caretRect.top + scrollY - 260 - 4 = 680 - 264 = 416
+      expect(coords.top).toBe(416);
+      expect(coords.left).toBe(280);
+    });
+
+    it('should clamp dropdown horizontally so it never overflows viewport right edge', () => {
+      const mockCaretRect = {
+        top: 100,
+        bottom: 124,
+        left: 980,
+        right: 990,
+        width: 10,
+        height: 24,
+      } as DOMRect;
+
+      const coords = calculateDropdownCoords(mockCaretRect, null);
+      // Screen width is default 1024. Right margin is 16px.
+      // Maximum allowed left is 1024 - width - 16
+      expect(coords.left + coords.width).toBeLessThanOrEqual(1024 - 16);
+    });
+
+    it('should clamp dropdown horizontally so it never overflows viewport left edge', () => {
+      const mockCaretRect = {
+        top: 100,
+        bottom: 124,
+        left: 4,
+        right: 14,
+        width: 10,
+        height: 24,
+      } as DOMRect;
+
+      const coords = calculateDropdownCoords(mockCaretRect, null);
+      // Minimum left is 16px margin
+      expect(coords.left).toBeGreaterThanOrEqual(16);
+    });
+
+    it('should fall back safely to container bounds if caretRect cannot be measured', () => {
+      const containerDiv = document.createElement('div');
+      containerDiv.getBoundingClientRect = vi.fn().mockReturnValue({
+        top: 200,
+        bottom: 250,
+        left: 100,
+        right: 500,
+        width: 400,
+        height: 50,
+      } as DOMRect);
+
+      const coords = calculateDropdownCoords(null, containerDiv);
+      expect(coords.top).toBe(254);
+      expect(coords.left).toBe(100);
+    });
+
+    it('should measure caret in contentEditable div via getSlashCaretRect', () => {
+      const onChangeMock = vi.fn();
+      const { result } = renderHook(() =>
+        useSlashAutocomplete({
+          variables: mockVariables,
+          value: '',
+          onChange: onChangeMock,
+        })
+      );
+
+      const editor = document.createElement('div');
+      editor.contentEditable = 'true';
+      const textNode = document.createTextNode('Hello /');
+      editor.appendChild(textNode);
+      document.body.appendChild(editor);
+
+      // Create a Selection
+      const range = document.createRange();
+      range.setStart(textNode, 7);
+      range.setEnd(textNode, 7);
+      const selection = window.getSelection();
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+
+      act(() => {
+        result.current.handleInputChange({ target: editor } as unknown as React.ChangeEvent<HTMLInputElement>);
+      });
+
+      expect(result.current.showAutocomplete).toBe(true);
+
+      const caretRect = result.current.getSlashCaretRect(editor);
+      // JSDOM ranges return DOMRect objects
+      expect(caretRect).toBeDefined();
+
+      document.body.removeChild(editor);
+    });
   });
 });

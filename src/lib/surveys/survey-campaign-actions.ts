@@ -212,6 +212,8 @@ export async function dispatchSurveyDistributionCampaignAction(
                   survey_link: personalizedUrl,
                   survey_url: personalizedUrl,
                   survey_title: (surveyData.title as string) || 'Survey',
+                  contact_name: (contact.name as string) || 'Valued Contact',
+                  first_name: ((contact.name as string) || 'Valued Contact').trim().split(' ')[0],
                   recipient_name: (contact.name as string) || 'Valued Contact',
                 },
                 subject: campaign.messageConfig.subject,

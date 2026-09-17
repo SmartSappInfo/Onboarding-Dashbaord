@@ -27,6 +27,7 @@ import { isAuthorizedForWorkspace } from './survey-hydration-adapter';
 import { createDeal } from '@/app/actions/deal-actions';
 import { triggerAutomationProtocols } from '@/lib/automations/orchestrator';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { resolveTextWithMap } from '@/lib/utils/variable-replacer';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 
@@ -63,12 +64,18 @@ function interpolateCrmTemplate(
   }
 ): string {
   if (!template) return '';
-  return template
-    .replace(/\{\{\s*contact\.name\s*\}\}/gi, vars.contactName || vars.entityName || 'Respondent')
-    .replace(/\{\{\s*entity\.name\s*\}\}/gi, vars.entityName || vars.contactName || 'Lead')
-    .replace(/\{\{\s*survey\.title\s*\}\}/gi, vars.surveyTitle || 'Survey')
-    .replace(/\{\{\s*score\s*\}\}/gi, String(vars.score ?? 0))
-    .replace(/\{\{\s*responseId\s*\}\}/gi, vars.responseId || '');
+  const map = new Map<string, unknown>([
+    ['contact_name', vars.contactName || vars.entityName || 'Respondent'],
+    ['contact.name', vars.contactName || vars.entityName || 'Respondent'],
+    ['entity_name', vars.entityName || vars.contactName || 'Lead'],
+    ['entity.name', vars.entityName || vars.contactName || 'Lead'],
+    ['survey_title', vars.surveyTitle || 'Survey'],
+    ['survey.title', vars.surveyTitle || 'Survey'],
+    ['score', String(vars.score ?? 0)],
+    ['responseId', vars.responseId || ''],
+    ['response_id', vars.responseId || ''],
+  ]);
+  return resolveTextWithMap(template, map, false);
 }
 
 /**

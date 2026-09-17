@@ -23,6 +23,40 @@ export interface ValidationError {
   fixAction?: ValidationFixAction;
 }
 
+/**
+ * Standard registry of deprecated variable tokens across the system,
+ * mapping each deprecated token to its canonical snake_case replacement.
+ */
+export const DEPRECATED_VARIABLES_MAP: Record<string, { replacement: string; reason: string }> = {
+  recipient_name: { replacement: 'contact_name', reason: 'Deprecated: Use canonical contact_name instead' },
+  recipient_email: { replacement: 'contact_email', reason: 'Deprecated: Use canonical contact_email instead' },
+  recipient_phone: { replacement: 'contact_phone', reason: 'Deprecated: Use canonical contact_phone instead' },
+  recipient_role: { replacement: 'contact_role', reason: 'Deprecated: Use canonical contact_role instead' },
+  recipient_first_name: { replacement: 'first_name', reason: 'Deprecated: Use canonical first_name instead' },
+  CURRENT_CONTACT_NAME: { replacement: 'contact_name', reason: 'Deprecated: Use lowercase canonical contact_name' },
+  CURRENT_CONTACT_EMAIL: { replacement: 'contact_email', reason: 'Deprecated: Use lowercase canonical contact_email' },
+  CURRENT_CONTACT_PHONE: { replacement: 'contact_phone', reason: 'Deprecated: Use lowercase canonical contact_phone' },
+  FIRST_NAME: { replacement: 'first_name', reason: 'Deprecated: Use lowercase canonical first_name' },
+  org_name: { replacement: 'organization_name', reason: 'Deprecated: Use canonical organization_name' },
+  billingAddress: { replacement: 'billing_address', reason: 'Deprecated: Use canonical snake_case billing_address' },
+  subscriptionPackageId: { replacement: 'subscription_package_id', reason: 'Deprecated: Use canonical snake_case subscription_package_id' },
+  discountPercentage: { replacement: 'discount_percentage', reason: 'Deprecated: Use canonical snake_case discount_percentage' },
+  subscriptionRate: { replacement: 'subscription_rate', reason: 'Deprecated: Use canonical snake_case subscription_rate' },
+  arrearsBalance: { replacement: 'arrears_balance', reason: 'Deprecated: Use canonical snake_case arrears_balance' },
+  creditBalance: { replacement: 'credit_balance', reason: 'Deprecated: Use canonical snake_case credit_balance' },
+  currentNeeds: { replacement: 'current_needs', reason: 'Deprecated: Use canonical snake_case current_needs' },
+  currentChallenges: { replacement: 'current_challenges', reason: 'Deprecated: Use canonical snake_case current_challenges' },
+  digitalAddress: { replacement: 'digital_address', reason: 'Deprecated: Use canonical snake_case digital_address' },
+  googleMapLocation: { replacement: 'google_map_location', reason: 'Deprecated: Use canonical snake_case google_map_location' },
+  googleBusinessProfile: { replacement: 'google_business_profile', reason: 'Deprecated: Use canonical snake_case google_business_profile' },
+  contract_link: { replacement: 'agreement_url', reason: 'Deprecated: Use canonical agreement_url' },
+  contract_name: { replacement: 'agreement_name', reason: 'Deprecated: Use canonical agreement_name' },
+  contract_status: { replacement: 'agreement_status', reason: 'Deprecated: Use canonical agreement_status' },
+  date: { replacement: 'meeting_date', reason: 'Deprecated alias: Use meeting_date' },
+  time: { replacement: 'meeting_time', reason: 'Deprecated alias: Use meeting_time' },
+  link: { replacement: 'meeting_link', reason: 'Deprecated alias: Use meeting_link or action_link' },
+};
+
 function levenshteinDistance(a: string, b: string): number {
   const m = a.length;
   const n = b.length;
@@ -181,6 +215,24 @@ export function validateTemplateVariables(
 
     // 2b. WhatsApp positional numeric tokens (e.g. {{1}}, {{2}})
     if (template.channel === 'whatsapp' && /^\d+$/.test(varName)) {
+      continue;
+    }
+
+    // 2c. Check if variable is deprecated (FER Protocol - flag with 1-click replacement)
+    const deprecatedInfo = DEPRECATED_VARIABLES_MAP[varName];
+    if (deprecatedInfo) {
+      errors.push({
+        type: 'warning',
+        variable: rawVarName,
+        message: `Variable "{{${rawVarName}}}" is deprecated. ${deprecatedInfo.reason}.`,
+        fixAction: {
+          label: `Replace with {{${deprecatedInfo.replacement}}}`,
+          description: deprecatedInfo.reason,
+          actionType: 'replace_variable',
+          targetVariable: rawVarName,
+          suggestedVariable: deprecatedInfo.replacement,
+        },
+      });
       continue;
     }
 

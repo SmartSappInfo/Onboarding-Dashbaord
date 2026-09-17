@@ -3,7 +3,7 @@
 import { adminDb } from './firebase-admin';
 import { logActivity } from './activity-logger';
 import { revalidatePath } from 'next/cache';
-import type { EntityType, EntityContact, Tag } from './types';
+import type { EntityType, EntityContact, Tag, WorkspaceEntity } from './types';
 import crypto from 'crypto';
 import {
   enforceContactConstraints,
@@ -419,9 +419,6 @@ export async function createEntityAction(
 
     cleanUndefined(entityData);
 
-    // Save to Universal Identity Collection
-    await adminDb.collection('entities').doc(entityId).set(entityData);
-
     // Prepare Workspace Entity Document
     const workspaceEntityId = `${workspaceId}_${entityId}`;
     const workspaceEntityData = withEntitySearchFields({
@@ -457,11 +454,19 @@ export async function createEntityAction(
 
     cleanUndefined(workspaceEntityData);
 
-    // Save to Operational Workspace Collection
-    await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData);
+    // Save to Universal Identity Collection and Operational Workspace Collection
+    if (typeof adminDb.batch === 'function') {
+      const createBatch = adminDb.batch();
+      createBatch.set(adminDb.collection('entities').doc(entityId), entityData);
+      createBatch.set(adminDb.collection('workspace_entities').doc(workspaceEntityId), workspaceEntityData);
+      await createBatch.commit();
+    } else {
+      await adminDb.collection('entities').doc(entityId).set(entityData);
+      await adminDb.collection('workspace_entities').doc(workspaceEntityId).set(workspaceEntityData);
+    }
 
     // Project contacts into workspace_contacts (Phase 6.1) — read-model, never blocks.
-    await syncContactProjectionForWE(workspaceEntityData as any);
+    await syncContactProjectionForWE(workspaceEntityData as unknown as WorkspaceEntity);
 
     // Log Activity
     await logActivity({
@@ -699,12 +704,21 @@ export async function updateEntityAction(
       entityUpdate.onlinePresence = data.onlinePresence;
     }
 
-    // 3. Update Universal Identity Collection
+    // 3. Update Universal Identity Collection and Workspace Entities (Operational)
+    const hasBatch = typeof adminDb.batch === 'function';
+    const updateBatch = hasBatch ? adminDb.batch() : null;
+
     if (entitySnap.exists) {
+      if (updateBatch) {
+        updateBatch.update(entityRef, entityUpdate);
+      } else {
         await entityRef.update(entityUpdate);
+      }
     } else {
-        console.warn(`Entity ${entityId} not found in entities collection during update.`);
+      console.warn(`Entity ${entityId} not found in entities collection during update.`);
     }
+
+    const updatedWEPayloads: WorkspaceEntity[] = [];
 
     // 4. Update Workspace Entity (Operational)
     const weQuery = await adminDb.collection('workspace_entities')
@@ -713,10 +727,10 @@ export async function updateEntityAction(
       
     if (!weQuery.empty) {
       for (const doc of weQuery.docs) {
-        const weData = doc.data();
+        const weData = doc.data() as WorkspaceEntity;
         const isCurrentWorkspace = weData.workspaceId === workspaceId;
         
-        const weUpdate: any = withEntitySearchFields({
+        const weUpdate: Record<string, unknown> = withEntitySearchFields({
           displayName: displayName,
           // displayNameLower stamped by withEntitySearchFields (Phase 5.2)
           updatedAt: timestamp,
@@ -772,14 +786,26 @@ export async function updateEntityAction(
           }
         }
         
-        await doc.ref.update(weUpdate);
-
-        // Re-project contacts for this WE (Phase 6.1) — picks up contact, tag,
-        // zone, assignee and status changes. Merge current + delta for full state.
-        await syncContactProjectionForWE({ ...weData, ...weUpdate, id: doc.id } as any);
+        if (updateBatch) {
+          updateBatch.update(doc.ref, weUpdate);
+        } else {
+          await doc.ref.update(weUpdate);
+        }
+        updatedWEPayloads.push({ ...weData, ...weUpdate, id: doc.id } as WorkspaceEntity);
       }
     } else {
       console.warn(`No workspace entities found for entity ${entityId} during update.`);
+    }
+
+    // Commit entity and all workspace_entities atomically if using batch
+    if (updateBatch) {
+      await updateBatch.commit();
+    }
+
+    // Re-project contacts for this WE (Phase 6.1) — picks up contact, tag,
+    // zone, assignee and status changes. Merge current + delta for full state.
+    for (const weDoc of updatedWEPayloads) {
+      await syncContactProjectionForWE(weDoc);
     }
 
     // 6. Log Activity

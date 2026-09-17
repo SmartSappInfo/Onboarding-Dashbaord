@@ -275,6 +275,36 @@ export async function listPlatformIndustryFieldGroupsInternal(industry: Industry
       return { success: true, data: [] };
     }
 
+    // Also check for any new groups in registry that are missing in Firestore
+    const existingSlugs = new Set(snap.docs.map(d => d.data().slug));
+    const defaults = INDUSTRY_FIELD_REGISTRY[industry] || [];
+    const missingDefaults = defaults.filter(g => !existingSlugs.has(g.slug));
+
+    if (missingDefaults.length > 0) {
+      const batch = adminDb.batch();
+      const now = new Date().toISOString();
+      for (const group of missingDefaults) {
+        const docId = `${industry}_${group.slug}`;
+        const ref = adminDb.collection('platform_industry_field_groups').doc(docId);
+        batch.set(ref, {
+          ...group,
+          industry,
+          createdAt: now,
+          updatedAt: now,
+          updatedBy: 'system',
+        });
+      }
+      await batch.commit();
+
+      const updatedSnap = await adminDb
+        .collection('platform_industry_field_groups')
+        .where('industry', '==', industry)
+        .get();
+      const updatedGroups = updatedSnap.docs.map(doc => doc.data() as IndustryGroupDef);
+      updatedGroups.sort((a, b) => a.order - b.order);
+      return { success: true, data: updatedGroups };
+    }
+
     const groups = snap.docs.map(doc => doc.data() as IndustryGroupDef);
     // Sort groups by 'order' asc
     groups.sort((a, b) => a.order - b.order);

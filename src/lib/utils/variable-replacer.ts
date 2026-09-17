@@ -42,14 +42,20 @@ export function resolveTextWithMap(
     if (cleanKey === 'entity.name' || cleanKey === 'entity_name' || cleanKey === 'school.name' || cleanKey === 'school_name' || cleanKey === 'schoolName') {
       possibleKeys.push('entity_name', 'entity.name', 'entityName', 'displayName', 'organization_name', 'company', 'school_name', 'schoolName');
     }
-    if (cleanKey === 'contact.name' || cleanKey === 'contact_name' || cleanKey === 'contactName') {
-      possibleKeys.push('contactName', 'name', 'recipient_name', 'contact_name');
+    if (cleanKey === 'contact.name' || cleanKey === 'contact_name' || cleanKey === 'contactName' || cleanKey === 'recipient_name') {
+      possibleKeys.push('contact_name', 'contactName', 'name', 'recipient_name');
     }
-    if (cleanKey === 'contact.email' || cleanKey === 'contact_email' || cleanKey === 'contactEmail' || cleanKey === 'email') {
-      possibleKeys.push('contact_email', 'contactEmail', 'email');
+    if (cleanKey === 'first_name' || cleanKey === 'recipient_first_name') {
+      possibleKeys.push('first_name', 'recipient_first_name', 'firstName');
     }
-    if (cleanKey === 'contact.phone' || cleanKey === 'contact_phone' || cleanKey === 'contactPhone' || cleanKey === 'phone') {
-      possibleKeys.push('contact_phone', 'contactPhone', 'phone');
+    if (cleanKey === 'contact.email' || cleanKey === 'contact_email' || cleanKey === 'contactEmail' || cleanKey === 'email' || cleanKey === 'recipient_email') {
+      possibleKeys.push('contact_email', 'contactEmail', 'email', 'recipient_email');
+    }
+    if (cleanKey === 'contact.phone' || cleanKey === 'contact_phone' || cleanKey === 'contactPhone' || cleanKey === 'phone' || cleanKey === 'recipient_phone') {
+      possibleKeys.push('contact_phone', 'contactPhone', 'phone', 'recipient_phone');
+    }
+    if (cleanKey === 'contact_role' || cleanKey === 'recipient_role') {
+      possibleKeys.push('contact_role', 'recipient_role', 'contactRole');
     }
 
     // 1. Try to resolve variable value from Map

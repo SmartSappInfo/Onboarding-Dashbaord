@@ -34,6 +34,19 @@ export function normalizeContactType(label: string): string {
 
 // ─── Core Resolvers ───────────────────────────────────────────────────
 
+interface LegacyEntityContact {
+  id?: string;
+  name?: string;
+  email?: string;
+  phone?: string;
+  typeKey?: string;
+  typeLabel?: string;
+  role?: string;
+  isPrimary?: boolean;
+  isSignatory?: boolean;
+  order?: number;
+}
+
 /**
  * Resolves entityContacts from any entity-shaped object.
  * Resolves entity contacts from the entityContacts array.
@@ -48,19 +61,18 @@ export function resolveEntityContacts(
       const isPrimary = contact.isPrimary !== undefined ? contact.isPrimary : (isRolePrimary || index === 0);
 
       // If role was stored as 'primary', sanitize the role title so 'primary' isn't treated as a job title
+      let typeKey = contact.typeKey;
+      let typeLabel = contact.typeLabel;
+
       if (isRolePrimary) {
-        const defaultRoleKey = entity.entityType === 'institution' ? 'administrator' : 'contact';
-        const defaultRoleLabel = entity.entityType === 'institution' ? 'Administrator' : 'Contact';
-        return {
-          ...contact,
-          typeKey: defaultRoleKey,
-          typeLabel: defaultRoleLabel,
-          isPrimary,
-        };
+        typeKey = entity.entityType === 'institution' ? 'administrator' : 'contact';
+        typeLabel = entity.entityType === 'institution' ? 'Administrator' : 'Contact';
       }
 
       return {
         ...contact,
+        typeKey,
+        typeLabel,
         isPrimary,
       };
     });
@@ -68,7 +80,7 @@ export function resolveEntityContacts(
 
   // Fallback to legacy contacts array if present
   if (entity.contacts && Array.isArray(entity.contacts) && entity.contacts.length > 0) {
-    return entity.contacts.map((c: any, index: number) => {
+    return (entity.contacts as LegacyEntityContact[]).map((c: LegacyEntityContact, index: number) => {
       const isRolePrimary = c.typeKey?.toLowerCase() === 'primary' || c.typeLabel?.trim().toLowerCase() === 'primary' || c.role?.toLowerCase() === 'primary';
       const isPrimary = c.isPrimary !== undefined ? c.isPrimary : (isRolePrimary || index === 0);
       const defaultRoleKey = entity.entityType === 'institution' ? 'administrator' : 'contact';
@@ -280,11 +292,20 @@ export function getRecipientContactVariables(
   }
 
   if (targetContact) {
+    const firstName = (targetContact.name || '').trim().split(' ')[0] || '';
+    // Canonical contact variables
+    vars['contact_name'] = targetContact.name || '';
+    vars['contact_email'] = targetContact.email || '';
+    vars['contact_phone'] = targetContact.phone || '';
+    vars['contact_role'] = targetContact.typeLabel || targetContact.typeKey || '';
+    vars['first_name'] = firstName;
+
+    // Backward compatibility fallback for legacy recipient_* variables
     vars['recipient_name'] = targetContact.name || '';
     vars['recipient_email'] = targetContact.email || '';
     vars['recipient_phone'] = targetContact.phone || '';
     vars['recipient_role'] = targetContact.typeLabel || targetContact.typeKey || '';
-    vars['recipient_first_name'] = (targetContact.name || '').split(' ')[0] || '';
+    vars['recipient_first_name'] = firstName;
   }
 
   return vars;

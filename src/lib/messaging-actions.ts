@@ -1375,15 +1375,19 @@ export async function getSimulationVariablesAction(params: {
       }
 
       if (activeContact) {
+        const firstName = (activeContact.name || '').trim().split(' ')[0] || '';
         variables.contact_name = activeContact.name || '';
         variables.contact_email = activeContact.email || '';
         variables.contact_phone = activeContact.phone || '';
+        variables.contact_role = activeContact.typeLabel || '';
+        variables.first_name = firstName;
         
+        // Backward compatibility fallback during transition
         variables.recipient_name = activeContact.name || '';
         variables.recipient_email = activeContact.email || '';
         variables.recipient_phone = activeContact.phone || '';
         variables.recipient_role = activeContact.typeLabel || '';
-        variables.recipient_first_name = (activeContact.name || '').split(' ')[0];
+        variables.recipient_first_name = firstName;
       }
 
       // Dynamic role/primary/signatory variables
@@ -1401,8 +1405,12 @@ export async function getSimulationVariablesAction(params: {
         if (!contractSnap.empty) {
           const contractData = contractSnap.docs[0].data();
           const baseUrl = getBaseUrl();
-          variables.agreement_url = `${baseUrl}/forms/${contractData.pdfId}?entityId=${contact.id}`;
+          const agrUrl = `${baseUrl}/forms/${contractData.pdfId}?entityId=${contact.id}`;
+          variables.agreement_url = agrUrl;
+          variables.contract_link = agrUrl;
+          variables.agreement_name = contractData.name || '';
           variables.contract_name = contractData.name || '';
+          variables.agreement_status = contractData.status || '';
           variables.contract_status = contractData.status || '';
         }
       } catch (e) {
@@ -1422,6 +1430,10 @@ export async function getSimulationVariablesAction(params: {
           Object.entries(bucket).forEach(([k, v]) => {
             if (v !== undefined) {
               variables[k] = v;
+              const snakeKey = k.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+              if (snakeKey !== k) {
+                variables[snakeKey] = v;
+              }
             }
           });
         }

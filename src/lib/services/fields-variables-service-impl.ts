@@ -158,6 +158,21 @@ export class FieldsVariablesService {
     safePush({ key: 'contact_email', label: 'Contact Email', ...coreContacts[1], fallbackValue: 'info@domain.com' });
     safePush({ key: 'contact_phone', label: 'Contact Phone', ...coreContacts[2], fallbackValue: 'our contact number' });
     safePush({ key: 'contact_role', label: 'Contact Role', ...coreContacts[3], fallbackValue: 'User' });
+    safePush({
+      key: 'first_name',
+      label: 'Contact First Name',
+      category: 'core',
+      dataType: 'string',
+      description: 'First name of the active contact',
+      source: 'static',
+      groupId: 'entity_contacts',
+      groupName: 'Contacts',
+      groupSlug: 'entity_contacts',
+      groupOrder: 5,
+      groupIcon: 'Users',
+      isCustom: false,
+      fallbackValue: 'there',
+    });
 
     // 4. Load Specific Contact Roles (Category: contact_specific)
     try {
@@ -247,7 +262,7 @@ export class FieldsVariablesService {
       PLATFORM_FIELD_GROUPS.forEach((g) => {
         groupMap.set(g.slug, { name: g.name, slug: g.slug, order: g.order, icon: g.icon || 'Database' });
       });
-      groupsSnap.docs.forEach((doc) => {
+      (groupsSnap?.docs || []).forEach((doc) => {
         const d = doc.data();
         if (d) {
           const info = { name: d.name || 'Custom Group', slug: d.slug || doc.id, order: d.order ?? 20, icon: d.icon || 'Folder' };
@@ -256,9 +271,12 @@ export class FieldsVariablesService {
         }
       });
 
-      fieldsSnap.docs.forEach((doc) => {
+      (fieldsSnap?.docs || []).forEach((doc) => {
         const field = doc.data();
         if (!field || !field.variableName) return;
+
+        // Skip deprecated recipient_* variables from app_fields
+        if (field.variableName.startsWith('recipient_')) return;
 
         // Skip fields that don't match the workspace industry or contactScope
         const matchesScope = !field.compatibilityScope || 
@@ -332,9 +350,9 @@ export class FieldsVariablesService {
           source: 'dynamic_form',
           featureContext: 'survey',
           groupId: 'surveys',
-          groupName: 'Survey Details & Outcomes',
+          groupName: 'Surveys & Feedback',
           groupSlug: 'surveys',
-          groupOrder: 0,
+          groupOrder: 52,
           groupIcon: 'ClipboardList',
           isCustom: false,
         });
@@ -596,14 +614,19 @@ export class FieldsVariablesService {
           const extEntity = entityData as ExtendedEntity;
           valuesMap.set('entity_name', extEntity.name ?? '');
 
+          // Populate entityContacts immediately from in-memory entity data
+          entityContacts = extEntity.entityContacts || [];
+
           // Resolve entity fields if initials or geographical info are present
           if (extEntity.initials) valuesMap.set('entity_initials', extEntity.initials);
 
-          // Resolve current situation (needs, challenges) explicitly from root
+          // Resolve current situation (needs, challenges) explicitly from root (both canonical snake_case and legacy camelCase)
           if (extEntity.currentNeeds !== undefined) {
+            valuesMap.set('current_needs', String(extEntity.currentNeeds));
             valuesMap.set('currentNeeds', String(extEntity.currentNeeds));
           }
           if (extEntity.currentChallenges !== undefined) {
+            valuesMap.set('current_challenges', String(extEntity.currentChallenges));
             valuesMap.set('currentChallenges', String(extEntity.currentChallenges));
           }
 
@@ -628,7 +651,13 @@ export class FieldsVariablesService {
           buckets.forEach((bucket) => {
             if (bucket && typeof bucket === 'object') {
               Object.entries(bucket).forEach(([k, v]) => {
-                valuesMap.set(k, v !== null && v !== undefined ? String(v) : '');
+                const valStr = v !== null && v !== undefined ? String(v) : '';
+                valuesMap.set(k, valStr);
+                // Convert camelCase key to canonical snake_case if different (e.g. subscriptionRate -> subscription_rate)
+                const snakeKey = k.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
+                if (snakeKey !== k && !valuesMap.has(snakeKey)) {
+                  valuesMap.set(snakeKey, valStr);
+                }
               });
             }
           });
@@ -660,14 +689,16 @@ export class FieldsVariablesService {
             valuesMap.set('entity_link', `${baseUrl}/admin/entities/${targetEntityId}`);
             valuesMap.set('entity_dashboard_link', `${baseUrl}/admin/entities/${targetEntityId}`);
 
-            const { resolveTagVariables } = await import('../messaging-actions');
-            const tagVars = await resolveTagVariables(targetEntityId, 'school', context.workspaceId);
-            Object.entries(tagVars).forEach(([k, v]) => {
-              valuesMap.set(k, String(v));
-            });
+            try {
+              const { resolveTagVariables } = await import('../messaging-actions');
+              const tagVars = await resolveTagVariables(targetEntityId, 'school', context.workspaceId);
+              Object.entries(tagVars).forEach(([k, v]) => {
+                valuesMap.set(k, String(v));
+              });
+            } catch (tagErr) {
+              console.warn('[FieldsVariablesService] Error fetching tag variables:', tagErr);
+            }
           }
-
-          entityContacts = entityData.entityContacts || [];
         }
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching entity data for rendering:', err);
@@ -702,6 +733,15 @@ export class FieldsVariablesService {
       valuesMap.set('contact_email', activeContact.email || '');
       valuesMap.set('contact_phone', activeContact.phone || '');
       valuesMap.set('contact_role', activeContact.typeLabel || activeContact.typeKey || '');
+      const firstName = (activeContact.name || '').trim().split(' ')[0] || '';
+      valuesMap.set('first_name', firstName);
+
+      // Backward compatibility fallback for legacy recipient_* variables (safety during FER)
+      valuesMap.set('recipient_name', activeContact.name || '');
+      valuesMap.set('recipient_email', activeContact.email || '');
+      valuesMap.set('recipient_phone', activeContact.phone || '');
+      valuesMap.set('recipient_role', activeContact.typeLabel || activeContact.typeKey || '');
+      valuesMap.set('recipient_first_name', firstName);
 
       // Populate explicit contact roles (primary, signatory, custom roles)
       valuesMap.set('contact_name_primary', primaryContact.name || '');
@@ -1207,9 +1247,13 @@ export class FieldsVariablesService {
     if (context.userId && userSnap?.exists) {
       try {
         const user = userSnap.data()!;
-        valuesMap.set('user_name', user.name ?? user.fullName ?? user.displayName ?? '');
+        const resolvedName = user.name ?? user.fullName ?? user.displayName ?? '';
+        valuesMap.set('user_name', resolvedName);
+        valuesMap.set('sender_name', resolvedName);
         valuesMap.set('user_email', user.email ?? '');
+        valuesMap.set('sender_email', user.email ?? '');
         valuesMap.set('user_phone', user.phone ?? '');
+        valuesMap.set('sender_phone', user.phone ?? '');
       } catch (err) {
         console.warn('[FieldsVariablesService] Error fetching user data for rendering:', err);
       }
@@ -1278,8 +1322,11 @@ export class FieldsVariablesService {
       valuesMap.set('contract_status', valuesMap.get('agreement_status') ?? '');
     }
 
+    if (!valuesMap.has('sender_name')) {
+      valuesMap.set('sender_name', valuesMap.get('user_name') ?? valuesMap.get('assigned_to') ?? '');
+    }
     if (!valuesMap.has('agent_name')) {
-      valuesMap.set('agent_name', valuesMap.get('user_name') ?? valuesMap.get('assigned_to') ?? '');
+      valuesMap.set('agent_name', valuesMap.get('sender_name') ?? valuesMap.get('user_name') ?? valuesMap.get('assigned_to') ?? '');
     }
 
     // 9.5. Populate encrypted_recipient_token
@@ -1325,6 +1372,20 @@ export class FieldsVariablesService {
     valuesMap.set('CURRENT_CONTACT_EMAIL', valuesMap.get('contact_email') || '');
     valuesMap.set('AGENT_NAME', valuesMap.get('user_name') || valuesMap.get('assigned_to') || 'Agent');
     valuesMap.set('FIRST_NAME', valuesMap.get('first_name') || (valuesMap.get('contact_name') ? String(valuesMap.get('contact_name')).split(' ')[0] : ''));
+
+    // Canonical first_name fallback if missing
+    if (!valuesMap.has('first_name') || !valuesMap.get('first_name')) {
+      const activeName = (valuesMap.get('contact_name') || valuesMap.get('respondent_name') || valuesMap.get('entity_name') || '') as string;
+      const firstName = activeName.trim().split(' ')[0] || 'there';
+      valuesMap.set('first_name', firstName);
+    }
+
+    // Backward compatibility for legacy recipient_* variables during transition
+    if (!valuesMap.has('recipient_name')) valuesMap.set('recipient_name', valuesMap.get('contact_name') || '');
+    if (!valuesMap.has('recipient_email')) valuesMap.set('recipient_email', valuesMap.get('contact_email') || '');
+    if (!valuesMap.has('recipient_phone')) valuesMap.set('recipient_phone', valuesMap.get('contact_phone') || '');
+    if (!valuesMap.has('recipient_role')) valuesMap.set('recipient_role', valuesMap.get('contact_role') || '');
+    if (!valuesMap.has('recipient_first_name')) valuesMap.set('recipient_first_name', valuesMap.get('first_name') || '');
 
     // Global Survey & Respondent Fallbacks to prevent raw tokens in rendered text
     if (!valuesMap.get('respondent_name') || valuesMap.get('respondent_name') === '') {
