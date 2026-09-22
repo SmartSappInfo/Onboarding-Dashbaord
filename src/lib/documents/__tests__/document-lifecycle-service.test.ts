@@ -29,8 +29,8 @@ vi.mock('@/lib/firebase-admin', () => ({
               docs: [
                 { id: 'v1', ref: { id: 'v1' }, data: () => ({ status: 'published', createdAt: '2026-01-01T00:00:00Z' }) },
                 { id: 'v2', ref: { id: 'v2' }, data: () => ({ status: 'published', createdAt: '2026-01-01T00:00:00Z' }) },
-                { id: 'v3', ref: { id: 'v3' }, data: () => ({ status: 'superseded', createdAt: '2025-01-01T00:00:00Z' }) }, // >30 days
-                { id: 'v4', ref: { id: 'v4' }, data: () => ({ status: 'superseded', createdAt: '2026-08-20T00:00:00Z' }) }, // recent
+                { id: 'v3', ref: { id: 'v3' }, data: () => ({ status: 'superseded', createdAt: '2025-01-01T00:00:00Z' }) }, // >30 days (eligible)
+                { id: 'v4', ref: { id: 'v4' }, data: () => ({ status: 'superseded', createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString() }) }, // recent (<30 days)
               ],
             };
           }
