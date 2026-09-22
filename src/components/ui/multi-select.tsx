@@ -29,6 +29,7 @@ interface MultiSelectProps {
   className?: string;
   maxCount?: number;
   onCreate?: (value: string) => void;
+  disabled?: boolean;
 }
 
 /**
@@ -45,6 +46,7 @@ export function MultiSelect({
   className,
   maxCount = 2,
   onCreate,
+  disabled = false,
 }: MultiSelectProps) {
   const currentValues = value ?? selected ?? [];
   const selectedSet = React.useMemo(() => new Set(currentValues), [currentValues]);
@@ -76,6 +78,7 @@ export function MultiSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
+          disabled={disabled}
           className={cn(
             'w-full justify-between h-auto min-h-10 border-input bg-background hover:bg-background transition-all',
             className

@@ -86,6 +86,7 @@ interface InteractiveScriptViewProps {
   hideSidebars?: boolean;
   activeNodeId?: string | null;
   onActiveNodeChange?: (nodeId: string | null) => void;
+  className?: string;
 }
 
 export function InteractiveScriptView({
@@ -102,7 +103,9 @@ export function InteractiveScriptView({
   hideSidebars = false,
   activeNodeId: controlledActiveNodeId,
   onActiveNodeChange,
+  className,
 }: InteractiveScriptViewProps) {
+  const [mobileTab, setMobileTab] = React.useState<'script' | 'steps' | 'tools'>('script');
   const { zoom, zoomIn, zoomOut, reset, canZoomIn, canZoomOut } = useZoom();
   const firestore = useFirestore();
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
@@ -1059,6 +1062,7 @@ export function InteractiveScriptView({
     setSelectedActionId(null);
     setSelectedOutcomeId(null);
     setEnteredObjectionFromChoice(false);
+    setMobileTab('script');
   }, [activeNodeId]);
 
   const handleGoBack = React.useCallback(() => {
@@ -1268,6 +1272,8 @@ export function InteractiveScriptView({
     // 3. If we are on the end node
     if (middleNode.type === 'end') {
       return [() => {
+        setRightTab('outcomes');
+        setMobileTab('tools');
         onEndCall?.();
         resetSimulation();
       }];
@@ -1433,6 +1439,7 @@ export function InteractiveScriptView({
                       setRightTab('actions');
                       setActionStatus(isTriggered(node.id) ? 'success' : 'idle');
                       setActionError(null);
+                      setMobileTab('script');
                     } else {
                       setSelectedOutcomeId(node.id);
                       setSelectedActionId(null);
@@ -1442,6 +1449,7 @@ export function InteractiveScriptView({
                       setRightTab('outcomes');
                       setTriggerStatus(isTriggered(node.id) ? 'success' : 'idle');
                       setTriggerError(null);
+                      setMobileTab('script');
                     }
                   }}
                   className={cn(
@@ -1838,41 +1846,100 @@ export function InteractiveScriptView({
   }
 
   return (
-    <div className="grid grid-cols-12 gap-4 min-h-[600px] h-[calc(100dvh-220px)] overflow-hidden text-foreground">
-      {/* 1. Left Panel: Main Block Outlines */}
-      <div className="col-span-3 h-full flex flex-col bg-card/30 border border-border rounded-2xl overflow-hidden shadow-sm">
-        <div className="p-3.5 bg-muted/30 border-b border-border flex items-center justify-between shrink-0">
-          <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">Main Flow Steps</span>
-          <Badge className="bg-primary/10 text-primary text-[8px] font-extrabold border-none px-2 py-0.5">{orderedMainNodes.length}</Badge>
-        </div>
-        <div className="flex-grow overflow-y-auto p-2.5 space-y-1 scrollbar-thin select-none">
-          {orderedMainNodes.map((node) => {
-            const isActive = node.id === activeNodeId;
-            return (
-              <button
-                key={node.id}
-                type="button"
-                onClick={() => handleMainNodeClick(node.id)}
-                className={cn(
-                  "w-full flex items-center gap-2.5 p-3 rounded-xl text-left transition-all border text-xs",
-                  isActive
-                    ? "bg-primary text-primary-foreground border-primary font-black shadow-md shadow-primary/10"
-                    : "bg-transparent text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {getNodeIcon(node.type ?? '')}
-                <span className="truncate">{node.data.label || `Step (${node.type})`}</span>
-              </button>
-            );
-          })}
-        </div>
+    <div className={cn("flex flex-col h-full min-h-0 overflow-hidden text-foreground", className)}>
+      {/* Mobile Segmented Navigation Bar (< lg) */}
+      <div className="lg:hidden flex items-center justify-between p-1 bg-muted/40 border border-border/70 rounded-xl mb-2 gap-1 shrink-0">
+        <button
+          type="button"
+          onClick={() => setMobileTab('script')}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all active:scale-[0.97] min-h-[44px]",
+            mobileTab === 'script'
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Layers className="h-4 w-4 text-primary shrink-0" />
+          <span className="truncate">Script</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('steps')}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all active:scale-[0.97] min-h-[44px]",
+            mobileTab === 'steps'
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" />
+          <span className="truncate">Steps ({orderedMainNodes.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setMobileTab('tools')}
+          className={cn(
+            "flex-1 flex items-center justify-center gap-1.5 py-2 px-2 rounded-lg text-xs font-bold transition-all active:scale-[0.97] min-h-[44px]",
+            mobileTab === 'tools'
+              ? "bg-card text-foreground shadow-xs border border-border"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+        >
+          <Zap className="h-4 w-4 text-amber-500 shrink-0" />
+          <span className="truncate">Tools & Outcomes</span>
+        </button>
       </div>
 
-      {/* 2. Middle Panel: Dialogue Script Content Sheet */}
-      <div className="col-span-6 h-full flex flex-col">
-        {middlePanel}
-      </div>
-      <div className="col-span-3 h-full flex flex-col border border-border bg-card/30 rounded-2xl overflow-hidden shadow-sm">
+      {/* Main Grid: Responsive 3 columns on lg+, Stacked/Filtered on mobile */}
+      <div className="lg:grid lg:grid-cols-12 lg:gap-4 flex-1 min-h-0 overflow-hidden">
+        {/* 1. Left Panel: Main Block Outlines */}
+        <div className={cn(
+          "h-full flex-col bg-card/30 border border-border rounded-2xl overflow-hidden shadow-xs lg:col-span-3 min-h-0",
+          mobileTab === 'steps' ? "flex flex-1" : "hidden lg:flex"
+        )}>
+          <div className="p-3.5 bg-muted/30 border-b border-border flex items-center justify-between shrink-0">
+            <span className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground">Main Flow Steps</span>
+            <Badge className="bg-primary/10 text-primary text-[8px] font-extrabold border-none px-2 py-0.5">{orderedMainNodes.length}</Badge>
+          </div>
+          <div className="flex-grow overflow-y-auto p-2.5 space-y-1.5 scrollbar-thin select-none">
+            {orderedMainNodes.map((node) => {
+              const isActive = node.id === activeNodeId;
+              return (
+                <button
+                  key={node.id}
+                  type="button"
+                  onClick={() => {
+                    handleMainNodeClick(node.id);
+                    setMobileTab('script');
+                  }}
+                  className={cn(
+                    "w-full flex items-center gap-2.5 p-3 rounded-xl text-left transition-all border text-xs min-h-[44px] active:scale-[0.97]",
+                    isActive
+                      ? "bg-primary text-primary-foreground border-primary font-black shadow-md shadow-primary/10"
+                      : "bg-transparent text-muted-foreground border-transparent hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  {getNodeIcon(node.type ?? '')}
+                  <span className="truncate">{node.data.label || `Step (${node.type})`}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 2. Middle Panel: Dialogue Script Content Sheet */}
+        <div className={cn(
+          "h-full flex-col lg:col-span-6 min-h-0 overflow-hidden",
+          mobileTab === 'script' ? "flex flex-1" : "hidden lg:flex"
+        )}>
+          {middlePanel}
+        </div>
+
+        {/* 3. Right Panel: Objections / Actions / Outcomes */}
+        <div className={cn(
+          "h-full flex-col border border-border bg-card/30 rounded-2xl overflow-hidden shadow-xs lg:col-span-3 min-h-0",
+          mobileTab === 'tools' ? "flex flex-1" : "hidden lg:flex"
+        )}>
         <Tabs value={rightTab} onValueChange={(val: string) => setRightTab(val as 'objections' | 'actions' | 'outcomes')} className="h-full flex flex-col m-0 p-0">
           <TabsList className="bg-muted/40 border-b border-border h-11 p-0.5 rounded-none gap-1 shrink-0">
             <TabsTrigger 
@@ -1983,5 +2050,6 @@ export function InteractiveScriptView({
         </Tabs>
       </div>
     </div>
+  </div>
   );
 }

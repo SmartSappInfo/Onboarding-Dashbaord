@@ -14,15 +14,15 @@ import {
   generateCampaignQueueAction,
   cloneCallCampaignAction,
   archiveCallCampaignAction,
+  importCallScriptAction,
   endCallCampaignAction,
-  importCallScriptAction
 } from '@/lib/call-centre-actions';
-import { extractPreviewText, isJsonGraph, parseGraph } from '@/lib/call-centre-graph';
+import { isJsonGraph, parseGraph } from '@/lib/call-centre-graph';
 import {
-  buildScriptExport,
   serializeScriptExport,
   slugifyScriptName,
   parseScriptExport,
+  buildScriptExport,
   CFLOW_EXTENSION,
   MAX_CFLOW_BYTES,
 } from '@/lib/call-script-portability';
@@ -31,8 +31,9 @@ import { useToast } from '@/hooks/use-toast';
 import { PageContainer } from '@/components/ui/page-container';
 import type { CallCampaign, CallScript } from '@/lib/types';
 import { useSetBreadcrumb } from '@/hooks/use-set-breadcrumb';
+import { ScriptThumbnailCard } from '@/components/call-centre/ScriptThumbnailCard';
 import { Button } from '@/components/ui/button';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -85,13 +86,10 @@ import {
   PhoneOff,
   UserCheck,
   BarChart3,
-  Phone,
-  Eye,
   MoreHorizontal,
   Settings,
   Archive,
   UserPlus,
-  Download,
   Upload
 } from 'lucide-react';
 
@@ -787,120 +785,19 @@ export function CallCentreClient({ defaultTab }: { defaultTab: string }) {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {scripts.map((script) => (
-                  <Card key={script.id} className="group relative border border-border transition-all duration-500 rounded-2xl overflow-hidden bg-card shadow-sm hover:shadow-xl flex flex-col h-[420px]">
-                    {/* Top Bar: Actions */}
-                    <div className="h-12 shrink-0 border-b border-border flex items-center justify-between px-4 bg-muted/30 transition-colors duration-500">
-                      <div className="flex items-center gap-1.5">
-                        <div className="p-1.5 rounded-lg border border-primary/20 bg-primary/10 text-primary">
-                          <FileText className="h-3 w-3" />
-                        </div>
-                        <span className="text-[8px] font-bold text-muted-foreground uppercase tracking-wider">Outbound Call Script</span>
-                        {script.source === 'imported' ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[7px] font-bold uppercase tracking-wider px-1.5 py-0 rounded border-amber-500/30 bg-amber-500/10 text-amber-500"
-                            title={script.importMeta?.importedAt ? `Imported ${new Date(script.importMeta.importedAt).toLocaleDateString()}` : 'Imported script'}
-                          >
-                            Imported
-                          </Badge>
-                        ) : null}
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                          onClick={() => setPreviewScript(script)}
-                          title="Preview Script"
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                        {canCreate && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-emerald-400 hover:text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-950/20"
-                            onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?scriptId=${script.id}`))}
-                            title="Use Script to Create Campaign"
-                          >
-                            <Play className="h-4 w-4 fill-current" />
-                          </Button>
-                        )}
-                        {canEdit && (
-                          <Button 
-                            variant="ghost" 
-                            size="icon" 
-                            className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                            onClick={() => router.push(wrapHref(`/admin/messaging/call-centre/scripts/new?id=${script.id}`))}
-                            title="Edit Script"
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 rounded-lg text-muted-foreground hover:text-foreground hover:bg-accent"
-                          onClick={() => handleExportScript(script)}
-                          title="Export Script (.cflow)"
-                        >
-                          <Download className="h-4 w-4" />
-                        </Button>
-                        {canDelete && (
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-rose-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 rounded-lg"
-                            onClick={() => handleDeleteScript(script.id)}
-                            title="Delete Script"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Middle: Dialogue Simulator Panel */}
-                    <div className="flex-1 overflow-hidden relative bg-muted/20 flex flex-col items-center justify-center p-4">
-                      <div className="w-full h-full bg-muted/40 rounded-xl p-4 flex flex-col justify-between gap-4 relative overflow-hidden group-hover:scale-[1.02] transition-transform duration-500 border border-border shadow-inner">
-                        <div className="absolute -right-4 -top-4 opacity-5 rotate-12 text-primary">
-                          <PhoneCall size={120} />
-                        </div>
-                        <div className="p-4 bg-background border border-border rounded-2xl shadow-sm backdrop-blur-sm flex-1 overflow-y-auto max-h-[160px] custom-scrollbar">
-                          <p className="text-[9px] font-bold text-foreground/80 leading-relaxed italic font-serif">
-                            &ldquo;{extractPreviewText(script.content) || 'Start editing this script...'}&rdquo;
-                          </p>
-                        </div>
-                        <div className="flex items-center justify-between opacity-40 border-t border-border pt-2 shrink-0">
-                          <div className="flex items-center gap-1">
-                            <Phone className="h-3 w-3 text-primary" />
-                            <span className="text-[7px] font-semibold text-foreground/70">Outbound Dial Preview</span>
-                          </div>
-                          <span className="text-[7px] font-semibold text-muted-foreground">Duration Est. ~2m</span>
-                        </div>
-                      </div>
-                      <div className="absolute inset-0 bg-transparent z-10" />
-                    </div>
-
-                    {/* Bottom: Info Card */}
-                    <CardHeader className="p-5 shrink-0 bg-card border-t border-border">
-                      <div className="min-w-0">
-                        <CardTitle className="text-sm font-semibold truncate text-card-foreground group-hover:text-primary transition-colors leading-tight tracking-tight">
-                          {script.name}
-                        </CardTitle>
-                        <p className="text-[9px] font-medium text-muted-foreground truncate mt-1">
-                          {script.description || 'Call outreach script template.'}
-                        </p>
-                        <div className="flex flex-wrap gap-1 mt-3 max-h-[48px] overflow-hidden">
-                          {script.variables.map(v => (
-                            <Badge key={v} variant="outline" className="text-[8px] font-bold tracking-wider px-1.5 py-0.5 rounded bg-muted border-border text-muted-foreground">
-                              {v}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
+                  <ScriptThumbnailCard
+                    key={script.id}
+                    mode="library"
+                    script={script}
+                    onPreview={(s) => setPreviewScript(s)}
+                    onUse={(s) => router.push(wrapHref(`/admin/messaging/call-centre/campaigns/new?scriptId=${s.id}`))}
+                    onEdit={(s) => router.push(wrapHref(`/admin/messaging/call-centre/scripts/new?id=${s.id}`))}
+                    onExport={(s) => handleExportScript(s)}
+                    onDelete={(id) => handleDeleteScript(id)}
+                    canCreate={canCreate}
+                    canEdit={canEdit}
+                    canDelete={canDelete}
+                  />
                 ))}
               </div>
             )}

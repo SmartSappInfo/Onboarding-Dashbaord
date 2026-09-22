@@ -41,7 +41,7 @@ vi.mock('../firebase-admin', () => {
                   organizationId: 'org-x',
                   name: 'SmartSapp',
                   channel: 'email',
-                  identifier: 'no-reply@smartsapp.com',
+                  identifier: 'no-reply@org-x.com',
                   isDefault: true,
                   isActive: true
                 })
@@ -57,6 +57,7 @@ vi.mock('../firebase-admin', () => {
                 id,
                 data: () => ({
                   name: 'Org X',
+                  resendDomain: 'org-x.com',
                   defaultSenderProfileIds: { email: 'default-profile' },
                 })
               })

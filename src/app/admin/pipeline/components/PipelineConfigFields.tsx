@@ -283,7 +283,10 @@ export function PipelineConfigFields({
             type="number"
             min={1}
             value={formData.defaultCloseDateOffsetValue}
-            onChange={(e) => onChange('defaultCloseDateOffsetValue', e.target.value === '' ? '' : parseInt(e.target.value, 10))}
+            onChange={(e) => {
+              const val = e.target.value === '' ? '' : parseInt(e.target.value, 10);
+              onChange('defaultCloseDateOffsetValue', isNaN(val as number) ? '' : val);
+            }}
             placeholder="e.g. 30"
             disabled={disabled}
             className="w-28 min-h-[44px] rounded-xl text-xs font-medium"
