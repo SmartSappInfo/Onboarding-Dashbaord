@@ -36,33 +36,37 @@ export async function resolveMicrosoftCredentials(
   orgId: string
 ): Promise<{ clientId: string; clientSecret: string }> {
   // 1. Check workspace configuration
-  const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
-  if (workspaceDoc.exists) {
-    const wsData = workspaceDoc.data();
-    if (wsData?.microsoftClientId && wsData?.microsoftClientSecret) {
-      return {
-        clientId: wsData.microsoftClientId as string,
-        clientSecret: wsData.microsoftClientSecret as string,
-      };
+  if (workspaceId) {
+    const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (workspaceDoc.exists) {
+      const wsData = workspaceDoc.data();
+      if (wsData?.microsoftClientId && wsData?.microsoftClientSecret) {
+        return {
+          clientId: (wsData.microsoftClientId as string).trim(),
+          clientSecret: decryptToken(wsData.microsoftClientSecret as string).trim(),
+        };
+      }
     }
   }
 
   // 2. Check organization configuration
-  const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
-  if (orgDoc.exists) {
-    const orgData = orgDoc.data();
-    if (orgData?.microsoftClientId && orgData?.microsoftClientSecret) {
-      return {
-        clientId: orgData.microsoftClientId as string,
-        clientSecret: orgData.microsoftClientSecret as string,
-      };
+  if (orgId) {
+    const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+    if (orgDoc.exists) {
+      const orgData = orgDoc.data();
+      if (orgData?.microsoftClientId && orgData?.microsoftClientSecret) {
+        return {
+          clientId: (orgData.microsoftClientId as string).trim(),
+          clientSecret: decryptToken(orgData.microsoftClientSecret as string).trim(),
+        };
+      }
     }
   }
 
   // 3. Fallback to system env credentials
   return {
-    clientId: process.env.MICROSOFT_CLIENT_ID || '',
-    clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
+    clientId: (process.env.MICROSOFT_CLIENT_ID || '').trim(),
+    clientSecret: (process.env.MICROSOFT_CLIENT_SECRET || '').trim(),
   };
 }
 
@@ -74,8 +78,13 @@ export async function getMicrosoftAuthUrl(
   workspaceId: string,
   orgId: string
 ): Promise<string> {
-  const { clientId } = await resolveMicrosoftCredentials(workspaceId, orgId);
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/microsoft/callback`;
+  const { clientId, clientSecret } = await resolveMicrosoftCredentials(workspaceId, orgId);
+  if (!clientId || !clientSecret) {
+    throw new Error('Microsoft Teams OAuth credentials are not configured for this workspace. Please configure your Microsoft Client ID and Client Secret in Settings.');
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
   const scope = encodeURIComponent('offline_access Calendars.ReadWrite OnlineMeetings.ReadWrite');
   return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}&state=${workspaceId}_${orgId}`;
 }
@@ -89,7 +98,11 @@ export async function exchangeMicrosoftCode(
   orgId: string
 ): Promise<MicrosoftTokenResponse> {
   const { clientId, clientSecret } = await resolveMicrosoftCredentials(workspaceId, orgId);
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/microsoft/callback`;
+  if (!clientId || !clientSecret) {
+    throw new Error('Microsoft Teams OAuth credentials missing during token exchange.');
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
 
   const bodyParams = new URLSearchParams({
     client_id: clientId,

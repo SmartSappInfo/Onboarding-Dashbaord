@@ -17,6 +17,7 @@ import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-ca
 import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { encryptToken } from '@/lib/crypto';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -277,6 +278,170 @@ export async function getMicrosoftAuthUrlAction(
     const { getMicrosoftAuthUrl } = await import('@/lib/services/integrations/microsoft-calendar');
     const url = await getMicrosoftAuthUrl(workspaceId, organizationId, userId);
     return { success: true, url };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/**
+ * Generates Zoom OAuth authorization URL.
+ */
+export async function getZoomAuthUrlAction(
+  workspaceId: string,
+  organizationId?: string
+): Promise<{ success: boolean; url?: string; error?: string }> {
+  await requireWorkspace(workspaceId);
+
+  try {
+    const { getZoomAuthUrl } = await import('@/lib/services/integrations/zoom-meeting');
+    const url = await getZoomAuthUrl(workspaceId, organizationId || '');
+    return { success: true, url };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+export interface OAuthCredentialsInput {
+  provider: 'google_calendar' | 'microsoft_teams' | 'zoom';
+  clientId: string;
+  clientSecret?: string;
+  tenantId?: string;
+}
+
+export interface WorkspaceOAuthProviderStatus {
+  configured: boolean;
+  clientId?: string;
+  hasSecret: boolean;
+  tenantId?: string;
+}
+
+export interface WorkspaceOAuthStatus {
+  google: WorkspaceOAuthProviderStatus;
+  microsoft: WorkspaceOAuthProviderStatus;
+  zoom: WorkspaceOAuthProviderStatus;
+  redirectUris: {
+    google: string;
+    microsoft: string;
+    zoom: string;
+  };
+}
+
+/**
+ * Saves and encrypts OAuth Client ID and Secret for a given provider in the workspace.
+ */
+export async function saveWorkspaceOAuthCredentialsAction(
+  workspaceId: string,
+  input: OAuthCredentialsInput
+): Promise<{ success: boolean; error?: string }> {
+  await requireWorkspace(workspaceId);
+
+  try {
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (input.provider === 'google_calendar') {
+      if (input.clientId !== undefined) {
+        updateData.googleClientId = input.clientId.trim();
+      }
+      if (input.clientSecret && input.clientSecret.trim()) {
+        updateData.googleClientSecret = encryptToken(input.clientSecret.trim());
+      }
+    } else if (input.provider === 'microsoft_teams') {
+      if (input.clientId !== undefined) {
+        updateData.microsoftClientId = input.clientId.trim();
+      }
+      if (input.clientSecret && input.clientSecret.trim()) {
+        updateData.microsoftClientSecret = encryptToken(input.clientSecret.trim());
+      }
+      if (input.tenantId !== undefined) {
+        updateData.microsoftTenantId = input.tenantId.trim() || null;
+      }
+    } else if (input.provider === 'zoom') {
+      if (input.clientId !== undefined) {
+        updateData.zoomClientId = input.clientId.trim();
+      }
+      if (input.clientSecret && input.clientSecret.trim()) {
+        updateData.zoomClientSecret = encryptToken(input.clientSecret.trim());
+      }
+    }
+
+    await adminDb.collection('workspaces').doc(workspaceId).set(updateData, { merge: true });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/**
+ * Retrieves OAuth credentials configuration status (without leaking secrets) for a workspace.
+ */
+export async function getWorkspaceOAuthCredentialsStatusAction(
+  workspaceId: string
+): Promise<{ success: boolean; data?: WorkspaceOAuthStatus; error?: string }> {
+  await requireWorkspace(workspaceId);
+
+  try {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    const redirectUris = {
+      google: `${appUrl}/api/integrations/google/callback`,
+      microsoft: `${appUrl}/api/integrations/microsoft/callback`,
+      zoom: `${appUrl}/api/integrations/zoom/callback`,
+    };
+
+    let wsGoogleClientId: string | undefined;
+    let wsGoogleSecret = false;
+    let wsMsClientId: string | undefined;
+    let wsMsSecret = false;
+    let wsMsTenantId: string | undefined;
+    let wsZoomClientId: string | undefined;
+    let wsZoomSecret = false;
+
+    if (workspaceId) {
+      const wsDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
+      if (wsDoc.exists) {
+        const wsData = wsDoc.data();
+        if (wsData?.googleClientId) wsGoogleClientId = wsData.googleClientId as string;
+        if (wsData?.googleClientSecret) wsGoogleSecret = true;
+        if (wsData?.microsoftClientId) wsMsClientId = wsData.microsoftClientId as string;
+        if (wsData?.microsoftClientSecret) wsMsSecret = true;
+        if (wsData?.microsoftTenantId) wsMsTenantId = wsData.microsoftTenantId as string;
+        if (wsData?.zoomClientId) wsZoomClientId = wsData.zoomClientId as string;
+        if (wsData?.zoomClientSecret) wsZoomSecret = true;
+      }
+    }
+
+    // Check env fallbacks
+    const envGoogleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+    const envMsConfigured = !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET);
+    const envZoomConfigured = !!(process.env.ZOOM_CLIENT_ID && process.env.ZOOM_CLIENT_SECRET);
+
+    const googleConfigured = (!!wsGoogleClientId && wsGoogleSecret) || envGoogleConfigured;
+    const msConfigured = (!!wsMsClientId && wsMsSecret) || envMsConfigured;
+    const zoomConfigured = (!!wsZoomClientId && wsZoomSecret) || envZoomConfigured;
+
+    return {
+      success: true,
+      data: {
+        google: {
+          configured: googleConfigured,
+          clientId: wsGoogleClientId || (process.env.GOOGLE_CLIENT_ID ? '*** (Environment Configured)' : undefined),
+          hasSecret: wsGoogleSecret || !!process.env.GOOGLE_CLIENT_SECRET,
+        },
+        microsoft: {
+          configured: msConfigured,
+          clientId: wsMsClientId || (process.env.MICROSOFT_CLIENT_ID ? '*** (Environment Configured)' : undefined),
+          hasSecret: wsMsSecret || !!process.env.MICROSOFT_CLIENT_SECRET,
+          tenantId: wsMsTenantId,
+        },
+        zoom: {
+          configured: zoomConfigured,
+          clientId: wsZoomClientId || (process.env.ZOOM_CLIENT_ID ? '*** (Environment Configured)' : undefined),
+          hasSecret: wsZoomSecret || !!process.env.ZOOM_CLIENT_SECRET,
+        },
+        redirectUris,
+      },
+    };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

@@ -17,6 +17,7 @@ import {
   RefreshCw,
   Plus,
   ShieldCheck,
+  Settings2,
 } from 'lucide-react';
 import {
   getCalendarConnectionsAction,
@@ -27,6 +28,10 @@ import {
   getMicrosoftAuthUrlAction,
 } from '@/app/actions/calendar-connection-actions';
 import type { CalendarConnection } from '@/lib/meetings/types/calendar';
+import {
+  OAuthCredentialsModal,
+  type OAuthProvider,
+} from '@/components/integrations/OAuthCredentialsModal';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -43,6 +48,10 @@ export default function CalendarsClient() {
   const [connections, setConnections] = React.useState<CalendarConnection[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isUpdating, setIsUpdating] = React.useState(false);
+
+  // Credentials Setup Studio State
+  const [credentialsModalOpen, setCredentialsModalOpen] = React.useState(false);
+  const [selectedModalProvider, setSelectedModalProvider] = React.useState<OAuthProvider>('google_calendar');
 
   const fetchConnections = React.useCallback(async () => {
     if (!activeWorkspaceId) return;
@@ -74,7 +83,17 @@ export default function CalendarsClient() {
       if (res.success && res.url) {
         window.location.href = res.url;
       } else {
-        throw new Error(res.error || 'Failed to generate Google auth URL');
+        const errorMsg = res.error || 'Failed to generate Google auth URL';
+        if (errorMsg.includes('OAuth credentials') || errorMsg.includes('not configured')) {
+          setSelectedModalProvider('google_calendar');
+          setCredentialsModalOpen(true);
+          toast({
+            title: 'Google Setup Required',
+            description: errorMsg,
+          });
+          return;
+        }
+        throw new Error(errorMsg);
       }
     } catch (err) {
       toast({
@@ -92,7 +111,17 @@ export default function CalendarsClient() {
       if (res.success && res.url) {
         window.location.href = res.url;
       } else {
-        throw new Error(res.error || 'Failed to generate Microsoft auth URL');
+        const errorMsg = res.error || 'Failed to generate Microsoft auth URL';
+        if (errorMsg.includes('OAuth credentials') || errorMsg.includes('not configured')) {
+          setSelectedModalProvider('microsoft_teams');
+          setCredentialsModalOpen(true);
+          toast({
+            title: 'Microsoft Setup Required',
+            description: errorMsg,
+          });
+          return;
+        }
+        throw new Error(errorMsg);
       }
     } catch (err) {
       toast({
@@ -245,14 +274,29 @@ export default function CalendarsClient() {
                   <CardDescription className="text-xs">Google Workspace & Gmail</CardDescription>
                 </div>
               </div>
-              <Button
-                onClick={handleConnectGoogle}
-                size="sm"
-                className="rounded-xl min-h-[40px] gap-1.5 active:scale-[0.97]"
-              >
-                <Plus className="h-4 w-4" />
-                Connect Google
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedModalProvider('google_calendar');
+                    setCredentialsModalOpen(true);
+                  }}
+                  className="rounded-xl min-h-[40px] gap-1.5 active:scale-[0.97]"
+                  title="Configure Google OAuth Credentials"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Configure API</span>
+                </Button>
+                <Button
+                  onClick={handleConnectGoogle}
+                  size="sm"
+                  className="rounded-xl min-h-[40px] gap-1.5 active:scale-[0.97]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Connect Google
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-5 space-y-4">
@@ -346,14 +390,29 @@ export default function CalendarsClient() {
                   <CardDescription className="text-xs">Office 365 & Microsoft Teams</CardDescription>
                 </div>
               </div>
-              <Button
-                onClick={handleConnectMicrosoft}
-                size="sm"
-                className="rounded-xl min-h-[40px] gap-1.5 active:scale-[0.97]"
-              >
-                <Plus className="h-4 w-4" />
-                Connect Outlook
-              </Button>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSelectedModalProvider('microsoft_teams');
+                    setCredentialsModalOpen(true);
+                  }}
+                  className="rounded-xl min-h-[40px] gap-1.5 active:scale-[0.97]"
+                  title="Configure Microsoft OAuth Credentials"
+                >
+                  <Settings2 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Configure API</span>
+                </Button>
+                <Button
+                  onClick={handleConnectMicrosoft}
+                  size="sm"
+                  className="rounded-xl min-h-[40px] gap-1.5 active:scale-[0.97]"
+                >
+                  <Plus className="h-4 w-4" />
+                  Connect Outlook
+                </Button>
+              </div>
             </div>
           </CardHeader>
           <CardContent className="p-5 space-y-4">
@@ -434,6 +493,17 @@ export default function CalendarsClient() {
           </CardContent>
         </Card>
       </div>
+
+      {/* OAuth Credentials Studio Dialog */}
+      {activeWorkspaceId && (
+        <OAuthCredentialsModal
+          open={credentialsModalOpen}
+          onOpenChange={setCredentialsModalOpen}
+          workspaceId={activeWorkspaceId}
+          defaultProvider={selectedModalProvider}
+          onCredentialsSaved={fetchConnections}
+        />
+      )}
     </div>
   );
 }

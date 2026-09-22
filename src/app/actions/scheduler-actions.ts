@@ -4,6 +4,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import { getGoogleAuthUrl } from '@/lib/services/integrations/google-calendar';
 import { getMicrosoftAuthUrl } from '@/lib/services/integrations/microsoft-teams';
 import { getZoomAuthUrl } from '@/lib/services/integrations/zoom-meeting';
+import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { toClientErrorMessage, getErrorMessage } from '@/lib/errors/report-error';
 
 export interface ActionResponse<T> {
   success: boolean;
@@ -18,10 +20,16 @@ export async function getGoogleAuthUrlAction(
   workspaceId: string,
   orgId: string
 ): Promise<ActionResponse<string>> {
+  await requireWorkspace(workspaceId);
+
   try {
     const url = await getGoogleAuthUrl(workspaceId, orgId);
     return { success: true, data: url };
   } catch (err: unknown) {
+    const msg = getErrorMessage(err);
+    if (msg.includes('OAuth credentials') || msg.includes('not configured')) {
+      return { success: false, error: msg };
+    }
     return { 
       success: false, 
       error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to generate Google auth URL') 
@@ -36,10 +44,16 @@ export async function getMicrosoftAuthUrlAction(
   workspaceId: string,
   orgId: string
 ): Promise<ActionResponse<string>> {
+  await requireWorkspace(workspaceId);
+
   try {
     const url = await getMicrosoftAuthUrl(workspaceId, orgId);
     return { success: true, data: url };
   } catch (err: unknown) {
+    const msg = getErrorMessage(err);
+    if (msg.includes('OAuth credentials') || msg.includes('not configured')) {
+      return { success: false, error: msg };
+    }
     return { 
       success: false, 
       error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to generate Microsoft auth URL') 
@@ -61,6 +75,10 @@ export async function getZoomAuthUrlAction(
     const url = await getZoomAuthUrl(workspaceId, orgId);
     return { success: true, data: url };
   } catch (err: unknown) {
+    const msg = getErrorMessage(err);
+    if (msg.includes('OAuth credentials') || msg.includes('not configured')) {
+      return { success: false, error: msg };
+    }
     return { 
       success: false, 
       error: toClientErrorMessage('actions.scheduler-actions', err, undefined, 'Failed to generate Zoom auth URL') 
@@ -390,8 +408,5 @@ export interface TimeSlot {
 
 import type { BookingPage, BookingResponse, WorkingDay, UserAvailability, Meeting } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
-import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
-// SECURITY (audit F9): report detail server-side; return an opaque message + ref.
-import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 

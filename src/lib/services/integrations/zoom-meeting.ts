@@ -32,43 +32,52 @@ export async function resolveZoomCredentials(
   workspaceId: string,
   orgId: string
 ): Promise<{ clientId: string; clientSecret: string }> {
-  const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
-  if (workspaceDoc.exists) {
-    const wsData = workspaceDoc.data();
-    if (wsData?.zoomClientId && wsData?.zoomClientSecret) {
-      return {
-        clientId: wsData.zoomClientId as string,
-        clientSecret: wsData.zoomClientSecret as string,
-      };
+  if (workspaceId) {
+    const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (workspaceDoc.exists) {
+      const wsData = workspaceDoc.data();
+      if (wsData?.zoomClientId && wsData?.zoomClientSecret) {
+        return {
+          clientId: (wsData.zoomClientId as string).trim(),
+          clientSecret: decryptToken(wsData.zoomClientSecret as string).trim(),
+        };
+      }
     }
   }
 
-  const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
-  if (orgDoc.exists) {
-    const orgData = orgDoc.data();
-    if (orgData?.zoomClientId && orgData?.zoomClientSecret) {
-      return {
-        clientId: orgData.zoomClientId as string,
-        clientSecret: orgData.zoomClientSecret as string,
-      };
+  if (orgId) {
+    const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+    if (orgDoc.exists) {
+      const orgData = orgDoc.data();
+      if (orgData?.zoomClientId && orgData?.zoomClientSecret) {
+        return {
+          clientId: (orgData.zoomClientId as string).trim(),
+          clientSecret: decryptToken(orgData.zoomClientSecret as string).trim(),
+        };
+      }
     }
   }
 
   return {
-    clientId: process.env.ZOOM_CLIENT_ID || '',
-    clientSecret: process.env.ZOOM_CLIENT_SECRET || '',
+    clientId: (process.env.ZOOM_CLIENT_ID || '').trim(),
+    clientSecret: (process.env.ZOOM_CLIENT_SECRET || '').trim(),
   };
 }
 
 /**
- * Generates Zoom Auth URL.
+ * Generates Zoom Auth URL with upfront validation.
  */
 export async function getZoomAuthUrl(
   workspaceId: string,
   orgId: string
 ): Promise<string> {
-  const { clientId } = await resolveZoomCredentials(workspaceId, orgId);
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/zoom/callback`;
+  const { clientId, clientSecret } = await resolveZoomCredentials(workspaceId, orgId);
+  if (!clientId || !clientSecret) {
+    throw new Error('Zoom Meeting OAuth credentials are not configured for this workspace. Please configure your Zoom Client ID and Client Secret in Settings.');
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const redirectUri = `${appUrl}/api/integrations/zoom/callback`;
   return `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${workspaceId}_${orgId}`;
 }
 
@@ -81,7 +90,11 @@ export async function exchangeZoomCode(
   orgId: string
 ): Promise<ZoomTokenResponse> {
   const { clientId, clientSecret } = await resolveZoomCredentials(workspaceId, orgId);
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/zoom/callback`;
+  if (!clientId || !clientSecret) {
+    throw new Error('Zoom Meeting OAuth credentials missing during token exchange.');
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const redirectUri = `${appUrl}/api/integrations/zoom/callback`;
 
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   const bodyParams = new URLSearchParams({

@@ -43,43 +43,52 @@ export async function resolveGoogleCredentials(
   workspaceId: string,
   orgId: string
 ): Promise<{ clientId: string; clientSecret: string }> {
-  const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
-  if (workspaceDoc.exists) {
-    const wsData = workspaceDoc.data();
-    if (wsData?.googleClientId && wsData?.googleClientSecret) {
-      return {
-        clientId: wsData.googleClientId as string,
-        clientSecret: wsData.googleClientSecret as string,
-      };
+  if (workspaceId) {
+    const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
+    if (workspaceDoc.exists) {
+      const wsData = workspaceDoc.data();
+      if (wsData?.googleClientId && wsData?.googleClientSecret) {
+        return {
+          clientId: (wsData.googleClientId as string).trim(),
+          clientSecret: decryptToken(wsData.googleClientSecret as string).trim(),
+        };
+      }
     }
   }
 
-  const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
-  if (orgDoc.exists) {
-    const orgData = orgDoc.data();
-    if (orgData?.googleClientId && orgData?.googleClientSecret) {
-      return {
-        clientId: orgData.googleClientId as string,
-        clientSecret: orgData.googleClientSecret as string,
-      };
+  if (orgId) {
+    const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+    if (orgDoc.exists) {
+      const orgData = orgDoc.data();
+      if (orgData?.googleClientId && orgData?.googleClientSecret) {
+        return {
+          clientId: (orgData.googleClientId as string).trim(),
+          clientSecret: decryptToken(orgData.googleClientSecret as string).trim(),
+        };
+      }
     }
   }
 
   return {
-    clientId: process.env.GOOGLE_CLIENT_ID || '',
-    clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
+    clientId: (process.env.GOOGLE_CLIENT_ID || '').trim(),
+    clientSecret: (process.env.GOOGLE_CLIENT_SECRET || '').trim(),
   };
 }
 
 /**
- * Generates Google Auth URL.
+ * Generates Google Auth URL with upfront validation.
  */
 export async function getGoogleAuthUrl(
   workspaceId: string,
   orgId: string
 ): Promise<string> {
-  const { clientId } = await resolveGoogleCredentials(workspaceId, orgId);
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google/callback`;
+  const { clientId, clientSecret } = await resolveGoogleCredentials(workspaceId, orgId);
+  if (!clientId || !clientSecret) {
+    throw new Error('Google Calendar OAuth credentials are not configured for this workspace. Please configure your Google Client ID and Client Secret in Settings.');
+  }
+
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const redirectUri = `${appUrl}/api/integrations/google/callback`;
   const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly');
   return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=${workspaceId}_${orgId}`;
 }
@@ -93,7 +102,11 @@ export async function exchangeGoogleCode(
   orgId: string
 ): Promise<GoogleTokenResponse> {
   const { clientId, clientSecret } = await resolveGoogleCredentials(workspaceId, orgId);
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL}/api/integrations/google/callback`;
+  if (!clientId || !clientSecret) {
+    throw new Error('Google Calendar OAuth credentials missing during token exchange.');
+  }
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+  const redirectUri = `${appUrl}/api/integrations/google/callback`;
 
   const bodyParams = new URLSearchParams({
     code,

@@ -17,6 +17,14 @@ import {
   getZoomAuthUrlAction, 
   disconnectConnectionAction 
 } from '@/app/actions/scheduler-actions';
+import {
+  getWorkspaceOAuthCredentialsStatusAction,
+  type WorkspaceOAuthStatus,
+} from '@/app/actions/calendar-connection-actions';
+import { 
+  OAuthCredentialsModal, 
+  type OAuthProvider 
+} from '@/components/integrations/OAuthCredentialsModal';
 import { 
   Key, 
   Smartphone, 
@@ -27,6 +35,8 @@ import {
   Link2, 
   Link2Off,
   CheckCircle,
+  Settings2,
+  AlertTriangle,
 } from 'lucide-react';
 import { WorkspaceAiSettingsCard } from '@/components/ai/WorkspaceAiSettingsCard';
 
@@ -43,6 +53,27 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
   const [isSaving, setIsSaving] = React.useState(false);
   const [defaultSmsSenderId, setDefaultSmsSenderId] = React.useState(workspace.defaultSmsSenderId || '');
   const [loadingOAuth, setLoadingOAuth] = React.useState<string | null>(null);
+
+  // OAuth Credentials Studio Modal State
+  const [credentialsModalOpen, setCredentialsModalOpen] = React.useState(false);
+  const [selectedModalProvider, setSelectedModalProvider] = React.useState<OAuthProvider>('google_calendar');
+  const [oauthStatus, setOauthStatus] = React.useState<WorkspaceOAuthStatus | null>(null);
+
+  const loadOAuthStatus = React.useCallback(async () => {
+    if (!workspace.id) return;
+    try {
+      const res = await getWorkspaceOAuthCredentialsStatusAction(workspace.id);
+      if (res.success && res.data) {
+        setOauthStatus(res.data);
+      }
+    } catch {
+      // Non-blocking status fetch
+    }
+  }, [workspace.id]);
+
+  React.useEffect(() => {
+    loadOAuthStatus();
+  }, [loadOAuthStatus]);
 
   React.useEffect(() => {
     setDefaultSmsSenderId(workspace.defaultSmsSenderId || '');
@@ -89,11 +120,23 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
       if (res.success && res.data) {
         window.location.href = res.data;
       } else {
-        toast({ 
-          variant: 'destructive', 
-          title: 'Connection Error', 
-          description: res.error || 'Failed to generate connection URL' 
-        });
+        const errorMsg = res.error || 'Failed to generate connection URL';
+        if (errorMsg.includes('OAuth credentials') || errorMsg.includes('not configured')) {
+          setSelectedModalProvider(
+            provider === 'google' ? 'google_calendar' : provider === 'microsoft' ? 'microsoft_teams' : 'zoom'
+          );
+          setCredentialsModalOpen(true);
+          toast({
+            title: 'Credentials Required',
+            description: errorMsg,
+          });
+        } else {
+          toast({ 
+            variant: 'destructive', 
+            title: 'Connection Error', 
+            description: errorMsg 
+          });
+        }
       }
     } catch (err: unknown) {
       toast({ 
@@ -204,19 +247,39 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl">
                 {/* 1. Google Calendar Card */}
-                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[160px] relative">
+                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[175px] relative">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="p-2 bg-red-500/10 text-red-500 rounded-xl">
                         <CalendarIcon className="h-5 w-5" />
                       </div>
-                      {googleConnection ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
-                          <CheckCircle className="h-2.5 w-2.5" /> Connected
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[8px] font-bold text-muted-foreground opacity-60">Disconnected</Badge>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {googleConnection ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
+                            <CheckCircle className="h-2.5 w-2.5" /> Connected
+                          </Badge>
+                        ) : oauthStatus?.google.configured ? (
+                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none">
+                            Ready to Connect
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[8px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
+                            <AlertTriangle className="h-2 w-2" /> Setup Required
+                          </Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedModalProvider('google_calendar');
+                            setCredentialsModalOpen(true);
+                          }}
+                          className="h-7 w-7 rounded-xl text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                          title="Configure Google OAuth Credentials"
+                        >
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-xs font-bold">Google Calendar</h4>
@@ -231,7 +294,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                         variant="outline"
                         size="sm"
                         onClick={() => handleDisconnect(googleConnection.id, 'Google Calendar')}
-                        className="w-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 h-9 rounded-xl active:scale-[0.97]"
+                        className="w-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 min-h-[40px] rounded-xl active:scale-[0.97]"
                       >
                         <Link2Off className="h-3.5 w-3.5 mr-1.5" /> Disconnect
                       </Button>
@@ -240,34 +303,61 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                         variant="outline"
                         size="sm"
                         disabled={loadingOAuth !== null}
-                        onClick={() => handleOAuthConnect('google')}
-                        className="w-full text-xs font-bold h-9 rounded-xl active:scale-[0.97] hover:border-primary/40"
+                        onClick={() => {
+                          if (!oauthStatus?.google.configured) {
+                            setSelectedModalProvider('google_calendar');
+                            setCredentialsModalOpen(true);
+                          } else {
+                            handleOAuthConnect('google');
+                          }
+                        }}
+                        className="w-full text-xs font-bold min-h-[40px] rounded-xl active:scale-[0.97] hover:border-primary/40"
                       >
                         {loadingOAuth === 'google' ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                         ) : (
                           <Link2 className="h-3.5 w-3.5 mr-1.5" />
                         )}
-                        Connect Account
+                        {oauthStatus?.google.configured ? 'Connect Account' : 'Setup & Connect'}
                       </Button>
                     )}
                   </div>
                 </Card>
 
                 {/* 2. Microsoft Teams Card */}
-                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[160px] relative">
+                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[175px] relative">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="p-2 bg-blue-500/10 text-blue-500 rounded-xl">
                         <Video className="h-5 w-5" />
                       </div>
-                      {microsoftConnection ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
-                          <CheckCircle className="h-2.5 w-2.5" /> Connected
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[8px] font-bold text-muted-foreground opacity-60">Disconnected</Badge>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {microsoftConnection ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
+                            <CheckCircle className="h-2.5 w-2.5" /> Connected
+                          </Badge>
+                        ) : oauthStatus?.microsoft.configured ? (
+                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none">
+                            Ready to Connect
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[8px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
+                            <AlertTriangle className="h-2 w-2" /> Setup Required
+                          </Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedModalProvider('microsoft_teams');
+                            setCredentialsModalOpen(true);
+                          }}
+                          className="h-7 w-7 rounded-xl text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                          title="Configure Microsoft OAuth Credentials"
+                        >
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-xs font-bold">Microsoft Teams</h4>
@@ -282,7 +372,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                         variant="outline"
                         size="sm"
                         onClick={() => handleDisconnect(microsoftConnection.id, 'Microsoft Teams')}
-                        className="w-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 h-9 rounded-xl active:scale-[0.97]"
+                        className="w-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 min-h-[40px] rounded-xl active:scale-[0.97]"
                       >
                         <Link2Off className="h-3.5 w-3.5 mr-1.5" /> Disconnect
                       </Button>
@@ -291,34 +381,61 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                         variant="outline"
                         size="sm"
                         disabled={loadingOAuth !== null}
-                        onClick={() => handleOAuthConnect('microsoft')}
-                        className="w-full text-xs font-bold h-9 rounded-xl active:scale-[0.97] hover:border-primary/40"
+                        onClick={() => {
+                          if (!oauthStatus?.microsoft.configured) {
+                            setSelectedModalProvider('microsoft_teams');
+                            setCredentialsModalOpen(true);
+                          } else {
+                            handleOAuthConnect('microsoft');
+                          }
+                        }}
+                        className="w-full text-xs font-bold min-h-[40px] rounded-xl active:scale-[0.97] hover:border-primary/40"
                       >
                         {loadingOAuth === 'microsoft' ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                         ) : (
                           <Link2 className="h-3.5 w-3.5 mr-1.5" />
                         )}
-                        Connect Account
+                        {oauthStatus?.microsoft.configured ? 'Connect Account' : 'Setup & Connect'}
                       </Button>
                     )}
                   </div>
                 </Card>
 
                 {/* 3. Zoom Meetings Card */}
-                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[160px] relative">
+                <Card className="border rounded-2xl p-5 bg-card/40 flex flex-col justify-between min-h-[175px] relative">
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <div className="p-2 bg-indigo-500/10 text-indigo-500 rounded-xl">
                         <Video className="h-5 w-5" />
                       </div>
-                      {zoomConnection ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
-                          <CheckCircle className="h-2.5 w-2.5" /> Connected
-                        </Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[8px] font-bold text-muted-foreground opacity-60">Disconnected</Badge>
-                      )}
+                      <div className="flex items-center gap-1.5">
+                        {zoomConnection ? (
+                          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
+                            <CheckCircle className="h-2.5 w-2.5" /> Connected
+                          </Badge>
+                        ) : oauthStatus?.zoom.configured ? (
+                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none">
+                            Ready to Connect
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-[8px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
+                            <AlertTriangle className="h-2 w-2" /> Setup Required
+                          </Badge>
+                        )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => {
+                            setSelectedModalProvider('zoom');
+                            setCredentialsModalOpen(true);
+                          }}
+                          className="h-7 w-7 rounded-xl text-muted-foreground hover:text-foreground active:scale-[0.97]"
+                          title="Configure Zoom OAuth Credentials"
+                        >
+                          <Settings2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-xs font-bold">Zoom Meeting</h4>
@@ -333,7 +450,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                         variant="outline"
                         size="sm"
                         onClick={() => handleDisconnect(zoomConnection.id, 'Zoom Meetings')}
-                        className="w-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 h-9 rounded-xl active:scale-[0.97]"
+                        className="w-full text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/20 min-h-[40px] rounded-xl active:scale-[0.97]"
                       >
                         <Link2Off className="h-3.5 w-3.5 mr-1.5" /> Disconnect
                       </Button>
@@ -342,15 +459,22 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                         variant="outline"
                         size="sm"
                         disabled={loadingOAuth !== null}
-                        onClick={() => handleOAuthConnect('zoom')}
-                        className="w-full text-xs font-bold h-9 rounded-xl active:scale-[0.97] hover:border-primary/40"
+                        onClick={() => {
+                          if (!oauthStatus?.zoom.configured) {
+                            setSelectedModalProvider('zoom');
+                            setCredentialsModalOpen(true);
+                          } else {
+                            handleOAuthConnect('zoom');
+                          }
+                        }}
+                        className="w-full text-xs font-bold min-h-[40px] rounded-xl active:scale-[0.97] hover:border-primary/40"
                       >
                         {loadingOAuth === 'zoom' ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
                         ) : (
                           <Link2 className="h-3.5 w-3.5 mr-1.5" />
                         )}
-                        Connect Account
+                        {oauthStatus?.zoom.configured ? 'Connect Account' : 'Setup & Connect'}
                       </Button>
                     )}
                   </div>
@@ -435,6 +559,15 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
           </form>
         </CardContent>
       </Card>
+
+      {/* OAuth Credentials Studio Dialog */}
+      <OAuthCredentialsModal
+        open={credentialsModalOpen}
+        onOpenChange={setCredentialsModalOpen}
+        workspaceId={workspace.id}
+        defaultProvider={selectedModalProvider}
+        onCredentialsSaved={loadOAuthStatus}
+      />
     </div>
   );
 }

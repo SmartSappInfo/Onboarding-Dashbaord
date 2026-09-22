@@ -29,6 +29,7 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 
 export interface EntityIdentityUpdates {
   name?: string;
+  entityType?: Entity['entityType'];
   slug?: string;
   entityContacts?: EntityContact[];
   globalTags?: string[];
