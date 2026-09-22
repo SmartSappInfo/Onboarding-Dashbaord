@@ -369,6 +369,7 @@ export interface Organization {
   zoomClientSecret?: string;
   microsoftClientId?: string;
   microsoftClientSecret?: string;
+  microsoftTenantId?: string;
   /**
    * Organization-level default sender profile id per channel. This is the ONLY
    * permitted fallback when no explicit or workspace-level sender resolves —

@@ -30,8 +30,10 @@ interface ZoomErrorResponse {
  */
 export async function resolveZoomCredentials(
   workspaceId: string,
-  orgId: string
+  orgId?: string
 ): Promise<{ clientId: string; clientSecret: string }> {
+  let resolvedOrgId = orgId;
+
   if (workspaceId) {
     const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (workspaceDoc.exists) {
@@ -42,11 +44,14 @@ export async function resolveZoomCredentials(
           clientSecret: decryptToken(wsData.zoomClientSecret as string).trim(),
         };
       }
+      if (!resolvedOrgId && wsData?.organizationId) {
+        resolvedOrgId = wsData.organizationId as string;
+      }
     }
   }
 
-  if (orgId) {
-    const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+  if (resolvedOrgId) {
+    const orgDoc = await adminDb.collection('organizations').doc(resolvedOrgId).get();
     if (orgDoc.exists) {
       const orgData = orgDoc.data();
       if (orgData?.zoomClientId && orgData?.zoomClientSecret) {

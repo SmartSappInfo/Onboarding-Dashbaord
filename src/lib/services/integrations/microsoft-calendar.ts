@@ -49,28 +49,33 @@ export async function resolveMicrosoftCredentials(
   workspaceId: string,
   organizationId?: string
 ): Promise<{ clientId: string; clientSecret: string; tenantId: string }> {
+  let resolvedOrgId = organizationId;
+
   try {
     const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
     if (workspaceDoc.exists) {
       const wsData = workspaceDoc.data();
       if (wsData?.microsoftClientId && wsData?.microsoftClientSecret) {
         return {
-          clientId: wsData.microsoftClientId as string,
-          clientSecret: wsData.microsoftClientSecret as string,
-          tenantId: (wsData.microsoftTenantId as string) || 'common',
+          clientId: (wsData.microsoftClientId as string).trim(),
+          clientSecret: decryptToken(wsData.microsoftClientSecret as string).trim(),
+          tenantId: (wsData.microsoftTenantId as string)?.trim() || 'common',
         };
+      }
+      if (!resolvedOrgId && wsData?.organizationId) {
+        resolvedOrgId = wsData.organizationId as string;
       }
     }
 
-    if (organizationId) {
-      const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+    if (resolvedOrgId) {
+      const orgDoc = await adminDb.collection('organizations').doc(resolvedOrgId).get();
       if (orgDoc.exists) {
         const orgData = orgDoc.data();
         if (orgData?.microsoftClientId && orgData?.microsoftClientSecret) {
           return {
-            clientId: orgData.microsoftClientId as string,
-            clientSecret: orgData.microsoftClientSecret as string,
-            tenantId: (orgData.microsoftTenantId as string) || 'common',
+            clientId: (orgData.microsoftClientId as string).trim(),
+            clientSecret: decryptToken(orgData.microsoftClientSecret as string).trim(),
+            tenantId: (orgData.microsoftTenantId as string)?.trim() || 'common',
           };
         }
       }
@@ -80,9 +85,9 @@ export async function resolveMicrosoftCredentials(
   }
 
   return {
-    clientId: process.env.MICROSOFT_CLIENT_ID || '',
-    clientSecret: process.env.MICROSOFT_CLIENT_SECRET || '',
-    tenantId: process.env.MICROSOFT_TENANT_ID || 'common',
+    clientId: (process.env.MICROSOFT_CLIENT_ID || '').trim(),
+    clientSecret: (process.env.MICROSOFT_CLIENT_SECRET || '').trim(),
+    tenantId: (process.env.MICROSOFT_TENANT_ID || 'common').trim(),
   };
 }
 

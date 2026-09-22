@@ -39,16 +39,23 @@ import {
 } from 'lucide-react';
 import {
   saveWorkspaceOAuthCredentialsAction,
+  saveOrganizationOAuthCredentialsAction,
   getWorkspaceOAuthCredentialsStatusAction,
+  getOrganizationOAuthCredentialsStatusAction,
   type WorkspaceOAuthStatus,
+  type OrganizationOAuthStatus,
 } from '@/app/actions/calendar-connection-actions';
 
 export type OAuthProvider = 'google_calendar' | 'microsoft_teams' | 'zoom';
+export type OAuthCredentialsModalScope = 'workspace' | 'organization';
+export type OAuthCombinedStatus = WorkspaceOAuthStatus | OrganizationOAuthStatus;
 
 export interface OAuthCredentialsModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  workspaceId: string;
+  workspaceId?: string;
+  organizationId?: string;
+  scope?: OAuthCredentialsModalScope;
   defaultProvider?: OAuthProvider;
   onCredentialsSaved?: () => void;
 }
@@ -57,6 +64,8 @@ export function OAuthCredentialsModal({
   open,
   onOpenChange,
   workspaceId,
+  organizationId,
+  scope = 'workspace',
   defaultProvider = 'google_calendar',
   onCredentialsSaved,
 }: OAuthCredentialsModalProps) {
@@ -78,7 +87,7 @@ export function OAuthCredentialsModal({
   const [zoomClientId, setZoomClientId] = React.useState('');
   const [zoomClientSecret, setZoomClientSecret] = React.useState('');
 
-  const [oauthStatus, setOauthStatus] = React.useState<WorkspaceOAuthStatus | null>(null);
+  const [oauthStatus, setOauthStatus] = React.useState<OAuthCombinedStatus | null>(null);
 
   // Sync tab with defaultProvider when modal opens
   React.useEffect(() => {
@@ -89,31 +98,59 @@ export function OAuthCredentialsModal({
 
   // Load current configuration status
   const loadStatus = React.useCallback(async () => {
-    if (!workspaceId) return;
-    setIsLoadingStatus(true);
-    try {
-      const res = await getWorkspaceOAuthCredentialsStatusAction(workspaceId);
-      if (res.success && res.data) {
-        setOauthStatus(res.data);
-        if (res.data.google.clientId && !res.data.google.clientId.includes('***')) {
-          setGoogleClientId(res.data.google.clientId);
+    if (scope === 'organization') {
+      if (!organizationId) return;
+      setIsLoadingStatus(true);
+      try {
+        const res = await getOrganizationOAuthCredentialsStatusAction(organizationId);
+        if (res.success && res.data) {
+          setOauthStatus(res.data);
+          if (res.data.google.clientId && !res.data.google.clientId.includes('***')) {
+            setGoogleClientId(res.data.google.clientId);
+          }
+          if (res.data.microsoft.clientId && !res.data.microsoft.clientId.includes('***')) {
+            setMsClientId(res.data.microsoft.clientId);
+          }
+          if (res.data.microsoft.tenantId) {
+            setMsTenantId(res.data.microsoft.tenantId);
+          }
+          if (res.data.zoom.clientId && !res.data.zoom.clientId.includes('***')) {
+            setZoomClientId(res.data.zoom.clientId);
+          }
         }
-        if (res.data.microsoft.clientId && !res.data.microsoft.clientId.includes('***')) {
-          setMsClientId(res.data.microsoft.clientId);
-        }
-        if (res.data.microsoft.tenantId) {
-          setMsTenantId(res.data.microsoft.tenantId);
-        }
-        if (res.data.zoom.clientId && !res.data.zoom.clientId.includes('***')) {
-          setZoomClientId(res.data.zoom.clientId);
-        }
+      } catch {
+        // Non-blocking status fetch
+      } finally {
+        setIsLoadingStatus(false);
       }
-    } catch {
-      // Non-blocking status fetch
-    } finally {
-      setIsLoadingStatus(false);
+    } else {
+      if (!workspaceId) return;
+      setIsLoadingStatus(true);
+      try {
+        const res = await getWorkspaceOAuthCredentialsStatusAction(workspaceId);
+        if (res.success && res.data) {
+          setOauthStatus(res.data);
+          // Only pre-populate input if it was explicitly configured at the workspace level
+          if (res.data.google.source === 'workspace' && res.data.google.clientId && !res.data.google.clientId.includes('***')) {
+            setGoogleClientId(res.data.google.clientId);
+          }
+          if (res.data.microsoft.source === 'workspace' && res.data.microsoft.clientId && !res.data.microsoft.clientId.includes('***')) {
+            setMsClientId(res.data.microsoft.clientId);
+          }
+          if (res.data.microsoft.source === 'workspace' && res.data.microsoft.tenantId) {
+            setMsTenantId(res.data.microsoft.tenantId);
+          }
+          if (res.data.zoom.source === 'workspace' && res.data.zoom.clientId && !res.data.zoom.clientId.includes('***')) {
+            setZoomClientId(res.data.zoom.clientId);
+          }
+        }
+      } catch {
+        // Non-blocking status fetch
+      } finally {
+        setIsLoadingStatus(false);
+      }
     }
-  }, [workspaceId]);
+  }, [scope, organizationId, workspaceId]);
 
   React.useEffect(() => {
     if (open) {
@@ -156,7 +193,6 @@ export function OAuthCredentialsModal({
   };
 
   const handleSave = async (provider: OAuthProvider) => {
-    if (!workspaceId) return;
     setIsSaving(true);
 
     try {
@@ -191,17 +227,40 @@ export function OAuthCredentialsModal({
         }
       }
 
-      const res = await saveWorkspaceOAuthCredentialsAction(workspaceId, {
-        provider,
-        clientId,
-        clientSecret: clientSecret || undefined,
-        tenantId,
-      });
+      let res: { success: boolean; error?: string };
+
+      if (scope === 'organization') {
+        if (!organizationId) {
+          toast({ variant: 'destructive', title: 'Organization ID Required', description: 'Missing organization identifier.' });
+          setIsSaving(false);
+          return;
+        }
+        res = await saveOrganizationOAuthCredentialsAction(organizationId, {
+          provider,
+          clientId,
+          clientSecret: clientSecret || undefined,
+          tenantId,
+        });
+      } else {
+        if (!workspaceId) {
+          toast({ variant: 'destructive', title: 'Workspace ID Required', description: 'Missing workspace identifier.' });
+          setIsSaving(false);
+          return;
+        }
+        res = await saveWorkspaceOAuthCredentialsAction(workspaceId, {
+          provider,
+          clientId,
+          clientSecret: clientSecret || undefined,
+          tenantId,
+        });
+      }
 
       if (res.success) {
         toast({
-          title: 'Credentials Saved Successfully',
-          description: 'Your API credentials are now encrypted and stored. You can now connect your accounts.',
+          title: scope === 'organization' ? 'Organization Defaults Saved' : 'Workspace Credentials Saved',
+          description: scope === 'organization'
+            ? 'Global organization OAuth credentials encrypted and stored. Workspaces can now inherit and connect.'
+            : 'Workspace API credentials encrypted and stored.',
         });
         await loadStatus();
         onCredentialsSaved?.();
@@ -238,10 +297,12 @@ export function OAuthCredentialsModal({
             </div>
             <div>
               <DialogTitle className="text-xl font-bold tracking-tight">
-                Calendar & Conferencing API Credentials
+                {scope === 'organization' ? 'Global Organization API Credentials' : 'Workspace API Credentials'}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                Configure OAuth 2.0 Client credentials to connect external Google, Microsoft, and Zoom accounts.
+                {scope === 'organization'
+                  ? 'Configure organization default OAuth 2.0 developer credentials. Workspaces without overrides automatically inherit these.'
+                  : 'Configure custom OAuth 2.0 developer credentials for this workspace. These will override organization defaults.'}
               </DialogDescription>
             </div>
           </div>
@@ -284,6 +345,26 @@ export function OAuthCredentialsModal({
 
             {/* TAB 1: GOOGLE CALENDAR */}
             <TabsContent value="google_calendar" className="space-y-6 outline-none">
+              {/* Contextual Status Banner */}
+              {scope === 'workspace' && oauthStatus?.google.source === 'organization' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-blue-500" />
+                  <span>Currently using <strong>Organization Default</strong>. Entering keys below will override them for this workspace only.</span>
+                </div>
+              )}
+              {scope === 'workspace' && oauthStatus?.google.source === 'workspace' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>A custom <strong>Workspace Override</strong> is active.</span>
+                </div>
+              )}
+              {scope === 'organization' && oauthStatus?.google.source === 'organization' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>Global default configured. Workspaces inherit this automatically.</span>
+                </div>
+              )}
+
               {/* Step 1: Copy Redirect URI */}
               <div className="p-4 rounded-2xl border border-border bg-muted/30 space-y-2.5">
                 <div className="flex items-center justify-between">
@@ -391,7 +472,7 @@ export function OAuthCredentialsModal({
                     className="rounded-xl min-h-[44px] px-6 font-semibold shadow-sm active:scale-[0.97]"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Google Keys
+                    {scope === 'organization' ? 'Save Google Org Default' : 'Save Google Keys'}
                   </Button>
                 </div>
               </div>
@@ -399,6 +480,26 @@ export function OAuthCredentialsModal({
 
             {/* TAB 2: MICROSOFT TEAMS / OUTLOOK */}
             <TabsContent value="microsoft_teams" className="space-y-6 outline-none">
+              {/* Contextual Status Banner */}
+              {scope === 'workspace' && oauthStatus?.microsoft.source === 'organization' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-blue-500" />
+                  <span>Currently using <strong>Organization Default</strong>. Entering keys below will override them for this workspace only.</span>
+                </div>
+              )}
+              {scope === 'workspace' && oauthStatus?.microsoft.source === 'workspace' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>A custom <strong>Workspace Override</strong> is active.</span>
+                </div>
+              )}
+              {scope === 'organization' && oauthStatus?.microsoft.source === 'organization' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>Global default configured. Workspaces inherit this automatically.</span>
+                </div>
+              )}
+
               <div className="p-4 rounded-2xl border border-border bg-muted/30 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -516,7 +617,7 @@ export function OAuthCredentialsModal({
                     className="rounded-xl min-h-[44px] px-6 font-semibold shadow-sm active:scale-[0.97]"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Microsoft Keys
+                    {scope === 'organization' ? 'Save Microsoft Org Default' : 'Save Microsoft Keys'}
                   </Button>
                 </div>
               </div>
@@ -524,6 +625,26 @@ export function OAuthCredentialsModal({
 
             {/* TAB 3: ZOOM MEETING */}
             <TabsContent value="zoom" className="space-y-6 outline-none">
+              {/* Contextual Status Banner */}
+              {scope === 'workspace' && oauthStatus?.zoom.source === 'organization' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                  <ShieldCheck className="w-4 h-4 shrink-0 text-blue-500" />
+                  <span>Currently using <strong>Organization Default</strong>. Entering keys below will override them for this workspace only.</span>
+                </div>
+              )}
+              {scope === 'workspace' && oauthStatus?.zoom.source === 'workspace' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>A custom <strong>Workspace Override</strong> is active.</span>
+                </div>
+              )}
+              {scope === 'organization' && oauthStatus?.zoom.source === 'organization' && (
+                <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
+                  <Check className="w-4 h-4 shrink-0 text-emerald-500" />
+                  <span>Global default configured. Workspaces inherit this automatically.</span>
+                </div>
+              )}
+
               <div className="p-4 rounded-2xl border border-border bg-muted/30 space-y-2.5">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
@@ -628,7 +749,7 @@ export function OAuthCredentialsModal({
                     className="rounded-xl min-h-[44px] px-6 font-semibold shadow-sm active:scale-[0.97]"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Save Zoom Keys
+                    {scope === 'organization' ? 'Save Zoom Org Default' : 'Save Zoom Keys'}
                   </Button>
                 </div>
               </div>

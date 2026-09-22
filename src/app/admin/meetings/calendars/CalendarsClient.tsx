@@ -500,6 +500,8 @@ export default function CalendarsClient() {
           open={credentialsModalOpen}
           onOpenChange={setCredentialsModalOpen}
           workspaceId={activeWorkspaceId}
+          organizationId={activeOrganizationId}
+          scope="workspace"
           defaultProvider={selectedModalProvider}
           onCredentialsSaved={fetchConnections}
         />

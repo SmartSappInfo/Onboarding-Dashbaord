@@ -6,6 +6,7 @@ import { getFullAdminPermissions } from './permissions-engine';
 import { migrateToPermissionsSchema } from './permissions-migration';
 import { assertUserTenantPermission } from './organization-utils';
 import { requireAuth } from './auth/require-auth';
+import { encryptToken } from './crypto';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 /**
@@ -44,6 +45,23 @@ export async function saveOrganizationAction(
                         flatData[`settings.${k}`] = v;
                     }
                 }
+            }
+
+            // Ensure OAuth client secrets are always encrypted via AES-256-GCM before storage
+            if (data.googleClientSecret && typeof data.googleClientSecret === 'string' && data.googleClientSecret.trim()) {
+                const s = data.googleClientSecret.trim();
+                flatData.googleClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
+            }
+            if (data.microsoftClientSecret && typeof data.microsoftClientSecret === 'string' && data.microsoftClientSecret.trim()) {
+                const s = data.microsoftClientSecret.trim();
+                flatData.microsoftClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
+            }
+            if (data.zoomClientSecret && typeof data.zoomClientSecret === 'string' && data.zoomClientSecret.trim()) {
+                const s = data.zoomClientSecret.trim();
+                flatData.zoomClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
+            }
+            if (data.microsoftTenantId !== undefined) {
+                flatData.microsoftTenantId = data.microsoftTenantId ? (data.microsoftTenantId as string).trim() : null;
             }
 
             // Update existing organization

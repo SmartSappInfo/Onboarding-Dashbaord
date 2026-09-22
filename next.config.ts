@@ -94,14 +94,41 @@ const nextConfig: NextConfig = {
     'genkit',
   ],
   experimental: {
+    // Single-thread build worker on Vercel or memory-constrained CI to eliminate OOM SIGKILL
     cpus: process.env.BUILD_CPUS
       ? parseInt(process.env.BUILD_CPUS, 10)
-      : 2,
+      : process.env.VERCEL
+        ? 1
+        : 2,
+    memoryBasedWorkersCount: true,
+    turbopackMemoryEviction: 'full',
+    turbopackPluginRuntimeStrategy: 'workerThreads',
+    webpackBuildWorker: true,
+    webpackMemoryOptimizations: true,
     optimizePackageImports: [
       'lucide-react',
       'date-fns',
       'framer-motion',
       'recharts',
+      '@radix-ui/react-icons',
+      '@radix-ui/react-dialog',
+      '@radix-ui/react-dropdown-menu',
+      '@radix-ui/react-select',
+      '@radix-ui/react-tabs',
+      '@radix-ui/react-tooltip',
+      '@radix-ui/react-popover',
+      '@radix-ui/react-avatar',
+      '@radix-ui/react-accordion',
+      '@radix-ui/react-alert-dialog',
+      '@radix-ui/react-checkbox',
+      '@radix-ui/react-scroll-area',
+      '@radix-ui/react-slot',
+      '@radix-ui/react-switch',
+      '@radix-ui/react-separator',
+      '@tiptap/core',
+      '@tiptap/react',
+      '@tiptap/starter-kit',
+      'lodash',
     ],
     serverActions: {
       bodySizeLimit: '2mb',

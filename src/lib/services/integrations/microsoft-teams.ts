@@ -33,8 +33,10 @@ interface GraphErrorResponse {
  */
 export async function resolveMicrosoftCredentials(
   workspaceId: string,
-  orgId: string
-): Promise<{ clientId: string; clientSecret: string }> {
+  orgId?: string
+): Promise<{ clientId: string; clientSecret: string; tenantId: string }> {
+  let resolvedOrgId = orgId;
+
   // 1. Check workspace configuration
   if (workspaceId) {
     const workspaceDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
@@ -44,20 +46,25 @@ export async function resolveMicrosoftCredentials(
         return {
           clientId: (wsData.microsoftClientId as string).trim(),
           clientSecret: decryptToken(wsData.microsoftClientSecret as string).trim(),
+          tenantId: (wsData.microsoftTenantId as string)?.trim() || 'common',
         };
+      }
+      if (!resolvedOrgId && wsData?.organizationId) {
+        resolvedOrgId = wsData.organizationId as string;
       }
     }
   }
 
   // 2. Check organization configuration
-  if (orgId) {
-    const orgDoc = await adminDb.collection('organizations').doc(orgId).get();
+  if (resolvedOrgId) {
+    const orgDoc = await adminDb.collection('organizations').doc(resolvedOrgId).get();
     if (orgDoc.exists) {
       const orgData = orgDoc.data();
       if (orgData?.microsoftClientId && orgData?.microsoftClientSecret) {
         return {
           clientId: (orgData.microsoftClientId as string).trim(),
           clientSecret: decryptToken(orgData.microsoftClientSecret as string).trim(),
+          tenantId: (orgData.microsoftTenantId as string)?.trim() || 'common',
         };
       }
     }
@@ -67,6 +74,7 @@ export async function resolveMicrosoftCredentials(
   return {
     clientId: (process.env.MICROSOFT_CLIENT_ID || '').trim(),
     clientSecret: (process.env.MICROSOFT_CLIENT_SECRET || '').trim(),
+    tenantId: (process.env.MICROSOFT_TENANT_ID || 'common').trim(),
   };
 }
 
@@ -76,9 +84,9 @@ export async function resolveMicrosoftCredentials(
  */
 export async function getMicrosoftAuthUrl(
   workspaceId: string,
-  orgId: string
+  orgId?: string
 ): Promise<string> {
-  const { clientId, clientSecret } = await resolveMicrosoftCredentials(workspaceId, orgId);
+  const { clientId, clientSecret, tenantId } = await resolveMicrosoftCredentials(workspaceId, orgId);
   if (!clientId || !clientSecret) {
     throw new Error('Microsoft Teams OAuth credentials are not configured for this workspace. Please configure your Microsoft Client ID and Client Secret in Settings.');
   }
@@ -86,7 +94,7 @@ export async function getMicrosoftAuthUrl(
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
   const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
   const scope = encodeURIComponent('offline_access Calendars.ReadWrite OnlineMeetings.ReadWrite');
-  return `https://login.microsoftonline.com/common/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}&state=${workspaceId}_${orgId}`;
+  return `https://login.microsoftonline.com/${tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}&state=${workspaceId}_${orgId || ''}`;
 }
 
 /**
@@ -95,9 +103,9 @@ export async function getMicrosoftAuthUrl(
 export async function exchangeMicrosoftCode(
   code: string,
   workspaceId: string,
-  orgId: string
+  orgId?: string
 ): Promise<MicrosoftTokenResponse> {
-  const { clientId, clientSecret } = await resolveMicrosoftCredentials(workspaceId, orgId);
+  const { clientId, clientSecret, tenantId } = await resolveMicrosoftCredentials(workspaceId, orgId);
   if (!clientId || !clientSecret) {
     throw new Error('Microsoft Teams OAuth credentials missing during token exchange.');
   }
@@ -112,7 +120,7 @@ export async function exchangeMicrosoftCode(
     grant_type: 'authorization_code',
   });
 
-  const res = await fetch('https://login.microsoftonline.com/common/oauth2/v2.0/token', {
+  const res = await fetch(`https://login.microsoftonline.com/${tenantId || 'common'}/oauth2/v2.0/token`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',

@@ -17,6 +17,7 @@ import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-ca
 import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { assertUserTenantPermission } from '@/lib/organization-utils';
 import { encryptToken } from '@/lib/crypto';
 
 function getErrorMessage(error: unknown): string {
@@ -249,14 +250,14 @@ export async function syncBookingToExternalCalendarAction(
  */
 export async function getGoogleAuthUrlAction(
   workspaceId: string,
-  organizationId: string
+  organizationId?: string
 ): Promise<{ success: boolean; url?: string; error?: string }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireWorkspace(workspaceId);
 
   try {
     const { getGoogleAuthUrl } = await import('@/lib/services/integrations/google-calendar');
-    const url = await getGoogleAuthUrl(workspaceId, organizationId);
+    const url = await getGoogleAuthUrl(workspaceId, organizationId || '');
     return { success: true, url };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
@@ -308,17 +309,39 @@ export interface OAuthCredentialsInput {
   tenantId?: string;
 }
 
+export type OAuthCredentialSource = 'workspace' | 'organization' | 'env' | 'none';
+
 export interface WorkspaceOAuthProviderStatus {
   configured: boolean;
   clientId?: string;
   hasSecret: boolean;
   tenantId?: string;
+  source: OAuthCredentialSource;
 }
 
 export interface WorkspaceOAuthStatus {
   google: WorkspaceOAuthProviderStatus;
   microsoft: WorkspaceOAuthProviderStatus;
   zoom: WorkspaceOAuthProviderStatus;
+  redirectUris: {
+    google: string;
+    microsoft: string;
+    zoom: string;
+  };
+}
+
+export interface OrganizationOAuthProviderStatus {
+  configured: boolean;
+  clientId?: string;
+  hasSecret: boolean;
+  tenantId?: string;
+  source: 'organization' | 'env' | 'none';
+}
+
+export interface OrganizationOAuthStatus {
+  google: OrganizationOAuthProviderStatus;
+  microsoft: OrganizationOAuthProviderStatus;
+  zoom: OrganizationOAuthProviderStatus;
   redirectUris: {
     google: string;
     microsoft: string;
@@ -374,7 +397,57 @@ export async function saveWorkspaceOAuthCredentialsAction(
 }
 
 /**
- * Retrieves OAuth credentials configuration status (without leaking secrets) for a workspace.
+ * Saves and encrypts OAuth Client ID and Secret for a given provider at the organization level.
+ */
+export async function saveOrganizationOAuthCredentialsAction(
+  organizationId: string,
+  input: OAuthCredentialsInput
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const { uid: userId } = await requireAuth();
+    await assertUserTenantPermission(userId, organizationId, 'administrator');
+
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+      updatedBy: userId,
+    };
+
+    if (input.provider === 'google_calendar') {
+      if (input.clientId !== undefined) {
+        updateData.googleClientId = input.clientId.trim();
+      }
+      if (input.clientSecret && input.clientSecret.trim()) {
+        updateData.googleClientSecret = encryptToken(input.clientSecret.trim());
+      }
+    } else if (input.provider === 'microsoft_teams') {
+      if (input.clientId !== undefined) {
+        updateData.microsoftClientId = input.clientId.trim();
+      }
+      if (input.clientSecret && input.clientSecret.trim()) {
+        updateData.microsoftClientSecret = encryptToken(input.clientSecret.trim());
+      }
+      if (input.tenantId !== undefined) {
+        updateData.microsoftTenantId = input.tenantId.trim() || null;
+      }
+    } else if (input.provider === 'zoom') {
+      if (input.clientId !== undefined) {
+        updateData.zoomClientId = input.clientId.trim();
+      }
+      if (input.clientSecret && input.clientSecret.trim()) {
+        updateData.zoomClientSecret = encryptToken(input.clientSecret.trim());
+      }
+    }
+
+    await adminDb.collection('organizations').doc(organizationId).set(updateData, { merge: true });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/**
+ * Retrieves OAuth credentials configuration status (without leaking secrets) for a workspace,
+ * seamlessly incorporating the 2-tier fallback hierarchy: Workspace Override -> Organization Default -> Environment.
  */
 export async function getWorkspaceOAuthCredentialsStatusAction(
   workspaceId: string
@@ -396,18 +469,43 @@ export async function getWorkspaceOAuthCredentialsStatusAction(
     let wsMsTenantId: string | undefined;
     let wsZoomClientId: string | undefined;
     let wsZoomSecret = false;
+    let organizationId: string | undefined;
 
     if (workspaceId) {
       const wsDoc = await adminDb.collection('workspaces').doc(workspaceId).get();
       if (wsDoc.exists) {
         const wsData = wsDoc.data();
-        if (wsData?.googleClientId) wsGoogleClientId = wsData.googleClientId as string;
+        if (wsData?.googleClientId) wsGoogleClientId = (wsData.googleClientId as string).trim();
         if (wsData?.googleClientSecret) wsGoogleSecret = true;
-        if (wsData?.microsoftClientId) wsMsClientId = wsData.microsoftClientId as string;
+        if (wsData?.microsoftClientId) wsMsClientId = (wsData.microsoftClientId as string).trim();
         if (wsData?.microsoftClientSecret) wsMsSecret = true;
-        if (wsData?.microsoftTenantId) wsMsTenantId = wsData.microsoftTenantId as string;
-        if (wsData?.zoomClientId) wsZoomClientId = wsData.zoomClientId as string;
+        if (wsData?.microsoftTenantId) wsMsTenantId = (wsData.microsoftTenantId as string).trim();
+        if (wsData?.zoomClientId) wsZoomClientId = (wsData.zoomClientId as string).trim();
         if (wsData?.zoomClientSecret) wsZoomSecret = true;
+        if (wsData?.organizationId) organizationId = wsData.organizationId as string;
+      }
+    }
+
+    // Check organization level if any provider not configured at workspace level
+    let orgGoogleClientId: string | undefined;
+    let orgGoogleSecret = false;
+    let orgMsClientId: string | undefined;
+    let orgMsSecret = false;
+    let orgMsTenantId: string | undefined;
+    let orgZoomClientId: string | undefined;
+    let orgZoomSecret = false;
+
+    if (organizationId) {
+      const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+      if (orgDoc.exists) {
+        const orgData = orgDoc.data();
+        if (orgData?.googleClientId) orgGoogleClientId = (orgData.googleClientId as string).trim();
+        if (orgData?.googleClientSecret) orgGoogleSecret = true;
+        if (orgData?.microsoftClientId) orgMsClientId = (orgData.microsoftClientId as string).trim();
+        if (orgData?.microsoftClientSecret) orgMsSecret = true;
+        if (orgData?.microsoftTenantId) orgMsTenantId = (orgData.microsoftTenantId as string).trim();
+        if (orgData?.zoomClientId) orgZoomClientId = (orgData.zoomClientId as string).trim();
+        if (orgData?.zoomClientSecret) orgZoomSecret = true;
       }
     }
 
@@ -416,28 +514,182 @@ export async function getWorkspaceOAuthCredentialsStatusAction(
     const envMsConfigured = !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET);
     const envZoomConfigured = !!(process.env.ZOOM_CLIENT_ID && process.env.ZOOM_CLIENT_SECRET);
 
-    const googleConfigured = (!!wsGoogleClientId && wsGoogleSecret) || envGoogleConfigured;
-    const msConfigured = (!!wsMsClientId && wsMsSecret) || envMsConfigured;
-    const zoomConfigured = (!!wsZoomClientId && wsZoomSecret) || envZoomConfigured;
+    // Google resolution
+    let googleSource: OAuthCredentialSource = 'none';
+    let googleConfigured = false;
+    let googleClientIdDisplay: string | undefined;
+    let googleHasSecret = false;
+
+    if (wsGoogleClientId && wsGoogleSecret) {
+      googleSource = 'workspace';
+      googleConfigured = true;
+      googleClientIdDisplay = wsGoogleClientId;
+      googleHasSecret = true;
+    } else if (orgGoogleClientId && orgGoogleSecret) {
+      googleSource = 'organization';
+      googleConfigured = true;
+      googleClientIdDisplay = orgGoogleClientId;
+      googleHasSecret = true;
+    } else if (envGoogleConfigured) {
+      googleSource = 'env';
+      googleConfigured = true;
+      googleClientIdDisplay = '*** (Environment Configured)';
+      googleHasSecret = true;
+    }
+
+    // Microsoft resolution
+    let msSource: OAuthCredentialSource = 'none';
+    let msConfigured = false;
+    let msClientIdDisplay: string | undefined;
+    let msHasSecret = false;
+    const msTenantIdDisplay = wsMsTenantId || orgMsTenantId || process.env.MICROSOFT_TENANT_ID || undefined;
+
+    if (wsMsClientId && wsMsSecret) {
+      msSource = 'workspace';
+      msConfigured = true;
+      msClientIdDisplay = wsMsClientId;
+      msHasSecret = true;
+    } else if (orgMsClientId && orgMsSecret) {
+      msSource = 'organization';
+      msConfigured = true;
+      msClientIdDisplay = orgMsClientId;
+      msHasSecret = true;
+    } else if (envMsConfigured) {
+      msSource = 'env';
+      msConfigured = true;
+      msClientIdDisplay = '*** (Environment Configured)';
+      msHasSecret = true;
+    }
+
+    // Zoom resolution
+    let zoomSource: OAuthCredentialSource = 'none';
+    let zoomConfigured = false;
+    let zoomClientIdDisplay: string | undefined;
+    let zoomHasSecret = false;
+
+    if (wsZoomClientId && wsZoomSecret) {
+      zoomSource = 'workspace';
+      zoomConfigured = true;
+      zoomClientIdDisplay = wsZoomClientId;
+      zoomHasSecret = true;
+    } else if (orgZoomClientId && orgZoomSecret) {
+      zoomSource = 'organization';
+      zoomConfigured = true;
+      zoomClientIdDisplay = orgZoomClientId;
+      zoomHasSecret = true;
+    } else if (envZoomConfigured) {
+      zoomSource = 'env';
+      zoomConfigured = true;
+      zoomClientIdDisplay = '*** (Environment Configured)';
+      zoomHasSecret = true;
+    }
 
     return {
       success: true,
       data: {
         google: {
           configured: googleConfigured,
-          clientId: wsGoogleClientId || (process.env.GOOGLE_CLIENT_ID ? '*** (Environment Configured)' : undefined),
-          hasSecret: wsGoogleSecret || !!process.env.GOOGLE_CLIENT_SECRET,
+          clientId: googleClientIdDisplay,
+          hasSecret: googleHasSecret,
+          source: googleSource,
         },
         microsoft: {
           configured: msConfigured,
-          clientId: wsMsClientId || (process.env.MICROSOFT_CLIENT_ID ? '*** (Environment Configured)' : undefined),
-          hasSecret: wsMsSecret || !!process.env.MICROSOFT_CLIENT_SECRET,
-          tenantId: wsMsTenantId,
+          clientId: msClientIdDisplay,
+          hasSecret: msHasSecret,
+          tenantId: msTenantIdDisplay,
+          source: msSource,
         },
         zoom: {
           configured: zoomConfigured,
-          clientId: wsZoomClientId || (process.env.ZOOM_CLIENT_ID ? '*** (Environment Configured)' : undefined),
-          hasSecret: wsZoomSecret || !!process.env.ZOOM_CLIENT_SECRET,
+          clientId: zoomClientIdDisplay,
+          hasSecret: zoomHasSecret,
+          source: zoomSource,
+        },
+        redirectUris,
+      },
+    };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/**
+ * Retrieves OAuth credentials configuration status (without leaking secrets) for an organization.
+ */
+export async function getOrganizationOAuthCredentialsStatusAction(
+  organizationId: string
+): Promise<{ success: boolean; data?: OrganizationOAuthStatus; error?: string }> {
+  try {
+    const { uid: userId } = await requireAuth();
+    await assertUserTenantPermission(userId, organizationId, 'administrator');
+
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    const redirectUris = {
+      google: `${appUrl}/api/integrations/google/callback`,
+      microsoft: `${appUrl}/api/integrations/microsoft/callback`,
+      zoom: `${appUrl}/api/integrations/zoom/callback`,
+    };
+
+    let orgGoogleClientId: string | undefined;
+    let orgGoogleSecret = false;
+    let orgMsClientId: string | undefined;
+    let orgMsSecret = false;
+    let orgMsTenantId: string | undefined;
+    let orgZoomClientId: string | undefined;
+    let orgZoomSecret = false;
+
+    if (organizationId) {
+      const orgDoc = await adminDb.collection('organizations').doc(organizationId).get();
+      if (orgDoc.exists) {
+        const orgData = orgDoc.data();
+        if (orgData?.googleClientId) orgGoogleClientId = (orgData.googleClientId as string).trim();
+        if (orgData?.googleClientSecret) orgGoogleSecret = true;
+        if (orgData?.microsoftClientId) orgMsClientId = (orgData.microsoftClientId as string).trim();
+        if (orgData?.microsoftClientSecret) orgMsSecret = true;
+        if (orgData?.microsoftTenantId) orgMsTenantId = (orgData.microsoftTenantId as string).trim();
+        if (orgData?.zoomClientId) orgZoomClientId = (orgData.zoomClientId as string).trim();
+        if (orgData?.zoomClientSecret) orgZoomSecret = true;
+      }
+    }
+
+    const envGoogleConfigured = !!(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+    const envMsConfigured = !!(process.env.MICROSOFT_CLIENT_ID && process.env.MICROSOFT_CLIENT_SECRET);
+    const envZoomConfigured = !!(process.env.ZOOM_CLIENT_ID && process.env.ZOOM_CLIENT_SECRET);
+
+    const googleSource: 'organization' | 'env' | 'none' = (orgGoogleClientId && orgGoogleSecret)
+      ? 'organization'
+      : envGoogleConfigured ? 'env' : 'none';
+
+    const msSource: 'organization' | 'env' | 'none' = (orgMsClientId && orgMsSecret)
+      ? 'organization'
+      : envMsConfigured ? 'env' : 'none';
+
+    const zoomSource: 'organization' | 'env' | 'none' = (orgZoomClientId && orgZoomSecret)
+      ? 'organization'
+      : envZoomConfigured ? 'env' : 'none';
+
+    return {
+      success: true,
+      data: {
+        google: {
+          configured: googleSource !== 'none',
+          clientId: orgGoogleClientId || (envGoogleConfigured ? '*** (Environment Configured)' : undefined),
+          hasSecret: orgGoogleSecret || !!process.env.GOOGLE_CLIENT_SECRET,
+          source: googleSource,
+        },
+        microsoft: {
+          configured: msSource !== 'none',
+          clientId: orgMsClientId || (envMsConfigured ? '*** (Environment Configured)' : undefined),
+          hasSecret: orgMsSecret || !!process.env.MICROSOFT_CLIENT_SECRET,
+          tenantId: orgMsTenantId || process.env.MICROSOFT_TENANT_ID || undefined,
+          source: msSource,
+        },
+        zoom: {
+          configured: zoomSource !== 'none',
+          clientId: orgZoomClientId || (envZoomConfigured ? '*** (Environment Configured)' : undefined),
+          hasSecret: orgZoomSecret || !!process.env.ZOOM_CLIENT_SECRET,
+          source: zoomSource,
         },
         redirectUris,
       },

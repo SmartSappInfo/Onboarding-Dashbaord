@@ -258,9 +258,17 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                           <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
                             <CheckCircle className="h-2.5 w-2.5" /> Connected
                           </Badge>
-                        ) : oauthStatus?.google.configured ? (
-                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none">
-                            Ready to Connect
+                        ) : oauthStatus?.google.source === 'workspace' ? (
+                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none" title="Custom credentials configured for this workspace">
+                            Ready to Connect (Workspace)
+                          </Badge>
+                        ) : oauthStatus?.google.source === 'organization' ? (
+                          <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[8px] border-none" title="Inherited from Organization settings. All workspaces can connect without local API keys.">
+                            Ready to Connect (Org Default)
+                          </Badge>
+                        ) : oauthStatus?.google.source === 'env' ? (
+                          <Badge className="bg-slate-500/15 text-slate-600 dark:text-slate-400 font-bold text-[8px] border-none" title="Inherited from system environment credentials">
+                            Ready to Connect (System Default)
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[8px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
@@ -336,9 +344,17 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                           <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
                             <CheckCircle className="h-2.5 w-2.5" /> Connected
                           </Badge>
-                        ) : oauthStatus?.microsoft.configured ? (
-                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none">
-                            Ready to Connect
+                        ) : oauthStatus?.microsoft.source === 'workspace' ? (
+                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none" title="Custom credentials configured for this workspace">
+                            Ready to Connect (Workspace)
+                          </Badge>
+                        ) : oauthStatus?.microsoft.source === 'organization' ? (
+                          <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[8px] border-none" title="Inherited from Organization settings. All workspaces can connect without local API keys.">
+                            Ready to Connect (Org Default)
+                          </Badge>
+                        ) : oauthStatus?.microsoft.source === 'env' ? (
+                          <Badge className="bg-slate-500/15 text-slate-600 dark:text-slate-400 font-bold text-[8px] border-none" title="Inherited from system environment credentials">
+                            Ready to Connect (System Default)
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[8px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
@@ -414,9 +430,17 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
                           <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 font-bold text-[8px] border-none flex items-center gap-1">
                             <CheckCircle className="h-2.5 w-2.5" /> Connected
                           </Badge>
-                        ) : oauthStatus?.zoom.configured ? (
-                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none">
-                            Ready to Connect
+                        ) : oauthStatus?.zoom.source === 'workspace' ? (
+                          <Badge className="bg-blue-500/15 text-blue-600 dark:text-blue-400 font-bold text-[8px] border-none" title="Custom credentials configured for this workspace">
+                            Ready to Connect (Workspace)
+                          </Badge>
+                        ) : oauthStatus?.zoom.source === 'organization' ? (
+                          <Badge className="bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 font-bold text-[8px] border-none" title="Inherited from Organization settings. All workspaces can connect without local API keys.">
+                            Ready to Connect (Org Default)
+                          </Badge>
+                        ) : oauthStatus?.zoom.source === 'env' ? (
+                          <Badge className="bg-slate-500/15 text-slate-600 dark:text-slate-400 font-bold text-[8px] border-none" title="Inherited from system environment credentials">
+                            Ready to Connect (System Default)
                           </Badge>
                         ) : (
                           <Badge variant="outline" className="text-[8px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 bg-amber-500/10 flex items-center gap-1">
@@ -565,6 +589,8 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
         open={credentialsModalOpen}
         onOpenChange={setCredentialsModalOpen}
         workspaceId={workspace.id}
+        organizationId={workspace.organizationId}
+        scope="workspace"
         defaultProvider={selectedModalProvider}
         onCredentialsSaved={loadOAuthStatus}
       />
