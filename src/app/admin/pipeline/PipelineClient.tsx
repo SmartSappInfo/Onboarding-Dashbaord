@@ -55,6 +55,7 @@ import { PageContainerFluid } from '@/components/ui/page-container';
 import SavedViewsBar from './components/SavedViewsBar';
 import AdvancedFilterBuilderModal from './components/AdvancedFilterBuilderModal';
 import DealsAnalyticsView from './components/DealsAnalyticsView';
+import { CreatePipelineModal } from './components/CreatePipelineModal';
 import { listDealSavedViewsAction } from '@/app/actions/deal-saved-view-actions';
 import { getPipelineTargetsAction } from '@/app/actions/deal-analytics-actions';
 import {
@@ -67,7 +68,7 @@ import {
 
 export default function PipelineClient() {
   const firestore = useFirestore();
-  const { activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
   const { plural } = useTerminology();
@@ -75,6 +76,7 @@ export default function PipelineClient() {
   const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'list' | 'forecast' | 'analytics' | 'config' | 'actions'>('board');
   const [isInitializing, setIsInitializing] = React.useState(false);
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
+  const [isCreatePipelineModalOpen, setIsCreatePipelineModalOpen] = React.useState(false);
 
   // SHARED PIPELINES: Query by array-contains for active workspace
   const pipelinesQuery = useMemoFirebase(() => 
@@ -439,35 +441,14 @@ export default function PipelineClient() {
     }
   }, [pipelines, activePipelines, currentPipelineId, isLoadingPipelines, columnWidth, activeWorkspaceId, getStoredPipelineId, setStoredPipelineId]);
 
-  const handleAddPipeline = async () => {
-    if (!user || !activeWorkspaceId) return;
-    setIsInitializing(true);
-    
-    try {
-        const res = await savePipelineAction(null, {
-            name: 'New Pipeline',
-            description: `Operational track for ${plural.toLowerCase()}.`,
-            workspaceIds: [activeWorkspaceId],
-            stageIds: [],
-            accessRoles: [],
-            columnWidth: 320,
-        }, user.uid);
-        
-        if (res.success && res.id) {
-            justCreatedIdRef.current = res.id;
-            handleSelectPipeline(res.id);
-            setActiveView('config');
-            toast({ title: 'Pipeline Space Initialized' });
-        } else {
-            throw new Error(res.error || "Failed to initialize pipeline");
-        }
-    } catch (e: unknown) {
-        const message = e instanceof Error ? e.message : 'Failed to initialize pipeline';
-        toast({ variant: 'destructive', title: 'Initialization Failed', description: message });
-    } finally {
-        setIsInitializing(false);
-    }
-  };
+  const handleOpenCreateModal = React.useCallback(() => {
+    setIsCreatePipelineModalOpen(true);
+  }, []);
+
+  const handlePipelineCreated = React.useCallback((newPipelineId: string) => {
+    handleSelectPipeline(newPipelineId);
+    setActiveView('board');
+  }, [handleSelectPipeline]);
 
   return (
     <PageContainerFluid>
@@ -475,33 +456,31 @@ export default function PipelineClient() {
         <header className="shrink-0 bg-transparent z-30">
             <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
                 <div className="flex flex-col items-start min-w-0">
-                    <div className="flex items-center gap-2">
-                        {/* Redesigned Pipeline Switcher */}
+                    <div className="inline-flex items-center p-1 rounded-2xl bg-card/85 dark:bg-card/50 backdrop-blur-xl border border-border/70 shadow-xs hover:border-border transition-all">
+                        {/* Redesigned Sleek Pipeline Switcher */}
                         <Popover open={isSwitcherOpen} onOpenChange={setIsSwitcherOpen}>
                             <PopoverTrigger asChild>
                                 <Button
-                                    variant="outline"
-                                    className="h-10 border-border/80 bg-card hover:bg-accent/80 transition-all duration-200 flex items-center gap-3.5 max-w-[340px] sm:max-w-md rounded-xl shadow-sm group active:scale-[0.98]"
+                                    variant="ghost"
+                                    className="h-9 px-3 rounded-xl hover:bg-accent/60 transition-all flex items-center gap-2.5 max-w-[280px] sm:max-w-xs md:max-w-sm group focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none"
                                 >
                                     <div className="p-1.5 rounded-lg bg-primary/10 text-primary shrink-0 transition-transform group-hover:scale-105">
-                                        <GitBranch className="h-4 w-4" />
+                                        <GitBranch className="h-3.5 w-3.5" />
                                     </div>
-                                    <div className="flex flex-col items-start min-w-0 text-left">
-                                        <div className="flex items-center gap-1.5 w-full">
-                                            <span className="font-extrabold text-sm sm:text-base tracking-tight text-foreground truncate">
-                                                {currentPipeline?.name || (isLoadingPipelines ? "Loading..." : "Pipeline Registry")}
-                                            </span>
-                                            {currentPipeline?.isDefault && (
-                                                <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-primary text-[8px] font-bold uppercase px-1 shrink-0">
-                                                    Default
-                                                </Badge>
-                                            )}
-                                        </div>
-                                        <span className="text-[10px] text-muted-foreground font-medium truncate">
-                                            {filterStages ? `${filterStages.length} Stages` : 'Workflow Track'}
+                                    <div className="flex items-center gap-2 min-w-0 text-left">
+                                        <span className="font-extrabold text-xs sm:text-sm tracking-tight text-foreground truncate">
+                                            {currentPipeline?.name || (isLoadingPipelines ? "Loading..." : "Select Pipeline")}
+                                        </span>
+                                        {currentPipeline?.isDefault && (
+                                            <Badge variant="outline" className="h-4 border-primary/20 bg-primary/10 text-primary text-[8px] font-bold uppercase px-1 shrink-0">
+                                                Default
+                                            </Badge>
+                                        )}
+                                        <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground font-semibold shrink-0 hidden sm:inline-block">
+                                            {filterStages ? `${filterStages.length} Stages` : 'Pipeline'}
                                         </span>
                                     </div>
-                                    <ChevronDown className="h-4 w-4 text-muted-foreground/70 shrink-0 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70 shrink-0 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
                                 </Button>
                             </PopoverTrigger>
 
@@ -558,42 +537,30 @@ export default function PipelineClient() {
                                                         type="button"
                                                         variant="ghost"
                                                         size="icon"
-                                                        className="h-6 w-6 rounded-md hover:bg-indigo-500/20 text-muted-foreground hover:text-indigo-500"
-                                                        title="Clone Pipeline"
                                                         onClick={(e) => {
                                                             e.stopPropagation();
-                                                            handleOpenCloneModal(p);
-                                                            setIsSwitcherOpen(false);
+                                                            handleSetDefaultPipeline(p.id);
                                                         }}
+                                                        disabled={p.isDefault}
+                                                        className={cn(
+                                                            "h-6 w-6 rounded-md",
+                                                            p.isDefault ? "text-amber-500 opacity-100" : "text-muted-foreground hover:text-amber-500"
+                                                        )}
+                                                        title={p.isDefault ? "Current default pipeline" : "Set as default"}
                                                     >
-                                                        <Copy className="h-3 w-3" />
+                                                        <Star className={cn("h-3 w-3", p.isDefault && "fill-amber-500")} />
                                                     </Button>
-                                                    {!p.isDefault && (
-                                                        <Button
-                                                            type="button"
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-6 w-6 rounded-md hover:bg-amber-500/20 text-muted-foreground hover:text-amber-500"
-                                                            title="Set as Default"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleSetDefaultPipeline(p.id);
-                                                            }}
-                                                        >
-                                                            <Star className="h-3 w-3" />
-                                                        </Button>
-                                                    )}
                                                 </div>
                                             </div>
                                         );
                                     })}
 
-                                    {/* Archived Pipelines */}
+                                    {/* Archived Pipelines Accordion */}
                                     {filteredArchivedPipelines.length > 0 && (
                                         <>
-                                            <div className="h-px bg-border/60 my-2" />
-                                            <p className="px-2.5 py-1 text-[9px] font-extrabold text-muted-foreground/70 uppercase tracking-wider">
-                                                Archived Pipelines
+                                            <div className="border-t border-border/40 my-2" />
+                                            <p className="px-2.5 py-1 text-[9px] font-extrabold text-muted-foreground/50 uppercase tracking-wider">
+                                                Archived Pipelines ({filteredArchivedPipelines.length})
                                             </p>
                                             {filteredArchivedPipelines.map((p) => (
                                                 <div
@@ -619,7 +586,7 @@ export default function PipelineClient() {
                                         size="sm"
                                         onClick={() => {
                                             setIsSwitcherOpen(false);
-                                            handleAddPipeline();
+                                            handleOpenCreateModal();
                                         }}
                                         className="h-8 w-full justify-center gap-1.5 text-xs font-semibold rounded-xl"
                                     >
@@ -646,37 +613,41 @@ export default function PipelineClient() {
                             </PopoverContent>
                         </Popover>
 
+                        {/* Subtle Vertical Divider */}
+                        <div className="h-4 w-[1px] bg-border/60 mx-1 shrink-0" />
+
+                        {/* New Pipeline Button (+) */}
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
                                     <Button
-                                        variant="outline"
+                                        variant="ghost"
                                         size="icon"
-                                        onClick={handleAddPipeline}
-                                        disabled={isInitializing}
-                                        className="h-10 w-10 rounded-xl border-border/80 text-muted-foreground hover:text-primary hover:bg-primary/5 shadow-sm"
+                                        onClick={handleOpenCreateModal}
+                                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-primary hover:bg-primary/10 active:scale-95 transition-all focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none"
                                     >
-                                        {isInitializing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                                        <Plus className="h-4 w-4" />
                                     </Button>
                                 </TooltipTrigger>
-                                <TooltipContent>Add New Shared Pipeline</TooltipContent>
+                                <TooltipContent className="text-xs">Create New Pipeline</TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
 
+                        {/* Clone Current Pipeline Button */}
                         {currentPipeline && (
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
                                         <Button
-                                            variant="outline"
+                                            variant="ghost"
                                             size="icon"
                                             onClick={() => handleOpenCloneModal(currentPipeline)}
-                                            className="h-10 w-10 rounded-xl border-indigo-500/30 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 shadow-sm"
+                                            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-indigo-400 hover:bg-indigo-500/10 active:scale-95 transition-all focus-visible:ring-1 focus-visible:ring-indigo-500/40 focus:outline-none"
                                         >
-                                            <Copy className="h-4 w-4" />
+                                            <Copy className="h-3.5 w-3.5" />
                                         </Button>
                                     </TooltipTrigger>
-                                    <TooltipContent>Clone Current Pipeline ({currentPipeline.name})</TooltipContent>
+                                    <TooltipContent className="text-xs">Clone Pipeline ({currentPipeline.name})</TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
                         )}
@@ -868,10 +839,10 @@ export default function PipelineClient() {
         </div>
         <CreateDealModal open={isCreateDealOpen} onOpenChange={setIsCreateDealOpen} initialPipelineId={currentPipelineId || undefined} />
 
-        {/* Clone Pipeline Modal */}
+        {/* Clone Pipeline Confirmation Modal */}
         <Dialog open={isCloneModalOpen} onOpenChange={setIsCloneModalOpen}>
-            <DialogContent className="rounded-2xl max-w-md bg-background border border-border shadow-2xl p-6">
-                <DialogHeader className="space-y-1">
+            <DialogContent className="rounded-2xl max-w-md bg-card border border-border shadow-2xl p-6">
+                <DialogHeader className="space-y-1 text-left">
                     <DialogTitle className="text-base font-extrabold flex items-center gap-2 text-foreground">
                         <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-500">
                             <Copy className="h-4 w-4" />
@@ -879,24 +850,36 @@ export default function PipelineClient() {
                         <span>Clone Pipeline Architecture</span>
                     </DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                        Duplicate metadata, stages, SLA thresholds, and colors under a new pipeline blueprint.
+                        {cloneTargetPipeline ? `Create a duplicate blueprint of "${cloneTargetPipeline.name}".` : 'Duplicate pipeline settings and stages.'}
                     </DialogDescription>
                 </DialogHeader>
 
-                <div className="space-y-4 my-3">
+                <div className="space-y-4 my-3 text-left">
                     <div className="space-y-2">
                         <Label className="text-xs font-bold text-foreground">New Pipeline Label</Label>
                         <Input
                             value={cloneName}
                             onChange={(e) => setCloneName(e.target.value)}
                             placeholder="e.g. Sales Pipeline (Copy)"
-                            className="h-10 rounded-xl border border-border text-xs px-3.5 font-semibold"
+                            className="h-10 rounded-xl border border-border text-xs px-3.5 font-semibold focus-visible:ring-1 focus-visible:ring-indigo-500/40"
                         />
                     </div>
 
-                    <div className="p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-[11px] text-indigo-700 dark:text-indigo-300 leading-relaxed">
-                        <span className="font-bold block mb-0.5">Cloning Scope Note:</span>
-                        All stages and configurations will be cloned. Existing deals, contacts, and activity logs will <span className="font-extrabold underline">NOT</span> be copied.
+                    <div className="p-3.5 rounded-xl bg-indigo-500/5 border border-indigo-500/20 text-xs space-y-1.5 text-indigo-900 dark:text-indigo-200">
+                        <div className="flex items-center gap-1.5 font-bold text-indigo-600 dark:text-indigo-400">
+                            <Check className="h-3.5 w-3.5" />
+                            <span>What gets copied:</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed pl-5">
+                            All stages, SLA thresholds, probability weights, assignment strategy, column width, and deal total preferences.
+                        </p>
+                        <div className="flex items-center gap-1.5 font-bold text-muted-foreground pt-1">
+                            <X className="h-3.5 w-3.5 text-amber-500" />
+                            <span>What stays untouched:</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed pl-5">
+                            Deals, contacts, tasks, and historical activity logs are strictly isolated and will <span className="font-semibold underline">not</span> be copied.
+                        </p>
                     </div>
                 </div>
 
@@ -905,7 +888,8 @@ export default function PipelineClient() {
                         type="button"
                         variant="outline"
                         onClick={() => setIsCloneModalOpen(false)}
-                        className="h-9 text-xs rounded-xl font-semibold"
+                        disabled={isCloning}
+                        className="h-10 text-xs rounded-xl font-semibold min-h-[44px]"
                     >
                         Cancel
                     </Button>
@@ -913,7 +897,7 @@ export default function PipelineClient() {
                         type="button"
                         onClick={handleExecuteClone}
                         disabled={isCloning || !cloneName.trim()}
-                        className="h-9 text-xs rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 gap-1.5 shadow-md"
+                        className="h-10 text-xs rounded-xl font-bold bg-indigo-600 text-white hover:bg-indigo-700 min-h-[44px] gap-1.5 shadow-md active:scale-[0.97] transition-all"
                     >
                         {isCloning ? (
                             <>
@@ -923,13 +907,22 @@ export default function PipelineClient() {
                         ) : (
                             <>
                                 <Copy className="h-3.5 w-3.5" />
-                                <span>Clone Pipeline</span>
+                                <span>Confirm &amp; Clone</span>
                             </>
                         )}
                     </Button>
                 </DialogFooter>
             </DialogContent>
         </Dialog>
+
+        {/* Draft-First Create Pipeline Modal */}
+        <CreatePipelineModal
+            open={isCreatePipelineModalOpen}
+            onOpenChange={setIsCreatePipelineModalOpen}
+            activeWorkspaceId={activeWorkspaceId || ''}
+            allowedWorkspaces={allowedWorkspaces}
+            onPipelineCreated={handlePipelineCreated}
+        />
 
         {/* Phase 6: Advanced Multi-Condition Filter Builder Modal */}
         <AdvancedFilterBuilderModal

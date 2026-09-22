@@ -36,6 +36,7 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { Separator } from '@/components/ui/separator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
+import { CreatePipelineModal } from '../components/CreatePipelineModal';
 
 interface _PipelineConfigViewProps {
     pipelineId: string;
@@ -48,15 +49,24 @@ export default function PipelineSettingsClient() {
     const { toast } = useToast();
     const confirm = useConfirm();
     const { user } = useUser();
-    const { activeWorkspaceId, allowedWorkspaces: _allowedWorkspaces, activeOrganizationId } = useWorkspace();
+    const { activeWorkspaceId, allowedWorkspaces, activeOrganizationId } = useWorkspace();
     
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
     const [isCreating, setIsAdding] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isCloning, setIsCloning] = React.useState(false);
+    const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
 
     const handleClone = async () => {
         if (!user || !selectedId) return;
+        const targetPipeline = pipelines?.find(p => p.id === selectedId);
+        const approved = await confirm({
+            title: `Clone "${targetPipeline?.name || 'Pipeline'}"?`,
+            description: 'This will duplicate all stages, SLA thresholds, and blueprint rules under a new pipeline. Existing deals, contacts, and activity logs will NOT be copied.',
+            confirmText: 'Clone Pipeline',
+        });
+        if (!approved) return;
+
         setIsCloning(true);
         try {
             const res = await clonePipelineAction(selectedId, user.uid);
@@ -253,8 +263,8 @@ export default function PipelineSettingsClient() {
                         )}
                         <Button 
                             variant="outline" 
-                            onClick={() => { setSelectedId(null); setIsAdding(true); }}
-                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-card shadow-sm"
+                            onClick={() => setIsCreateModalOpen(true)}
+                            className="rounded-xl font-bold h-11 px-6 border-primary/20 text-primary bg-card shadow-sm active:scale-[0.97] transition-all"
                         >
                             <Plus className="mr-2 h-4 w-4" /> New Workflow
                         </Button>
@@ -498,6 +508,18 @@ export default function PipelineSettingsClient() {
                     ) : null}
                 </AnimatePresence>
             </div>
+
+            {/* Draft-First Create Pipeline Modal */}
+            <CreatePipelineModal
+                open={isCreateModalOpen}
+                onOpenChange={setIsCreateModalOpen}
+                activeWorkspaceId={activeWorkspaceId || ''}
+                allowedWorkspaces={allowedWorkspaces || []}
+                onPipelineCreated={(newId) => {
+                    setSelectedId(newId);
+                    setIsAdding(false);
+                }}
+            />
         </div>
     );
 }

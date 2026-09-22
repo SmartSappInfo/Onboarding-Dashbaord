@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import type { Deal, OnboardingStage, DealStage, DealLineItem, DealStageHistory } from '../deal-types';
+import { PIPELINE_STARTER_TEMPLATES } from '../pipeline-starter-templates';
 
 describe('Deals 2.0 Schema & Type Verification', () => {
   it('should accept a minimal legacy deal without errors', () => {
@@ -119,5 +120,25 @@ describe('Deals 2.0 Schema & Type Verification', () => {
     expect(pipelineWithDefaults.showDealTotals !== false).toBe(true);
     expect(pipelineWithTotalsDisabled.showDealTotals !== false).toBe(false);
     expect(pipelineWithTotalsExplicitlyEnabled.showDealTotals !== false).toBe(true);
+  });
+
+  it('should verify all PIPELINE_STARTER_TEMPLATES have valid stages, probabilities, and order', () => {
+    expect(PIPELINE_STARTER_TEMPLATES.length).toBeGreaterThanOrEqual(4);
+
+    for (const tmpl of PIPELINE_STARTER_TEMPLATES) {
+      expect(tmpl.id).toBeTruthy();
+      expect(tmpl.name).toBeTruthy();
+      expect(tmpl.stages.length).toBeGreaterThan(0);
+
+      // Verify stage orders are strictly increasing starting at 1
+      tmpl.stages.forEach((s: import('@/lib/types').StarterStageConfig, idx: number) => {
+        expect(s.order).toBe(idx + 1);
+        expect(s.name.trim()).toBeTruthy();
+        if (typeof s.probability === 'number') {
+          expect(s.probability).toBeGreaterThanOrEqual(0);
+          expect(s.probability).toBeLessThanOrEqual(100);
+        }
+      });
+    }
   });
 });

@@ -904,6 +904,32 @@ export interface Pipeline {
   showDealTotals?: boolean;
 }
 
+export interface StarterStageConfig {
+  name: string;
+  order: number;
+  color?: string;
+  probability?: number;
+  slaDays?: number;
+  isWon?: boolean;
+  isLost?: boolean;
+}
+
+export interface CreatePipelinePayload {
+  name: string;
+  description?: string;
+  type?: PipelineType;
+  defaultProbability?: number;
+  workspaceIds: string[];
+  columnWidth?: number;
+  showDealTotals?: boolean;
+  accessRoles?: string[];
+  assignmentStrategy?: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
+  assignmentUserIds?: string[];
+  defaultCloseDateOffsetValue?: number | null;
+  defaultCloseDateOffsetUnit?: 'hours' | 'days' | 'months' | null;
+  initialStages?: StarterStageConfig[];
+}
+
 export const APP_PERMISSIONS = [
   { id: 'schools_view', label: 'View Schools', category: 'Operations' },
   { id: 'schools_edit', label: 'Edit Profiles', category: 'Operations' },

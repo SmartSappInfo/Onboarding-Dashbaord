@@ -24,19 +24,13 @@ import {
     DollarSign
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
-import { calculateExpectedCloseDate } from '../utils/deal-expected-close';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect } from '@/components/ui/multi-select';
 import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import StageEditor from './StageEditor';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
+import { PipelineConfigFields, type PipelineFormData } from './PipelineConfigFields';
 
 interface PipelineConfigViewProps {
     pipelineId: string;
@@ -56,17 +50,29 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const [isArchiving, setIsArchiving] = React.useState(false);
     const [isDeleting, setIsDeleting] = React.useState(false);
     const [isCloning, setIsCloning] = React.useState(false);
-    const [pipelineType, setPipelineType] = React.useState<import('@/lib/types').PipelineType>('sales');
-    const [defaultProbability, setDefaultProbability] = React.useState<number>(50);
-    const [showDealTotals, setShowDealTotals] = React.useState<boolean>(true);
-    const [name, setName] = React.useState('');
-    const [description, setDescription] = React.useState('');
-    const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
-    const [workspaceIds, setWorkspaceIds] = React.useState<string[]>([]);
-    const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'round-robin' | 'value-based' | 'unassigned'>('direct');
-    const [assignmentUserIds, setAssignmentUserIds] = React.useState<string[]>([]);
-    const [defaultCloseDateOffsetValue, setDefaultCloseDateOffsetValue] = React.useState<number | ''>('');
-    const [defaultCloseDateOffsetUnit, setDefaultCloseDateOffsetUnit] = React.useState<'hours' | 'days' | 'months'>('days');
+
+    // Controlled form state adhering to single source of truth (PipelineConfigFields)
+    const [formData, setFormData] = React.useState<PipelineFormData>({
+        name: '',
+        description: '',
+        type: 'sales',
+        defaultProbability: 50,
+        workspaceIds: [],
+        columnWidth: columnWidth || 320,
+        showDealTotals: true,
+        accessRoles: [],
+        assignmentStrategy: 'direct',
+        assignmentUserIds: [],
+        defaultCloseDateOffsetValue: '',
+        defaultCloseDateOffsetUnit: 'days',
+    });
+
+    const updateField = React.useCallback(<K extends keyof PipelineFormData>(key: K, value: PipelineFormData[K]) => {
+        setFormData(prev => ({ ...prev, [key]: value }));
+        if (key === 'columnWidth' && typeof value === 'number') {
+            onWidthChange(value);
+        }
+    }, [onWidthChange]);
 
     const handleArchive = async () => {
         if (!user) return;
@@ -218,44 +224,47 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
 
     React.useEffect(() => {
         if (pipeline) {
-            setName(pipeline.name);
-            setDescription(pipeline.description || '');
-            setPipelineType(pipeline.type || 'sales');
-            setDefaultProbability(typeof pipeline.defaultProbability === 'number' ? pipeline.defaultProbability : 50);
-            setShowDealTotals(pipeline.showDealTotals !== false);
-            setAccessRoles(pipeline.accessRoles || []);
-            setWorkspaceIds(pipeline.workspaceIds || []);
-            setAssignmentStrategy(pipeline.assignmentStrategy || 'direct');
-            setAssignmentUserIds(pipeline.assignmentUserIds || []);
-            setDefaultCloseDateOffsetValue(pipeline.defaultCloseDateOffsetValue ?? '');
-            setDefaultCloseDateOffsetUnit(pipeline.defaultCloseDateOffsetUnit ?? 'days');
+            setFormData({
+                name: pipeline.name,
+                description: pipeline.description || '',
+                type: pipeline.type || 'sales',
+                defaultProbability: typeof pipeline.defaultProbability === 'number' ? pipeline.defaultProbability : 50,
+                showDealTotals: pipeline.showDealTotals !== false,
+                accessRoles: pipeline.accessRoles || [],
+                workspaceIds: pipeline.workspaceIds || [],
+                columnWidth: pipeline.columnWidth || 320,
+                assignmentStrategy: pipeline.assignmentStrategy || 'direct',
+                assignmentUserIds: pipeline.assignmentUserIds || [],
+                defaultCloseDateOffsetValue: pipeline.defaultCloseDateOffsetValue ?? '',
+                defaultCloseDateOffsetUnit: pipeline.defaultCloseDateOffsetUnit ?? 'days',
+            });
             if (pipeline.columnWidth) onWidthChange(pipeline.columnWidth);
         }
     }, [pipeline, onWidthChange]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!firestore || !name.trim() || workspaceIds.length === 0) {
-            if (workspaceIds.length === 0) toast({ variant: 'destructive', title: 'Constraint Alert', description: 'Pipeline must belong to at least one workspace.' });
+        if (!firestore || !formData.name.trim() || formData.workspaceIds.length === 0) {
+            if (formData.workspaceIds.length === 0) toast({ variant: 'destructive', title: 'Constraint Alert', description: 'Pipeline must belong to at least one workspace.' });
             return;
         }
         setIsSaving(true);
 
-        const numOffset = typeof defaultCloseDateOffsetValue === 'number' && defaultCloseDateOffsetValue > 0 ? defaultCloseDateOffsetValue : null;
-        const unitOffset = numOffset ? defaultCloseDateOffsetUnit : null;
+        const numOffset = typeof formData.defaultCloseDateOffsetValue === 'number' && formData.defaultCloseDateOffsetValue > 0 ? formData.defaultCloseDateOffsetValue : null;
+        const unitOffset = numOffset ? formData.defaultCloseDateOffsetUnit : null;
 
         try {
             await updateDoc(doc(firestore, 'pipelines', pipelineId), {
-                name: name.trim(),
-                description: description.trim(),
-                type: pipelineType,
-                defaultProbability: Math.min(100, Math.max(0, defaultProbability)),
-                showDealTotals: Boolean(showDealTotals),
-                accessRoles,
-                workspaceIds,
-                columnWidth,
-                assignmentStrategy,
-                assignmentUserIds,
+                name: formData.name.trim(),
+                description: formData.description.trim(),
+                type: formData.type,
+                defaultProbability: Math.min(100, Math.max(0, formData.defaultProbability)),
+                showDealTotals: Boolean(formData.showDealTotals),
+                accessRoles: formData.accessRoles,
+                workspaceIds: formData.workspaceIds,
+                columnWidth: formData.columnWidth,
+                assignmentStrategy: formData.assignmentStrategy,
+                assignmentUserIds: formData.assignmentUserIds,
                 defaultCloseDateOffsetValue: numOffset,
                 defaultCloseDateOffsetUnit: unitOffset,
                 updatedAt: new Date().toISOString()
@@ -273,233 +282,26 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
     const workspaceUserOptions = workspaceUsers?.map(u => ({ label: u.name || u.email || 'Workspace User', value: u.id })) || [];
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
-    const sampleCloseDate = React.useMemo(() => {
-        const num = typeof defaultCloseDateOffsetValue === 'number' && defaultCloseDateOffsetValue > 0 ? defaultCloseDateOffsetValue : null;
-        if (!num) return null;
-        return calculateExpectedCloseDate({ defaultCloseDateOffsetValue: num, defaultCloseDateOffsetUnit }, null);
-    }, [defaultCloseDateOffsetValue, defaultCloseDateOffsetUnit]);
-
     if (isLoading) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-2xl" /><div className="h-96 bg-muted rounded-2xl" /></div>;
 
     return (
         <form onSubmit={handleSave} className="space-y-8 text-left">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                 <div className="lg:col-span-2 space-y-8">
-                    <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                        <CardHeader className="p-6 pb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-primary/5 text-primary shrink-0"><Settings2 size={18} /></div>
-                                <CardTitle className="text-sm font-semibold tracking-tight text-foreground">Master Blueprint</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-8 space-y-8">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Pipeline Label</Label>
-                                    <Input value={name} onChange={e => setName(e.target.value)} className="min-h-[44px] sm:min-h-[40px] rounded-xl border border-border bg-background shadow-sm text-sm px-4 focus:ring-1 focus:ring-primary/20 transition-all font-medium" />
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Pipeline Type</Label>
-                                    <Select value={pipelineType} onValueChange={(val: import('@/lib/types').PipelineType) => setPipelineType(val)}>
-                                        <SelectTrigger className="min-h-[44px] sm:min-h-[40px] rounded-xl text-xs">
-                                            <SelectValue placeholder="Select type" />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-2xl">
-                                            <SelectItem value="sales">Sales Pipeline</SelectItem>
-                                            <SelectItem value="new_business">New Business</SelectItem>
-                                            <SelectItem value="renewal">Renewals &amp; Retention</SelectItem>
-                                            <SelectItem value="upsell">Upsell &amp; Expansion</SelectItem>
-                                            <SelectItem value="cross_sell">Cross-sell</SelectItem>
-                                            <SelectItem value="partnership">Strategic Partnerships</SelectItem>
-                                            <SelectItem value="enrollment">Student Enrollment</SelectItem>
-                                            <SelectItem value="implementation">Implementation &amp; Onboarding</SelectItem>
-                                            <SelectItem value="customer_success">Customer Success</SelectItem>
-                                            <SelectItem value="custom">Custom Workflow</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-
-                            <div className="space-y-4">
-                                <div className="flex justify-between items-center px-1">
-                                    <Label className="text-[10px] font-bold text-muted-foreground uppercase">Default Baseline Probability</Label>
-                                    <Badge variant="outline" className="font-mono text-[10px] bg-background border-primary/20 text-primary rounded-lg">{defaultProbability}%</Badge>
-                                </div>
-                                <Slider value={[defaultProbability]} onValueChange={([v]) => setDefaultProbability(v)} min={0} max={100} step={5} />
-                            </div>
-
-                            <div className="space-y-4">
-                                <Label className="text-[10px] font-semibold text-primary ml-1 flex items-center gap-2 uppercase"><Layout size={14} /> Shared Workspace Context</Label>
-                                <MultiSelect options={workspaceOptions} value={workspaceIds} onChange={setWorkspaceIds} placeholder="Assign to hubs..." className="rounded-xl border-border shadow-sm text-xs" />
-                            </div>
-                            
-                            <div className="space-y-4 p-5 rounded-2xl bg-muted/10 border border-border/60">
-                                <div className="flex justify-between items-center px-1">
-                                    <Label className="text-[10px] font-semibold text-primary uppercase">Column Density</Label>
-                                    <Badge variant="outline" className="font-mono text-[10px] bg-background border-primary/20 text-primary rounded-lg">{columnWidth}px</Badge>
-                                </div>
-                                <Slider value={[columnWidth]} onValueChange={([v]) => onWidthChange(v)} min={280} max={500} step={10} />
-                            </div>
-
-                            {/* Kanban Board Financial Metrics Toggle */}
-                            <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/60">
-                                <div className="space-y-0.5 pr-4 text-left">
-                                    <Label htmlFor="showDealTotals" className="text-xs font-bold flex items-center gap-2 cursor-pointer text-foreground">
-                                        <DollarSign className="h-4 w-4 text-primary" />
-                                        Show Financial Totals in Kanban Columns
-                                    </Label>
-                                    <p className="text-[11px] text-muted-foreground font-medium">
-                                        Display total deal revenue and weighted forecast in each Kanban column header. Enabled by default.
-                                    </p>
-                                </div>
-                                <Switch
-                                    id="showDealTotals"
-                                    checked={showDealTotals}
-                                    onCheckedChange={setShowDealTotals}
-                                />
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Scope Description</Label>
-                                <Textarea value={description} onChange={e => setDescription(e.target.value)} className="min-h-[80px] rounded-xl border border-border bg-background shadow-sm text-sm p-4 focus:ring-1 focus:ring-primary/20 transition-all font-medium" />
-                            </div>
-
-                            <div className="flex justify-end pt-2">
-                                <Button type="submit" disabled={isSaving} className="rounded-xl font-bold px-8 shadow-md">
-                                    {isSaving ? 'Saving...' : 'Save Settings'}
-                                </Button>
-                            </div>
-                        </CardContent>
-                    </Card>
+                    <PipelineConfigFields
+                        variant="full"
+                        formData={formData}
+                        onChange={updateField}
+                        workspaceOptions={workspaceOptions}
+                        roleOptions={roleOptions}
+                        workspaceUserOptions={workspaceUserOptions}
+                        disabled={isSaving}
+                    />
 
                     <StageEditor pipelineId={pipelineId} />
                 </div>
 
                 <div className="space-y-8">
-                    <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                        <CardHeader className="p-6 pb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-primary/5 text-primary shrink-0"><ShieldCheck size={18} /></div>
-                                <CardTitle className="text-sm font-semibold tracking-tight text-foreground">Access Architecture</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-4">
-                            <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Authorized User Roles</Label>
-                            <MultiSelect options={roleOptions} value={accessRoles} onChange={setAccessRoles} placeholder="Grant visibility..." className="rounded-xl border-border shadow-sm text-xs" />
-                        </CardContent>
-                    </Card>
-
-                    <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-                        <CardHeader className="p-6 pb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-primary/5 text-primary shrink-0">
-                                    <Users size={18} />
-                                </div>
-                                <CardTitle className="text-sm font-semibold tracking-tight text-foreground">Deal Assignment Rules</CardTitle>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-4">
-                            <div className="space-y-2">
-                                <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Routing Strategy</Label>
-                                <Select 
-                                    value={assignmentStrategy} 
-                                    onValueChange={(val: 'direct' | 'round-robin' | 'value-based' | 'unassigned') => setAssignmentStrategy(val)}
-                                >
-                                    <SelectTrigger className="w-full h-10 rounded-xl bg-background border border-border px-3 text-sm focus:ring-1 focus:ring-primary/20">
-                                        <SelectValue placeholder="Select strategy..." />
-                                    </SelectTrigger>
-                                    <SelectContent className="rounded-xl border border-border shadow-lg bg-popover text-popover-foreground">
-                                        <SelectItem value="direct" className="text-xs">Manual (Inherit from Entity owner)</SelectItem>
-                                        <SelectItem value="round-robin" className="text-xs">Round Robin (Equal distribution)</SelectItem>
-                                        <SelectItem value="value-based" className="text-xs">Round Robin based on Deal Value</SelectItem>
-                                        <SelectItem value="unassigned" className="text-xs">Leave Unassigned</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-
-                            {(assignmentStrategy === 'round-robin' || assignmentStrategy === 'value-based') && (
-                                <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Assignee Pool</Label>
-                                    <MultiSelect 
-                                        options={workspaceUserOptions} 
-                                        value={assignmentUserIds} 
-                                        onChange={setAssignmentUserIds} 
-                                        placeholder="Select eligible team members..." 
-                                        className="rounded-xl border border-border shadow-sm text-xs" 
-                                    />
-                                    <p className="text-[10px] text-muted-foreground ml-1 italic leading-normal">
-                                        Deals will be routed dynamically among the selected pool.
-                                    </p>
-                                </div>
-                            )}
-                        </CardContent>
-                    </Card>
-
-                    {/* Default Forecast Close Date Offset Card */}
-                    <Card className="rounded-2xl border border-border/50 bg-card shadow-sm overflow-hidden">
-                        <CardHeader className="p-6 pb-2">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-primary/5 text-primary shrink-0">
-                                    <Calendar size={18} />
-                                </div>
-                                <div>
-                                    <CardTitle className="text-sm font-semibold tracking-tight text-foreground">Default Forecast Close Date Offset</CardTitle>
-                                    <CardDescription className="text-[11px] font-medium text-muted-foreground mt-0.5">
-                                        Automatically assign expected close dates to new deals in this pipeline.
-                                    </CardDescription>
-                                </div>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-6 space-y-4">
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Offset Duration</Label>
-                                    <Input
-                                        type="number"
-                                        min="0"
-                                        step="1"
-                                        placeholder="e.g. 30"
-                                        value={defaultCloseDateOffsetValue}
-                                        onChange={(e) => {
-                                            const val = e.target.value === '' ? '' : parseInt(e.target.value, 10);
-                                            setDefaultCloseDateOffsetValue(isNaN(val as number) ? '' : val);
-                                        }}
-                                        className="h-10 rounded-xl bg-background border border-border px-3 text-xs"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <Label className="text-[10px] font-bold text-muted-foreground ml-1 uppercase">Duration Unit</Label>
-                                    <Select
-                                        value={defaultCloseDateOffsetUnit}
-                                        onValueChange={(val: 'hours' | 'days' | 'months') => setDefaultCloseDateOffsetUnit(val)}
-                                    >
-                                        <SelectTrigger className="w-full h-10 rounded-xl bg-background border border-border px-3 text-xs">
-                                            <SelectValue placeholder="Select unit..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-xl border border-border shadow-lg bg-popover text-popover-foreground">
-                                            <SelectItem value="hours" className="text-xs">Hours</SelectItem>
-                                            <SelectItem value="days" className="text-xs">Days</SelectItem>
-                                            <SelectItem value="months" className="text-xs">Months</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-                            </div>
-                            {sampleCloseDate ? (
-                                <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 flex items-center justify-between text-xs">
-                                    <span className="font-semibold text-muted-foreground text-[11px]">Calculated Sample Date:</span>
-                                    <Badge variant="outline" className="text-[10px] font-bold bg-primary/10 text-primary border-primary/20">
-                                        {new Date(sampleCloseDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
-                                    </Badge>
-                                </div>
-                            ) : (
-                                <p className="text-[10px] text-muted-foreground italic ml-1">
-                                    Leave empty for no automatic close date offset.
-                                </p>
-                            )}
-                        </CardContent>
-                    </Card>
-
                     {/* Danger Zone Card */}
                     <Card className="rounded-2xl border border-destructive/20 bg-destructive/5 shadow-sm overflow-hidden">
                         <CardHeader className="p-6 pb-2">
@@ -557,7 +359,7 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
                     </Card>
 
                     <div className="pt-4 sticky top-24">
-                        <Button type="submit" disabled={isSaving || !name.trim()} className="w-full h-10 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98] gap-2 flex items-center justify-center">
+                        <Button type="submit" disabled={isSaving || !formData.name.trim()} className="w-full h-10 rounded-xl font-bold text-xs bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:shadow-primary/30 transition-all active:scale-[0.98] gap-2 flex items-center justify-center">
                             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                             Save Configuration
                         </Button>

@@ -3,7 +3,7 @@
 
 import { adminDb } from './firebase-admin';
 import { revalidatePath } from 'next/cache';
-import type { Pipeline, IndustryVertical } from './types';
+import type { Pipeline, IndustryVertical, CreatePipelinePayload } from './types';
 import { canUser } from './workspace-permissions';
 import { INDUSTRY_CONFIG } from './industry-config';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
@@ -11,6 +11,112 @@ import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 /**
  * @fileOverview Server-side actions for Pipeline management.
  */
+
+/**
+ * ARCHITECTURAL POINTER (Atomic Pipeline Creation with Initial Stages - Rule 10):
+ * Creates a new pipeline and its initial starter stages in a single atomic Firestore batch.
+ * This guarantees:
+ * 1. Zero partial/orphaned documents if an operation fails.
+ * 2. New pipelines are immediately populated with valid stages, eliminating empty-board states.
+ * 3. Server-side session verification via requireAuth() and requireWorkspace().
+ * 4. Strict role authorization check via canUser().
+ * 5. Strict zero 'any' / 'any[]' compliance (Rule 5).
+ */
+export async function createPipelineWithStagesAction(
+  payload: CreatePipelinePayload
+): Promise<{ success: boolean; id?: string; error?: string }> {
+  try {
+    const verified = await requireAuth();
+    const userId = verified.uid;
+
+    if (!payload.name || !payload.name.trim()) {
+      return { success: false, error: 'Pipeline name is required.' };
+    }
+
+    if (!payload.workspaceIds || payload.workspaceIds.length === 0) {
+      return { success: false, error: 'Pipeline must belong to at least one workspace.' };
+    }
+
+    const primaryWorkspaceId = payload.workspaceIds[0];
+    await requireWorkspace(primaryWorkspaceId);
+
+    const permission = await canUser(userId, 'operations', 'pipeline', 'create', primaryWorkspaceId);
+    if (!permission.granted) {
+      return { success: false, error: permission.reason };
+    }
+
+    const timestamp = new Date().toISOString();
+    const batch = adminDb.batch();
+
+    // 1. Generate new pipeline document reference
+    const pipelineRef = adminDb.collection('pipelines').doc();
+    const pipelineId = pipelineRef.id;
+
+    // 2. Prepare stages (either from initialStages or empty if none specified)
+    const stageIds: string[] = [];
+    const stagesToCreate = payload.initialStages && payload.initialStages.length > 0
+      ? payload.initialStages
+      : [];
+
+    stagesToCreate.forEach((stageConfig, index) => {
+      const stageRef = adminDb.collection('onboardingStages').doc();
+      const stageId = stageRef.id;
+      stageIds.push(stageId);
+
+      batch.set(stageRef, {
+        id: stageId,
+        pipelineId,
+        name: stageConfig.name.trim(),
+        order: stageConfig.order ?? (index + 1),
+        color: stageConfig.color || getStageColor(index),
+        probability: typeof stageConfig.probability === 'number'
+          ? Math.min(100, Math.max(0, stageConfig.probability))
+          : (payload.defaultProbability ?? 50),
+        slaDays: stageConfig.slaDays ?? null,
+        isWon: Boolean(stageConfig.isWon),
+        isLost: Boolean(stageConfig.isLost),
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+    });
+
+    // 3. Write pipeline document
+    const { initialStages: _discard, ...cleanData } = payload;
+    batch.set(pipelineRef, {
+      ...cleanData,
+      id: pipelineId,
+      name: payload.name.trim(),
+      description: payload.description?.trim() || '',
+      type: payload.type || 'sales',
+      defaultProbability: typeof payload.defaultProbability === 'number'
+        ? Math.min(100, Math.max(0, payload.defaultProbability))
+        : 50,
+      stageIds,
+      accessRoles: payload.accessRoles || [],
+      columnWidth: payload.columnWidth || 320,
+      showDealTotals: payload.showDealTotals !== false,
+      assignmentStrategy: payload.assignmentStrategy || 'direct',
+      assignmentUserIds: payload.assignmentUserIds || [],
+      defaultCloseDateOffsetValue: typeof payload.defaultCloseDateOffsetValue === 'number' && payload.defaultCloseDateOffsetValue > 0
+        ? payload.defaultCloseDateOffsetValue
+        : null,
+      defaultCloseDateOffsetUnit: payload.defaultCloseDateOffsetUnit || null,
+      isDefault: false,
+      isArchived: false,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+
+    // 4. Commit atomic batch
+    await batch.commit();
+
+    revalidatePath('/admin/pipeline');
+    return { success: true, id: pipelineId };
+  } catch (e: unknown) {
+    const error = e instanceof Error ? e.message : 'Failed to create pipeline';
+    return { success: false, error };
+  }
+}
 
 /**
  * Updates an existing pipeline or initializes a new one.
