@@ -219,7 +219,7 @@ export default function CalendarsClient() {
   };
 
   const googleConnections = connections.filter(c => c.provider === 'google_calendar');
-  const microsoftConnections = connections.filter(c => c.provider === 'microsoft_outlook');
+  const microsoftConnections = connections.filter(c => c.provider === 'microsoft_outlook' || c.provider === 'microsoft_teams');
 
   return (
     <div className="space-y-6 pb-16">

@@ -276,7 +276,7 @@ export async function getAvailableSlotsAction(params: {
               const { queryGoogleFreeBusy } = await import('@/lib/services/integrations/google-calendar');
               const gBusy = await queryGoogleFreeBusy(connDoc.id, `${startDate}T00:00:00Z`, `${endDate}T23:59:59Z`);
               externalBusyIntervals.push(...gBusy);
-            } else if (conn.provider === 'microsoft_outlook') {
+            } else if (conn.provider === 'microsoft_outlook' || conn.provider === 'microsoft_teams') {
               const { queryMicrosoftFreeBusy } = await import('@/lib/services/integrations/microsoft-calendar');
               const mBusy = await queryMicrosoftFreeBusy(connDoc.id, `${startDate}T00:00:00Z`, `${endDate}T23:59:59Z`);
               externalBusyIntervals.push(...mBusy);

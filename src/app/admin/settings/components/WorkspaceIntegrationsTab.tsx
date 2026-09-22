@@ -14,11 +14,11 @@ import { collection, query, where } from 'firebase/firestore';
 import { 
   getGoogleAuthUrlAction, 
   getMicrosoftAuthUrlAction, 
-  getZoomAuthUrlAction, 
-  disconnectConnectionAction 
+  getZoomAuthUrlAction 
 } from '@/app/actions/scheduler-actions';
 import {
   getWorkspaceOAuthCredentialsStatusAction,
+  disconnectCalendarConnectionAction,
   type WorkspaceOAuthStatus,
 } from '@/app/actions/calendar-connection-actions';
 import { 
@@ -96,7 +96,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
   [connections]);
 
   const microsoftConnection = React.useMemo(() => 
-    connections?.find(c => c.provider === 'microsoft_teams'), 
+    connections?.find(c => c.provider === 'microsoft_teams' || c.provider === 'microsoft_outlook'), 
   [connections]);
 
   const zoomConnection = React.useMemo(() => 
@@ -154,7 +154,7 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
       return;
     }
     try {
-      const res = await disconnectConnectionAction(connectionId);
+      const res = await disconnectCalendarConnectionAction(connectionId, workspace.id);
       if (res.success) {
         toast({ 
           title: 'Disconnected', 

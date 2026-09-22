@@ -42,6 +42,7 @@ import {
   saveOrganizationOAuthCredentialsAction,
   getWorkspaceOAuthCredentialsStatusAction,
   getOrganizationOAuthCredentialsStatusAction,
+  clearWorkspaceOAuthCredentialsAction,
   type WorkspaceOAuthStatus,
   type OrganizationOAuthStatus,
 } from '@/app/actions/calendar-connection-actions';
@@ -73,6 +74,7 @@ export function OAuthCredentialsModal({
   const [activeTab, setActiveTab] = React.useState<OAuthProvider>(defaultProvider);
   const [isLoadingStatus, setIsLoadingStatus] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isReverting, setIsReverting] = React.useState(false);
   const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
   const [showSecret, setShowSecret] = React.useState<Record<string, boolean>>({});
 
@@ -287,6 +289,47 @@ export function OAuthCredentialsModal({
     }
   };
 
+  const handleRevert = async (provider: OAuthProvider) => {
+    if (!workspaceId) return;
+    setIsReverting(true);
+    try {
+      const res = await clearWorkspaceOAuthCredentialsAction(workspaceId, provider);
+      if (res.success) {
+        toast({
+          title: 'Workspace Override Cleared',
+          description: 'Workspace credentials removed. This workspace now inherits Organization Defaults.',
+        });
+        if (provider === 'google_calendar') {
+          setGoogleClientId('');
+          setGoogleClientSecret('');
+        } else if (provider === 'microsoft_teams') {
+          setMsClientId('');
+          setMsClientSecret('');
+          setMsTenantId('');
+        } else if (provider === 'zoom') {
+          setZoomClientId('');
+          setZoomClientSecret('');
+        }
+        await loadStatus();
+        onCredentialsSaved?.();
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Revert Failed',
+          description: res.error || 'Failed to clear workspace credentials.',
+        });
+      }
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Revert Failed',
+        description: err instanceof Error ? err.message : 'An unexpected error occurred.',
+      });
+    } finally {
+      setIsReverting(false);
+    }
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-3xl p-6 sm:p-8">
@@ -442,6 +485,7 @@ export function OAuthCredentialsModal({
                     <button
                       type="button"
                       onClick={() => toggleShowSecret('google')}
+                      aria-label={showSecret['google'] ? 'Hide secret' : 'Show secret'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showSecret['google'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -457,6 +501,18 @@ export function OAuthCredentialsModal({
                   <span>Secrets are encrypted using AES-256-GCM.</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {scope === 'workspace' && oauthStatus?.google.source === 'workspace' && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={isReverting || isSaving}
+                      onClick={() => handleRevert('google_calendar')}
+                      className="rounded-xl min-h-[44px] text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                    >
+                      {isReverting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                      Revert to Org Default
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -468,7 +524,7 @@ export function OAuthCredentialsModal({
                   <Button
                     type="button"
                     onClick={() => handleSave('google_calendar')}
-                    disabled={isSaving}
+                    disabled={isSaving || isReverting}
                     className="rounded-xl min-h-[44px] px-6 font-semibold shadow-sm active:scale-[0.97]"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -575,6 +631,7 @@ export function OAuthCredentialsModal({
                     <button
                       type="button"
                       onClick={() => toggleShowSecret('ms')}
+                      aria-label={showSecret['ms'] ? 'Hide secret' : 'Show secret'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showSecret['ms'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -602,6 +659,18 @@ export function OAuthCredentialsModal({
                   <span>Secrets are encrypted using AES-256-GCM.</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {scope === 'workspace' && oauthStatus?.microsoft.source === 'workspace' && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={isReverting || isSaving}
+                      onClick={() => handleRevert('microsoft_teams')}
+                      className="rounded-xl min-h-[44px] text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                    >
+                      {isReverting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                      Revert to Org Default
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -613,7 +682,7 @@ export function OAuthCredentialsModal({
                   <Button
                     type="button"
                     onClick={() => handleSave('microsoft_teams')}
-                    disabled={isSaving}
+                    disabled={isSaving || isReverting}
                     className="rounded-xl min-h-[44px] px-6 font-semibold shadow-sm active:scale-[0.97]"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
@@ -720,6 +789,7 @@ export function OAuthCredentialsModal({
                     <button
                       type="button"
                       onClick={() => toggleShowSecret('zoom')}
+                      aria-label={showSecret['zoom'] ? 'Hide secret' : 'Show secret'}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {showSecret['zoom'] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -734,6 +804,18 @@ export function OAuthCredentialsModal({
                   <span>Secrets are encrypted using AES-256-GCM.</span>
                 </div>
                 <div className="flex items-center gap-2">
+                  {scope === 'workspace' && oauthStatus?.zoom.source === 'workspace' && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      disabled={isReverting || isSaving}
+                      onClick={() => handleRevert('zoom')}
+                      className="rounded-xl min-h-[44px] text-xs font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-[0.97]"
+                    >
+                      {isReverting && <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />}
+                      Revert to Org Default
+                    </Button>
+                  )}
                   <Button
                     type="button"
                     variant="outline"
@@ -745,7 +827,7 @@ export function OAuthCredentialsModal({
                   <Button
                     type="button"
                     onClick={() => handleSave('zoom')}
-                    disabled={isSaving}
+                    disabled={isSaving || isReverting}
                     className="rounded-xl min-h-[44px] px-6 font-semibold shadow-sm active:scale-[0.97]"
                   >
                     {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}

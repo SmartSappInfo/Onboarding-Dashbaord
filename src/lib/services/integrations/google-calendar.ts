@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection } from '@/lib/types';
 import { encryptToken, decryptToken } from '@/lib/crypto';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface GoogleTokenResponse {
   access_token: string;
@@ -92,8 +93,7 @@ export async function getGoogleAuthUrl(
     throw new Error('Google Calendar OAuth credentials are not configured for this workspace. Please configure your Google Client ID and Client Secret in Settings.');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const redirectUri = `${appUrl}/api/integrations/google/callback`;
+  const redirectUri = `${getBaseUrl()}/api/integrations/google/callback`;
   const scope = encodeURIComponent('https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.readonly');
   return `https://accounts.google.com/o/oauth2/v2/auth?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=${scope}&access_type=offline&prompt=consent&state=${workspaceId}_${orgId}`;
 }
@@ -110,8 +110,7 @@ export async function exchangeGoogleCode(
   if (!clientId || !clientSecret) {
     throw new Error('Google Calendar OAuth credentials missing during token exchange.');
   }
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const redirectUri = `${appUrl}/api/integrations/google/callback`;
+  const redirectUri = `${getBaseUrl()}/api/integrations/google/callback`;
 
   const bodyParams = new URLSearchParams({
     code,

@@ -8816,7 +8816,7 @@ export interface CalendarConnection {
   organizationId: string;
   workspaceId: string;
   userId: string;
-  provider: 'google_calendar' | 'microsoft_teams' | 'zoom';
+  provider: 'google_calendar' | 'microsoft_teams' | 'microsoft_outlook' | 'zoom';
   accessToken: string;
   refreshToken: string;
   expiresAt: string; // ISO DateTime

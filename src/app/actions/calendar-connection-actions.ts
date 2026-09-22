@@ -11,6 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { FieldValue } from 'firebase-admin/firestore';
 import type { CalendarConnection, CalendarSyncResult } from '@/lib/meetings/types/calendar';
 import type { Booking } from '@/lib/meetings/types';
 import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
@@ -19,6 +20,7 @@ import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { assertUserTenantPermission } from '@/lib/organization-utils';
 import { encryptToken } from '@/lib/crypto';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -98,13 +100,25 @@ export async function disconnectCalendarConnectionAction(
  */
 export async function toggleCalendarConflictCheckAction(
   connectionId: string,
-  checkConflicts: boolean
+  checkConflicts: boolean,
+  workspaceId?: string
 ): Promise<{ success: boolean; error?: string }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  const ctx = await requireAuth();
 
   try {
-    await adminDb.collection('calendar_connections').doc(connectionId).update({
+    const docRef = adminDb.collection('calendar_connections').doc(connectionId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      throw new Error('Calendar connection not found.');
+    }
+    const data = snap.data();
+    const targetWsId = workspaceId || (data?.workspaceId as string | undefined);
+    if (targetWsId && !ctx.isSystemAdmin && !(ctx.profile?.workspaceIds ?? []).includes(targetWsId)) {
+      throw new Error('Unauthorized: Access to this workspace calendar connection is denied.');
+    }
+
+    await docRef.update({
       checkConflicts,
       updatedAt: new Date().toISOString(),
     });
@@ -209,7 +223,7 @@ export async function syncBookingToExternalCalendarAction(
         externalEventUrl: gEvent.htmlLink,
         meetLink: gEvent.hangoutLink,
       };
-    } else if (connection.provider === 'microsoft_outlook') {
+    } else if (connection.provider === 'microsoft_outlook' || (connection.provider as string) === 'microsoft_teams') {
       syncResult = await createMicrosoftCalendarEvent(connectionId, {
         title: booking.eventTypeName || 'SmartSapp Meeting',
         description: `<p>Meeting with <strong>${bookerName}</strong> (${bookerEmail})</p><p>Join URL: <a href="${joinUrl}">${joinUrl}</a></p>`,
@@ -276,8 +290,8 @@ export async function getMicrosoftAuthUrlAction(
   await requireWorkspace(workspaceId);
 
   try {
-    const { getMicrosoftAuthUrl } = await import('@/lib/services/integrations/microsoft-calendar');
-    const url = await getMicrosoftAuthUrl(workspaceId, organizationId, userId);
+    const { getMicrosoftAuthUrl } = await import('@/lib/services/integrations/microsoft-teams');
+    const url = await getMicrosoftAuthUrl(workspaceId, organizationId);
     return { success: true, url };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
@@ -356,7 +370,10 @@ export async function saveWorkspaceOAuthCredentialsAction(
   workspaceId: string,
   input: OAuthCredentialsInput
 ): Promise<{ success: boolean; error?: string }> {
-  await requireWorkspace(workspaceId);
+  const ctx = await requireWorkspace(workspaceId);
+  if (!ctx.isSystemAdmin && ctx.profile?.role !== 'admin' && ctx.profile?.role !== 'manager') {
+    return { success: false, error: 'Unauthorized: Workspace admin or manager permissions required to configure API credentials.' };
+  }
 
   try {
     const updateData: Record<string, unknown> = {
@@ -390,6 +407,42 @@ export async function saveWorkspaceOAuthCredentialsAction(
     }
 
     await adminDb.collection('workspaces').doc(workspaceId).set(updateData, { merge: true });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+
+/**
+ * Clears custom OAuth credentials for a provider from a workspace, reverting to Organization Defaults.
+ */
+export async function clearWorkspaceOAuthCredentialsAction(
+  workspaceId: string,
+  provider: 'google_calendar' | 'microsoft_teams' | 'zoom'
+): Promise<{ success: boolean; error?: string }> {
+  const ctx = await requireWorkspace(workspaceId);
+  if (!ctx.isSystemAdmin && ctx.profile?.role !== 'admin' && ctx.profile?.role !== 'manager') {
+    return { success: false, error: 'Unauthorized: Workspace admin or manager permissions required to clear API credentials.' };
+  }
+
+  try {
+    const updateData: Record<string, unknown> = {
+      updatedAt: new Date().toISOString(),
+    };
+
+    if (provider === 'google_calendar') {
+      updateData.googleClientId = FieldValue.delete();
+      updateData.googleClientSecret = FieldValue.delete();
+    } else if (provider === 'microsoft_teams') {
+      updateData.microsoftClientId = FieldValue.delete();
+      updateData.microsoftClientSecret = FieldValue.delete();
+      updateData.microsoftTenantId = FieldValue.delete();
+    } else if (provider === 'zoom') {
+      updateData.zoomClientId = FieldValue.delete();
+      updateData.zoomClientSecret = FieldValue.delete();
+    }
+
+    await adminDb.collection('workspaces').doc(workspaceId).update(updateData);
     return { success: true };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
@@ -455,11 +508,11 @@ export async function getWorkspaceOAuthCredentialsStatusAction(
   await requireWorkspace(workspaceId);
 
   try {
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    const baseUrl = getBaseUrl();
     const redirectUris = {
-      google: `${appUrl}/api/integrations/google/callback`,
-      microsoft: `${appUrl}/api/integrations/microsoft/callback`,
-      zoom: `${appUrl}/api/integrations/zoom/callback`,
+      google: `${baseUrl}/api/integrations/google/callback`,
+      microsoft: `${baseUrl}/api/integrations/microsoft/callback`,
+      zoom: `${baseUrl}/api/integrations/zoom/callback`,
     };
 
     let wsGoogleClientId: string | undefined;
@@ -624,11 +677,11 @@ export async function getOrganizationOAuthCredentialsStatusAction(
     const { uid: userId } = await requireAuth();
     await assertUserTenantPermission(userId, organizationId, 'administrator');
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
+    const baseUrl = getBaseUrl();
     const redirectUris = {
-      google: `${appUrl}/api/integrations/google/callback`,
-      microsoft: `${appUrl}/api/integrations/microsoft/callback`,
-      zoom: `${appUrl}/api/integrations/zoom/callback`,
+      google: `${baseUrl}/api/integrations/google/callback`,
+      microsoft: `${baseUrl}/api/integrations/microsoft/callback`,
+      zoom: `${baseUrl}/api/integrations/zoom/callback`,
     };
 
     let orgGoogleClientId: string | undefined;

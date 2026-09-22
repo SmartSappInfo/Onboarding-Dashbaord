@@ -12,6 +12,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection, CalendarSyncResult } from '@/lib/meetings/types/calendar';
 import { encryptToken, decryptToken } from '@/lib/crypto';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface MicrosoftTokenResponse {
   access_token: string;
@@ -97,15 +98,17 @@ export async function resolveMicrosoftCredentials(
 export async function getMicrosoftAuthUrl(
   workspaceId: string,
   organizationId?: string,
-  userId?: string
+  _userId?: string
 ): Promise<string> {
-  const { clientId, tenantId } = await resolveMicrosoftCredentials(workspaceId, organizationId);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://smartsapp.com';
-  const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
+  const { clientId, clientSecret, tenantId } = await resolveMicrosoftCredentials(workspaceId, organizationId);
+  if (!clientId || !clientSecret) {
+    throw new Error('Microsoft Teams OAuth credentials are not configured for this workspace. Please configure your Microsoft Client ID and Client Secret in Settings.');
+  }
+  const redirectUri = `${getBaseUrl()}/api/integrations/microsoft/callback`;
   const scopes = encodeURIComponent('offline_access Calendars.ReadWrite Calendars.Read.Shared User.Read');
-  const state = `${workspaceId}_${organizationId || 'default'}_${userId || 'default'}`;
+  const state = `${workspaceId}_${organizationId || ''}`;
 
-  return `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scopes}&state=${encodeURIComponent(state)}&prompt=select_account`;
+  return `https://login.microsoftonline.com/${tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scopes}&state=${encodeURIComponent(state)}&prompt=select_account`;
 }
 
 /**
@@ -117,8 +120,10 @@ export async function exchangeMicrosoftCode(
   organizationId?: string
 ): Promise<MicrosoftTokenResponse> {
   const { clientId, clientSecret, tenantId } = await resolveMicrosoftCredentials(workspaceId, organizationId);
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://smartsapp.com';
-  const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
+  if (!clientId || !clientSecret) {
+    throw new Error('Microsoft Teams OAuth credentials missing during token exchange.');
+  }
+  const redirectUri = `${getBaseUrl()}/api/integrations/microsoft/callback`;
 
   const bodyParams = new URLSearchParams({
     client_id: clientId,

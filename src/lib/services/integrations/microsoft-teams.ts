@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection } from '@/lib/types';
 import { encryptToken, decryptToken } from '@/lib/crypto';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface MicrosoftTokenResponse {
   access_token: string;
@@ -91,8 +92,7 @@ export async function getMicrosoftAuthUrl(
     throw new Error('Microsoft Teams OAuth credentials are not configured for this workspace. Please configure your Microsoft Client ID and Client Secret in Settings.');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
+  const redirectUri = `${getBaseUrl()}/api/integrations/microsoft/callback`;
   const scope = encodeURIComponent('offline_access Calendars.ReadWrite OnlineMeetings.ReadWrite');
   return `https://login.microsoftonline.com/${tenantId || 'common'}/oauth2/v2.0/authorize?client_id=${clientId}&response_type=code&redirect_uri=${encodeURIComponent(redirectUri)}&response_mode=query&scope=${scope}&state=${workspaceId}_${orgId || ''}`;
 }
@@ -109,8 +109,7 @@ export async function exchangeMicrosoftCode(
   if (!clientId || !clientSecret) {
     throw new Error('Microsoft Teams OAuth credentials missing during token exchange.');
   }
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const redirectUri = `${appUrl}/api/integrations/microsoft/callback`;
+  const redirectUri = `${getBaseUrl()}/api/integrations/microsoft/callback`;
 
   const bodyParams = new URLSearchParams({
     client_id: clientId,

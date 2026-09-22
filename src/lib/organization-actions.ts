@@ -33,11 +33,30 @@ export async function saveOrganizationAction(
 
         const timestamp = new Date().toISOString();
 
+        const sanitizedData: Record<string, unknown> = { ...data };
+
+        // Ensure OAuth client secrets are always encrypted via AES-256-GCM before storage
+        if (data.googleClientSecret && typeof data.googleClientSecret === 'string' && data.googleClientSecret.trim()) {
+            const s = data.googleClientSecret.trim();
+            sanitizedData.googleClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
+        }
+        if (data.microsoftClientSecret && typeof data.microsoftClientSecret === 'string' && data.microsoftClientSecret.trim()) {
+            const s = data.microsoftClientSecret.trim();
+            sanitizedData.microsoftClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
+        }
+        if (data.zoomClientSecret && typeof data.zoomClientSecret === 'string' && data.zoomClientSecret.trim()) {
+            const s = data.zoomClientSecret.trim();
+            sanitizedData.zoomClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
+        }
+        if (data.microsoftTenantId !== undefined) {
+            sanitizedData.microsoftTenantId = data.microsoftTenantId ? (data.microsoftTenantId as string).trim() : null;
+        }
+
         if (organizationId) {
             // Assert Edit permissions for this specific tenant (prevent parameter tampering IDOR)
             await assertUserTenantPermission(userId, organizationId, 'administrator');
 
-            const flatData: Record<string, unknown> = { ...data };
+            const flatData: Record<string, unknown> = { ...sanitizedData };
             if (data.settings) {
                 delete flatData.settings;
                 for (const [k, v] of Object.entries(data.settings)) {
@@ -45,23 +64,6 @@ export async function saveOrganizationAction(
                         flatData[`settings.${k}`] = v;
                     }
                 }
-            }
-
-            // Ensure OAuth client secrets are always encrypted via AES-256-GCM before storage
-            if (data.googleClientSecret && typeof data.googleClientSecret === 'string' && data.googleClientSecret.trim()) {
-                const s = data.googleClientSecret.trim();
-                flatData.googleClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
-            }
-            if (data.microsoftClientSecret && typeof data.microsoftClientSecret === 'string' && data.microsoftClientSecret.trim()) {
-                const s = data.microsoftClientSecret.trim();
-                flatData.microsoftClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
-            }
-            if (data.zoomClientSecret && typeof data.zoomClientSecret === 'string' && data.zoomClientSecret.trim()) {
-                const s = data.zoomClientSecret.trim();
-                flatData.zoomClientSecret = s.split(':').length === 3 ? s : encryptToken(s);
-            }
-            if (data.microsoftTenantId !== undefined) {
-                flatData.microsoftTenantId = data.microsoftTenantId ? (data.microsoftTenantId as string).trim() : null;
             }
 
             // Update existing organization
@@ -106,7 +108,7 @@ export async function saveOrganizationAction(
             }
 
             await newOrgRef.set({
-                ...data,
+                ...sanitizedData,
                 id: slug,
                 slug,
                 departments,

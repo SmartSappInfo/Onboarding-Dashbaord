@@ -64,11 +64,11 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
     // Calendar & Conferencing State
     const [showOauthKeys, setShowOauthKeys] = React.useState(false);
     const [googleClientId, setGoogleClientId] = React.useState(organization.googleClientId || '');
-    const [googleClientSecret, setGoogleClientSecret] = React.useState(organization.googleClientSecret || '');
+    const [googleClientSecret, setGoogleClientSecret] = React.useState('');
     const [zoomClientId, setZoomClientId] = React.useState(organization.zoomClientId || '');
-    const [zoomClientSecret, setZoomClientSecret] = React.useState(organization.zoomClientSecret || '');
+    const [zoomClientSecret, setZoomClientSecret] = React.useState('');
     const [microsoftClientId, setMicrosoftClientId] = React.useState(organization.microsoftClientId || '');
-    const [microsoftClientSecret, setMicrosoftClientSecret] = React.useState(organization.microsoftClientSecret || '');
+    const [microsoftClientSecret, setMicrosoftClientSecret] = React.useState('');
     const [microsoftTenantId, setMicrosoftTenantId] = React.useState(organization.microsoftTenantId || '');
     const [copiedKey, setCopiedKey] = React.useState<string | null>(null);
 
@@ -123,11 +123,11 @@ export default function OrganizationIntegrationsTab({ organization }: Organizati
                     resendApiKey: resendApiKey.trim(),
                     resendDomain: resendDomain.trim(),
                     googleClientId: googleClientId.trim(),
-                    googleClientSecret: googleClientSecret.trim(),
+                    googleClientSecret: googleClientSecret.trim() ? googleClientSecret.trim() : (organization.googleClientSecret || undefined),
                     zoomClientId: zoomClientId.trim(),
-                    zoomClientSecret: zoomClientSecret.trim(),
+                    zoomClientSecret: zoomClientSecret.trim() ? zoomClientSecret.trim() : (organization.zoomClientSecret || undefined),
                     microsoftClientId: microsoftClientId.trim(),
-                    microsoftClientSecret: microsoftClientSecret.trim(),
+                    microsoftClientSecret: microsoftClientSecret.trim() ? microsoftClientSecret.trim() : (organization.microsoftClientSecret || undefined),
                     microsoftTenantId: microsoftTenantId.trim(),
                 }
             );

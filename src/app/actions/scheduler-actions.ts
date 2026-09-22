@@ -90,13 +90,25 @@ export async function getZoomAuthUrlAction(
  * Server Action to disconnect a calendar connection
  */
 export async function disconnectConnectionAction(
-  connectionId: string
+  connectionId: string,
+  workspaceId?: string
 ): Promise<ActionResponse<void>> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  const ctx = await requireAuth();
 
   try {
-    await adminDb.collection('calendar_connections').doc(connectionId).delete();
+    const docRef = adminDb.collection('calendar_connections').doc(connectionId);
+    const snap = await docRef.get();
+    if (!snap.exists) {
+      return { success: true };
+    }
+    const data = snap.data();
+    const targetWsId = workspaceId || (data?.workspaceId as string | undefined);
+    if (targetWsId) {
+      if (!ctx.isSystemAdmin && !(ctx.profile?.workspaceIds ?? []).includes(targetWsId)) {
+        return { success: false, error: 'Unauthorized: Access to this workspace calendar connection is denied.' };
+      }
+    }
+    await docRef.delete();
     return { success: true };
   } catch (err: unknown) {
     return { 

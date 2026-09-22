@@ -26,7 +26,7 @@ export function encryptToken(text: string): string {
     return `${iv.toString('hex')}:${authTag}:${encrypted}`;
   } catch (err: unknown) {
     console.error('Token encryption failed:', err);
-    return text; // Graceful fallback
+    throw new Error('Critical security failure: Unable to encrypt sensitive credential.');
   }
 }
 

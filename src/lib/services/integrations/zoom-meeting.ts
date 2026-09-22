@@ -1,6 +1,7 @@
 import { adminDb } from '@/lib/firebase-admin';
 import type { CalendarConnection } from '@/lib/types';
 import { encryptToken, decryptToken } from '@/lib/crypto';
+import { getBaseUrl } from '@/lib/utils/url-helpers';
 
 interface ZoomTokenResponse {
   access_token: string;
@@ -81,8 +82,7 @@ export async function getZoomAuthUrl(
     throw new Error('Zoom Meeting OAuth credentials are not configured for this workspace. Please configure your Zoom Client ID and Client Secret in Settings.');
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const redirectUri = `${appUrl}/api/integrations/zoom/callback`;
+  const redirectUri = `${getBaseUrl()}/api/integrations/zoom/callback`;
   return `https://zoom.us/oauth/authorize?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${workspaceId}_${orgId}`;
 }
 
@@ -98,8 +98,7 @@ export async function exchangeZoomCode(
   if (!clientId || !clientSecret) {
     throw new Error('Zoom Meeting OAuth credentials missing during token exchange.');
   }
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:9002';
-  const redirectUri = `${appUrl}/api/integrations/zoom/callback`;
+  const redirectUri = `${getBaseUrl()}/api/integrations/zoom/callback`;
 
   const basicAuth = Buffer.from(`${clientId}:${clientSecret}`).toString('base64');
   const bodyParams = new URLSearchParams({

@@ -3,7 +3,7 @@
  * Supports Google Calendar, Microsoft Outlook / Office 365, and iCal.
  */
 
-export type CalendarConnectionProvider = 'google_calendar' | 'microsoft_outlook' | 'apple_ical';
+export type CalendarConnectionProvider = 'google_calendar' | 'microsoft_outlook' | 'microsoft_teams' | 'apple_ical';
 
 export type CalendarConnectionStatus = 'connected' | 'reauth_required' | 'revoked' | 'syncing';
 
