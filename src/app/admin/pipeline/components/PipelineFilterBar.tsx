@@ -280,7 +280,7 @@ export default function PipelineFilterBar({
                         type="button"
                         onClick={() => onSelectView(preset)}
                         className={cn(
-                          "h-8 px-3 rounded-lg font-bold text-[11px] flex items-center gap-1.5 shrink-0 transition-all select-none active:scale-[0.97]",
+                          "h-9 sm:h-8 px-3 rounded-lg font-bold text-xs sm:text-[11px] flex items-center gap-1.5 shrink-0 transition-all select-none active:scale-[0.97] min-h-[44px] sm:min-h-[32px]",
                           isSelected
                             ? "bg-primary text-primary-foreground shadow-xs"
                             : "bg-background border border-border/60 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -307,7 +307,7 @@ export default function PipelineFilterBar({
                       placeholder="Min" 
                       value={filters.valueMin ?? ''} 
                       onChange={e => updateFilter('valueMin', e.target.value === '' ? null : Number(e.target.value))} 
-                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40" 
+                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                     <span className="text-muted-foreground text-xs">–</span>
                     <Input 
@@ -316,7 +316,7 @@ export default function PipelineFilterBar({
                       placeholder="Max" 
                       value={filters.valueMax ?? ''} 
                       onChange={e => updateFilter('valueMax', e.target.value === '' ? null : Number(e.target.value))} 
-                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40" 
+                      className="h-10 sm:h-9 w-[110px] sm:w-[95px] rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                   </div>
                 </div>
@@ -331,14 +331,14 @@ export default function PipelineFilterBar({
                       type="date" 
                       value={filters.closeDateFrom ?? ''} 
                       onChange={e => updateFilter('closeDateFrom', e.target.value || null)} 
-                      className="h-10 sm:h-9 rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40" 
+                      className="h-10 sm:h-9 rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                     <span className="text-muted-foreground text-xs">–</span>
                     <Input 
                       type="date" 
                       value={filters.closeDateTo ?? ''} 
                       onChange={e => updateFilter('closeDateTo', e.target.value || null)} 
-                      className="h-10 sm:h-9 rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40" 
+                      className="h-10 sm:h-9 rounded-xl border border-border bg-background font-semibold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]" 
                     />
                   </div>
                 </div>
@@ -352,7 +352,7 @@ export default function PipelineFilterBar({
                     value={filters.healthStatus ?? 'all'} 
                     onValueChange={(v: 'all' | 'healthy' | 'at_risk' | 'stalled') => updateFilter('healthStatus', v)}
                   >
-                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border bg-background font-bold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40">
+                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border bg-background font-bold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]">
                       <SelectValue placeholder="Health" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
@@ -373,7 +373,7 @@ export default function PipelineFilterBar({
                     value={filters.archiveStatus ?? 'active'} 
                     onValueChange={(v: 'active' | 'archived' | 'all') => updateFilter('archiveStatus', v)}
                   >
-                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border bg-background font-bold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40">
+                    <SelectTrigger className="h-10 sm:h-9 w-[130px] rounded-xl border border-border bg-background font-bold text-xs shadow-sm focus-visible:ring-1 focus-visible:ring-primary/40 min-h-[44px] sm:min-h-[36px]">
                       <SelectValue placeholder="Archive Status" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">

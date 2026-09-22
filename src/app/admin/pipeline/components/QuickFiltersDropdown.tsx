@@ -118,6 +118,7 @@ export function QuickFiltersDropdown({
   const [newViewVisibility, setNewViewVisibility] = React.useState<'private' | 'workspace'>('workspace');
   const [newViewIcon] = React.useState('Bookmark');
   const [isSaving, setIsSaving] = React.useState(false);
+  const [deletingViewId, setDeletingViewId] = React.useState<string | null>(null);
 
   // Map stages for O(1) lookups during count evaluations
   const stagesMap = React.useMemo(() => {
@@ -248,6 +249,8 @@ export function QuickFiltersDropdown({
 
   const handleDeleteView = async (e: React.MouseEvent, view: DealSavedView) => {
     e.stopPropagation();
+    if (deletingViewId) return;
+
     const isConfirmed = await confirm({
       title: 'Delete Saved View',
       description: `Permanently delete the "${view.name}" saved view?`,
@@ -258,6 +261,7 @@ export function QuickFiltersDropdown({
     if (!isConfirmed) return;
 
     try {
+      setDeletingViewId(view.id);
       const res = await deleteDealSavedViewAction(view.id, userId);
       if (res.success) {
         toast({
@@ -284,6 +288,8 @@ export function QuickFiltersDropdown({
         description: 'Failed to delete saved view.',
         variant: 'destructive',
       });
+    } finally {
+      setDeletingViewId(null);
     }
   };
 
@@ -368,12 +374,17 @@ export function QuickFiltersDropdown({
                       </span>
                       <button
                         type="button"
+                        disabled={deletingViewId === view.id}
                         onClick={(e) => handleDeleteView(e, view)}
-                        className="opacity-0 group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all min-h-[28px] min-w-[28px] flex items-center justify-center"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-1 rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all min-h-[28px] min-w-[28px] flex items-center justify-center disabled:pointer-events-none"
                         title="Delete view"
-                        aria-label="Delete view"
+                        aria-label={`Delete ${view.name} view`}
                       >
-                        <Trash2 className="h-3 w-3" />
+                        {deletingViewId === view.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin text-destructive" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
                       </button>
                     </div>
                   </div>
@@ -394,7 +405,13 @@ export function QuickFiltersDropdown({
       </DropdownMenu>
 
       {/* Save View Modal Dialog */}
-      <Dialog open={isSaveModalOpen} onOpenChange={setIsSaveModalOpen}>
+      <Dialog
+        open={isSaveModalOpen}
+        onOpenChange={(open) => {
+          if (isSaving) return;
+          setIsSaveModalOpen(open);
+        }}
+      >
         <DialogContent className="sm:max-w-md rounded-2xl border-border p-6 shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-base font-bold text-foreground">Save Current View</DialogTitle>
@@ -457,6 +474,7 @@ export function QuickFiltersDropdown({
             <Button
               type="button"
               variant="ghost"
+              disabled={isSaving}
               onClick={() => setIsSaveModalOpen(false)}
               className="h-10 rounded-xl text-xs min-h-[44px]"
             >
