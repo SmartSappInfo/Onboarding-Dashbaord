@@ -22,9 +22,7 @@ on:
         default: ''
   push:
     branches:
-      - main
       - deployment
-      - staging
 
 permissions:
   contents: read
