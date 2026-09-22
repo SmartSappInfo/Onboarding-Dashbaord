@@ -41,6 +41,8 @@ import {
     Loader2,
     Sparkles,
     ShieldCheck,
+    ShieldAlert,
+    CheckCircle2,
     Clock,
     Globe,
     MoreVertical,
@@ -58,6 +60,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { cn } from '@/lib/utils';
+import { SenderProfileService } from '@/lib/services/sender-profile-service';
+import { runTenantSenderHygieneAction } from '@/app/actions/tenant-hygiene-action';
+import type { CleanseSummary } from '@/lib/migrations/cleanse-foreign-sender-profiles';
 
 /**
  * @fileOverview Sender Profiles Hub.
@@ -101,19 +107,63 @@ export default function SenderProfilesPage() {
     const [regPurpose, setRegPurpose] = React.useState('');
     const [isRegProcessing, setIsRegProcessing] = React.useState(false);
 
+    // Hygiene Scanner State
+    const [isScanningHygiene, setIsScanningHygiene] = React.useState(false);
+    const [hygieneSummary, setHygieneSummary] = React.useState<CleanseSummary | null>(null);
+    const [isHygieneDialogOpen, setIsHygieneDialogOpen] = React.useState(false);
+
     const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
 
-    // Fetch only profiles belonging to the current workspace hub
+    // Fetch profiles strictly scoped to the active organization (Rule 5: Zero cross-tenant leaks)
     const profilesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!firestore || !activeOrganization?.id) return null;
         return query(
             collection(firestore, 'sender_profiles'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('createdAt', 'desc')
+            where('organizationId', '==', activeOrganization.id)
         );
-    }, [firestore, activeWorkspaceId]);
+    }, [firestore, activeOrganization?.id]);
 
-    const { data: profiles, isLoading } = useCollection<SenderProfile>(profilesQuery);
+    const { data: rawProfiles, isLoading } = useCollection<SenderProfile>(profilesQuery);
+
+    // Filter and sort strictly through SenderProfileService
+    const profiles = React.useMemo(() => {
+        if (!rawProfiles) return [];
+        return SenderProfileService.filterProfilesForOrganization(rawProfiles, activeOrganization?.id, {
+            orgDoc: activeOrganization,
+        });
+    }, [rawProfiles, activeOrganization]);
+
+    const handleRunHygieneScan = async (mode: 'dry-run' | 'apply' = 'dry-run') => {
+        if (!user || !activeOrganization?.id) return;
+        setIsScanningHygiene(true);
+        try {
+            const idToken = await user.getIdToken();
+            const res = await runTenantSenderHygieneAction(idToken, {
+                organizationId: activeOrganization.id,
+                mode,
+            });
+            if (res.success && res.summary) {
+                setHygieneSummary(res.summary);
+                setIsHygieneDialogOpen(true);
+                if (mode === 'apply') {
+                    toast({
+                        title: 'Hygiene Cleansing Complete',
+                        description: `Purged ${res.summary.deletedCount} contaminated profile(s).`,
+                    });
+                }
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Hygiene Scan Failed',
+                    description: res.error || 'Failed to complete scan.',
+                });
+            }
+        } catch (_err) {
+            toast({ variant: 'destructive', title: 'Hygiene Scan Error' });
+        } finally {
+            setIsScanningHygiene(false);
+        }
+    };
 
     const handleAdd = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -146,12 +196,28 @@ export default function SenderProfilesPage() {
                 });
                 return;
             }
+            if (!SenderProfileService.isSmsSenderAllowedForOrg(trimmedIdentifier, activeOrganization.id)) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Unauthorized SMS Sender ID',
+                    description: `The SMS Sender ID "${trimmedIdentifier}" belongs to another organization.`,
+                });
+                return;
+            }
         } else if (channel === 'email') {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedIdentifier)) {
                 toast({ 
                     variant: 'destructive', 
                     title: 'Invalid Email Address', 
                     description: 'Please provide a valid email format (e.g. info@domain.com).' 
+                });
+                return;
+            }
+            if (!SenderProfileService.isDomainAllowedForOrg(trimmedIdentifier, activeOrganization ?? null)) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Unauthorized Email Domain',
+                    description: `The email domain for "${trimmedIdentifier}" is not authorized for this organization (${activeOrganization.name || activeOrganization.id}).`,
                 });
                 return;
             }
@@ -213,12 +279,28 @@ export default function SenderProfilesPage() {
                 });
                 return;
             }
+            if (activeOrganization?.id && !SenderProfileService.isSmsSenderAllowedForOrg(trimmedIdentifier, activeOrganization.id)) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Unauthorized SMS Sender ID',
+                    description: `The SMS Sender ID "${trimmedIdentifier}" belongs to another organization.`,
+                });
+                return;
+            }
         } else if (editingProfile.channel === 'email') {
             if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedIdentifier)) {
                 toast({ 
                     variant: 'destructive', 
                     title: 'Invalid Email Address', 
                     description: 'Please provide a valid email format (e.g. info@domain.com).' 
+                });
+                return;
+            }
+            if (!SenderProfileService.isDomainAllowedForOrg(trimmedIdentifier, activeOrganization ?? null)) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Unauthorized Email Domain',
+                    description: `The email domain for "${trimmedIdentifier}" is not authorized for this organization (${activeOrganization?.name || activeOrganization?.id}).`,
                 });
                 return;
             }
@@ -357,7 +439,7 @@ export default function SenderProfilesPage() {
         toast({ title: 'Profile Deleted' });
     };
 
-    const getStatusBadge = (profile: any) => {
+    const getStatusBadge = (profile: SenderProfile) => {
         const status = profile.channel === 'sms' ? (profile.mNotifyStatus || 'unknown') : (profile.resendStatus || 'unknown');
         switch (status) {
             case 'approved':
@@ -370,18 +452,31 @@ export default function SenderProfilesPage() {
             default:
                 return <Badge variant="secondary" className="text-[8px] h-5 uppercase tracking-tighter opacity-40">Unsynced</Badge>;
         }
-    }
+    };
 
     return (
         <div className="h-full overflow-y-auto text-left">
             <PageContainerFluid>
                 <div className="space-y-8">
- <div className="flex items-center justify-end flex-wrap gap-4">
- <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8">
- {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
-                        {isAdding ? 'Discard' : 'Add Sender Profile'}
-                    </Button>
-                </div>
+                    <div className="flex items-center justify-end flex-wrap gap-4">
+                        <Button 
+                            variant="outline" 
+                            onClick={() => handleRunHygieneScan('dry-run')} 
+                            disabled={isScanningHygiene}
+                            className="rounded-xl font-semibold shadow-sm h-11 px-5 border-border/80 hover:bg-muted active:scale-[0.97] transition-all"
+                        >
+                            {isScanningHygiene ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin text-primary" />
+                            ) : (
+                                <ShieldCheck className="mr-2 h-4 w-4 text-emerald-600" />
+                            )}
+                            Tenant Hygiene Audit
+                        </Button>
+                        <Button onClick={() => setIsAdding(!isAdding)} className="rounded-xl font-semibold shadow-lg h-11 px-8 active:scale-[0.97] transition-all">
+                            {isAdding ? <X className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />}
+                            {isAdding ? 'Discard' : 'Add Sender Profile'}
+                        </Button>
+                    </div>
 
                 {isAdding && (
  <Card className="mb-8 border-primary/20 bg-primary/5 animate-in slide-in-from-top-4 duration-300 rounded-[2.5rem] overflow-hidden shadow-xl">
@@ -664,6 +759,118 @@ export default function SenderProfilesPage() {
  {isRegProcessing ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />}
  <span className="ml-2">Submit Application</span>
                         </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Tenant Hygiene Scanner Dialog */}
+            <Dialog open={isHygieneDialogOpen} onOpenChange={setIsHygieneDialogOpen}>
+                <DialogContent className="sm:max-w-xl rounded-[2rem] p-0 overflow-hidden border-none shadow-2xl">
+                    <DialogHeader className="p-8 pb-4 bg-muted/20 border-b">
+                        <div className="flex items-center gap-4">
+                            <div className="p-3 bg-emerald-500/10 text-emerald-600 rounded-2xl border border-emerald-500/20 shadow-sm">
+                                <ShieldCheck size={24} />
+                            </div>
+                            <div className="text-left">
+                                <DialogTitle className="text-xl font-semibold tracking-tight">Tenant Hygiene Audit</DialogTitle>
+                                <DialogDescription className="text-xs font-semibold text-muted-foreground">
+                                    Scans all sender profiles for cross-tenant domain or SMS identity contamination
+                                </DialogDescription>
+                            </div>
+                        </div>
+                    </DialogHeader>
+
+                    <div className="p-8 space-y-6 text-left max-h-[60vh] overflow-y-auto">
+                        {hygieneSummary ? (
+                            <div className="space-y-6">
+                                <div className="grid grid-cols-3 gap-3">
+                                    <div className="p-4 rounded-xl border bg-card/60">
+                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Profiles Scanned</p>
+                                        <p className="text-2xl font-bold mt-1">{hygieneSummary.scannedCount}</p>
+                                    </div>
+                                    <div className={cn(
+                                        "p-4 rounded-xl border",
+                                        hygieneSummary.contaminatedCount > 0 ? "bg-rose-500/10 border-rose-500/20 text-rose-700 dark:text-rose-400" : "bg-card/60"
+                                    )}>
+                                        <p className="text-[10px] font-semibold uppercase tracking-wider">Contaminated</p>
+                                        <p className="text-2xl font-bold mt-1">{hygieneSummary.contaminatedCount}</p>
+                                    </div>
+                                    <div className="p-4 rounded-xl border bg-card/60">
+                                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Cleaned</p>
+                                        <p className="text-2xl font-bold mt-1">{hygieneSummary.deletedCount}</p>
+                                    </div>
+                                </div>
+
+                                {hygieneSummary.contaminatedCount === 0 ? (
+                                    <div className="p-5 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-center gap-4 text-emerald-700 dark:text-emerald-400">
+                                        <CheckCircle2 className="h-6 w-6 shrink-0 text-emerald-500" />
+                                        <div>
+                                            <p className="text-sm font-bold">100% Tenant Isolation Verified</p>
+                                            <p className="text-xs opacity-90 mt-0.5">
+                                                All sender profiles in this organization strictly adhere to authorized email domains and SMS identity boundaries.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-4">
+                                        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 flex items-start gap-3 text-rose-700 dark:text-rose-400">
+                                            <ShieldAlert className="h-5 w-5 shrink-0 mt-0.5" />
+                                            <div>
+                                                <p className="text-xs font-bold">Cross-Tenant Contamination Detected</p>
+                                                <p className="text-[11px] opacity-90 mt-0.5">
+                                                    The following sender profiles collide with foreign organization domains or SMS identities:
+                                                </p>
+                                            </div>
+                                        </div>
+
+                                        <div className="border rounded-xl overflow-hidden divide-y text-xs">
+                                            {hygieneSummary.items.map((item) => (
+                                                <div key={item.profileId} className="p-3 bg-card/50 flex items-center justify-between gap-3">
+                                                    <div className="space-y-0.5 min-w-0">
+                                                        <p className="font-semibold text-foreground truncate">{item.name}</p>
+                                                        <p className="text-[10px] font-mono text-muted-foreground truncate">{item.identifier}</p>
+                                                    </div>
+                                                    <Badge variant="destructive" className="text-[9px] uppercase shrink-0">
+                                                        {item.reason === 'foreign_domain_collision' ? 'Foreign Domain' : 'Foreign SMS ID'}
+                                                    </Badge>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <DialogFooter className="p-6 bg-muted/20 border-t flex items-center justify-between">
+                        <Button 
+                            variant="ghost" 
+                            onClick={() => setIsHygieneDialogOpen(false)} 
+                            className="rounded-xl font-bold h-11 px-6 active:scale-[0.97]"
+                        >
+                            Close
+                        </Button>
+                        {hygieneSummary && hygieneSummary.contaminatedCount > 0 && hygieneSummary.mode === 'dry-run' ? (
+                            <Button 
+                                variant="destructive" 
+                                onClick={() => handleRunHygieneScan('apply')} 
+                                disabled={isScanningHygiene}
+                                className="rounded-xl font-semibold h-11 px-6 shadow-lg active:scale-[0.97]"
+                            >
+                                {isScanningHygiene ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldAlert className="mr-2 h-4 w-4" />}
+                                Purge Contaminated Profiles
+                            </Button>
+                        ) : (
+                            <Button 
+                                variant="outline" 
+                                onClick={() => handleRunHygieneScan('dry-run')} 
+                                disabled={isScanningHygiene}
+                                className="rounded-xl font-semibold h-11 px-6 active:scale-[0.97]"
+                            >
+                                {isScanningHygiene ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                                Re-Scan
+                            </Button>
+                        )}
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

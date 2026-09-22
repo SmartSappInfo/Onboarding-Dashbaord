@@ -216,4 +216,38 @@ describe('SenderProfileSelector Component', () => {
     const trigger = screen.getByRole('combobox');
     expect(trigger).toBeDefined();
   });
+
+  it('filters out profiles belonging to foreign organizations or domains', () => {
+    mockCollectionReturn = {
+      data: [
+        ...mockProfiles,
+        {
+          id: 'foreign_leaked_profile',
+          organizationId: 'org_123',
+          name: 'TechPatrons Leaked Profile',
+          channel: 'email',
+          identifier: 'support@techpatrons.com', // foreign domain!
+          isDefault: false,
+          isActive: true,
+          workspaceIds: ['ws_123'],
+          createdAt: '2026-01-01T00:00:00Z',
+          updatedAt: '2026-01-01T00:00:00Z',
+        },
+      ],
+      isLoading: false,
+    };
+
+    const handleChange = vi.fn();
+    const { queryByText } = render(
+      <SenderProfileSelector
+        channel="email"
+        organizationId="org_123"
+        value="profile_email_1"
+        onChange={handleChange}
+      />
+    );
+
+    // Foreign profile should never be rendered
+    expect(queryByText('TechPatrons Leaked Profile')).toBeNull();
+  });
 });

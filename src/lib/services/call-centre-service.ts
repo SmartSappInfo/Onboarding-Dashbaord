@@ -24,6 +24,7 @@ import { sendEmail } from '../resend-service';
 import { logActivity } from '../activity-logger';
 import { after } from 'next/server';
 import { FieldsVariablesService } from './fields-variables-service-impl';
+import { SenderProfileService } from './sender-profile-service';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { getErrorMessage, toClientErrorMessage } from '@/lib/errors/report-error';
 
@@ -1458,24 +1459,26 @@ export class CallCentreService {
           if (!phone) return { success: false, error: 'Contact has no phone number.' };
 
           // Determine Sender ID and custom credentials
-          let senderId = 'SmartSapp';
+          let senderId = 'Notify';
           let mnotifyKey: string | undefined = undefined;
 
           if (workspaceId) {
             const workspaceSnap = await adminDb.collection('workspaces').doc(workspaceId).get();
             if (workspaceSnap.exists) {
               const ws = workspaceSnap.data() as Workspace;
-              senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
               const orgId = ws.organizationId;
+              let orgData: { name?: string; defaultSenderProfileIds?: Record<string, string> } | null = null;
               if (orgId) {
                 const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
                 if (orgSnap.exists) {
                   const org = orgSnap.data();
+                  orgData = org ? { name: org.name, defaultSenderProfileIds: org.defaultSenderProfileIds } : null;
                   if (org?.smsKeyMode === 'custom' && org?.mnotifyApiKey) {
                     mnotifyKey = org.mnotifyApiKey as string;
                   }
                 }
               }
+              senderId = ws.defaultSmsSenderId?.trim() || SenderProfileService.resolveDefaultSenderId(orgData, 'sms');
             }
           }
 

@@ -20,6 +20,7 @@ import { resolveOrgId, resolveSenderProfileId, toSenderProfile } from './messagi
 import { notifyMessagingFailure } from './messaging/messaging-failure-notice';
 import { resolveOrgProviderKeys } from './messaging/org-provider-keys';
 import { resolveContextWorkspaceId } from './services/workspace-resolver';
+import { SenderProfileService } from './services/sender-profile-service';
 // SECURITY/OBSERVABILITY (audit F9): failures here were swallowed into the console
 // and never reached Sentry.
 import { getErrorMessage, reportError } from '@/lib/errors/report-error';
@@ -186,6 +187,17 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
             return { success: false, error: 'Cannot send: the resolved sender profile no longer exists.' };
         }
         sender = toSenderProfile(senderSnap.id, senderSnap.data()!);
+
+        const authValidation = SenderProfileService.validateSenderAuthorization(
+            sender,
+            orgId,
+            template.channel,
+            orgSnap.data() ? { id: orgId, resendDomain: orgSnap.data()?.resendDomain, email: orgSnap.data()?.email } : null
+        );
+        if (!authValidation.valid) {
+            console.error(`[messaging-engine] Sender authorization rejected: ${authValidation.message}`);
+            return { success: false, error: authValidation.message || 'Sender profile authorization failed.' };
+        }
     }
 
     // 3. Resolve Operational Workspace context (Requirement 11)
@@ -1165,10 +1177,21 @@ export async function sendRawMessage(input: {
                 return { success: false, error: 'Cannot send: the resolved sender profile no longer exists.' };
             }
             sender = toSenderProfile(senderSnap.id, senderSnap.data()!);
+
+            const authValidation = SenderProfileService.validateSenderAuthorization(
+                sender,
+                finalOrgId,
+                channel,
+                orgSnap.data() ? { id: finalOrgId, resendDomain: orgSnap.data()?.resendDomain, email: orgSnap.data()?.email } : null
+            );
+            if (!authValidation.valid) {
+                console.error(`[messaging-engine] Raw send sender authorization rejected: ${authValidation.message}`);
+                return { success: false, error: authValidation.message || 'Sender profile authorization failed.' };
+            }
         }
 
         let resolvedBody = resolveVariables(body, variables);
-        const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Alert — SmartSapp';
+        const resolvedSubject = subject ? resolveVariables(subject, variables) : 'Institutional Notification';
         const resolvedPreviewText = previewText ? resolveVariables(previewText, variables) : undefined;
 
         if (channel === 'email' && resolvedPreviewText) {

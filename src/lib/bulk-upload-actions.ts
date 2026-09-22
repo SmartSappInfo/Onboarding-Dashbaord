@@ -21,6 +21,7 @@ import { buildDealDocument, resolveDealName } from './deal-writer';
 import { calculateExpectedCloseDate } from '../app/admin/pipeline/utils/deal-expected-close';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { SenderProfileService } from './services/sender-profile-service';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -1835,19 +1836,20 @@ async function sendCompletionNotifications(
   let mnotifyKey: string | undefined = undefined;
   let resendKey: string | undefined = undefined;
   let resendDomain: string | undefined = undefined;
-  let senderId = 'SmartSapp';
+  let senderId = 'Notify';
 
   if (importLog.workspaceId) {
     try {
       const workspaceSnap = await adminDb.collection('workspaces').doc(importLog.workspaceId).get();
       if (workspaceSnap.exists) {
         const ws = workspaceSnap.data() as Workspace;
-        senderId = ws.defaultSmsSenderId?.trim() || 'SmartSapp';
         const orgId = ws.organizationId;
+        let orgData: { name?: string; defaultSenderProfileIds?: Record<string, string> } | null = null;
         if (orgId) {
           const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
           if (orgSnap.exists) {
             const org = orgSnap.data();
+            orgData = org ? { name: org.name, defaultSenderProfileIds: org.defaultSenderProfileIds } : null;
             if (org?.smsKeyMode === 'custom' && org?.mnotifyApiKey) {
               mnotifyKey = org.mnotifyApiKey as string;
             }
@@ -1857,6 +1859,7 @@ async function sendCompletionNotifications(
             }
           }
         }
+        senderId = ws.defaultSmsSenderId?.trim() || SenderProfileService.resolveDefaultSenderId(orgData, 'sms');
       }
     } catch (wsErr) {
       console.error('[BULK-NOTIF] Workspace/Org resolve failed:', (wsErr as Error).message);

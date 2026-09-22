@@ -38,6 +38,7 @@ import { cn } from '@/lib/utils';
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
+import { SenderProfileService } from '@/lib/services/sender-profile-service';
 import { TemplateWorkshopSheet } from '@/app/admin/messaging/components/TemplateWorkshopSheet';
 import { motion } from 'framer-motion';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -261,7 +262,8 @@ interface CampaignWizardProps {
 export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps) {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { activeWorkspaceId, activeOrganizationId } = useWorkspace() as any;
+    const { activeWorkspaceId, activeOrganizationId, activeOrganization, activeWorkspace } = useWorkspace();
+    const effectiveOrgId = activeOrganizationId || activeWorkspace?.organizationId || activeOrganization?.id;
     const { toast } = useToast();
     const [showExitDialog, setShowExitDialog] = React.useState(false);
 
@@ -458,17 +460,23 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
         dispatch({ type: 'SET_FIELD', field: 'variants', value: updatedVariants });
     };
 
-    // ── Sender Profiles (R5/R7 fix) ────────────────────────────────────────────
+    // ── Sender Profiles (Organization Gated) ────────────────────────────────────
     const profilesQuery = useMemoFirebase(() => {
-        if (!firestore || !activeWorkspaceId) return null;
+        if (!firestore || !effectiveOrgId) return null;
         return query(
             collection(firestore, 'sender_profiles'),
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            where('isActive', '==', true),
-            orderBy('name', 'asc')
+            where('organizationId', '==', effectiveOrgId),
+            where('isActive', '==', true)
         );
-    }, [firestore, activeWorkspaceId]);
-    const { data: senderProfiles } = useCollection<SenderProfile>(profilesQuery);
+    }, [firestore, effectiveOrgId]);
+    const { data: rawSenderProfiles } = useCollection<SenderProfile>(profilesQuery);
+
+    const senderProfiles = React.useMemo(() => {
+        return SenderProfileService.filterProfilesForOrganization(rawSenderProfiles, effectiveOrgId, {
+            workspaceId: activeWorkspaceId,
+            orgDoc: activeOrganization,
+        });
+    }, [rawSenderProfiles, effectiveOrgId, activeWorkspaceId, activeOrganization]);
 
     // Auto-select default sender when channel changes
     React.useEffect(() => {
@@ -478,11 +486,16 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
             setField('senderProfileId', 'whatsapp');
             return;
         }
-        if (!senderProfiles) return;
-        const match = senderProfiles.find(p => p.channel === state.channel && p.isDefault)
-            || senderProfiles.find(p => p.channel === state.channel);
-        if (match) setField('senderProfileId', match.id);
-    }, [senderProfiles, state.channel]);
+        if (!senderProfiles || senderProfiles.length === 0) return;
+        const resolvedDefault = SenderProfileService.resolveDefaultProfile(
+            senderProfiles,
+            activeOrganization,
+            state.channel
+        );
+        if (resolvedDefault) {
+            setField('senderProfileId', resolvedDefault.id);
+        }
+    }, [senderProfiles, state.channel, activeOrganization]);
 
     // ── Saved Audiences (Story 5: for audience picker) ─────────────────────
     const { audiences: _savedAudiences } = useAudiences(activeWorkspaceId);
@@ -814,6 +827,7 @@ export function CampaignWizard({ campaign = null, onClose }: CampaignWizardProps
                                 channel={state.channel}
                                 value={state.senderProfileId}
                                 onChange={v => setField('senderProfileId', v)}
+                                organizationId={effectiveOrgId}
                                 workspaceId={activeWorkspaceId}
                                 defaultSentinelValue={state.channel === 'whatsapp' ? 'whatsapp' : 'default'}
                                 defaultLabel={state.channel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Active Profile'}

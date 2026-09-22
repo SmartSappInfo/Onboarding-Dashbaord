@@ -742,7 +742,8 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
   allTags = [],
 }: ActionConfigPanelProps) {
   const { toast: _toast } = useToast();
-  const { activeWorkspace, accessibleWorkspaces } = useWorkspace() as { activeWorkspace?: Workspace; accessibleWorkspaces?: Workspace[] };
+  const { activeWorkspace, accessibleWorkspaces, activeOrganization } = useWorkspace() as { activeWorkspace?: Workspace; accessibleWorkspaces?: Workspace[]; activeOrganization?: { id: string } };
+  const effectiveOrgId = activeWorkspace?.organizationId || activeOrganization?.id;
   const { campaigns = [] } = useCallCampaigns((activeWorkspace as Workspace | undefined)?.id);
   const activeCamps = campaigns.filter((c: { status?: string }) => c.status !== 'archived');
 
@@ -1055,7 +1056,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               }
               value={(config.senderProfileId as string) || 'default'}
               onChange={(v) => updateConfig({ senderProfileId: v })}
-              organizationId={activeWorkspace?.organizationId}
+              organizationId={effectiveOrgId}
               workspaceId={activeWorkspace?.id}
               defaultSentinelValue="default"
               defaultLabel="Default Active Profile"
@@ -1222,7 +1223,7 @@ export const ActionConfigPanel = React.memo(function ActionConfigPanel({
               channel={actionType === 'DIRECT_NOTIFICATION_EMAIL' ? 'email' : 'sms'}
               value={(config.senderProfileId as string) || 'default'}
               onChange={(v) => updateConfig({ senderProfileId: v })}
-              organizationId={activeWorkspace?.organizationId}
+              organizationId={effectiveOrgId}
               workspaceId={activeWorkspace?.id}
               defaultSentinelValue="default"
               defaultLabel="Default Active Profile"

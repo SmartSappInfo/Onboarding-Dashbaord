@@ -104,12 +104,24 @@ function getFlatKeys(obj: Record<string, unknown> | unknown, prefix = ''): FlatK
   return res;
 }
 
-function parseVariables(text: string) {
+export interface ParsedVariablePart {
+  type: 'text' | 'variable';
+  value: string;
+  fallback?: string;
+  raw: string;
+}
+
+/**
+ * ARCHITECTURAL SINGLE SOURCE OF TRUTH: Rule 10 Alignment
+ * Parses text containing {{variable}} or {{variable | fallback}} tokens into structured parts.
+ * Plain text preserves all whitespace, newlines, and punctuation for natural inline flow.
+ */
+export function parseVariables(text: string): ParsedVariablePart[] {
   if (typeof text !== 'string') return [];
   const regex = /\{\{(.*?)\}\}/g;
-  const parts: { type: 'text' | 'variable'; value: string; fallback?: string; raw: string }[] = [];
+  const parts: ParsedVariablePart[] = [];
   let lastIndex = 0;
-  let match;
+  let match: RegExpExecArray | null;
   while ((match = regex.exec(text)) !== null) {
     if (match.index > lastIndex) {
       parts.push({
@@ -501,8 +513,8 @@ export function MappableInputField({
     inputElement = (
       <div 
         className={cn(
-          'w-full rounded-xl bg-card border font-semibold text-xs min-h-[40px] shadow-sm flex flex-wrap items-center px-3 py-1.5 gap-1.5 border-input cursor-text select-none',
-          isTextArea && 'min-h-[80px] items-start align-top',
+          'w-full rounded-xl bg-card border font-medium text-xs shadow-sm px-3.5 py-2.5 pr-10 border-input cursor-text select-none whitespace-pre-wrap break-words leading-relaxed text-foreground min-h-[40px] block',
+          isTextArea && 'min-h-[80px]',
           inputClassName
         )}
         onClick={() => {
@@ -547,7 +559,7 @@ export function MappableInputField({
               <span 
                 key={idx}
                 className={cn(
-                  'inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-mono border shadow-sm transition-all hover:bg-opacity-85 cursor-pointer',
+                  'inline-flex items-center align-middle mx-1 my-0.5 gap-1 px-2 py-0.5 rounded-md text-[11px] font-mono border shadow-2xs select-none transition-all hover:bg-opacity-85 cursor-pointer active:scale-[0.98]',
                   groupColors
                 )}
                 onClick={(e) => {
@@ -555,8 +567,8 @@ export function MappableInputField({
                   setOpen(true);
                 }}
               >
-                <GroupIcon className="h-3.5 w-3.5 flex-shrink-0" />
-                <span className="truncate max-w-[150px]">
+                <GroupIcon className="h-3 w-3 shrink-0 opacity-80" />
+                <span className="truncate max-w-[160px] font-semibold tracking-tight">
                   {friendlyLabel}
                   {part.fallback && (
                     <span className="text-slate-400 font-normal ml-1">({part.fallback})</span>
@@ -573,8 +585,9 @@ export function MappableInputField({
                   }}
                   className="hover:bg-foreground/15 p-0.5 rounded transition-colors inline-flex items-center justify-center ml-0.5 hover:text-emerald-500 active:scale-[0.95]"
                   title="Configure fallback"
+                  aria-label={`Configure fallback for ${friendlyLabel}`}
                 >
-                  <Settings className="h-3 w-3" />
+                  <Settings className="h-2.5 w-2.5" />
                 </button>
                 <button
                   type="button"
@@ -583,16 +596,17 @@ export function MappableInputField({
                     const nextVal = parts.filter((_, i) => i !== idx).map(p => p.raw).join('');
                     onChange(nextVal);
                   }}
-                  className="hover:bg-foreground/15 p-0.5 rounded transition-colors inline-flex items-center justify-center ml-0.5"
+                  className="hover:bg-foreground/15 p-0.5 rounded transition-colors inline-flex items-center justify-center ml-0.5 hover:text-rose-500 active:scale-[0.95]"
                   title="Remove variable"
+                  aria-label={`Remove ${friendlyLabel}`}
                 >
-                  <X className="h-3 w-3" />
+                  <X className="h-2.5 w-2.5" />
                 </button>
               </span>
             );
           } else {
             return (
-              <span key={idx} className="whitespace-pre-wrap text-foreground font-medium py-0.5">
+              <span key={idx} className="align-baseline text-foreground font-medium">
                 {part.value}
               </span>
             );
@@ -642,6 +656,7 @@ export function MappableInputField({
                 isTextArea ? 'top-1.5' : 'top-1/2 -translate-y-1/2'
               )}
               title="Map dynamic variable (or type /)"
+              aria-label="Map dynamic variable (or type /)"
             >
               <Brackets className="h-4 w-4" />
             </Button>

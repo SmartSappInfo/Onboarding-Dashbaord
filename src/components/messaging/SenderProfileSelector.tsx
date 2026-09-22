@@ -29,6 +29,7 @@ import { collection, query, where } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import type { SenderProfile, MessageChannel } from '@/lib/types';
+import { SenderProfileService } from '@/lib/services/sender-profile-service';
 import {
   Select,
   SelectContent,
@@ -146,55 +147,25 @@ export function SenderProfileSelector({
   const { data: rawProfiles, isLoading } = useCollection<SenderProfile>(profilesQuery);
 
   // ── Filtered & Sorted Profiles ──────────────────────────────────────────────
+  // Gated strictly through SenderProfileService to guarantee zero cross-tenant leaks
   const availableProfiles = React.useMemo(() => {
-    if (!rawProfiles) return [];
-
-    let filtered = rawProfiles;
-
-    // Filter by channel if specific channel requested
-    if (channel && channel !== 'all') {
-      filtered = filtered.filter((p) => p.channel === channel);
-    }
-
-    // Filter by workspace if workspace isolation requested
-    if (filterByWorkspace && effectiveWorkspaceId) {
-      filtered = filtered.filter(
-        (p) =>
-          !p.workspaceIds ||
-          p.workspaceIds.length === 0 ||
-          p.workspaceIds.includes(effectiveWorkspaceId)
-      );
-    }
-
-    // Sort alphabetically by name
-    return [...filtered].sort((a, b) => a.name.localeCompare(b.name));
-  }, [rawProfiles, channel, filterByWorkspace, effectiveWorkspaceId]);
+    return SenderProfileService.filterProfilesForOrganization(rawProfiles, effectiveOrgId, {
+      channel,
+      workspaceId: effectiveWorkspaceId,
+      filterByWorkspace,
+      orgDoc: activeOrganization,
+    });
+  }, [rawProfiles, effectiveOrgId, channel, effectiveWorkspaceId, filterByWorkspace, activeOrganization]);
 
   // ── Default Profile Resolution ──────────────────────────────────────────────
   // Identifies which profile is designated as the organization's default for this channel
   const defaultProfile = React.useMemo(() => {
-    if (!rawProfiles || rawProfiles.length === 0) return null;
-    const targetChannel = channel !== 'all' ? channel : undefined;
-
-    // 1. Check organization doc pointer
-    if (
-      targetChannel &&
-      (targetChannel === 'email' || targetChannel === 'sms' || targetChannel === 'whatsapp') &&
-      activeOrganization?.defaultSenderProfileIds?.[targetChannel]
-    ) {
-      const orgDefaultId = activeOrganization.defaultSenderProfileIds[targetChannel];
-      const match = rawProfiles.find((p) => p.id === orgDefaultId && p.isActive);
-      if (match) return match;
-    }
-
-    // 2. Check profile isDefault flag
-    const matchByFlag = rawProfiles.find(
-      (p) => p.isDefault && p.isActive && (!targetChannel || p.channel === targetChannel)
+    return SenderProfileService.resolveDefaultProfile(
+      availableProfiles,
+      activeOrganization,
+      channel !== 'all' ? channel : undefined
     );
-    if (matchByFlag) return matchByFlag;
-
-    return null;
-  }, [rawProfiles, channel, activeOrganization?.defaultSenderProfileIds]);
+  }, [availableProfiles, activeOrganization, channel]);
 
   // ── Sentinel Normalization ──────────────────────────────────────────────────
   // Check if current value represents a sentinel (e.g. 'default', 'none', 'whatsapp', or empty)
@@ -202,7 +173,7 @@ export function SenderProfileSelector({
     value === undefined ||
     value === null ||
     value === defaultSentinelValue ||
-    SENTINEL_SET.has(value);
+    SenderProfileService.isSentinel(value);
 
   // The actual value fed to Radix Select
   const selectValue = isCurrentValueSentinel

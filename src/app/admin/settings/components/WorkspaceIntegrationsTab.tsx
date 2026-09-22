@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import { saveWorkspaceAction } from '@/lib/workspace-actions';
+import { SenderProfileService } from '@/lib/services/sender-profile-service';
 import { collection, query, where } from 'firebase/firestore';
 import { 
   getGoogleAuthUrlAction, 
@@ -188,6 +189,14 @@ export default function WorkspaceIntegrationsTab({ workspace, onSaveSuccess }: W
       }
       if (!/^[a-zA-Z0-9]+$/.test(senderId)) {
         toast({ variant: 'destructive', title: 'Validation Alert', description: 'Default SMS Sender ID must contain only alphanumeric characters.' });
+        return;
+      }
+      if (workspace.organizationId && !SenderProfileService.isSmsSenderAllowedForOrg(senderId, workspace.organizationId)) {
+        toast({
+          variant: 'destructive',
+          title: 'Unauthorized Sender ID',
+          description: `The SMS Sender ID "${senderId}" belongs to another organization.`,
+        });
         return;
       }
     }
