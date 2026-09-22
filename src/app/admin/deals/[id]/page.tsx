@@ -37,7 +37,6 @@ import {
     Phone,
     PhoneCall,
     Mail,
-    Crown,
     Copy,
     GitMerge,
     Archive,
@@ -1155,32 +1154,32 @@ export default function DealDetailsPage() {
                                                                             {selected && <Check className="h-3.5 w-3.5 stroke-[3]" />}
                                                                         </button>
 
-                                                                        <div className={cn(
-                                                                            "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 text-xs font-bold transition-all shadow-2xs",
-                                                                            isOwner 
-                                                                                ? "bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30" 
-                                                                                : "bg-primary/10 text-primary border border-primary/15"
-                                                                        )}>
-                                                                            {isOwner ? (
-                                                                                <Crown className="h-4 w-4 text-amber-500 animate-in zoom-in-50" />
-                                                                            ) : (
-                                                                                c.name ? c.name.slice(0, 2).toUpperCase() : <User className="h-4 w-4" />
-                                                                            )}
+                                                                        <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary border border-primary/15 flex items-center justify-center shrink-0 text-xs font-bold shadow-2xs">
+                                                                            {c.name ? c.name.slice(0, 2).toUpperCase() : <User className="h-4 w-4" />}
                                                                         </div>
 
                                                                         <div className="min-w-0 flex-1 space-y-1.5">
                                                                             <div className="flex items-center gap-2 flex-wrap">
                                                                                 <span className="text-xs font-bold text-foreground truncate">{c.name || 'Unnamed Contact'}</span>
-                                                                                {/* De-duplicated Owner badge: only show Primary Deal Contact once, omit repeated 'Owner' tag */}
-                                                                                {isOwner ? (
-                                                                                    <Badge className="bg-amber-500/15 text-amber-700 dark:text-amber-300 border-amber-500/30 font-bold text-[9px] h-4 px-2 gap-1 rounded-full shadow-2xs">
-                                                                                        <Crown className="h-2.5 w-2.5 text-amber-500 fill-amber-500/40" /> Primary Deal Contact
-                                                                                    </Badge>
-                                                                                ) : c.typeLabel && !isOwnerTypeLabel ? (
+                                                                                {/* Exactly one Primary Contact badge (click to unset) */}
+                                                                                {isOwner && (
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => handleSetDealOwner(c.id)}
+                                                                                        className="inline-flex cursor-pointer transition-transform active:scale-95"
+                                                                                        title="Primary Deal Contact (click to remove designation)"
+                                                                                    >
+                                                                                        <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30 hover:bg-amber-500/20 font-semibold text-[9px] h-4 px-2 rounded-full transition-colors gap-1">
+                                                                                            Primary Contact
+                                                                                            <span className="text-[10px] opacity-60 hover:opacity-100">✕</span>
+                                                                                        </Badge>
+                                                                                    </button>
+                                                                                )}
+                                                                                {c.typeLabel && !isOwnerTypeLabel && (
                                                                                     <Badge variant="secondary" className="text-[9px] font-semibold h-4 px-1.5 rounded-md border-none">
                                                                                         {c.typeLabel}
                                                                                     </Badge>
-                                                                                ) : null}
+                                                                                )}
                                                                                 {c.isPrimary && !isOwner && (
                                                                                     <Badge variant="outline" className="text-[9px] font-semibold text-muted-foreground border-border/70 h-4 px-1.5 rounded-md">
                                                                                         Entity Primary
@@ -1257,25 +1256,21 @@ export default function DealDetailsPage() {
                                                                         </div>
                                                                     </div>
 
-                                                                    {/* Right Section: Actions (Owner Designation, Call Centre, Compose Flow) */}
+                                                                    {/* Right Section: Actions (Call Centre, Compose Flow, and Set as Primary if not already primary) */}
                                                                     <div className="flex items-center gap-1.5 shrink-0 self-end md:self-center pt-2 md:pt-0 border-t md:border-t-0 border-border/40 w-full md:w-auto justify-end">
-                                                                        {/* Primary Designation Button */}
-                                                                        <Button
-                                                                            type="button"
-                                                                            variant={isOwner ? "secondary" : "ghost"}
-                                                                            size="sm"
-                                                                            onClick={() => handleSetDealOwner(c.id)}
-                                                                            className={cn(
-                                                                                "min-h-[44px] md:min-h-[32px] h-8 px-2.5 rounded-xl font-semibold text-[10px] gap-1 cursor-pointer transition-all active:scale-[0.97]",
-                                                                                isOwner 
-                                                                                    ? "bg-amber-500/15 text-amber-700 dark:text-amber-300 hover:bg-amber-500/25 border border-amber-500/30" 
-                                                                                    : "text-muted-foreground hover:text-foreground hover:bg-muted"
-                                                                            )}
-                                                                            title={isOwner ? "Currently designated as Primary Deal Contact (click to remove)" : "Click to designate this contact as the Primary Deal Contact"}
-                                                                        >
-                                                                            <Crown className={cn("h-3 w-3", isOwner ? "text-amber-500 fill-amber-500/40" : "text-muted-foreground/60")} />
-                                                                            <span>{isOwner ? 'Primary' : 'Set as Primary'}</span>
-                                                                        </Button>
+                                                                        {/* Set as Primary Button: Only shown if contact is NOT already the primary contact */}
+                                                                        {!isOwner && (
+                                                                            <Button
+                                                                                type="button"
+                                                                                variant="ghost"
+                                                                                size="sm"
+                                                                                onClick={() => handleSetDealOwner(c.id)}
+                                                                                className="min-h-[44px] md:min-h-[32px] h-8 px-2.5 rounded-xl font-medium text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer transition-all active:scale-[0.97]"
+                                                                                title="Designate as primary contact for this deal"
+                                                                            >
+                                                                                Set as Primary
+                                                                            </Button>
+                                                                        )}
 
                                                                         {/* Call Centre Action Button */}
                                                                         <Button
