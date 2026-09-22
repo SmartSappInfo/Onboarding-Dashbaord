@@ -36,13 +36,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { 
-    Select, 
-    SelectContent, 
-    SelectItem, 
-    SelectTrigger, 
-    SelectValue 
-} from '@/components/ui/select';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { cn } from '@/lib/utils';
 import type { Deal, EntityContact } from '@/lib/types';
 import type { DealInteractionData } from '@/lib/deals/deal-types';
 import { logDealInteractionAction } from '@/app/actions/deal-actions';
@@ -54,9 +49,10 @@ import { useCallModal } from '@/context/CallModalContext';
 interface DealQuickActionsProps {
     deal: Deal;
     contacts?: EntityContact[];
+    className?: string;
 }
 
-export default function DealQuickActions({ deal, contacts = [] }: DealQuickActionsProps) {
+export default function DealQuickActions({ deal, contacts = [], className }: DealQuickActionsProps) {
     const { user } = useUser();
     const { toast } = useToast();
     const { activeWorkspaceId } = useTenant();
@@ -216,16 +212,23 @@ export default function DealQuickActions({ deal, contacts = [] }: DealQuickActio
     return (
         <>
             {/* Quick Actions Toolbar */}
-            <div className="flex items-center gap-2.5 flex-wrap p-2.5 rounded-2xl bg-card border border-border/50 shadow-sm">
+            <div className={cn("flex items-center gap-2.5 flex-wrap p-2.5 rounded-2xl bg-card border border-border/50 shadow-sm", className)}>
                 <Button
                     type="button"
                     variant="default"
                     size="sm"
-                    onClick={() => openCallModal({ entityId: deal.entityId, dealId: deal.id })}
+                    onClick={() => openCallModal({ 
+                        entityId: deal.entityId, 
+                        dealId: deal.id,
+                        contactId: availableContacts[0]?.id || contacts[0]?.id,
+                        contactName: availableContacts[0]?.name || contacts[0]?.name,
+                        phone: availableContacts[0]?.phone || contacts[0]?.phone,
+                        email: availableContacts[0]?.email || contacts[0]?.email,
+                    })}
                     className="min-h-[44px] sm:min-h-[38px] px-3.5 rounded-xl font-bold text-xs gap-2 bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer transition-all active:scale-95 shadow-xs"
                 >
                     <Phone className="h-4 w-4 shrink-0" />
-                    <span>Call Now</span>
+                    <span>{(availableContacts[0]?.name || contacts[0]?.name) ? `Call ${(availableContacts[0]?.name || contacts[0]?.name || '').split(' ')[0]}` : 'Call Now'}</span>
                 </Button>
 
                 <div className="h-4 w-px bg-border/60 mx-0.5 hidden sm:block" />
