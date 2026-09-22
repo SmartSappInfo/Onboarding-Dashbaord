@@ -203,8 +203,9 @@ export async function setPipelineAsDefaultAction(pipelineId: string, workspaceId
 }
 
 export async function deletePipelineAction(id: string, userId: string): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
 
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
@@ -264,8 +265,9 @@ export async function deletePipelineAction(id: string, userId: string): Promise<
  * Archives or restores a pipeline blueprint.
  */
 export async function archivePipelineAction(id: string, isArchived: boolean, userId: string): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
 
     try {
         const docSnap = await adminDb.collection('pipelines').doc(id).get();
@@ -301,8 +303,9 @@ export async function clonePipelineAction(
     userId: string,
     customName?: string
 ): Promise<{ success: boolean; id?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
 
     try {
         if (!pipelineId || !userId) {

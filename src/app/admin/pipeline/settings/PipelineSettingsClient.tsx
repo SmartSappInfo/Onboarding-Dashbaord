@@ -1,49 +1,45 @@
 'use client';
 
 import * as React from 'react';
-import { doc, updateDoc, query, collection, orderBy, where, getDocs, deleteDoc, writeBatch, addDoc } from 'firebase/firestore';
+import { doc, updateDoc, query, collection, orderBy, where } from 'firebase/firestore';
 import { useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import type { Pipeline, Role } from '@/lib/types';
 import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
-import { clonePipelineAction } from '@/lib/pipeline-actions';
+import { clonePipelineAction, deletePipelineAction } from '@/lib/pipeline-actions';
 import { 
-    ShieldCheck, 
     Loader2,
-    Settings2,
     CheckCircle2,
-    Maximize,
     Zap,
     Plus,
     Trash2,
-    Users,
-    Calendar,
-    Copy,
-    DollarSign
+    Copy
 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { MultiSelect } from '@/components/ui/multi-select';
-import { Badge } from '@/components/ui/badge';
-import { Slider } from '@/components/ui/slider';
 import StageEditor from '../components/StageEditor';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { Separator } from '@/components/ui/separator';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { CreatePipelineModal } from '../components/CreatePipelineModal';
+import { PipelineConfigFields, type PipelineFormData } from '../components/PipelineConfigFields';
 
-interface _PipelineConfigViewProps {
-    pipelineId: string;
-    columnWidth: number;
-    onWidthChange: (width: number) => void;
-}
-
+/**
+ * ARCHITECTURAL NOTE (Rule 10 - Pipeline Settings Client Console):
+ * Unified configuration interface for pipeline architecture in the admin settings area.
+ * 
+ * Key guarantees:
+ * 1. Single Source of Truth: Exclusively renders <PipelineConfigFields variant="full" />,
+ *    sharing form layout, inputs, and validation identically with PipelineConfigView.
+ * 2. Draft-First Creation: Creation routes entirely through <CreatePipelineModal />.
+ *    No premature DB writes or empty pipelines with 0 stages can ever occur.
+ * 3. Server Action Security: Deletion delegates to deletePipelineAction (server-side
+ *    authorization check, active lead protection, batch cascade).
+ * 4. Clone Confirmation: Pipeline duplication requires explicit user confirmation.
+ * 5. Strict Zero 'any' / 'any[]' compliance (Rule 5).
+ */
 export default function PipelineSettingsClient() {
     const firestore = useFirestore();
     const { toast } = useToast();
@@ -52,10 +48,50 @@ export default function PipelineSettingsClient() {
     const { activeWorkspaceId, allowedWorkspaces, activeOrganizationId } = useWorkspace();
     
     const [selectedId, setSelectedId] = React.useState<string | null>(null);
-    const [isCreating, setIsAdding] = React.useState(false);
     const [isSaving, setIsSaving] = React.useState(false);
     const [isCloning, setIsCloning] = React.useState(false);
     const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
+
+    // Form State (Single source of truth matching PipelineFormData)
+    const [formData, setFormData] = React.useState<PipelineFormData>({
+        name: '',
+        description: '',
+        type: 'sales',
+        defaultProbability: 50,
+        workspaceIds: activeWorkspaceId ? [activeWorkspaceId] : [],
+        columnWidth: 320,
+        showDealTotals: true,
+        accessRoles: [],
+        assignmentStrategy: 'direct',
+        assignmentUserIds: [],
+        defaultCloseDateOffsetValue: '',
+        defaultCloseDateOffsetUnit: 'days',
+    });
+
+    const updateField = React.useCallback(<K extends keyof PipelineFormData>(key: K, value: PipelineFormData[K]) => {
+        setFormData(prev => ({ ...prev, [key]: value }));
+    }, []);
+
+    // Synchronized Pipeline Query
+    const pipelinesQuery = useMemoFirebase(() => 
+        firestore && activeWorkspaceId ? query(
+            collection(firestore, 'pipelines'), 
+            where('workspaceIds', 'array-contains', activeWorkspaceId),
+            orderBy('createdAt', 'desc')
+        ) : null, 
+    [firestore, activeWorkspaceId]);
+    const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
+
+    // Auto-select first pipeline if none selected
+    React.useEffect(() => {
+        if (!selectedId && pipelines && pipelines.length > 0) {
+            setSelectedId(pipelines[0].id);
+        }
+    }, [selectedId, pipelines]);
+
+    const selectedPipeline = React.useMemo(() => 
+        pipelines?.find(p => p.id === selectedId),
+    [pipelines, selectedId]);
 
     const handleClone = async () => {
         if (!user || !selectedId) return;
@@ -91,32 +127,7 @@ export default function PipelineSettingsClient() {
         }
     };
 
-    // Form State
-    const [name, setName] = React.useState('');
-    const [description, setDescription] = React.useState('');
-    const [accessRoles, setAccessRoles] = React.useState<string[]>([]);
-    const [columnWidth, setColumnWidth] = React.useState(320);
-    const [showDealTotals, setShowDealTotals] = React.useState<boolean>(true);
-    const [assignmentStrategy, setAssignmentStrategy] = React.useState<'direct' | 'round-robin' | 'value-based' | 'unassigned'>('direct');
-    const [assignmentUserIds, setAssignmentUserIds] = React.useState<string[]>([]);
-    const [defaultCloseDateOffsetValue, setDefaultCloseDateOffsetValue] = React.useState<number | ''>('');
-    const [defaultCloseDateOffsetUnit, setDefaultCloseDateOffsetUnit] = React.useState<'hours' | 'days' | 'months'>('days');
-
     const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
-
-    // Synchronized Pipeline Query
-    const pipelinesQuery = useMemoFirebase(() => 
-        firestore && activeWorkspaceId ? query(
-            collection(firestore, 'pipelines'), 
-            where('workspaceIds', 'array-contains', activeWorkspaceId),
-            orderBy('createdAt', 'desc')
-        ) : null, 
-    [firestore, activeWorkspaceId]);
-    const { data: pipelines, isLoading: isLoadingPipelines } = useCollection<Pipeline>(pipelinesQuery);
-
-    const selectedPipeline = React.useMemo(() => 
-        pipelines?.find(p => p.id === selectedId),
-    [pipelines, selectedId]);
 
     const rolesQuery = useMemoFirebase(() => 
         firestore && activeOrganizationId ? query(
@@ -154,63 +165,50 @@ export default function PipelineSettingsClient() {
 
     React.useEffect(() => {
         if (selectedPipeline) {
-            setName(selectedPipeline.name);
-            setDescription(selectedPipeline.description || '');
-            setAccessRoles(selectedPipeline.accessRoles || []);
-            setShowDealTotals(selectedPipeline.showDealTotals !== false);
-            setAssignmentStrategy(selectedPipeline.assignmentStrategy || 'direct');
-            setAssignmentUserIds(selectedPipeline.assignmentUserIds || []);
-            setDefaultCloseDateOffsetValue(selectedPipeline.defaultCloseDateOffsetValue ?? '');
-            setDefaultCloseDateOffsetUnit(selectedPipeline.defaultCloseDateOffsetUnit ?? 'days');
-            if (selectedPipeline.columnWidth) setColumnWidth(selectedPipeline.columnWidth);
-        } else if (!isCreating) {
-            setName('');
-            setDescription('');
-            setAccessRoles([]);
-            setShowDealTotals(true);
-            setAssignmentStrategy('direct');
-            setAssignmentUserIds([]);
-            setDefaultCloseDateOffsetValue('');
-            setDefaultCloseDateOffsetUnit('days');
+            setFormData({
+                name: selectedPipeline.name || '',
+                description: selectedPipeline.description || '',
+                type: selectedPipeline.type || 'sales',
+                defaultProbability: typeof selectedPipeline.defaultProbability === 'number' ? selectedPipeline.defaultProbability : 50,
+                workspaceIds: selectedPipeline.workspaceIds || (activeWorkspaceId ? [activeWorkspaceId] : []),
+                columnWidth: selectedPipeline.columnWidth || 320,
+                showDealTotals: selectedPipeline.showDealTotals !== false,
+                accessRoles: selectedPipeline.accessRoles || [],
+                assignmentStrategy: selectedPipeline.assignmentStrategy || 'direct',
+                assignmentUserIds: selectedPipeline.assignmentUserIds || [],
+                defaultCloseDateOffsetValue: selectedPipeline.defaultCloseDateOffsetValue ?? '',
+                defaultCloseDateOffsetUnit: selectedPipeline.defaultCloseDateOffsetUnit ?? 'days',
+            });
         }
-    }, [selectedPipeline, isCreating]);
+    }, [selectedPipeline, activeWorkspaceId]);
 
     const handleSave = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!firestore || !name.trim()) return;
+        if (!firestore || !selectedId || !formData.name.trim()) return;
         setIsSaving(true);
 
-        const numOffset = typeof defaultCloseDateOffsetValue === 'number' && defaultCloseDateOffsetValue > 0 ? defaultCloseDateOffsetValue : null;
-        const unitOffset = numOffset ? defaultCloseDateOffsetUnit : null;
+        const numOffset = typeof formData.defaultCloseDateOffsetValue === 'number' && formData.defaultCloseDateOffsetValue > 0 ? formData.defaultCloseDateOffsetValue : null;
+        const unitOffset = numOffset ? formData.defaultCloseDateOffsetUnit : null;
 
         const data = {
-            name: name.trim(),
-            description: description.trim(),
-            accessRoles,
-            columnWidth,
-            showDealTotals: Boolean(showDealTotals),
-            assignmentStrategy,
-            assignmentUserIds,
+            name: formData.name.trim(),
+            description: formData.description.trim(),
+            type: formData.type,
+            defaultProbability: Math.min(100, Math.max(0, formData.defaultProbability)),
+            accessRoles: formData.accessRoles,
+            workspaceIds: formData.workspaceIds.length > 0 ? formData.workspaceIds : (activeWorkspaceId ? [activeWorkspaceId] : []),
+            columnWidth: formData.columnWidth,
+            showDealTotals: Boolean(formData.showDealTotals),
+            assignmentStrategy: formData.assignmentStrategy,
+            assignmentUserIds: formData.assignmentUserIds,
             defaultCloseDateOffsetValue: numOffset,
             defaultCloseDateOffsetUnit: unitOffset,
             updatedAt: new Date().toISOString()
         };
 
         try {
-            if (selectedId) {
-                await updateDoc(doc(firestore, 'pipelines', selectedId), data);
-                toast({ title: 'Architecture Synchronized' });
-            } else {
-                const docRef = await addDoc(collection(firestore, 'pipelines'), {
-                    ...data,
-                    workspaceIds: [activeWorkspaceId],
-                    stageIds: [],
-                    createdAt: new Date().toISOString()
-                });
-                toast({ title: 'New Pipeline Initialized' });
-                setSelectedId(docRef.id);
-                setIsAdding(false);
-            }
+            await updateDoc(doc(firestore, 'pipelines', selectedId), data);
+            toast({ title: 'Architecture Synchronized' });
         } catch (error: unknown) {
             const err = error instanceof Error ? error.message : 'Save failed';
             toast({ variant: 'destructive', title: 'Save Failed', description: err });
@@ -220,25 +218,34 @@ export default function PipelineSettingsClient() {
     };
 
     const handleDelete = async () => {
-        if (!firestore || !selectedId) return;
-        if (!(await confirm({ title: 'Delete pipeline?', description: 'This workflow architecture will be permanently purged.', confirmText: 'Delete', variant: 'destructive' }))) return;
+        if (!user || !selectedId) return;
+        const approved = await confirm({ 
+            title: 'Delete pipeline?', 
+            description: 'This workflow architecture will be permanently purged. Pipelines with active leads cannot be deleted.', 
+            confirmText: 'Delete', 
+            variant: 'destructive' 
+        });
+        if (!approved) return;
+
         try {
-            await deleteDoc(doc(firestore, 'pipelines', selectedId));
-            const stagesSnap = await getDocs(query(collection(firestore, 'onboardingStages'), where('pipelineId', '==', selectedId)));
-            const batch = writeBatch(firestore);
-            stagesSnap.forEach(d => batch.delete(d.ref));
-            await batch.commit();
-            setSelectedId(null);
-            toast({ title: 'Pipeline Purged' });
-        } catch (_e) {
-            toast({ variant: 'destructive', title: 'Deletion Failed' });
+            const res = await deletePipelineAction(selectedId, user.uid);
+            if (res.success) {
+                setSelectedId(null);
+                toast({ title: 'Pipeline Purged' });
+            } else {
+                throw new Error(res.error || 'Failed to delete pipeline');
+            }
+        } catch (error: unknown) {
+            const err = error instanceof Error ? error.message : 'Deletion failed';
+            toast({ variant: 'destructive', title: 'Deletion Failed', description: err });
         }
     };
 
-    const roleOptions = roles?.map(r => ({ label: r.name, value: r.id })) || [];
-    const workspaceUserOptions = workspaceUsers?.map(u => ({ label: u.name || u.email || 'Workspace User', value: u.id })) || [];
+    const roleOptions = React.useMemo(() => roles?.map(r => ({ label: r.name, value: r.id })) || [], [roles]);
+    const workspaceUserOptions = React.useMemo(() => workspaceUsers?.map(u => ({ label: u.name || u.email || 'Workspace User', value: u.id })) || [], [workspaceUsers]);
+    const workspaceOptions = React.useMemo(() => allowedWorkspaces.map(w => ({ label: w.name, value: w.id })), [allowedWorkspaces]);
 
- if (isLoadingPipelines) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
+    if (isLoadingPipelines) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-[2.5rem]" /><div className="h-96 bg-muted rounded-[2.5rem]" /></div>;
 
     return (
         <div className="h-full overflow-y-auto text-left">
@@ -255,7 +262,7 @@ export default function PipelineSettingsClient() {
                                 variant="outline" 
                                 onClick={handleClone}
                                 disabled={isCloning}
-                                className="rounded-xl font-bold h-11 px-5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-card shadow-sm hover:bg-indigo-500/10"
+                                className="rounded-xl font-bold h-11 px-5 border-indigo-500/30 text-indigo-600 dark:text-indigo-400 bg-card shadow-sm hover:bg-indigo-500/10 active:scale-[0.97] transition-all"
                             >
                                 {isCloning ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Copy className="mr-2 h-4 w-4 text-indigo-500" />}
                                 Clone Pipeline
@@ -271,237 +278,77 @@ export default function PipelineSettingsClient() {
                     </div>
                 </div>
 
- <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
- <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4">
- <div className="flex items-center gap-3 text-primary shrink-0 ml-2">
- <Zap className="h-4 w-4" />
- <span className="text-[10px] font-semibold ">Select Target</span>
+                <Card className="rounded-2xl border-none shadow-sm ring-1 ring-border overflow-hidden bg-card">
+                    <CardContent className="p-4 flex flex-col sm:flex-row items-center gap-4">
+                        <div className="flex items-center gap-3 text-primary shrink-0 ml-2">
+                            <Zap className="h-4 w-4" />
+                            <span className="text-[10px] font-semibold ">Select Target</span>
                         </div>
-                        <Select value={selectedId || (isCreating ? 'new' : '')} onValueChange={(val) => {
-                            if (val === 'new') { setSelectedId(null); setIsAdding(true); }
-                            else { setSelectedId(val); setIsAdding(false); }
-                        }}>
- <SelectTrigger className="flex-1 h-12 rounded-xl bg-muted/20 border-none shadow-none focus:ring-1 focus:ring-primary/20 font-semibold text-lg">
+                        <Select 
+                            value={selectedId || ''} 
+                            onValueChange={(val) => {
+                                if (val === 'new') { 
+                                    setIsCreateModalOpen(true);
+                                } else { 
+                                    setSelectedId(val); 
+                                }
+                            }}
+                        >
+                            <SelectTrigger className="flex-1 h-12 rounded-xl bg-muted/20 border-none shadow-none focus-visible:ring-1 focus-visible:ring-primary/40 focus:outline-none font-semibold text-lg">
                                 <SelectValue placeholder="Choose a pipeline to modify..." />
                             </SelectTrigger>
- <SelectContent className="rounded-xl border-none shadow-2xl">
+                            <SelectContent className="rounded-xl border-none shadow-2xl">
                                 {pipelines?.map(p => (
- <SelectItem key={p.id} value={p.id} className="font-semibold py-3 text-xs">{p.name}</SelectItem>
+                                    <SelectItem key={p.id} value={p.id} className="font-semibold py-3 text-xs">{p.name}</SelectItem>
                                 ))}
- <Separator className="my-1" />
- <SelectItem value="new" className="text-primary font-semibold italic">Initialize New Pipeline...</SelectItem>
+                                <Separator className="my-1" />
+                                <SelectItem value="new" className="text-primary font-semibold italic">Initialize New Pipeline...</SelectItem>
                             </SelectContent>
                         </Select>
                     </CardContent>
                 </Card>
 
                 <AnimatePresence mode="wait">
-                    {(selectedId || isCreating) ? (
+                    {selectedId ? (
                         <motion.div 
-                            key={selectedId || 'new'} 
+                            key={selectedId} 
                             initial={{ opacity: 0, y: 10 }} 
                             animate={{ opacity: 1, y: 0 }} 
                             exit={{ opacity: 0, y: -10 }}
- className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+                            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
                         >
- <div className="lg:col-span-2 space-y-8">
- <Card className="rounded-[2.5rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden">
- <CardHeader className="bg-background border-b p-6 px-8">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-card rounded-xl shadow-sm"><Settings2 className="h-4 w-4 text-primary" /></div>
- <CardTitle className="text-sm font-semibold ">Master Directives</CardTitle>
-                                        </div>
-                                    </CardHeader>
- <CardContent className="p-8 space-y-8 text-left">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Pipeline Label</Label>
-                                            <Input 
-                                                value={name} 
-                                                onChange={e => setName(e.target.value)} 
-                                                placeholder="e.g. Sales Pipeline" 
- className="h-12 rounded-xl bg-muted/20 border-none font-semibold text-lg px-4" 
-                                            />
-                                        </div>
-                                        
-                                        <div className="space-y-4 p-6 rounded-2xl bg-primary/[0.02] border-2 border-dashed border-primary/10">
-                                            <div className="flex justify-between items-center px-1">
-                                                <Label className="text-[10px] font-semibold text-primary flex items-center gap-2">
-                                                    <Maximize className="h-3.5 w-3.5" /> Stage Column Width
-                                                </Label>
-                                                <Badge variant="outline" className="font-mono tabular-nums text-[10px] bg-card border-primary/20 text-primary">
-                                                    {columnWidth}px
-                                                </Badge>
-                                            </div>
-                                            <Slider 
-                                                value={[columnWidth]} 
-                                                onValueChange={([v]) => setColumnWidth(v)}
-                                                min={280}
-                                                max={500}
-                                                step={10}
-                                            />
-                                        </div>
+                            <div className="lg:col-span-2 space-y-8">
+                                <PipelineConfigFields
+                                    variant="full"
+                                    formData={formData}
+                                    onChange={updateField}
+                                    workspaceOptions={workspaceOptions}
+                                    roleOptions={roleOptions}
+                                    workspaceUserOptions={workspaceUserOptions}
+                                    disabled={isSaving}
+                                />
 
-                                        {/* Kanban Board Financial Metrics Toggle */}
-                                        <div className="flex items-center justify-between p-4 rounded-2xl bg-muted/20 border border-border/60">
-                                            <div className="space-y-0.5 pr-4 text-left">
-                                                <Label htmlFor="showDealTotalsSettings" className="text-xs font-bold flex items-center gap-2 cursor-pointer text-foreground">
-                                                    <DollarSign className="h-4 w-4 text-primary" />
-                                                    Show Financial Totals in Kanban Columns
-                                                </Label>
-                                                <p className="text-[11px] text-muted-foreground font-medium">
-                                                    Display total deal revenue and weighted forecast in each Kanban column header. Enabled by default.
-                                                </p>
-                                            </div>
-                                            <Switch
-                                                id="showDealTotalsSettings"
-                                                checked={showDealTotals}
-                                                onCheckedChange={setShowDealTotals}
-                                            />
-                                        </div>
-
-                                        <div className="space-y-2">
-                                            <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Scope Description</Label>
-                                            <Textarea 
-                                                value={description} 
-                                                onChange={e => setDescription(e.target.value)} 
-                                                placeholder="Define the purpose..." 
- className="min-h-[80px] rounded-xl bg-muted/20 border-none p-4 font-medium" 
-                                            />
-                                        </div>
-                                    </CardContent>
-                                </Card>
-
-                                {selectedId && <StageEditor pipelineId={selectedId} />}
+                                <StageEditor pipelineId={selectedId} />
                             </div>
 
- <div className="space-y-8">
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden text-left">
- <CardHeader className="bg-primary/5 border-b p-6 px-8">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-card rounded-xl shadow-sm"><ShieldCheck className="h-4 w-4 text-primary" /></div>
- <CardTitle className="text-sm font-semibold tracking-tight">Access Control</CardTitle>
-                                        </div>
-                                    </CardHeader>
- <CardContent className="p-6 space-y-4">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Authorized Roles</Label>
-                                        <MultiSelect 
-                                            options={roleOptions}
-                                            value={accessRoles}
-                                            onChange={setAccessRoles}
-                                            placeholder="Grant visibility..."
- className="rounded-xl border-primary/10 shadow-sm"
-                                        />
-                                    </CardContent>
-                                </Card>
-
- <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden text-left">
- <CardHeader className="bg-primary/5 border-b p-6 px-8">
- <div className="flex items-center gap-3">
- <div className="p-2 bg-card rounded-xl shadow-sm"><Users className="h-4 w-4 text-primary" /></div>
- <CardTitle className="text-sm font-semibold tracking-tight">Deal Assignment Rules</CardTitle>
-                                        </div>
-                                    </CardHeader>
- <CardContent className="p-6 space-y-4">
- <div className="space-y-2">
- <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Routing Strategy</Label>
-                                            <Select 
-                                                value={assignmentStrategy} 
-                                                onValueChange={(val: 'direct' | 'round-robin' | 'value-based' | 'unassigned') => setAssignmentStrategy(val)}
-                                            >
-                                                <SelectTrigger className="w-full h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4">
-                                                    <SelectValue placeholder="Select strategy..." />
-                                                </SelectTrigger>
-                                                <SelectContent className="rounded-xl border-none shadow-2xl bg-popover text-popover-foreground">
-                                                    <SelectItem value="direct" className="text-xs">Manual (Inherit from Entity owner)</SelectItem>
-                                                    <SelectItem value="round-robin" className="text-xs">Round Robin (Equal distribution)</SelectItem>
-                                                    <SelectItem value="value-based" className="text-xs">Round Robin based on Deal Value</SelectItem>
-                                                    <SelectItem value="unassigned" className="text-xs">Leave Unassigned</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </div>
-
-                                        {(assignmentStrategy === 'round-robin' || assignmentStrategy === 'value-based') && (
-                                            <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-200">
-                                                <Label className="text-[10px] font-semibold text-muted-foreground ml-1">Assignee Pool</Label>
-                                                <MultiSelect 
-                                                    options={workspaceUserOptions} 
-                                                    value={assignmentUserIds} 
-                                                    onChange={setAssignmentUserIds} 
-                                                    placeholder="Select eligible team members..." 
-                                                    className="rounded-xl border-primary/10 shadow-sm" 
-                                                />
-                                                <p className="text-[10px] text-muted-foreground ml-1 italic leading-normal">
-                                                    Deals will be routed dynamically among the selected pool.
-                                                </p>
-                                            </div>
-                                        )}
-                                    </CardContent>
-                                 </Card>
-
-                                 {/* Default Forecast Close Date Offset Card */}
-                                 <Card className="rounded-[2rem] border-none ring-1 ring-border shadow-sm bg-card overflow-hidden text-left">
-                                     <CardHeader className="bg-primary/5 border-b p-6 px-8">
-                                         <div className="flex items-center gap-3">
-                                             <div className="p-2 bg-card rounded-xl shadow-sm"><Calendar className="h-4 w-4 text-primary" /></div>
-                                             <CardTitle className="text-sm font-semibold tracking-tight">Default Forecast Close Date Offset</CardTitle>
-                                         </div>
-                                     </CardHeader>
-                                     <CardContent className="p-6 space-y-4">
-                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                             <div className="space-y-2">
-                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1 uppercase">Offset Duration</Label>
-                                                 <Input
-                                                     type="number"
-                                                     min="0"
-                                                     step="1"
-                                                     placeholder="e.g. 30"
-                                                     value={defaultCloseDateOffsetValue}
-                                                     onChange={(e) => {
-                                                         const val = e.target.value === '' ? '' : parseInt(e.target.value, 10);
-                                                         setDefaultCloseDateOffsetValue(isNaN(val as number) ? '' : val);
-                                                     }}
-                                                     className="h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4"
-                                                 />
-                                             </div>
-                                             <div className="space-y-2">
-                                                 <Label className="text-[10px] font-semibold text-muted-foreground ml-1 uppercase">Duration Unit</Label>
-                                                 <Select
-                                                     value={defaultCloseDateOffsetUnit}
-                                                     onValueChange={(val: 'hours' | 'days' | 'months') => setDefaultCloseDateOffsetUnit(val)}
-                                                 >
-                                                     <SelectTrigger className="w-full h-11 rounded-xl bg-muted/20 border-none font-semibold text-xs px-4">
-                                                         <SelectValue placeholder="Select unit..." />
-                                                     </SelectTrigger>
-                                                     <SelectContent className="rounded-xl border-none shadow-2xl bg-popover text-popover-foreground">
-                                                         <SelectItem value="hours" className="text-xs">Hours</SelectItem>
-                                                         <SelectItem value="days" className="text-xs">Days</SelectItem>
-                                                         <SelectItem value="months" className="text-xs">Months</SelectItem>
-                                                     </SelectContent>
-                                                 </Select>
-                                             </div>
-                                         </div>
-                                     </CardContent>
-                                 </Card>
-
- <div className="space-y-4 pt-4 sticky top-24">
+                            <div className="space-y-8">
+                                <div className="space-y-4 pt-4 sticky top-24">
                                     <Button 
                                         onClick={handleSave} 
-                                        disabled={isSaving || !name.trim()} 
- className="w-full h-14 rounded-2xl font-semibold text-sm shadow-xl transition-all active:scale-95 gap-2"
+                                        disabled={isSaving || !formData.name.trim()} 
+                                        className="w-full h-14 rounded-2xl font-semibold text-sm shadow-xl transition-all active:scale-95 gap-2"
                                     >
- {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                                        {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
                                         Commit Architecture
                                     </Button>
                                     
-                                    {selectedId && (
-                                        <Button 
-                                            variant="ghost" 
-                                            onClick={handleDelete}
- className="w-full h-10 text-destructive font-semibold text-[9px] gap-2"
-                                        >
- <Trash2 className="h-3 w-3" /> Purge Workflow
-                                        </Button>
-                                    )}
+                                    <Button 
+                                        variant="ghost" 
+                                        onClick={handleDelete}
+                                        className="w-full h-10 text-destructive font-semibold text-xs gap-2 hover:bg-destructive/10 hover:text-destructive"
+                                    >
+                                        <Trash2 className="h-4 w-4" /> Purge Workflow
+                                    </Button>
                                 </div>
                             </div>
                         </motion.div>
@@ -517,7 +364,6 @@ export default function PipelineSettingsClient() {
                 allowedWorkspaces={allowedWorkspaces || []}
                 onPipelineCreated={(newId) => {
                     setSelectedId(newId);
-                    setIsAdding(false);
                 }}
             />
         </div>
