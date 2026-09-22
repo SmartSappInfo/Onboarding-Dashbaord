@@ -9,24 +9,16 @@ import { useToast } from '@/hooks/use-toast';
 import { useConfirm } from '@/components/ui/confirm-dialog';
 import { archivePipelineAction, deletePipelineAction } from '@/lib/pipeline-actions';
 import { 
-    ShieldCheck, 
     Loader2,
-    Settings2,
     CheckCircle2,
-    Layout,
-    Users,
     AlertTriangle,
     Archive,
     Trash2,
     RefreshCw,
-    Calendar,
-    Copy,
-    DollarSign
+    Copy
 } from 'lucide-react';
-import { Switch } from '@/components/ui/switch';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import StageEditor from './StageEditor';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';

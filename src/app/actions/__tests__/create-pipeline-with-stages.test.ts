@@ -15,7 +15,6 @@ vi.mock('@/lib/workspace-permissions', () => ({
   canUser: vi.fn().mockResolvedValue({ granted: true }),
 }));
 
-const createdDocs: Record<string, Record<string, unknown>> = {};
 let batchSetCalls: Array<{ refId: string; data: Record<string, unknown> }> = [];
 
 vi.mock('@/lib/firebase-admin', () => {
@@ -106,5 +105,18 @@ describe('createPipelineWithStagesAction', () => {
     expect(pipelineCall?.data.type).toBe('sales');
     expect(pipelineCall?.data.showDealTotals).toBe(true);
     expect((pipelineCall?.data.stageIds as string[])?.length).toBe(3);
+  });
+
+  it('validates authorization for all provided workspaceIds', async () => {
+    const { requireWorkspace } = await import('@/lib/auth/require-auth');
+    const payload: CreatePipelinePayload = {
+      name: 'Multi-Workspace Pipeline',
+      workspaceIds: ['ws-1', 'ws-2', 'ws-3'],
+    };
+    const res = await createPipelineWithStagesAction(payload);
+    expect(res.success).toBe(true);
+    expect(requireWorkspace).toHaveBeenCalledWith('ws-1');
+    expect(requireWorkspace).toHaveBeenCalledWith('ws-2');
+    expect(requireWorkspace).toHaveBeenCalledWith('ws-3');
   });
 });

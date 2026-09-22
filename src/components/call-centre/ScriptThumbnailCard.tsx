@@ -49,8 +49,10 @@ export function ScriptThumbnailCard(props: ScriptThumbnailCardProps) {
   const isSelector = props.mode === 'selector';
 
   // ─── Extract preview dialogue text from script content or serialized snapshot ───
+  const rawContent = isSelector ? props.campaign.scriptSnapshot : props.script.content;
+  const fallbackDescription = isSelector ? props.campaign.description : props.script.description;
+
   const { previewText, stepCount, estimatedDuration } = useMemo(() => {
-    const rawContent = isSelector ? props.campaign.scriptSnapshot : props.script.content;
     let snippet = '';
     let steps = 0;
 
@@ -69,9 +71,7 @@ export function ScriptThumbnailCard(props: ScriptThumbnailCardProps) {
     }
 
     if (!snippet) {
-      snippet = isSelector
-        ? (props.campaign.description || 'Outbound call campaign prompter.')
-        : (props.script.description || 'Call outreach script template.');
+      snippet = fallbackDescription || (isSelector ? 'Outbound call campaign prompter.' : 'Call outreach script template.');
     }
 
     // Dynamic duration estimation: roughly 130 words per minute
@@ -84,7 +84,7 @@ export function ScriptThumbnailCard(props: ScriptThumbnailCardProps) {
       stepCount: steps,
       estimatedDuration: durationStr,
     };
-  }, [isSelector, props]);
+  }, [rawContent, fallbackDescription, isSelector]);
 
   if (isSelector) {
     const { campaign, onSelect, isSelected, disabled, className } = props;

@@ -49,8 +49,7 @@ import {
 } from '@/components/ui/tooltip';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
-import { savePipelineAction, clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
-import { useTerminology } from '@/hooks/use-terminology';
+import { clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
 import { PageContainerFluid } from '@/components/ui/page-container';
 import SavedViewsBar from './components/SavedViewsBar';
 import AdvancedFilterBuilderModal from './components/AdvancedFilterBuilderModal';
@@ -71,10 +70,8 @@ export default function PipelineClient() {
   const { activeWorkspaceId, allowedWorkspaces } = useWorkspace();
   const { user } = useUser();
   const { toast } = useToast();
-  const { plural } = useTerminology();
   
   const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'list' | 'forecast' | 'analytics' | 'config' | 'actions'>('board');
-  const [isInitializing, setIsInitializing] = React.useState(false);
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
   const [isCreatePipelineModalOpen, setIsCreatePipelineModalOpen] = React.useState(false);
 

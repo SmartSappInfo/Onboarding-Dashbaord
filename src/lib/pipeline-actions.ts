@@ -37,9 +37,12 @@ export async function createPipelineWithStagesAction(
       return { success: false, error: 'Pipeline must belong to at least one workspace.' };
     }
 
-    const primaryWorkspaceId = payload.workspaceIds[0];
-    await requireWorkspace(primaryWorkspaceId);
+    // Verify user authorization across all requested workspaces
+    for (const wsId of payload.workspaceIds) {
+      await requireWorkspace(wsId);
+    }
 
+    const primaryWorkspaceId = payload.workspaceIds[0];
     const permission = await canUser(userId, 'operations', 'pipeline', 'create', primaryWorkspaceId);
     if (!permission.granted) {
       return { success: false, error: permission.reason };

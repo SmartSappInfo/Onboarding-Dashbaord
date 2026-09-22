@@ -21,8 +21,7 @@ import {
     Sparkles, 
     Layers, 
     X,
-    Check,
-    HelpCircle
+    Check
 } from 'lucide-react';
 import {
     Dialog,
@@ -35,11 +34,11 @@ import {
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
+import { useWorkspace } from '@/context/WorkspaceContext';
 import { useWorkspaceUsers } from '@/hooks/use-workspace-users';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
-import { collection, query, orderBy } from 'firebase/firestore';
+import { collection, query, orderBy, where } from 'firebase/firestore';
 import type { Role, StarterStageConfig, UserProfile } from '@/lib/types';
 import { createPipelineWithStagesAction } from '@/lib/pipeline-actions';
 import { 
@@ -69,6 +68,7 @@ export function CreatePipelineModal({
 }: CreatePipelineModalProps) {
   const { toast } = useToast();
   const firestore = useFirestore();
+  const { activeOrganizationId } = useWorkspace();
   const { data: workspaceUsers } = useWorkspaceUsers(activeWorkspaceId);
 
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -94,10 +94,14 @@ export function CreatePipelineModal({
     defaultCloseDateOffsetUnit: 'days',
   });
 
-  // Query workspace roles for access control multi-select
+  // Query workspace roles scoped strictly to active organization
   const rolesQuery = useMemoFirebase(() => 
-    firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, 
-    [firestore]
+    firestore && activeOrganizationId ? query(
+      collection(firestore, 'roles'),
+      where('organizationId', '==', activeOrganizationId),
+      orderBy('name', 'asc')
+    ) : null, 
+    [firestore, activeOrganizationId]
   );
   const { data: rawRoles } = useCollection<Role>(rolesQuery);
 
