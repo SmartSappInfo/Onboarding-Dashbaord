@@ -19,6 +19,11 @@ vi.mock('next/cache', () => ({
 }));
 
 // Mock server-only dependencies
+vi.mock('@/lib/auth/require-auth', () => ({
+  requireAuth: vi.fn().mockResolvedValue({ uid: 'user-abc', email: 'user@example.com' }),
+  requireWorkspace: vi.fn().mockResolvedValue({ role: 'admin' }),
+}));
+
 vi.mock('@/lib/workspace-permissions', () => ({
   canUser: vi.fn().mockResolvedValue({ granted: true }),
   hasPermission: vi.fn().mockResolvedValue(true),

@@ -104,6 +104,7 @@ export async function createPipelineWithStagesAction(
         ? payload.defaultCloseDateOffsetValue
         : null,
       defaultCloseDateOffsetUnit: payload.defaultCloseDateOffsetUnit || null,
+      defaultPresetViewId: payload.defaultPresetViewId || 'preset_all_deals',
       isDefault: false,
       isArchived: false,
       createdAt: timestamp,

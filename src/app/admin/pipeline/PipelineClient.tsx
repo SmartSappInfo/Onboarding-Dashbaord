@@ -51,7 +51,6 @@ import { useWorkspace } from '@/context/WorkspaceContext';
 import { useToast } from '@/hooks/use-toast';
 import { clonePipelineAction, setPipelineAsDefaultAction } from '@/lib/pipeline-actions';
 import { PageContainerFluid } from '@/components/ui/page-container';
-import SavedViewsBar from './components/SavedViewsBar';
 import AdvancedFilterBuilderModal from './components/AdvancedFilterBuilderModal';
 import DealsAnalyticsView from './components/DealsAnalyticsView';
 import { CreatePipelineModal } from './components/CreatePipelineModal';
@@ -384,6 +383,18 @@ export default function PipelineClient() {
     }
   }, [user?.uid]);
 
+  // ARCHITECTURAL NOTE (Rule 10):
+  // When a pipeline specifies a defaultPresetViewId (e.g. 'preset_my_deals'),
+  // automatically load that preset view on initial mount if still on default.
+  React.useEffect(() => {
+    if (currentPipeline?.defaultPresetViewId && savedViews.length > 0 && activeViewId === 'preset_all_deals') {
+      const defaultView = savedViews.find(v => v.id === currentPipeline.defaultPresetViewId);
+      if (defaultView) {
+        handleSelectSavedView(defaultView);
+      }
+    }
+  }, [currentPipeline?.id, currentPipeline?.defaultPresetViewId, savedViews, activeViewId, handleSelectSavedView]);
+
   React.useEffect(() => {
     if (!activeWorkspaceId) return;
 
@@ -669,25 +680,7 @@ export default function PipelineClient() {
             </div>
         </header>
 
-        {/* Phase 6: Saved Views & Presets Bar */}
-        {activeView !== 'config' && activeView !== 'actions' && activeView !== 'analytics' && (
-            <SavedViewsBar
-                workspaceId={activeWorkspaceId || ''}
-                userId={user?.uid || ''}
-                userName={user?.displayName || user?.email || undefined}
-                savedViews={savedViews}
-                activeViewId={activeViewId}
-                onSelectView={handleSelectSavedView}
-                currentFilters={filters}
-                currentColumns={visibleColumns}
-                currentDensity={density}
-                deals={pipelineDeals || []}
-                stages={filterStages || []}
-                onRefreshViews={loadSavedViews}
-            />
-        )}
-
-        {/* Inline workspace-scoped filter card */}
+        {/* Unified workspace-scoped filter command center */}
         {activeView !== 'config' && activeView !== 'actions' && activeView !== 'overview' && activeView !== 'forecast' && activeView !== 'analytics' && (
             <PipelineFilterBar
                 searchTerm={searchTerm}
@@ -700,6 +693,16 @@ export default function PipelineClient() {
                 stages={filterStages}
                 showStagesFilter={activeView === 'list'}
                 onOpenAdvancedFilters={() => setIsAdvancedFilterOpen(true)}
+                workspaceId={activeWorkspaceId || ''}
+                userId={user?.uid || ''}
+                userName={user?.displayName || user?.email || undefined}
+                savedViews={savedViews}
+                activeViewId={activeViewId}
+                onSelectView={handleSelectSavedView}
+                deals={pipelineDeals || []}
+                currentColumns={visibleColumns}
+                currentDensity={density}
+                onRefreshViews={loadSavedViews}
             />
         )}
 

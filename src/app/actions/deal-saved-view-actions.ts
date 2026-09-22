@@ -54,8 +54,9 @@ export async function createDealSavedViewAction(
   userId: string,
   userName?: string
 ): Promise<{ success: boolean; view?: DealSavedView; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
 
   try {
     if (!input.name?.trim() || !input.workspaceId || !userId) {
@@ -124,8 +125,9 @@ export async function updateDealSavedViewAction(
   updates: Partial<DealSavedView>,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
 
   try {
     const docRef = adminDb.collection('deal_saved_views').doc(viewId);
@@ -170,8 +172,9 @@ export async function deleteDealSavedViewAction(
   viewId: string,
   userId: string
 ): Promise<{ success: boolean; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
 
   try {
     const docRef = adminDb.collection('deal_saved_views').doc(viewId);
@@ -207,7 +210,9 @@ export async function listDealSavedViewsAction(
   workspaceId: string,
   userId: string
 ): Promise<{ success: boolean; views?: DealSavedView[]; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  // SECURITY (audit F2): Server Actions are public endpoints — caller-supplied userId is discarded in favor of verified session.
+  const verified = await requireAuth();
+  userId = verified.uid;
   await requireWorkspace(workspaceId);
 
   try {

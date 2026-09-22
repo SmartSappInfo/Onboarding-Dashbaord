@@ -22,7 +22,8 @@ import {
     Layout, 
     Users, 
     Calendar, 
-    DollarSign 
+    DollarSign,
+    Bookmark 
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -44,6 +45,7 @@ export interface PipelineFormData {
   workspaceIds: string[];
   columnWidth: number;
   showDealTotals: boolean;
+  defaultPresetViewId?: string;
   accessRoles: string[];
   assignmentStrategy: 'direct' | 'round-robin' | 'value-based' | 'unassigned';
   assignmentUserIds: string[];
@@ -187,6 +189,35 @@ export function PipelineConfigFields({
           disabled={disabled}
           className="shrink-0"
         />
+      </div>
+
+      {/* Default Landing Filter Preset Selector */}
+      <div className="space-y-2 text-left">
+        <Label className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+          <Bookmark size={13} className="text-primary" /> Default Landing Filter Preset
+        </Label>
+        <Select
+          value={formData.defaultPresetViewId || 'preset_all_deals'}
+          onValueChange={(val) => onChange('defaultPresetViewId', val)}
+          disabled={disabled}
+        >
+          <SelectTrigger className="h-11 rounded-xl border border-border bg-background font-semibold text-xs px-3 focus-visible:ring-1 focus-visible:ring-primary/30">
+            <SelectValue placeholder="Select default view..." />
+          </SelectTrigger>
+          <SelectContent className="rounded-xl">
+            <SelectItem value="preset_all_deals" className="text-xs font-semibold">All Deals (Default)</SelectItem>
+            <SelectItem value="preset_my_deals" className="text-xs font-semibold">My Deals (Assigned to user)</SelectItem>
+            <SelectItem value="preset_closing_this_month" className="text-xs font-semibold">Closing This Month</SelectItem>
+            <SelectItem value="preset_at_risk" className="text-xs font-semibold">At Risk (SLA breached / low health)</SelectItem>
+            <SelectItem value="preset_stalled" className="text-xs font-semibold">Stalled Deals (Inactive)</SelectItem>
+            <SelectItem value="preset_high_value" className="text-xs font-semibold">High Value (Top opportunities)</SelectItem>
+            <SelectItem value="preset_won_quarter" className="text-xs font-semibold">Won This Quarter</SelectItem>
+            <SelectItem value="preset_no_next_steps" className="text-xs font-semibold">Without Next Steps</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
+          The filter preset automatically applied when team members open this pipeline.
+        </p>
       </div>
 
       <div className="space-y-2">
