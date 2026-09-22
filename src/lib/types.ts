@@ -4669,9 +4669,11 @@ export type TaskCategory = 'call' | 'visit' | 'document' | 'training' | 'follow_
 export interface Automation {
   id: string;
   workspaceIds: string[]; // Shared
+  organizationId?: string;
   name: string;
   description?: string;
   isArchived?: boolean;
+  trigger?: AutomationTrigger;
 
   /**
    * First-class multi-trigger array.
@@ -4693,6 +4695,7 @@ export interface Automation {
   createdAt: string;
   updatedAt: string;
   createdBy: string;
+  latestCapturedWebhook?: Record<string, unknown>;
 }
 
 export interface AutomationRule {

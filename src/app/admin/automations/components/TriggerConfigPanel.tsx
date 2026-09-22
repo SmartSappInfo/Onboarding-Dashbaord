@@ -129,18 +129,64 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
     onUpdateConfig(updates);
   };
 
-
-
   const _tagOptions = React.useMemo(() => {
     return (allTags || []).map((t) => ({ label: t.name, value: t.id }));
   }, [allTags]);
+
+  const [isSimulating, setIsSimulating] = React.useState(false);
+
+  const handleSimulateWebhook = async () => {
+    if (!webhookUrl) return;
+    setIsSimulating(true);
+    try {
+      const testPayload = {
+        event: 'test_webhook_ingress',
+        timestamp: new Date().toISOString(),
+        sample_contact: {
+          name: 'Demo Lead User',
+          email: 'demo.lead@example.com',
+          phone: '+1234567890',
+        },
+      };
+
+      const res = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(testPayload),
+      });
+
+      const json = await res.json();
+      if (res.ok) {
+        toast({
+          title: 'Webhook Test Succeeded',
+          description: `Endpoint accepted the test payload (${json.status || 'accepted'}).`,
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Webhook Test Rejected',
+          description: json.error || 'The endpoint returned an error response.',
+        });
+      }
+    } catch (err: unknown) {
+      toast({
+        variant: 'destructive',
+        title: 'Webhook Test Connection Error',
+        description: err instanceof Error ? err.message : 'Failed to reach the webhook ingress endpoint.',
+      });
+    } finally {
+      setIsSimulating(false);
+    }
+  };
 
   const renderValSyntax = (val: unknown) => {
     if (typeof val === 'string') {
       return <span className="text-emerald-800 dark:text-emerald-400 font-mono">&quot;{String(val)}&quot;</span>;
     }
     if (typeof val === 'number') {
-      return <span className="text-amber-800 dark:text-amber-400 font-mono font-bold">{String(val)}</span>;
+      return <span className="text-blue-800 dark:text-blue-400 font-mono font-bold">{String(val)}</span>;
     }
     if (typeof val === 'boolean') {
       return <span className="text-purple-800 dark:text-purple-400 font-mono font-bold">{String(val)}</span>;
@@ -157,7 +203,18 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
               <Label className="text-[10px] font-semibold text-blue-500 flex items-center gap-2">
                 <Globe className="h-3 w-3" /> Ingress Endpoint
               </Label>
-              <Badge className="bg-blue-500 text-white border-none text-[8px] h-4">POST</Badge>
+              <div className="flex items-center gap-2">
+                <span className={cn(
+                  "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-bold border",
+                  isListening
+                    ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                )}>
+                  <span className={cn("h-1.5 w-1.5 rounded-full", isListening ? "bg-amber-500 animate-pulse" : "bg-emerald-500")} />
+                  {isListening ? 'Listening' : 'Ready'}
+                </span>
+                <Badge className="bg-blue-500 text-white border-none text-[8px] h-4">POST</Badge>
+              </div>
             </div>
             <div className="flex gap-2">
               <div className="flex-1 p-3 rounded-xl bg-zinc-100 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 shadow-inner overflow-hidden">
@@ -182,7 +239,7 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                 <Globe className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30 animate-pulse" />
                 <p className="text-xs font-semibold text-muted-foreground">No payload captured yet</p>
                 <p className="text-[9px] text-muted-foreground/60 mt-1 leading-relaxed">
-                  Click the button below to start expectant capture, then send a POST request to your ingress endpoint.
+                  Click the button below to start expectant capture, or use Test Webhook to send a simulated payload.
                 </p>
               </div>
             ) : (
@@ -241,13 +298,13 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
                         <span className="text-muted-foreground/50 italic">No File Data Uploaded</span>
                       ) : (
                         <div className="space-y-2">
-                          {capturedPayload.files.map((file: any, index: number) => (
+                          {capturedPayload.files.map((file: { name?: string; size?: number; type?: string }, index: number) => (
                             <div key={index} className="p-3 rounded-xl bg-zinc-200/50 dark:bg-white/5 border border-zinc-300/60 dark:border-zinc-800/50 space-y-1">
                               <div className="flex justify-between items-center">
-                                <span className="text-emerald-800 dark:text-emerald-400 font-black truncate max-w-[220px]">{file.name}</span>
-                                <span className="text-zinc-600 dark:text-zinc-400 text-[9px] font-bold">{(file.size / 1024).toFixed(1)} KB</span>
+                                <span className="text-emerald-800 dark:text-emerald-400 font-black truncate max-w-[220px]">{file.name || 'file'}</span>
+                                <span className="text-zinc-600 dark:text-zinc-400 text-[9px] font-bold">{file.size ? (file.size / 1024).toFixed(1) : '0'} KB</span>
                               </div>
-                              <div className="text-[8px] font-mono text-zinc-500 dark:text-zinc-500">Type: {file.type}</div>
+                              <div className="text-[8px] font-mono text-zinc-500 dark:text-zinc-500">Type: {file.type || 'unknown'}</div>
                             </div>
                           ))}
                         </div>
@@ -258,25 +315,42 @@ export const TriggerConfigPanel = React.memo(function TriggerConfigPanel({
               </div>
             )}
 
-            <Button
-              type="button"
-              onClick={handleToggleListening}
-              className={cn(
-                "w-full h-10 rounded-xl font-bold text-xs transition-all shadow-md gap-2 border active:scale-[0.97]",
-                isListening
-                  ? "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20"
-                  : "bg-blue-500 text-white border-blue-600 hover:bg-blue-600 shadow-blue-500/15"
-              )}
-            >
-              {isListening ? (
-                <>
-                  <div className="h-3.5 w-3.5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
-                  Cancel Expectant Mode
-                </>
-              ) : (
-                capturedPayload ? "Re-Capture Webhook Payload" : "Capture Webhook Response"
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                onClick={handleToggleListening}
+                className={cn(
+                  "flex-1 min-h-[44px] rounded-xl font-bold text-xs transition-all shadow-md gap-2 border active:scale-[0.97]",
+                  isListening
+                    ? "bg-amber-500/10 text-amber-500 border-amber-500/30 hover:bg-amber-500/20"
+                    : "bg-blue-500 text-white border-blue-600 hover:bg-blue-600 shadow-blue-500/15"
+                )}
+              >
+                {isListening ? (
+                  <>
+                    <div className="h-3.5 w-3.5 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+                    Cancel Listening
+                  </>
+                ) : (
+                  capturedPayload ? "Re-Capture Payload" : "Capture Webhook"
+                )}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                disabled={isSimulating || !webhookUrl}
+                onClick={handleSimulateWebhook}
+                className="min-h-[44px] px-4 rounded-xl font-bold text-xs gap-1.5 border border-border/80 hover:bg-muted/60 active:scale-[0.97] transition-all shrink-0"
+              >
+                {isSimulating ? (
+                  <div className="h-3.5 w-3.5 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                ) : (
+                  <Play className="h-3.5 w-3.5 text-primary fill-primary" />
+                )}
+                <span>Test Webhook</span>
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}

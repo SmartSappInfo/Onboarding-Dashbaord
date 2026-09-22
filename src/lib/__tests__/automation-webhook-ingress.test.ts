@@ -79,7 +79,9 @@ describe('Webhook Ingress API Route', () => {
     );
 
     // Verify internal CF headers are filtered
-    const updateArg = mockUpdate.mock.calls[0][0] as any;
+    const updateArg = mockUpdate.mock.calls[0][0] as {
+      latestCapturedWebhook: { headers: Record<string, string> };
+    };
     expect(updateArg.latestCapturedWebhook.headers['x-cf-connecting-ip']).toBeUndefined();
 
     // Verify automation processor triggers flow
@@ -151,7 +153,7 @@ describe('Webhook Ingress API Route', () => {
       Object.defineProperty(fileBlob, 'name', { value: 'avatar.png' });
       Object.defineProperty(fileBlob, 'size', { value: 1024 });
       
-      fd.append('profile_pic', fileBlob as any, 'avatar.png');
+      fd.append('profile_pic', fileBlob as unknown as File, 'avatar.png');
       return fd;
     };
 
@@ -159,7 +161,12 @@ describe('Webhook Ingress API Route', () => {
     const res = await POST(req, { params });
     expect(res.status).toBe(200);
 
-    const updateArg = mockUpdate.mock.calls[0][0] as any;
+    const updateArg = mockUpdate.mock.calls[0][0] as {
+      latestCapturedWebhook: {
+        body: Record<string, unknown>;
+        files: Array<{ name: string; type: string }>;
+      };
+    };
     expect(updateArg.latestCapturedWebhook.body).toEqual({ username: 'bob_builder' });
     expect(updateArg.latestCapturedWebhook.files).toHaveLength(1);
     expect(updateArg.latestCapturedWebhook.files[0]).toMatchObject({
@@ -207,5 +214,116 @@ describe('Webhook Ingress API Route', () => {
 
     expect(res.status).toBe(400);
     expect(jsonResponse.error).toBe('This automation is not configured for webhook ingress');
+  });
+
+  it('self-heals missing triggerTypes when canvas trigger node has WEBHOOK_RECEIVED and accepts payload', async () => {
+    // Automation document missing triggerTypes at root (the exact Pabbly bug condition)
+    // but containing a trigger node with config.triggerType = 'WEBHOOK_RECEIVED'
+    mockGet.mockResolvedValue({
+      exists: true,
+      data: () => ({
+        isActive: true,
+        workspaceIds: ['ws-test-heal'],
+        organizationId: 'org-test-heal',
+        triggerTypes: [],
+        triggers: [],
+        nodes: [
+          {
+            id: 'trigger_12345',
+            type: 'trigger',
+            data: {
+              label: 'Webhook Received',
+              config: {
+                triggerType: 'WEBHOOK_RECEIVED',
+              },
+            },
+          },
+          {
+            id: 'action_99999',
+            type: 'actionNode',
+            data: {
+              actionType: 'SEND_EMAIL',
+            },
+          },
+        ],
+      }),
+    });
+
+    const requestBody = { test_field: 'pabbly_signup', email: 'lead@school.edu' };
+    const req = new Request('http://localhost:9002/api/automations/webhook/auto-heal', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const params = Promise.resolve({ id: 'auto-heal' });
+    const res = await POST(req, { params });
+    const jsonResponse = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(jsonResponse.status).toBe('accepted');
+
+    // Verify self-healing write to Firestore
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        triggerTypes: expect.arrayContaining(['WEBHOOK_RECEIVED']),
+        triggers: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'WEBHOOK_RECEIVED',
+          }),
+        ]),
+        latestCapturedWebhook: expect.objectContaining({
+          body: requestBody,
+        }),
+      })
+    );
+
+    // Verify automation execution was dispatched
+    expect(triggerAutomationProtocols).toHaveBeenCalledWith(
+      'WEBHOOK_RECEIVED',
+      expect.objectContaining({
+        test_field: 'pabbly_signup',
+        email: 'lead@school.edu',
+        workspaceId: 'ws-test-heal',
+        organizationId: 'org-test-heal',
+        ingressId: 'auto-heal',
+        source: 'external_webhook',
+      })
+    );
+  });
+
+  it('caps oversized string payloads to 256KB to protect Firestore from storage limits', async () => {
+    mockGet.mockResolvedValue({
+      exists: true,
+      data: () => ({
+        trigger: 'WEBHOOK_RECEIVED',
+        isActive: true,
+        workspaceIds: ['ws-test-123'],
+        organizationId: 'org-test-456',
+      }),
+    });
+
+    // Create a large string > 300KB
+    const largeString = 'x'.repeat(300 * 1024);
+    const requestBody = { normal: 'data', hugeField: largeString };
+
+    const req = new Request('http://localhost:9002/api/automations/webhook/auto-123', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(requestBody),
+    });
+
+    const params = Promise.resolve({ id: 'auto-123' });
+    const res = await POST(req, { params });
+    const jsonResponse = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(jsonResponse.status).toBe('accepted');
+
+    const updateCall = mockUpdate.mock.calls[0][0] as {
+      latestCapturedWebhook: { body: { _warning: string; preview: string } };
+    };
+    expect(updateCall.latestCapturedWebhook.body._warning).toContain('Payload truncated');
+    expect(updateCall.latestCapturedWebhook.body.preview).toBeDefined();
   });
 });

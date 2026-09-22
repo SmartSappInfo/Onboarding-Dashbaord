@@ -1,30 +1,110 @@
 
 import { adminDb } from '@/lib/firebase-admin';
 import { triggerAutomationProtocols } from '@/lib/automation-processor';
+import { deriveTriggerDefsFromNodes, type BlueprintNode } from '@/lib/automation-blueprint';
 import { NextResponse, after } from 'next/server';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import type { Automation, AutomationTriggerDef } from '@/lib/types';
 
 /**
  * @fileOverview Universal Ingress for External Automation Triggers.
- * Receives POST requests and initiates SmartSapp flows using the request body as payload.
+ * Receives POST/GET requests and initiates SmartSapp flows using the request body as payload.
+ * Features automatic self-healing for desynchronized blueprints and payload overflow protection.
  */
+
+interface CapturedFile {
+  name: string;
+  size: number;
+  type: string;
+  capturedAt: string;
+}
+
+interface CapturedWebhookRecord {
+  body: Record<string, unknown>;
+  headers: Record<string, string>;
+  query: Record<string, string>;
+  files: CapturedFile[];
+  capturedAt: string;
+}
+
+const MAX_CAPTURED_PAYLOAD_BYTES = 256 * 1024; // 256 KB max for Firestore storage to avoid 1MB limit
+
+/**
+ * Safely caps payload size before persisting to Firestore.
+ */
+function sanitizePayloadForStorage<T>(data: T): T {
+  try {
+    const serialized = JSON.stringify(data);
+    if (serialized.length > MAX_CAPTURED_PAYLOAD_BYTES) {
+      return {
+        _warning: 'Payload truncated: size exceeded 256KB storage limit',
+        truncatedAt: new Date().toISOString(),
+        preview: serialized.slice(0, 1024),
+      } as unknown as T;
+    }
+  } catch {
+    // Preserve data if serialization fails
+  }
+  return data;
+}
 
 /**
  * Recursively flattens an object to dot-notation keys.
  * Collision-safe: prioritizes deeper nested values over flat keys.
+ * Protected against infinite recursion with depth limit (max 5).
  */
-function flattenObject(obj: any, prefix = '', res: Record<string, any> = {}): Record<string, any> {
-  if (!obj || typeof obj !== 'object') return res;
+function flattenObject(
+  obj: Record<string, unknown> | unknown[],
+  prefix = '',
+  res: Record<string, unknown> = {},
+  depth = 0
+): Record<string, unknown> {
+  if (!obj || typeof obj !== 'object' || depth > 5) return res;
 
   for (const [key, value] of Object.entries(obj)) {
     const newKey = prefix ? `${prefix}.${key}` : key;
     if (value && typeof value === 'object' && !Array.isArray(value)) {
-      flattenObject(value, newKey, res);
+      flattenObject(value as Record<string, unknown>, newKey, res, depth + 1);
     } else {
       res[newKey] = value;
     }
   }
   return res;
+}
+
+/**
+ * Inspects both root-level trigger definitions and canvas trigger nodes.
+ * Automatically identifies if self-healing is required to align Firestore triggerTypes.
+ */
+function resolveAutomationTriggers(automation: Partial<Automation>): {
+  hasWebhookTrigger: boolean;
+  resolvedTriggers: AutomationTriggerDef[];
+  needsSelfHealing: boolean;
+} {
+  const nodeTriggers = deriveTriggerDefsFromNodes(automation.nodes as BlueprintNode[] | undefined);
+  const rootTriggers = automation.triggers || [];
+  const rootTriggerTypes = automation.triggerTypes || [];
+
+  const hasWebhookTrigger =
+    automation.trigger === 'WEBHOOK_RECEIVED' ||
+    rootTriggerTypes.includes('WEBHOOK_RECEIVED') ||
+    rootTriggers.some((t) => t.type === 'WEBHOOK_RECEIVED') ||
+    nodeTriggers.some((t) => t.type === 'WEBHOOK_RECEIVED');
+
+  // If node triggers define WEBHOOK_RECEIVED but root arrays are empty or missing WEBHOOK_RECEIVED,
+  // we must self-heal to restore Firestore array-contains queries.
+  const needsSelfHealing =
+    hasWebhookTrigger &&
+    (!rootTriggerTypes.includes('WEBHOOK_RECEIVED') || rootTriggers.length === 0);
+
+  const resolvedTriggers: AutomationTriggerDef[] =
+    rootTriggers.length > 0
+      ? rootTriggers
+      : nodeTriggers.length > 0
+      ? nodeTriggers
+      : [{ id: `trigger_${Date.now()}`, type: 'WEBHOOK_RECEIVED', config: {} }];
+
+  return { hasWebhookTrigger, resolvedTriggers, needsSelfHealing };
 }
 
 export async function POST(
@@ -45,13 +125,13 @@ export async function POST(
     }
   });
 
-  let body: any = {};
-  const files: any[] = [];
+  let body: Record<string, unknown> = {};
+  const files: CapturedFile[] = [];
   const contentType = req.headers.get('content-type') || '';
 
   try {
     if (contentType.includes('application/json')) {
-      body = await req.json();
+      body = (await req.json()) as Record<string, unknown>;
     } else if (contentType.includes('multipart/form-data') || contentType.includes('application/x-www-form-urlencoded')) {
       const formData = await req.formData();
       formData.forEach((value, key) => {
@@ -80,14 +160,12 @@ export async function POST(
       return NextResponse.json({ error: 'Automation blueprint not found' }, { status: 404 });
     }
 
-    const automation = autoSnap.data();
+    const automation = autoSnap.data() as Automation | undefined;
     if (!automation) {
       return NextResponse.json({ error: 'Automation blueprint not found' }, { status: 404 });
     }
-    const hasWebhookTrigger = 
-      automation.trigger === 'WEBHOOK_RECEIVED' ||
-      automation.triggerTypes?.includes('WEBHOOK_RECEIVED') ||
-      automation.triggers?.some((t: any) => t.type === 'WEBHOOK_RECEIVED');
+
+    const { hasWebhookTrigger, resolvedTriggers, needsSelfHealing } = resolveAutomationTriggers(automation);
 
     if (automation.isActive && !hasWebhookTrigger) {
       return NextResponse.json({ error: 'This automation is not configured for webhook ingress' }, { status: 400 });
@@ -100,16 +178,27 @@ export async function POST(
     const organizationId = automation.organizationId || 'default';
 
     const timestamp = new Date().toISOString();
-    const latestCapturedWebhook = {
-      body,
+    const latestCapturedWebhook: CapturedWebhookRecord = {
+      body: sanitizePayloadForStorage(body),
       headers: headersObj,
       query,
       files,
       capturedAt: timestamp
     };
 
-    // 2. Update Captured Webhook Payload in Firestore
-    await autoRef.update({ latestCapturedWebhook });
+    // 2. Update Captured Webhook Payload in Firestore and perform self-healing if needed
+    const updatePayload: Record<string, unknown> = {
+      latestCapturedWebhook,
+    };
+
+    if (needsSelfHealing) {
+      console.log(`>>> [WEBHOOK:INGRESS] Self-healing blueprint triggers for Automation ID: ${automationId}`);
+      updatePayload.triggers = resolvedTriggers;
+      updatePayload.triggerTypes = Array.from(new Set([...(automation.triggerTypes || []), 'WEBHOOK_RECEIVED']));
+      updatePayload.updatedAt = timestamp;
+    }
+
+    await autoRef.update(updatePayload);
 
     // 3. Trigger Flow Background Execution ONLY if active
     if (automation.isActive) {
@@ -172,8 +261,8 @@ export async function GET(
     }
   });
 
-  const body = { ...query };
-  const files: any[] = [];
+  const body: Record<string, unknown> = { ...query };
+  const files: CapturedFile[] = [];
 
   try {
     const autoRef = adminDb.collection('automations').doc(automationId);
@@ -206,14 +295,12 @@ export async function GET(
       return NextResponse.json({ error: 'Automation blueprint not found' }, { status: 404 });
     }
 
-    const automation = autoSnap.data();
+    const automation = autoSnap.data() as Automation | undefined;
     if (!automation) {
       return NextResponse.json({ error: 'Automation blueprint not found' }, { status: 404 });
     }
-    const hasWebhookTrigger = 
-      automation.trigger === 'WEBHOOK_RECEIVED' ||
-      automation.triggerTypes?.includes('WEBHOOK_RECEIVED') ||
-      automation.triggers?.some((t: any) => t.type === 'WEBHOOK_RECEIVED');
+
+    const { hasWebhookTrigger, resolvedTriggers, needsSelfHealing } = resolveAutomationTriggers(automation);
 
     if (automation.isActive && !hasWebhookTrigger) {
       return NextResponse.json({ error: 'This automation is not configured for webhook ingress' }, { status: 400 });
@@ -226,15 +313,26 @@ export async function GET(
     const organizationId = automation.organizationId || 'default';
 
     const timestamp = new Date().toISOString();
-    const latestCapturedWebhook = {
-      body,
+    const latestCapturedWebhook: CapturedWebhookRecord = {
+      body: sanitizePayloadForStorage(body),
       headers: headersObj,
       query,
       files,
       capturedAt: timestamp
     };
 
-    await autoRef.update({ latestCapturedWebhook });
+    const updatePayload: Record<string, unknown> = {
+      latestCapturedWebhook,
+    };
+
+    if (needsSelfHealing) {
+      console.log(`>>> [WEBHOOK:INGRESS] Self-healing blueprint triggers for Automation ID: ${automationId}`);
+      updatePayload.triggers = resolvedTriggers;
+      updatePayload.triggerTypes = Array.from(new Set([...(automation.triggerTypes || []), 'WEBHOOK_RECEIVED']));
+      updatePayload.updatedAt = timestamp;
+    }
+
+    await autoRef.update(updatePayload);
 
     if (automation.isActive) {
       const flattened = flattenObject(body);

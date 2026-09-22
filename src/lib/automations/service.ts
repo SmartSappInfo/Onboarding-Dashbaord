@@ -58,7 +58,28 @@ export async function saveAutomation(
   try {
     assertAutomationUserId(userId);
 
-    const normalized = serializeBlueprint(data);
+    // CAUTION & MAINTAINER NOTE:
+    // When saving an existing automation, we must fetch and merge the existing document
+    // BEFORE serializing the blueprint. Otherwise, partial updates (e.g., renaming the workflow
+    // from the dashboard list: { name: '...' }) would lack `nodes` and `triggers`, causing
+    // serializeBlueprint to generate empty `triggers: []` and wipe them from Firestore.
+    const existing = id ? await getAutomationById(id) : null;
+
+    if (id && !existing) {
+      throw new AutomationNotFoundError();
+    }
+
+    const mergedData: Partial<Automation> = existing
+      ? {
+          ...existing,
+          ...data,
+          // Preserve existing nodes and triggers if not explicitly supplied in partial updates
+          nodes: data.nodes !== undefined ? data.nodes : existing.nodes,
+          triggers: data.triggers !== undefined ? data.triggers : existing.triggers,
+        }
+      : data;
+
+    const normalized = serializeBlueprint(mergedData);
 
     if (normalized.isActive && normalized.nodes?.length && !normalized.triggers?.length) {
       throw new AutomationValidationError(
@@ -66,7 +87,7 @@ export async function saveAutomation(
       );
     }
 
-    let workspaceIds = normalized.workspaceIds || data.workspaceIds;
+    let workspaceIds = normalized.workspaceIds || data.workspaceIds || existing?.workspaceIds;
     if (!workspaceIds || workspaceIds.length === 0) {
       try {
         const userSnap = await adminDb.collection('users').doc(userId).get();
@@ -79,10 +100,7 @@ export async function saveAutomation(
       }
     }
 
-    const existing = id ? await getAutomationById(id) : null;
-
-    if (id) {
-      if (!existing) throw new AutomationNotFoundError();
+    if (id && existing) {
       await assertAutomationManagePermission(
         userId,
         existing.workspaceIds || workspaceIds,
@@ -98,7 +116,7 @@ export async function saveAutomation(
     const payload = {
       ...normalized,
       updatedAt: timestamp,
-      createdBy: userId,
+      createdBy: existing?.createdBy || userId,
       ...(id ? {} : { createdAt: timestamp }),
     };
 

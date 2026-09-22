@@ -1,6 +1,6 @@
 import type { Automation, AutomationTrigger, AutomationTriggerDef } from './types';
 
-type BlueprintNode = {
+export type BlueprintNode = {
   id: string;
   type: string;
   data?: {
@@ -21,7 +21,7 @@ export function deriveTriggerDefsFromNodes(
 ): AutomationTriggerDef[] {
   if (!nodes?.length) return [];
 
-  const triggerNode = nodes.find((n) => n.type === 'triggerNode');
+  const triggerNode = nodes.find((n) => n.type === 'triggerNode' || n.type === 'trigger');
   if (!triggerNode?.data) return [];
 
   // If the node already carries the full triggers array, use it directly
@@ -29,14 +29,18 @@ export function deriveTriggerDefsFromNodes(
     return triggerNode.data.triggers;
   }
 
-  // Fall back to legacy single-trigger fields
-  const type = triggerNode.data.trigger ?? triggerNode.data.triggerType;
-  if (!type) return [];
+  // Fall back to legacy single-trigger fields, including nested config.triggerType
+  const rawType =
+    triggerNode.data.trigger ??
+    triggerNode.data.triggerType ??
+    (triggerNode.data.config as Record<string, unknown> | undefined)?.triggerType;
+
+  if (!rawType || typeof rawType !== 'string') return [];
 
   return [
     {
-      id: 'trigger_0',
-      type,
+      id: triggerNode.id || 'trigger_0',
+      type: rawType as AutomationTrigger,
       config: (triggerNode.data.config as Record<string, unknown>) ?? {},
     },
   ];
@@ -63,7 +67,7 @@ export function serializeBlueprint(data: Partial<Automation>): Partial<Automatio
   // so the visual node always reflects current state
   const primaryType = triggers[0]?.type;
   const syncedNodes = nodes?.map((node) => {
-    if (node.type !== 'triggerNode') return node;
+    if (node.type !== 'triggerNode' && node.type !== 'trigger') return node;
     return {
       ...node,
       data: {

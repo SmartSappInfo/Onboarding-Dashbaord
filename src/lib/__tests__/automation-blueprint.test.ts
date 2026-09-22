@@ -65,4 +65,49 @@ describe('serializeBlueprint', () => {
     expect(saved.triggerTypes).toContain('MEETING_REGISTRANT_ADDED');
     expect(saved.nodes?.[0]?.data?.trigger).toBe('MEETING_REGISTRANT_ADDED');
   });
+
+  it('handles canvas node with type "trigger" and nested data.config.triggerType', () => {
+    const result = deriveTriggerDefsFromNodes([
+      {
+        id: 'trigger_pabbly_123',
+        type: 'trigger',
+        data: {
+          label: 'Webhook Received',
+          config: {
+            triggerType: 'WEBHOOK_RECEIVED',
+          },
+        },
+      },
+    ]);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('WEBHOOK_RECEIVED');
+    expect(result[0].id).toBe('trigger_pabbly_123');
+  });
+
+  it('synchronizes canvas node with type "trigger" during serializeBlueprint', () => {
+    const blueprint = {
+      name: 'Webhook Ingress Flow',
+      nodes: [
+        {
+          id: 'trigger_pabbly_123',
+          type: 'trigger',
+          data: {
+            label: 'Webhook Received',
+            config: {
+              triggerType: 'WEBHOOK_RECEIVED',
+            },
+          },
+        },
+      ],
+      edges: [],
+    };
+
+    const saved = serializeBlueprint(blueprint);
+    expect(saved.triggers?.[0]?.type).toBe('WEBHOOK_RECEIVED');
+    expect(saved.triggerTypes).toEqual(['WEBHOOK_RECEIVED']);
+    expect(saved.nodes?.[0]?.data?.trigger).toBe('WEBHOOK_RECEIVED');
+    expect(saved.nodes?.[0]?.data?.triggerType).toBe('WEBHOOK_RECEIVED');
+  });
 });
+
