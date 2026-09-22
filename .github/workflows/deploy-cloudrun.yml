@@ -21,7 +21,10 @@ on:
         required: true
         default: ''
   push:
-    branches: [staging]
+    branches:
+      - main
+      - deployment
+      - staging
 
 permissions:
   contents: read
