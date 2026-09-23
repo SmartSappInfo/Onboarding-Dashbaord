@@ -379,11 +379,23 @@ export default function PortalCoursePlayerClient({
       <div className="space-y-4">
         {(modules || []).map((mod, modIdx) => {
           const moduleLessons = (lessons || []).filter(l => l.moduleId === mod.id);
+          const completedModuleLessons = moduleLessons.filter(l => completedLessonIds.includes(l.id));
+          // Sanitize module title to avoid "Module 1: Module 1: ..." duplication
+          const cleanModuleTitle = mod.title.replace(/^((module|section)\s*\d+[\s:.-]*)+/i, '').trim() || mod.title;
 
           return (
-            <div key={mod.id} className="space-y-1.5">
-              <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
-                <span className="uppercase tracking-wider">Module {modIdx + 1}: {mod.title}</span>
+            <div key={mod.id} className="space-y-2">
+              {/* Module Header: Row 1 = Module Number, Row 2 = Clean Module Title with distinct contrast */}
+              <div className="px-2 pt-2 pb-1 space-y-0.5 border-b border-border/40">
+                <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-widest text-primary">
+                  <span>Module {modIdx + 1}</span>
+                  <span className="text-[10px] font-medium text-muted-foreground lowercase">
+                    {completedModuleLessons.length}/{moduleLessons.length} done
+                  </span>
+                </div>
+                <h3 className="text-xs sm:text-sm font-bold text-foreground leading-snug tracking-tight">
+                  {cleanModuleTitle}
+                </h3>
               </div>
 
               <div className="space-y-1">
@@ -397,7 +409,7 @@ export default function PortalCoursePlayerClient({
                       href={`/portal/${slug}/learn/${courseSlug}/${les.slug}`}
                       onClick={() => options?.onSelectLesson?.()}
                       className={cn(
-                        'flex items-center justify-between p-2.5 rounded-xl text-xs transition-all',
+                        'flex items-center justify-between p-2.5 rounded-xl text-xs transition-all active:scale-[0.98]',
                         isCurrent
                           ? 'bg-primary text-white font-bold shadow-xs'
                           : isDone
@@ -405,7 +417,7 @@ export default function PortalCoursePlayerClient({
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                       )}
                     >
-                      <div className="flex items-center gap-2.5 truncate">
+                      <div className="flex items-center gap-2.5 min-w-0 flex-1 mr-2">
                         {isDone ? (
                           <CheckCircle2
                             className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-emerald-500')}
@@ -415,12 +427,12 @@ export default function PortalCoursePlayerClient({
                             className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-muted-foreground')}
                           />
                         )}
-                        <span className="truncate">
+                        <span className="truncate" title={les.title}>
                           {lesIdx + 1}. {les.title}
                         </span>
                       </div>
 
-                      <span className={cn('text-[10px] shrink-0', isCurrent ? 'text-white/80' : 'text-muted-foreground')}>
+                      <span className={cn('text-[10px] shrink-0 font-medium', isCurrent ? 'text-white/90' : 'text-muted-foreground')}>
                         {les.videoDurationSeconds ? `${Math.round(les.videoDurationSeconds / 60)}m` : '10m'}
                       </span>
                     </Link>

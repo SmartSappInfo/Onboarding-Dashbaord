@@ -337,7 +337,9 @@ export default function PortalCourseOverviewClient({
                       <Badge variant="outline" className="text-[10px] font-bold uppercase px-2 py-0.5">
                         Module {modIdx + 1}
                       </Badge>
-                      <span className="text-foreground">{mod.title}</span>
+                      <span className="text-foreground">
+                        {mod.title.replace(/^((module|section)\s*\d+[\s:.-]*)+/i, '').trim() || mod.title}
+                      </span>
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-5 pb-4 space-y-2 border-t border-border pt-3">
