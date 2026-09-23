@@ -160,30 +160,55 @@ export function PortalThemeProvider({
   // Effective mode resolves forcedMode first, then internalMode
   const effectiveMode = forcedMode || internalMode;
 
-  // ── Synchronize HTML Document and Body Classes (Eliminates Dark Flicker & Modal Inversion) ──
+  // Compute resolved active colors & CSS variables dictionary
+  const activeColors = React.useMemo(
+    () => resolveActivePortalColors(theme, effectiveMode),
+    [theme, effectiveMode]
+  );
+
+  const themeStyles = React.useMemo(
+    () => resolvePortalThemeStyles(theme, effectiveMode),
+    [theme, effectiveMode]
+  );
+
+  // ── Synchronize HTML Document and Body Classes & Variables (Fixes Dialog / Modal Portals) ──
   React.useEffect(() => {
     // Never mutate document.documentElement if rendered inside Studio Preview Canvas
-    if (forcedMode) return;
-    if (typeof document === 'undefined') return;
+    if (forcedMode || typeof document === 'undefined') return;
 
     const root = document.documentElement;
     const body = document.body;
 
     if (effectiveMode === 'dark') {
       root.classList.add('dark');
+      root.classList.remove('light');
       body.classList.add('dark');
+      body.classList.remove('light');
     } else {
       root.classList.remove('dark');
+      root.classList.add('light');
       body.classList.remove('dark');
+      body.classList.add('light');
     }
 
     root.setAttribute('data-portal-theme', effectiveMode);
 
+    // Synchronize portal CSS variables to root element so Radix UI Dialog portals inherit them
+    const entries = Object.entries(themeStyles);
+    for (const [prop, val] of entries) {
+      if (typeof val === 'string') {
+        root.style.setProperty(prop, val);
+      }
+    }
+
     return () => {
       root.removeAttribute('data-portal-theme');
       body.classList.remove('dark');
+      for (const [prop] of entries) {
+        root.style.removeProperty(prop);
+      }
     };
-  }, [effectiveMode, forcedMode]);
+  }, [effectiveMode, forcedMode, themeStyles]);
 
   const setThemeMode = React.useCallback(
     (newMode: 'light' | 'dark') => {
@@ -209,17 +234,6 @@ export function PortalThemeProvider({
     const nextMode = effectiveMode === 'dark' ? 'light' : 'dark';
     setThemeMode(nextMode);
   }, [effectiveMode, setThemeMode]);
-
-  // Compute resolved active colors & CSS variables dictionary
-  const activeColors = React.useMemo(
-    () => resolveActivePortalColors(theme, effectiveMode),
-    [theme, effectiveMode]
-  );
-
-  const themeStyles = React.useMemo(
-    () => resolvePortalThemeStyles(theme, effectiveMode),
-    [theme, effectiveMode]
-  );
 
   const contextValue: PortalThemeContextValue = React.useMemo(
     () => ({

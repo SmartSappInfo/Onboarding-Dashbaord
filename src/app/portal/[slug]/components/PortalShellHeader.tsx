@@ -164,7 +164,7 @@ export function PortalShellHeader({
             ) : (
               <div
                 className="w-9 h-9 flex items-center justify-center text-white font-bold text-sm shadow-sm transition-transform group-hover:scale-105"
-                style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
               >
                 {brandTitle.charAt(0)}
               </div>
@@ -187,7 +187,7 @@ export function PortalShellHeader({
             ) : (
               <div
                 className="w-9 h-9 flex items-center justify-center text-white font-bold text-sm shadow-sm transition-transform group-hover:scale-105"
-                style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
               >
                 {brandTitle.charAt(0)}
               </div>
