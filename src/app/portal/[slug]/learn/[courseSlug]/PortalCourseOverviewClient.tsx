@@ -24,11 +24,10 @@ import {
 } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { enrollInCourseAction } from '@/app/actions/learning-actions';
+import { PortalPageShell } from '../../components/PortalPageShell';
 import type { Portal } from '@/lib/types/portal';
 import type { Course, CourseModule, CourseLesson, CourseEnrollment } from '@/lib/types/learning';
 import {
-  GraduationCap,
-  ArrowLeft,
   ArrowRight,
   PlayCircle,
   BookOpen,
@@ -185,35 +184,11 @@ export default function PortalCourseOverviewClient({
   }
 
   const theme = portal.theme;
-  const brandTitle = portal.branding?.brandName || portal.name;
   const isEnrolled = Boolean(enrollment);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}/learn`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <Link href={`/portal/${slug}`} className="flex items-center gap-2">
-            <span className="font-bold text-sm tracking-tight">{brandTitle}</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link href={`/portal/${slug}/dashboard`}>
-            <Button variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-primary" /> My Learning Hub
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* ── Main Body ─────────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-5xl mx-auto w-full p-6 md:p-10 space-y-10">
+    <PortalPageShell portal={portal} slug={slug}>
+      <div className="max-w-5xl mx-auto w-full p-6 md:p-10 space-y-10">
         {/* Course Hero Banner */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center bg-card p-6 sm:p-10 rounded-3xl border-2 border-border shadow-sm">
           <div className="lg:col-span-2 space-y-4">
@@ -379,20 +354,15 @@ export default function PortalCourseOverviewClient({
             })}
           </Accordion>
         </div>
-      </main>
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {brandTitle}. Powered by Experience Platform.</p>
-      </footer>
-
-      {/* ── Auth Modal for unauthenticated enrollment ─────────────────── */}
-      <PortalAuthModal
-        portal={portal}
-        open={isAuthModalOpen}
-        onOpenChange={setIsAuthModalOpen}
-        onAuthenticated={() => handleEnroll()}
-      />
-    </div>
+        {/* ── Auth Modal for unauthenticated enrollment ─────────────────── */}
+        <PortalAuthModal
+          portal={portal}
+          open={isAuthModalOpen}
+          onOpenChange={setIsAuthModalOpen}
+          onAuthenticated={() => handleEnroll()}
+        />
+      </div>
+    </PortalPageShell>
   );
 }

@@ -24,10 +24,10 @@ import {
   Layers,
   Clock,
   ArrowRight,
-  ArrowLeft,
   Sparkles,
 } from 'lucide-react';
 import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
+import { PortalPageShell } from '../components/PortalPageShell';
 import type { Portal } from '@/lib/types/portal';
 import type { Course, CourseEnrollment } from '@/lib/types/learning';
 
@@ -166,44 +166,10 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
   }
 
   const theme = portal.theme;
-  const brandTitle = portal.branding?.brandName || portal.name;
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between">
-      {/* ── Top Header ────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <Link href={`/portal/${slug}`} className="flex items-center gap-2">
-            {portal.branding?.logoUrl ? (
-              <img src={portal.branding.logoUrl} alt={brandTitle} className="h-7 w-auto object-contain" />
-            ) : (
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-                style={{ backgroundColor: theme.colors.primary }}
-              >
-                {brandTitle.charAt(0)}
-              </div>
-            )}
-            <span className="font-bold text-sm tracking-tight">{brandTitle}</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link href={`/portal/${slug}/dashboard`}>
-            <Button variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
-              <GraduationCap className="w-3.5 h-3.5 text-primary" /> My Learning Hub
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* ── Main Catalog Body ─────────────────────────────────────────── */}
-      <main className="flex-1 max-w-6xl mx-auto w-full p-6 md:p-10 space-y-8">
+    <PortalPageShell portal={portal} slug={slug}>
+      <div className="max-w-6xl mx-auto w-full p-6 md:p-10 space-y-8">
         {/* Catalog Banner */}
         <div
           className="p-8 rounded-3xl text-white relative overflow-hidden shadow-lg space-y-3"
@@ -359,12 +325,7 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
             })}
           </div>
         )}
-      </main>
-
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {brandTitle}. Powered by Experience Platform.</p>
-      </footer>
-    </div>
+      </div>
+    </PortalPageShell>
   );
 }

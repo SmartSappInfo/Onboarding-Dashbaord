@@ -37,8 +37,6 @@ import type {
   CommunityComment,
 } from '@/lib/types/community';
 import {
-  ArrowLeft,
-  MessageSquare,
   ThumbsUp,
   MessageCircle,
   MoreVertical,
@@ -47,6 +45,7 @@ import {
   Trash2,
   Loader2,
 } from 'lucide-react';
+import { PortalPageShell } from '../../../components/PortalPageShell';
 import { PortalAuthModal } from '../../../components/PortalAuthModal';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -284,35 +283,9 @@ export default function PortalPostDetailClient({
     );
   }
 
-  const _theme = portal.theme;
-  const brandTitle = portal.branding?.brandName || portal.name;
-
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}/community/${space?.slug || ''}`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-          <Link href={`/portal/${slug}`} className="flex items-center gap-2">
-            <span className="font-bold text-sm tracking-tight">{brandTitle}</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link href={`/portal/${slug}/community`}>
-            <Button variant="outline" size="sm" className="h-9 rounded-xl font-bold text-xs gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5 text-primary" /> All Channels
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* ── Main Thread Body ──────────────────────────────────────────── */}
-      <main className="flex-1 max-w-4xl mx-auto w-full p-4 sm:p-8 space-y-6">
+    <PortalPageShell portal={portal} slug={slug}>
+      <div className="max-w-4xl mx-auto w-full p-4 sm:p-8 space-y-6">
         {/* Post Card */}
         <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card shadow-xs">
           {/* Header */}
@@ -550,12 +523,7 @@ export default function PortalPostDetailClient({
             </div>
           )}
         </div>
-      </main>
-
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {brandTitle}. Powered by Experience Platform.</p>
-      </footer>
+      </div>
 
       {/* ── Auth Modal ────────────────────────────────────────────────── */}
       <PortalAuthModal
@@ -563,6 +531,6 @@ export default function PortalPostDetailClient({
         open={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
       />
-    </div>
+    </PortalPageShell>
   );
 }

@@ -9,10 +9,8 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser, useAuth } from '@/firebase';
-import { signOut } from 'firebase/auth';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Card, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -31,8 +29,6 @@ import {
   Download,
   PlayCircle,
   Lock,
-  ArrowLeft,
-  LogOut,
   ListOrdered,
   User,
 } from 'lucide-react';
@@ -41,6 +37,7 @@ import type { Portal } from '@/lib/types/portal';
 import type { PortalMembership, AccessGrant } from '@/lib/types/membership';
 import type { ContentItem } from '@/lib/types/content';
 import type { Course } from '@/lib/types/learning';
+import { PortalPageShell } from '../components/PortalPageShell';
 import { PortalAuthModal } from '../components/PortalAuthModal';
 import { MemberOnboardingWidget } from './components/MemberOnboardingWidget';
 import { MemberTasksWidget } from './components/MemberTasksWidget';
@@ -52,9 +49,7 @@ interface PortalMemberDashboardClientProps {
 
 export default function PortalMemberDashboardClient({ slug }: PortalMemberDashboardClientProps) {
   const firestore = useFirestore();
-  const auth = useAuth();
   const { user, isUserLoading } = useUser();
-  const router = useRouter();
   const { toast: _toast } = useToast();
 
   const [activeTab, setActiveTab] = React.useState('courses');
@@ -188,43 +183,43 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
   }
 
   const theme = portal.theme;
-  const branding = portal.branding;
-  const brandTitle = branding.brandName || portal.name;
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
-        <Card className="max-w-md w-full rounded-3xl border-2 border-border p-8 space-y-4 shadow-xl">
-          <div
-            className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-white shadow-sm"
-            style={{ backgroundColor: theme.colors.primary }}
-          >
-            <Lock className="w-7 h-7" />
-          </div>
-          <CardTitle className="text-xl font-bold">Sign In to View Dashboard</CardTitle>
-          <CardDescription className="text-xs leading-relaxed">
-            Please authenticate to access your personal curriculum, progress tracking, and certificates.
-          </CardDescription>
-          <Button
-            onClick={() => setIsAuthModalOpen(true)}
-            className="w-full h-11 rounded-xl font-bold text-xs text-white shadow-sm gap-2"
-            style={{ backgroundColor: theme.colors.primary }}
-          >
-            Sign In / Register <ArrowRight className="w-4 h-4" />
-          </Button>
-          <Link href={`/portal/${slug}`} className="block">
-            <Button variant="ghost" className="rounded-xl text-xs font-semibold">
-              Return to Portal Home
+      <PortalPageShell portal={portal} slug={slug}>
+        <div className="flex-1 flex items-center justify-center p-6 text-center">
+          <Card className="max-w-md w-full rounded-3xl border-2 border-border p-8 space-y-4 shadow-xl">
+            <div
+              className="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-white shadow-sm"
+              style={{ backgroundColor: theme.colors.primary }}
+            >
+              <Lock className="w-7 h-7" />
+            </div>
+            <CardTitle className="text-xl font-bold">Sign In to View Dashboard</CardTitle>
+            <CardDescription className="text-xs leading-relaxed">
+              Please authenticate to access your personal curriculum, progress tracking, and certificates.
+            </CardDescription>
+            <Button
+              onClick={() => setIsAuthModalOpen(true)}
+              className="w-full h-11 rounded-xl font-bold text-xs text-white shadow-sm gap-2"
+              style={{ backgroundColor: theme.colors.primary }}
+            >
+              Sign In / Register <ArrowRight className="w-4 h-4" />
             </Button>
-          </Link>
-        </Card>
+            <Link href={`/portal/${slug}`} className="block">
+              <Button variant="ghost" className="rounded-xl text-xs font-semibold">
+                Return to Portal Home
+              </Button>
+            </Link>
+          </Card>
 
-        <PortalAuthModal
-          portal={portal}
-          open={isAuthModalOpen}
-          onOpenChange={setIsAuthModalOpen}
-        />
-      </div>
+          <PortalAuthModal
+            portal={portal}
+            open={isAuthModalOpen}
+            onOpenChange={setIsAuthModalOpen}
+          />
+        </div>
+      </PortalPageShell>
     );
   }
 
@@ -235,54 +230,8 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
   const memberPlan = membership?.planName || 'Standard Member';
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between">
-      {/* ── Top Header ────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-
-          <Link href={`/portal/${slug}`} className="flex items-center gap-2">
-            {branding.logoUrl ? (
-              <img src={branding.logoUrl} alt={brandTitle} className="h-7 w-auto object-contain" />
-            ) : (
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-                style={{ backgroundColor: theme.colors.primary }}
-              >
-                {brandTitle.charAt(0)}
-              </div>
-            )}
-            <span className="font-bold text-sm tracking-tight hidden sm:inline">{brandTitle}</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="hidden sm:flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1 font-bold text-amber-500 bg-amber-500/10 px-2.5 py-1 rounded-xl">
-              <Sparkles className="w-3.5 h-3.5" /> {memberPoints} Pts
-            </span>
-            <span className="flex items-center gap-1 font-bold text-rose-500 bg-rose-500/10 px-2.5 py-1 rounded-xl">
-              <Flame className="w-3.5 h-3.5" /> {memberStreak} Day Streak
-            </span>
-          </div>
-
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => auth && signOut(auth).then(() => router.push(`/portal/${slug}`))}
-            className="h-9 px-3 rounded-xl font-bold text-xs text-muted-foreground hover:text-rose-500 gap-1.5"
-          >
-            <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Sign Out</span>
-          </Button>
-        </div>
-      </header>
-
-      {/* ── Main Content Body ─────────────────────────────────────────── */}
-      <main className="flex-1 max-w-6xl mx-auto w-full p-6 md:p-10 space-y-8">
+    <PortalPageShell portal={portal} slug={slug}>
+      <div className="max-w-6xl mx-auto w-full p-6 md:p-10 space-y-8">
         {/* Member Profile Hero Banner */}
         <div
           className="p-6 md:p-8 rounded-3xl text-white relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl"
@@ -306,9 +255,17 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
                 </Badge>
               </div>
               <p className="text-xs text-white/80">{user.email}</p>
-              <p className="text-[11px] font-semibold text-white/90">
-                Active Plan: <span className="underline">{memberPlan}</span>
-              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <span className="flex items-center gap-1 font-bold text-amber-300 bg-black/25 px-2 py-0.5 rounded-lg text-xs">
+                  <Sparkles className="w-3 h-3" /> {memberPoints} Pts
+                </span>
+                <span className="flex items-center gap-1 font-bold text-rose-300 bg-black/25 px-2 py-0.5 rounded-lg text-xs">
+                  <Flame className="w-3 h-3" /> {memberStreak} Day Streak
+                </span>
+                <span className="text-[11px] font-semibold text-white/90">
+                  Active Plan: <span className="underline">{memberPlan}</span>
+                </span>
+              </div>
             </div>
           </div>
 
@@ -600,12 +557,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {brandTitle}. Powered by Experience Platform.</p>
-      </footer>
+      </div>
 
       {/* Member Profile Setup & Edit Modal */}
       {portal && user && (
@@ -618,6 +570,6 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
           currentMembership={membership}
         />
       )}
-    </div>
+    </PortalPageShell>
   );
 }

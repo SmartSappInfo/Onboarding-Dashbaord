@@ -39,6 +39,8 @@ import {
   Lock,
   Loader2,
 } from 'lucide-react';
+import { PortalThemeProvider } from '../../components/PortalThemeProvider';
+import { PortalThemeToggle } from '../../components/PortalThemeToggle';
 
 interface PortalCheckoutClientProps {
   slug: string;
@@ -212,7 +214,11 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
   const finalTotal = Math.max(0, offer.price - discountAmount);
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between">
+    <PortalThemeProvider
+      portalId={portal.id}
+      theme={portal.theme}
+      className="min-h-screen bg-background flex flex-col justify-between"
+    >
       {/* ── Top Header ────────────────────────────────────────────────── */}
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -237,9 +243,12 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
           </Link>
         </div>
 
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Lock className="w-3.5 h-3.5 text-emerald-600" />
-          <span className="font-semibold text-foreground">256-Bit SSL Encrypted</span>
+        <div className="flex items-center gap-3">
+          <PortalThemeToggle variant="icon" />
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Lock className="w-3.5 h-3.5 text-emerald-600" />
+            <span className="font-semibold text-foreground">256-Bit SSL Encrypted</span>
+          </div>
         </div>
       </header>
 
@@ -468,6 +477,6 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
       <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
         <p>© {new Date().getFullYear()} {brandTitle}. Powered by SmartSapp Experience Platform.</p>
       </footer>
-    </div>
+    </PortalThemeProvider>
   );
 }

@@ -26,7 +26,7 @@ import * as React from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,11 +38,9 @@ import {
   FileText,
   FileCode,
   Download,
-  ArrowLeft,
   ArrowRight,
   BookOpen,
   Newspaper,
-  LayoutDashboard,
   Lock,
   Layers,
   X,
@@ -50,15 +48,12 @@ import {
 import { listContentItemsByPortalAction } from '@/app/actions/content-actions';
 import {
   getPortalRadiusCss,
-  getGoogleFontsUrl,
   getPortalButtonInlineStyle,
 } from '@/lib/utils/portal-theme';
 import { getContrastRatio } from '@/lib/utils/portal-theme-generator';
 import { cn } from '@/lib/utils';
-import { PortalSearchModal } from '../components/PortalSearchModal';
-import { PortalAuthModal } from '../components/PortalAuthModal';
-import { PortalThemeProvider, usePortalTheme } from '../components/PortalThemeProvider';
-import { PortalThemeToggle } from '../components/PortalThemeToggle';
+import { PortalPageShell } from '../components/PortalPageShell';
+import { usePortalTheme } from '../components/PortalThemeProvider';
 import type { Portal } from '@/lib/types/portal';
 import type { ContentItem, ContentItemType } from '@/lib/types/content';
 
@@ -87,15 +82,12 @@ function PortalContentCatalogView({
 }) {
   const firestore = useFirestore();
   const searchParams = useSearchParams();
-  const { user } = useUser();
   const { activeColors } = usePortalTheme();
 
   const initialType = searchParams.get('type') || 'all';
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedType, setSelectedType] = React.useState<string>(initialType);
-  const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
-  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
 
   // Synchronize URL query parameter if present
   React.useEffect(() => {
@@ -181,10 +173,7 @@ function PortalContentCatalogView({
   }, [effectiveItems, selectedType, searchQuery]);
 
   const theme = portal.theme;
-  const branding = portal.branding;
-  const brandTitle = branding.brandName || portal.name;
   const radiusCss = getPortalRadiusCss(theme.ui?.borderRadius);
-  const googleFontsUrl = getGoogleFontsUrl(theme.typography?.headingFont, theme.typography?.bodyFont);
 
   // Dynamic contrast for button text on primary background
   const primaryBtnTextColor = React.useMemo(() => {
@@ -219,100 +208,7 @@ function PortalContentCatalogView({
   };
 
   return (
-    <>
-      {/* ── Dynamic Google Fonts ────────────────────────────────────────── */}
-      {googleFontsUrl && <link rel="stylesheet" href={googleFontsUrl} />}
-
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-[var(--portal-border)] bg-[var(--portal-bg)]/90 backdrop-blur-md px-6 py-3.5 transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Link href={`/portal/${slug}`}>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-[var(--portal-surface)] text-[var(--portal-muted)] hover:text-[var(--portal-text)] active:scale-[0.97] transition-transform"
-                aria-label="Return to Portal Home"
-              >
-                <ArrowLeft className="w-5 h-5" />
-              </Button>
-            </Link>
-
-            <Link href={`/portal/${slug}`} className="flex items-center gap-2.5 group">
-              {branding.logoUrl ? (
-                <img src={branding.logoUrl} alt={brandTitle} className="h-7 w-auto object-contain" />
-              ) : (
-                <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-xs shadow-xs"
-                  style={{ backgroundColor: activeColors.primary }}
-                >
-                  {brandTitle.charAt(0)}
-                </div>
-              )}
-              <span
-                className="font-extrabold text-sm tracking-tight text-[var(--portal-text)] hidden sm:inline"
-                style={{ fontFamily: 'var(--portal-heading-font)' }}
-              >
-                {brandTitle}
-              </span>
-            </Link>
-
-            <span className="text-[var(--portal-border)] text-sm hidden sm:inline">/</span>
-            <span className="text-xs font-bold text-[var(--portal-muted)] hidden sm:inline">
-              Resource Vault
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2.5">
-            {/* Search Trigger Button */}
-            <button
-              type="button"
-              onClick={() => setIsSearchModalOpen(true)}
-              className="relative w-36 sm:w-56 text-left min-h-[44px] pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-[var(--portal-text)] flex items-center justify-between transition-colors shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97]"
-              style={{ borderRadius: radiusCss }}
-            >
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" />
-              <span className="truncate">Search catalog...</span>
-              <kbd className="text-[9px] bg-muted/60 px-1 py-0.5 rounded border border-[var(--portal-border)] hidden sm:inline">
-                ⌘K
-              </kbd>
-            </button>
-
-            {/* Scoped Theme Toggle (Light / Dark Switcher) */}
-            <PortalThemeToggle variant="icon" />
-
-            {/* Dashboard / Auth CTA */}
-            {user ? (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-all"
-              >
-                <Link href={`/portal/${slug}/dashboard`}>
-                  <LayoutDashboard
-                    className="w-3.5 h-3.5"
-                    style={{ color: activeColors.primary }}
-                  />
-                  <span className="hidden sm:inline">Dashboard</span>
-                </Link>
-              </Button>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAuthModalOpen(true)}
-                className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs text-[var(--portal-text)] hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-transform"
-              >
-                Sign In
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* ── Main Catalog Workspace ─────────────────────────────────────── */}
-      <main className="flex-1 max-w-7xl mx-auto w-full p-6 md:p-10 space-y-8">
+    <div className="max-w-7xl mx-auto w-full p-6 md:p-10 space-y-8">
         {/* Banner Section */}
         <div
           className="p-8 sm:p-10 rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] space-y-3 relative overflow-hidden transition-colors"
@@ -535,41 +431,7 @@ function PortalContentCatalogView({
             })}
           </div>
         )}
-      </main>
-
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[var(--portal-border)] bg-[var(--portal-surface)] px-6 py-8 transition-colors mt-12">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--portal-muted)]">
-          <p>{branding.copyrightText || `© ${new Date().getFullYear()} ${brandTitle}. All rights reserved.`}</p>
-          <div className="flex items-center gap-4">
-            <Link href={`/portal/${slug}`} className="hover:text-[var(--portal-text)] transition-colors">
-              Portal Home
-            </Link>
-            <Link href={`/portal/${slug}/learn`} className="hover:text-[var(--portal-text)] transition-colors">
-              Curriculum
-            </Link>
-            <Link href={`/portal/${slug}/community`} className="hover:text-[var(--portal-text)] transition-colors">
-              Community
-            </Link>
-          </div>
-        </div>
-      </footer>
-
-      {/* ── Instant Content Search Modal ───────────────────────────────── */}
-      <PortalSearchModal
-        open={isSearchModalOpen}
-        onOpenChange={setIsSearchModalOpen}
-        portalId={portal.id}
-        portalSlug={slug}
-      />
-
-      {/* ── Member Auth Dialog ────────────────────────────────────────── */}
-      <PortalAuthModal
-        portal={portal}
-        open={isAuthModalOpen}
-        onOpenChange={setIsAuthModalOpen}
-      />
-    </>
+      </div>
   );
 }
 
@@ -631,14 +493,10 @@ export default function PortalContentCatalogClient({ slug }: PortalContentCatalo
     );
   }
 
-  // ── Wrapped in Unified Independent Scoped Theme Provider ─────────────────────
+  // ── Wrapped in Universal Single Source of Truth Portal Page Shell ──────────
   return (
-    <PortalThemeProvider
-      portalId={portal.id}
-      theme={portal.theme}
-      className="min-h-screen flex flex-col justify-between"
-    >
+    <PortalPageShell portal={portal} slug={slug}>
       <PortalContentCatalogView slug={slug} portal={portal} />
-    </PortalThemeProvider>
+    </PortalPageShell>
   );
 }

@@ -41,6 +41,9 @@ import {
   AiTutorChatContent,
   LessonAiTutorDrawer,
 } from './components/LessonAiTutorDrawer';
+import { PortalThemeProvider } from '../../../components/PortalThemeProvider';
+import { PortalThemeToggle } from '../../../components/PortalThemeToggle';
+import { PortalSearchModal } from '../../../components/PortalSearchModal';
 import type { Portal } from '@/lib/types/portal';
 import type {
   Course,
@@ -66,6 +69,7 @@ import {
   Check,
   PanelLeft,
   PanelLeftClose,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -92,6 +96,7 @@ export default function PortalCoursePlayerClient({
   const [isMobileSyllabusOpen, setIsMobileSyllabusOpen] = React.useState(false);
   const [isMobileAiTutorOpen, setIsMobileAiTutorOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('notes');
+  const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
 
   // Quiz State
   const [quizAnswers, setQuizAnswers] = React.useState<Record<string, string[]>>({});
@@ -335,7 +340,7 @@ export default function PortalCoursePlayerClient({
     );
   }
 
-  if (!course || !currentLesson) {
+  if (!course || !currentLesson || !portal) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
@@ -447,7 +452,11 @@ export default function PortalCoursePlayerClient({
   );
 
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between text-foreground">
+    <PortalThemeProvider
+      portalId={portal.id}
+      theme={portal.theme}
+      className="min-h-screen bg-background flex flex-col justify-between text-foreground"
+    >
       {/* ── Top Bar ────────────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-2 sm:gap-3 min-w-0">
@@ -497,11 +506,25 @@ export default function PortalCoursePlayerClient({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="hidden md:flex items-center gap-3 w-36 lg:w-44">
             <Progress value={progressPct} className="h-2 rounded-full flex-1" />
             <span className="text-[11px] font-bold text-muted-foreground shrink-0">{progressPct}%</span>
           </div>
+
+          {/* Quick Search Button */}
+          <button
+            type="button"
+            onClick={() => setIsSearchModalOpen(true)}
+            className="flex items-center justify-center h-9 w-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+            title="Search portal (⌘K)"
+            aria-label="Search portal"
+          >
+            <Search className="w-4 h-4" />
+          </button>
+
+          {/* Theme Mode Toggle */}
+          <PortalThemeToggle variant="icon" />
 
           {/* Desktop AI Tutor Toggle Button */}
           {isAiTutorEnabled && (
@@ -999,6 +1022,14 @@ export default function PortalCoursePlayerClient({
           userId={user?.uid || 'guest'}
         />
       )}
-    </div>
+
+      {/* Global Quick Search Modal */}
+      <PortalSearchModal
+        open={isSearchModalOpen}
+        onOpenChange={setIsSearchModalOpen}
+        portalId={portal.id}
+        portalSlug={slug}
+      />
+    </PortalThemeProvider>
   );
 }

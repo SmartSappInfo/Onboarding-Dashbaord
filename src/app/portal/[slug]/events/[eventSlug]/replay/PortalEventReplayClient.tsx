@@ -24,11 +24,11 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 import {
   PlayCircle,
   Sparkles,
-  ArrowLeft,
   CheckCircle2,
   Download,
   Award,
 } from 'lucide-react';
+import { PortalPageShell } from '../../../components/PortalPageShell';
 
 interface PortalEventReplayClientProps {
   slug: string;
@@ -114,47 +114,9 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
     );
   }
 
-  const theme = portal.theme;
-  const branding = portal.branding;
-  const brandTitle = branding.brandName || portal.name;
-
   return (
-    <div className="min-h-screen bg-background flex flex-col justify-between">
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/90 backdrop-blur-md px-6 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}/events/${eventSlug}`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
-
-          <Link href={`/portal/${slug}`} className="flex items-center gap-2">
-            {branding.logoUrl ? (
-              <img src={branding.logoUrl} alt={brandTitle} className="h-7 w-auto object-contain" />
-            ) : (
-              <div
-                className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-                style={{ backgroundColor: theme.colors.primary }}
-              >
-                {brandTitle.charAt(0)}
-              </div>
-            )}
-            <span className="font-bold text-sm tracking-tight hidden sm:inline">{brandTitle}</span>
-          </Link>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <Link href={`/portal/${slug}/events`}>
-            <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold">
-              All Sessions
-            </Button>
-          </Link>
-        </div>
-      </header>
-
-      {/* ── Replay Viewer Body ────────────────────────────────────────── */}
-      <main className="flex-1 max-w-5xl mx-auto w-full p-6 md:p-10 space-y-8">
+    <PortalPageShell portal={portal} slug={slug}>
+      <div className="max-w-5xl mx-auto w-full p-6 md:p-10 space-y-8">
         {/* Video Canvas */}
         <div className="space-y-4">
           <div className="aspect-video w-full rounded-3xl overflow-hidden bg-black shadow-2xl border-2 border-border relative">
@@ -269,12 +231,7 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
             </Card>
           </div>
         </div>
-      </main>
-
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
-        <p>© {new Date().getFullYear()} {brandTitle}. Powered by SmartSapp Experience Platform.</p>
-      </footer>
-    </div>
+      </div>
+    </PortalPageShell>
   );
 }

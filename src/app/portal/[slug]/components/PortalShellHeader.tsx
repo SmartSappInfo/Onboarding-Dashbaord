@@ -20,7 +20,9 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
   DropdownMenu,
@@ -81,6 +83,7 @@ export function PortalShellHeader({
   user,
   isMember = false,
   isPreview = false,
+  previewRoute = '/',
   onNavigateRoute,
   onOpenSearch,
   onOpenAuth,
@@ -88,6 +91,31 @@ export function PortalShellHeader({
 }: PortalShellHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const { activeColors } = usePortalTheme();
+  const pathname = usePathname();
+
+  const isItemActive = React.useCallback(
+    (resolvedPath: string) => {
+      if (isPreview) {
+        if (previewRoute) {
+          if (previewRoute === '/' && (resolvedPath === `/portal/${slug}` || resolvedPath === `/portal/${slug}/`)) return true;
+          if (previewRoute !== '/' && resolvedPath.includes(previewRoute)) return true;
+        }
+        return false;
+      }
+      if (!pathname) return false;
+      const rootPath = `/portal/${slug}`;
+      const isRootItem = resolvedPath === rootPath || resolvedPath === `${rootPath}/`;
+      if (isRootItem) {
+        return pathname === rootPath || pathname === `${rootPath}/`;
+      }
+      return (
+        pathname === resolvedPath ||
+        pathname.startsWith(`${resolvedPath}/`) ||
+        (pathname.startsWith(resolvedPath) && resolvedPath !== rootPath)
+      );
+    },
+    [isPreview, previewRoute, slug, pathname]
+  );
 
   const primaryBtnStyle = React.useMemo(
     () =>
@@ -165,16 +193,25 @@ export function PortalShellHeader({
         )}
 
         {/* ── Desktop Navigation Links ──────────────────────────────────── */}
-        <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-[var(--portal-muted)]">
+        <nav className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-[var(--portal-muted)]">
           {(navigation.headerItems || []).map(item => {
             const resolvedPath = resolvePortalPath(item.path, slug);
+            const active = isItemActive(resolvedPath);
+
+            const activeClass = active
+              ? 'text-[var(--portal-text)] font-bold bg-[var(--portal-surface)] shadow-2xs'
+              : 'text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:bg-[var(--portal-surface)]/60 font-medium';
+
             if (isPreview) {
               return (
                 <button
                   key={item.id}
                   type="button"
                   onClick={e => handleRouteClick(e, resolvedPath)}
-                  className="hover:text-[var(--portal-primary)] transition-colors flex items-center gap-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1.5 py-0.5"
+                  className={cn(
+                    'transition-all flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97]',
+                    activeClass
+                  )}
                 >
                   {item.label}
                   {item.target === '_blank' && <ExternalLink className="w-3 h-3 opacity-60" />}
@@ -186,7 +223,10 @@ export function PortalShellHeader({
                 key={item.id}
                 href={resolvedPath}
                 target={item.target || '_self'}
-                className="hover:text-[var(--portal-primary)] transition-colors flex items-center gap-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1.5 py-0.5"
+                className={cn(
+                  'transition-all flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97]',
+                  activeClass
+                )}
               >
                 {item.label}
                 {item.target === '_blank' && <ExternalLink className="w-3 h-3 opacity-60" />}
@@ -335,23 +375,43 @@ export function PortalShellHeader({
           ) : null}
         </div>
 
-        {/* ── Mobile Hamburger Trigger ──────────────────────────────────── */}
-        <button
-          type="button"
-          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-          className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--portal-muted)] hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97]"
-          aria-label="Toggle navigation menu"
-        >
-          {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-        </button>
+        {/* ── Mobile Action Triggers ────────────────────────────────────── */}
+        <div className="md:hidden flex items-center gap-1">
+          {navigation.headerActions.showSearch && (
+            <button
+              type="button"
+              onClick={() => onOpenSearch?.()}
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--portal-muted)] hover:text-foreground active:scale-[0.97] transition-all"
+              aria-label="Search portal"
+            >
+              <Search className="w-5 h-5" />
+            </button>
+          )}
+
+          <PortalThemeToggle variant="icon" />
+
+          <button
+            type="button"
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--portal-muted)] hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.97]"
+            aria-label="Toggle navigation menu"
+          >
+            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile Navigation Drawer ────────────────────────────────────── */}
       {isMobileMenuOpen && (
         <div className="md:hidden pt-4 pb-6 px-4 space-y-4 border-t border-[var(--portal-border)] mt-3 animate-in slide-in-from-top-4 duration-200">
-          <nav className="flex flex-col space-y-2">
+          <nav className="flex flex-col space-y-1">
             {(navigation.headerItems || []).map(item => {
               const resolvedPath = resolvePortalPath(item.path, slug);
+              const active = isItemActive(resolvedPath);
+              const activeDrawerClass = active
+                ? 'bg-primary/10 text-primary font-bold shadow-2xs'
+                : 'text-[var(--portal-text)] hover:bg-[var(--portal-surface)] font-medium';
+
               if (isPreview) {
                 return (
                   <button
@@ -361,7 +421,10 @@ export function PortalShellHeader({
                       setIsMobileMenuOpen(false);
                       handleRouteClick(e, resolvedPath);
                     }}
-                    className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] text-[var(--portal-text)] active:scale-[0.97] transition-transform text-left w-full"
+                    className={cn(
+                      'min-h-[44px] flex items-center px-3.5 rounded-xl text-sm active:scale-[0.97] transition-all text-left w-full',
+                      activeDrawerClass
+                    )}
                   >
                     {item.label}
                   </button>
@@ -373,7 +436,10 @@ export function PortalShellHeader({
                   href={resolvedPath}
                   target={item.target || '_self'}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-transform"
+                  className={cn(
+                    'min-h-[44px] flex items-center px-3.5 rounded-xl text-sm active:scale-[0.97] transition-all',
+                    activeDrawerClass
+                  )}
                 >
                   {item.label}
                 </Link>
