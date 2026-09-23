@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowRight } from 'lucide-react';
 import { resolvePortalPath } from '@/lib/utils/portal-navigation';
 import { getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
+import { usePortalTheme } from './PortalThemeProvider';
 import type {
   PortalMode,
   PortalThemeConfig,
@@ -66,35 +67,34 @@ export function PortalHeroSection({
   isPreview = false,
   onNavigateRoute,
 }: PortalHeroSectionProps) {
+  const { activeColors } = usePortalTheme();
+
   const primaryBtnStyle = React.useMemo(
     () =>
       getPortalButtonInlineStyle(
         theme.ui?.buttonStyle,
-        theme.colors.primary,
+        activeColors.primary,
         radiusCss
       ),
-    [theme.ui?.buttonStyle, theme.colors.primary, radiusCss]
+    [theme.ui?.buttonStyle, activeColors.primary, radiusCss]
   );
 
   return (
-    <section
-      className="px-6 py-16 md:py-24 text-center border-b border-[var(--portal-border)] relative overflow-hidden transition-colors"
-      style={{ backgroundColor: theme.colors.surface }}
-    >
+    <section className="px-4 sm:px-6 py-12 sm:py-16 md:py-24 text-center border-b border-[var(--portal-border)] relative overflow-hidden transition-colors bg-[var(--portal-surface)] text-[var(--portal-text)]">
       {/* ── Subtle Ambient Radial Glow ─────────────────────────────────── */}
       <div
-        className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
-        style={{ backgroundColor: theme.colors.primary }}
+        className="absolute -top-20 sm:-top-24 left-1/2 -translate-x-1/2 w-72 sm:w-96 h-72 sm:h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
+        style={{ backgroundColor: activeColors.primary }}
       />
 
-      <div className="max-w-3xl mx-auto space-y-4 relative z-10">
+      <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4 relative z-10">
         {/* ── Portal Mode Badge ────────────────────────────────────────── */}
         <Badge
           variant="outline"
-          className="text-xs font-bold uppercase tracking-wider px-3 py-1 border-2"
+          className="text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2.5 sm:px-3 py-0.5 sm:py-1 border-2"
           style={{
-            borderColor: theme.colors.primary,
-            color: theme.colors.primary,
+            borderColor: activeColors.primary,
+            color: activeColors.primary,
             backgroundColor: 'transparent',
             borderRadius: theme.ui?.borderRadius === 'none' ? '0px' : '9999px',
           }}
@@ -104,34 +104,34 @@ export function PortalHeroSection({
 
         {/* ── Brand Heading & Tagline ─────────────────────────────────── */}
         <h1
-          className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground"
+          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-black tracking-tight text-[var(--portal-text)] break-words max-w-2xl mx-auto leading-tight"
           style={{ fontFamily: 'var(--portal-heading-font)' }}
         >
           {brandTitle}
         </h1>
 
-        <p className="text-sm sm:text-base md:text-lg text-[var(--portal-muted)] max-w-2xl mx-auto leading-relaxed">
+        <p className="text-xs sm:text-sm md:text-base text-[var(--portal-muted)] max-w-xl mx-auto leading-relaxed px-2 sm:px-0">
           {tagline}
         </p>
 
-        {/* ── Dual Action CTAs ────────────────────────────────────────── */}
-        <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
+        {/* ── Responsive Dual Action CTAs ─────────────────────────────── */}
+        <div className="pt-3 sm:pt-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2.5 sm:gap-3 w-full sm:w-auto max-w-xs sm:max-w-none mx-auto">
           {user ? (
             isMember ? (
               isPreview ? (
                 <Button
                   size="lg"
                   onClick={() => onNavigateRoute?.('/dashboard')}
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                   style={primaryBtnStyle}
                 >
                   Go to Your Dashboard <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Link href={`/portal/${slug}/dashboard`}>
+                <Link href={`/portal/${slug}/dashboard`} className="w-full sm:w-auto">
                   <Button
                     size="lg"
-                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                    className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                     style={primaryBtnStyle}
                   >
                     Go to Your Dashboard <ArrowRight className="w-4 h-4" />
@@ -142,16 +142,16 @@ export function PortalHeroSection({
               <Button
                 size="lg"
                 onClick={() => onNavigateRoute?.('/')}
-                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                 style={primaryBtnStyle}
               >
                 Join Portal <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Link href={`/portal/${slug}/join`}>
+              <Link href={`/portal/${slug}/join`} className="w-full sm:w-auto">
                 <Button
                   size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                   style={primaryBtnStyle}
                 >
                   Join Portal <ArrowRight className="w-4 h-4" />
@@ -163,16 +163,19 @@ export function PortalHeroSection({
               <Button
                 size="lg"
                 onClick={() => onNavigateRoute?.('/learn')}
-                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                 style={primaryBtnStyle}
               >
                 {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
+              <Link
+                href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}
+                className="w-full sm:w-auto"
+              >
                 <Button
                   size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                   style={primaryBtnStyle}
                 >
                   {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
@@ -183,16 +186,16 @@ export function PortalHeroSection({
             <Button
               size="lg"
               onClick={() => onNavigateRoute?.('/learn')}
-              className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+              className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
               style={primaryBtnStyle}
             >
               Get Started <ArrowRight className="w-4 h-4" />
             </Button>
           ) : (
-            <Link href={`/portal/${slug}/join`}>
+            <Link href={`/portal/${slug}/join`} className="w-full sm:w-auto">
               <Button
                 size="lg"
-                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
                 style={primaryBtnStyle}
               >
                 Get Started <ArrowRight className="w-4 h-4" />
@@ -207,17 +210,17 @@ export function PortalHeroSection({
                 variant="outline"
                 size="lg"
                 onClick={() => onNavigateRoute?.('/learn')}
-                className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.97] gap-2"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm border-2 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] transition-all active:scale-[0.97] gap-2 flex items-center justify-center"
                 style={{ borderRadius: radiusCss }}
               >
                 Browse Curriculum
               </Button>
             ) : (
-              <Link href={`/portal/${slug}/learn`}>
+              <Link href={`/portal/${slug}/learn`} className="w-full sm:w-auto">
                 <Button
                   variant="outline"
                   size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.97] gap-2"
+                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm border-2 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] transition-all active:scale-[0.97] gap-2 flex items-center justify-center"
                   style={{ borderRadius: radiusCss }}
                 >
                   Browse Curriculum

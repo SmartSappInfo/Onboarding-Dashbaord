@@ -29,6 +29,7 @@ import type {
   PortalThemeConfig,
   PortalFeatureToggles,
 } from '@/lib/types/portal';
+import { usePortalTheme } from './PortalThemeProvider';
 
 export interface PortalSpacesGridProps {
   slug: string;
@@ -41,12 +42,14 @@ export interface PortalSpacesGridProps {
 
 export function PortalSpacesGrid({
   slug,
-  theme,
+  theme: _theme,
   features,
   radiusCss,
   isPreview = false,
   onNavigateRoute,
 }: PortalSpacesGridProps) {
+  const { activeColors } = usePortalTheme();
+
   const renderCardWrapper = (
     href: string,
     routeTarget: '/' | '/learn' | '/community' | '/dashboard',
@@ -103,11 +106,11 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
                   >
                     <GraduationCap className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                  <h3 className="font-bold text-base text-[var(--portal-text)] group-hover:text-[var(--portal-primary)] transition-colors">
                     Course Curriculum
                   </h3>
                   <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
@@ -132,11 +135,11 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
+                    style={{ backgroundColor: activeColors.accent, borderRadius: radiusCss }}
                   >
                     <FileCode className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                  <h3 className="font-bold text-base text-[var(--portal-text)] group-hover:text-[var(--portal-primary)] transition-colors">
                     Help Centre & Documentation
                   </h3>
                   <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
@@ -161,11 +164,11 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
                   >
                     <Users className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                  <h3 className="font-bold text-base text-[var(--portal-text)] group-hover:text-[var(--portal-primary)] transition-colors">
                     Member Community
                   </h3>
                   <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
@@ -190,11 +193,11 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.secondary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: activeColors.secondary, borderRadius: radiusCss }}
                   >
                     <FolderArchive className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                  <h3 className="font-bold text-base text-[var(--portal-text)] group-hover:text-[var(--portal-primary)] transition-colors">
                     Resource Vault
                   </h3>
                   <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
@@ -219,11 +222,11 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
+                    style={{ backgroundColor: activeColors.accent, borderRadius: radiusCss }}
                   >
                     <Newspaper className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                  <h3 className="font-bold text-base text-[var(--portal-text)] group-hover:text-[var(--portal-primary)] transition-colors">
                     Insights & Articles
                   </h3>
                   <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
@@ -248,11 +251,11 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
                   >
                     <Award className="w-6 h-6" />
                   </div>
-                  <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                  <h3 className="font-bold text-base text-[var(--portal-text)] group-hover:text-[var(--portal-primary)] transition-colors">
                     Certifications & Badges
                   </h3>
                   <p className="text-xs text-[var(--portal-muted)] leading-relaxed">

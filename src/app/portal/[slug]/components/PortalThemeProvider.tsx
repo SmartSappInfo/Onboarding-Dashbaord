@@ -183,6 +183,7 @@ export function PortalThemeProvider({
   return (
     <PortalThemeContext.Provider value={contextValue}>
       <div
+        suppressHydrationWarning
         data-portal-theme={effectiveMode}
         className={cn(
           'portal-theme-root transition-colors duration-200 text-[var(--portal-text)] bg-[var(--portal-bg)]',

@@ -26,6 +26,7 @@ import {
   Plus,
 } from 'lucide-react';
 import { getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
+import { usePortalTheme } from './PortalThemeProvider';
 import type { PortalThemeConfig } from '@/lib/types/portal';
 
 export interface PortalCommunityPreviewProps {
@@ -41,15 +42,16 @@ export function PortalCommunityPreview({
   const [selectedSpace, setSelectedSpace] = React.useState('all');
   const [likesCount, setLikesCount] = React.useState(14);
   const [hasLiked, setHasLiked] = React.useState(false);
+  const { activeColors } = usePortalTheme();
 
   const primaryBtnStyle = React.useMemo(
     () =>
       getPortalButtonInlineStyle(
         theme.ui?.buttonStyle,
-        theme.colors.primary,
+        activeColors.primary,
         radiusCss
       ),
-    [theme.ui?.buttonStyle, theme.colors.primary, radiusCss]
+    [theme.ui?.buttonStyle, activeColors.primary, radiusCss]
   );
 
   const spaces = [

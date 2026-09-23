@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { resolvePortalPath } from '@/lib/utils/portal-navigation';
 import { PortalThemeToggle } from './PortalThemeToggle';
+import { usePortalTheme } from './PortalThemeProvider';
 import { getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
 import type {
   PortalThemeConfig,
@@ -86,15 +87,16 @@ export function PortalShellHeader({
   onSignOut,
 }: PortalShellHeaderProps) {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const { activeColors } = usePortalTheme();
 
   const primaryBtnStyle = React.useMemo(
     () =>
       getPortalButtonInlineStyle(
         theme.ui?.buttonStyle,
-        theme.colors.primary,
+        activeColors.primary,
         radiusCss
       ),
-    [theme.ui?.buttonStyle, theme.colors.primary, radiusCss]
+    [theme.ui?.buttonStyle, activeColors.primary, radiusCss]
   );
 
   const handleRouteClick = (e: React.MouseEvent, path: string) => {
@@ -125,7 +127,7 @@ export function PortalShellHeader({
             ) : (
               <div
                 className="w-9 h-9 flex items-center justify-center text-white font-bold text-sm shadow-sm transition-transform group-hover:scale-105"
-                style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
               >
                 {brandTitle.charAt(0)}
               </div>
@@ -148,7 +150,7 @@ export function PortalShellHeader({
             ) : (
               <div
                 className="w-9 h-9 flex items-center justify-center text-white font-bold text-sm shadow-sm transition-transform group-hover:scale-105"
-                style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
               >
                 {brandTitle.charAt(0)}
               </div>

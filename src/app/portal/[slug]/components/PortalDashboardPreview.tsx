@@ -33,6 +33,7 @@ import {
   User,
 } from 'lucide-react';
 import { getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
+import { usePortalTheme } from './PortalThemeProvider';
 import type { PortalThemeConfig } from '@/lib/types/portal';
 
 export interface PortalDashboardPreviewProps {
@@ -47,15 +48,16 @@ export function PortalDashboardPreview({
   onNavigateRoute,
 }: PortalDashboardPreviewProps) {
   const [activeTab, setActiveTab] = React.useState('courses');
+  const { activeColors } = usePortalTheme();
 
   const primaryBtnStyle = React.useMemo(
     () =>
       getPortalButtonInlineStyle(
         theme.ui?.buttonStyle,
-        theme.colors.primary,
+        activeColors.primary,
         radiusCss
       ),
-    [theme.ui?.buttonStyle, theme.colors.primary, radiusCss]
+    [theme.ui?.buttonStyle, activeColors.primary, radiusCss]
   );
 
   return (
@@ -64,7 +66,7 @@ export function PortalDashboardPreview({
       <div
         className="p-6 md:p-8 rounded-3xl text-white relative overflow-hidden flex flex-col md:flex-row md:items-center justify-between gap-6 shadow-xl"
         style={{
-          background: `linear-gradient(135deg, ${theme.colors.primary} 0%, ${theme.colors.secondary || theme.colors.primary} 100%)`,
+          background: `linear-gradient(135deg, ${activeColors.primary} 0%, ${activeColors.secondary || activeColors.primary} 100%)`,
         }}
       >
         <div className="flex items-center gap-4 relative z-10">
