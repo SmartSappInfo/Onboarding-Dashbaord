@@ -340,9 +340,9 @@ export default function PortalCoursePlayerClient({
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Lesson Not Found</h2>
-          <Link href={`/portal/${slug}/learn/${courseSlug}`}>
-            <Button className="rounded-xl font-bold text-xs">Return to Course Overview</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs min-h-[44px]">
+            <Link href={`/portal/${slug}/learn/${courseSlug}`}>Return to Course Overview</Link>
+          </Button>
         </div>
       </div>
     );
@@ -449,15 +449,39 @@ export default function PortalCoursePlayerClient({
             <Menu className="w-4 h-4" />
           </button>
 
-          <Link href={`/portal/${slug}/learn/${courseSlug}`}>
-            <Button variant="ghost" size="sm" className="rounded-xl text-xs font-bold gap-1.5 hidden sm:flex shrink-0">
+          <Button
+            asChild
+            variant="ghost"
+            size="sm"
+            className="rounded-xl text-xs font-bold gap-1.5 hidden sm:flex shrink-0 min-h-[44px] active:scale-[0.97]"
+          >
+            <Link href={`/portal/${slug}/learn/${courseSlug}`}>
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Overview
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
-          <div className="space-y-0.5 min-w-0 truncate">
-            <p className="text-[10px] font-bold text-primary uppercase tracking-wider truncate">{course.title}</p>
-            <h2 className="font-extrabold text-xs sm:text-sm text-foreground truncate">{currentLesson.title}</h2>
+          {/* Mobile Back Button */}
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="sm:hidden h-8 w-8 min-h-[36px] min-w-[36px] rounded-xl shrink-0 text-muted-foreground hover:text-foreground active:scale-[0.97]"
+            aria-label="Back to Overview"
+          >
+            <Link href={`/portal/${slug}/learn/${courseSlug}`}>
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+          </Button>
+
+          <div className="hidden sm:block h-4 w-px bg-border/80 shrink-0" />
+
+          <div className="min-w-0 truncate">
+            <h2
+              className="font-bold text-xs sm:text-sm text-foreground truncate"
+              title={course.title}
+            >
+              {course.title}
+            </h2>
           </div>
         </div>
 
@@ -799,21 +823,21 @@ export default function PortalCoursePlayerClient({
           {/* Bottom Pagination Controls */}
           <div className="pt-6 border-t border-border flex items-center justify-between gap-4">
             {prevLesson ? (
-              <Link href={`/portal/${slug}/learn/${courseSlug}/${prevLesson.slug}`}>
-                <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px]">
+              <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] active:scale-[0.97]">
+                <Link href={`/portal/${slug}/learn/${courseSlug}/${prevLesson.slug}`}>
                   <ArrowLeft className="w-3.5 h-3.5" /> Previous Lesson
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : (
               <div />
             )}
 
             {nextLesson && (
-              <Link href={`/portal/${slug}/learn/${courseSlug}/${nextLesson.slug}`}>
-                <Button size="sm" className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 min-h-[44px]">
+              <Button asChild size="sm" className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 min-h-[44px] active:scale-[0.97]">
+                <Link href={`/portal/${slug}/learn/${courseSlug}/${nextLesson.slug}`}>
                   Next Lesson <ArrowRight className="w-3.5 h-3.5" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )}
           </div>
         </main>
