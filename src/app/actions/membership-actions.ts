@@ -196,6 +196,65 @@ export async function acceptInvitationAction(
   }
 }
 
+/**
+ * Server action to join a portal directly (self-registration for open/public portals).
+ * Provisions or retrieves an active member record and updates portal stats.
+ */
+export async function joinPortalDirectAction(
+  portalId: string,
+  userId: string,
+  userProfile: {
+    email: string;
+    displayName?: string;
+    avatarUrl?: string;
+  }
+): Promise<ActionResult<PortalMembership>> {
+  try {
+    if (!portalId || !userId || !userProfile.email) {
+      return { success: false, error: 'Portal ID, User ID, and email are required.' };
+    }
+
+    const { PortalService } = await import('@/lib/services/portal-service');
+    const portal = await PortalService.getPortalById(portalId);
+    if (!portal) {
+      return { success: false, error: 'Portal not found.' };
+    }
+
+    // Verify portal allows public access or registration
+    if (portal.accessPolicy.visibility === 'invite_only') {
+      const existing = await PortalMembershipService.getMembership(portalId, userId);
+      if (existing) {
+        return { success: true, data: existing };
+      }
+      return { success: false, error: 'This portal requires an invitation to join.' };
+    }
+
+    const membership = await PortalMembershipService.createMembership({
+      organizationId: portal.organizationId,
+      portalId,
+      workspaceIds: portal.workspaceIds,
+      userId,
+      email: userProfile.email.toLowerCase().trim(),
+      displayName: userProfile.displayName || userProfile.email.split('@')[0],
+      avatarUrl: userProfile.avatarUrl,
+      role: 'member',
+      status: 'active',
+    });
+
+    revalidatePath(`/admin/portals/${portalId}`);
+    revalidatePath(`/portal/${portal.slug}`);
+    revalidatePath(`/portal/${portal.slug}/dashboard`);
+
+    return { success: true, data: membership };
+  } catch (err) {
+    console.error('[MEMBERSHIP_ACTION] joinPortalDirectAction failed:', err);
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to join portal.'),
+    };
+  }
+}
+
 export async function revokeInvitationAction(
   invitationId: string,
   portalId: string,

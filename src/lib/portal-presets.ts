@@ -52,14 +52,14 @@ export const DEFAULT_THEME: PortalThemeConfig = {
 export const DEFAULT_NAVIGATION: PortalNavigationConfig = {
   headerItems: [
     { id: 'nav-home', label: 'Home', path: '/', type: 'internal_page', order: 0 },
-    { id: 'nav-explore', label: 'Explore', path: '/explore', type: 'internal_page', order: 1 },
+    { id: 'nav-explore', label: 'Explore', path: '/learn', type: 'internal_page', order: 1 },
   ],
   headerActions: {
     showLoginButton: true,
     showSearch: true,
     ctaButton: {
       label: 'Get Started',
-      path: '/get-started',
+      path: '/join',
       style: 'primary',
     },
   },
@@ -119,8 +119,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#2563EB',
     },
     defaultNavItems: [
-      { id: 'nav-courses', label: 'Courses', path: '/courses', type: 'internal_page', order: 0 },
-      { id: 'nav-resources', label: 'Resources', path: '/resources', type: 'internal_page', order: 1 },
+      { id: 'nav-courses', label: 'Courses', path: '/learn', type: 'internal_page', order: 0 },
+      { id: 'nav-resources', label: 'Resources', path: '/content', type: 'internal_page', order: 1 },
       { id: 'nav-community', label: 'Community', path: '/community', type: 'internal_page', order: 2 },
     ],
   },
@@ -143,8 +143,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#4F46E5',
     },
     defaultNavItems: [
-      { id: 'nav-curriculum', label: 'Curriculum', path: '/curriculum', type: 'internal_page', order: 0 },
-      { id: 'nav-resources', label: 'Downloads', path: '/resources', type: 'internal_page', order: 1 },
+      { id: 'nav-curriculum', label: 'Curriculum', path: '/learn', type: 'internal_page', order: 0 },
+      { id: 'nav-resources', label: 'Downloads', path: '/content?type=resource', type: 'internal_page', order: 1 },
     ],
   },
   membership: {
@@ -168,8 +168,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#DB2777',
     },
     defaultNavItems: [
-      { id: 'nav-hub', label: 'Member Hub', path: '/hub', type: 'internal_page', order: 0 },
-      { id: 'nav-library', label: 'Vault', path: '/vault', type: 'internal_page', order: 1 },
+      { id: 'nav-hub', label: 'Member Hub', path: '/dashboard', type: 'internal_page', order: 0 },
+      { id: 'nav-library', label: 'Vault', path: '/content', type: 'internal_page', order: 1 },
       { id: 'nav-events', label: 'Live Calls', path: '/events', type: 'internal_page', order: 2 },
     ],
   },
@@ -192,9 +192,9 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#D97706',
     },
     defaultNavItems: [
-      { id: 'nav-feed', label: 'Community Feed', path: '/feed', type: 'internal_page', order: 0 },
-      { id: 'nav-members', label: 'Members', path: '/members', type: 'internal_page', order: 1 },
-      { id: 'nav-leaderboard', label: 'Leaderboard', path: '/leaderboard', type: 'internal_page', order: 2 },
+      { id: 'nav-feed', label: 'Community Feed', path: '/community', type: 'internal_page', order: 0 },
+      { id: 'nav-members', label: 'Members', path: '/community', type: 'internal_page', order: 1 },
+      { id: 'nav-leaderboard', label: 'Leaderboard', path: '/community', type: 'internal_page', order: 2 },
     ],
   },
   documentation: {
@@ -216,8 +216,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#059669',
     },
     defaultNavItems: [
-      { id: 'nav-docs', label: 'Documentation', path: '/docs', type: 'internal_page', order: 0 },
-      { id: 'nav-faq', label: 'FAQ', path: '/faq', type: 'internal_page', order: 1 },
+      { id: 'nav-docs', label: 'Documentation', path: '/content?type=doc', type: 'internal_page', order: 0 },
+      { id: 'nav-faq', label: 'FAQ', path: '/content?type=doc', type: 'internal_page', order: 1 },
     ],
   },
   knowledge_base: {
@@ -239,8 +239,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#0891B2',
     },
     defaultNavItems: [
-      { id: 'nav-articles', label: 'Articles', path: '/articles', type: 'internal_page', order: 0 },
-      { id: 'nav-categories', label: 'Categories', path: '/categories', type: 'internal_page', order: 1 },
+      { id: 'nav-articles', label: 'Articles', path: '/content?type=article', type: 'internal_page', order: 0 },
+      { id: 'nav-categories', label: 'Categories', path: '/content', type: 'internal_page', order: 1 },
     ],
   },
   customer_academy: {
@@ -262,9 +262,9 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#7C3AED',
     },
     defaultNavItems: [
-      { id: 'nav-start', label: 'Get Started', path: '/getting-started', type: 'internal_page', order: 0 },
-      { id: 'nav-tutorials', label: 'Tutorials', path: '/tutorials', type: 'internal_page', order: 1 },
-      { id: 'nav-support', label: 'Support', path: '/support', type: 'internal_page', order: 2 },
+      { id: 'nav-start', label: 'Get Started', path: '/join', type: 'internal_page', order: 0 },
+      { id: 'nav-tutorials', label: 'Curriculum', path: '/learn', type: 'internal_page', order: 1 },
+      { id: 'nav-support', label: 'Help Centre', path: '/content?type=doc', type: 'internal_page', order: 2 },
     ],
   },
   resource_center: {
@@ -286,8 +286,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#EA580C',
     },
     defaultNavItems: [
-      { id: 'nav-templates', label: 'Templates', path: '/templates', type: 'internal_page', order: 0 },
-      { id: 'nav-downloads', label: 'Downloads', path: '/downloads', type: 'internal_page', order: 1 },
+      { id: 'nav-templates', label: 'Templates', path: '/content?type=template', type: 'internal_page', order: 0 },
+      { id: 'nav-downloads', label: 'Downloads', path: '/content?type=resource', type: 'internal_page', order: 1 },
     ],
   },
   blog: {
@@ -309,8 +309,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#475569',
     },
     defaultNavItems: [
-      { id: 'nav-posts', label: 'Articles', path: '/posts', type: 'internal_page', order: 0 },
-      { id: 'nav-topics', label: 'Topics', path: '/topics', type: 'internal_page', order: 1 },
+      { id: 'nav-posts', label: 'Articles', path: '/content?type=article', type: 'internal_page', order: 0 },
+      { id: 'nav-topics', label: 'Topics', path: '/content', type: 'internal_page', order: 1 },
     ],
   },
   news: {
@@ -330,7 +330,7 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#1D4ED8',
     },
     defaultNavItems: [
-      { id: 'nav-latest', label: 'Latest News', path: '/news', type: 'internal_page', order: 0 },
+      { id: 'nav-latest', label: 'Latest News', path: '/content?type=article', type: 'internal_page', order: 0 },
     ],
   },
   classroom: {
@@ -352,8 +352,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#0D9488',
     },
     defaultNavItems: [
-      { id: 'nav-classes', label: 'Classes', path: '/classes', type: 'internal_page', order: 0 },
-      { id: 'nav-tasks', label: 'Assignments', path: '/assignments', type: 'internal_page', order: 1 },
+      { id: 'nav-classes', label: 'Classes', path: '/learn', type: 'internal_page', order: 0 },
+      { id: 'nav-tasks', label: 'Assignments', path: '/learn', type: 'internal_page', order: 1 },
     ],
   },
   certification: {
@@ -374,7 +374,7 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#9333EA',
     },
     defaultNavItems: [
-      { id: 'nav-certs', label: 'Certifications', path: '/certifications', type: 'internal_page', order: 0 },
+      { id: 'nav-certs', label: 'Certifications', path: '/learn', type: 'internal_page', order: 0 },
       { id: 'nav-verify', label: 'Verify Credential', path: '/verify', type: 'internal_page', order: 1 },
     ],
   },
@@ -397,8 +397,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#BE123C',
     },
     defaultNavItems: [
-      { id: 'nav-roadmap', label: 'Roadmap', path: '/roadmap', type: 'internal_page', order: 0 },
-      { id: 'nav-calls', label: 'Live Calls', path: '/calls', type: 'internal_page', order: 1 },
+      { id: 'nav-roadmap', label: 'Roadmap', path: '/learn', type: 'internal_page', order: 0 },
+      { id: 'nav-calls', label: 'Live Calls', path: '/events', type: 'internal_page', order: 1 },
     ],
   },
   product_training: {
@@ -419,7 +419,7 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#0369A1',
     },
     defaultNavItems: [
-      { id: 'nav-modules', label: 'Training Modules', path: '/modules', type: 'internal_page', order: 0 },
+      { id: 'nav-modules', label: 'Training Modules', path: '/learn', type: 'internal_page', order: 0 },
     ],
   },
   internal_academy: {
@@ -440,8 +440,8 @@ export const PORTAL_MODE_PRESETS: Record<PortalMode, PortalModePreset> = {
       accent: '#1E293B',
     },
     defaultNavItems: [
-      { id: 'nav-training', label: 'Staff Training', path: '/training', type: 'internal_page', order: 0 },
-      { id: 'nav-sop', label: 'SOPs', path: '/sops', type: 'internal_page', order: 1 },
+      { id: 'nav-training', label: 'Staff Training', path: '/learn', type: 'internal_page', order: 0 },
+      { id: 'nav-sop', label: 'SOPs', path: '/content?type=doc', type: 'internal_page', order: 1 },
     ],
   },
   waitlist: {

@@ -307,3 +307,90 @@ export async function runMasterExperienceSeederAction(
   }
 }
 
+/**
+ * Server action to normalize an existing portal's navigation items and CTA button
+ * to canonical routes (/learn, /content, /join, /community, etc.).
+ * Guarantees pre-existing portal documents in Firestore match current canonical paths.
+ */
+export async function normalizeExistingPortalNavigationAction(
+  portalId: string,
+  userId: string = 'system_admin'
+): Promise<ActionResponse<{ portal: Portal; updatedCount: number }>> {
+  try {
+    if (!portalId) {
+      return { success: false, error: 'Portal ID is required.' };
+    }
+
+    const portal = await PortalService.getPortalById(portalId);
+    if (!portal) {
+      return { success: false, error: 'Portal not found.' };
+    }
+
+    const { normalizePortalRelativePath } = await import('@/lib/utils/portal-navigation');
+
+    let updatedCount = 0;
+    const currentNav = portal.navigation || {
+      headerItems: [],
+      headerActions: { showLoginButton: true, showSearch: true },
+      sidebarItems: [],
+      footerColumns: [],
+      socialLinks: [],
+    };
+
+    const normalizedHeaderItems = (currentNav.headerItems || []).map(item => {
+      const canonicalPath = normalizePortalRelativePath(item.path);
+      if (canonicalPath !== item.path) {
+        updatedCount++;
+        return { ...item, path: canonicalPath };
+      }
+      return item;
+    });
+
+    let normalizedCta = currentNav.headerActions?.ctaButton;
+    if (normalizedCta?.path) {
+      const canonicalCtaPath = normalizePortalRelativePath(normalizedCta.path);
+      if (canonicalCtaPath !== normalizedCta.path) {
+        updatedCount++;
+        normalizedCta = { ...normalizedCta, path: canonicalCtaPath };
+      }
+    }
+
+    if (updatedCount === 0) {
+      return {
+        success: true,
+        data: { portal, updatedCount: 0 },
+      };
+    }
+
+    const updatedNav = {
+      ...currentNav,
+      headerItems: normalizedHeaderItems,
+      headerActions: {
+        ...currentNav.headerActions,
+        ctaButton: normalizedCta,
+      },
+    };
+
+    const updatedPortal = await PortalService.updatePortal(
+      portalId,
+      { navigation: updatedNav },
+      userId
+    );
+
+    revalidatePath('/admin/portals');
+    revalidatePath(`/admin/portals/${portalId}`);
+    revalidatePath(`/portal/${portal.slug}`);
+    revalidatePath(`/p/portal/${portal.slug}`);
+
+    return {
+      success: true,
+      data: { portal: updatedPortal, updatedCount },
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Failed to normalize portal navigation.';
+    console.error('[PORTAL_ACTION] normalizeExistingPortalNavigationAction failed:', err);
+    return { success: false, error: message };
+  }
+}
+
+

@@ -676,6 +676,8 @@ export default function PortalStudioClient({
                 <PortalNavigationBuilder
                   navigation={navigation}
                   onChangeNavigation={n => (setNavigation(n), markDirty())}
+                  portalSlug={slug || effectivePortal?.slug}
+                  portalId={portalId}
                 />
               </TabsContent>
 

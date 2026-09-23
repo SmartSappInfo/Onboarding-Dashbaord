@@ -64,6 +64,7 @@ import {
   getGoogleFontsUrl,
   getPortalButtonInlineStyle,
 } from '@/lib/utils/portal-theme';
+import { resolvePortalPath } from '@/lib/utils/portal-navigation';
 import { PortalSearchModal } from './components/PortalSearchModal';
 import { PortalAuthModal } from './components/PortalAuthModal';
 import type {
@@ -350,9 +351,9 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
             {(navigation.headerItems || []).map(item => (
               <Link
                 key={item.id}
-                href={item.path}
+                href={resolvePortalPath(item.path, slug)}
                 target={item.target || '_self'}
-                className="hover:text-[var(--portal-primary)] transition-colors flex items-center gap-1"
+                className="hover:text-[var(--portal-primary)] transition-colors flex items-center gap-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1.5 py-0.5"
               >
                 {item.label}
                 {item.target === '_blank' && <ExternalLink className="w-3 h-3 opacity-60" />}
@@ -366,7 +367,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               <button
                 type="button"
                 onClick={() => setIsSearchModalOpen(true)}
-                className="relative w-48 text-left h-9 pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-foreground flex items-center justify-between transition-colors shadow-2xs"
+                className="relative w-48 text-left h-9 pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-foreground flex items-center justify-between transition-colors shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                 style={{ borderRadius: radiusCss }}
               >
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" />
@@ -378,7 +379,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <button type="button" className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/40 transition-colors">
+                  <button type="button" className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/40 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
                     <Avatar className="w-8 h-8 border border-border">
                       {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'Member'} />}
                       <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
@@ -411,17 +412,17 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsAuthModalOpen(true)}
-                className="h-9 px-3.5 rounded-xl font-bold text-xs"
+                className="h-9 px-3.5 rounded-xl font-bold text-xs active:scale-[0.98] transition-transform"
               >
                 Sign In
               </Button>
             ) : null}
 
             {navigation.headerActions.ctaButton?.label && (
-              <Link href={navigation.headerActions.ctaButton.path || '#'}>
+              <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
                 <Button
                   size="sm"
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
+                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
                   style={primaryBtnStyle}
                 >
                   {navigation.headerActions.ctaButton.label}
@@ -434,7 +435,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--portal-muted)] hover:text-foreground"
+            className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--portal-muted)] hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
             aria-label="Toggle navigation menu"
           >
             {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -448,10 +449,10 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
               {(navigation.headerItems || []).map(item => (
                 <Link
                   key={item.id}
-                  href={item.path}
+                  href={resolvePortalPath(item.path, slug)}
                   target={item.target || '_self'}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)]"
+                  className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] active:scale-[0.98] transition-transform"
                 >
                   {item.label}
                 </Link>
@@ -460,16 +461,25 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
             <div className="pt-2 border-t border-[var(--portal-border)] flex flex-col gap-2">
               {navigation.headerActions.showLoginButton && (
-                <Link href="/login" className="w-full">
-                  <Button variant="outline" className="w-full min-h-[44px] rounded-xl font-bold text-sm">
-                    Sign In
-                  </Button>
-                </Link>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setIsMobileMenuOpen(false);
+                    setIsAuthModalOpen(true);
+                  }}
+                  className="w-full min-h-[44px] rounded-xl font-bold text-sm active:scale-[0.98] transition-transform"
+                >
+                  Sign In
+                </Button>
               )}
               {navigation.headerActions.ctaButton?.label && (
-                <Link href={navigation.headerActions.ctaButton.path || '#'} className="w-full">
+                <Link
+                  href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="w-full"
+                >
                   <Button
-                    className="w-full min-h-[44px] font-bold text-sm text-white"
+                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
                     style={primaryBtnStyle}
                   >
                     {navigation.headerActions.ctaButton.label}
@@ -521,23 +531,38 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
             <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
               {navigation.headerActions.ctaButton?.label ? (
-                <Link href={navigation.headerActions.ctaButton.path || '#'}>
+                <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
                   <Button
                     size="lg"
-                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
+                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
                     style={primaryBtnStyle}
                   >
                     {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
                   </Button>
                 </Link>
               ) : (
-                <Button
-                  size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
-                  style={primaryBtnStyle}
-                >
-                  Explore Modules <ArrowRight className="w-4 h-4" />
-                </Button>
+                <Link href={`/portal/${slug}/join`}>
+                  <Button
+                    size="lg"
+                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                    style={primaryBtnStyle}
+                  >
+                    Get Started <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+              )}
+
+              {features.enableCourses && (
+                <Link href={`/portal/${slug}/learn`}>
+                  <Button
+                    variant="outline"
+                    size="lg"
+                    className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.98] gap-2"
+                    style={{ borderRadius: radiusCss }}
+                  >
+                    Browse Curriculum
+                  </Button>
+                </Link>
               )}
             </div>
           </div>
@@ -560,111 +585,189 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {features.enableCourses && (
-                <Card
-                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
-                  style={{ borderRadius: radiusCss }}
+                <Link
+                  href={`/portal/${slug}/learn`}
+                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                 >
-                  <div
-                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                  <Card
+                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
+                    style={{ borderRadius: radiusCss }}
                   >
-                    <GraduationCap className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-base">Course Curriculum</h3>
-                  <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                    Interactive step-by-step masterclasses, structured lessons, and knowledge checks.
-                  </p>
-                </Card>
+                    <div className="space-y-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                      >
+                        <GraduationCap className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                        Course Curriculum
+                      </h3>
+                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
+                        Interactive step-by-step masterclasses, structured lessons, and knowledge checks.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
+                      <span>Browse Courses</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </Card>
+                </Link>
               )}
 
               {features.enableDocs && (
-                <Card
-                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
-                  style={{ borderRadius: radiusCss }}
+                <Link
+                  href={`/portal/${slug}/content?type=doc`}
+                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                 >
-                  <div
-                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
+                  <Card
+                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
+                    style={{ borderRadius: radiusCss }}
                   >
-                    <FileCode className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-base">Help Centre & Documentation</h3>
-                  <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                    Comprehensive knowledge base, step-by-step documentation, and FAQs.
-                  </p>
-                </Card>
+                    <div className="space-y-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
+                      >
+                        <FileCode className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                        Help Centre & Documentation
+                      </h3>
+                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
+                        Comprehensive knowledge base, step-by-step documentation, and FAQs.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
+                      <span>View Documentation</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </Card>
+                </Link>
               )}
 
               {features.enableCommunity && (
-                <Card
-                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
-                  style={{ borderRadius: radiusCss }}
+                <Link
+                  href={`/portal/${slug}/community`}
+                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                 >
-                  <div
-                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                  <Card
+                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
+                    style={{ borderRadius: radiusCss }}
                   >
-                    <Users className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-base">Member Community</h3>
-                  <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                    Engage with fellow learners, participate in discussion threads, and ask questions.
-                  </p>
-                </Card>
+                    <div className="space-y-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                      >
+                        <Users className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                        Member Community
+                      </h3>
+                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
+                        Engage with fellow learners, participate in discussion threads, and ask questions.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
+                      <span>Enter Community</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </Card>
+                </Link>
               )}
 
               {features.enableResources && (
-                <Card
-                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
-                  style={{ borderRadius: radiusCss }}
+                <Link
+                  href={`/portal/${slug}/content?type=resource`}
+                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                 >
-                  <div
-                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.secondary, borderRadius: radiusCss }}
+                  <Card
+                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
+                    style={{ borderRadius: radiusCss }}
                   >
-                    <FolderArchive className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-base">Resource Vault</h3>
-                  <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                    Downloadable worksheets, PDF templates, checklists, and guides.
-                  </p>
-                </Card>
+                    <div className="space-y-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: theme.colors.secondary, borderRadius: radiusCss }}
+                      >
+                        <FolderArchive className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                        Resource Vault
+                      </h3>
+                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
+                        Downloadable worksheets, PDF templates, checklists, and guides.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
+                      <span>Access Vault</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </Card>
+                </Link>
               )}
 
               {features.enableBlog && (
-                <Card
-                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
-                  style={{ borderRadius: radiusCss }}
+                <Link
+                  href={`/portal/${slug}/content?type=article`}
+                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                 >
-                  <div
-                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
+                  <Card
+                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
+                    style={{ borderRadius: radiusCss }}
                   >
-                    <Newspaper className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-base">Insights & Articles</h3>
-                  <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                    Editorial publications, thought leadership, and operational strategies.
-                  </p>
-                </Card>
+                    <div className="space-y-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
+                      >
+                        <Newspaper className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                        Insights & Articles
+                      </h3>
+                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
+                        Editorial publications, thought leadership, and operational strategies.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
+                      <span>Read Articles</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </Card>
+                </Link>
               )}
 
               {features.enableGamification && (
-                <Card
-                  className="border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-3 hover:shadow-lg transition-all"
-                  style={{ borderRadius: radiusCss }}
+                <Link
+                  href={`/portal/${slug}/dashboard`}
+                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
                 >
-                  <div
-                    className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                  <Card
+                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
+                    style={{ borderRadius: radiusCss }}
                   >
-                    <Award className="w-6 h-6" />
-                  </div>
-                  <h3 className="font-bold text-base">Certifications & Badges</h3>
-                  <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                    Earn verifiable completion certificates and competency credentials.
-                  </p>
-                </Card>
+                    <div className="space-y-3">
+                      <div
+                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
+                        style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
+                      >
+                        <Award className="w-6 h-6" />
+                      </div>
+                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
+                        Certifications & Badges
+                      </h3>
+                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
+                        Earn verifiable completion certificates and competency credentials.
+                      </p>
+                    </div>
+                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
+                      <span>View Credentials</span>
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
+                    </div>
+                  </Card>
+                </Link>
               )}
             </div>
           </div>
@@ -696,9 +799,9 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
                   {(col.items || []).map((item, itemIdx) => (
                     <li key={item.id || itemIdx}>
                       <Link
-                        href={item.path}
+                        href={resolvePortalPath(item.path, slug)}
                         target={item.target || '_self'}
-                        className="hover:text-[var(--portal-primary)] transition-colors"
+                        className="hover:text-[var(--portal-primary)] transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
                       >
                         {item.label}
                       </Link>

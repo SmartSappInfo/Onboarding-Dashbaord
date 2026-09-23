@@ -26,6 +26,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   verifyInvitationTokenAction,
   acceptInvitationAction,
+  joinPortalDirectAction,
 } from '@/app/actions/membership-actions';
 import type { Portal } from '@/lib/types/portal';
 import type { PortalInvitation } from '@/lib/types/membership';
@@ -80,8 +81,9 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
 
   // Verify token
   React.useEffect(() => {
-    if (!portal || !token) {
-      if (!token) setVerifyError('No invitation token was provided in the link.');
+    if (!portal) return;
+
+    if (!token) {
       setIsVerifying(false);
       return;
     }
@@ -108,7 +110,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
 
   const handleJoin = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!auth || !portal || !invitation) return;
+    if (!auth || !portal) return;
 
     if (!email.trim() || !password) {
       toast({ title: 'Fields Required', description: 'Please complete all form fields.' });
@@ -129,14 +131,26 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
         }
       }
 
-      // Accept Invitation
-      const res = await acceptInvitationAction(portal.id, token, uid, {
-        email: email.trim(),
-        displayName: displayName.trim() || email.split('@')[0],
-      });
+      if (token && invitation) {
+        // Accept Invitation
+        const res = await acceptInvitationAction(portal.id, token, uid, {
+          email: email.trim(),
+          displayName: displayName.trim() || email.split('@')[0],
+        });
 
-      if (!res.success) {
-        throw new Error(res.error || 'Failed to accept invitation.');
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to accept invitation.');
+        }
+      } else {
+        // Direct Self-Registration Join
+        const res = await joinPortalDirectAction(portal.id, uid, {
+          email: email.trim(),
+          displayName: displayName.trim() || email.split('@')[0],
+        });
+
+        if (!res.success) {
+          throw new Error(res.error || 'Failed to join portal.');
+        }
       }
 
       toast({ title: 'Welcome to the Portal! 🎉', description: 'Your membership is now active.' });
@@ -160,7 +174,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
     );
   }
 
-  if (!portal || verifyError || !invitation) {
+  if (!portal || (token && (verifyError || !invitation))) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <Card className="max-w-md w-full rounded-3xl border-2 border-border p-8 space-y-4 shadow-xl">
@@ -203,23 +217,35 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
             Join {brandTitle}
           </h1>
           <p className="text-xs text-muted-foreground">
-            You have been officially invited to join as a{' '}
-            <strong className="text-foreground capitalize">{invitation.role}</strong>.
+            {invitation ? (
+              <>
+                You have been officially invited to join as a{' '}
+                <strong className="text-foreground capitalize">{invitation.role}</strong>.
+              </>
+            ) : (
+              'Create your account or sign in to access courses, resources, and member spaces.'
+            )}
           </p>
         </div>
 
-        {/* Invitation Perks Card */}
+        {/* Membership Perks Card */}
         <Card className="rounded-3xl border-2 border-primary/20 bg-primary/5 p-6 space-y-3 shadow-sm">
           <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-            <Sparkles className="w-4 h-4" /> Provisioned Membership Perks
+            <Sparkles className="w-4 h-4" /> {invitation ? 'Provisioned Membership Perks' : 'Member Benefits'}
           </div>
 
           <ul className="space-y-2 text-xs text-foreground">
             <li className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>Full portal access as a <strong className="capitalize">{invitation.role}</strong></span>
+              <span>
+                {invitation ? (
+                  <>Full portal access as a <strong className="capitalize">{invitation.role}</strong></>
+                ) : (
+                  'Full access to curriculum modules, knowledge guides, and downloads'
+                )}
+              </span>
             </li>
-            {invitation.note && (
+            {invitation?.note && (
               <li className="flex items-center gap-2 text-muted-foreground">
                 <ShieldCheck className="w-3.5 h-3.5 text-primary shrink-0" />
                 <span>Cohort Note: {invitation.note}</span>
@@ -227,7 +253,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
             )}
             <li className="flex items-center gap-2">
               <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-              <span>Personal progress tracking and certificate issuance</span>
+              <span>Personal progress tracking and verifiable achievement credentials</span>
             </li>
           </ul>
         </Card>
@@ -236,12 +262,14 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
         <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-4 shadow-xl">
           <CardHeader className="p-0 pb-3 border-b border-border">
             <CardTitle className="text-lg font-bold">
-              {isExistingUser ? 'Sign In to Claim Invite' : 'Create Your Account'}
+              {isExistingUser
+                ? 'Sign In to Your Account'
+                : (invitation ? 'Claim Your Invitation' : 'Create Your Account')}
             </CardTitle>
             <CardDescription className="text-xs">
               {isExistingUser
-                ? 'Enter your existing password to link this invitation to your account.'
-                : 'Choose your password to finalize your member enrollment.'}
+                ? 'Enter your credentials to access your member dashboard.'
+                : 'Complete the details below to finalize your portal enrollment.'}
             </CardDescription>
           </CardHeader>
 
@@ -270,7 +298,7 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
                   type="email"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
-                  disabled={Boolean(invitation.email)}
+                  disabled={Boolean(invitation?.email)}
                   className="pl-9 h-11 rounded-xl text-xs"
                   required
                 />
