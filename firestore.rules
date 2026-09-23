@@ -680,6 +680,11 @@ service cloud.firestore {
       allow list, write: if isAuthorized();
     }
 
+    match /conference_rooms/{roomId} {
+      allow get: if true;
+      allow list, write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+    }
+
     match /meeting_activities/{activityId} {
       allow read, list: if isAuthorized();
       allow write: if isAuthorized();

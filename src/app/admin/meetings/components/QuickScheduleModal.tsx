@@ -59,7 +59,7 @@ export function QuickScheduleModal({
     getLocationOptions,
     getFirstAvailableVideoProvider,
     isLoading: loadingProviders,
-  } = useConnectedMeetingProviders(activeWorkspaceId);
+  } = useConnectedMeetingProviders(activeWorkspaceId, { enabled: open });
 
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -209,7 +209,7 @@ export function QuickScheduleModal({
                 value={locationType}
                 onValueChange={(v: MeetingLocationType) => setLocationType(v)}
               >
-                <SelectTrigger className="rounded-xl h-9 text-xs">
+                <SelectTrigger className="rounded-xl h-10 min-h-[44px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">

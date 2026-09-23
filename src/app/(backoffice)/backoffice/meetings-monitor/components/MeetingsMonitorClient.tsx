@@ -33,6 +33,7 @@ import type {
 } from '@/lib/backoffice/backoffice-types';
 import ActiveRoomsGrid from './ActiveRoomsGrid';
 import MagicLinkDeliveryInspector from './MagicLinkDeliveryInspector';
+import IntegrationSentinelInspector from './IntegrationSentinelInspector';
 
 export default function MeetingsMonitorClient() {
   const getToken = useBackofficeToken();
@@ -177,6 +178,11 @@ export default function MeetingsMonitorClient() {
           undeliveredLinks={undeliveredLinks}
           onRefresh={fetchMeetingsData}
         />
+      </div>
+
+      {/* Integration Sentinel & Token Health Section */}
+      <div className="pt-2">
+        <IntegrationSentinelInspector />
       </div>
     </div>
   );

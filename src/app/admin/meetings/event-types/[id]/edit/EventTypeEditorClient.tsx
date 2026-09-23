@@ -927,9 +927,8 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
                         <Button
                           type="button"
                           variant="outline"
-                          size="sm"
                           asChild
-                          className="h-8 text-xs rounded-lg border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 active:scale-[0.97]"
+                          className="h-10 min-h-[44px] text-xs rounded-xl border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 active:scale-[0.97]"
                         >
                           <Link href="/admin/settings?tab=integrations">
                             Connect in Settings

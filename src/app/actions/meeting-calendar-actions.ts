@@ -128,8 +128,9 @@ export async function quickScheduleMeetingAction(payload: {
   contactEmail?: string;
   forceSchedule?: boolean;
 }): Promise<{ success: boolean; meetingId?: string; meetingLink?: string; error?: string }> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
+  // SECURITY: Server Actions are public endpoints — require auth and verify workspace access
   await requireAuth();
+  await requireWorkspace(payload.workspaceId);
 
   try {
     const {

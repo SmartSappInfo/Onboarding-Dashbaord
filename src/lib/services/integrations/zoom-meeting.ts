@@ -221,12 +221,14 @@ export async function getValidZoomConnection(
  */
 export async function createZoomMeeting(
   connectionId: string,
-  details: { topic: string; start: string; durationMinutes: number; timezone: string }
+  details: { topic: string; start: string; durationMinutes: number; timezone: string },
+  signal?: AbortSignal
 ): Promise<ZoomMeetingResponse> {
   const connection = await getValidZoomConnection(connectionId);
 
   const res = await fetch('https://api.zoom.us/v2/users/me/meetings', {
     method: 'POST',
+    signal,
     headers: {
       'Authorization': `Bearer ${connection.accessToken}`,
       'Content-Type': 'application/json',
@@ -256,3 +258,28 @@ export async function createZoomMeeting(
 
   return await res.json() as ZoomMeetingResponse;
 }
+
+/**
+ * Deletes a Zoom meeting (used for compensation rollback).
+ */
+export async function deleteZoomMeeting(
+  connectionId: string,
+  meetingId: string | number
+): Promise<void> {
+  if (!connectionId || !meetingId) return;
+  try {
+    const connection = await getValidZoomConnection(connectionId);
+    const res = await fetch(`https://api.zoom.us/v2/meetings/${meetingId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${connection.accessToken}`,
+      },
+    });
+    if (!res.ok && res.status !== 404) {
+      console.warn(`[deleteZoomMeeting] Failed to delete Zoom meeting ${meetingId}: status ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`[deleteZoomMeeting] Rollback error for meeting ${meetingId}:`, err);
+  }
+}
+

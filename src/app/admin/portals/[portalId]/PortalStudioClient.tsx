@@ -253,7 +253,7 @@ export default function PortalStudioClient({
             <div className="rounded-3xl border border-border bg-card p-8 shadow-sm max-w-md w-full space-y-4">
               <h2 className="text-lg font-bold text-foreground">Portal Not Found</h2>
               <p className="text-xs text-muted-foreground">The Experience Portal with ID {portalId} could not be loaded.</p>
-              <Button asChild className="h-10 min-h-[44px] px-5 rounded-xl font-bold text-xs">
+              <Button asChild className="h-10 min-h-[44px] px-5 rounded-xl font-bold text-xs active:scale-[0.98]">
                 <Link href="/admin/portals">Back to Experience Portals</Link>
               </Button>
             </div>

@@ -37,8 +37,10 @@ export interface GenerateMeetingRoomParams {
 
 export interface MeetingRoomResult {
   joinUrl: string;
+  conferenceMeetingId?: string;
   externalCalendarEventId?: string;
   externalCalendarEventUrl?: string;
+  connectionId?: string;
   provider?: string;
   isRealIntegration: boolean;
 }
@@ -59,7 +61,7 @@ export interface ConnectedProvidersSummary {
  * 
  * Tier 1: Host User's primary designated connection
  * Tier 2: Host User's general connection for this provider
- * Tier 3: Workspace-level connection (e.g. system_integration)
+ * Tier 3: Workspace-level connection (strictly system_integration service account)
  */
 export async function resolveWorkspaceConnection(
   workspaceId: string,
@@ -101,17 +103,19 @@ export async function resolveWorkspaceConnection(
     }
   }
 
-  // Tier 3: Workspace-level (system_integration or any active connection for this provider)
-  const workspaceSnap = await connectionsRef
+  // Tier 3: Workspace System Integration
+  // Strictly enforce that Tier 3 ONLY resolves system integration connections (userId === 'system_integration').
+  // Never borrow another teammate's personal calendar connection in a multi-user workspace.
+  const systemSnap = await connectionsRef
     .where('workspaceId', '==', workspaceId)
-    .limit(10)
+    .where('provider', '==', provider)
+    .where('userId', '==', 'system_integration')
+    .limit(1)
     .get();
 
-  for (const doc of workspaceSnap.docs) {
-    const conn = doc.data() as CalendarConnection;
-    if (conn.provider === provider || (provider.startsWith('microsoft') && conn.provider.startsWith('microsoft'))) {
-      return { ...conn, id: doc.id };
-    }
+  if (!systemSnap.empty) {
+    const conn = systemSnap.docs[0].data() as CalendarConnection;
+    return { ...conn, id: systemSnap.docs[0].id };
   }
 
   return null;
@@ -169,19 +173,26 @@ export async function getWorkspaceConnectedProviders(
 }
 
 /**
- * Timeout-wrapped execution helper to protect against hanging upstream APIs.
+ * Timeout-wrapped execution helper with true AbortController signal propagation.
+ * Cancels underlying HTTP fetch if upstream API hangs.
  */
-async function withTimeout<T>(promise: Promise<T>, timeoutMs = 7000, operationName = 'API Call'): Promise<T> {
+async function withTimeout<T>(
+  action: (signal: AbortSignal) => Promise<T>,
+  timeoutMs = 7000,
+  operationName = 'API Call'
+): Promise<T> {
+  const controller = new AbortController();
   let timeoutHandle: NodeJS.Timeout | undefined;
 
   const timeoutPromise = new Promise<never>((_, reject) => {
     timeoutHandle = setTimeout(() => {
+      controller.abort();
       reject(new Error(`[MeetingProviderService] ${operationName} timed out after ${timeoutMs}ms`));
     }, timeoutMs);
   });
 
   try {
-    return await Promise.race([promise, timeoutPromise]);
+    return await Promise.race([action(controller.signal), timeoutPromise]);
   } finally {
     if (timeoutHandle) {
       clearTimeout(timeoutHandle);
@@ -243,24 +254,31 @@ export async function generateMeetingRoom(
         const { createGoogleCalendarEvent } = await import('@/lib/services/integrations/google-calendar');
 
         const gEvent = await withTimeout(
-          createGoogleCalendarEvent(googleConn.id, {
-            title: title || 'SmartSapp Meeting',
-            description: `Scheduled meeting with ${bookerName || 'Invitee'} (${bookerEmail || 'No email provided'}).`,
-            start: startAt,
-            end: endAt,
-            timezone: timezone || 'UTC',
-            attendees: bookerEmail ? [{ email: bookerEmail, displayName: bookerName }] : undefined,
-          }),
+          (signal) => createGoogleCalendarEvent(
+            googleConn.id,
+            {
+              title: title || 'SmartSapp Meeting',
+              description: `Scheduled meeting with ${bookerName || 'Invitee'} (${bookerEmail || 'No email provided'}).`,
+              start: startAt,
+              end: endAt,
+              timezone: timezone || 'UTC',
+              attendees: bookerEmail ? [{ email: bookerEmail, displayName: bookerName }] : undefined,
+            },
+            signal
+          ),
           7000,
           'Google Meet Provisioning'
         );
 
-        const realLink = gEvent.hangoutLink || gEvent.htmlLink;
-        if (realLink && !realLink.endsWith('/new')) {
+        // Sanitize: Google Meet link MUST start with meet.google.com.
+        // Never treat htmlLink (Google Calendar web event view) as a video join URL!
+        const meetLink = gEvent.hangoutLink;
+        if (meetLink && meetLink.startsWith('https://meet.google.com/')) {
           return {
-            joinUrl: realLink,
+            joinUrl: meetLink,
             externalCalendarEventId: gEvent.id,
             externalCalendarEventUrl: gEvent.htmlLink,
+            connectionId: googleConn.id,
             provider: 'google_calendar',
             isRealIntegration: true,
           };
@@ -288,21 +306,27 @@ export async function generateMeetingRoom(
         const { createZoomMeeting } = await import('@/lib/services/integrations/zoom-meeting');
 
         const zMeeting = await withTimeout(
-          createZoomMeeting(zoomConn.id, {
-            topic: title || 'SmartSapp Zoom Meeting',
-            start: startAt,
-            durationMinutes,
-            timezone: timezone || 'UTC',
-          }),
+          (signal) => createZoomMeeting(
+            zoomConn.id,
+            {
+              topic: title || 'SmartSapp Zoom Meeting',
+              start: startAt,
+              durationMinutes,
+              timezone: timezone || 'UTC',
+            },
+            signal
+          ),
           7000,
           'Zoom Meeting Provisioning'
         );
 
         if (zMeeting.join_url) {
+          // Decouple conferenceMeetingId from externalCalendarEventId so calendar sync pushes to Google/Outlook
           return {
             joinUrl: zMeeting.join_url,
-            externalCalendarEventId: String(zMeeting.id),
+            conferenceMeetingId: String(zMeeting.id),
             externalCalendarEventUrl: zMeeting.start_url,
+            connectionId: zoomConn.id,
             provider: 'zoom',
             isRealIntegration: true,
           };
@@ -328,7 +352,7 @@ export async function generateMeetingRoom(
         const { createMicrosoftTeamsMeeting } = await import('@/lib/services/integrations/microsoft-teams');
 
         const msMeeting = await withTimeout(
-          createMicrosoftTeamsMeeting(teamsConn.id, {
+          () => createMicrosoftTeamsMeeting(teamsConn.id, {
             title: title || 'SmartSapp Teams Meeting',
             start: startAt,
             end: endAt,
@@ -340,8 +364,9 @@ export async function generateMeetingRoom(
         if (msMeeting.joinWebUrl) {
           return {
             joinUrl: msMeeting.joinWebUrl,
-            externalCalendarEventId: msMeeting.id,
+            conferenceMeetingId: msMeeting.id,
             externalCalendarEventUrl: msMeeting.joinWebUrl,
+            connectionId: teamsConn.id,
             provider: 'microsoft_teams',
             isRealIntegration: true,
           };
@@ -363,3 +388,26 @@ export async function generateMeetingRoom(
     isRealIntegration: false,
   };
 }
+
+/**
+ * Rollback compensation engine.
+ * Asynchronously deletes provisioned external meetings if the booking transaction subsequently aborts.
+ */
+export async function rollbackMeetingRoomAsync(
+  roomResult: MeetingRoomResult
+): Promise<void> {
+  if (!roomResult.isRealIntegration || !roomResult.connectionId) return;
+
+  try {
+    if (roomResult.provider === 'google_calendar' && roomResult.externalCalendarEventId) {
+      const { deleteGoogleCalendarEvent } = await import('@/lib/services/integrations/google-calendar');
+      await deleteGoogleCalendarEvent(roomResult.connectionId, roomResult.externalCalendarEventId);
+    } else if (roomResult.provider === 'zoom' && roomResult.conferenceMeetingId) {
+      const { deleteZoomMeeting } = await import('@/lib/services/integrations/zoom-meeting');
+      await deleteZoomMeeting(roomResult.connectionId, roomResult.conferenceMeetingId);
+    }
+  } catch (err) {
+    console.error('[rollbackMeetingRoomAsync] Failed to rollback external meeting:', err);
+  }
+}
+

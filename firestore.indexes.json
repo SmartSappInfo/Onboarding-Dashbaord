@@ -2255,6 +2255,24 @@
       ]
     },
     {
+      "collectionGroup": "calendar_connections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "workspaceId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "provider",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "userId",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "routing_forms",
       "queryScope": "COLLECTION",
       "fields": [

@@ -57,7 +57,7 @@ export default async function PortalStudioPage({ params }: PortalStudioPageProps
             </p>
           </div>
           <div className="pt-2">
-            <Button asChild className="h-10 min-h-[44px] px-5 rounded-xl font-bold gap-2 text-xs">
+            <Button asChild className="h-10 min-h-[44px] px-5 rounded-xl font-bold gap-2 text-xs active:scale-[0.98]">
               <Link href="/admin/portals">
                 <ArrowLeft className="h-4 w-4" /> Back to Portals
               </Link>

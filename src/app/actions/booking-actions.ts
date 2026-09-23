@@ -25,7 +25,7 @@ import type {
 } from '@/lib/meetings/types';
 import { getAvailableSlotsForRange, isSlotConflicting } from '@/lib/meetings/scheduling-engine';
 import { generateIcsContent } from '@/lib/meetings/ics-helpers';
-import { generateMeetingRoom } from '@/lib/meetings/meeting-provider-service';
+import { generateMeetingRoom, rollbackMeetingRoomAsync } from '@/lib/meetings/meeting-provider-service';
 import { createEntityFromRegistration } from '@/app/actions/meeting-lead-capture-action';
 import { sendEmail } from '@/lib/resend-service';
 
@@ -480,78 +480,88 @@ export async function createBookingFromHoldAction(input: {
     const joinUrl = roomResult.joinUrl;
 
     // ── Atomic Firestore Transaction: Convert Hold & Save Booking ──
-    await adminDb.runTransaction(async tx => {
-      const holdSnap = await tx.get(holdDocRef);
-      if (!holdSnap.exists) {
-        throw new Error('Booking hold not found or has expired.');
-      }
+    try {
+      await adminDb.runTransaction(async tx => {
+        const holdSnap = await tx.get(holdDocRef);
+        if (!holdSnap.exists) {
+          throw new Error('Booking hold not found or has expired.');
+        }
 
-      const holdData = holdSnap.data() as BookingHold;
+        const holdData = holdSnap.data() as BookingHold;
 
-      if (holdData.status !== 'active') {
-        throw new Error('This booking reservation has already been completed or cancelled.');
-      }
+        if (holdData.status !== 'active') {
+          throw new Error('This booking reservation has already been completed or cancelled.');
+        }
 
-      finalBooking = {
-        id: bookingDocRef.id,
-        workspaceId: holdData.workspaceId,
-        organizationId: holdData.organizationId,
-        eventTypeId: holdData.eventTypeId,
-        eventTypeName: eventType.name,
-        schedulingProfileId: holdData.schedulingProfileId,
-        hostUserId: holdData.hostUserId,
-        meetingId: meetingDocRef.id,
-        booker,
-        startAt: holdData.startAt,
-        endAt: holdData.endAt,
-        timezone: visitorTimezone,
-        locationType: eventType.locationType,
-        locationDetails: eventType.locationDetails,
-        joinUrl,
-        externalCalendarEventId: roomResult.externalCalendarEventId,
-        externalCalendarEventUrl: roomResult.externalCalendarEventUrl,
-        status: 'confirmed',
-        bookingSource: 'booking_page',
-        manageTokenHash,
-        idempotencyKey,
-        createdAt: now.toISOString(),
-        updatedAt: now.toISOString(),
-      };
+        finalBooking = {
+          id: bookingDocRef.id,
+          workspaceId: holdData.workspaceId,
+          organizationId: holdData.organizationId,
+          eventTypeId: holdData.eventTypeId,
+          eventTypeName: eventType.name,
+          schedulingProfileId: holdData.schedulingProfileId,
+          hostUserId: holdData.hostUserId,
+          meetingId: meetingDocRef.id,
+          booker,
+          startAt: holdData.startAt,
+          endAt: holdData.endAt,
+          timezone: visitorTimezone,
+          locationType: eventType.locationType,
+          locationDetails: eventType.locationDetails,
+          joinUrl,
+          externalCalendarEventId: roomResult.externalCalendarEventId,
+          externalCalendarEventUrl: roomResult.externalCalendarEventUrl,
+          status: 'confirmed',
+          bookingSource: 'booking_page',
+          manageTokenHash,
+          idempotencyKey,
+          createdAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        };
 
-      // 1. Create Booking document
-      tx.set(bookingDocRef, finalBooking);
+        // 1. Create Booking document
+        tx.set(bookingDocRef, finalBooking);
 
-      // 2. Mark Hold as converted
-      tx.update(holdDocRef, {
-        status: 'converted',
-        updatedAt: now.toISOString(),
+        // 2. Mark Hold as converted
+        tx.update(holdDocRef, {
+          status: 'converted',
+          updatedAt: now.toISOString(),
+        });
+
+        // 3. Materialize Meeting Document for full platform parity
+        tx.set(meetingDocRef, {
+          id: meetingDocRef.id,
+          title: `${eventType.name} with ${booker.firstName} ${booker.lastName}`,
+          meetingSlug: `booking-${bookingDocRef.id}`,
+          workspaceIds: [holdData.workspaceId],
+          organizationId: holdData.organizationId,
+          meetingTime: holdData.startAt,
+          meetingLink: joinUrl,
+          durationMinutes: eventType.durationMinutes,
+          type: {
+            id: eventType.id,
+            name: eventType.name,
+            slug: eventType.slug,
+            description: eventType.description || '',
+            isCustom: true,
+          },
+          publishStatus: 'published',
+          status: 'scheduled',
+          registrationEnabled: true,
+          autoTags: eventType.autoTags || [],
+          autoAutomations: eventType.autoAutomations || [],
+          createdAt: now.toISOString(),
+        });
       });
-
-      // 3. Materialize Meeting Document for full platform parity
-      tx.set(meetingDocRef, {
-        id: meetingDocRef.id,
-        title: `${eventType.name} with ${booker.firstName} ${booker.lastName}`,
-        meetingSlug: `booking-${bookingDocRef.id}`,
-        workspaceIds: [holdData.workspaceId],
-        organizationId: holdData.organizationId,
-        meetingTime: holdData.startAt,
-        meetingLink: joinUrl,
-        durationMinutes: eventType.durationMinutes,
-        type: {
-          id: eventType.id,
-          name: eventType.name,
-          slug: eventType.slug,
-          description: eventType.description || '',
-          isCustom: true,
-        },
-        publishStatus: 'published',
-        status: 'scheduled',
-        registrationEnabled: true,
-        autoTags: eventType.autoTags || [],
-        autoAutomations: eventType.autoAutomations || [],
-        createdAt: now.toISOString(),
-      });
-    });
+    } catch (txError) {
+      // DUAL-WRITE SAFETY: If database transaction aborts, rollback external meeting to avoid orphaned events
+      if (roomResult.isRealIntegration) {
+        rollbackMeetingRoomAsync(roomResult).catch(rollbackErr => {
+          console.error('[createBookingFromHoldAction] Rollback compensation error:', rollbackErr);
+        });
+      }
+      throw txError;
+    }
 
     // ── Post-Transaction Async Operations (Supervised & Non-blocking) ──
 
@@ -611,7 +621,7 @@ export async function createBookingFromHoldAction(input: {
 
     // 3. Background 2-Way External Calendar Sync
     try {
-      const { syncBookingToExternalCalendar } = await import('./calendar-connection-actions');
+      const { syncBookingToExternalCalendar } = await import('@/lib/meetings/calendar-sync-service');
       syncBookingToExternalCalendar(bookingDocRef.id).catch(err => {
         console.warn('[createBookingFromHoldAction] Background external calendar sync error:', err);
       });

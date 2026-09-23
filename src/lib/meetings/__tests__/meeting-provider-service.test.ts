@@ -4,6 +4,7 @@ import {
   generateMeetingRoom,
   resolveWorkspaceConnection,
   getWorkspaceConnectedProviders,
+  rollbackMeetingRoomAsync,
 } from '../meeting-provider-service';
 
 // Mock Firebase Admin
@@ -18,10 +19,12 @@ vi.mock('@/lib/firebase-admin', () => {
 // Mock Integration Services
 vi.mock('@/lib/services/integrations/google-calendar', () => ({
   createGoogleCalendarEvent: vi.fn(),
+  deleteGoogleCalendarEvent: vi.fn(),
 }));
 
 vi.mock('@/lib/services/integrations/zoom-meeting', () => ({
   createZoomMeeting: vi.fn(),
+  deleteZoomMeeting: vi.fn(),
 }));
 
 vi.mock('@/lib/services/integrations/microsoft-teams', () => ({
@@ -144,10 +147,14 @@ describe('Meeting Provider Service (SSOT)', () => {
       expect(res.externalCalendarEventId).toBe('g_event_999');
       expect(res.provider).toBe('google_calendar');
 
-      expect(createGoogleCalendarEvent).toHaveBeenCalledWith('conn_google_01', expect.objectContaining({
-        title: 'Executive Architecture Review',
-        attendees: [{ email: 'sarah@skynet.com', displayName: 'Sarah Connor' }],
-      }));
+      expect(createGoogleCalendarEvent).toHaveBeenCalledWith(
+        'conn_google_01',
+        expect.objectContaining({
+          title: 'Executive Architecture Review',
+          attendees: [{ email: 'sarah@skynet.com', displayName: 'Sarah Connor' }],
+        }),
+        expect.any(Object)
+      );
     });
 
     it('falls back to direct room URL if Google API fails or is disconnected, never /new', async () => {
@@ -220,8 +227,52 @@ describe('Meeting Provider Service (SSOT)', () => {
 
       expect(res.isRealIntegration).toBe(true);
       expect(res.joinUrl).toBe('https://us05web.zoom.us/j/1234567890');
-      expect(res.externalCalendarEventId).toBe('1234567890');
+      expect(res.conferenceMeetingId).toBe('1234567890');
       expect(res.provider).toBe('zoom');
+    });
+
+    it('gracefully degrades to fallback direct room if Google Calendar returns only htmlLink without hangoutLink', async () => {
+      const { adminDb } = await import('@/lib/firebase-admin');
+      const { createGoogleCalendarEvent } = await import('@/lib/services/integrations/google-calendar');
+
+      (adminDb.collection as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        where: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockReturnThis(),
+        get: vi.fn().mockResolvedValue({
+          empty: false,
+          docs: [
+            {
+              id: 'conn_google_no_meet',
+              data: () => ({
+                id: 'conn_google_no_meet',
+                workspaceId: 'ws_test',
+                provider: 'google_calendar',
+              }),
+            },
+          ],
+        }),
+      });
+
+      // Simulating a Google event created where Meet is disabled or not generated (only htmlLink exists)
+      (createGoogleCalendarEvent as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'g_event_no_meet',
+        htmlLink: 'https://www.google.com/calendar/event?eid=nomeet123',
+        hangoutLink: undefined,
+      });
+
+      const res = await generateMeetingRoom({
+        workspaceId: 'ws_test',
+        locationType: 'google_meet',
+        title: 'Meeting Without Meet',
+        startAt: '2026-10-01T14:00:00Z',
+        endAt: '2026-10-01T14:30:00Z',
+        timezone: 'UTC',
+      });
+
+      // Must NOT treat the Google Calendar event page as the video joinUrl!
+      expect(res.joinUrl).not.toContain('google.com/calendar/event');
+      expect(res.joinUrl).toContain('/meetings/room/');
+      expect(res.isRealIntegration).toBe(false);
     });
   });
 
@@ -237,6 +288,29 @@ describe('Meeting Provider Service (SSOT)', () => {
     it('returns null connection when workspaceId is not provided', async () => {
       const conn = await resolveWorkspaceConnection('', 'google_calendar');
       expect(conn).toBeNull();
+    });
+
+    it('strictly requires system_integration for Tier 3 and ignores teammates personal connections', async () => {
+      const { adminDb } = await import('@/lib/firebase-admin');
+
+      // Setup where query that returns empty for system_integration
+      const mockWhere = vi.fn().mockReturnThis();
+      const mockLimit = vi.fn().mockReturnThis();
+      const mockGet = vi.fn().mockResolvedValue({
+        empty: true,
+        docs: [],
+      });
+
+      (adminDb.collection as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
+        where: mockWhere,
+        limit: mockLimit,
+        get: mockGet,
+      });
+
+      const conn = await resolveWorkspaceConnection('ws_demo', 'google_calendar', 'user_host_b');
+      expect(conn).toBeNull();
+      // Verifies Tier 3 searched specifically for userId == 'system_integration'
+      expect(mockWhere).toHaveBeenCalledWith('userId', '==', 'system_integration');
     });
 
     it('summarizes connected providers from Firestore connections', async () => {
@@ -276,6 +350,49 @@ describe('Meeting Provider Service (SSOT)', () => {
       expect(summary.connectedCount).toBe(2);
       expect(summary.googleConnection?.id).toBe('conn_gcal');
       expect(summary.zoomConnection?.id).toBe('conn_zoom');
+    });
+  });
+
+  describe('rollbackMeetingRoomAsync', () => {
+    it('deletes Google Calendar event on rollback if room was provisioned with real integration', async () => {
+      const { deleteGoogleCalendarEvent } = await import('@/lib/services/integrations/google-calendar');
+
+      await rollbackMeetingRoomAsync({
+        joinUrl: 'https://meet.google.com/abc-defg-hij',
+        externalCalendarEventId: 'g_event_123',
+        connectionId: 'conn_g_1',
+        provider: 'google_calendar',
+        isRealIntegration: true,
+      });
+
+      expect(deleteGoogleCalendarEvent).toHaveBeenCalledWith('conn_g_1', 'g_event_123');
+    });
+
+    it('deletes Zoom meeting on rollback if room was provisioned with real integration', async () => {
+      const { deleteZoomMeeting } = await import('@/lib/services/integrations/zoom-meeting');
+
+      await rollbackMeetingRoomAsync({
+        joinUrl: 'https://us05web.zoom.us/j/987654321',
+        conferenceMeetingId: '987654321',
+        connectionId: 'conn_z_1',
+        provider: 'zoom',
+        isRealIntegration: true,
+      });
+
+      expect(deleteZoomMeeting).toHaveBeenCalledWith('conn_z_1', '987654321');
+    });
+
+    it('does nothing when room is not a real external integration', async () => {
+      const { deleteGoogleCalendarEvent } = await import('@/lib/services/integrations/google-calendar');
+      const { deleteZoomMeeting } = await import('@/lib/services/integrations/zoom-meeting');
+
+      await rollbackMeetingRoomAsync({
+        joinUrl: 'https://mysite.com/meetings/room/direct_123',
+        isRealIntegration: false,
+      });
+
+      expect(deleteGoogleCalendarEvent).not.toHaveBeenCalled();
+      expect(deleteZoomMeeting).not.toHaveBeenCalled();
     });
   });
 });

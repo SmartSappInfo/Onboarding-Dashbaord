@@ -281,7 +281,8 @@ export async function createGoogleCalendarEvent(
     end: string;
     timezone: string;
     attendees?: Array<{ email: string; displayName?: string }>;
-  }
+  },
+  signal?: AbortSignal
 ): Promise<GoogleCalendarEvent> {
   const connection = await getValidGoogleConnection(connectionId);
   const calendarId = connection.calendarId || 'primary';
@@ -290,6 +291,7 @@ export async function createGoogleCalendarEvent(
     `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?conferenceDataVersion=1`,
     {
       method: 'POST',
+      signal,
       headers: {
         'Authorization': `Bearer ${connection.accessToken}`,
         'Content-Type': 'application/json',
@@ -335,3 +337,32 @@ export async function createGoogleCalendarEvent(
 
   return await res.json() as GoogleCalendarEvent;
 }
+
+/**
+ * Deletes an event on Google Calendar (used for compensation rollback).
+ */
+export async function deleteGoogleCalendarEvent(
+  connectionId: string,
+  eventId: string
+): Promise<void> {
+  if (!connectionId || !eventId) return;
+  try {
+    const connection = await getValidGoogleConnection(connectionId);
+    const calendarId = connection.calendarId || 'primary';
+    const res = await fetch(
+      `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events/${eventId}`,
+      {
+        method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${connection.accessToken}`,
+        },
+      }
+    );
+    if (!res.ok && res.status !== 404) {
+      console.warn(`[deleteGoogleCalendarEvent] Failed to delete event ${eventId}: status ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`[deleteGoogleCalendarEvent] Rollback error for event ${eventId}:`, err);
+  }
+}
+

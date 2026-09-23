@@ -154,3 +154,26 @@ export async function verifyIntegrationConnectionAction(
     return { success: false, isConnected: false, error: getErrorMessage(error) };
   }
 }
+
+/**
+ * Manual 1-click booking calendar re-sync for backoffice administrators.
+ */
+export async function manualReSyncBookingAction(
+  bookingId: string,
+  idToken: string
+): Promise<{ success: boolean; externalEventId?: string; error?: string }> {
+  try {
+    const actor = await authorizeBackoffice(idToken, 'integration_health', 'execute');
+    const { syncBookingToExternalCalendar } = await import('@/lib/meetings/calendar-sync-service');
+    const res = await syncBookingToExternalCalendar(bookingId);
+
+    await logBackofficeAction(actor, 'booking.resync', 'booking', bookingId, {
+      metadata: { bookingId, success: res.success, externalEventId: res.externalEventId },
+    });
+
+    return res;
+  } catch (err: unknown) {
+    return { success: false, error: getErrorMessage(err) };
+  }
+}
+

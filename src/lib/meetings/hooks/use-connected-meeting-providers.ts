@@ -42,18 +42,20 @@ export interface ConnectedMeetingProvidersState {
 }
 
 export function useConnectedMeetingProviders(
-  workspaceId?: string
+  workspaceId?: string,
+  options?: { enabled?: boolean }
 ): ConnectedMeetingProvidersState {
+  const enabled = options?.enabled ?? true;
   const firestore = useFirestore();
 
   // Real-time Firestore subscription to workspace connections
   const connectionsQuery = useMemoFirebase(() => {
-    if (!firestore || !workspaceId) return null;
+    if (!firestore || !workspaceId || !enabled) return null;
     return query(
       collection(firestore, 'calendar_connections'),
       where('workspaceId', '==', workspaceId)
     );
-  }, [firestore, workspaceId]);
+  }, [firestore, workspaceId, enabled]);
 
   const { data: connections, isLoading } = useCollection<CalendarConnection>(connectionsQuery);
 

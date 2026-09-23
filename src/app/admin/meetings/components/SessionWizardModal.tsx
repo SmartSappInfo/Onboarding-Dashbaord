@@ -50,7 +50,7 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
   const _router = useRouter();
   const { toast } = useToast();
   const { activeWorkspaceId } = useWorkspace();
-  const { hasGoogle, hasZoom, hasTeams } = useConnectedMeetingProviders(activeWorkspaceId);
+  const { hasGoogle, hasZoom, hasTeams } = useConnectedMeetingProviders(activeWorkspaceId, { enabled: open });
 
   const [step, setStep] = React.useState<number>(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
