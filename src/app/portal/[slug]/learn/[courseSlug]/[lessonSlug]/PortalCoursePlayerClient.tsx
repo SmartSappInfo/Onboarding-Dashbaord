@@ -454,6 +454,7 @@ export default function PortalCoursePlayerClient({
   return (
     <PortalThemeProvider
       portalId={portal.id}
+      portalSlug={slug}
       theme={portal.theme}
       className="min-h-screen bg-background flex flex-col justify-between text-foreground"
     >

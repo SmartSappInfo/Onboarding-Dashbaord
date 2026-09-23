@@ -291,6 +291,7 @@ export default function PortalRuntimeClient({ slug, initialPortal }: PortalRunti
   return (
     <PortalThemeProvider
       portalId={portal.id}
+      portalSlug={slug}
       theme={theme}
       className="min-h-screen flex flex-col justify-between"
     >

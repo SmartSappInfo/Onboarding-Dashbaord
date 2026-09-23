@@ -102,6 +102,7 @@ export function PortalPageShell({
   return (
     <PortalThemeProvider
       portalId={portal.id}
+      portalSlug={slug}
       theme={theme}
       className={cn('min-h-screen flex flex-col justify-between bg-[var(--portal-bg)] text-[var(--portal-text)] transition-colors', className)}
     >

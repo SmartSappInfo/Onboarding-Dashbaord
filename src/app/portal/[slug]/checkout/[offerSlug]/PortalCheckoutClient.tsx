@@ -216,6 +216,7 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
   return (
     <PortalThemeProvider
       portalId={portal.id}
+      portalSlug={slug}
       theme={portal.theme}
       className="min-h-screen bg-background flex flex-col justify-between"
     >

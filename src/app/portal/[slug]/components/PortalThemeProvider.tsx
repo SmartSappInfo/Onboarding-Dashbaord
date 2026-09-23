@@ -17,7 +17,6 @@
  */
 
 import * as React from 'react';
-import { useTheme } from 'next-themes';
 import type { PortalThemeConfig, PortalThemeColors } from '@/lib/types/portal';
 import { DEFAULT_THEME } from '@/lib/portal-presets';
 import {
@@ -25,6 +24,26 @@ import {
   resolvePortalThemeStyles,
 } from '@/lib/utils/portal-theme-generator';
 import { cn } from '@/lib/utils';
+
+/**
+ * Safely reads stored portal theme preference from localStorage by slug or portalId.
+ */
+function readStoredTheme(slug?: string, id?: string): 'light' | 'dark' | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    if (slug) {
+      const bySlug = localStorage.getItem(`portal_theme_${slug}`);
+      if (bySlug === 'light' || bySlug === 'dark') return bySlug;
+    }
+    if (id) {
+      const byId = localStorage.getItem(`portal_theme_${id}`);
+      if (byId === 'light' || byId === 'dark') return byId;
+    }
+  } catch {
+    // Ignore localStorage access errors (e.g. strict security / iframe)
+  }
+  return null;
+}
 
 export interface PortalThemeContextValue {
   mode: 'light' | 'dark';
@@ -50,6 +69,7 @@ const PortalThemeContext = React.createContext<PortalThemeContextValue | null>(n
 
 export interface PortalThemeProviderProps {
   portalId?: string;
+  portalSlug?: string;
   theme: PortalThemeConfig;
   forcedMode?: 'light' | 'dark';
   className?: string;
@@ -58,6 +78,7 @@ export interface PortalThemeProviderProps {
 
 export function PortalThemeProvider({
   portalId,
+  portalSlug,
   theme,
   forcedMode,
   className,
@@ -66,15 +87,6 @@ export function PortalThemeProvider({
   const policy = theme?.colorMode || 'user_choice';
   const canToggle = policy === 'user_choice' || policy === 'system';
 
-  // Safely connect to next-themes context if present
-  let setNextTheme: ((theme: string) => void) | undefined;
-  try {
-    const nextThemeCtx = useTheme();
-    setNextTheme = nextThemeCtx.setTheme;
-  } catch {
-    // Graceful fallback if invoked outside NextThemesProvider
-  }
-
   // ── Determine Initial Theme Mode (SSR Hydration Safe) ─────────────────────
   const [internalMode, setInternalMode] = React.useState<'light' | 'dark'>(() => {
     if (forcedMode) return forcedMode;
@@ -82,15 +94,9 @@ export function PortalThemeProvider({
     if (policy === 'dark') return 'dark';
 
     // Synchronous client-side check of stored member preference
-    if (typeof window !== 'undefined' && portalId && canToggle) {
-      try {
-        const stored = localStorage.getItem(`portal_theme_${portalId}`);
-        if (stored === 'light' || stored === 'dark') {
-          return stored;
-        }
-      } catch {
-        // Ignore localStorage errors
-      }
+    if (canToggle) {
+      const stored = readStoredTheme(portalSlug, portalId);
+      if (stored) return stored;
     }
 
     // Only follow OS system preference if colorMode policy is explicitly 'system'
@@ -102,26 +108,22 @@ export function PortalThemeProvider({
     return 'light';
   });
 
-  // Client-side hydration from localStorage if portalId wasn't available at initial tick
+  // Client-side hydration from localStorage if portalId/portalSlug wasn't available at initial tick
   React.useEffect(() => {
     if (forcedMode || policy === 'light' || policy === 'dark') return;
 
-    if (portalId && canToggle) {
-      try {
-        const stored = localStorage.getItem(`portal_theme_${portalId}`);
-        if (stored === 'light' || stored === 'dark') {
-          setInternalMode(stored);
-          return;
-        }
-      } catch {
-        // Ignore localStorage errors
+    if (canToggle) {
+      const stored = readStoredTheme(portalSlug, portalId);
+      if (stored) {
+        setInternalMode(stored);
+        return;
       }
     }
 
     if (policy === 'system' && typeof window !== 'undefined' && window.matchMedia) {
       setInternalMode(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     }
-  }, [forcedMode, policy, portalId, canToggle]);
+  }, [forcedMode, policy, portalId, portalSlug, canToggle]);
 
   // Keep internal mode synced with forcedMode if provided (e.g. Studio Canvas)
   React.useEffect(() => {
@@ -177,28 +179,30 @@ export function PortalThemeProvider({
 
     root.setAttribute('data-portal-theme', effectiveMode);
 
-    if (setNextTheme) {
-      try {
-        setNextTheme(effectiveMode);
-      } catch {
-        // Safe ignore
-      }
-    }
-  }, [effectiveMode, forcedMode, setNextTheme]);
+    return () => {
+      root.removeAttribute('data-portal-theme');
+      body.classList.remove('dark');
+    };
+  }, [effectiveMode, forcedMode]);
 
   const setThemeMode = React.useCallback(
     (newMode: 'light' | 'dark') => {
       if (policy === 'light' || policy === 'dark') return; // Locked by policy
       setInternalMode(newMode);
-      if (typeof window !== 'undefined' && portalId && canToggle) {
+      if (typeof window !== 'undefined' && canToggle) {
         try {
-          localStorage.setItem(`portal_theme_${portalId}`, newMode);
+          if (portalSlug) {
+            localStorage.setItem(`portal_theme_${portalSlug}`, newMode);
+          }
+          if (portalId) {
+            localStorage.setItem(`portal_theme_${portalId}`, newMode);
+          }
         } catch {
           // Ignore
         }
       }
     },
-    [policy, portalId, canToggle]
+    [policy, portalId, portalSlug, canToggle]
   );
 
   const toggleTheme = React.useCallback(() => {

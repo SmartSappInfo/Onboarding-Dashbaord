@@ -506,6 +506,7 @@ export default function PortalContentReaderClient({
   return (
     <PortalThemeProvider
       portalId={portal.id}
+      portalSlug={slug}
       theme={portal.theme}
       className="min-h-screen flex flex-col justify-between"
     >
