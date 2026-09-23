@@ -273,9 +273,16 @@ export default function PipelineConfigView({ pipelineId, columnWidth, onWidthCha
         }
     };
 
-    const roleOptions = roles?.map(r => ({ label: r.name, value: r.id })) || [];
-    const workspaceUserOptions = workspaceUsers?.map(u => ({ label: u.name || u.email || 'Workspace User', value: u.id })) || [];
-    const workspaceOptions = allowedWorkspaces.map(w => ({ label: w.name, value: w.id }));
+    const roleOptions = React.useMemo(() => roles?.map(r => ({ label: r.name, value: r.id })) || [], [roles]);
+    const workspaceUserOptions = React.useMemo(() => (
+        workspaceUsers?.map(u => ({
+            label: u.name || u.email || 'Workspace User',
+            value: u.id,
+            sublabel: u.name && u.email ? u.email : undefined,
+            keywords: [u.name || '', u.email || ''].filter(Boolean),
+        })) || []
+    ), [workspaceUsers]);
+    const workspaceOptions = React.useMemo(() => allowedWorkspaces.map(w => ({ label: w.name, value: w.id })), [allowedWorkspaces]);
 
     if (isLoading) return <div className="space-y-8 animate-pulse"><div className="h-64 bg-muted rounded-2xl" /><div className="h-96 bg-muted rounded-2xl" /></div>;
 

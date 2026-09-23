@@ -3,7 +3,9 @@
 import * as React from 'react';
 import {
   DndContext,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
+  KeyboardSensor,
   useSensor,
   useSensors,
   DragOverlay,
@@ -12,6 +14,7 @@ import {
   type DragOverEvent,
   closestCorners,
 } from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import {
   collection,
   orderBy,
@@ -201,7 +204,26 @@ export default function KanbanBoard({ pipelineId, pipelineName, customWidth, fil
     }
   }, [stages, filteredDeals]);
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 10 } }));
+  // Calibrated dual-sensor setup: Desktop instant drag vs Mobile long-press drag
+  // Allows natural vertical/horizontal scrolling on mobile touch screens without accidental drag triggers
+  const mouseSensor = useSensor(MouseSensor, {
+    activationConstraint: {
+      distance: 8,
+    },
+  });
+
+  const touchSensor = useSensor(TouchSensor, {
+    activationConstraint: {
+      delay: 250, // 250ms press-and-hold before drag starts, preserving natural scrolling
+      tolerance: 6, // allows minor finger tremor during hold
+    },
+  });
+
+  const keyboardSensor = useSensor(KeyboardSensor, {
+    coordinateGetter: sortableKeyboardCoordinates,
+  });
+
+  const sensors = useSensors(mouseSensor, touchSensor, keyboardSensor);
 
   const findContainer = React.useCallback((id: string) => {
       if (stages?.some((s) => s.id === id)) return id;

@@ -56,6 +56,8 @@ export interface PipelineFormData {
 export interface PipelineConfigOption {
   label: string;
   value: string;
+  sublabel?: string;
+  keywords?: string[];
 }
 
 export interface PipelineConfigFieldsProps {
@@ -298,6 +300,7 @@ export function PipelineConfigFields({
               value={formData.assignmentUserIds} 
               onChange={(val) => onChange('assignmentUserIds', val)} 
               placeholder="Select eligible team members..." 
+              searchPlaceholder="Search team members by name or email..."
               disabled={disabled}
               className="rounded-xl border border-border shadow-xs text-xs min-h-[44px]" 
             />

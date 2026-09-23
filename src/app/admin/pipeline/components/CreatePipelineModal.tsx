@@ -115,7 +115,12 @@ export function CreatePipelineModal({
   }, [allowedWorkspaces]);
 
   const workspaceUserOptions: PipelineConfigOption[] = React.useMemo(() => {
-    return workspaceUsers?.map((u: UserProfile) => ({ label: u.name || u.email || 'Team Member', value: u.id })) || [];
+    return workspaceUsers?.map((u: UserProfile) => ({ 
+      label: u.name || u.email || 'Team Member', 
+      value: u.id,
+      sublabel: u.name && u.email ? u.email : undefined,
+      keywords: [u.name || '', u.email || ''].filter(Boolean),
+    })) || [];
   }, [workspaceUsers]);
 
   // Reset form to pristine defaults whenever modal opens

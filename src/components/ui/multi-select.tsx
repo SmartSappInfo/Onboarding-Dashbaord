@@ -20,12 +20,20 @@ import {
 import { cn } from '@/lib/utils';
 import { Check, ChevronsUpDown, X } from 'lucide-react';
 
+export interface MultiSelectOption {
+  label: string;
+  value: string;
+  sublabel?: string;
+  keywords?: string[];
+}
+
 interface MultiSelectProps {
-  options: { label: string; value: string }[];
+  options: MultiSelectOption[];
   value?: string[];
   selected?: string[];
   onChange: (value: string[]) => void;
   placeholder?: string;
+  searchPlaceholder?: string;
   className?: string;
   maxCount?: number;
   onCreate?: (value: string) => void;
@@ -34,7 +42,7 @@ interface MultiSelectProps {
 
 /**
  * @fileOverview High-fidelity Expandable Multi-Select.
- * Features a collapsible badge view to prevent UI overflow and full mouse interactivity.
+ * Features a collapsible badge view to prevent UI overflow, O(1) map resolution, and full search interactivity.
  * Optimized with modal={false} to prevent focus loops when used inside Dialogs.
  */
 export function MultiSelect({
@@ -43,13 +51,22 @@ export function MultiSelect({
   selected,
   onChange,
   placeholder = 'Select options...',
+  searchPlaceholder,
   className,
   maxCount = 2,
   onCreate,
   disabled = false,
 }: MultiSelectProps) {
-  const currentValues = value ?? selected ?? [];
+  const currentValues = React.useMemo(() => value ?? selected ?? [], [value, selected]);
   const selectedSet = React.useMemo(() => new Set(currentValues), [currentValues]);
+  const optionsMap = React.useMemo(() => {
+    const map = new Map<string, MultiSelectOption>();
+    for (const opt of options) {
+      map.set(opt.value, opt);
+    }
+    return map;
+  }, [options]);
+
   const [open, setOpen] = React.useState(false);
   const [expanded, setExpanded] = React.useState(false);
   const [inputValue, setInputValue] = React.useState('');
@@ -88,7 +105,7 @@ export function MultiSelect({
             {currentValues.length > 0 ? (
               <>
                 {visibleValues.map((val) => {
-                  const option = options.find((o) => o.value === val);
+                  const option = optionsMap.get(val);
                   return (
                     <Badge
                       variant="outline"
@@ -144,7 +161,7 @@ export function MultiSelect({
       <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0 border-none shadow-2xl rounded-xl overflow-hidden" align="start">
         <Command className="w-full" shouldFilter={true}>
           <CommandInput 
-            placeholder="Create or Search Tags" 
+            placeholder={searchPlaceholder || (onCreate ? "Create or Search Tags" : "Search options...")} 
             className="font-bold text-sm h-11" 
             value={inputValue} 
             onValueChange={setInputValue} 
@@ -154,16 +171,18 @@ export function MultiSelect({
             <CommandGroup className="p-1.5">
               {options.map((option) => {
                 const isSelected = selectedSet.has(option.value);
+                const searchFilterValue = `${option.label} ${option.value} ${option.sublabel || ''} ${(option.keywords || []).join(' ')}`.trim();
                 return (
                   <CommandItem
                     key={option.value}
-                    value={option.label}
+                    value={searchFilterValue}
+                    keywords={[option.label, option.value, ...(option.keywords || [])]}
                     onSelect={() => toggleSelection(option.value)}
                     className="cursor-pointer rounded-lg p-2 gap-2"
                   >
                     <div
                       className={cn(
-                        'flex h-4 w-4 items-center justify-center rounded-sm border border-primary transition-colors',
+                        'flex h-4 w-4 items-center justify-center rounded-sm border border-primary transition-colors shrink-0',
                         isSelected
                           ? 'bg-primary text-primary-foreground'
                           : 'opacity-50 group-hover:opacity-100 [&_svg]:invisible'
@@ -171,7 +190,16 @@ export function MultiSelect({
                     >
                       <Check className="h-3.5 w-3.5" />
                     </div>
-                    <span className={cn("font-medium flex-1 text-sm", isSelected && "text-primary font-bold")}>{option.label}</span>
+                    <div className="flex flex-col min-w-0 flex-1 text-left">
+                      <span className={cn("font-medium text-sm truncate", isSelected && "text-primary font-bold")}>
+                        {option.label}
+                      </span>
+                      {option.sublabel && (
+                        <span className="text-[10px] text-muted-foreground truncate">
+                          {option.sublabel}
+                        </span>
+                      )}
+                    </div>
                   </CommandItem>
                 );
               })}
