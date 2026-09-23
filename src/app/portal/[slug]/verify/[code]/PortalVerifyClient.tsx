@@ -97,11 +97,11 @@ export function PortalVerifyClient({
     <div className="min-h-screen bg-muted/20 text-foreground flex flex-col justify-between py-8 px-4 sm:px-6 print:p-0 print:bg-white">
       {/* ── Top Navigation Bar ────────────────────────────────────────── */}
       <div className="max-w-4xl mx-auto w-full flex items-center justify-between pb-6 print:hidden">
-        <Link href={`/portal/${portal.slug}`}>
-          <Button variant="ghost" size="sm" className="rounded-xl text-xs font-bold gap-1.5">
+        <Button asChild variant="ghost" size="sm" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] active:scale-[0.97]">
+          <Link href={`/portal/${portal.slug}`}>
             <ArrowLeft className="w-4 h-4" /> Back to {brandName}
-          </Button>
-        </Link>
+          </Link>
+        </Button>
 
         <div className="flex items-center gap-2">
           <Button

@@ -198,11 +198,11 @@ export function MemberTasksWidget({
 
                 <div className="flex items-center gap-2">
                   {task.actionUrl && (
-                    <Link href={task.actionUrl}>
-                      <Button variant="ghost" size="sm" className="h-8 rounded-xl text-xs font-bold gap-1 text-primary">
+                    <Button asChild variant="ghost" size="sm" className="h-8 rounded-xl text-xs font-bold gap-1 text-primary active:scale-[0.97]">
+                      <Link href={task.actionUrl}>
                         Open Tool <ExternalLink className="w-3 h-3" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   )}
 
                   {!isDone ? (

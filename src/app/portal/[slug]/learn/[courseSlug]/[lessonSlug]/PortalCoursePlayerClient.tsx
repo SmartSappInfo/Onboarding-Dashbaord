@@ -516,7 +516,7 @@ export default function PortalCoursePlayerClient({
           <button
             type="button"
             onClick={() => setIsSearchModalOpen(true)}
-            className="flex items-center justify-center h-9 w-9 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0 rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
+            className="flex items-center justify-center h-10 w-10 min-h-[44px] min-w-[44px] rounded-xl border border-border bg-background hover:bg-muted text-muted-foreground hover:text-foreground transition-all active:scale-[0.97]"
             title="Search portal (⌘K)"
             aria-label="Search portal"
           >
@@ -843,11 +843,11 @@ export default function PortalCoursePlayerClient({
                         <h5 className="font-bold text-xs text-foreground">{att.name}</h5>
                         <p className="text-[10px] text-muted-foreground uppercase">{att.mimeType || 'Document'}</p>
                       </div>
-                      <a href={att.url} download target="_blank" rel="noreferrer">
-                        <Button size="sm" className="rounded-xl font-bold text-xs bg-primary text-white gap-1.5">
+                      <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-primary text-white gap-1.5 active:scale-[0.97]">
+                        <a href={att.url} download target="_blank" rel="noreferrer">
                           <Download className="w-3.5 h-3.5" /> Download
-                        </Button>
-                      </a>
+                        </a>
+                      </Button>
                     </Card>
                   ))}
                 </div>

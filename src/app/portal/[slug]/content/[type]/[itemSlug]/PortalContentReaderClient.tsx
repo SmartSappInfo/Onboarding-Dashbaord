@@ -172,14 +172,15 @@ function PortalContentReaderView({
           <p className="text-xs text-[var(--portal-muted)]">
             The article, document, or toolkit you requested could not be located.
           </p>
-          <Link href={`/portal/${slug}/content`}>
-            <Button
-              className="rounded-xl font-bold text-xs mt-2 min-h-[44px] active:scale-[0.97]"
-              style={primaryBtnStyle}
-            >
+          <Button
+            asChild
+            className="rounded-xl font-bold text-xs mt-2 min-h-[44px] active:scale-[0.97]"
+            style={primaryBtnStyle}
+          >
+            <Link href={`/portal/${slug}/content`}>
               Browse Catalog
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </div>
       </div>
     );
@@ -401,19 +402,20 @@ function PortalContentReaderView({
                 </div>
               </div>
 
-              <a
-                href={item.media.downloadUrl}
-                download
-                target="_blank"
-                rel="noopener noreferrer"
+              <Button
+                asChild
+                className="rounded-xl font-bold text-xs gap-2 min-h-[44px] px-5 active:scale-[0.97] transition-transform"
+                style={primaryBtnStyle}
               >
-                <Button
-                  className="rounded-xl font-bold text-xs gap-2 min-h-[44px] px-5 active:scale-[0.97] transition-transform"
-                  style={primaryBtnStyle}
+                <a
+                  href={item.media.downloadUrl}
+                  download
+                  target="_blank"
+                  rel="noopener noreferrer"
                 >
                   <Download className="w-4 h-4" /> Download File
-                </Button>
-              </a>
+                </a>
+              </Button>
             </Card>
           )}
 

@@ -180,9 +180,9 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
           <p className="text-sm text-muted-foreground">
             The experience portal you are looking for does not exist or may have been moved.
           </p>
-          <Link href="/">
-            <Button className="rounded-xl font-bold text-xs mt-2">Return Home</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs mt-2 active:scale-[0.97]">
+            <Link href="/">Return Home</Link>
+          </Button>
         </div>
       </div>
     );

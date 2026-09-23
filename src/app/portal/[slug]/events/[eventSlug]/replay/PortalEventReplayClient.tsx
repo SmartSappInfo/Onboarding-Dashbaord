@@ -104,11 +104,11 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
         <Card className="max-w-md p-8 rounded-3xl border-2 border-border space-y-3">
           <h2 className="text-xl font-bold">Replay Not Found</h2>
           <p className="text-xs text-muted-foreground">This session recording could not be located.</p>
-          <Link href={`/portal/${slug}/events`}>
-            <Button variant="outline" className="rounded-xl text-xs font-bold">
+          <Button asChild variant="outline" className="rounded-xl text-xs font-bold active:scale-[0.97]">
+            <Link href={`/portal/${slug}/events`}>
               Return to Events
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </Card>
       </div>
     );
@@ -207,11 +207,11 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
               <h4 className="font-extrabold text-sm text-foreground">Session Resources</h4>
 
               {event.slideDeckUrl ? (
-                <a href={event.slideDeckUrl} target="_blank" rel="noreferrer" className="block">
-                  <Button variant="outline" className="w-full rounded-2xl text-xs font-bold gap-2">
+                <Button asChild variant="outline" className="w-full rounded-2xl text-xs font-bold gap-2 active:scale-[0.97]">
+                  <a href={event.slideDeckUrl} target="_blank" rel="noreferrer">
                     <Download className="w-4 h-4 text-primary" /> Download Slide Deck
-                  </Button>
-                </a>
+                  </a>
+                </Button>
               ) : (
                 <p className="text-xs text-muted-foreground">Slides included within the video playback canvas.</p>
               )}

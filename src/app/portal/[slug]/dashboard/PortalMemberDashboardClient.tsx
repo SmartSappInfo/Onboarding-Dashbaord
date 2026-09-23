@@ -174,9 +174,9 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-3">
           <h2 className="text-xl font-bold">Portal Not Found</h2>
-          <Link href="/">
-            <Button className="rounded-xl font-bold text-xs">Return Home</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs">
+            <Link href="/">Return Home</Link>
+          </Button>
         </div>
       </div>
     );
@@ -206,11 +206,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
             >
               Sign In / Register <ArrowRight className="w-4 h-4" />
             </Button>
-            <Link href={`/portal/${slug}`} className="block">
-              <Button variant="ghost" className="rounded-xl text-xs font-semibold">
+            <Button asChild variant="ghost" className="rounded-xl text-xs font-semibold w-full min-h-[44px] active:scale-[0.97]">
+              <Link href={`/portal/${slug}`}>
                 Return to Portal Home
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </Card>
 
           <PortalAuthModal
@@ -278,11 +278,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
             >
               <User className="w-3.5 h-3.5" /> Edit Profile
             </Button>
-            <Link href={`/portal/${slug}`}>
-              <Button size="sm" className="rounded-xl font-bold text-xs bg-white text-foreground hover:bg-white/90 gap-1.5 shadow-sm">
+            <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-white text-foreground hover:bg-white/90 gap-1.5 shadow-sm active:scale-[0.97]">
+              <Link href={`/portal/${slug}`}>
                 Explore Content Catalog <ArrowRight className="w-3.5 h-3.5" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           </div>
         </div>
 
@@ -325,11 +325,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
                     <h3 className="font-bold text-base text-foreground">Featured Academy Courses</h3>
                     <p className="text-xs text-muted-foreground">Comprehensive structured learning paths.</p>
                   </div>
-                  <Link href={`/portal/${slug}/learn`}>
-                    <Button variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1">
+                  <Button asChild variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 active:scale-[0.97]">
+                    <Link href={`/portal/${slug}/learn`}>
                       Full Catalog <ArrowRight className="w-3 h-3" />
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -356,11 +356,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
 
                       <div className="pt-3 border-t border-border flex items-center justify-between">
                         <span className="text-xs text-muted-foreground font-medium">{course.instructorName || 'Academy Instructor'}</span>
-                        <Link href={`/portal/${slug}/learn/${course.slug}`}>
-                          <Button size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5">
+                        <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 active:scale-[0.97]">
+                          <Link href={`/portal/${slug}/learn/${course.slug}`}>
                             Start Course <ArrowRight className="w-3 h-3" />
-                          </Button>
-                        </Link>
+                          </Link>
+                        </Button>
                       </div>
                     </Card>
                   ))}
@@ -411,11 +411,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
                           <PlayCircle className="w-3.5 h-3.5" /> Interactive Video
                         </div>
 
-                        <Link href={`/portal/${slug}/content/lesson/${lesson.slug}`}>
-                          <Button size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5">
+                        <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 active:scale-[0.97]">
+                          <Link href={`/portal/${slug}/content/lesson/${lesson.slug}`}>
                             Resume <ArrowRight className="w-3 h-3" />
-                          </Button>
-                        </Link>
+                          </Link>
+                        </Button>
                       </div>
                     </Card>
                   ))}
@@ -471,17 +471,17 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
 
                     <div className="pt-2 border-t border-border">
                       {res.media?.downloadUrl ? (
-                        <a href={res.media.downloadUrl} download className="block">
-                          <Button size="sm" className="w-full rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5">
+                        <Button asChild size="sm" className="w-full rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 active:scale-[0.97]">
+                          <a href={res.media.downloadUrl} download>
                             <Download className="w-3.5 h-3.5" /> Download
-                          </Button>
-                        </a>
+                          </a>
+                        </Button>
                       ) : (
-                        <Link href={`/portal/${slug}/content/resource/${res.slug}`} className="block">
-                          <Button size="sm" variant="outline" className="w-full rounded-xl font-bold text-xs gap-1.5">
+                        <Button asChild size="sm" variant="outline" className="w-full rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97]">
+                          <Link href={`/portal/${slug}/content/resource/${res.slug}`}>
                             View Resource
-                          </Button>
-                        </Link>
+                          </Link>
+                        </Button>
                       )}
                     </div>
                   </Card>

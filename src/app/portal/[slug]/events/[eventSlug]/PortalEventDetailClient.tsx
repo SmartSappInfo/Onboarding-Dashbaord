@@ -214,11 +214,11 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
         <Card className="max-w-md p-8 rounded-3xl border-2 border-border space-y-3">
           <h2 className="text-xl font-bold">Event Not Found</h2>
           <p className="text-xs text-muted-foreground">The scheduled live session could not be located.</p>
-          <Link href={`/portal/${slug}/events`}>
-            <Button variant="outline" className="rounded-xl text-xs font-bold">
+          <Button asChild variant="outline" className="rounded-xl text-xs font-bold active:scale-[0.97]">
+            <Link href={`/portal/${slug}/events`}>
               Return to Events Directory
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </Card>
       </div>
     );
@@ -348,18 +348,18 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
               {/* Action Buttons */}
               <div className="space-y-2.5">
                 {hasReplay ? (
-                  <Link href={`/portal/${slug}/events/${event.slug}/replay`} className="block">
-                    <Button className="w-full h-11 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm">
+                  <Button asChild className="w-full h-11 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm active:scale-[0.97]">
+                    <Link href={`/portal/${slug}/events/${event.slug}/replay`}>
                       <PlayCircle className="w-4 h-4" /> Watch Replay & AI Summary
-                    </Button>
-                  </Link>
+                    </Link>
+                  </Button>
                 ) : isRegistered ? (
                   <div className="space-y-2">
-                    <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="block">
-                      <Button className="w-full h-11 rounded-2xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-700 gap-2 shadow-sm">
+                    <Button asChild className="w-full h-11 rounded-2xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-700 gap-2 shadow-sm active:scale-[0.97]">
+                      <a href={event.meetingUrl} target="_blank" rel="noreferrer">
                         <Video className="w-4 h-4" /> Enter Live Room <ExternalLink className="w-3.5 h-3.5" />
-                      </Button>
-                    </a>
+                      </a>
+                    </Button>
 
                     <Button
                       variant="outline"

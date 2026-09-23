@@ -275,9 +275,11 @@ export default function PortalPostDetailClient({
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Discussion Not Found</h2>
-          <Link href={`/portal/${slug}/community`}>
-            <Button className="rounded-xl font-bold text-xs">Return to Community</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
+            <Link href={`/portal/${slug}/community`}>
+              Return to Community
+            </Link>
+          </Button>
         </div>
       </div>
     );

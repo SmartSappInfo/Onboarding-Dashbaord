@@ -320,9 +320,9 @@ export default function PortalCommunityClient({
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Portal Not Found</h2>
-          <Link href="/">
-            <Button className="rounded-xl font-bold text-xs">Return Home</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
+            <Link href="/">Return Home</Link>
+          </Button>
         </div>
       </div>
     );
@@ -710,11 +710,11 @@ export default function PortalCommunityClient({
                         </Button>
                       </div>
 
-                      <Link href={`/portal/${slug}/community/${space?.slug || 'general'}/${post.slug}`}>
-                        <Button variant="outline" size="sm" className="h-8 rounded-xl font-bold text-xs gap-1.5">
+                      <Button asChild variant="outline" size="sm" className="h-8 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97]">
+                        <Link href={`/portal/${slug}/community/${space?.slug || 'general'}/${post.slug}`}>
                           <MessageCircle className="w-3.5 h-3.5 text-primary" /> {post.commentCount || 0} Comments
-                        </Button>
-                      </Link>
+                        </Link>
+                      </Button>
                     </div>
                   </Card>
                 );

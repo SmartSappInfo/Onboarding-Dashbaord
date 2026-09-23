@@ -175,9 +175,11 @@ export default function PortalCourseOverviewClient({
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Course Not Found</h2>
-          <Link href={`/portal/${slug}/learn`}>
-            <Button className="rounded-xl font-bold text-xs">Return to Catalog</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
+            <Link href={`/portal/${slug}/learn`}>
+              Return to Catalog
+            </Link>
+          </Button>
         </div>
       </div>
     );
@@ -226,15 +228,16 @@ export default function PortalCourseOverviewClient({
             {/* CTA Button */}
             <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
               {isEnrolled && targetLessonSlug ? (
-                <Link href={`/portal/${slug}/learn/${courseSlug}/${targetLessonSlug}`}>
-                  <Button
-                    size="lg"
-                    className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2"
-                    style={{ backgroundColor: theme.colors.primary }}
-                  >
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97]"
+                  style={{ backgroundColor: theme.colors.primary }}
+                >
+                  <Link href={`/portal/${slug}/learn/${courseSlug}/${targetLessonSlug}`}>
                     Resume Course ({enrollment?.progressPercentage || 0}%) <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               ) : (
                 <Button
                   size="lg"

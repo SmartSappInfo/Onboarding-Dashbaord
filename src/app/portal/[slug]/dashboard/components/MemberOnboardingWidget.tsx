@@ -270,14 +270,15 @@ export function MemberOnboardingWidget({
                       {actionLabel} <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
                   ) : actionUrl ? (
-                    <Link
-                      href={actionUrl}
-                      target={step.type === 'book_meeting' ? '_blank' : undefined}
-                      rel={step.type === 'book_meeting' ? 'noopener noreferrer' : undefined}
+                    <Button
+                      asChild
+                      size="sm"
+                      className="h-10 sm:h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-all shadow-sm gap-1.5 min-h-[44px] sm:min-h-0"
                     >
-                      <Button
-                        size="sm"
-                        className="h-10 sm:h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-all shadow-sm gap-1.5 min-h-[44px] sm:min-h-0"
+                      <Link
+                        href={actionUrl}
+                        target={step.type === 'book_meeting' ? '_blank' : undefined}
+                        rel={step.type === 'book_meeting' ? 'noopener noreferrer' : undefined}
                       >
                         {actionLabel}
                         {step.type === 'book_meeting' ? (
@@ -285,8 +286,8 @@ export function MemberOnboardingWidget({
                         ) : (
                           <ArrowRight className="w-3.5 h-3.5" />
                         )}
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   ) : null}
                 </div>
               </div>

@@ -166,9 +166,9 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
       <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
         <Card className="max-w-md p-8 rounded-3xl border-2 border-border space-y-3">
           <h2 className="text-xl font-bold">Portal Not Found</h2>
-          <Link href="/">
-            <Button variant="outline" className="rounded-xl text-xs font-bold">Return Home</Button>
-          </Link>
+          <Button asChild variant="outline" className="rounded-xl text-xs font-bold active:scale-[0.97]">
+            <Link href="/">Return Home</Link>
+          </Button>
         </Card>
       </div>
     );
@@ -183,11 +183,11 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
       {/* ── Top Header ────────────────────────────────────────────────── */}
       <header className="border-b border-border bg-card px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}/dashboard`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
+          <Button asChild variant="ghost" size="icon" className="h-10 w-10 min-h-[44px] min-w-[44px] rounded-xl active:scale-[0.97]">
+            <Link href={`/portal/${slug}/dashboard`} aria-label="Back to Dashboard">
               <ArrowLeft className="w-4 h-4" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
           <Link href={`/portal/${slug}`} className="flex items-center gap-2">
             {branding.logoUrl ? (
@@ -204,11 +204,11 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
           </Link>
         </div>
 
-        <Link href={`/portal/${slug}/dashboard`}>
-          <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold">
+        <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-bold active:scale-[0.97]">
+          <Link href={`/portal/${slug}/dashboard`}>
             Back to Dashboard
-          </Button>
-        </Link>
+          </Link>
+        </Button>
       </header>
 
       {/* ── Main Content ──────────────────────────────────────────────── */}

@@ -97,8 +97,17 @@ export function PortalShellHeader({
     (resolvedPath: string) => {
       if (isPreview) {
         if (previewRoute) {
-          if (previewRoute === '/' && (resolvedPath === `/portal/${slug}` || resolvedPath === `/portal/${slug}/`)) return true;
-          if (previewRoute !== '/' && resolvedPath.includes(previewRoute)) return true;
+          const normPreview = previewRoute.replace(/\/+$/, '') || '/';
+          const rootPath = `/portal/${slug}`;
+          if (normPreview === '/' && (resolvedPath === rootPath || resolvedPath === `${rootPath}/`)) return true;
+          if (normPreview !== '/') {
+            const expectedPath = `${rootPath}${normPreview.startsWith('/') ? '' : '/'}${normPreview}`;
+            return (
+              resolvedPath === expectedPath ||
+              resolvedPath === `${expectedPath}/` ||
+              resolvedPath.startsWith(`${expectedPath}/`)
+            );
+          }
         }
         return false;
       }

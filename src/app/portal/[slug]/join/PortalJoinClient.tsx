@@ -52,7 +52,6 @@ import {
   Key,
   LogOut,
   CheckCircle2,
-  Lock,
 } from 'lucide-react';
 
 interface PortalJoinClientProps {
@@ -293,11 +292,11 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
           <CardDescription className="text-xs leading-relaxed">
             {verifyError || 'This invitation link could not be validated. It may have expired or been revoked.'}
           </CardDescription>
-          <Link href={`/portal/${slug}`}>
-            <Button variant="outline" className="rounded-xl font-bold text-xs mt-2">
+          <Button asChild variant="outline" className="rounded-xl font-bold text-xs mt-2 active:scale-[0.97]">
+            <Link href={`/portal/${slug}`}>
               Return to Portal Home
-            </Button>
-          </Link>
+            </Link>
+          </Button>
         </Card>
       </div>
     );
@@ -379,14 +378,15 @@ export default function PortalJoinClient({ slug }: PortalJoinClientProps) {
             </p>
 
             <div className="space-y-2 pt-2">
-              <Link href={`/portal/${slug}/dashboard`}>
-                <Button
-                  className="w-full h-11 rounded-xl font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97] gap-2"
-                  style={{ backgroundColor: primaryColor }}
-                >
+              <Button
+                asChild
+                className="w-full h-11 rounded-xl font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97] gap-2"
+                style={{ backgroundColor: primaryColor }}
+              >
+                <Link href={`/portal/${slug}/dashboard`}>
                   Enter Member Dashboard <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
 
               <button
                 type="button"
