@@ -73,10 +73,10 @@ export function PortalHeroSection({
     () =>
       getPortalButtonInlineStyle(
         theme.ui?.buttonStyle,
-        activeColors.primary,
+        'var(--portal-primary, #3B82F6)',
         radiusCss
       ),
-    [theme.ui?.buttonStyle, activeColors.primary, radiusCss]
+    [theme.ui?.buttonStyle, radiusCss]
   );
 
   return (
@@ -84,7 +84,7 @@ export function PortalHeroSection({
       {/* ── Subtle Ambient Radial Glow ─────────────────────────────────── */}
       <div
         className="absolute -top-20 sm:-top-24 left-1/2 -translate-x-1/2 w-72 sm:w-96 h-72 sm:h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
-        style={{ backgroundColor: activeColors.primary }}
+        style={{ backgroundColor: 'var(--portal-primary, #3B82F6)' }}
       />
 
       <div className="max-w-3xl mx-auto space-y-3 sm:space-y-4 relative z-10">
@@ -93,8 +93,8 @@ export function PortalHeroSection({
           variant="outline"
           className="text-[11px] sm:text-xs font-bold uppercase tracking-wider px-2.5 sm:px-3 py-0.5 sm:py-1 border-2"
           style={{
-            borderColor: activeColors.primary,
-            color: activeColors.primary,
+            borderColor: 'var(--portal-primary, #3B82F6)',
+            color: 'var(--portal-primary, #3B82F6)',
             backgroundColor: 'transparent',
             borderRadius: theme.ui?.borderRadius === 'none' ? '0px' : '9999px',
           }}

@@ -103,11 +103,11 @@ export function PortalVaultPreview({
   const primaryBtnStyle = React.useMemo(() => {
     const base = getPortalButtonInlineStyle(
       theme.ui?.buttonStyle,
-      activeColors.primary,
+      'var(--portal-primary, #3B82F6)',
       radiusCss
     );
     return { ...base, color: primaryBtnTextColor };
-  }, [theme.ui?.buttonStyle, activeColors.primary, radiusCss, primaryBtnTextColor]);
+  }, [theme.ui?.buttonStyle, radiusCss, primaryBtnTextColor]);
 
   const filteredResources = React.useMemo(() => {
     return SAMPLE_RESOURCES.filter(item => {
@@ -138,13 +138,13 @@ export function PortalVaultPreview({
       >
         <div
           className="absolute -top-24 -right-24 w-80 h-80 rounded-full blur-3xl opacity-15 pointer-events-none"
-          style={{ backgroundColor: activeColors.primary }}
+          style={{ backgroundColor: 'var(--portal-primary, #3B82F6)' }}
         />
 
         <Badge
           variant="outline"
           className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5"
-          style={{ color: activeColors.primary, borderColor: activeColors.primary }}
+          style={{ color: 'var(--portal-primary, #3B82F6)', borderColor: 'var(--portal-primary, #3B82F6)' }}
         >
           Digital Vault & Documentation
         </Badge>
@@ -180,7 +180,7 @@ export function PortalVaultPreview({
                     : 'text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:bg-[var(--portal-surface)]'
                 )}
                 style={{
-                  backgroundColor: isActive ? activeColors.primary : 'transparent',
+                  backgroundColor: isActive ? 'var(--portal-primary, #3B82F6)' : 'transparent',
                   borderRadius: radiusCss,
                 }}
               >
@@ -220,7 +220,7 @@ export function PortalVaultPreview({
                 <div className="flex items-center justify-between gap-2">
                   <div
                     className="w-10 h-10 rounded-xl flex items-center justify-center text-white shadow-2xs"
-                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
                   >
                     <IconComp className="w-5 h-5" />
                   </div>

@@ -116,11 +116,11 @@ function PortalContentReaderView({
   const primaryBtnStyle = React.useMemo(() => {
     const base = getPortalButtonInlineStyle(
       theme.ui?.buttonStyle,
-      activeColors.primary,
+      'var(--portal-primary, #3B82F6)',
       radiusCss
     );
     return { ...base, color: primaryBtnTextColor };
-  }, [theme.ui?.buttonStyle, activeColors.primary, radiusCss, primaryBtnTextColor]);
+  }, [theme.ui?.buttonStyle, radiusCss, primaryBtnTextColor]);
 
   const handleCopyLink = () => {
     if (typeof window !== 'undefined') {
@@ -211,7 +211,7 @@ function PortalContentReaderView({
             ) : (
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-                style={{ backgroundColor: activeColors.primary }}
+                style={{ backgroundColor: 'var(--portal-primary, #3B82F6)' }}
               >
                 {brandTitle.charAt(0)}
               </div>
@@ -305,7 +305,7 @@ function PortalContentReaderView({
               <Badge
                 variant="outline"
                 className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5"
-                style={{ color: activeColors.primary, borderColor: activeColors.primary }}
+                style={{ color: 'var(--portal-primary, #3B82F6)', borderColor: 'var(--portal-primary, #3B82F6)' }}
               >
                 {item.type}
               </Badge>
@@ -390,7 +390,7 @@ function PortalContentReaderView({
               <div className="flex items-center gap-4">
                 <div
                   className="w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-xs shrink-0"
-                  style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                  style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
                 >
                   <FolderArchive className="w-6 h-6" />
                 </div>

@@ -88,27 +88,15 @@ export function PortalThemeProvider({
   const canToggle = policy === 'user_choice' || policy === 'system';
 
   // ── Determine Initial Theme Mode (SSR Hydration Safe) ─────────────────────
+  // Must return the exact same deterministic value on SSR and during initial client hydration
   const [internalMode, setInternalMode] = React.useState<'light' | 'dark'>(() => {
     if (forcedMode) return forcedMode;
     if (policy === 'light') return 'light';
     if (policy === 'dark') return 'dark';
-
-    // Synchronous client-side check of stored member preference
-    if (canToggle) {
-      const stored = readStoredTheme(portalSlug, portalId);
-      if (stored) return stored;
-    }
-
-    // Only follow OS system preference if colorMode policy is explicitly 'system'
-    if (policy === 'system' && typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-    }
-
-    // Default to 'light' for clean, consistent initial experience without dark flicker
-    return 'light';
+    return 'light'; // Deterministic default ensuring server/client hydration match
   });
 
-  // Client-side hydration from localStorage if portalId/portalSlug wasn't available at initial tick
+  // Client-side hydration from localStorage after mount
   React.useEffect(() => {
     if (forcedMode || policy === 'light' || policy === 'dark') return;
 

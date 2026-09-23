@@ -130,10 +130,10 @@ export function PortalShellHeader({
     () =>
       getPortalButtonInlineStyle(
         theme.ui?.buttonStyle,
-        activeColors.primary,
+        'var(--portal-primary, #3B82F6)',
         radiusCss
       ),
-    [theme.ui?.buttonStyle, activeColors.primary, radiusCss]
+    [theme.ui?.buttonStyle, radiusCss]
   );
 
   const handleRouteClick = (e: React.MouseEvent, path: string) => {

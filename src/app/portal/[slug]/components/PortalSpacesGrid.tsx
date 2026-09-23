@@ -106,7 +106,7 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
                   >
                     <GraduationCap className="w-6 h-6" />
                   </div>
@@ -164,7 +164,7 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
                   >
                     <Users className="w-6 h-6" />
                   </div>
@@ -193,7 +193,7 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: activeColors.secondary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: 'var(--portal-secondary, #1E293B)', borderRadius: radiusCss }}
                   >
                     <FolderArchive className="w-6 h-6" />
                   </div>
@@ -222,7 +222,7 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: activeColors.accent, borderRadius: radiusCss }}
+                    style={{ backgroundColor: 'var(--portal-accent, #6366F1)', borderRadius: radiusCss }}
                   >
                     <Newspaper className="w-6 h-6" />
                   </div>
@@ -251,7 +251,7 @@ export function PortalSpacesGrid({
                 <div className="space-y-3">
                   <div
                     className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                    style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                    style={{ backgroundColor: 'var(--portal-primary, #3B82F6)', borderRadius: radiusCss }}
                   >
                     <Award className="w-6 h-6" />
                   </div>
