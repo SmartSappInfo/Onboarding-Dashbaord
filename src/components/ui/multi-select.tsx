@@ -60,9 +60,10 @@ export function MultiSelect({
   const currentValues = React.useMemo(() => value ?? selected ?? [], [value, selected]);
   const selectedSet = React.useMemo(() => new Set(currentValues), [currentValues]);
   const optionsMap = React.useMemo(() => {
-    const map = new Map<string, MultiSelectOption>();
+    const map = new Map<string, MultiSelectOption & { searchFilterValue: string }>();
     for (const opt of options) {
-      map.set(opt.value, opt);
+      const searchFilterValue = `${opt.label} ${opt.value} ${opt.sublabel || ''} ${(opt.keywords || []).join(' ')}`.trim();
+      map.set(opt.value, { ...opt, searchFilterValue });
     }
     return map;
   }, [options]);
@@ -171,7 +172,7 @@ export function MultiSelect({
             <CommandGroup className="p-1.5">
               {options.map((option) => {
                 const isSelected = selectedSet.has(option.value);
-                const searchFilterValue = `${option.label} ${option.value} ${option.sublabel || ''} ${(option.keywords || []).join(' ')}`.trim();
+                const searchFilterValue = optionsMap.get(option.value)?.searchFilterValue || option.label;
                 return (
                   <CommandItem
                     key={option.value}
