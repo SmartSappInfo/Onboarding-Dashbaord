@@ -16,6 +16,8 @@ import type { CalendarConnection, CalendarSyncResult } from '@/lib/meetings/type
 import type { Booking } from '@/lib/meetings/types';
 import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
 import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
+import { createZoomMeeting } from '@/lib/services/integrations/zoom-meeting';
+import { resolveWorkspaceConnection } from '@/lib/meetings/meeting-provider-service';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { assertUserTenantPermission } from '@/lib/organization-utils';
@@ -165,14 +167,12 @@ export async function setPrimarySyncCalendarAction(
 }
 
 /**
- * Pushes a confirmed booking as an event to the host's primary connected calendar.
+ * Internal system engine to push a confirmed booking as an event to the host's connected calendar.
+ * Can be safely invoked by automated background workers on public bookings without active user sessions.
  */
-export async function syncBookingToExternalCalendarAction(
+export async function syncBookingToExternalCalendar(
   bookingId: string
 ): Promise<CalendarSyncResult> {
-  // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
-  await requireAuth();
-
   try {
     const bookingDoc = await adminDb.collection('bookings').doc(bookingId).get();
     if (!bookingDoc.exists) {
@@ -180,29 +180,41 @@ export async function syncBookingToExternalCalendarAction(
     }
 
     const booking = bookingDoc.data() as Booking;
-    const hostUserId = booking.hostUserId;
 
-    if (!hostUserId) {
-      return { success: false, error: 'Booking has no assigned host.' };
+    // If external calendar event was already created during booking provisioning, do not duplicate
+    if (booking.externalCalendarEventId) {
+      return {
+        success: true,
+        externalEventId: booking.externalCalendarEventId,
+        externalEventUrl: booking.externalCalendarEventUrl,
+      };
     }
 
-    // Find host's primary calendar connection
-    const connSnap = await adminDb
-      .collection('calendar_connections')
-      .where('workspaceId', '==', booking.workspaceId)
-      .where('userId', '==', hostUserId)
-      .where('isPrimaryDestination', '==', true)
-      .limit(1)
-      .get();
+    const hostUserId = booking.hostUserId;
 
-    if (connSnap.empty) {
-      // No primary external calendar configured; nothing to sync
+    // Resolve connection using 3-tier fallback (Host Primary -> Host General -> Workspace System)
+    let connection: import('@/lib/types').CalendarConnection | null = null;
+
+    if (booking.locationType === 'google_meet') {
+      connection = await resolveWorkspaceConnection(booking.workspaceId, 'google_calendar', hostUserId);
+    } else if (booking.locationType === 'zoom') {
+      connection = await resolveWorkspaceConnection(booking.workspaceId, 'zoom', hostUserId);
+    } else if (booking.locationType === 'teams') {
+      connection = await resolveWorkspaceConnection(booking.workspaceId, 'microsoft_teams', hostUserId);
+    }
+
+    // If no specific conferencing connection match, check if host has any primary calendar destination
+    if (!connection) {
+      connection = await resolveWorkspaceConnection(booking.workspaceId, 'google_calendar', hostUserId)
+        || await resolveWorkspaceConnection(booking.workspaceId, 'microsoft_outlook', hostUserId);
+    }
+
+    if (!connection) {
+      // No external calendar configured; nothing to sync
       return { success: true };
     }
 
-    const connection = connSnap.docs[0].data() as CalendarConnection;
-    const connectionId = connSnap.docs[0].id;
-
+    const connectionId = connection.id;
     const bookerName = `${booking.booker?.firstName || ''} ${booking.booker?.lastName || ''}`.trim() || 'Invitee';
     const bookerEmail = booking.booker?.email || '';
     const joinUrl = booking.joinUrl || '';
@@ -216,12 +228,30 @@ export async function syncBookingToExternalCalendarAction(
         start: booking.startAt,
         end: booking.endAt,
         timezone: booking.timezone || 'UTC',
+        attendees: bookerEmail ? [{ email: bookerEmail, displayName: bookerName }] : undefined,
       });
       syncResult = {
         success: true,
         externalEventId: gEvent.id,
         externalEventUrl: gEvent.htmlLink,
         meetLink: gEvent.hangoutLink,
+      };
+    } else if (connection.provider === 'zoom') {
+      const durationMinutes = Math.max(
+        15,
+        Math.round((new Date(booking.endAt).getTime() - new Date(booking.startAt).getTime()) / 60000)
+      );
+      const zMeeting = await createZoomMeeting(connectionId, {
+        topic: booking.eventTypeName || 'SmartSapp Meeting',
+        start: booking.startAt,
+        durationMinutes,
+        timezone: booking.timezone || 'UTC',
+      });
+      syncResult = {
+        success: true,
+        externalEventId: String(zMeeting.id),
+        externalEventUrl: zMeeting.start_url,
+        meetLink: zMeeting.join_url,
       };
     } else if (connection.provider === 'microsoft_outlook' || (connection.provider as string) === 'microsoft_teams') {
       syncResult = await createMicrosoftCalendarEvent(connectionId, {
@@ -236,13 +266,27 @@ export async function syncBookingToExternalCalendarAction(
     }
 
     if (syncResult.success && syncResult.externalEventId) {
-      await adminDb.collection('bookings').doc(bookingId).update({
+      const updateData: Record<string, string> = {
         externalCalendarEventId: syncResult.externalEventId,
-        externalCalendarEventUrl: syncResult.externalEventUrl,
+        externalCalendarEventUrl: syncResult.externalEventUrl || '',
         updatedAt: new Date().toISOString(),
-      });
+      };
+
+      if (syncResult.meetLink && (!booking.joinUrl || booking.joinUrl.endsWith('/new'))) {
+        updateData.joinUrl = syncResult.meetLink;
+      }
+
+      await adminDb.collection('bookings').doc(bookingId).update(updateData);
 
       if (booking.meetingId) {
+        const meetingUpdate: Record<string, string> = {
+          updatedAt: new Date().toISOString(),
+        };
+        if (syncResult.meetLink && (!booking.joinUrl || booking.joinUrl.endsWith('/new'))) {
+          meetingUpdate.meetingLink = syncResult.meetLink;
+        }
+        await adminDb.collection('meetings').doc(booking.meetingId).update(meetingUpdate);
+
         await logMeetingActivity({
           workspaceId: booking.workspaceId,
           meetingId: booking.meetingId,
@@ -255,8 +299,20 @@ export async function syncBookingToExternalCalendarAction(
 
     return syncResult;
   } catch (err) {
+    console.error('[syncBookingToExternalCalendar] Sync error:', err);
     return { success: false, error: getErrorMessage(err) };
   }
+}
+
+/**
+ * Pushes a confirmed booking as an event to the host's primary connected calendar (Authenticated Server Action).
+ */
+export async function syncBookingToExternalCalendarAction(
+  bookingId: string
+): Promise<CalendarSyncResult> {
+  // SECURITY (audit F2): Server Actions are public endpoints — require authorization
+  await requireAuth();
+  return syncBookingToExternalCalendar(bookingId);
 }
 
 /**

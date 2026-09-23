@@ -37,6 +37,7 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
+import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
 
 interface SessionWizardModalProps {
   open: boolean;
@@ -48,7 +49,8 @@ type SessionType = 'webinar' | 'training' | 'consultation' | 'workshop' | 'gener
 export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalProps) {
   const _router = useRouter();
   const { toast } = useToast();
-  const { activeWorkspaceId: _activeWorkspaceId } = useWorkspace();
+  const { activeWorkspaceId } = useWorkspace();
+  const { hasGoogle, hasZoom, hasTeams } = useConnectedMeetingProviders(activeWorkspaceId);
 
   const [step, setStep] = React.useState<number>(1);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -68,6 +70,12 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
 
   // Step 4: Experience
   const [provider, setProvider] = React.useState('daily');
+
+  React.useEffect(() => {
+    if (provider === 'google_meet' && !hasGoogle) setProvider('daily');
+    if (provider === 'zoom' && !hasZoom) setProvider('daily');
+    if (provider === 'microsoft_teams' && !hasTeams) setProvider('daily');
+  }, [provider, hasGoogle, hasZoom, hasTeams]);
   const [autoRecord, setAutoRecord] = React.useState(true);
   const [aiIntelligence, setAiIntelligence] = React.useState(true);
 
@@ -254,14 +262,14 @@ export function SessionWizardModal({ open, onOpenChange }: SessionWizardModalPro
             <div className="space-y-1.5">
               <Label className="font-semibold">Conferencing Platform</Label>
               <Select value={provider} onValueChange={setProvider}>
-                <SelectTrigger className="rounded-xl text-xs min-h-[40px]">
+                <SelectTrigger className="rounded-xl text-xs min-h-[44px]">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
                   <SelectItem value="daily">Daily.co WebRTC (Built-in Stage)</SelectItem>
-                  <SelectItem value="google_meet">Google Meet</SelectItem>
-                  <SelectItem value="zoom">Zoom Video SDK</SelectItem>
-                  <SelectItem value="microsoft_teams">Microsoft Teams</SelectItem>
+                  {hasGoogle && <SelectItem value="google_meet">Google Meet (Connected)</SelectItem>}
+                  {hasZoom && <SelectItem value="zoom">Zoom Video SDK (Connected)</SelectItem>}
+                  {hasTeams && <SelectItem value="microsoft_teams">Microsoft Teams (Connected)</SelectItem>}
                 </SelectContent>
               </Select>
             </div>

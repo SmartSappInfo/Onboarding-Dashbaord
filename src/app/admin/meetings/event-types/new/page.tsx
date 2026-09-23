@@ -14,6 +14,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ArrowLeft, Loader2, Plus } from 'lucide-react';
 import type { MeetingLocationType, EventTypeFormat } from '@/lib/meetings/types';
 import { createEventTypeAction } from '@/app/actions/event-type-actions';
+import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -26,13 +27,33 @@ export default function NewEventTypePage() {
   const { activeWorkspaceId, activeOrganizationId } = useWorkspace();
   const { toast } = useToast();
 
+  const {
+    getLocationOptions,
+    getFirstAvailableVideoProvider,
+    connectedCount,
+    isLoading: loadingProviders,
+  } = useConnectedMeetingProviders(activeWorkspaceId);
+
   const [name, setName] = React.useState('');
   const [durationMinutes, setDurationMinutes] = React.useState(30);
   const [locationType, setLocationType] = React.useState<MeetingLocationType>('google_meet');
+  const [hasSetDefaultLocation, setHasSetDefaultLocation] = React.useState(false);
   const [locationDetails, _setLocationDetails] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [format, setFormat] = React.useState<EventTypeFormat>('one_to_one');
   const [isCreating, setIsCreating] = React.useState(false);
+
+  // Auto-default to first active video provider (Google Meet / Zoom / MS Teams) or custom/phone
+  React.useEffect(() => {
+    if (!loadingProviders && !hasSetDefaultLocation) {
+      setLocationType(getFirstAvailableVideoProvider());
+      setHasSetDefaultLocation(true);
+    }
+  }, [loadingProviders, hasSetDefaultLocation, getFirstAvailableVideoProvider]);
+
+  const locationOptions = React.useMemo(() => {
+    return getLocationOptions(locationType);
+  }, [getLocationOptions, locationType]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,9 +175,17 @@ export default function NewEventTypePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="new-loc-type" className="text-sm font-semibold">
-                  Location Provider
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="new-loc-type" className="text-sm font-semibold">
+                    Location Provider
+                  </Label>
+                  <Link
+                    href="/admin/settings?tab=integrations"
+                    className="text-xs text-primary hover:underline font-medium"
+                  >
+                    Manage Integrations
+                  </Link>
+                </div>
                 <Select
                   value={locationType}
                   onValueChange={(v: MeetingLocationType) => setLocationType(v)}
@@ -165,14 +194,36 @@ export default function NewEventTypePage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-xl">
-                    <SelectItem value="google_meet">Google Meet</SelectItem>
-                    <SelectItem value="zoom">Zoom Video</SelectItem>
-                    <SelectItem value="teams">Microsoft Teams</SelectItem>
-                    <SelectItem value="phone">Phone Call</SelectItem>
-                    <SelectItem value="in_person">In-Person Address</SelectItem>
-                    <SelectItem value="custom">Custom Online Link</SelectItem>
+                    {locationOptions.map(opt => (
+                      <SelectItem key={opt.value} value={opt.value}>
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <span>{opt.label}</span>
+                          {opt.badge && (
+                            <span
+                              className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                opt.isConnected
+                                  ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                  : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                              }`}
+                            >
+                              {opt.badge}
+                            </span>
+                          )}
+                        </div>
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+
+                {connectedCount === 0 && (
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    No video conferencing accounts connected. You can still schedule phone or in-person sessions, or{' '}
+                    <Link href="/admin/settings?tab=integrations" className="text-primary hover:underline">
+                      connect Google Calendar or Zoom in Settings
+                    </Link>{' '}
+                    to automatically generate video links.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">

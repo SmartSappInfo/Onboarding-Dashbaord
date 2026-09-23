@@ -12,6 +12,8 @@
 
 'use server';
 
+import { adminDb } from '@/lib/firebase-admin';
+import type { CalendarConnection } from '@/lib/types';
 import { logBackofficeAction } from './audit-logger';
 import { authorizeBackoffice } from './backoffice-auth';
 import { getErrorMessage } from './backoffice-errors';
@@ -38,44 +40,36 @@ export async function getIntegrationHealthOverviewAction(idToken: string): Promi
   try {
     await authorizeBackoffice(idToken, 'integration_health', 'view');
 
-    const tokens: IntegrationTokenStatus[] = [
-      {
-        id: 'tok_01',
-        organizationId: 'org_apex',
-        organizationName: 'Apex Logistics Global',
-        workspaceId: 'ws_apex_main',
-        provider: 'zoom',
-        accountName: 'operations@apexlogistics.com',
-        expiresAt: new Date(Date.now() + 3 * 24 * 3600000).toISOString(),
-        daysRemaining: 3,
-        status: 'expiring_soon',
-        lastRefreshedAt: new Date(Date.now() - 27 * 24 * 3600000).toISOString(),
-      },
-      {
-        id: 'tok_02',
-        organizationId: 'org_beacon',
-        organizationName: 'Beacon Academy Trust',
-        workspaceId: 'ws_beacon_main',
-        provider: 'google',
-        accountName: 'admissions@beaconacademy.edu',
-        expiresAt: new Date(Date.now() + 45 * 24 * 3600000).toISOString(),
-        daysRemaining: 45,
-        status: 'valid',
-        lastRefreshedAt: new Date(Date.now() - 15 * 24 * 3600000).toISOString(),
-      },
-      {
-        id: 'tok_03',
-        organizationId: 'org_crest',
-        organizationName: 'Crestline Partners',
-        workspaceId: 'ws_crest_main',
-        provider: 'microsoft',
-        accountName: 'partnerships@crestline.com',
-        expiresAt: new Date(Date.now() - 2 * 24 * 3600000).toISOString(),
-        daysRemaining: -2,
-        status: 'expired',
-        lastRefreshedAt: new Date(Date.now() - 32 * 24 * 3600000).toISOString(),
-      },
-    ];
+    // Query real calendar and conferencing connections across multi-tenant workspaces
+    const snap = await adminDb.collection('calendar_connections').limit(50).get();
+
+    const tokens: IntegrationTokenStatus[] = snap.docs.map(doc => {
+      const data = doc.data() as CalendarConnection;
+      const nowMs = Date.now();
+      const expiresMs = data.expiresAt ? new Date(data.expiresAt).getTime() : nowMs + 30 * 86400000;
+      const daysRemaining = Math.round((expiresMs - nowMs) / (24 * 3600000));
+      const status: IntegrationTokenStatus['status'] =
+        daysRemaining < 0 ? 'expired' : daysRemaining <= 7 ? 'expiring_soon' : 'valid';
+
+      const providerName: IntegrationTokenStatus['provider'] =
+        data.provider === 'google_calendar' ? 'google' : data.provider === 'zoom' ? 'zoom' : 'microsoft';
+
+      return {
+        id: doc.id,
+        organizationId: data.organizationId || 'org_system',
+        organizationName: data.organizationId ? `Org (${data.organizationId.slice(0, 8)})` : 'Primary Organization',
+        workspaceId: data.workspaceId,
+        provider: providerName,
+        accountName:
+          data.userId === 'system_integration'
+            ? `Workspace Integration (${data.provider})`
+            : `${data.userId} (${data.provider})`,
+        expiresAt: data.expiresAt || new Date().toISOString(),
+        daysRemaining,
+        status,
+        lastRefreshedAt: data.createdAt || new Date().toISOString(),
+      };
+    });
 
     const rateLimits: RateLimitGauge[] = [
       {
@@ -125,17 +119,38 @@ export async function verifyIntegrationConnectionAction(
   try {
     const actor = await authorizeBackoffice(idToken, 'integration_health', 'execute');
 
+    const connDoc = await adminDb.collection('calendar_connections').doc(tokenId).get();
+    if (!connDoc.exists) {
+      return { success: false, error: 'Connection record not found.' };
+    }
+
+    const conn = connDoc.data() as CalendarConnection;
+    const startTime = Date.now();
+
+    if (conn.provider === 'google_calendar') {
+      const { getValidGoogleConnection } = await import('@/lib/services/integrations/google-calendar');
+      await getValidGoogleConnection(tokenId);
+    } else if (conn.provider === 'zoom') {
+      const { getValidZoomConnection } = await import('@/lib/services/integrations/zoom-meeting');
+      await getValidZoomConnection(tokenId);
+    } else {
+      const { getValidConnection } = await import('@/lib/services/integrations/microsoft-teams');
+      await getValidConnection(tokenId);
+    }
+
+    const latencyMs = Date.now() - startTime;
+
     await logBackofficeAction(actor, 'integration.verify', 'integration_token', tokenId, {
-      metadata: { tokenId, status: 'verified_active' },
+      metadata: { tokenId, provider: conn.provider, status: 'verified_active', latencyMs },
     });
 
     return {
       success: true,
       isConnected: true,
-      latencyMs: 185,
+      latencyMs,
     };
   } catch (error: unknown) {
     console.error('[INTEGRATION_HEALTH] verifyIntegrationConnectionAction failed:', error);
-    return { success: false, error: getErrorMessage(error) };
+    return { success: false, isConnected: false, error: getErrorMessage(error) };
   }
 }

@@ -67,21 +67,32 @@ import type {
   PortalSeoConfig,
   PortalMode,
 } from '@/lib/types/portal';
+import {
+  DEFAULT_THEME,
+  DEFAULT_NAVIGATION,
+  DEFAULT_ACCESS_POLICY,
+  DEFAULT_FEATURE_TOGGLES,
+  DEFAULT_SEO,
+} from '@/lib/portal-presets';
 import CreateQRButton from '@/components/qr-studio/create-qr-button';
 
 interface PortalStudioClientProps {
   portalId: string;
+  initialPortal?: Portal | null;
 }
 
-export default function PortalStudioClient({ portalId }: PortalStudioClientProps) {
+export default function PortalStudioClient({
+  portalId,
+  initialPortal: serverPrefetchedPortal,
+}: PortalStudioClientProps) {
   const _router = useRouter();
   const firestore = useFirestore();
   const { toast } = useToast();
   const { activeOrganization, accessibleWorkspaces, allAccessibleWorkspaces } = useTenant();
 
-  // Server Action Fallback
-  const [serverPortal, setServerPortal] = React.useState<Portal | null>(null);
-  const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+  // Server Action Fallback pre-hydrated with initialPortal
+  const [serverPortal, setServerPortal] = React.useState<Portal | null>(serverPrefetchedPortal || null);
+  const [isLoadingServer, setIsLoadingServer] = React.useState(!serverPrefetchedPortal);
 
   const fetchServerPortal = React.useCallback(async () => {
     if (!portalId) return;
@@ -136,20 +147,26 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
   const [isSaving, setIsSaving] = React.useState(false);
   const [_hasChanges, setHasChanges] = React.useState(false);
 
-  // Initialize draft state from Firestore or Server Action
+  // Initialize draft state from Firestore or Server Action with robust defaults
   React.useEffect(() => {
     if (effectivePortal) {
-      setName(effectivePortal.name);
-      setSlug(effectivePortal.slug);
+      setName(effectivePortal.name || '');
+      setSlug(effectivePortal.slug || '');
       setDescription(effectivePortal.description || '');
-      setPrimaryMode(effectivePortal.primaryMode);
+      setPrimaryMode(effectivePortal.primaryMode || 'academy');
       setWorkspaceIds(effectivePortal.workspaceIds || ['default']);
-      setTheme(effectivePortal.theme);
-      setBranding(effectivePortal.branding);
-      setNavigation(effectivePortal.navigation);
-      setAccessPolicy(effectivePortal.accessPolicy);
-      setFeatures(effectivePortal.features);
-      setSeo(effectivePortal.seo);
+      setTheme(effectivePortal.theme || DEFAULT_THEME);
+      setBranding(
+        effectivePortal.branding || {
+          brandName: effectivePortal.name || 'Portal',
+          tagline: '',
+          copyrightText: `© ${new Date().getFullYear()} ${effectivePortal.name || 'Portal'}. All rights reserved.`,
+        }
+      );
+      setNavigation(effectivePortal.navigation || DEFAULT_NAVIGATION);
+      setAccessPolicy(effectivePortal.accessPolicy || DEFAULT_ACCESS_POLICY);
+      setFeatures(effectivePortal.features || DEFAULT_FEATURE_TOGGLES);
+      setSeo(effectivePortal.seo || DEFAULT_SEO);
       setHasChanges(false);
     }
   }, [effectivePortal]);
@@ -229,6 +246,22 @@ export default function PortalStudioClient({ portalId }: PortalStudioClientProps
   };
 
   if (isLoading || !effectivePortal || !theme || !branding || !navigation || !accessPolicy || !features || !seo) {
+    if (!isLoading && !effectivePortal) {
+      return (
+        <PageContainerFluid>
+          <div className="flex h-full min-h-[400px] w-full flex-col items-center justify-center p-6 text-center">
+            <div className="rounded-3xl border border-border bg-card p-8 shadow-sm max-w-md w-full space-y-4">
+              <h2 className="text-lg font-bold text-foreground">Portal Not Found</h2>
+              <p className="text-xs text-muted-foreground">The Experience Portal with ID {portalId} could not be loaded.</p>
+              <Button asChild className="h-10 min-h-[44px] px-5 rounded-xl font-bold text-xs">
+                <Link href="/admin/portals">Back to Experience Portals</Link>
+              </Button>
+            </div>
+          </div>
+        </PageContainerFluid>
+      );
+    }
+
     return (
       <PageContainerFluid>
         <div className="space-y-6 py-6">

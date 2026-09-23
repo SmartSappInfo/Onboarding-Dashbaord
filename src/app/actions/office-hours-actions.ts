@@ -19,6 +19,7 @@ import {
   recalculateQueuePositions,
   filterActiveQueueEntries,
 } from '@/lib/meetings/queue-state-service';
+import { createDirectRoomFallback } from '@/lib/meetings/meeting-provider-service';
 import { randomBytes } from 'crypto';
 import { requireWorkspace } from '@/lib/auth/require-auth';
 
@@ -70,7 +71,7 @@ export async function getOfficeHoursRoomAction(
         status: 'offline',
         maxQueueSize: 10,
         conferenceProvider: 'google_meet',
-        joinUrl: 'https://meet.google.com/new',
+        joinUrl: createDirectRoomFallback(docRef.id),
         activeVisitorsCount: 0,
         averageCallDurationMinutes: 15,
         createdAt: now,

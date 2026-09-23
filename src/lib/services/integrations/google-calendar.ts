@@ -274,7 +274,14 @@ export async function queryGoogleFreeBusy(
  */
 export async function createGoogleCalendarEvent(
   connectionId: string,
-  details: { title: string; description?: string; start: string; end: string; timezone: string }
+  details: {
+    title: string;
+    description?: string;
+    start: string;
+    end: string;
+    timezone: string;
+    attendees?: Array<{ email: string; displayName?: string }>;
+  }
 ): Promise<GoogleCalendarEvent> {
   const connection = await getValidGoogleConnection(connectionId);
   const calendarId = connection.calendarId || 'primary';
@@ -298,6 +305,14 @@ export async function createGoogleCalendarEvent(
           dateTime: details.end,
           timeZone: details.timezone,
         },
+        ...(details.attendees && details.attendees.length > 0
+          ? {
+              attendees: details.attendees.map(a => ({
+                email: a.email,
+                displayName: a.displayName,
+              })),
+            }
+          : {}),
         conferenceData: {
           createRequest: {
             requestId: `meet_${Date.now()}`,

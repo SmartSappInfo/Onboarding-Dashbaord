@@ -26,6 +26,8 @@ import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { useUser } from '@/firebase';
 import { quickScheduleMeetingAction } from '@/app/actions/meeting-calendar-actions';
+import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
+import type { MeetingLocationType } from '@/lib/meetings/types';
 import { format } from 'date-fns';
 
 interface QuickScheduleModalProps {
@@ -53,12 +55,19 @@ export function QuickScheduleModal({
   const { user } = useUser();
   const { toast } = useToast();
 
+  const {
+    getLocationOptions,
+    getFirstAvailableVideoProvider,
+    isLoading: loadingProviders,
+  } = useConnectedMeetingProviders(activeWorkspaceId);
+
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
   const [dateStr, setDateStr] = React.useState(format(defaultDate, 'yyyy-MM-dd'));
   const [timeStr, setTimeStr] = React.useState(`${defaultHour.toString().padStart(2, '0')}:00`);
   const [duration, setDuration] = React.useState('30');
-  const [locationType, setLocationType] = React.useState('google_meet');
+  const [locationType, setLocationType] = React.useState<MeetingLocationType>('google_meet');
+  const [hasSetDefaultLoc, setHasSetDefaultLoc] = React.useState(false);
   const [contactName, setContactName] = React.useState('');
   const [contactEmail, setContactEmail] = React.useState('');
   const [forceSchedule, setForceSchedule] = React.useState(false);
@@ -68,8 +77,16 @@ export function QuickScheduleModal({
     if (open) {
       setDateStr(format(defaultDate, 'yyyy-MM-dd'));
       setTimeStr(`${defaultHour.toString().padStart(2, '0')}:00`);
+      if (!loadingProviders && !hasSetDefaultLoc) {
+        setLocationType(getFirstAvailableVideoProvider());
+        setHasSetDefaultLoc(true);
+      }
     }
-  }, [open, defaultDate, defaultHour]);
+  }, [open, defaultDate, defaultHour, loadingProviders, hasSetDefaultLoc, getFirstAvailableVideoProvider]);
+
+  const locationOptions = React.useMemo(() => {
+    return getLocationOptions(locationType);
+  }, [getLocationOptions, locationType]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -188,16 +205,32 @@ export function QuickScheduleModal({
 
             <div className="space-y-1.5">
               <Label className="font-semibold">Location / Video</Label>
-              <Select value={locationType} onValueChange={setLocationType}>
+              <Select
+                value={locationType}
+                onValueChange={(v: MeetingLocationType) => setLocationType(v)}
+              >
                 <SelectTrigger className="rounded-xl h-9 text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
-                  <SelectItem value="google_meet">Google Meet</SelectItem>
-                  <SelectItem value="zoom">Zoom</SelectItem>
-                  <SelectItem value="ms_teams">Microsoft Teams</SelectItem>
-                  <SelectItem value="phone">Phone Call</SelectItem>
-                  <SelectItem value="in_person">In Person</SelectItem>
+                  {locationOptions.map(opt => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      <div className="flex items-center justify-between w-full gap-2">
+                        <span>{opt.label}</span>
+                        {opt.badge && (
+                          <span
+                            className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${
+                              opt.isConnected
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                            }`}
+                          >
+                            {opt.badge}
+                          </span>
+                        )}
+                      </div>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

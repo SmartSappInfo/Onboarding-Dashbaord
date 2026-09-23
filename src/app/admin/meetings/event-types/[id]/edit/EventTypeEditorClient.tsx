@@ -54,8 +54,10 @@ import {
   Check,
   Globe,
   Users,
+  AlertCircle,
   type LucideIcon,
 } from 'lucide-react';
+import { useConnectedMeetingProviders } from '@/lib/meetings/hooks/use-connected-meeting-providers';
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
@@ -150,6 +152,18 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
   // Location Settings
   const [locationType, setLocationType] = React.useState<MeetingLocationType>('google_meet');
   const [locationDetails, setLocationDetails] = React.useState('');
+
+  const {
+    getLocationOptions,
+    isLocationTypeConnected,
+    connectedCount,
+  } = useConnectedMeetingProviders(activeWorkspaceId);
+
+  const locationOptions = React.useMemo(() => {
+    return getLocationOptions(locationType);
+  }, [getLocationOptions, locationType]);
+
+  const isCurrentLocationDisconnected = !isLocationTypeConnected(locationType);
 
   // Questions Settings
   const [customQuestions, setCustomQuestions] = React.useState<BookingField[]>([]);
@@ -857,9 +871,17 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="loc-type-select" className="text-sm font-semibold">
-                    Location Provider
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label htmlFor="loc-type-select" className="text-sm font-semibold">
+                      Location Provider
+                    </Label>
+                    <Link
+                      href="/admin/settings?tab=integrations"
+                      className="text-xs text-primary hover:underline font-medium inline-flex items-center gap-1"
+                    >
+                      Manage Integrations
+                    </Link>
+                  </div>
                   <Select
                     value={locationType}
                     onValueChange={(v: MeetingLocationType) => setLocationType(v)}
@@ -868,14 +890,64 @@ export default function EventTypeEditorClient({ eventTypeId }: EventTypeEditorCl
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
-                      <SelectItem value="google_meet">Google Meet</SelectItem>
-                      <SelectItem value="zoom">Zoom Video</SelectItem>
-                      <SelectItem value="teams">Microsoft Teams</SelectItem>
-                      <SelectItem value="phone">Phone Call</SelectItem>
-                      <SelectItem value="in_person">In-Person Address</SelectItem>
-                      <SelectItem value="custom">Custom Online Link</SelectItem>
+                      {locationOptions.map(opt => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          <div className="flex items-center justify-between w-full gap-2">
+                            <span>{opt.label}</span>
+                            {opt.badge && (
+                              <span
+                                className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${
+                                  opt.isConnected
+                                    ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400'
+                                    : 'bg-amber-500/10 text-amber-600 dark:text-amber-400'
+                                }`}
+                              >
+                                {opt.badge}
+                              </span>
+                            )}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
+
+                  {/* Warning banner if current selection is disconnected */}
+                  {isCurrentLocationDisconnected && (
+                    <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-800 dark:text-amber-300 text-xs mt-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div className="flex-1 space-y-1">
+                        <span className="font-semibold block">Integration not connected</span>
+                        <p className="text-[11px] text-amber-700 dark:text-amber-400">
+                          {locationType === 'google_meet'
+                            ? 'Google Calendar is not connected to this workspace. Bookings cannot generate Google Meet links until connected.'
+                            : locationType === 'zoom'
+                            ? 'Zoom is not connected to this workspace. Bookings cannot generate Zoom links until connected.'
+                            : 'Microsoft Teams is not connected to this workspace.'}
+                        </p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          asChild
+                          className="h-8 text-xs rounded-lg border-amber-500/30 text-amber-900 dark:text-amber-200 hover:bg-amber-500/20 active:scale-[0.97]"
+                        >
+                          <Link href="/admin/settings?tab=integrations">
+                            Connect in Settings
+                          </Link>
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {connectedCount === 0 && !isCurrentLocationDisconnected && (
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      Tip: Connect Google Calendar or Zoom in{' '}
+                      <Link href="/admin/settings?tab=integrations" className="text-primary hover:underline">
+                        Settings &rarr; Integrations
+                      </Link>{' '}
+                      to automatically generate unique video rooms for each booking.
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">

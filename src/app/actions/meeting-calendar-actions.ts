@@ -14,6 +14,8 @@ import { adminDb } from '@/lib/firebase-admin';
 import type {
   CalendarGridEvent,
 } from '@/lib/meetings/types/calendar-view';
+import type { MeetingLocationType } from '@/lib/meetings/types';
+import { generateMeetingRoom } from '@/lib/meetings/meeting-provider-service';
 import { detectGridCollision } from '@/lib/meetings/calendar-view-service';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
@@ -125,7 +127,7 @@ export async function quickScheduleMeetingAction(payload: {
   contactName?: string;
   contactEmail?: string;
   forceSchedule?: boolean;
-}): Promise<{ success: boolean; meetingId?: string; error?: string }> {
+}): Promise<{ success: boolean; meetingId?: string; meetingLink?: string; error?: string }> {
   // SECURITY (audit F2): Server Actions are public endpoints — this ran unauthenticated.
   await requireAuth();
 
@@ -174,6 +176,32 @@ export async function quickScheduleMeetingAction(payload: {
       }
     }
 
+    // Provision real conferencing link if a video provider was selected
+    let meetingLink = '';
+    let externalCalendarEventId: string | undefined;
+    let externalCalendarEventUrl: string | undefined;
+
+    const normalizedLocationType = (locationType === 'ms_teams' ? 'teams' : locationType) as MeetingLocationType;
+
+    if (normalizedLocationType === 'google_meet' || normalizedLocationType === 'zoom' || normalizedLocationType === 'teams') {
+      const roomResult = await generateMeetingRoom({
+        workspaceId,
+        locationType: normalizedLocationType,
+        title: title.trim(),
+        startAt,
+        endAt,
+        timezone: 'UTC',
+        hostUserId,
+        bookerName: contactName?.trim(),
+        bookerEmail: contactEmail?.trim(),
+        durationMinutes,
+      });
+
+      meetingLink = roomResult.joinUrl;
+      externalCalendarEventId = roomResult.externalCalendarEventId;
+      externalCalendarEventUrl = roomResult.externalCalendarEventUrl;
+    }
+
     const docRef = adminDb.collection('meetings').doc();
     const meetingData = {
       id: docRef.id,
@@ -187,7 +215,10 @@ export async function quickScheduleMeetingAction(payload: {
       endTime: endAt,
       duration: durationMinutes,
       status: 'scheduled',
-      locationType,
+      locationType: normalizedLocationType,
+      meetingLink,
+      externalCalendarEventId,
+      externalCalendarEventUrl,
       contactName: contactName?.trim() || undefined,
       contactEmail: contactEmail?.trim() || undefined,
       createdAt: now,
@@ -196,7 +227,11 @@ export async function quickScheduleMeetingAction(payload: {
 
     await docRef.set(meetingData);
 
-    return { success: true, meetingId: docRef.id };
+    return {
+      success: true,
+      meetingId: docRef.id,
+      meetingLink,
+    };
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

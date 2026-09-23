@@ -25,6 +25,7 @@ import type {
 } from '@/lib/meetings/types';
 import { getAvailableSlotsForRange, isSlotConflicting } from '@/lib/meetings/scheduling-engine';
 import { generateIcsContent } from '@/lib/meetings/ics-helpers';
+import { generateMeetingRoom } from '@/lib/meetings/meeting-provider-service';
 import { createEntityFromRegistration } from '@/app/actions/meeting-lead-capture-action';
 import { sendEmail } from '@/lib/resend-service';
 
@@ -432,7 +433,53 @@ export async function createBookingFromHoldAction(input: {
     let eventType: EventType;
     let finalBooking: Booking;
 
-    // Run transaction to convert hold and create booking
+    // ── Pre-Transaction: Validate Hold & Generate Real Meeting Room ──
+    // External API network calls must be executed OUTSIDE the Firestore transaction
+    // to prevent transaction timeouts and duplicate meeting creation on transaction retries.
+    const preHoldSnap = await holdDocRef.get();
+    if (!preHoldSnap.exists) {
+      throw new Error('Booking hold not found or has expired.');
+    }
+
+    const preHoldData = preHoldSnap.data() as BookingHold;
+
+    if (preHoldData.status !== 'active') {
+      throw new Error('This booking reservation has already been completed or cancelled.');
+    }
+
+    if (new Date(preHoldData.expiresAt).getTime() < now.getTime()) {
+      throw new Error('Your reservation hold has expired. Please re-select a time slot.');
+    }
+
+    if (preHoldData.sessionId !== sessionId) {
+      throw new Error('Invalid booking session.');
+    }
+
+    const eventDoc = await adminDb.collection('event_types').doc(preHoldData.eventTypeId).get();
+    if (!eventDoc.exists) {
+      throw new Error('Event type not found.');
+    }
+    eventType = { id: eventDoc.id, ...eventDoc.data() } as EventType;
+
+    // Provision real conferencing link (Google Meet / Zoom / MS Teams) or fallback room URL
+    const bookerFullName = `${booker.firstName} ${booker.lastName}`.trim() || 'Invitee';
+    const roomResult = await generateMeetingRoom({
+      workspaceId: preHoldData.workspaceId,
+      locationType: eventType.locationType,
+      title: `${eventType.name} with ${bookerFullName}`,
+      startAt: preHoldData.startAt,
+      endAt: preHoldData.endAt,
+      timezone: visitorTimezone,
+      hostUserId: preHoldData.hostUserId,
+      bookerName: bookerFullName,
+      bookerEmail: booker.email,
+      durationMinutes: eventType.durationMinutes,
+      existingLocationDetails: eventType.locationDetails,
+    });
+
+    const joinUrl = roomResult.joinUrl;
+
+    // ── Atomic Firestore Transaction: Convert Hold & Save Booking ──
     await adminDb.runTransaction(async tx => {
       const holdSnap = await tx.get(holdDocRef);
       if (!holdSnap.exists) {
@@ -443,27 +490,6 @@ export async function createBookingFromHoldAction(input: {
 
       if (holdData.status !== 'active') {
         throw new Error('This booking reservation has already been completed or cancelled.');
-      }
-
-      if (new Date(holdData.expiresAt).getTime() < now.getTime()) {
-        throw new Error('Your reservation hold has expired. Please re-select a time slot.');
-      }
-
-      if (holdData.sessionId !== sessionId) {
-        throw new Error('Invalid booking session.');
-      }
-
-      // Fetch Event Type
-      const eventDoc = await tx.get(adminDb.collection('event_types').doc(holdData.eventTypeId));
-      if (!eventDoc.exists) {
-        throw new Error('Event type not found.');
-      }
-      eventType = { id: eventDoc.id, ...eventDoc.data() } as EventType;
-
-      // Determine Join Link
-      let joinUrl = eventType.locationDetails || '';
-      if (eventType.locationType === 'google_meet' && !joinUrl) {
-        joinUrl = `https://meet.google.com/new`;
       }
 
       finalBooking = {
@@ -482,6 +508,8 @@ export async function createBookingFromHoldAction(input: {
         locationType: eventType.locationType,
         locationDetails: eventType.locationDetails,
         joinUrl,
+        externalCalendarEventId: roomResult.externalCalendarEventId,
+        externalCalendarEventUrl: roomResult.externalCalendarEventUrl,
         status: 'confirmed',
         bookingSource: 'booking_page',
         manageTokenHash,
@@ -583,8 +611,8 @@ export async function createBookingFromHoldAction(input: {
 
     // 3. Background 2-Way External Calendar Sync
     try {
-      const { syncBookingToExternalCalendarAction } = await import('./calendar-connection-actions');
-      syncBookingToExternalCalendarAction(bookingDocRef.id).catch(err => {
+      const { syncBookingToExternalCalendar } = await import('./calendar-connection-actions');
+      syncBookingToExternalCalendar(bookingDocRef.id).catch(err => {
         console.warn('[createBookingFromHoldAction] Background external calendar sync error:', err);
       });
     } catch (syncErr) {
