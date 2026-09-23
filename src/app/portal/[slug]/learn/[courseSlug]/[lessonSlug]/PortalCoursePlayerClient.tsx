@@ -3,8 +3,16 @@
 /**
  * {{Org_name}} Experience Platform — Focused Course Learning Player & AI Tutor
  *
- * Dedicated LMS learning player with collapsible module navigation, video embed player,
- * interactive quiz runner, assignment submissions, drip locks, and ambient AI Tutor.
+ * Dedicated LMS learning player with 3-column collapsible workspace:
+ * - Left: Collapsible course syllabus module tree (desktop rail + mobile sheet).
+ * - Center: Flexible, responsive video canvas, reading takeaways, quiz runner, and downloads.
+ * - Right: Non-modal, docked AI Learning Tutor panel (desktop aside + mobile bottom sheet).
+ * - Mobile: Fixed bottom navigation bar with instant Syllabus, Lesson, AI Tutor, and Complete triggers.
+ *
+ * Architecture Notes:
+ * - Conforms to next-best-practices, vercel-react-best-practices, emilkowal-animations.
+ * - Non-blocking reading experience: AI panel is docked side-by-side with content.
+ * - Zero any / any[].
  */
 
 import * as React from 'react';
@@ -18,12 +26,21 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet';
 import { useToast } from '@/hooks/use-toast';
 import {
   completeLessonAction,
   submitAssessmentAction,
 } from '@/app/actions/learning-actions';
-import { LessonAiTutorDrawer } from './components/LessonAiTutorDrawer';
+import {
+  AiTutorChatContent,
+  LessonAiTutorDrawer,
+} from './components/LessonAiTutorDrawer';
 import type { Portal } from '@/lib/types/portal';
 import type {
   Course,
@@ -47,7 +64,10 @@ import {
   Download,
   Loader2,
   Check,
+  PanelLeft,
+  PanelLeftClose,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 interface PortalCoursePlayerClientProps {
@@ -66,24 +86,17 @@ export default function PortalCoursePlayerClient({
   const router = useRouter();
   const { toast } = useToast();
 
-  const [isSidebarOpen, setIsSidebarOpen] = React.useState(false);
-  const [isAiTutorOpen, setIsAiTutorOpen] = React.useState(false);
+  // Layout Collapsible States
+  const [isSyllabusCollapsed, setIsSyllabusCollapsed] = React.useState(false);
+  const [isAiPanelOpen, setIsAiPanelOpen] = React.useState(true);
+  const [isMobileSyllabusOpen, setIsMobileSyllabusOpen] = React.useState(false);
+  const [isMobileAiTutorOpen, setIsMobileAiTutorOpen] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState('notes');
 
   // Quiz State
   const [quizAnswers, setQuizAnswers] = React.useState<Record<string, string[]>>({});
   const [quizResult, setQuizResult] = React.useState<AssessmentResult | null>(null);
   const [isEvaluatingQuiz, setIsEvaluatingQuiz] = React.useState(false);
-
-  // AI Tutor State
-  const [aiPrompt, setAiPrompt] = React.useState('');
-  const [aiMessages, setAiMessages] = React.useState<{ role: 'user' | 'assistant'; text: string }[]>([
-    {
-      role: 'assistant',
-      text: 'Hello! I am your AI Learning Assistant for this lesson. Ask me anything about the content, request a quick summary, or ask for a practice quiz!',
-    },
-  ]);
-  const [_isAiThinking, setIsAiThinking] = React.useState(false);
 
   // 1. Query Portal
   const portalQuery = useMemoFirebase(
@@ -95,6 +108,8 @@ export default function PortalCoursePlayerClient({
   );
   const { data: portals } = useCollection<Portal>(portalQuery);
   const portal = portals?.[0] ?? null;
+  // Feature gate for ambient AI tutor
+  const isAiTutorEnabled = portal?.features?.enableAiTutor ?? true;
 
   // 2. Query Course
   const courseQuery = useMemoFirebase(
@@ -208,11 +223,42 @@ export default function PortalCoursePlayerClient({
 
   const isCurrentCompleted = currentLesson ? completedLessonIds.includes(currentLesson.id) : false;
 
+  // Flat list of lessons ordered by module sequence (used for icon rail navigation)
+  const orderedLessons = React.useMemo(() => {
+    if (!modules || modules.length === 0) return lessons || [];
+    const moduleLessonIds = new Set<string>();
+    const ordered: CourseLesson[] = [];
+    modules.forEach(mod => {
+      (lessons || [])
+        .filter(l => l.moduleId === mod.id)
+        .forEach(l => {
+          ordered.push(l);
+          moduleLessonIds.add(l.id);
+        });
+    });
+    (lessons || []).forEach(l => {
+      if (!moduleLessonIds.has(l.id)) {
+        ordered.push(l);
+      }
+    });
+    return ordered;
+  }, [modules, lessons]);
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const handleMarkComplete = async () => {
     if (!course || !currentLesson || !portal || !user) {
-      if (!user) toast({ title: 'Sign In Required', description: 'Please sign in to save your progress.' });
+      if (!user) {
+        toast({
+          title: 'Sign In Required',
+          description: 'Please sign in to save your progress.',
+          duration: 10000,
+          actionConfig: {
+            label: 'Sign In',
+            path: `/portal/${slug}/join`,
+          },
+        });
+      }
       return;
     }
 
@@ -277,25 +323,6 @@ export default function PortalCoursePlayerClient({
     }
   };
 
-  const _handleAskAi = async (customPrompt?: string) => {
-    const queryText = customPrompt || aiPrompt;
-    if (!queryText.trim()) return;
-
-    const newMsgs = [...aiMessages, { role: 'user' as const, text: queryText.trim() }];
-    setAiMessages(newMsgs);
-    setAiPrompt('');
-    setIsAiThinking(true);
-
-    setTimeout(() => {
-      let reply = `In this lesson on "${currentLesson?.title}", the key insight is to automate structured follow-ups. Let me know if you would like me to draft an example template!`;
-      if (queryText.toLowerCase().includes('quiz')) {
-        reply = `Here is a practice question:\nWhat is the most effective channel for fee payment notifications?\nA) Postal Mail\nB) WhatsApp Direct with Payment Link (Correct)\nC) Radio Broadcast`;
-      }
-      setAiMessages([...newMsgs, { role: 'assistant' as const, text: reply }]);
-      setIsAiThinking(false);
-    }, 900);
-  };
-
   if (isLoadingCourse || isLoadingLessons) {
     return (
       <div className="min-h-screen bg-background flex flex-col justify-between p-6">
@@ -321,122 +348,250 @@ export default function PortalCoursePlayerClient({
     );
   }
 
-  const _theme = portal?.theme || { colors: { primary: '#3A86FF' } };
-  const _brandTitle = portal?.branding?.brandName || portal?.name || 'Academy';
   const progressPct = enrollment?.progressPercentage || 0;
+
+  // Shared Syllabus List Renderer (used in desktop sidebar and mobile sheet)
+  const renderSyllabusContent = (options?: { onSelectLesson?: () => void; showCollapseButton?: boolean }) => (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between pb-2 border-b border-border">
+        <div className="flex items-center gap-2">
+          <span className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+            <Layers className="w-4 h-4 text-primary" /> Course Syllabus
+          </span>
+          <span className="text-[11px] font-bold text-foreground">
+            {completedLessonIds.length}/{lessons?.length || 0} Lessons
+          </span>
+        </div>
+        {options?.showCollapseButton && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setIsSyllabusCollapsed(true)}
+            className="h-8 w-8 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted active:scale-[0.95] transition-all"
+            title="Collapse to compact icon navigation"
+            aria-label="Collapse Syllabus Sidebar"
+          >
+            <PanelLeftClose className="w-4 h-4" />
+          </Button>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        {(modules || []).map((mod, modIdx) => {
+          const moduleLessons = (lessons || []).filter(l => l.moduleId === mod.id);
+
+          return (
+            <div key={mod.id} className="space-y-1.5">
+              <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
+                <span className="uppercase tracking-wider">Module {modIdx + 1}: {mod.title}</span>
+              </div>
+
+              <div className="space-y-1">
+                {moduleLessons.map((les, lesIdx) => {
+                  const isCurrent = les.id === currentLesson.id;
+                  const isDone = completedLessonIds.includes(les.id);
+
+                  return (
+                    <Link
+                      key={les.id}
+                      href={`/portal/${slug}/learn/${courseSlug}/${les.slug}`}
+                      onClick={() => options?.onSelectLesson?.()}
+                      className={cn(
+                        'flex items-center justify-between p-2.5 rounded-xl text-xs transition-all',
+                        isCurrent
+                          ? 'bg-primary text-white font-bold shadow-xs'
+                          : isDone
+                          ? 'text-foreground hover:bg-muted/60'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
+                      )}
+                    >
+                      <div className="flex items-center gap-2.5 truncate">
+                        {isDone ? (
+                          <CheckCircle2
+                            className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-emerald-500')}
+                          />
+                        ) : (
+                          <PlayCircle
+                            className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-muted-foreground')}
+                          />
+                        )}
+                        <span className="truncate">
+                          {lesIdx + 1}. {les.title}
+                        </span>
+                      </div>
+
+                      <span className={cn('text-[10px] shrink-0', isCurrent ? 'text-white/80' : 'text-muted-foreground')}>
+                        {les.videoDurationSeconds ? `${Math.round(les.videoDurationSeconds / 60)}m` : '10m'}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background flex flex-col justify-between text-foreground">
       {/* ── Top Bar ────────────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md px-4 sm:px-6 py-3 flex items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
+      <header className="sticky top-0 z-30 border-b border-border bg-background/95 backdrop-blur-md px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          {/* Mobile Syllabus Toggle */}
           <button
             type="button"
-            onClick={() => setIsSidebarOpen(!isSidebarOpen)}
-            className="lg:hidden p-2 rounded-xl border border-border hover:bg-muted text-foreground"
-            aria-label="Toggle Syllabus Sidebar"
+            onClick={() => setIsMobileSyllabusOpen(true)}
+            className="lg:hidden p-2 rounded-xl border border-border hover:bg-muted text-foreground shrink-0 active:scale-[0.96]"
+            aria-label="Toggle Syllabus Navigation"
           >
-            <Menu className="w-5 h-5" />
+            <Menu className="w-4 h-4" />
           </button>
 
           <Link href={`/portal/${slug}/learn/${courseSlug}`}>
-            <Button variant="ghost" size="sm" className="rounded-xl text-xs font-bold gap-1.5 hidden sm:flex">
+            <Button variant="ghost" size="sm" className="rounded-xl text-xs font-bold gap-1.5 hidden sm:flex shrink-0">
               <ArrowLeft className="w-3.5 h-3.5" /> Back to Overview
             </Button>
           </Link>
 
-          <div className="space-y-0.5 max-w-[200px] sm:max-w-md truncate">
+          <div className="space-y-0.5 min-w-0 truncate">
             <p className="text-[10px] font-bold text-primary uppercase tracking-wider truncate">{course.title}</p>
             <h2 className="font-extrabold text-xs sm:text-sm text-foreground truncate">{currentLesson.title}</h2>
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="hidden md:flex items-center gap-3 w-44">
+        <div className="flex items-center gap-2 sm:gap-4 shrink-0">
+          <div className="hidden md:flex items-center gap-3 w-36 lg:w-44">
             <Progress value={progressPct} className="h-2 rounded-full flex-1" />
             <span className="text-[11px] font-bold text-muted-foreground shrink-0">{progressPct}%</span>
           </div>
 
-          <Button
-            size="sm"
-            onClick={() => setIsAiTutorOpen(true)}
-            className="rounded-xl font-bold text-xs bg-primary/10 text-primary hover:bg-primary/20 border-0 gap-1.5 shadow-xs"
-          >
-            <Sparkles className="w-3.5 h-3.5" /> Ask AI Tutor
-          </Button>
+          {/* Desktop AI Tutor Toggle Button */}
+          {isAiTutorEnabled && (
+            <Button
+              size="sm"
+              onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
+              className={cn(
+                'hidden lg:flex rounded-xl font-bold text-xs gap-1.5 shadow-2xs transition-all active:scale-[0.98]',
+                isAiPanelOpen
+                  ? 'bg-primary text-white hover:bg-primary/90'
+                  : 'bg-primary/10 text-primary hover:bg-primary/20 border-0'
+              )}
+              title={isAiPanelOpen ? 'Collapse AI Tutor Panel' : 'Expand AI Tutor Panel'}
+            >
+              <Sparkles className="w-3.5 h-3.5" />
+              {isAiPanelOpen ? 'Hide AI Tutor' : 'Open AI Tutor'}
+            </Button>
+          )}
+
+          {/* Mobile AI Tutor Trigger */}
+          {isAiTutorEnabled && (
+            <Button
+              size="sm"
+              onClick={() => setIsMobileAiTutorOpen(true)}
+              className="lg:hidden rounded-xl font-bold text-xs bg-primary/10 text-primary hover:bg-primary/20 border-0 gap-1.5 shadow-2xs"
+            >
+              <Sparkles className="w-3.5 h-3.5" /> AI Tutor
+            </Button>
+          )}
         </div>
       </header>
 
-      {/* ── Learning Grid ──────────────────────────────────────────────── */}
-      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden">
-        {/* ── Left Syllabus Sidebar (Desktop) ─────────────────────────── */}
-        <aside className="hidden lg:block w-80 border-r border-border bg-card/60 overflow-y-auto p-4 space-y-4 shrink-0">
-          <div className="flex items-center justify-between pb-2 border-b border-border">
-            <span className="font-extrabold text-xs uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
-              <Layers className="w-4 h-4 text-primary" /> Course Syllabus
-            </span>
-            <span className="text-[11px] font-bold text-foreground">
-              {completedLessonIds.length}/{lessons?.length || 0}
-            </span>
-          </div>
+      {/* ── 3-Column Learning Grid (Desktop) ───────────────────────────── */}
+      <div className="flex-1 flex flex-row overflow-hidden relative">
+        {/* ── Left Column: Course Syllabus (Desktop) ────────────────── */}
+        <aside
+          className={cn(
+            'hidden lg:flex flex-col border-r border-border bg-card/60 shrink-0 transition-all duration-300 ease-in-out h-[calc(100vh-57px)] sticky top-[57px] overflow-hidden',
+            isSyllabusCollapsed ? 'w-16 items-center py-3 px-2' : 'w-80 p-4'
+          )}
+        >
+          {isSyllabusCollapsed ? (
+            /* Collapsed Icon Rail Navigation */
+            <div className="flex flex-col items-center justify-between h-full w-full">
+              {/* Rail Header with Expand Button */}
+              <div className="flex flex-col items-center w-full">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsSyllabusCollapsed(false)}
+                  className="h-10 w-10 rounded-xl border border-border hover:bg-primary/10 hover:text-primary text-muted-foreground shrink-0 active:scale-[0.95] transition-all"
+                  title="Expand Syllabus (Full View)"
+                  aria-label="Expand Syllabus Sidebar"
+                >
+                  <PanelLeft className="w-4 h-4" />
+                </Button>
+                <div className="w-8 h-px bg-border my-2.5 shrink-0" />
+              </div>
 
-          <div className="space-y-4">
-            {(modules || []).map((mod, modIdx) => {
-              const moduleLessons = (lessons || []).filter(l => l.moduleId === mod.id);
+              {/* Scrollable Lesson Icon Rail */}
+              <div className="flex-1 w-full overflow-y-auto overflow-x-hidden space-y-2 py-1 flex flex-col items-center">
+                {orderedLessons.map((les, idx) => {
+                  const isCurrent = les.id === currentLesson.id;
+                  const isDone = completedLessonIds.includes(les.id);
+                  const lessonNumber = idx + 1;
+                  const durationText = les.videoDurationSeconds
+                    ? `${Math.round(les.videoDurationSeconds / 60)}m`
+                    : '10m';
 
-              return (
-                <div key={mod.id} className="space-y-1.5">
-                  <div className="px-2 py-1 flex items-center justify-between text-[11px] font-bold text-muted-foreground">
-                    <span className="uppercase tracking-wider">Module {modIdx + 1}: {mod.title}</span>
-                  </div>
+                  return (
+                    <Link
+                      key={les.id}
+                      href={`/portal/${slug}/learn/${courseSlug}/${les.slug}`}
+                      className="group relative flex items-center justify-center w-full"
+                      title={`Lesson ${lessonNumber}: ${les.title} (${durationText})${isDone ? ' • Completed' : ''}`}
+                    >
+                      {/* Active Indicator Bar on Left Edge */}
+                      {isCurrent && (
+                        <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
+                      )}
+                      <div
+                        className={cn(
+                          'w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all active:scale-[0.95]',
+                          isCurrent
+                            ? 'bg-primary text-white shadow-xs ring-2 ring-primary/20 font-black'
+                            : isDone
+                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
+                            : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50'
+                        )}
+                      >
+                        {isDone ? (
+                          <CheckCircle2 className={cn('w-4 h-4', isCurrent ? 'text-white' : 'text-emerald-500')} />
+                        ) : isCurrent ? (
+                          <PlayCircle className="w-4 h-4 text-white" />
+                        ) : (
+                          <span className="text-[11px] font-bold">{lessonNumber}</span>
+                        )}
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
 
-                  <div className="space-y-1">
-                    {moduleLessons.map((les, lesIdx) => {
-                      const isCurrent = les.id === currentLesson.id;
-                      const isDone = completedLessonIds.includes(les.id);
-
-                      return (
-                        <Link
-                          key={les.id}
-                          href={`/portal/${slug}/learn/${courseSlug}/${les.slug}`}
-                          className={`flex items-center justify-between p-2.5 rounded-xl text-xs transition-all ${
-                            isCurrent
-                              ? 'bg-primary text-white font-bold shadow-xs'
-                              : isDone
-                              ? 'text-foreground hover:bg-muted/60'
-                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5 truncate">
-                            {isDone ? (
-                              <CheckCircle2
-                                className={`w-4 h-4 shrink-0 ${isCurrent ? 'text-white' : 'text-emerald-500'}`}
-                              />
-                            ) : (
-                              <PlayCircle
-                                className={`w-4 h-4 shrink-0 ${isCurrent ? 'text-white' : 'text-muted-foreground'}`}
-                              />
-                            )}
-                            <span className="truncate">
-                              {lesIdx + 1}. {les.title}
-                            </span>
-                          </div>
-
-                          <span className={`text-[10px] shrink-0 ${isCurrent ? 'text-white/80' : 'text-muted-foreground'}`}>
-                            {les.videoDurationSeconds ? `${Math.round(les.videoDurationSeconds / 60)}m` : '10m'}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+              {/* Rail Footer with Back to Course Overview Button */}
+              <div className="flex flex-col items-center w-full pt-1">
+                <div className="w-8 h-px bg-border my-2.5 shrink-0" />
+                <Link
+                  href={`/portal/${slug}/learn/${courseSlug}`}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center text-muted-foreground hover:text-foreground hover:bg-muted transition-colors active:scale-[0.95] shrink-0"
+                  title="Back to Course Overview"
+                  aria-label="Back to Course Overview"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                </Link>
+              </div>
+            </div>
+          ) : (
+            /* Expanded Full Syllabus View */
+            <div className="flex-1 overflow-y-auto w-full">
+              {renderSyllabusContent({ showCollapseButton: true })}
+            </div>
+          )}
         </aside>
 
-        {/* ── Center Content Player Canvas ────────────────────────────── */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-8 space-y-6 max-w-5xl mx-auto w-full">
+        {/* ── Center Column: Content Player Canvas ──────────────────── */}
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8 space-y-6 max-w-5xl mx-auto w-full transition-all duration-300 pb-28 lg:pb-12">
           {/* Video Player Canvas */}
           {currentLesson.contentType === 'video' && currentLesson.videoUrl && (
             <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl border-2 border-border">
@@ -481,11 +636,12 @@ export default function PortalCoursePlayerClient({
 
             <Button
               onClick={handleMarkComplete}
-              className={`rounded-xl font-bold text-xs gap-1.5 shadow-sm transition-transform active:scale-[0.97] ${
+              className={cn(
+                'rounded-xl font-bold text-xs gap-1.5 shadow-sm transition-transform active:scale-[0.97] min-h-[44px]',
                 isCurrentCompleted
                   ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
                   : 'bg-primary text-white hover:bg-primary/90'
-              }`}
+              )}
             >
               <CheckCircle2 className="w-4 h-4" />
               {isCurrentCompleted ? 'Completed ✓ (Next)' : 'Mark as Complete & Next'}
@@ -547,11 +703,12 @@ export default function PortalCoursePlayerClient({
 
                   {quizResult && (
                     <div
-                      className={`p-4 rounded-2xl border text-xs font-bold flex items-center justify-between ${
+                      className={cn(
+                        'p-4 rounded-2xl border text-xs font-bold flex items-center justify-between',
                         quizResult.passed
                           ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
                           : 'bg-rose-500/10 border-rose-500/30 text-rose-600'
-                      }`}
+                      )}
                     >
                       <span>
                         {quizResult.passed ? '🎉 Passed!' : '❌ Not Passed.'} Your Score: {quizResult.score}% (
@@ -576,16 +733,18 @@ export default function PortalCoursePlayerClient({
                                 key={opt.id}
                                 type="button"
                                 onClick={() => handleSelectOption(q.id, opt.id, q.type === 'multiple_answer')}
-                                className={`w-full text-left p-3 rounded-xl border text-xs flex items-center gap-3 transition-colors ${
+                                className={cn(
+                                  'w-full text-left p-3 rounded-xl border text-xs flex items-center gap-3 transition-colors',
                                   isSelected
                                     ? 'bg-primary text-white border-primary font-bold shadow-xs'
                                     : 'bg-card border-border text-foreground hover:bg-muted/60'
-                                }`}
+                                )}
                               >
                                 <span
-                                  className={`w-5 h-5 rounded-lg flex items-center justify-center border text-[10px] font-bold ${
+                                  className={cn(
+                                    'w-5 h-5 rounded-lg flex items-center justify-center border text-[10px] font-bold',
                                     isSelected ? 'bg-white text-primary border-white' : 'border-border'
-                                  }`}
+                                  )}
                                 >
                                   {isSelected ? <Check className="w-3 h-3" /> : ''}
                                 </span>
@@ -641,7 +800,7 @@ export default function PortalCoursePlayerClient({
           <div className="pt-6 border-t border-border flex items-center justify-between gap-4">
             {prevLesson ? (
               <Link href={`/portal/${slug}/learn/${courseSlug}/${prevLesson.slug}`}>
-                <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold gap-1.5">
+                <Button variant="outline" size="sm" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px]">
                   <ArrowLeft className="w-3.5 h-3.5" /> Previous Lesson
                 </Button>
               </Link>
@@ -651,30 +810,159 @@ export default function PortalCoursePlayerClient({
 
             {nextLesson && (
               <Link href={`/portal/${slug}/learn/${courseSlug}/${nextLesson.slug}`}>
-                <Button size="sm" className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5">
+                <Button size="sm" className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 min-h-[44px]">
                   Next Lesson <ArrowRight className="w-3.5 h-3.5" />
                 </Button>
               </Link>
             )}
           </div>
         </main>
+
+        {/* ── Right Column: Docked Non-Modal AI Tutor Panel (Desktop) ── */}
+        {isAiTutorEnabled && (
+          <aside
+            className={cn(
+              'hidden lg:flex flex-col border-l border-border bg-card shrink-0 transition-all duration-300 ease-in-out h-[calc(100vh-57px)] sticky top-[57px] overflow-hidden',
+              isAiPanelOpen ? 'w-80 xl:w-96 opacity-100' : 'w-14 items-center py-3 bg-card/60'
+            )}
+          >
+            {isAiPanelOpen ? (
+              <AiTutorChatContent
+                portalSlug={slug}
+                courseSlug={courseSlug}
+                lessonSlug={lessonSlug}
+                portalId={portal?.id || ''}
+                courseId={course.id}
+                lessonId={currentLesson.id}
+                lessonTitle={currentLesson.title}
+                organizationId={portal?.organizationId || ''}
+                userId={user?.uid || 'guest'}
+                onClose={() => setIsAiPanelOpen(false)}
+                isDocked
+              />
+            ) : (
+              <div className="flex flex-col items-center justify-between h-full py-1">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => setIsAiPanelOpen(true)}
+                  className="h-10 w-10 rounded-xl border border-border hover:bg-primary/10 hover:text-primary text-muted-foreground active:scale-[0.95] transition-all"
+                  title="Open AI Tutor Panel"
+                  aria-label="Open AI Tutor Panel"
+                >
+                  <Sparkles className="w-4 h-4 text-primary" />
+                </Button>
+                <button
+                  type="button"
+                  onClick={() => setIsAiPanelOpen(true)}
+                  className="text-[10px] font-extrabold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors py-4 select-none cursor-pointer"
+                  style={{ writingMode: 'vertical-rl' }}
+                  title="Open AI Tutor Panel"
+                >
+                  AI Tutor
+                </button>
+                <div className="w-4" />
+              </div>
+            )}
+          </aside>
+        )}
       </div>
 
-      {/* ── Ambient AI Tutor Slide-Over Drawer ─────────────────────────── */}
-      {/* ── AI Learning Tutor Drawer ─────────────────────────────────── */}
-      <LessonAiTutorDrawer
-        isOpen={isAiTutorOpen}
-        onClose={() => setIsAiTutorOpen(false)}
-        portalSlug={slug}
-        courseSlug={courseSlug}
-        lessonSlug={lessonSlug}
-        portalId={portal?.id || ''}
-        courseId={course.id}
-        lessonId={currentLesson.id}
-        lessonTitle={currentLesson.title}
-        organizationId={portal?.organizationId || ''}
-        userId={user?.uid || 'guest'}
-      />
+      {/* ── Mobile Bottom Navigation Bar ───────────────────────────────── */}
+      <nav
+        aria-label="Lesson player quick actions"
+        className={cn(
+          'lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-background/95 backdrop-blur-md border-t border-border grid items-center justify-around h-16 px-2 shadow-xl',
+          isAiTutorEnabled ? 'grid-cols-4' : 'grid-cols-3'
+        )}
+      >
+        {/* Button 1: Syllabus */}
+        <button
+          type="button"
+          onClick={() => setIsMobileSyllabusOpen(true)}
+          className="flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[64px] rounded-xl px-2 py-1 text-muted-foreground hover:text-foreground active:scale-[0.95] transition-transform"
+        >
+          <Layers className="w-5 h-5 text-primary" />
+          <span className="text-[10px] font-bold">
+            Syllabus ({completedLessonIds.length}/{lessons?.length || 0})
+          </span>
+        </button>
+
+        {/* Button 2: Lesson Notes */}
+        <button
+          type="button"
+          onClick={() => {
+            setActiveTab('notes');
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}
+          className={cn(
+            'flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[64px] rounded-xl px-2 py-1 transition-transform active:scale-[0.95]',
+            activeTab === 'notes' ? 'text-primary font-bold' : 'text-muted-foreground'
+          )}
+        >
+          <BookOpen className="w-5 h-5" />
+          <span className="text-[10px]">Lesson</span>
+        </button>
+
+        {/* Button 3: AI Tutor (Only rendered if feature toggle enabled) */}
+        {isAiTutorEnabled && (
+          <button
+            type="button"
+            onClick={() => setIsMobileAiTutorOpen(true)}
+            className="flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[64px] rounded-xl px-2 py-1 text-primary active:scale-[0.95] transition-transform relative"
+          >
+            <div className="relative">
+              <Sparkles className="w-5 h-5" />
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
+            <span className="text-[10px] font-bold">AI Tutor</span>
+          </button>
+        )}
+
+        {/* Button 4: Complete / Next */}
+        <button
+          type="button"
+          onClick={handleMarkComplete}
+          className={cn(
+            'flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[64px] rounded-xl px-2 py-1 transition-transform active:scale-[0.95]',
+            isCurrentCompleted ? 'text-emerald-600 font-bold' : 'text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="text-[10px]">{isCurrentCompleted ? 'Next →' : 'Complete'}</span>
+        </button>
+      </nav>
+
+      {/* ── Mobile Syllabus Drawer (Left Slide-In Sheet) ───────────────── */}
+      <Sheet open={isMobileSyllabusOpen} onOpenChange={setIsMobileSyllabusOpen}>
+        <SheetContent side="left" className="w-[85vw] max-w-sm p-4 overflow-y-auto flex flex-col">
+          <SheetHeader className="pb-3 border-b border-border text-left">
+            <SheetTitle className="text-sm font-black flex items-center gap-2">
+              <Layers className="w-4 h-4 text-primary" /> Course Syllabus
+            </SheetTitle>
+          </SheetHeader>
+          <div className="pt-3 flex-1 overflow-y-auto">
+            {renderSyllabusContent({ onSelectLesson: () => setIsMobileSyllabusOpen(false) })}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* ── Mobile AI Tutor Drawer (Bottom Sheet) ──────────────────────── */}
+      {isAiTutorEnabled && (
+        <LessonAiTutorDrawer
+          isOpen={isMobileAiTutorOpen}
+          onClose={() => setIsMobileAiTutorOpen(false)}
+          portalSlug={slug}
+          courseSlug={courseSlug}
+          lessonSlug={lessonSlug}
+          portalId={portal?.id || ''}
+          courseId={course.id}
+          lessonId={currentLesson.id}
+          lessonTitle={currentLesson.title}
+          organizationId={portal?.organizationId || ''}
+          userId={user?.uid || 'guest'}
+        />
+      )}
     </div>
   );
 }

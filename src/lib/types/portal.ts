@@ -66,6 +66,10 @@ export interface PortalAccessPolicy {
   allowedEmailDomains?: string[];
   ipWhitelist?: string[];
   suspendedReason?: string;
+  /** Allow signed-in SmartSapp team members or users to 1-click enroll */
+  allowInstantTeamJoin?: boolean;
+  /** Default role assigned when users self-enroll (defaults to 'member') */
+  defaultMemberRole?: 'member' | 'student' | 'guest';
 }
 
 // ─── Branding & Visual Identity ───────────────────────────────────────────────

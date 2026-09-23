@@ -28,6 +28,7 @@ import type {
   PortalMemberRole,
   ResourceType,
 } from '@/lib/types/membership';
+import type { UpdateMemberProfileInput } from '@/lib/types/engagement';
 
 // Standard action response envelope
 export interface ActionResult<T> {
@@ -110,6 +111,28 @@ export async function deleteMembershipAction(
   } catch (err) {
     console.error('[MEMBERSHIP_ACTION] deleteMembership failed:', err);
     return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to delete member.') };
+  }
+}
+
+/**
+ * Updates a portal member's public/professional profile.
+ * Automatically synchronizes custom fields and triggers 'complete_profile' onboarding advance.
+ */
+export async function updatePortalMemberProfileAction(
+  input: UpdateMemberProfileInput,
+  portalSlug?: string
+): Promise<ActionResult<PortalMembership>> {
+  try {
+    const updated = await PortalMembershipService.updateMemberProfile(input);
+    revalidatePath(`/admin/portals/${input.portalId}`);
+    if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
+    return { success: true, data: updated };
+  } catch (err) {
+    console.error('[MEMBERSHIP_ACTION] updatePortalMemberProfile failed:', err);
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member profile.'),
+    };
   }
 }
 
@@ -207,6 +230,8 @@ export async function joinPortalDirectAction(
     email: string;
     displayName?: string;
     avatarUrl?: string;
+    role?: PortalMemberRole;
+    joinedVia?: 'smart_onboarding' | 'direct_join' | 'invitation' | 'manual_admin_grant';
   }
 ): Promise<ActionResult<PortalMembership>> {
   try {
@@ -220,13 +245,36 @@ export async function joinPortalDirectAction(
       return { success: false, error: 'Portal not found.' };
     }
 
+    // Check if membership already exists for this user in this portal (idempotency guard)
+    const existing = await PortalMembershipService.getMembership(portalId, userId);
+    if (existing) {
+      return { success: true, data: existing };
+    }
+
+    // Access Policy Verification:
+    // If instant team join is explicitly turned off for this portal and smart onboarding was requested
+    if (userProfile.joinedVia === 'smart_onboarding' && portal.accessPolicy?.allowInstantTeamJoin === false) {
+      return { success: false, error: 'Instant team onboarding is disabled for this portal.' };
+    }
+
     // Verify portal allows public access or registration
     if (portal.accessPolicy.visibility === 'invite_only') {
-      const existing = await PortalMembershipService.getMembership(portalId, userId);
-      if (existing) {
-        return { success: true, data: existing };
-      }
       return { success: false, error: 'This portal requires an invitation to join.' };
+    }
+
+    // Role assignment with security elevation check:
+    // CAUTION: Client cannot self-promote to 'admin' or 'owner' without server-side validation against users/{userId}
+    const fallbackRole: PortalMemberRole = portal.accessPolicy?.defaultMemberRole || 'member';
+    let assignedRole: PortalMemberRole = userProfile.role || fallbackRole;
+
+    if (assignedRole === 'admin' || assignedRole === 'owner') {
+      const { adminDb } = await import('@/lib/firebase-admin');
+      const userSnap = await adminDb.collection('users').doc(userId).get();
+      const userData = userSnap.data();
+      const isSystemAdmin = userData?.role === 'admin' || userData?.roles?.includes('admin');
+      if (!isSystemAdmin) {
+        assignedRole = fallbackRole;
+      }
     }
 
     const membership = await PortalMembershipService.createMembership({
@@ -237,8 +285,9 @@ export async function joinPortalDirectAction(
       email: userProfile.email.toLowerCase().trim(),
       displayName: userProfile.displayName || userProfile.email.split('@')[0],
       avatarUrl: userProfile.avatarUrl,
-      role: 'member',
+      role: assignedRole,
       status: 'active',
+      joinedVia: userProfile.joinedVia || 'direct_join',
     });
 
     revalidatePath(`/admin/portals/${portalId}`);

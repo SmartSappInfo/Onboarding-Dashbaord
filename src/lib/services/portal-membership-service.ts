@@ -19,6 +19,7 @@ import type {
   PortalMemberRole,
   MemberFilterOptions,
 } from '../types/membership';
+import type { UpdateMemberProfileInput } from '../types/engagement';
 
 const MEMBERSHIPS_COLLECTION = 'portal_memberships';
 
@@ -64,6 +65,8 @@ export class PortalMembershipService {
       status: input.status || 'active',
       planId: input.planId,
       planName: input.planName,
+      // Architectural Note: Tracks onboarding provenance (1-click smart onboarding vs invitation vs direct registration)
+      joinedVia: input.joinedVia || 'direct_join',
       joinedAt: now,
       lastActiveAt: now,
       points: 0,
@@ -268,4 +271,114 @@ export class PortalMembershipService {
     await docRef.delete();
     return true;
   }
+
+  /**
+   * Updates a member's public and professional profile within the portal,
+   * automatically triggering the 'complete_profile' onboarding step advancement.
+   *
+   * ARCHITECTURAL RATIONALE:
+   * Acts as the single source of truth for member profile information, storing
+   * school affiliation, job title, and direct contact within customFields.
+   *
+   * CAUTION FOR FUTURE MAINTAINERS:
+   * Uses dynamic import of EngagementService to prevent cyclic initialization deadlocks.
+   * Profile save succeeds even if engagement step notification throws.
+   *
+   * TESTABILITY POINTER:
+   * Verifiable via: `updateMemberProfile updates customFields and advances step_profile`.
+   *
+   * @param input Profile details including portalId, userId, displayName, schoolName, jobTitle, whatsappNumber
+   */
+  static async updateMemberProfile(input: UpdateMemberProfileInput): Promise<PortalMembership> {
+    const membershipSnap = await adminDb
+      .collection(MEMBERSHIPS_COLLECTION)
+      .where('portalId', '==', input.portalId)
+      .where('userId', '==', input.userId)
+      .limit(1)
+      .get();
+
+    const now = new Date().toISOString();
+    let currentDocRef = membershipSnap.empty ? null : membershipSnap.docs[0].ref;
+    let currentData = membershipSnap.empty ? null : (membershipSnap.docs[0].data() as PortalMembership);
+
+    if (!currentData || !currentDocRef) {
+      // Auto-provision membership for authenticated user if not existing in portal yet
+      let email = 'member@smartsapp.com';
+      let avatarUrl = input.avatarUrl || '';
+      try {
+        const { adminAuth } = await import('../firebase-admin');
+        const userRecord = await adminAuth.getUser(input.userId);
+        email = userRecord.email || email;
+        avatarUrl = avatarUrl || userRecord.photoURL || '';
+      } catch {
+        const userDoc = await adminDb.collection('users').doc(input.userId).get();
+        if (userDoc.exists) {
+          const ud = userDoc.data();
+          email = ud?.email || email;
+          avatarUrl = avatarUrl || ud?.avatarUrl || ud?.photoURL || '';
+        }
+      }
+
+      // Fetch portal to inherit org and workspace scoping
+      const portalDoc = await adminDb.collection('portals').doc(input.portalId).get();
+      const portalData = portalDoc.exists ? portalDoc.data() : null;
+
+      const newMembershipRef = adminDb.collection(MEMBERSHIPS_COLLECTION).doc();
+      currentDocRef = newMembershipRef;
+      currentData = {
+        id: newMembershipRef.id,
+        organizationId: portalData?.organizationId || 'smartsapp-hq',
+        portalId: input.portalId,
+        workspaceIds: portalData?.workspaceIds || ['onboarding'],
+        userId: input.userId,
+        email,
+        displayName: input.displayName.trim() || 'New Member',
+        avatarUrl: avatarUrl || undefined,
+        role: 'member',
+        status: 'active',
+        joinedVia: 'smart_onboarding',
+        joinedAt: now,
+        lastActiveAt: now,
+        points: 10,
+        streakDays: 1,
+        badges: [],
+        completedLessonIds: [],
+        enrolledCourseIds: [],
+        bookmarkedContentIds: [],
+        customFields: {},
+        createdAt: now,
+        updatedAt: now,
+      };
+    }
+
+    const existingCustom = (currentData.customFields as Record<string, string | number | boolean | null>) || {};
+    const updatedCustom: Record<string, string | number | boolean | null> = {
+      ...existingCustom,
+      ...(input.schoolName !== undefined ? { schoolName: input.schoolName.trim() } : {}),
+      ...(input.jobTitle !== undefined ? { jobTitle: input.jobTitle.trim() } : {}),
+      ...(input.whatsappNumber !== undefined ? { whatsappNumber: input.whatsappNumber.trim() } : {}),
+      ...(input.bio !== undefined ? { bio: input.bio.trim() } : {}),
+    };
+
+    const updated: PortalMembership = {
+      ...currentData,
+      displayName: input.displayName.trim() || currentData.displayName,
+      ...(input.avatarUrl ? { avatarUrl: input.avatarUrl.trim() } : {}),
+      customFields: updatedCustom,
+      updatedAt: now,
+    };
+
+    await currentDocRef.set(updated, { merge: true });
+
+    // Automatically trigger 'complete_profile' step advancement
+    try {
+      const { EngagementService } = await import('@/lib/services/engagement-service');
+      await EngagementService.advanceStepByType(input.portalId, input.userId, 'complete_profile');
+    } catch (e: unknown) {
+      console.warn('[PortalMembershipService] advanceStepByType warning:', e instanceof Error ? e.message : 'Unknown');
+    }
+
+    return updated;
+  }
 }
+

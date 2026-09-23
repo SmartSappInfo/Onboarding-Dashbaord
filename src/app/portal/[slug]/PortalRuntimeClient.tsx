@@ -27,49 +27,30 @@ import { signOut } from 'firebase/auth';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import {
-  GraduationCap,
-  Users,
-  Award,
-  Search,
   Lock,
   Key,
   ShieldAlert,
-  ArrowRight,
-  Menu,
-  X,
-  ExternalLink,
-  FileCode,
-  FolderArchive,
-  Newspaper,
   Compass,
   Loader2,
-  LayoutDashboard,
-  LogOut,
 } from 'lucide-react';
 import { validatePortalPasswordAction } from '@/app/actions/portal-actions';
 import {
   getPortalRadiusCss,
   getGoogleFontsUrl,
-  getPortalButtonInlineStyle,
 } from '@/lib/utils/portal-theme';
-import { resolvePortalPath } from '@/lib/utils/portal-navigation';
 import { PortalSearchModal } from './components/PortalSearchModal';
 import { PortalAuthModal } from './components/PortalAuthModal';
+import { PortalShellHeader } from './components/PortalShellHeader';
+import { PortalHeroSection } from './components/PortalHeroSection';
+import { PortalSpacesGrid } from './components/PortalSpacesGrid';
+import { PortalShellFooter } from './components/PortalShellFooter';
 import type {
   Portal,
 } from '@/lib/types/portal';
+import type { PortalMembership } from '@/lib/types/membership';
 
 interface PortalRuntimeClientProps {
   slug: string;
@@ -85,7 +66,6 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
   const [isVerifyingPassword, setIsVerifyingPassword] = React.useState(false);
   const [isPasswordUnlocked, setIsPasswordUnlocked] = React.useState(false);
   const [passwordError, setPasswordError] = React.useState<string | null>(null);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
   const [_searchQuery, _setSearchQuery] = React.useState('');
   const [isSearchModalOpen, setIsSearchModalOpen] = React.useState(false);
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
@@ -106,6 +86,23 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
   const { data: portalList, isLoading } = useCollection<Portal>(portalQuery);
   const portal = portalList?.[0] ?? null;
+
+  // ── Query Current User's Membership in This Portal (for adaptive CTAs) ────
+  const membershipQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id && user?.uid
+        ? query(
+            collection(firestore, 'portal_memberships'),
+            where('portalId', '==', portal.id),
+            where('userId', '==', user.uid),
+            limit(1)
+          )
+        : null,
+    [firestore, portal?.id, user?.uid]
+  );
+  const { data: memberDocs } = useCollection<PortalMembership>(membershipQuery);
+  const currentMembership = memberDocs?.[0] ?? null;
+  const isMember = Boolean(currentMembership && currentMembership.status === 'active');
 
   // Check stored session unlock for password protected portals
   React.useEffect(() => {
@@ -301,12 +298,6 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
     fontFamily: `var(--portal-body-font)`,
   };
 
-  const primaryBtnStyle = getPortalButtonInlineStyle(
-    theme.ui?.buttonStyle,
-    theme.colors.primary,
-    radiusCss
-  );
-
   const brandTitle = branding.brandName || portal.name;
 
   return (
@@ -319,505 +310,55 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
         <link rel="stylesheet" href={googleFontsUrl} />
       )}
 
-      {/* ── Navigation Header ─────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-[var(--portal-border)] bg-[var(--portal-bg)]/90 backdrop-blur-md px-6 py-3.5 transition-colors">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          {/* Brand Logo & Name */}
-          <Link href={`/portal/${slug}`} className="flex items-center gap-3">
-            {branding.logoUrl ? (
-              <img
-                src={branding.logoUrl}
-                alt={brandTitle}
-                className="h-8 w-auto object-contain"
-              />
-            ) : (
-              <div
-                className="w-9 h-9 flex items-center justify-center text-white font-bold text-sm shadow-sm"
-                style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
-              >
-                {brandTitle.charAt(0)}
-              </div>
-            )}
-            <span
-              className="font-extrabold text-base tracking-tight"
-              style={{ fontFamily: 'var(--portal-heading-font)' }}
-            >
-              {brandTitle}
-            </span>
-          </Link>
-
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-6 text-sm font-semibold text-[var(--portal-muted)]">
-            {(navigation.headerItems || []).map(item => (
-              <Link
-                key={item.id}
-                href={resolvePortalPath(item.path, slug)}
-                target={item.target || '_self'}
-                className="hover:text-[var(--portal-primary)] transition-colors flex items-center gap-1 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-lg px-1.5 py-0.5"
-              >
-                {item.label}
-                {item.target === '_blank' && <ExternalLink className="w-3 h-3 opacity-60" />}
-              </Link>
-            ))}
-          </nav>
-
-          {/* Header Action Buttons */}
-          <div className="hidden md:flex items-center gap-3">
-            {navigation.headerActions.showSearch && (
-              <button
-                type="button"
-                onClick={() => setIsSearchModalOpen(true)}
-                className="relative w-48 text-left h-9 pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-foreground flex items-center justify-between transition-colors shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-                style={{ borderRadius: radiusCss }}
-              >
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" />
-                <span>Search portal...</span>
-                <kbd className="text-[9px] bg-muted/60 px-1 py-0.5 rounded border border-border">⌘K</kbd>
-              </button>
-            )}
-
-            {user ? (
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button type="button" className="flex items-center gap-2 p-1 rounded-xl hover:bg-muted/40 transition-colors focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary">
-                    <Avatar className="w-8 h-8 border border-border">
-                      {user.photoURL && <AvatarImage src={user.photoURL} alt={user.displayName || 'Member'} />}
-                      <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
-                        {(user.displayName || user.email || 'M').charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="rounded-2xl w-56 p-2 space-y-1">
-                  <div className="px-3 py-2 border-b border-border/60">
-                    <p className="font-bold text-xs text-foreground truncate">{user.displayName || 'Member'}</p>
-                    <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
-                  </div>
-                  <Link href={`/portal/${slug}/dashboard`}>
-                    <DropdownMenuItem className="text-xs font-semibold rounded-xl gap-2 cursor-pointer">
-                      <LayoutDashboard className="w-3.5 h-3.5" /> My Learning Dashboard
-                    </DropdownMenuItem>
-                  </Link>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => auth && signOut(auth)}
-                    className="text-xs font-semibold rounded-xl gap-2 text-rose-500 cursor-pointer"
-                  >
-                    <LogOut className="w-3.5 h-3.5" /> Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            ) : navigation.headerActions.showLoginButton ? (
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsAuthModalOpen(true)}
-                className="h-9 px-3.5 rounded-xl font-bold text-xs active:scale-[0.98] transition-transform"
-              >
-                Sign In
-              </Button>
-            ) : null}
-
-            {navigation.headerActions.ctaButton?.label && (
-              <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
-                <Button
-                  size="sm"
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
-                  style={primaryBtnStyle}
-                >
-                  {navigation.headerActions.ctaButton.label}
-                </Button>
-              </Link>
-            )}
-          </div>
-
-          {/* Mobile Menu Trigger */}
-          <button
-            type="button"
-            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-[var(--portal-muted)] hover:text-foreground focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
-            aria-label="Toggle navigation menu"
-          >
-            {isMobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-
-        {/* Mobile Navigation Drawer */}
-        {isMobileMenuOpen && (
-          <div className="md:hidden pt-4 pb-6 px-4 space-y-4 border-t border-[var(--portal-border)] mt-3 animate-in slide-in-from-top-4 duration-200">
-            <nav className="flex flex-col space-y-2">
-              {(navigation.headerItems || []).map(item => (
-                <Link
-                  key={item.id}
-                  href={resolvePortalPath(item.path, slug)}
-                  target={item.target || '_self'}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] active:scale-[0.98] transition-transform"
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="pt-2 border-t border-[var(--portal-border)] flex flex-col gap-2">
-              {navigation.headerActions.showLoginButton && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setIsMobileMenuOpen(false);
-                    setIsAuthModalOpen(true);
-                  }}
-                  className="w-full min-h-[44px] rounded-xl font-bold text-sm active:scale-[0.98] transition-transform"
-                >
-                  Sign In
-                </Button>
-              )}
-              {navigation.headerActions.ctaButton?.label && (
-                <Link
-                  href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
-                    style={primaryBtnStyle}
-                  >
-                    {navigation.headerActions.ctaButton.label}
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
-        )}
-      </header>
+      {/* ── Navigation Header (SSOT Shared Component) ────────────────── */}
+      <PortalShellHeader
+        slug={slug}
+        brandTitle={brandTitle}
+        theme={theme}
+        branding={branding}
+        navigation={navigation}
+        radiusCss={radiusCss}
+        user={user}
+        isMember={isMember}
+        onOpenSearch={() => setIsSearchModalOpen(true)}
+        onOpenAuth={() => setIsAuthModalOpen(true)}
+        onSignOut={() => auth && signOut(auth)}
+      />
 
       {/* ── Main Content Space ────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col">
-        {/* Hero / Banner Section */}
-        <section
-          className="px-6 py-16 md:py-24 text-center border-b border-[var(--portal-border)] relative overflow-hidden transition-colors"
-          style={{ backgroundColor: theme.colors.surface }}
-        >
-          {/* Subtle Ambient Radial Glow */}
-          <div
-            className="absolute -top-24 left-1/2 -translate-x-1/2 w-96 h-96 rounded-full blur-3xl opacity-20 pointer-events-none"
-            style={{ backgroundColor: theme.colors.primary }}
-          />
+        {/* Hero / Banner Section (SSOT Shared Component) */}
+        <PortalHeroSection
+          slug={slug}
+          brandTitle={brandTitle}
+          tagline={branding.tagline || portal.description || 'Welcome to your digital experience portal.'}
+          primaryMode={portal.primaryMode}
+          theme={theme}
+          branding={branding}
+          features={features}
+          navigation={navigation}
+          radiusCss={radiusCss}
+          user={user}
+          isMember={isMember}
+        />
 
-          <div className="max-w-3xl mx-auto space-y-4 relative z-10">
-            <Badge
-              variant="outline"
-              className="text-xs font-bold uppercase tracking-wider px-3 py-1 border-2"
-              style={{
-                borderColor: theme.colors.primary,
-                color: theme.colors.primary,
-                backgroundColor: 'transparent',
-                borderRadius: theme.ui?.borderRadius === 'none' ? '0px' : '9999px',
-              }}
-            >
-              {portal.primaryMode.replace('_', ' ')}
-            </Badge>
-
-            <h1
-              className="text-3xl sm:text-4xl md:text-5xl font-black tracking-tight text-foreground"
-              style={{ fontFamily: 'var(--portal-heading-font)' }}
-            >
-              {brandTitle}
-            </h1>
-
-            <p className="text-sm sm:text-base md:text-lg text-[var(--portal-muted)] max-w-2xl mx-auto leading-relaxed">
-              {branding.tagline || portal.description || 'Welcome to your digital experience portal.'}
-            </p>
-
-            <div className="pt-4 flex flex-wrap items-center justify-center gap-3">
-              {navigation.headerActions.ctaButton?.label ? (
-                <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
-                  <Button
-                    size="lg"
-                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
-                    style={primaryBtnStyle}
-                  >
-                    {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              ) : (
-                <Link href={`/portal/${slug}/join`}>
-                  <Button
-                    size="lg"
-                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
-                    style={primaryBtnStyle}
-                  >
-                    Get Started <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
-              )}
-
-              {features.enableCourses && (
-                <Link href={`/portal/${slug}/learn`}>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.98] gap-2"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    Browse Curriculum
-                  </Button>
-                </Link>
-              )}
-            </div>
-          </div>
-        </section>
-
-        {/* Mode-Specific Content Spaces */}
-        <section className="max-w-7xl mx-auto w-full p-6 md:p-12 space-y-12">
-          {/* Active Feature Spaces Grid */}
-          <div className="space-y-6">
-            <div className="flex items-center justify-between border-b border-[var(--portal-border)] pb-4">
-              <div>
-                <h2 className="text-xl font-bold tracking-tight" style={{ fontFamily: 'var(--portal-heading-font)' }}>
-                  Active Learning Spaces
-                </h2>
-                <p className="text-xs text-[var(--portal-muted)] mt-0.5">
-                  Explore modules and resources available inside this portal.
-                </p>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {features.enableCourses && (
-                <Link
-                  href={`/portal/${slug}/learn`}
-                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-                >
-                  <Card
-                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    <div className="space-y-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                        style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
-                      >
-                        <GraduationCap className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
-                        Course Curriculum
-                      </h3>
-                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                        Interactive step-by-step masterclasses, structured lessons, and knowledge checks.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
-                      <span>Browse Courses</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </Card>
-                </Link>
-              )}
-
-              {features.enableDocs && (
-                <Link
-                  href={`/portal/${slug}/content?type=doc`}
-                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-                >
-                  <Card
-                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    <div className="space-y-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                        style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
-                      >
-                        <FileCode className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
-                        Help Centre & Documentation
-                      </h3>
-                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                        Comprehensive knowledge base, step-by-step documentation, and FAQs.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
-                      <span>View Documentation</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </Card>
-                </Link>
-              )}
-
-              {features.enableCommunity && (
-                <Link
-                  href={`/portal/${slug}/community`}
-                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-                >
-                  <Card
-                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    <div className="space-y-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                        style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
-                      >
-                        <Users className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
-                        Member Community
-                      </h3>
-                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                        Engage with fellow learners, participate in discussion threads, and ask questions.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
-                      <span>Enter Community</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </Card>
-                </Link>
-              )}
-
-              {features.enableResources && (
-                <Link
-                  href={`/portal/${slug}/content?type=resource`}
-                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-                >
-                  <Card
-                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    <div className="space-y-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                        style={{ backgroundColor: theme.colors.secondary, borderRadius: radiusCss }}
-                      >
-                        <FolderArchive className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
-                        Resource Vault
-                      </h3>
-                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                        Downloadable worksheets, PDF templates, checklists, and guides.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
-                      <span>Access Vault</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </Card>
-                </Link>
-              )}
-
-              {features.enableBlog && (
-                <Link
-                  href={`/portal/${slug}/content?type=article`}
-                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-                >
-                  <Card
-                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    <div className="space-y-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                        style={{ backgroundColor: theme.colors.accent, borderRadius: radiusCss }}
-                      >
-                        <Newspaper className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
-                        Insights & Articles
-                      </h3>
-                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                        Editorial publications, thought leadership, and operational strategies.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
-                      <span>Read Articles</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </Card>
-                </Link>
-              )}
-
-              {features.enableGamification && (
-                <Link
-                  href={`/portal/${slug}/dashboard`}
-                  className="group block focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary rounded-2xl"
-                >
-                  <Card
-                    className="h-full border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 hover:shadow-xl hover:border-[var(--portal-primary)] transition-all duration-200 active:scale-[0.98] cursor-pointer flex flex-col justify-between"
-                    style={{ borderRadius: radiusCss }}
-                  >
-                    <div className="space-y-3">
-                      <div
-                        className="w-12 h-12 flex items-center justify-center text-white shadow-sm"
-                        style={{ backgroundColor: theme.colors.primary, borderRadius: radiusCss }}
-                      >
-                        <Award className="w-6 h-6" />
-                      </div>
-                      <h3 className="font-bold text-base text-foreground group-hover:text-[var(--portal-primary)] transition-colors">
-                        Certifications & Badges
-                      </h3>
-                      <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                        Earn verifiable completion certificates and competency credentials.
-                      </p>
-                    </div>
-                    <div className="pt-2 flex items-center gap-1.5 text-xs font-bold text-[var(--portal-primary)]">
-                      <span>View Credentials</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                    </div>
-                  </Card>
-                </Link>
-              )}
-            </div>
-          </div>
-        </section>
+        {/* Mode-Specific Content Spaces (SSOT Shared Component) */}
+        <PortalSpacesGrid
+          slug={slug}
+          theme={theme}
+          features={features}
+          radiusCss={radiusCss}
+        />
       </main>
 
-      {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[var(--portal-border)] bg-[var(--portal-surface)] px-6 py-12 transition-colors">
-        <div className="max-w-7xl mx-auto space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            <div className="space-y-3">
-              <h4 className="font-bold text-base text-foreground" style={{ fontFamily: 'var(--portal-heading-font)' }}>
-                {brandTitle}
-              </h4>
-              <p className="text-xs text-[var(--portal-muted)] leading-relaxed">
-                {branding.tagline || 'Experience Platform powered by SmartSapp.'}
-              </p>
-            </div>
-
-            {(navigation.footerColumns || []).map((col, idx) => (
-              <div key={col.id || idx} className="space-y-3">
-                <h5
-                  className="font-bold text-xs uppercase tracking-wider text-foreground"
-                  style={{ fontFamily: 'var(--portal-heading-font)' }}
-                >
-                  {col.title}
-                </h5>
-                <ul className="space-y-2 text-xs text-[var(--portal-muted)]">
-                  {(col.items || []).map((item, itemIdx) => (
-                    <li key={item.id || itemIdx}>
-                      <Link
-                        href={resolvePortalPath(item.path, slug)}
-                        target={item.target || '_self'}
-                        className="hover:text-[var(--portal-primary)] transition-colors focus-visible:outline-hidden focus-visible:ring-1 focus-visible:ring-primary rounded"
-                      >
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-
-          <div className="pt-6 border-t border-[var(--portal-border)] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--portal-muted)]">
-            <p>{branding.copyrightText || `© ${new Date().getFullYear()} ${brandTitle}. All rights reserved.`}</p>
-            <p className="text-[11px]">Powered by Experience Platform</p>
-          </div>
-        </div>
-      </footer>
+      {/* ── Footer (SSOT Shared Component) ────────────────────────────── */}
+      <PortalShellFooter
+        slug={slug}
+        brandTitle={brandTitle}
+        tagline={branding.tagline || 'Experience Platform powered by SmartSapp.'}
+        branding={branding}
+        navigation={navigation}
+      />
 
       {/* ── Instant Content Search Modal ───────────────────────────────── */}
       <PortalSearchModal

@@ -34,6 +34,7 @@ import {
   ArrowLeft,
   LogOut,
   ListOrdered,
+  User,
 } from 'lucide-react';
 import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
 import type { Portal } from '@/lib/types/portal';
@@ -43,6 +44,7 @@ import type { Course } from '@/lib/types/learning';
 import { PortalAuthModal } from '../components/PortalAuthModal';
 import { MemberOnboardingWidget } from './components/MemberOnboardingWidget';
 import { MemberTasksWidget } from './components/MemberTasksWidget';
+import { MemberProfileModal } from './components/MemberProfileModal';
 
 interface PortalMemberDashboardClientProps {
   slug: string;
@@ -57,6 +59,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
 
   const [activeTab, setActiveTab] = React.useState('courses');
   const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+  const [isProfileModalOpen, setIsProfileModalOpen] = React.useState(false);
 
   // 1. Query Portal
   const portalQuery = useMemoFirebase(
@@ -309,7 +312,15 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
             </div>
           </div>
 
-          <div className="flex items-center gap-2 relative z-10 self-start md:self-auto">
+          <div className="flex flex-wrap items-center gap-2 relative z-10 self-start md:self-auto">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsProfileModalOpen(true)}
+              className="rounded-xl font-bold text-xs bg-white/20 hover:bg-white/30 text-white border-white/30 gap-1.5 shadow-2xs"
+            >
+              <User className="w-3.5 h-3.5" /> Edit Profile
+            </Button>
             <Link href={`/portal/${slug}`}>
               <Button size="sm" className="rounded-xl font-bold text-xs bg-white text-foreground hover:bg-white/90 gap-1.5 shadow-sm">
                 Explore Content Catalog <ArrowRight className="w-3.5 h-3.5" />
@@ -323,6 +334,8 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
           portalId={portal.id}
           portalSlug={slug}
           userId={user.uid}
+          membership={membership}
+          courses={effectiveCourses}
         />
 
         {/* Dashboard Navigation Tabs */}
@@ -593,6 +606,18 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
       <footer className="border-t border-border bg-card px-6 py-6 text-center text-xs text-muted-foreground">
         <p>© {new Date().getFullYear()} {brandTitle}. Powered by Experience Platform.</p>
       </footer>
+
+      {/* Member Profile Setup & Edit Modal */}
+      {portal && user && (
+        <MemberProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          portalId={portal.id}
+          portalSlug={slug}
+          userId={user.uid}
+          currentMembership={membership}
+        />
+      )}
     </div>
   );
 }

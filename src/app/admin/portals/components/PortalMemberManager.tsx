@@ -347,6 +347,42 @@ export function PortalMemberManager({
                                 {member.planName}
                               </Badge>
                             )}
+                            {member.joinedVia === 'smart_onboarding' && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-semibold px-1.5 py-0 bg-primary/10 text-primary border-primary/30 flex items-center gap-1"
+                                title="Enrolled via 1-Click Smart Onboarding"
+                              >
+                                <Sparkles className="w-2.5 h-2.5" /> 1-Click
+                              </Badge>
+                            )}
+                            {member.joinedVia === 'invitation' && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-medium px-1.5 py-0 bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                                title="Enrolled via Personalized Invitation Link"
+                              >
+                                Invited
+                              </Badge>
+                            )}
+                            {member.joinedVia === 'manual_admin_grant' && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-medium px-1.5 py-0 bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/30"
+                                title="Granted by Portal Administrator"
+                              >
+                                Admin Grant
+                              </Badge>
+                            )}
+                            {member.joinedVia === 'direct_join' && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] font-medium px-1.5 py-0 bg-muted text-muted-foreground border-border"
+                                title="Enrolled via Direct Public Registration"
+                              >
+                                Direct
+                              </Badge>
+                            )}
                           </div>
                           <div className="flex items-center gap-3 text-[11px] text-muted-foreground">
                             <span>{member.email}</span>

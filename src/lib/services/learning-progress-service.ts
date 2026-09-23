@@ -71,6 +71,15 @@ export class LearningProgressService {
       await LearningProgressService.completeLesson(courseId, lessonId, userId, portalId);
     }
 
+    // Automatically trigger 'start_course' onboarding step advancement
+    // CAUTION: Executed safely so onboarding sync failures never block video progress persistence.
+    try {
+      const { EngagementService } = await import('@/lib/services/engagement-service');
+      await EngagementService.advanceStepByType(portalId, userId, 'start_course');
+    } catch (e: unknown) {
+      console.warn('[LearningProgressService] advanceStepByType warning:', e instanceof Error ? e.message : 'Unknown');
+    }
+
     return progress;
   }
 
@@ -177,6 +186,15 @@ export class LearningProgressService {
       if (isCourseCompleted && !prevData.completedAt && membershipId) {
         await PortalMembershipService.awardPoints(membershipId, 25, `Completed Course: ${courseId}`);
       }
+    }
+
+    // 5. Automatically trigger 'start_course' onboarding step advancement
+    // CAUTION: Safe non-blocking execution to ensure lesson completion is always preserved.
+    try {
+      const { EngagementService } = await import('@/lib/services/engagement-service');
+      await EngagementService.advanceStepByType(portalId, userId, 'start_course');
+    } catch (e: unknown) {
+      console.warn('[LearningProgressService] advanceStepByType warning:', e instanceof Error ? e.message : 'Unknown');
     }
   }
 

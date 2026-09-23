@@ -214,6 +214,15 @@ export class CommunityService {
       );
     }
 
+    // Automatically trigger 'community_post' onboarding step advancement
+    // CAUTION: Safe non-blocking execution so post creation is never disrupted.
+    try {
+      const { EngagementService } = await import('@/lib/services/engagement-service');
+      await EngagementService.advanceStepByType(input.portalId, input.authorId, 'community_post');
+    } catch (e: unknown) {
+      console.warn('[CommunityService] advanceStepByType warning:', e instanceof Error ? e.message : 'Unknown');
+    }
+
     return post;
   }
 

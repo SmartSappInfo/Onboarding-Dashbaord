@@ -87,6 +87,7 @@ export interface PortalMembership {
   avatarUrl?: string;
   role: PortalMemberRole;
   status: MembershipStatus;
+  joinedVia?: 'smart_onboarding' | 'direct_join' | 'invitation' | 'manual_admin_grant';
   planId?: string;
   planName?: string;
   joinedAt: string;
@@ -203,6 +204,7 @@ export interface CreateMembershipInput {
   status?: MembershipStatus;
   planId?: string;
   planName?: string;
+  joinedVia?: 'smart_onboarding' | 'direct_join' | 'invitation' | 'manual_admin_grant';
   customFields?: Record<string, string | number | boolean | null>;
   tags?: string[];
 }

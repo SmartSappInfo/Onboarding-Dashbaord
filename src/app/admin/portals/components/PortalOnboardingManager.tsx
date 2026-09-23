@@ -44,6 +44,7 @@ import type {
   OnboardingStep,
   MemberTask,
   StepType,
+  AutoVerificationType,
   TaskPriority,
 } from '@/lib/types/engagement';
 import { DEFAULT_ONBOARDING_STEPS } from '@/lib/portal-presets';
@@ -190,6 +191,8 @@ export function PortalOnboardingManager({
       title: 'New Action Step',
       description: 'Step instructions...',
       type: 'custom_url',
+      actionLabel: 'Open Action',
+      autoVerificationType: 'manual_confirm',
       order: steps.length + 1,
       isRequired: true,
     };
@@ -348,11 +351,12 @@ export function PortalOnboardingManager({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-2xl">
-                          <SelectItem value="profile_completion" className="text-xs">Profile Setup</SelectItem>
-                          <SelectItem value="lesson_view" className="text-xs">Watch Welcome</SelectItem>
-                          <SelectItem value="post_introduction" className="text-xs">Post Intro</SelectItem>
-                          <SelectItem value="custom_url" className="text-xs">External URL</SelectItem>
-                          <SelectItem value="form_submission" className="text-xs">Submit Form</SelectItem>
+                          <SelectItem value="welcome_video" className="text-xs">Orientation Video</SelectItem>
+                          <SelectItem value="complete_profile" className="text-xs">Profile Setup</SelectItem>
+                          <SelectItem value="start_course" className="text-xs">Masterclass Lesson</SelectItem>
+                          <SelectItem value="community_post" className="text-xs">Community Post</SelectItem>
+                          <SelectItem value="book_meeting" className="text-xs">Book Session</SelectItem>
+                          <SelectItem value="custom_url" className="text-xs">Custom Link / Action</SelectItem>
                         </SelectContent>
                       </Select>
 
@@ -374,13 +378,73 @@ export function PortalOnboardingManager({
                     className="text-xs rounded-xl resize-none h-14 bg-background"
                   />
 
-                  {step.type === 'custom_url' && (
-                    <Input
-                      value={step.targetUrl || ''}
-                      onChange={e => handleUpdateStep(idx, { targetUrl: e.target.value })}
-                      placeholder="Target Link (e.g. https://discord.gg/... or /portal/...)"
-                      className="h-8 text-xs rounded-xl bg-background"
-                    />
+                  {/* Zero-Code Configuration: Action Label & Verification Mode */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground">Action Button Label</Label>
+                      <Input
+                        value={step.actionLabel || ''}
+                        onChange={e => handleUpdateStep(idx, { actionLabel: e.target.value })}
+                        placeholder={
+                          step.type === 'welcome_video' ? 'Watch Orientation' :
+                          step.type === 'complete_profile' ? 'Set Up Profile' :
+                          step.type === 'start_course' ? 'Go to Lesson →' :
+                          step.type === 'community_post' ? 'Join Discussion' :
+                          step.type === 'book_meeting' ? 'Book Consultation' :
+                          'Open Action'
+                        }
+                        className="h-8 text-xs rounded-xl bg-background"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground">Auto-Verification Mode</Label>
+                      <Select
+                        value={step.autoVerificationType || (
+                          step.type === 'welcome_video' ? 'auto_watch' :
+                          step.type === 'complete_profile' ? 'has_profile' :
+                          step.type === 'start_course' ? 'has_started_lesson' :
+                          step.type === 'community_post' ? 'has_community_post' :
+                          'manual_confirm'
+                        )}
+                        onValueChange={(val: AutoVerificationType) => handleUpdateStep(idx, { autoVerificationType: val })}
+                      >
+                        <SelectTrigger className="h-8 text-xs rounded-xl bg-background">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-2xl">
+                          <SelectItem value="auto_watch" className="text-xs">Auto on Video Completion</SelectItem>
+                          <SelectItem value="has_profile" className="text-xs">Auto on Profile Save</SelectItem>
+                          <SelectItem value="has_started_lesson" className="text-xs">Auto on Lesson Start</SelectItem>
+                          <SelectItem value="has_community_post" className="text-xs">Auto on Community Post</SelectItem>
+                          <SelectItem value="manual_confirm" className="text-xs">Manual Confirmation</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {step.type === 'welcome_video' && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground">Orientation Video Link (YouTube, Vimeo, Loom, or MP4)</Label>
+                      <Input
+                        value={step.videoUrl || ''}
+                        onChange={e => handleUpdateStep(idx, { videoUrl: e.target.value })}
+                        placeholder="https://www.youtube.com/embed/... or https://loom.com/embed/..."
+                        className="h-8 text-xs rounded-xl bg-background"
+                      />
+                    </div>
+                  )}
+
+                  {(step.type === 'custom_url' || step.type === 'book_meeting') && (
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold text-muted-foreground">Target URL / External Link</Label>
+                      <Input
+                        value={step.targetUrl || ''}
+                        onChange={e => handleUpdateStep(idx, { targetUrl: e.target.value })}
+                        placeholder="e.g. https://calendly.com/... or /portal/..."
+                        className="h-8 text-xs rounded-xl bg-background"
+                      />
+                    </div>
                   )}
                 </div>
               ))}

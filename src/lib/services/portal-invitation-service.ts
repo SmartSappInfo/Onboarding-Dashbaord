@@ -195,6 +195,7 @@ export class PortalInvitationService {
         avatarUrl: userProfile.avatarUrl,
         role: inv.role,
         planId: inv.planId,
+        joinedVia: 'invitation',
       },
       userId
     );

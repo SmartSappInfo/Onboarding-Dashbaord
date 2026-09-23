@@ -19,5 +19,29 @@ describe('EngagementService', () => {
       expect(steps[0].isRequired).toBe(true);
       expect(steps[4].order).toBe(5);
     });
+
+    it('provides Action CTAs and Auto-Verification metadata for zero-code automation', () => {
+      const steps = EngagementService.getDefaultOnboardingSteps();
+      // Step 1: Welcome Video
+      expect(steps[0].actionLabel).toBe('Watch Orientation');
+      expect(steps[0].autoVerificationType).toBe('auto_watch');
+      expect(steps[0].videoUrl).toBeDefined();
+
+      // Step 2: Complete Profile
+      expect(steps[1].actionLabel).toBe('Set Up Profile');
+      expect(steps[1].autoVerificationType).toBe('has_profile');
+
+      // Step 3: Start Course
+      expect(steps[2].actionLabel).toBe('Go to Lesson →');
+      expect(steps[2].autoVerificationType).toBe('has_started_lesson');
+
+      // Step 4: Community Post
+      expect(steps[3].actionLabel).toBe('Join Discussion');
+      expect(steps[3].autoVerificationType).toBe('has_community_post');
+
+      // Step 5: Book Session
+      expect(steps[4].actionLabel).toBe('Book Consultation');
+      expect(steps[4].autoVerificationType).toBe('manual_confirm');
+    });
   });
 });

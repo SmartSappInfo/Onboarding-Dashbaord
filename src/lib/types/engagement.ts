@@ -16,6 +16,13 @@ export type StepType =
   | 'book_meeting'
   | 'custom_url';
 
+export type AutoVerificationType =
+  | 'auto_watch'
+  | 'has_profile'
+  | 'has_started_lesson'
+  | 'has_community_post'
+  | 'manual_confirm';
+
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
@@ -29,6 +36,12 @@ export interface OnboardingStep {
   title: string;
   description?: string;
   type: StepType;
+  /** Custom button text configured in Backoffice Studio (e.g. "Watch Video", "Set Up Profile", "Start Lesson →") */
+  actionLabel?: string;
+  /** Direct video asset URL (YouTube, Vimeo, Loom, MP4) for welcome_video */
+  videoUrl?: string;
+  /** Automated verification mode for zero-code backoffice configuration */
+  autoVerificationType?: AutoVerificationType;
   targetUrl?: string;
   targetEntityId?: string; // e.g. Course ID or Space ID
   order: number;
@@ -219,3 +232,22 @@ export interface LogMemberActivityInput {
   description: string;
   metadata?: Record<string, string | number | boolean>;
 }
+
+export interface UpdateMemberProfileInput {
+  portalId: string;
+  userId: string;
+  displayName: string;
+  schoolName?: string;
+  jobTitle?: string;
+  whatsappNumber?: string;
+  bio?: string;
+  avatarUrl?: string;
+}
+
+export interface ReconcileOnboardingResult {
+  updatedStepIds: string[];
+  totalCompleted: number;
+  isFullyCompleted: boolean;
+  pointsAwarded: number;
+}
+

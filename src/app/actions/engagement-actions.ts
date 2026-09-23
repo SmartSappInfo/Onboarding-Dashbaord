@@ -24,6 +24,7 @@ import type {
   UpdateTaskInput,
   CompleteTaskInput,
   LogMemberActivityInput,
+  ReconcileOnboardingResult,
 } from '@/lib/types/engagement';
 
 export type ActionResponse<T> =
@@ -67,6 +68,43 @@ export async function advanceOnboardingStepAction(
     return { success: true, data: progress };
   } catch (err: unknown) {
     return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to advance onboarding step.') };
+  }
+}
+
+/**
+ * Reconciles member onboarding checklist against real domain state
+ * (learning progress, profile completion, community posts).
+ */
+export async function reconcileOnboardingAction(
+  portalId: string,
+  userId: string,
+  portalSlug?: string
+): Promise<ActionResponse<ReconcileOnboardingResult>> {
+  try {
+    const result = await EngagementService.reconcileMemberOnboarding(portalId, userId);
+    if (portalSlug && result.updatedStepIds.length > 0) {
+      revalidatePath(`/portal/${portalSlug}/dashboard`);
+    }
+    return { success: true, data: result };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to reconcile onboarding.') };
+  }
+}
+
+/**
+ * Marks orientation video watching complete for the current member.
+ */
+export async function recordOrientationWatchedAction(
+  portalId: string,
+  userId: string,
+  portalSlug?: string
+): Promise<ActionResponse<MemberOnboardingProgress | null>> {
+  try {
+    const progress = await EngagementService.advanceStepByType(portalId, userId, 'welcome_video');
+    if (portalSlug) revalidatePath(`/portal/${portalSlug}/dashboard`);
+    return { success: true, data: progress };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to record orientation completion.') };
   }
 }
 

@@ -13,7 +13,8 @@ import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ShieldCheck, Lock, Globe, Key, Mail, AlertTriangle } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { ShieldCheck, Lock, Globe, Key, Mail, AlertTriangle, Sparkles, UserCheck } from 'lucide-react';
 import type { PortalAccessPolicy, PortalVisibility } from '@/lib/types/portal';
 
 interface PortalAccessPolicyEditorProps {
@@ -145,6 +146,78 @@ export function PortalAccessPolicyEditor({
         </CardContent>
       </Card>
 
+      {/* ── Smart Team Onboarding & Registration Policy ─────────────── */}
+      <Card className="rounded-2xl border-2 border-border shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2 text-primary font-bold text-sm">
+            <Sparkles className="w-4 h-4 text-primary" /> Smart Onboarding & Member Registration
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-5 pt-0">
+          <div className="flex items-center justify-between p-3.5 rounded-xl border border-border bg-card">
+            <div className="space-y-0.5 pr-4">
+              <div className="flex items-center gap-2">
+                <p className="text-xs font-bold text-foreground">Allow Instant Team & User Onboarding</p>
+                <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 text-primary border-primary/30 bg-primary/5">
+                  1-Click Join
+                </Badge>
+              </div>
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                When a logged-in SmartSapp team member or registered user visits this portal, allow them to enroll instantly with a single click using their active credentials.
+              </p>
+            </div>
+            <Switch
+              checked={accessPolicy.allowInstantTeamJoin ?? true}
+              onCheckedChange={checked =>
+                onChangeAccessPolicy({
+                  ...accessPolicy,
+                  allowInstantTeamJoin: checked,
+                })
+              }
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-xs font-bold text-foreground">Default Self-Registration Role</Label>
+            <p className="text-[11px] text-muted-foreground">
+              Select the initial permission tier assigned when new members enroll or join via direct access.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 pt-1">
+              {[
+                { role: 'member', label: 'Member', desc: 'Standard member access with dashboard, bookmarks, and activity.' },
+                { role: 'student', label: 'Student', desc: 'Focused learning tier with curriculum progression, quizzes, and notes.' },
+                { role: 'guest', label: 'Guest', desc: 'Read-only preview privileges without course enrollment.' },
+              ].map(opt => {
+                const isSelected = (accessPolicy.defaultMemberRole || 'member') === opt.role;
+                return (
+                  <button
+                    key={opt.role}
+                    type="button"
+                    onClick={() =>
+                      onChangeAccessPolicy({
+                        ...accessPolicy,
+                        defaultMemberRole: opt.role as 'member' | 'student' | 'guest',
+                      })
+                    }
+                    className={`p-3 rounded-xl border text-left transition-all active:scale-[0.97] min-h-[44px] ${
+                      isSelected
+                        ? 'border-primary bg-primary/10 shadow-xs ring-1 ring-primary/30'
+                        : 'border-border bg-card hover:border-primary/40'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="font-bold text-xs capitalize text-foreground">{opt.label}</span>
+                      {isSelected && <UserCheck className="w-3.5 h-3.5 text-primary" />}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-tight">{opt.desc}</p>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── Password Configuration (Conditional) ──────────────────────── */}
       {accessPolicy.visibility === 'password_protected' && (
         <Card className="rounded-2xl border-2 border-amber-500/30 bg-amber-500/5 shadow-sm animate-in fade-in-50 duration-300">
@@ -191,7 +264,7 @@ export function PortalAccessPolicyEditor({
               <button
                 type="button"
                 onClick={handleAddDomain}
-                className="h-10 px-4 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 transition-all"
+                className="h-10 min-h-[44px] px-4 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 transition-all active:scale-[0.98] shrink-0"
               >
                 Add Domain
               </button>
@@ -208,7 +281,8 @@ export function PortalAccessPolicyEditor({
                   <button
                     type="button"
                     onClick={() => handleRemoveDomain(domain)}
-                    className="text-muted-foreground hover:text-rose-500 ml-1 font-bold"
+                    className="text-muted-foreground hover:text-rose-500 ml-1 font-bold p-1 rounded hover:bg-rose-500/10 transition-colors active:scale-[0.95]"
+                    aria-label={`Remove domain ${domain}`}
                   >
                     ×
                   </button>

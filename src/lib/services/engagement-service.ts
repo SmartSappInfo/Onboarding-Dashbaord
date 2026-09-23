@@ -24,6 +24,8 @@ import type {
   UpdateTaskInput,
   CompleteTaskInput,
   LogMemberActivityInput,
+  StepType,
+  ReconcileOnboardingResult,
 } from '@/lib/types/engagement';
 
 import { DEFAULT_ONBOARDING_STEPS } from '../portal-presets';
@@ -101,12 +103,23 @@ export class EngagementService {
     let currentCompleted: string[] = [];
 
     if (snap.exists) {
-      currentCompleted = (snap.data()?.completedStepIds || []) as string[];
+      const existingData = snap.data() as Omit<MemberOnboardingProgress, 'id'>;
+      currentCompleted = (existingData.completedStepIds || []) as string[];
+
+      // ARCHITECTURAL IDEMPOTENCY GUARD:
+      // If the step is already completed, return existing state immediately.
+      // Avoids redundant Firestore set({ merge: true }) writes and duplicate logMemberActivity records
+      // on recurring background events (e.g. video heartbeat progress, repeated comments/posts).
+      if (currentCompleted.includes(input.stepId)) {
+        return {
+          id: docRef.id,
+          ...existingData,
+          completedStepIds: currentCompleted,
+        };
+      }
     }
 
-    if (!currentCompleted.includes(input.stepId)) {
-      currentCompleted.push(input.stepId);
-    }
+    currentCompleted.push(input.stepId);
 
     const progressPercentage = Math.min(100, Math.round((currentCompleted.length / totalSteps) * 100));
     const isCompleted = progressPercentage >= 100;
@@ -156,6 +169,155 @@ export class EngagementService {
     }
 
     return updatedProgress;
+  }
+
+  /**
+   * Automatically advances an onboarding step by its functional StepType.
+   *
+   * ARCHITECTURAL RATIONALE:
+   * Enables domain events (e.g. video watch, profile save, lesson complete, community post)
+   * to automatically complete corresponding onboarding steps without requiring manual member bypass clicks.
+   *
+   * CAUTION FOR FUTURE MAINTAINERS:
+   * This method is strictly idempotent. If the step is already marked complete, it avoids
+   * redundant Firestore writes and duplicate gamification points awards.
+   *
+   * TESTABILITY POINTER:
+   * Covered by unit test: `EngagementService.advanceStepByType should mark matching steps complete and award points once`.
+   *
+   * @param portalId Portal ID
+   * @param userId Member User ID
+   * @param stepType Functional type of the step to advance
+   */
+  public static async advanceStepByType(
+    portalId: string,
+    userId: string,
+    stepType: StepType
+  ): Promise<MemberOnboardingProgress | null> {
+    const flow = await EngagementService.getOnboardingFlow(portalId);
+    const steps = flow?.steps || EngagementService.getDefaultOnboardingSteps();
+    const matchingSteps = steps.filter(s => s.type === stepType);
+
+    if (matchingSteps.length === 0) return null;
+
+    let progress: MemberOnboardingProgress | null = null;
+    for (const step of matchingSteps) {
+      progress = await EngagementService.advanceOnboardingStep({
+        portalId,
+        userId,
+        stepId: step.id,
+      });
+    }
+
+    return progress;
+  }
+
+  /**
+   * Reconciles a member's onboarding checklist against authoritative database state.
+   *
+   * ARCHITECTURAL RATIONALE (Rule 5 Single Source of Truth):
+   * Solves data drift by verifying primary sources of truth:
+   * 1. Profile completeness in `portal_memberships`
+   * 2. Course lesson engagement in `learning_progress`
+   * 3. Community activity in `community_posts`
+   *
+   * HIGH-LOAD GUARDRAILS (Rule 9):
+   * Uses bounded queries with `.limit(1)` to eliminate full-collection scan overhead and prevent resource exhaustion.
+   *
+   * CAUTION FOR FUTURE MAINTAINERS:
+   * Avoid calling this unconditionally on rapid intervals. Client callers must guard execution with
+   * `hasReconciledRef` to prevent infinite fetch cascades.
+   *
+   * @param portalId Portal ID
+   * @param userId Member User ID
+   */
+  public static async reconcileMemberOnboarding(
+    portalId: string,
+    userId: string
+  ): Promise<ReconcileOnboardingResult> {
+    const flow = await EngagementService.getOnboardingFlow(portalId);
+    const steps = flow?.steps || EngagementService.getDefaultOnboardingSteps();
+
+    // 1. Fetch current progress
+    const progressDocId = `onboarding_${portalId}_${userId}`;
+    const progressRef = adminDb.collection('member_onboarding_progress').doc(progressDocId);
+    const progressSnap = await progressRef.get();
+    const currentCompleted = new Set<string>(
+      progressSnap.exists ? ((progressSnap.data()?.completedStepIds as string[]) || []) : []
+    );
+
+    const newlyCompletedSteps: string[] = [];
+
+    // 2. Evaluate Profile Setup (StepType: 'complete_profile')
+    const profileSteps = steps.filter(s => s.type === 'complete_profile' && !currentCompleted.has(s.id));
+    if (profileSteps.length > 0) {
+      const memberSnap = await adminDb
+        .collection('portal_memberships')
+        .where('portalId', '==', portalId)
+        .where('userId', '==', userId)
+        .limit(1)
+        .get();
+
+      if (!memberSnap.empty) {
+        const memberData = memberSnap.docs[0].data();
+        const custom = (memberData.customFields as Record<string, string | number | boolean | null>) || {};
+        const hasProfileData = Boolean(
+          custom.schoolName ||
+          custom.whatsappNumber ||
+          custom.jobTitle ||
+          (memberData.displayName && memberData.displayName !== 'Community Member' && memberData.displayName.trim() !== '')
+        );
+        if (hasProfileData) {
+          profileSteps.forEach(s => newlyCompletedSteps.push(s.id));
+        }
+      }
+    }
+
+    // 3. Evaluate Course Lesson Activity (StepType: 'start_course')
+    const courseSteps = steps.filter(s => s.type === 'start_course' && !currentCompleted.has(s.id));
+    if (courseSteps.length > 0) {
+      const progressQuery = await adminDb
+        .collection('learning_progress')
+        .where('portalId', '==', portalId)
+        .where('userId', '==', userId)
+        .limit(1)
+        .get();
+
+      if (!progressQuery.empty) {
+        courseSteps.forEach(s => newlyCompletedSteps.push(s.id));
+      }
+    }
+
+    // 4. Evaluate Community Post Activity (StepType: 'community_post')
+    const communitySteps = steps.filter(s => s.type === 'community_post' && !currentCompleted.has(s.id));
+    if (communitySteps.length > 0) {
+      const postsQuery = await adminDb
+        .collection('community_posts')
+        .where('portalId', '==', portalId)
+        .where('authorId', '==', userId)
+        .limit(1)
+        .get();
+
+      if (!postsQuery.empty) {
+        communitySteps.forEach(s => newlyCompletedSteps.push(s.id));
+      }
+    }
+
+    // 5. Batch advance newly completed steps
+    const pointsAwarded = 0;
+    for (const stepId of newlyCompletedSteps) {
+      await EngagementService.advanceOnboardingStep({ portalId, userId, stepId });
+    }
+
+    const updatedTotal = currentCompleted.size + newlyCompletedSteps.length;
+    const isFullyCompleted = updatedTotal >= steps.length && steps.length > 0;
+
+    return {
+      updatedStepIds: newlyCompletedSteps,
+      totalCompleted: updatedTotal,
+      isFullyCompleted,
+      pointsAwarded,
+    };
   }
 
   // ── Member Tasks Operations ────────────────────────────────────────────────
