@@ -43,9 +43,10 @@ export interface ConnectedMeetingProvidersState {
 
 export function useConnectedMeetingProviders(
   workspaceId?: string,
-  options?: { enabled?: boolean }
+  options?: { enabled?: boolean; hostUserId?: string }
 ): ConnectedMeetingProvidersState {
   const enabled = options?.enabled ?? true;
+  const hostUserId = options?.hostUserId;
   const firestore = useFirestore();
 
   // Real-time Firestore subscription to workspace connections
@@ -57,7 +58,17 @@ export function useConnectedMeetingProviders(
     );
   }, [firestore, workspaceId, enabled]);
 
-  const { data: connections, isLoading } = useCollection<CalendarConnection>(connectionsQuery);
+  const { data: rawConnections, isLoading } = useCollection<CalendarConnection>(connectionsQuery);
+
+  // If a hostUserId is provided, enforce multi-tenant parity with resolveWorkspaceConnection:
+  // Only connections belonging to this host or marked as workspace 'system_integration' are selectable.
+  const connections = React.useMemo(() => {
+    if (!rawConnections) return null;
+    if (!hostUserId) return rawConnections;
+    return rawConnections.filter(
+      c => c.userId === hostUserId || c.userId === 'system_integration'
+    );
+  }, [rawConnections, hostUserId]);
 
   const googleConnection = React.useMemo(() => {
     return connections?.find(c => c.provider === 'google_calendar') || null;

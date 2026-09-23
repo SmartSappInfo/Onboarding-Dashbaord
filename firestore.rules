@@ -682,7 +682,11 @@ service cloud.firestore {
 
     match /conference_rooms/{roomId} {
       allow get: if true;
-      allow list, write: if isAuthorized() && (isSystemAdmin() || hasWorkspaceAccess(resource.data.workspaceId));
+      allow list, write: if isAuthorized() && (
+        isSystemAdmin() ||
+        (resource != null && hasWorkspaceAccess(resource.data.workspaceId)) ||
+        (request.resource != null && hasWorkspaceAccess(request.resource.data.workspaceId))
+      );
     }
 
     match /meeting_activities/{activityId} {

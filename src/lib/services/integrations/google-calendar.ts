@@ -277,18 +277,60 @@ export async function createGoogleCalendarEvent(
   details: {
     title: string;
     description?: string;
+    location?: string;
     start: string;
     end: string;
     timezone: string;
     attendees?: Array<{ email: string; displayName?: string }>;
+    createMeetConference?: boolean;
   },
   signal?: AbortSignal
 ): Promise<GoogleCalendarEvent> {
   const connection = await getValidGoogleConnection(connectionId);
   const calendarId = connection.calendarId || 'primary';
+  const shouldCreateMeet = details.createMeetConference !== false;
+
+  const requestBody: Record<string, unknown> = {
+    summary: details.title,
+    description: details.description || '',
+    start: {
+      dateTime: details.start,
+      timeZone: details.timezone,
+    },
+    end: {
+      dateTime: details.end,
+      timeZone: details.timezone,
+    },
+  };
+
+  if (details.location) {
+    requestBody.location = details.location;
+  }
+
+  if (details.attendees && details.attendees.length > 0) {
+    requestBody.attendees = details.attendees.map(a => ({
+      email: a.email,
+      displayName: a.displayName,
+    }));
+  }
+
+  if (shouldCreateMeet) {
+    requestBody.conferenceData = {
+      createRequest: {
+        requestId: `meet_${Date.now()}`,
+        conferenceSolutionKey: {
+          type: 'hangoutsMeet',
+        },
+      },
+    };
+  }
+
+  const endpoint = `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events${
+    shouldCreateMeet ? '?conferenceDataVersion=1' : ''
+  }`;
 
   const res = await fetch(
-    `https://www.googleapis.com/calendar/v3/calendars/${calendarId}/events?conferenceDataVersion=1`,
+    endpoint,
     {
       method: 'POST',
       signal,
@@ -296,34 +338,7 @@ export async function createGoogleCalendarEvent(
         'Authorization': `Bearer ${connection.accessToken}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        summary: details.title,
-        description: details.description || '',
-        start: {
-          dateTime: details.start,
-          timeZone: details.timezone,
-        },
-        end: {
-          dateTime: details.end,
-          timeZone: details.timezone,
-        },
-        ...(details.attendees && details.attendees.length > 0
-          ? {
-              attendees: details.attendees.map(a => ({
-                email: a.email,
-                displayName: a.displayName,
-              })),
-            }
-          : {}),
-        conferenceData: {
-          createRequest: {
-            requestId: `meet_${Date.now()}`,
-            conferenceSolutionKey: {
-              type: 'hangoutsMeet',
-            },
-          },
-        },
-      }),
+      body: JSON.stringify(requestBody),
     }
   );
 

@@ -15,7 +15,7 @@ import type {
   CalendarGridEvent,
 } from '@/lib/meetings/types/calendar-view';
 import type { MeetingLocationType } from '@/lib/meetings/types';
-import { generateMeetingRoom } from '@/lib/meetings/meeting-provider-service';
+import { generateMeetingRoom, rollbackMeetingRoomAsync, type MeetingRoomResult } from '@/lib/meetings/meeting-provider-service';
 import { detectGridCollision } from '@/lib/meetings/calendar-view-service';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 
@@ -181,11 +181,12 @@ export async function quickScheduleMeetingAction(payload: {
     let meetingLink = '';
     let externalCalendarEventId: string | undefined;
     let externalCalendarEventUrl: string | undefined;
+    let roomResult: MeetingRoomResult | null = null;
 
     const normalizedLocationType = (locationType === 'ms_teams' ? 'teams' : locationType) as MeetingLocationType;
 
     if (normalizedLocationType === 'google_meet' || normalizedLocationType === 'zoom' || normalizedLocationType === 'teams') {
-      const roomResult = await generateMeetingRoom({
+      roomResult = await generateMeetingRoom({
         workspaceId,
         locationType: normalizedLocationType,
         title: title.trim(),
@@ -203,36 +204,45 @@ export async function quickScheduleMeetingAction(payload: {
       externalCalendarEventUrl = roomResult.externalCalendarEventUrl;
     }
 
-    const docRef = adminDb.collection('meetings').doc();
-    const meetingData = {
-      id: docRef.id,
-      workspaceId,
-      organizationId: organizationId || '',
-      title: title.trim(),
-      description: description?.trim() || '',
-      hostUserId,
-      hostName,
-      meetingTime: startAt,
-      endTime: endAt,
-      duration: durationMinutes,
-      status: 'scheduled',
-      locationType: normalizedLocationType,
-      meetingLink,
-      externalCalendarEventId,
-      externalCalendarEventUrl,
-      contactName: contactName?.trim() || undefined,
-      contactEmail: contactEmail?.trim() || undefined,
-      createdAt: now,
-      updatedAt: now,
-    };
+    try {
+      const docRef = adminDb.collection('meetings').doc();
+      const meetingData = {
+        id: docRef.id,
+        workspaceId,
+        organizationId: organizationId || '',
+        title: title.trim(),
+        description: description?.trim() || '',
+        hostUserId,
+        hostName,
+        meetingTime: startAt,
+        endTime: endAt,
+        duration: durationMinutes,
+        status: 'scheduled',
+        locationType: normalizedLocationType,
+        meetingLink,
+        externalCalendarEventId,
+        externalCalendarEventUrl,
+        contactName: contactName?.trim() || undefined,
+        contactEmail: contactEmail?.trim() || undefined,
+        createdAt: now,
+        updatedAt: now,
+      };
 
-    await docRef.set(meetingData);
+      await docRef.set(meetingData);
 
-    return {
-      success: true,
-      meetingId: docRef.id,
-      meetingLink,
-    };
+      return {
+        success: true,
+        meetingId: docRef.id,
+        meetingLink,
+      };
+    } catch (dbErr) {
+      if (roomResult) {
+        rollbackMeetingRoomAsync(roomResult).catch(rollbackErr => {
+          console.error('[quickScheduleMeetingAction] Rollback compensation failed:', rollbackErr);
+        });
+      }
+      throw dbErr;
+    }
   } catch (err) {
     return { success: false, error: getErrorMessage(err) };
   }

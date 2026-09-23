@@ -352,11 +352,11 @@ export async function generateMeetingRoom(
         const { createMicrosoftTeamsMeeting } = await import('@/lib/services/integrations/microsoft-teams');
 
         const msMeeting = await withTimeout(
-          () => createMicrosoftTeamsMeeting(teamsConn.id, {
+          (signal) => createMicrosoftTeamsMeeting(teamsConn.id, {
             title: title || 'SmartSapp Teams Meeting',
             start: startAt,
             end: endAt,
-          }),
+          }, signal),
           7000,
           'Microsoft Teams Provisioning'
         );
@@ -405,6 +405,12 @@ export async function rollbackMeetingRoomAsync(
     } else if (roomResult.provider === 'zoom' && roomResult.conferenceMeetingId) {
       const { deleteZoomMeeting } = await import('@/lib/services/integrations/zoom-meeting');
       await deleteZoomMeeting(roomResult.connectionId, roomResult.conferenceMeetingId);
+    } else if (
+      (roomResult.provider === 'microsoft_teams' || roomResult.provider === 'microsoft_outlook') &&
+      roomResult.conferenceMeetingId
+    ) {
+      const { deleteMicrosoftTeamsMeeting } = await import('@/lib/services/integrations/microsoft-teams');
+      await deleteMicrosoftTeamsMeeting(roomResult.connectionId, roomResult.conferenceMeetingId);
     }
   } catch (err) {
     console.error('[rollbackMeetingRoomAsync] Failed to rollback external meeting:', err);

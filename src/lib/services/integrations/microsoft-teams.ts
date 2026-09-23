@@ -233,12 +233,14 @@ export async function getValidConnection(
  */
 export async function createMicrosoftTeamsMeeting(
   connectionId: string,
-  details: { title: string; start: string; end: string }
+  details: { title: string; start: string; end: string },
+  signal?: AbortSignal
 ): Promise<MicrosoftMeetingResponse> {
   const connection = await getValidConnection(connectionId);
 
   const res = await fetch('https://graph.microsoft.com/v1.0/me/onlineMeetings', {
     method: 'POST',
+    signal,
     headers: {
       'Authorization': `Bearer ${connection.accessToken}`,
       'Content-Type': 'application/json',
@@ -263,3 +265,28 @@ export async function createMicrosoftTeamsMeeting(
 
   return await res.json() as MicrosoftMeetingResponse;
 }
+
+/**
+ * Deletes an Online Meeting on Microsoft Teams (used for compensation rollback).
+ */
+export async function deleteMicrosoftTeamsMeeting(
+  connectionId: string,
+  meetingId: string
+): Promise<void> {
+  if (!connectionId || !meetingId) return;
+  try {
+    const connection = await getValidConnection(connectionId);
+    const res = await fetch(`https://graph.microsoft.com/v1.0/me/onlineMeetings/${meetingId}`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${connection.accessToken}`,
+      },
+    });
+    if (!res.ok && res.status !== 404) {
+      console.warn(`[deleteMicrosoftTeamsMeeting] Failed to delete meeting ${meetingId}: status ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`[deleteMicrosoftTeamsMeeting] Rollback error for meeting ${meetingId}:`, err);
+  }
+}
+

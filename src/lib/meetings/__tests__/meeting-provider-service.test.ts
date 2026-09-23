@@ -29,6 +29,7 @@ vi.mock('@/lib/services/integrations/zoom-meeting', () => ({
 
 vi.mock('@/lib/services/integrations/microsoft-teams', () => ({
   createMicrosoftTeamsMeeting: vi.fn(),
+  deleteMicrosoftTeamsMeeting: vi.fn(),
 }));
 
 describe('Meeting Provider Service (SSOT)', () => {
@@ -380,6 +381,20 @@ describe('Meeting Provider Service (SSOT)', () => {
       });
 
       expect(deleteZoomMeeting).toHaveBeenCalledWith('conn_z_1', '987654321');
+    });
+
+    it('deletes Microsoft Teams meeting on rollback if room was provisioned with real integration', async () => {
+      const { deleteMicrosoftTeamsMeeting } = await import('@/lib/services/integrations/microsoft-teams');
+
+      await rollbackMeetingRoomAsync({
+        joinUrl: 'https://teams.microsoft.com/l/meetup-join/19%3ameeting_xyz',
+        conferenceMeetingId: 'teams_mtg_789',
+        connectionId: 'conn_t_1',
+        provider: 'microsoft_teams',
+        isRealIntegration: true,
+      });
+
+      expect(deleteMicrosoftTeamsMeeting).toHaveBeenCalledWith('conn_t_1', 'teams_mtg_789');
     });
 
     it('does nothing when room is not a real external integration', async () => {

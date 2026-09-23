@@ -297,18 +297,22 @@ export async function createMicrosoftCalendarEvent(
   details: {
     title: string;
     description?: string;
+    location?: string;
     start: string; // ISO
     end: string;   // ISO
     timezone?: string;
     attendeeEmail?: string;
     attendeeName?: string;
-  }
+    isOnlineMeeting?: boolean;
+  },
+  signal?: AbortSignal
 ): Promise<CalendarSyncResult> {
   try {
     const connection = await getValidMicrosoftConnection(connectionId);
     const timezone = details.timezone || 'UTC';
+    const isOnline = details.isOnlineMeeting !== false;
 
-    const eventPayload = {
+    const eventPayload: Record<string, unknown> = {
       subject: details.title,
       body: {
         contentType: 'HTML',
@@ -322,8 +326,9 @@ export async function createMicrosoftCalendarEvent(
         dateTime: details.end.replace('Z', ''),
         timeZone: timezone,
       },
-      isOnlineMeeting: true,
-      onlineMeetingProvider: 'teamsForBusiness',
+      isOnlineMeeting: isOnline,
+      ...(isOnline ? { onlineMeetingProvider: 'teamsForBusiness' } : {}),
+      ...(details.location ? { location: { displayName: details.location } } : {}),
       attendees: details.attendeeEmail
         ? [
             {
@@ -339,6 +344,7 @@ export async function createMicrosoftCalendarEvent(
 
     const res = await fetch('https://graph.microsoft.com/v1.0/me/events', {
       method: 'POST',
+      signal,
       headers: {
         Authorization: `Bearer ${connection.accessToken}`,
         'Content-Type': 'application/json',
@@ -363,3 +369,28 @@ export async function createMicrosoftCalendarEvent(
     return { success: false, error: msg };
   }
 }
+
+/**
+ * Deletes an event on Microsoft Calendar (used for compensation rollback).
+ */
+export async function deleteMicrosoftCalendarEvent(
+  connectionId: string,
+  eventId: string
+): Promise<void> {
+  if (!connectionId || !eventId) return;
+  try {
+    const connection = await getValidMicrosoftConnection(connectionId);
+    const res = await fetch(`https://graph.microsoft.com/v1.0/me/events/${eventId}`, {
+      method: 'DELETE',
+      headers: {
+        Authorization: `Bearer ${connection.accessToken}`,
+      },
+    });
+    if (!res.ok && res.status !== 404) {
+      console.warn(`[deleteMicrosoftCalendarEvent] Failed to delete event ${eventId}: status ${res.status}`);
+    }
+  } catch (err) {
+    console.warn(`[deleteMicrosoftCalendarEvent] Rollback error for event ${eventId}:`, err);
+  }
+}
+

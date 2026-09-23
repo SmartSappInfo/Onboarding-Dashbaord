@@ -184,10 +184,14 @@ export default function DirectMeetingRoomClient({ sessionData }: DirectMeetingRo
 
   const handleJoin = () => {
     if (sessionData.externalJoinUrl) {
-      window.location.href = sessionData.externalJoinUrl;
-    } else {
-      setIsInCall(true);
+      const url = sessionData.externalJoinUrl.trim();
+      // Enforce strict HTTP/HTTPS scheme to guard against open redirects or javascript: injection
+      if (/^https?:\/\//i.test(url)) {
+        window.location.href = url;
+        return;
+      }
     }
+    setIsInCall(true);
   };
 
   const handleLeave = () => {

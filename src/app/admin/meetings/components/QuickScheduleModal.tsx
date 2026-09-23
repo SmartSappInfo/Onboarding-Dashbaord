@@ -59,7 +59,7 @@ export function QuickScheduleModal({
     getLocationOptions,
     getFirstAvailableVideoProvider,
     isLoading: loadingProviders,
-  } = useConnectedMeetingProviders(activeWorkspaceId, { enabled: open });
+  } = useConnectedMeetingProviders(activeWorkspaceId, { enabled: open, hostUserId: user?.uid });
 
   const [title, setTitle] = React.useState('');
   const [description, setDescription] = React.useState('');
@@ -134,6 +134,10 @@ export function QuickScheduleModal({
         variant: 'destructive',
         title: 'Scheduling Failed',
         description: getErrorMessage(err),
+        actionConfig: {
+          path: '/admin/settings?tab=integrations',
+          label: 'Configure Integrations',
+        },
       });
     } finally {
       setIsSubmitting(false);
@@ -172,7 +176,7 @@ export function QuickScheduleModal({
                 type="date"
                 value={dateStr}
                 onChange={e => setDateStr(e.target.value)}
-                className="rounded-xl h-9 text-xs"
+                className="rounded-xl min-h-[44px] text-xs"
               />
             </div>
             <div className="space-y-1.5">
@@ -181,7 +185,7 @@ export function QuickScheduleModal({
                 type="time"
                 value={timeStr}
                 onChange={e => setTimeStr(e.target.value)}
-                className="rounded-xl h-9 text-xs"
+                className="rounded-xl min-h-[44px] text-xs"
               />
             </div>
           </div>
@@ -190,7 +194,7 @@ export function QuickScheduleModal({
             <div className="space-y-1.5">
               <Label className="font-semibold">Duration (Minutes)</Label>
               <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger className="rounded-xl h-9 text-xs">
+                <SelectTrigger className="rounded-xl min-h-[44px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="rounded-xl">
@@ -246,7 +250,7 @@ export function QuickScheduleModal({
                   value={contactName}
                   onChange={e => setContactName(e.target.value)}
                   placeholder="Jane Doe"
-                  className="rounded-xl h-9 text-xs"
+                  className="rounded-xl min-h-[44px] text-xs"
                 />
               </div>
               <div className="space-y-1">
@@ -256,7 +260,7 @@ export function QuickScheduleModal({
                   value={contactEmail}
                   onChange={e => setContactEmail(e.target.value)}
                   placeholder="jane@example.com"
-                  className="rounded-xl h-9 text-xs"
+                  className="rounded-xl min-h-[44px] text-xs"
                 />
               </div>
             </div>

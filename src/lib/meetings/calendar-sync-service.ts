@@ -15,7 +15,6 @@ import type { Booking } from '@/lib/meetings/types';
 import type { CalendarConnection } from '@/lib/types';
 import { resolveWorkspaceConnection } from './meeting-provider-service';
 import { createGoogleCalendarEvent } from '@/lib/services/integrations/google-calendar';
-import { createZoomMeeting } from '@/lib/services/integrations/zoom-meeting';
 import { createMicrosoftCalendarEvent } from '@/lib/services/integrations/microsoft-calendar';
 import { logMeetingActivity } from '@/lib/meetings/activity-logger';
 
@@ -36,6 +35,12 @@ export interface CalendarSyncResult {
 /**
  * Internal system engine to push a confirmed booking as an event to the host's connected calendar.
  * Can be safely invoked by internal server tasks on public bookings without active user sessions.
+ * 
+ * NOTE (Senior Architectural Remediation C-1):
+ * - Zoom and standalone video rooms are provisioned prior to the transaction in generateMeetingRoom.
+ * - This service pushes an event to the host's actual connected CALENDAR (Google Calendar or Microsoft Outlook).
+ * - Zoom is a video provider, NOT a calendar destination. We never call createZoomMeeting here,
+ *   preventing duplicate Zoom meeting generation on host accounts.
  */
 export async function syncBookingToExternalCalendar(
   bookingId: string
@@ -63,25 +68,20 @@ export async function syncBookingToExternalCalendar(
 
     const hostUserId = booking.hostUserId;
 
-    // Resolve connection using 3-tier fallback (Host Primary -> Host General -> Workspace System)
+    // Resolve calendar connection using 3-tier fallback (Host Primary -> Host General -> Workspace System)
     let connection: CalendarConnection | null = null;
 
     if (booking.locationType === 'google_meet') {
       connection = await resolveWorkspaceConnection(booking.workspaceId, 'google_calendar', hostUserId);
-    } else if (booking.locationType === 'zoom') {
-      connection = await resolveWorkspaceConnection(booking.workspaceId, 'zoom', hostUserId);
-    } else if (booking.locationType === 'teams') {
-      connection = await resolveWorkspaceConnection(booking.workspaceId, 'microsoft_teams', hostUserId);
-    }
-
-    // If no specific conferencing connection match, check if host has any primary calendar destination
-    if (!connection) {
+    } else {
+      // For Zoom, Teams, phone, in-person, or custom:
+      // Push an event to host's primary connected calendar (Google Calendar or Microsoft Outlook)
       connection = (await resolveWorkspaceConnection(booking.workspaceId, 'google_calendar', hostUserId))
         || (await resolveWorkspaceConnection(booking.workspaceId, 'microsoft_outlook', hostUserId));
     }
 
     if (!connection) {
-      // No external calendar configured; nothing to sync
+      // No external calendar configured; room is already provisioned or offline
       return { success: true };
     }
 
@@ -93,23 +93,21 @@ export async function syncBookingToExternalCalendar(
     // Validate email format to prevent upstream API 400 rejection
     const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(bookerEmail);
 
-    // Calculate duration with NaN guard
-    const startMs = new Date(booking.startAt).getTime();
-    const endMs = new Date(booking.endAt).getTime();
-    const durationMinutes = (!isNaN(startMs) && !isNaN(endMs) && endMs > startMs)
-      ? Math.max(15, Math.round((endMs - startMs) / 60000))
-      : 30;
-
     let syncResult: CalendarSyncResult = { success: false };
 
     if (connection.provider === 'google_calendar') {
+      const isMeetLocation = booking.locationType === 'google_meet';
       const gEvent = await createGoogleCalendarEvent(connectionId, {
         title: booking.eventTypeName || 'SmartSapp Meeting',
-        description: `Meeting with ${bookerName} (${bookerEmail}). Join URL: ${joinUrl}`,
+        description: `Meeting with ${bookerName} (${bookerEmail}).${joinUrl ? ` Join URL: ${joinUrl}` : ''}`,
+        location: joinUrl || undefined,
         start: booking.startAt,
         end: booking.endAt,
         timezone: booking.timezone || 'UTC',
         attendees: isValidEmail ? [{ email: bookerEmail, displayName: bookerName }] : undefined,
+        // Only provision Google Meet conferencing if the location type is explicitly google_meet;
+        // otherwise retain the existing video URL (e.g. Zoom) without competing conferences.
+        createMeetConference: isMeetLocation,
       });
       syncResult = {
         success: true,
@@ -117,28 +115,18 @@ export async function syncBookingToExternalCalendar(
         externalEventUrl: gEvent.htmlLink,
         meetLink: gEvent.hangoutLink,
       };
-    } else if (connection.provider === 'zoom') {
-      const zMeeting = await createZoomMeeting(connectionId, {
-        topic: booking.eventTypeName || 'SmartSapp Meeting',
-        start: booking.startAt,
-        durationMinutes,
-        timezone: booking.timezone || 'UTC',
-      });
-      syncResult = {
-        success: true,
-        externalEventId: String(zMeeting.id),
-        externalEventUrl: zMeeting.start_url,
-        meetLink: zMeeting.join_url,
-      };
     } else if (connection.provider === 'microsoft_outlook' || (connection.provider as string) === 'microsoft_teams') {
+      const isTeamsLocation = booking.locationType === 'teams' || (booking.locationType as string) === 'microsoft_teams';
       syncResult = await createMicrosoftCalendarEvent(connectionId, {
         title: booking.eventTypeName || 'SmartSapp Meeting',
-        description: `<p>Meeting with <strong>${bookerName}</strong> (${bookerEmail})</p><p>Join URL: <a href="${joinUrl}">${joinUrl}</a></p>`,
+        description: `<p>Meeting with <strong>${bookerName}</strong> (${bookerEmail})</p>${joinUrl ? `<p>Join URL: <a href="${joinUrl}">${joinUrl}</a></p>` : ''}`,
+        location: joinUrl || undefined,
         start: booking.startAt,
         end: booking.endAt,
         timezone: booking.timezone || 'UTC',
         attendeeEmail: isValidEmail ? bookerEmail : undefined,
         attendeeName: bookerName,
+        isOnlineMeeting: isTeamsLocation,
       });
     }
 
