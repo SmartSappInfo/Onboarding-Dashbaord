@@ -70,7 +70,7 @@ export default function PipelineClient() {
   const { user } = useUser();
   const { toast } = useToast();
   
-  const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'list' | 'forecast' | 'analytics' | 'config' | 'actions'>('board');
+  const [activeView, setActiveView] = React.useState<'overview' | 'board' | 'actions' | 'list' | 'forecast' | 'analytics' | 'config'>('board');
   const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
   const [isCreatePipelineModalOpen, setIsCreatePipelineModalOpen] = React.useState(false);
 
@@ -670,11 +670,11 @@ export default function PipelineClient() {
                     <div className="flex items-center gap-1 bg-muted/30 p-1 rounded-xl border shadow-inner">
                         <Button variant="ghost" onClick={() => setActiveView('overview')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'overview' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><TrendingUp className="h-3.5 w-3.5" /> Overview</Button>
                         <Button variant="ghost" onClick={() => setActiveView('board')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'board' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Layout className="h-3.5 w-3.5" /> Board</Button>
+                        <Button variant="ghost" onClick={() => setActiveView('actions')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'actions' ? "bg-card shadow-md text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Actions</Button>
                         <Button variant="ghost" onClick={() => setActiveView('list')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'list' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><List className="h-3.5 w-3.5" /> List</Button>
                         <Button variant="ghost" onClick={() => setActiveView('forecast')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'forecast' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Target className="h-3.5 w-3.5" /> Forecast</Button>
                         <Button variant="ghost" onClick={() => setActiveView('analytics')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'analytics' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><BarChart3 className="h-3.5 w-3.5" /> Analytics</Button>
                         <Button variant="ghost" onClick={() => setActiveView('config')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'config' ? "bg-card shadow-md text-primary font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Settings2 className="h-3.5 w-3.5" /> Config</Button>
-                        <Button variant="ghost" onClick={() => setActiveView('actions')} className={cn("h-8 rounded-lg font-semibold text-[9px] px-3.5 transition-all flex items-center gap-1.5", activeView === 'actions' ? "bg-card shadow-md text-amber-600 dark:text-amber-400 font-bold" : "text-muted-foreground opacity-60 hover:opacity-100")}><Zap className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /> Actions</Button>
                     </div>
                 </div>
             </div>
@@ -782,7 +782,7 @@ export default function PipelineClient() {
                                 customWidth={columnWidth} 
                                 filters={mergedFilters} 
                                 automations={automations || undefined} 
-                                showDealTotals={currentPipeline?.showDealTotals !== false}
+                                showDealTotals={Boolean(currentPipeline?.showDealTotals)}
                             />
                         ) : (
                             <div className="flex flex-col items-center justify-center h-full p-8 text-center gap-6 opacity-20">

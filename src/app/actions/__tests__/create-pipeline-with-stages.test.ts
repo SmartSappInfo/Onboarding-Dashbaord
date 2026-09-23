@@ -119,4 +119,15 @@ describe('createPipelineWithStagesAction', () => {
     expect(requireWorkspace).toHaveBeenCalledWith('ws-2');
     expect(requireWorkspace).toHaveBeenCalledWith('ws-3');
   });
+
+  it('defaults showDealTotals to false when omitted', async () => {
+    const payload: CreatePipelinePayload = {
+      name: 'Non-Financial Pipeline',
+      workspaceIds: ['ws-1'],
+    };
+    const res = await createPipelineWithStagesAction(payload);
+    expect(res.success).toBe(true);
+    const pipelineCall = batchSetCalls.find(c => c.refId === res.id);
+    expect(pipelineCall?.data.showDealTotals).toBe(false);
+  });
 });

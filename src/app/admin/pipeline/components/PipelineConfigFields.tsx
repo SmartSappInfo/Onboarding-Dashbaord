@@ -179,7 +179,7 @@ export function PipelineConfigFields({
             Show Financial Totals in Kanban Columns
           </Label>
           <p className="text-[11px] text-muted-foreground font-normal leading-relaxed">
-            Display cumulative deal value and weighted forecast in stage headers. Enabled by default.
+            Display cumulative deal value and weighted forecast in stage headers. Disabled by default.
           </p>
         </div>
         <Switch

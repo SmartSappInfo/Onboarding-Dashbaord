@@ -63,7 +63,7 @@ interface KanbanBoardProps {
  * ARCHITECTURAL POINTER (KanbanBoard Component):
  * Real-time deal progression hub with DnD, stage filters, and stage-linked automation indicators.
  */
-export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations, showDealTotals = true }: KanbanBoardProps) {
+export default function KanbanBoard({ pipelineId, pipelineName, customWidth, filters, automations, showDealTotals = false }: KanbanBoardProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
   const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();

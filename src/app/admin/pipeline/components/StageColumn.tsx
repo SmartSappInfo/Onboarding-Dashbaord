@@ -58,7 +58,7 @@ export default function StageColumn({
     pipelineId, 
     automations, 
     isDraggingDeal,
-    showDealTotals = true,
+    showDealTotals = false,
     entitiesById
 }: StageColumnProps) {
     const [isCreateDealOpen, setIsCreateDealOpen] = React.useState(false);
@@ -312,9 +312,9 @@ export default function StageColumn({
                         </div>
                     </div>
 
-                    {/* Stage Subheader: Financial Total & Velocity SLA */}
-                    <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground pt-1 border-t border-border/30">
-                        {showDealTotals ? (
+                    {/* Stage Subheader: Financial Total & Velocity SLA (completely collapsed if financials / showDealTotals are off) */}
+                    {showDealTotals && (
+                        <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground pt-1 border-t border-border/30">
                             <TooltipProvider>
                                 <Tooltip>
                                     <TooltipTrigger asChild>
@@ -328,25 +328,21 @@ export default function StageColumn({
                                     </TooltipContent>
                                 </Tooltip>
                             </TooltipProvider>
-                        ) : (
-                            <span className="text-[10px] text-muted-foreground font-medium">
-                                {deals.length} {deals.length === 1 ? 'deal' : 'deals'}
-                            </span>
-                        )}
 
-                        <div className="flex items-center gap-2 text-[10px]">
-                            {stage.slaDays && (
-                                <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground font-semibold">
-                                    SLA: {stage.slaDays}d
-                                </span>
-                            )}
-                            {deals.length > 0 && (
-                                <span className="text-muted-foreground/80">
-                                    Avg {avgStageDays}d
-                                </span>
-                            )}
+                            <div className="flex items-center gap-2 text-[10px]">
+                                {stage.slaDays && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted/60 text-muted-foreground font-semibold">
+                                        SLA: {stage.slaDays}d
+                                    </span>
+                                )}
+                                {deals.length > 0 && (
+                                    <span className="text-muted-foreground/80">
+                                        Avg {avgStageDays}d
+                                    </span>
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </CardHeader>
                 
                 <div 

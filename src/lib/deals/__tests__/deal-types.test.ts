@@ -97,7 +97,7 @@ describe('Deals 2.0 Schema & Type Verification', () => {
     expect(onboardingStage.slaDays).toBe(7);
   });
 
-  it('should support pipeline showDealTotals configuration defaulting to enabled', () => {
+  it('should support pipeline showDealTotals configuration defaulting to disabled', () => {
     const pipelineWithDefaults: import('@/lib/types').Pipeline = {
       id: 'pipe-1',
       name: 'Sales Pipeline',
@@ -117,9 +117,9 @@ describe('Deals 2.0 Schema & Type Verification', () => {
       showDealTotals: true,
     };
 
-    expect(pipelineWithDefaults.showDealTotals !== false).toBe(true);
-    expect(pipelineWithTotalsDisabled.showDealTotals !== false).toBe(false);
-    expect(pipelineWithTotalsExplicitlyEnabled.showDealTotals !== false).toBe(true);
+    expect(Boolean(pipelineWithDefaults.showDealTotals)).toBe(false);
+    expect(Boolean(pipelineWithTotalsDisabled.showDealTotals)).toBe(false);
+    expect(Boolean(pipelineWithTotalsExplicitlyEnabled.showDealTotals)).toBe(true);
   });
 
   it('should verify all PIPELINE_STARTER_TEMPLATES have valid stages, probabilities, and order', () => {
