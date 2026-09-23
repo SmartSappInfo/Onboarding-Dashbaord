@@ -59,11 +59,13 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 interface PortalCommunityClientProps {
   slug: string;
   activeSpaceSlug?: string;
+  initialPortal?: Portal | null;
 }
 
 export default function PortalCommunityClient({
   slug,
   activeSpaceSlug,
+  initialPortal,
 }: PortalCommunityClientProps) {
   const firestore = useFirestore();
   const { user } = useUser();
@@ -97,7 +99,7 @@ export default function PortalCommunityClient({
     [firestore, slug]
   );
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
-  const portal = portals?.[0] ?? null;
+  const portal = portals?.[0] ?? initialPortal ?? null;
 
   // 2. Query Spaces
   const spacesQuery = useMemoFirebase(
@@ -301,9 +303,9 @@ export default function PortalCommunityClient({
     }
   };
 
-  if (isLoadingPortal || isLoadingSpaces) {
+  if ((isLoadingPortal && !initialPortal) || isLoadingSpaces) {
     return (
-      <div className="min-h-screen bg-background p-6 md:p-12 space-y-6">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] text-[var(--portal-text,#0f172a)] p-6 md:p-12 space-y-6">
         <div className="max-w-6xl mx-auto space-y-6">
           <Skeleton className="h-10 w-48 rounded-xl" />
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
@@ -317,7 +319,7 @@ export default function PortalCommunityClient({
 
   if (!portal) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Portal Not Found</h2>
           <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
@@ -609,7 +611,10 @@ export default function PortalCommunityClient({
                         <div className="space-y-0.5">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-xs text-foreground">{post.authorName}</span>
-                            <Badge variant="secondary" className="text-[9px] font-bold uppercase py-0 capitalize">
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-bold uppercase py-0 capitalize border border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-text)] shadow-none"
+                            >
                               {post.authorRole}
                             </Badge>
                             {post.isPinned && (

@@ -34,5 +34,11 @@ export async function generateMetadata({ params }: DashboardPageProps): Promise<
 
 export default async function DashboardPage({ params }: DashboardPageProps) {
   const { slug } = await params;
-  return <PortalMemberDashboardClient slug={slug} />;
+  const portal = await PortalService.getPortalBySlug(slug);
+  return (
+    <PortalMemberDashboardClient
+      slug={slug}
+      initialPortal={portal ? JSON.parse(JSON.stringify(portal)) : null}
+    />
+  );
 }

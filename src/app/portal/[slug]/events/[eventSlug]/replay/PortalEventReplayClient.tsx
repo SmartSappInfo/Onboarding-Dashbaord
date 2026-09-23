@@ -149,7 +149,7 @@ export function PortalEventReplayClient({ slug, eventSlug }: PortalEventReplayCl
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <Badge variant="secondary" className="text-[9px] uppercase font-bold bg-primary/10 text-primary">
+                <Badge variant="outline" className="text-[9px] uppercase font-bold bg-primary/10 text-primary border-primary/20">
                   {event.type.replace('_', ' ')}
                 </Badge>
                 <span className="text-xs text-muted-foreground">

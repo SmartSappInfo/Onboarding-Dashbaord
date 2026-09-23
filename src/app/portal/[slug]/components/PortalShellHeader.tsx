@@ -250,12 +250,12 @@ export function PortalShellHeader({
             <button
               type="button"
               onClick={() => onOpenSearch?.()}
-              className="relative w-48 text-left h-9 pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-foreground flex items-center justify-between transition-colors shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
+              className="relative w-48 text-left h-9 pl-8 pr-3 border border-[var(--portal-border)] bg-[var(--portal-surface)] text-xs text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:border-[var(--portal-primary)]/60 flex items-center justify-between transition-all shadow-2xs focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
               style={{ borderRadius: radiusCss }}
             >
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5" />
               <span>Search portal...</span>
-              <kbd className="text-[9px] bg-muted/60 px-1 py-0.5 rounded border border-border">⌘K</kbd>
+              <kbd className="text-[9px] bg-[var(--portal-bg)] text-[var(--portal-muted)] px-1.5 py-0.5 rounded border border-[var(--portal-border)] font-mono">⌘K</kbd>
             </button>
           )}
 

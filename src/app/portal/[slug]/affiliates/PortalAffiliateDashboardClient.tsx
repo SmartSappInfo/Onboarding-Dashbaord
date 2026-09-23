@@ -222,7 +222,7 @@ export function PortalAffiliateDashboardClient({ slug }: PortalAffiliateDashboar
               </div>
 
               <div className="space-y-2">
-                <Badge variant="secondary" className="text-[10px] font-bold uppercase bg-primary/10 text-primary">
+                <Badge variant="outline" className="text-[10px] font-bold uppercase bg-primary/10 text-primary border-primary/20">
                   Earn 20% Recurring Commission
                 </Badge>
                 <h1 className="text-2xl sm:text-3xl font-black text-foreground">

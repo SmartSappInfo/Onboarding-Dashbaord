@@ -38,5 +38,11 @@ export async function generateMetadata({ params }: CatalogPageProps): Promise<Me
 
 export default async function CatalogPage({ params }: CatalogPageProps) {
   const { slug } = await params;
-  return <PortalCourseCatalogClient slug={slug} />;
+  const portal = await PortalService.getPortalBySlug(slug);
+  return (
+    <PortalCourseCatalogClient
+      slug={slug}
+      initialPortal={portal ? JSON.parse(JSON.stringify(portal)) : null}
+    />
+  );
 }

@@ -160,13 +160,13 @@ export function MemberTasksWidget({
               <div className="space-y-3">
                 <div className="flex items-center justify-between gap-2">
                   <Badge
-                    variant="secondary"
+                    variant="outline"
                     className={`text-[9px] font-bold uppercase capitalize ${
                       task.priority === 'urgent'
-                        ? 'bg-rose-500/10 text-rose-600'
+                        ? 'bg-rose-500/10 text-rose-600 border-rose-500/20'
                         : task.priority === 'high'
-                        ? 'bg-amber-500/10 text-amber-600'
-                        : ''
+                        ? 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                        : 'border-border text-muted-foreground'
                     }`}
                   >
                     {task.priority} Priority

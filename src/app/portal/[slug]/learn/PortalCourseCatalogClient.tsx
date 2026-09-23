@@ -33,9 +33,10 @@ import type { Course, CourseEnrollment } from '@/lib/types/learning';
 
 interface PortalCourseCatalogClientProps {
   slug: string;
+  initialPortal?: Portal | null;
 }
 
-export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogClientProps) {
+export default function PortalCourseCatalogClient({ slug, initialPortal }: PortalCourseCatalogClientProps) {
   const firestore = useFirestore();
   const { user } = useUser();
 
@@ -52,7 +53,7 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
     [firestore, slug]
   );
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
-  const portal = portals?.[0] ?? null;
+  const portal = portals?.[0] ?? initialPortal ?? null;
 
   // Server Fallback Courses State
   const [serverCourses, setServerCourses] = React.useState<Course[]>([]);
@@ -136,9 +137,9 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
     });
   }, [effectiveCourses, searchQuery, selectedCategory, selectedLevel]);
 
-  if (isLoadingPortal || (isLoadingCourses && isLoadingServer && effectiveCourses.length === 0)) {
+  if ((isLoadingPortal && !initialPortal) || (isLoadingCourses && isLoadingServer && effectiveCourses.length === 0)) {
     return (
-      <div className="min-h-screen bg-background p-6 md:p-12 space-y-6">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] text-[var(--portal-text,#0f172a)] p-6 md:p-12 space-y-6">
         <div className="max-w-6xl mx-auto space-y-6">
           <Skeleton className="h-10 w-48 rounded-xl" />
           <Skeleton className="h-32 rounded-3xl" />
@@ -154,7 +155,7 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
 
   if (!portal) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Portal Not Found</h2>
           <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
@@ -271,7 +272,10 @@ export default function PortalCourseCatalogClient({ slug }: PortalCourseCatalogC
                         )}
 
                         <div className="absolute top-2.5 right-2.5">
-                          <Badge variant="secondary" className="text-[9px] font-bold uppercase px-2 py-0.5 shadow-sm capitalize">
+                          <Badge
+                            variant="outline"
+                            className="text-[9px] font-bold uppercase px-2 py-0.5 capitalize border border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-text)] shadow-none"
+                          >
                             {course.level.replace('_', ' ')}
                           </Badge>
                         </div>

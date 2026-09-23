@@ -190,8 +190,8 @@ export function MemberOnboardingWidget({
 
             <div className="flex items-center gap-2 self-start sm:self-auto">
               <Badge
-                variant={isCompleted ? 'default' : 'secondary'}
-                className="text-xs font-bold px-3 py-1 rounded-xl"
+                variant={isCompleted ? 'default' : 'outline'}
+                className="text-xs font-bold px-3 py-1 rounded-xl bg-muted/60 border-border text-foreground"
               >
                 {completedStepIds.length}/{steps.length} Completed • {progressPct}%
               </Badge>
@@ -222,7 +222,7 @@ export function MemberOnboardingWidget({
                 className={`p-3.5 sm:p-4 rounded-2xl border transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
                   isDone
                     ? 'bg-muted/10 border-border opacity-85'
-                    : 'bg-muted/30 border-border hover:border-primary/40'
+                    : 'bg-card border-border hover:border-primary/50 hover:shadow-xs'
                 }`}
               >
                 <div className="flex items-start sm:items-center gap-3">

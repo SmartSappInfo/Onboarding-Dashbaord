@@ -46,5 +46,12 @@ export async function generateMetadata({ params }: CoursePageProps): Promise<Met
 
 export default async function CoursePage({ params }: CoursePageProps) {
   const { slug, courseSlug } = await params;
-  return <PortalCourseOverviewClient slug={slug} courseSlug={courseSlug} />;
+  const portal = await PortalService.getPortalBySlug(slug);
+  return (
+    <PortalCourseOverviewClient
+      slug={slug}
+      courseSlug={courseSlug}
+      initialPortal={portal ? JSON.parse(JSON.stringify(portal)) : null}
+    />
+  );
 }

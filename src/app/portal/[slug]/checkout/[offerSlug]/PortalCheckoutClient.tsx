@@ -260,8 +260,8 @@ export function PortalCheckoutClient({ slug, offerSlug }: PortalCheckoutClientPr
             <Card className="rounded-3xl border-2 border-border p-6 sm:p-7 space-y-5 bg-card shadow-xs">
               <div className="space-y-2 border-b border-border pb-4">
                 <Badge
-                  variant="secondary"
-                  className="text-[9px] font-bold uppercase bg-primary/10 text-primary capitalize"
+                  variant="outline"
+                  className="text-[9px] font-bold uppercase bg-primary/10 text-primary border-primary/20 capitalize"
                 >
                   {offer.offerType.replace('_', ' ')}
                 </Badge>

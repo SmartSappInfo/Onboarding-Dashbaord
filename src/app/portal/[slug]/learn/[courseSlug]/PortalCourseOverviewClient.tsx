@@ -42,11 +42,13 @@ import { getErrorMessage } from '@/lib/errors/report-error';
 interface PortalCourseOverviewClientProps {
   slug: string;
   courseSlug: string;
+  initialPortal?: Portal | null;
 }
 
 export default function PortalCourseOverviewClient({
   slug,
   courseSlug,
+  initialPortal,
 }: PortalCourseOverviewClientProps) {
   const firestore = useFirestore();
   const { user } = useUser();
@@ -65,7 +67,7 @@ export default function PortalCourseOverviewClient({
     [firestore, slug]
   );
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
-  const portal = portals?.[0] ?? null;
+  const portal = portals?.[0] ?? initialPortal ?? null;
 
   // 2. Query Course
   const courseQuery = useMemoFirebase(
@@ -158,9 +160,9 @@ export default function PortalCourseOverviewClient({
     }
   };
 
-  if (isLoadingPortal || isLoadingCourse) {
+  if ((isLoadingPortal && !initialPortal) || isLoadingCourse) {
     return (
-      <div className="min-h-screen bg-background p-6 md:p-12 space-y-6">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] text-[var(--portal-text,#0f172a)] p-6 md:p-12 space-y-6">
         <div className="max-w-5xl mx-auto space-y-6">
           <Skeleton className="h-8 w-40 rounded-xl" />
           <Skeleton className="h-64 rounded-3xl" />
@@ -172,7 +174,7 @@ export default function PortalCourseOverviewClient({
 
   if (!portal || !course) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Course Not Found</h2>
           <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
@@ -198,7 +200,10 @@ export default function PortalCourseOverviewClient({
               <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-bold uppercase tracking-wider">
                 {course.category || 'Academy Masterclass'}
               </Badge>
-              <Badge variant="secondary" className="text-[10px] font-bold uppercase capitalize">
+              <Badge
+                variant="outline"
+                className="text-[10px] font-bold uppercase capitalize border border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-text)] shadow-none"
+              >
                 {course.level.replace('_', ' ')}
               </Badge>
             </div>
@@ -231,7 +236,7 @@ export default function PortalCourseOverviewClient({
                 <Button
                   asChild
                   size="lg"
-                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97]"
+                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 hover:shadow-lg transition-all"
                   style={{ backgroundColor: theme.colors.primary }}
                 >
                   <Link href={`/portal/${slug}/learn/${courseSlug}/${targetLessonSlug}`}>
@@ -243,7 +248,7 @@ export default function PortalCourseOverviewClient({
                   size="lg"
                   onClick={handleEnroll}
                   disabled={isEnrolling}
-                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2"
+                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 hover:shadow-lg transition-all"
                   style={{ backgroundColor: theme.colors.primary }}
                 >
                   {isEnrolling ? (

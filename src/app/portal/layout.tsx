@@ -18,5 +18,14 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default function PortalRootLayout({ children }: { children: ReactNode }) {
-  return <>{children}</>;
+  return (
+    <>
+      <script
+        dangerouslySetInnerHTML={{
+          __html: `(function(){try{var d=document.documentElement;var m=window.location.pathname.match(/\\/portal\\/([^/]+)/);if(m&&m[1]){var t=localStorage.getItem('portal_theme_'+m[1]);if(t==='light'){d.classList.remove('dark');d.setAttribute('data-portal-theme','light');}else if(t==='dark'){d.classList.add('dark');d.setAttribute('data-portal-theme','dark');}}}catch(e){}})();`,
+        }}
+      />
+      {children}
+    </>
+  );
 }

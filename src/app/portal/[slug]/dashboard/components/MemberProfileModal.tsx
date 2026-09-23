@@ -235,14 +235,14 @@ export function MemberProfileModal({
               variant="outline"
               onClick={onClose}
               disabled={isSubmitting}
-              className="h-11 rounded-2xl text-xs font-bold active:scale-[0.98] transition-all"
+              className="h-11 rounded-2xl text-xs font-bold active:scale-[0.98] transition-all hover:bg-muted"
             >
               Cancel
             </Button>
             <Button
               type="submit"
               disabled={isSubmitting}
-              className="h-11 rounded-2xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all gap-1.5 shadow-sm"
+              className="h-11 rounded-2xl text-xs font-bold bg-primary text-white hover:bg-primary/90 hover:shadow-md active:scale-[0.98] transition-all gap-1.5 shadow-sm"
             >
               {isSubmitting ? (
                 <>

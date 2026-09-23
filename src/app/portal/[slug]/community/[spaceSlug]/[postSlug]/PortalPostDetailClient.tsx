@@ -303,7 +303,10 @@ export default function PortalPostDetailClient({
               <div className="space-y-0.5">
                 <div className="flex items-center gap-2">
                   <span className="font-bold text-sm text-foreground">{post.authorName}</span>
-                  <Badge variant="secondary" className="text-[10px] font-bold uppercase py-0 capitalize">
+                  <Badge
+                    variant="outline"
+                    className="text-[10px] font-bold uppercase py-0 capitalize border border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-text)] shadow-none"
+                  >
                     {post.authorRole}
                   </Badge>
                 </div>

@@ -53,5 +53,11 @@ export async function generateMetadata({ params }: PortalPageProps): Promise<Met
 
 export default async function PortalPage({ params }: PortalPageProps) {
   const { slug } = await params;
-  return <PortalRuntimeClient slug={slug} />;
+  const portal = await PortalService.getPortalBySlug(slug);
+  return (
+    <PortalRuntimeClient
+      slug={slug}
+      initialPortal={portal ? JSON.parse(JSON.stringify(portal)) : null}
+    />
+  );
 }

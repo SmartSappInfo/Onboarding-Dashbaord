@@ -17,6 +17,7 @@
  */
 
 import * as React from 'react';
+import { useTheme } from 'next-themes';
 import type { PortalThemeConfig, PortalThemeColors } from '@/lib/types/portal';
 import { DEFAULT_THEME } from '@/lib/portal-presets';
 import {
@@ -62,18 +63,46 @@ export function PortalThemeProvider({
   className,
   children,
 }: PortalThemeProviderProps) {
-  const policy = theme.colorMode || 'user_choice';
+  const policy = theme?.colorMode || 'user_choice';
   const canToggle = policy === 'user_choice' || policy === 'system';
+
+  // Safely connect to next-themes context if present
+  let setNextTheme: ((theme: string) => void) | undefined;
+  try {
+    const nextThemeCtx = useTheme();
+    setNextTheme = nextThemeCtx.setTheme;
+  } catch {
+    // Graceful fallback if invoked outside NextThemesProvider
+  }
 
   // ── Determine Initial Theme Mode (SSR Hydration Safe) ─────────────────────
   const [internalMode, setInternalMode] = React.useState<'light' | 'dark'>(() => {
     if (forcedMode) return forcedMode;
     if (policy === 'light') return 'light';
     if (policy === 'dark') return 'dark';
-    return 'light'; // Deterministic server-safe default
+
+    // Synchronous client-side check of stored member preference
+    if (typeof window !== 'undefined' && portalId && canToggle) {
+      try {
+        const stored = localStorage.getItem(`portal_theme_${portalId}`);
+        if (stored === 'light' || stored === 'dark') {
+          return stored;
+        }
+      } catch {
+        // Ignore localStorage errors
+      }
+    }
+
+    // Only follow OS system preference if colorMode policy is explicitly 'system'
+    if (policy === 'system' && typeof window !== 'undefined' && window.matchMedia) {
+      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+
+    // Default to 'light' for clean, consistent initial experience without dark flicker
+    return 'light';
   });
 
-  // Client-side hydration from localStorage or system preference
+  // Client-side hydration from localStorage if portalId wasn't available at initial tick
   React.useEffect(() => {
     if (forcedMode || policy === 'light' || policy === 'dark') return;
 
@@ -85,12 +114,12 @@ export function PortalThemeProvider({
           return;
         }
       } catch {
-        // Ignore localStorage errors (private browsing, quotas)
+        // Ignore localStorage errors
       }
     }
 
-    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-      setInternalMode('dark');
+    if (policy === 'system' && typeof window !== 'undefined' && window.matchMedia) {
+      setInternalMode(window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
     }
   }, [forcedMode, policy, portalId, canToggle]);
 
@@ -112,20 +141,10 @@ export function PortalThemeProvider({
     }
   }, [policy, forcedMode]);
 
-  // Listen to OS prefers-color-scheme changes when policy is system or fallback
+  // Listen to OS prefers-color-scheme changes ONLY when policy is explicitly 'system'
   React.useEffect(() => {
-    if (forcedMode || policy === 'light' || policy === 'dark') return;
+    if (forcedMode || policy !== 'system') return;
     if (typeof window === 'undefined' || !window.matchMedia) return;
-
-    // Check if user has an explicit stored preference
-    if (portalId && canToggle) {
-      try {
-        const stored = localStorage.getItem(`portal_theme_${portalId}`);
-        if (stored) return; // User has explicitly chosen, don't auto-switch with OS
-      } catch {
-        // Ignore
-      }
-    }
 
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
     const handleChange = (e: MediaQueryListEvent) => {
@@ -134,10 +153,38 @@ export function PortalThemeProvider({
 
     mediaQuery.addEventListener('change', handleChange);
     return () => mediaQuery.removeEventListener('change', handleChange);
-  }, [policy, portalId, forcedMode, canToggle]);
+  }, [policy, forcedMode]);
 
   // Effective mode resolves forcedMode first, then internalMode
   const effectiveMode = forcedMode || internalMode;
+
+  // ── Synchronize HTML Document and Body Classes (Eliminates Dark Flicker & Modal Inversion) ──
+  React.useEffect(() => {
+    // Never mutate document.documentElement if rendered inside Studio Preview Canvas
+    if (forcedMode) return;
+    if (typeof document === 'undefined') return;
+
+    const root = document.documentElement;
+    const body = document.body;
+
+    if (effectiveMode === 'dark') {
+      root.classList.add('dark');
+      body.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+      body.classList.remove('dark');
+    }
+
+    root.setAttribute('data-portal-theme', effectiveMode);
+
+    if (setNextTheme) {
+      try {
+        setNextTheme(effectiveMode);
+      } catch {
+        // Safe ignore
+      }
+    }
+  }, [effectiveMode, forcedMode, setNextTheme]);
 
   const setThemeMode = React.useCallback(
     (newMode: 'light' | 'dark') => {

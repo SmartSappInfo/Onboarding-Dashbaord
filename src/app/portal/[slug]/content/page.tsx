@@ -44,5 +44,11 @@ export async function generateMetadata({ params }: ContentCatalogPageProps): Pro
 
 export default async function ContentCatalogPage({ params }: ContentCatalogPageProps) {
   const { slug } = await params;
-  return <PortalContentCatalogClient slug={slug} />;
+  const portal = await PortalService.getPortalBySlug(slug);
+  return (
+    <PortalContentCatalogClient
+      slug={slug}
+      initialPortal={portal ? JSON.parse(JSON.stringify(portal)) : null}
+    />
+  );
 }

@@ -235,8 +235,8 @@ export function PortalVaultPreview({
                       </Badge>
                     )}
                     <Badge
-                      variant="secondary"
-                      className="text-[10px] font-bold uppercase tracking-wider capitalize border-[var(--portal-border)] text-[var(--portal-text)]"
+                      variant="outline"
+                      className="text-[10px] font-bold uppercase tracking-wider capitalize border border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-text)] shadow-none"
                     >
                       {item.type}
                     </Badge>

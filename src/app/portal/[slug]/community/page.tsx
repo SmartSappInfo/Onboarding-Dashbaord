@@ -38,5 +38,11 @@ export async function generateMetadata({ params }: CommunityPageProps): Promise<
 
 export default async function CommunityPage({ params }: CommunityPageProps) {
   const { slug } = await params;
-  return <PortalCommunityClient slug={slug} />;
+  const portal = await PortalService.getPortalBySlug(slug);
+  return (
+    <PortalCommunityClient
+      slug={slug}
+      initialPortal={portal ? JSON.parse(JSON.stringify(portal)) : null}
+    />
+  );
 }

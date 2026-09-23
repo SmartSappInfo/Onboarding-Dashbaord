@@ -45,9 +45,10 @@ import { MemberProfileModal } from './components/MemberProfileModal';
 
 interface PortalMemberDashboardClientProps {
   slug: string;
+  initialPortal?: Portal | null;
 }
 
-export default function PortalMemberDashboardClient({ slug }: PortalMemberDashboardClientProps) {
+export default function PortalMemberDashboardClient({ slug, initialPortal }: PortalMemberDashboardClientProps) {
   const firestore = useFirestore();
   const { user, isUserLoading } = useUser();
   const { toast: _toast } = useToast();
@@ -65,7 +66,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
     [firestore, slug]
   );
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
-  const portal = portals?.[0] ?? null;
+  const portal = portals?.[0] ?? initialPortal ?? null;
 
   // Server Fallback Courses
   const [serverCourses, setServerCourses] = React.useState<Course[]>([]);
@@ -151,11 +152,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
   const resources = React.useMemo(() => (contentItems || []).filter(c => c.type === 'resource'), [contentItems]);
   const articles = React.useMemo(() => (contentItems || []).filter(c => c.type === 'article' || c.type === 'page'), [contentItems]);
 
-  const isLoading = isLoadingPortal || isUserLoading || (user && isLoadingMembership);
+  const isLoading = (isLoadingPortal && !initialPortal) || isUserLoading || (user && isLoadingMembership);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-background p-6 md:p-12 space-y-6">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] text-[var(--portal-text,#0f172a)] p-6 md:p-12 space-y-6">
         <div className="max-w-6xl mx-auto space-y-6">
           <Skeleton className="h-10 w-48 rounded-xl" />
           <Skeleton className="h-44 rounded-3xl" />
@@ -171,7 +172,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
 
   if (!portal) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] flex items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-3">
           <h2 className="text-xl font-bold">Portal Not Found</h2>
           <Button asChild className="rounded-xl font-bold text-xs">
@@ -274,11 +275,11 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
               size="sm"
               variant="outline"
               onClick={() => setIsProfileModalOpen(true)}
-              className="rounded-xl font-bold text-xs bg-white/20 hover:bg-white/30 text-white border-white/30 gap-1.5 shadow-2xs"
+              className="rounded-xl font-bold text-xs bg-white/20 hover:bg-white/30 text-white border-white/30 gap-1.5 shadow-2xs active:scale-[0.97] transition-all"
             >
               <User className="w-3.5 h-3.5" /> Edit Profile
             </Button>
-            <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-white text-foreground hover:bg-white/90 gap-1.5 shadow-sm active:scale-[0.97]">
+            <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-white text-slate-900 hover:bg-slate-100 gap-1.5 shadow-sm active:scale-[0.97] transition-all hover:shadow-md">
               <Link href={`/portal/${slug}`}>
                 Explore Content Catalog <ArrowRight className="w-3.5 h-3.5" />
               </Link>
@@ -297,20 +298,20 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
 
         {/* Dashboard Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-2xl grid grid-cols-5">
-            <TabsTrigger value="courses" className="rounded-xl text-xs font-bold gap-1.5">
+          <TabsList className="w-full h-11 p-1 bg-[var(--portal-surface)] border border-[var(--portal-border)] rounded-2xl grid grid-cols-5">
+            <TabsTrigger value="courses" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <GraduationCap className="w-3.5 h-3.5" /> Curriculum ({effectiveCourses.length + lessons.length})
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5">
+            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <ListOrdered className="w-3.5 h-3.5" /> Tasks
             </TabsTrigger>
-            <TabsTrigger value="resources" className="rounded-xl text-xs font-bold gap-1.5">
+            <TabsTrigger value="resources" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <FolderArchive className="w-3.5 h-3.5" /> Toolkits ({resources.length})
             </TabsTrigger>
-            <TabsTrigger value="reading" className="rounded-xl text-xs font-bold gap-1.5">
+            <TabsTrigger value="reading" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <BookOpen className="w-3.5 h-3.5" /> Guides ({articles.length})
             </TabsTrigger>
-            <TabsTrigger value="credentials" className="rounded-xl text-xs font-bold gap-1.5">
+            <TabsTrigger value="credentials" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <Award className="w-3.5 h-3.5" /> Badges
             </TabsTrigger>
           </TabsList>
@@ -340,7 +341,7 @@ export default function PortalMemberDashboardClient({ slug }: PortalMemberDashbo
                     >
                       <div className="space-y-2.5">
                         <div className="flex items-center justify-between">
-                          <Badge variant="secondary" className="text-[9px] uppercase font-bold px-2 py-0.5 bg-primary/10 text-primary">
+                          <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 py-0.5 bg-primary/10 text-primary border-primary/20">
                             {course.level}
                           </Badge>
                           <span className="text-[10px] text-muted-foreground font-semibold">

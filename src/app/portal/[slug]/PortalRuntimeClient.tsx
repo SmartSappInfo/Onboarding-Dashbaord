@@ -55,9 +55,10 @@ import type { PortalMembership } from '@/lib/types/membership';
 
 interface PortalRuntimeClientProps {
   slug: string;
+  initialPortal?: Portal | null;
 }
 
-export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) {
+export default function PortalRuntimeClient({ slug, initialPortal }: PortalRuntimeClientProps) {
   const firestore = useFirestore();
   const auth = useAuth();
   const { user } = useUser();
@@ -86,7 +87,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
   );
 
   const { data: portalList, isLoading } = useCollection<Portal>(portalQuery);
-  const portal = portalList?.[0] ?? null;
+  const portal = portalList?.[0] ?? initialPortal ?? null;
 
   // ── Query Current User's Membership in This Portal (for adaptive CTAs) ────
   const membershipQuery = useMemoFirebase(
@@ -141,10 +142,10 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
 
   // ── Loading Skeleton ──────────────────────────────────────────────────────
 
-  if (isLoading) {
+  if (isLoading && !initialPortal) {
     return (
-      <div className="min-h-screen bg-background flex flex-col justify-between">
-        <header className="h-16 border-b border-border px-6 flex items-center justify-between">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] text-[var(--portal-text,#0f172a)] flex flex-col justify-between">
+        <header className="h-16 border-b border-[var(--portal-border,#e2e8f0)] px-6 flex items-center justify-between">
           <Skeleton className="h-8 w-36 rounded-xl" />
           <div className="hidden md:flex items-center gap-4">
             <Skeleton className="h-6 w-20 rounded-lg" />
@@ -162,7 +163,7 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
             <Skeleton className="h-48 rounded-2xl" />
           </div>
         </main>
-        <footer className="h-16 border-t border-border" />
+        <footer className="h-16 border-t border-[var(--portal-border,#e2e8f0)]" />
       </div>
     );
   }

@@ -224,8 +224,8 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
                   <div className="space-y-4">
                     <div className="flex items-center justify-between gap-2">
                       <Badge
-                        variant="secondary"
-                        className="text-[9px] font-bold uppercase capitalize bg-primary/10 text-primary"
+                        variant="outline"
+                        className="text-[9px] font-bold uppercase capitalize bg-primary/10 text-primary border-primary/20"
                       >
                         {event.type.replace('_', ' ')}
                       </Badge>

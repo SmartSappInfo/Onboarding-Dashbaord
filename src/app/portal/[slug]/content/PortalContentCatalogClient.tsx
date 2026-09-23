@@ -59,6 +59,7 @@ import type { ContentItem, ContentItemType } from '@/lib/types/content';
 
 interface PortalContentCatalogClientProps {
   slug: string;
+  initialPortal?: Portal | null;
 }
 
 const TYPE_FILTER_TABS: { id: string; label: string; icon: React.ElementType }[] = [
@@ -360,8 +361,8 @@ function PortalContentCatalogView({
                           </Badge>
                         )}
                         <Badge
-                          variant="secondary"
-                          className="text-[10px] font-bold uppercase tracking-wider capitalize border-[var(--portal-border)] text-[var(--portal-text)]"
+                          variant="outline"
+                          className="text-[10px] font-bold uppercase tracking-wider capitalize border border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-text)] shadow-none"
                         >
                           {item.type}
                         </Badge>
@@ -417,7 +418,7 @@ function PortalContentCatalogView({
                     <Button
                       asChild
                       size="sm"
-                      className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97] transition-transform"
+                      className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97] transition-all duration-200 hover:brightness-105 hover:shadow-md"
                       style={primaryBtnStyle}
                     >
                       <Link href={targetUrl}>
@@ -438,7 +439,7 @@ function PortalContentCatalogView({
 /**
  * Root Client Component: Fetches portal and renders <PortalThemeProvider> boundary.
  */
-export default function PortalContentCatalogClient({ slug }: PortalContentCatalogClientProps) {
+export default function PortalContentCatalogClient({ slug, initialPortal }: PortalContentCatalogClientProps) {
   const firestore = useFirestore();
 
   // 1. Query Portal by Slug
@@ -450,13 +451,13 @@ export default function PortalContentCatalogClient({ slug }: PortalContentCatalo
     [firestore, slug]
   );
   const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
-  const portal = portals?.[0] ?? null;
+  const portal = portals?.[0] ?? initialPortal ?? null;
 
-  // ── Loading Skeleton ────────────────────────────────────────────────────────
-  if (isLoadingPortal) {
+  // ── Loading Skeleton (Only shown if initialPortal not provided) ────────────
+  if (isLoadingPortal && !initialPortal) {
     return (
-      <div className="min-h-screen bg-background flex flex-col justify-between">
-        <header className="h-16 border-b border-border px-6 flex items-center justify-between">
+      <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] text-[var(--portal-text,#0f172a)] flex flex-col justify-between">
+        <header className="h-16 border-b border-[var(--portal-border,#e2e8f0)] px-6 flex items-center justify-between">
           <Skeleton className="h-8 w-40 rounded-xl" />
           <Skeleton className="h-9 w-28 rounded-xl" />
         </header>
@@ -468,7 +469,7 @@ export default function PortalContentCatalogClient({ slug }: PortalContentCatalo
             <Skeleton className="h-56 rounded-3xl" />
           </div>
         </main>
-        <footer className="h-16 border-t border-border" />
+        <footer className="h-16 border-t border-[var(--portal-border,#e2e8f0)]" />
       </div>
     );
   }
