@@ -96,7 +96,7 @@ export function PortalCommunityPreview({
 
         <Button
           type="button"
-          className="h-10 px-4 rounded-xl font-bold text-xs text-white shadow-xs gap-1.5 self-start sm:self-auto active:scale-[0.98] transition-transform"
+          className="h-10 px-4 rounded-xl font-bold text-xs text-white shadow-xs gap-1.5 self-start sm:self-auto active:scale-[0.97] transition-transform"
           style={primaryBtnStyle}
         >
           <Plus className="w-4 h-4" /> Start Discussion
@@ -177,20 +177,20 @@ export function PortalCommunityPreview({
               <button
                 type="button"
                 onClick={handleLike}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--portal-border)] text-xs font-semibold hover:bg-muted/40 transition-colors active:scale-[0.96]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--portal-border)] text-xs font-semibold hover:bg-muted/40 transition-colors active:scale-[0.97]"
                 style={hasLiked ? { color: '#E11D48', borderColor: '#E11D48' } : undefined}
               >
                 <Heart className="w-3.5 h-3.5" fill={hasLiked ? '#E11D48' : 'none'} /> {likesCount}
               </button>
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--portal-border)] text-xs font-semibold hover:bg-muted/40 transition-colors active:scale-[0.96]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--portal-border)] text-xs font-semibold hover:bg-muted/40 transition-colors active:scale-[0.97]"
               >
                 <Flame className="w-3.5 h-3.5 text-amber-500" /> 8
               </button>
               <button
                 type="button"
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--portal-border)] text-xs font-semibold hover:bg-muted/40 transition-colors active:scale-[0.96]"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-[var(--portal-border)] text-xs font-semibold hover:bg-muted/40 transition-colors active:scale-[0.97]"
               >
                 <ThumbsUp className="w-3.5 h-3.5 text-blue-500" /> 22
               </button>

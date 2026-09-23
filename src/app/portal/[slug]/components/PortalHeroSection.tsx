@@ -122,7 +122,7 @@ export function PortalHeroSection({
                 <Button
                   size="lg"
                   onClick={() => onNavigateRoute?.('/dashboard')}
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                   style={primaryBtnStyle}
                 >
                   Go to Your Dashboard <ArrowRight className="w-4 h-4" />
@@ -131,7 +131,7 @@ export function PortalHeroSection({
                 <Link href={`/portal/${slug}/dashboard`}>
                   <Button
                     size="lg"
-                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                    className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                     style={primaryBtnStyle}
                   >
                     Go to Your Dashboard <ArrowRight className="w-4 h-4" />
@@ -142,7 +142,7 @@ export function PortalHeroSection({
               <Button
                 size="lg"
                 onClick={() => onNavigateRoute?.('/')}
-                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                 style={primaryBtnStyle}
               >
                 Join Portal <ArrowRight className="w-4 h-4" />
@@ -151,7 +151,7 @@ export function PortalHeroSection({
               <Link href={`/portal/${slug}/join`}>
                 <Button
                   size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                   style={primaryBtnStyle}
                 >
                   Join Portal <ArrowRight className="w-4 h-4" />
@@ -163,7 +163,7 @@ export function PortalHeroSection({
               <Button
                 size="lg"
                 onClick={() => onNavigateRoute?.('/learn')}
-                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                 style={primaryBtnStyle}
               >
                 {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
@@ -172,7 +172,7 @@ export function PortalHeroSection({
               <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
                 <Button
                   size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                  className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                   style={primaryBtnStyle}
                 >
                   {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
@@ -183,7 +183,7 @@ export function PortalHeroSection({
             <Button
               size="lg"
               onClick={() => onNavigateRoute?.('/learn')}
-              className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+              className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
               style={primaryBtnStyle}
             >
               Get Started <ArrowRight className="w-4 h-4" />
@@ -192,7 +192,7 @@ export function PortalHeroSection({
             <Link href={`/portal/${slug}/join`}>
               <Button
                 size="lg"
-                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.98] gap-2"
+                className="min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2"
                 style={primaryBtnStyle}
               >
                 Get Started <ArrowRight className="w-4 h-4" />
@@ -207,7 +207,7 @@ export function PortalHeroSection({
                 variant="outline"
                 size="lg"
                 onClick={() => onNavigateRoute?.('/learn')}
-                className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.98] gap-2"
+                className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.97] gap-2"
                 style={{ borderRadius: radiusCss }}
               >
                 Browse Curriculum
@@ -217,7 +217,7 @@ export function PortalHeroSection({
                 <Button
                   variant="outline"
                   size="lg"
-                  className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.98] gap-2"
+                  className="min-h-[44px] px-6 font-bold text-sm border-2 transition-transform active:scale-[0.97] gap-2"
                   style={{ borderRadius: radiusCss }}
                 >
                   Browse Curriculum

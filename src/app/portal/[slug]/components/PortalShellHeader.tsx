@@ -255,7 +255,7 @@ export function PortalShellHeader({
               variant="ghost"
               size="sm"
               onClick={() => onOpenAuth?.()}
-              className="h-9 px-3.5 rounded-xl font-bold text-xs active:scale-[0.98] transition-transform"
+              className="h-9 px-3.5 rounded-xl font-bold text-xs active:scale-[0.97] transition-transform"
             >
               Sign In
             </Button>
@@ -268,7 +268,7 @@ export function PortalShellHeader({
                 <Button
                   size="sm"
                   onClick={() => onNavigateRoute?.('/dashboard')}
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
+                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
                   style={primaryBtnStyle}
                 >
                   Dashboard
@@ -277,7 +277,7 @@ export function PortalShellHeader({
                 <Link href={`/portal/${slug}/dashboard`}>
                   <Button
                     size="sm"
-                    className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
+                    className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
                     style={primaryBtnStyle}
                   >
                     Dashboard
@@ -287,7 +287,7 @@ export function PortalShellHeader({
             ) : isPreview ? (
               <Button
                 size="sm"
-                className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
+                className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
                 style={primaryBtnStyle}
               >
                 Join Portal
@@ -296,7 +296,7 @@ export function PortalShellHeader({
               <Link href={`/portal/${slug}/join`}>
                 <Button
                   size="sm"
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
+                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
                   style={primaryBtnStyle}
                 >
                   Join Portal
@@ -307,7 +307,7 @@ export function PortalShellHeader({
             isPreview ? (
               <Button
                 size="sm"
-                className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
+                className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
                 style={primaryBtnStyle}
               >
                 {navigation.headerActions.ctaButton.label}
@@ -316,7 +316,7 @@ export function PortalShellHeader({
               <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
                 <Button
                   size="sm"
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.98]"
+                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
                   style={primaryBtnStyle}
                 >
                   {navigation.headerActions.ctaButton.label}
@@ -352,7 +352,7 @@ export function PortalShellHeader({
                       setIsMobileMenuOpen(false);
                       handleRouteClick(e, resolvedPath);
                     }}
-                    className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] text-[var(--portal-text)] active:scale-[0.98] transition-transform text-left w-full"
+                    className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] text-[var(--portal-text)] active:scale-[0.97] transition-transform text-left w-full"
                   >
                     {item.label}
                   </button>
@@ -364,7 +364,7 @@ export function PortalShellHeader({
                   href={resolvedPath}
                   target={item.target || '_self'}
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] active:scale-[0.98] transition-transform"
+                  className="min-h-[44px] flex items-center px-3 rounded-xl font-semibold text-sm hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-transform"
                 >
                   {item.label}
                 </Link>
@@ -380,7 +380,7 @@ export function PortalShellHeader({
                   setIsMobileMenuOpen(false);
                   onOpenAuth?.();
                 }}
-                className="w-full min-h-[44px] rounded-xl font-bold text-sm active:scale-[0.98] transition-transform"
+                className="w-full min-h-[44px] rounded-xl font-bold text-sm active:scale-[0.97] transition-transform"
               >
                 Sign In
               </Button>
@@ -393,7 +393,7 @@ export function PortalShellHeader({
                       setIsMobileMenuOpen(false);
                       onNavigateRoute?.('/dashboard');
                     }}
-                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
+                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.97] transition-transform"
                     style={primaryBtnStyle}
                   >
                     Go to Dashboard
@@ -405,7 +405,7 @@ export function PortalShellHeader({
                     className="w-full"
                   >
                     <Button
-                      className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
+                      className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.97] transition-transform"
                       style={primaryBtnStyle}
                     >
                       Go to Dashboard
@@ -415,7 +415,7 @@ export function PortalShellHeader({
               ) : isPreview ? (
                 <Button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
+                  className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.97] transition-transform"
                   style={primaryBtnStyle}
                 >
                   Join Portal
@@ -427,7 +427,7 @@ export function PortalShellHeader({
                   className="w-full"
                 >
                   <Button
-                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
+                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.97] transition-transform"
                     style={primaryBtnStyle}
                   >
                     Join Portal
@@ -438,7 +438,7 @@ export function PortalShellHeader({
               isPreview ? (
                 <Button
                   onClick={() => setIsMobileMenuOpen(false)}
-                  className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
+                  className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.97] transition-transform"
                   style={primaryBtnStyle}
                 >
                   {navigation.headerActions.ctaButton.label}
@@ -450,7 +450,7 @@ export function PortalShellHeader({
                   className="w-full"
                 >
                   <Button
-                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.98] transition-transform"
+                    className="w-full min-h-[44px] font-bold text-sm text-white active:scale-[0.97] transition-transform"
                     style={primaryBtnStyle}
                   >
                     {navigation.headerActions.ctaButton.label}

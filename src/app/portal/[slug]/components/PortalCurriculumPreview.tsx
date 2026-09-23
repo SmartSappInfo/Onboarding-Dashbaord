@@ -198,7 +198,7 @@ export function PortalCurriculumPreview({
               <Button
                 type="button"
                 onClick={() => onNavigateRoute?.('/dashboard')}
-                className="w-full h-10 rounded-xl font-bold text-xs text-white shadow-xs gap-1.5 active:scale-[0.98] transition-transform"
+                className="w-full h-10 rounded-xl font-bold text-xs text-white shadow-xs gap-1.5 active:scale-[0.97] transition-transform"
                 style={primaryBtnStyle}
               >
                 {course.progress > 0 ? 'Resume Masterclass' : 'Enroll in Course'} <ArrowRight className="w-3.5 h-3.5" />

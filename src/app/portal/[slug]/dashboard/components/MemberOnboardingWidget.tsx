@@ -265,7 +265,7 @@ export function MemberOnboardingWidget({
                     <Button
                       size="sm"
                       onClick={() => handleStepActionClick(step)}
-                      className="h-10 sm:h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm gap-1.5 min-h-[44px] sm:min-h-0"
+                      className="h-10 sm:h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-all shadow-sm gap-1.5 min-h-[44px] sm:min-h-0"
                     >
                       {actionLabel} <ArrowRight className="w-3.5 h-3.5" />
                     </Button>
@@ -277,7 +277,7 @@ export function MemberOnboardingWidget({
                     >
                       <Button
                         size="sm"
-                        className="h-10 sm:h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.98] transition-all shadow-sm gap-1.5 min-h-[44px] sm:min-h-0"
+                        className="h-10 sm:h-9 px-4 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 active:scale-[0.97] transition-all shadow-sm gap-1.5 min-h-[44px] sm:min-h-0"
                       >
                         {actionLabel}
                         {step.type === 'book_meeting' ? (
