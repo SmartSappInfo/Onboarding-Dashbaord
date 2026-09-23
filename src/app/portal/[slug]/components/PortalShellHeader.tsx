@@ -290,11 +290,11 @@ export function PortalShellHeader({
                     <LayoutDashboard className="w-3.5 h-3.5" /> My Learning Dashboard
                   </DropdownMenuItem>
                 ) : (
-                  <Link href={`/portal/${slug}/dashboard`}>
-                    <DropdownMenuItem className="text-xs font-semibold rounded-xl gap-2 cursor-pointer">
+                  <DropdownMenuItem asChild className="text-xs font-semibold rounded-xl gap-2 cursor-pointer">
+                    <Link href={`/portal/${slug}/dashboard`}>
                       <LayoutDashboard className="w-3.5 h-3.5" /> My Learning Dashboard
-                    </DropdownMenuItem>
-                  </Link>
+                    </Link>
+                  </DropdownMenuItem>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

@@ -90,27 +90,48 @@ export function PortalSearchModal({
     setSelectedIndex(-1);
   }, [results]);
 
-  // Debounced search
+  // Auto-scroll selected item into view when navigating with Arrow keys
   React.useEffect(() => {
-    if (!queryText.trim()) {
+    if (selectedIndex >= 0) {
+      const el = document.getElementById(`portal-search-item-${selectedIndex}`);
+      el?.scrollIntoView({ block: 'nearest' });
+    }
+  }, [selectedIndex]);
+
+  // Debounced search with race condition guard and error resilience
+  React.useEffect(() => {
+    const trimmedQuery = queryText.trim();
+    if (!trimmedQuery) {
       setResults([]);
       setIsSearching(false);
       return;
     }
 
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      const res = await searchPortalContentAction(portalId, queryText.trim(), {
-        type: selectedType !== 'all' ? (selectedType as ContentItemType) : undefined,
-      });
+    let isCurrent = true;
+    setIsSearching(true);
 
-      if (res.success && res.data) {
-        setResults(res.data);
+    const timer = setTimeout(async () => {
+      try {
+        const res = await searchPortalContentAction(portalId, trimmedQuery, {
+          type: selectedType !== 'all' ? (selectedType as ContentItemType) : undefined,
+        });
+
+        if (isCurrent && res.success && res.data) {
+          setResults(res.data);
+        }
+      } catch (error) {
+        console.error('Failed to search portal content:', error);
+      } finally {
+        if (isCurrent) {
+          setIsSearching(false);
+        }
       }
-      setIsSearching(false);
     }, 250);
 
-    return () => clearTimeout(timer);
+    return () => {
+      isCurrent = false;
+      clearTimeout(timer);
+    };
   }, [queryText, selectedType, portalId]);
 
   // Global Cmd+K keyboard shortcut listener
@@ -174,6 +195,16 @@ export function PortalSearchModal({
                 value={queryText}
                 onChange={e => setQueryText(e.target.value)}
                 placeholder="Type to search lessons, articles, documentation, or toolkits..."
+                role="combobox"
+                aria-expanded={results.length > 0}
+                aria-autocomplete="list"
+                aria-controls="portal-search-results-list"
+                aria-activedescendant={
+                  selectedIndex >= 0 && results[selectedIndex]
+                    ? `portal-search-item-${selectedIndex}`
+                    : undefined
+                }
+                aria-label="Search portal lessons, articles, and documentation"
                 className="w-full pl-10 pr-10 h-11 rounded-2xl text-sm border-0 focus-visible:ring-0 shadow-none font-medium bg-transparent text-[var(--portal-text,#0f172a)] dark:text-slate-100 placeholder:text-[var(--portal-muted,#94a3b8)] dark:placeholder:text-slate-500"
                 autoFocus
               />
@@ -181,7 +212,7 @@ export function PortalSearchModal({
                 <button
                   type="button"
                   onClick={() => setQueryText('')}
-                  className="absolute right-2.5 p-1 rounded-lg text-[var(--portal-muted,#64748b)] dark:text-slate-400 hover:text-[var(--portal-text,#0f172a)] dark:hover:text-white hover:bg-[var(--portal-surface,#ffffff)] dark:hover:bg-slate-700 transition-colors"
+                  className="absolute right-2 w-8 h-8 rounded-lg flex items-center justify-center text-[var(--portal-muted,#64748b)] dark:text-slate-400 hover:text-[var(--portal-text,#0f172a)] dark:hover:text-white hover:bg-[var(--portal-surface,#ffffff)] dark:hover:bg-slate-700 transition-colors"
                   aria-label="Clear search query"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -233,7 +264,12 @@ export function PortalSearchModal({
         </DialogHeader>
 
         {/* Results Body */}
-        <div className="max-h-[380px] overflow-y-auto p-4 space-y-2 bg-[var(--portal-bg,#f8fafc)]/50 dark:bg-slate-950/40">
+        <div
+          id="portal-search-results-list"
+          role="listbox"
+          aria-label="Search results"
+          className="max-h-[380px] overflow-y-auto p-4 space-y-2 bg-[var(--portal-bg,#f8fafc)]/50 dark:bg-slate-950/40"
+        >
           {isSearching ? (
             <div className="py-12 text-center space-y-2.5">
               <Loader2
@@ -280,6 +316,9 @@ export function PortalSearchModal({
               return (
                 <button
                   key={item.id}
+                  id={`portal-search-item-${index}`}
+                  role="option"
+                  aria-selected={isItemFocused}
                   type="button"
                   onClick={() => handleSelectResult(targetUrl)}
                   className={cn(

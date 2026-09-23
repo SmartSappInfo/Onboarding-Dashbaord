@@ -160,14 +160,14 @@ export function PortalThemeProvider({
   // Effective mode resolves forcedMode first, then internalMode
   const effectiveMode = forcedMode || internalMode;
 
-  // ── Enforce Figtree as Universal Portal Typography Font ────────────────────
+  // ── Resolve Portal Typography with Figtree as Standard Default ────────────
   const resolvedTheme = React.useMemo(() => {
     return {
       ...theme,
       typography: {
         ...theme?.typography,
-        headingFont: 'Figtree',
-        bodyFont: 'Figtree',
+        headingFont: theme?.typography?.headingFont || 'Figtree',
+        bodyFont: theme?.typography?.bodyFont || 'Figtree',
       },
     };
   }, [theme]);
@@ -215,7 +215,8 @@ export function PortalThemeProvider({
 
     return () => {
       root.removeAttribute('data-portal-theme');
-      body.classList.remove('dark');
+      root.classList.remove('dark', 'light');
+      body.classList.remove('dark', 'light');
       for (const [prop] of entries) {
         root.style.removeProperty(prop);
       }
