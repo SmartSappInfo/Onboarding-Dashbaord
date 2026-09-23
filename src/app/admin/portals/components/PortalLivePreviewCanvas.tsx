@@ -54,6 +54,7 @@ import { PortalShellFooter } from '@/app/portal/[slug]/components/PortalShellFoo
 import { PortalCurriculumPreview } from '@/app/portal/[slug]/components/PortalCurriculumPreview';
 import { PortalCommunityPreview } from '@/app/portal/[slug]/components/PortalCommunityPreview';
 import { PortalDashboardPreview } from '@/app/portal/[slug]/components/PortalDashboardPreview';
+import { PortalVaultPreview } from '@/app/portal/[slug]/components/PortalVaultPreview';
 import { PortalThemeProvider } from '@/app/portal/[slug]/components/PortalThemeProvider';
 
 export interface PortalLivePreviewCanvasProps {
@@ -68,7 +69,7 @@ export interface PortalLivePreviewCanvasProps {
 }
 
 export type DeviceMode = 'desktop' | 'tablet' | 'mobile';
-export type PreviewRoute = '/' | '/learn' | '/community' | '/dashboard';
+export type PreviewRoute = '/' | '/learn' | '/community' | '/dashboard' | '/content';
 export type ZoomLevel = 'fit' | '100' | '75' | '50';
 
 export function PortalLivePreviewCanvas({
@@ -262,6 +263,7 @@ export function PortalLivePreviewCanvas({
               <option value="/">Home</option>
               <option value="/learn">Courses</option>
               <option value="/community">Community</option>
+              <option value="/content">Vault</option>
               <option value="/dashboard">Dashboard</option>
             </select>
           </div>
@@ -395,6 +397,14 @@ export function PortalLivePreviewCanvas({
 
               {previewRoute === '/community' && (
                 <PortalCommunityPreview
+                  theme={deferredTheme}
+                  radiusCss={radiusCss}
+                  onNavigateRoute={setPreviewRoute}
+                />
+              )}
+
+              {previewRoute === '/content' && (
+                <PortalVaultPreview
                   theme={deferredTheme}
                   radiusCss={radiusCss}
                   onNavigateRoute={setPreviewRoute}

@@ -5,6 +5,16 @@
  *
  * Polymorphic content reader rendering Articles, Documentation trees,
  * Lessons, Resources, and bespoke PageBuilder documents with dynamic theme tokens.
+ *
+ * Strict Compliance:
+ * - Scoped Theme Provider: Wrapped in <PortalThemeProvider> with full dark/light resolution.
+ * - Zero `any`, `any[]`, or `unknown` typing.
+ * - Mobile ergonomics: >=44px touch targets (`min-h-[44px]`) and tactile active:scale-[0.97] press.
+ * - High-contrast typography: All headings bound to `text-[var(--portal-text)]`.
+ *
+ * MAINTAINER GUIDANCE (Rule 10):
+ * - Consume `activeColors` from `usePortalTheme()` for icon backgrounds and primary CTAs.
+ * - Preserve sibling documentation hierarchy queries for tree navigation in doc views.
  */
 
 import * as React from 'react';
@@ -27,6 +37,10 @@ import {
   Search,
 } from 'lucide-react';
 import { PortalSearchModal } from '../../../components/PortalSearchModal';
+import { PortalThemeProvider, usePortalTheme } from '../../../components/PortalThemeProvider';
+import { PortalThemeToggle } from '../../../components/PortalThemeToggle';
+import { getPortalRadiusCss, getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
+import { getContrastRatio } from '@/lib/utils/portal-theme-generator';
 import type { Portal } from '@/lib/types/portal';
 import type { ContentItem } from '@/lib/types/content';
 
@@ -36,28 +50,27 @@ interface PortalContentReaderClientProps {
   itemSlug: string;
 }
 
-export default function PortalContentReaderClient({
+/**
+ * Inner reader view rendered strictly inside <PortalThemeProvider>.
+ */
+function PortalContentReaderView({
   slug,
   type,
   itemSlug,
-}: PortalContentReaderClientProps) {
+  portal,
+}: {
+  slug: string;
+  type: string;
+  itemSlug: string;
+  portal: Portal;
+}) {
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { activeColors } = usePortalTheme();
 
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
 
-  // 1. Query Portal
-  const portalQuery = useMemoFirebase(
-    () =>
-      firestore && slug
-        ? query(collection(firestore, 'portals'), where('slug', '==', slug), limit(1))
-        : null,
-    [firestore, slug]
-  );
-  const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
-  const portal = portals?.[0] ?? null;
-
-  // 2. Query Content Item
+  // 1. Query Content Item
   const contentQuery = useMemoFirebase(
     () =>
       firestore && portal?.id && itemSlug && type
@@ -74,7 +87,7 @@ export default function PortalContentReaderClient({
   const { data: contentList, isLoading: isLoadingContent } = useCollection<ContentItem>(contentQuery);
   const item = contentList?.[0] ?? null;
 
-  // 3. Query Sibling items for documentation sidebar or lesson syllabus
+  // 2. Query Sibling items for documentation sidebar or lesson syllabus
   const siblingsQuery = useMemoFirebase(
     () =>
       firestore && portal?.id && type
@@ -83,137 +96,157 @@ export default function PortalContentReaderClient({
             where('portalId', '==', portal.id),
             where('type', '==', type),
             where('status', '==', 'published'),
-            limit(50)
+            limit(20)
           )
         : null,
     [firestore, portal?.id, type]
   );
   const { data: siblings } = useCollection<ContentItem>(siblingsQuery);
 
-  const isLoading = isLoadingPortal || isLoadingContent;
+  const theme = portal.theme;
+  const branding = portal.branding;
+  const brandTitle = branding.brandName || portal.name;
+  const radiusCss = getPortalRadiusCss(theme.ui?.borderRadius);
+
+  // Dynamic button text color based on contrast
+  const primaryBtnTextColor = React.useMemo(() => {
+    return getContrastRatio(activeColors.primary, '#FFFFFF') >= 4.5 ? '#FFFFFF' : '#0F172A';
+  }, [activeColors.primary]);
+
+  const primaryBtnStyle = React.useMemo(() => {
+    const base = getPortalButtonInlineStyle(
+      theme.ui?.buttonStyle,
+      activeColors.primary,
+      radiusCss
+    );
+    return { ...base, color: primaryBtnTextColor };
+  }, [theme.ui?.buttonStyle, activeColors.primary, radiusCss, primaryBtnTextColor]);
 
   const handleCopyLink = () => {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(window.location.href);
+      toast({
+        title: 'Link Copied',
+        description: 'Resource URL copied to your clipboard.',
+      });
+    }
+  };
+
+  const handleShareSocial = (platform: 'whatsapp' | 'linkedin') => {
     if (typeof window === 'undefined') return;
-    navigator.clipboard.writeText(window.location.href);
-    toast({ title: 'Link Copied', description: 'Content URL copied to clipboard.' });
-  };
-
-  const handleShareSocial = (platform: 'twitter' | 'linkedin' | 'whatsapp') => {
-    if (typeof window === 'undefined' || !item) return;
     const url = encodeURIComponent(window.location.href);
-    const text = encodeURIComponent(item.title);
+    const title = encodeURIComponent(item?.title || brandTitle);
 
-    let target = '';
-    if (platform === 'twitter') target = `https://twitter.com/intent/tweet?url=${url}&text=${text}`;
-    if (platform === 'linkedin') target = `https://www.linkedin.com/sharing/share-offsite/?url=${url}`;
-    if (platform === 'whatsapp') target = `https://api.whatsapp.com/send?text=${text}%20${url}`;
-
-    window.open(target, '_blank', 'noopener,noreferrer');
+    if (platform === 'whatsapp') {
+      window.open(`https://api.whatsapp.com/send?text=${title}%20${url}`, '_blank');
+    } else {
+      window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
+    }
   };
 
-  if (isLoading) {
+  if (isLoadingContent) {
     return (
-      <div className="min-h-screen bg-background flex flex-col justify-between p-6">
-        <div className="max-w-4xl mx-auto w-full space-y-6 pt-12">
-          <Skeleton className="h-8 w-40 rounded-xl" />
-          <Skeleton className="h-12 w-3/4 rounded-2xl" />
-          <Skeleton className="h-64 rounded-3xl" />
-          <div className="space-y-3">
-            <Skeleton className="h-4 w-full rounded" />
-            <Skeleton className="h-4 w-5/6 rounded" />
-            <Skeleton className="h-4 w-4/6 rounded" />
-          </div>
-        </div>
+      <div className="min-h-screen bg-[var(--portal-bg)] flex flex-col justify-between">
+        <header className="h-16 border-b border-[var(--portal-border)] px-6 flex items-center justify-between">
+          <Skeleton className="h-8 w-32 rounded-xl" />
+          <Skeleton className="h-9 w-24 rounded-xl" />
+        </header>
+        <main className="max-w-4xl mx-auto w-full p-6 md:p-12 space-y-6 flex-1">
+          <Skeleton className="h-10 w-3/4 rounded-2xl" />
+          <Skeleton className="h-5 w-1/2 rounded-xl" />
+          <Skeleton className="h-72 w-full rounded-3xl pt-6" />
+        </main>
+        <footer className="h-16 border-t border-[var(--portal-border)]" />
       </div>
     );
   }
 
-  if (!portal || !item) {
+  if (!item) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+      <div className="min-h-screen bg-[var(--portal-bg)] flex items-center justify-center p-6 text-center">
         <div className="max-w-md space-y-4">
-          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+          <div className="w-14 h-14 rounded-2xl bg-[var(--portal-surface)] border border-[var(--portal-border)] flex items-center justify-center mx-auto text-[var(--portal-muted)]">
             <FileText className="w-7 h-7" />
           </div>
-          <h2 className="text-xl font-bold text-foreground">Content Not Found</h2>
-          <p className="text-xs text-muted-foreground">
-            The article, documentation guide, or resource you requested could not be located.
+          <h2 className="text-xl font-bold text-[var(--portal-text)]">Resource Not Found</h2>
+          <p className="text-xs text-[var(--portal-muted)]">
+            The article, document, or toolkit you requested could not be located.
           </p>
-          <Link href={`/portal/${slug}`}>
-            <Button className="rounded-xl font-bold text-xs">Return to Portal</Button>
+          <Link href={`/portal/${slug}/content`}>
+            <Button
+              className="rounded-xl font-bold text-xs mt-2 min-h-[44px] active:scale-[0.97]"
+              style={primaryBtnStyle}
+            >
+              Browse Catalog
+            </Button>
           </Link>
         </div>
       </div>
     );
   }
-
-  const theme = portal.theme;
-  const branding = portal.branding;
-  const brandTitle = branding.brandName || portal.name;
-
-  const runtimeStyles: React.CSSProperties = {
-    ['--portal-primary' as string]: theme.colors.primary,
-    ['--portal-secondary' as string]: theme.colors.secondary,
-    ['--portal-accent' as string]: theme.colors.accent,
-    ['--portal-bg' as string]: theme.colors.background,
-    ['--portal-surface' as string]: theme.colors.surface,
-    ['--portal-text' as string]: theme.colors.text,
-    ['--portal-muted' as string]: theme.colors.mutedText,
-    ['--portal-border' as string]: theme.colors.border,
-    fontFamily: `${theme.typography.bodyFont}, sans-serif`,
-  };
 
   const isDocType = item.type === 'page';
 
   return (
-    <div
-      style={runtimeStyles}
-      className="min-h-screen flex flex-col justify-between bg-[var(--portal-bg)] text-[var(--portal-text)] transition-colors"
-    >
+    <>
       {/* ── Top Header Bar ────────────────────────────────────────────── */}
-      <header className="sticky top-0 z-30 border-b border-[var(--portal-border)] bg-[var(--portal-bg)]/90 backdrop-blur-md px-6 py-3 flex items-center justify-between">
+      <header className="sticky top-0 z-30 border-b border-[var(--portal-border)] bg-[var(--portal-bg)]/90 backdrop-blur-md px-6 py-3 flex items-center justify-between transition-colors">
         <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}`}>
-            <Button variant="ghost" size="icon" className="h-9 w-9 rounded-xl">
-              <ArrowLeft className="w-4 h-4" />
+          <Link href={`/portal/${slug}/content`}>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-[var(--portal-surface)] text-[var(--portal-muted)] hover:text-[var(--portal-text)] active:scale-[0.97] transition-transform"
+              aria-label="Return to Catalog"
+            >
+              <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
 
-          <Link href={`/portal/${slug}`} className="flex items-center gap-2">
+          <Link href={`/portal/${slug}`} className="flex items-center gap-2 group">
             {branding.logoUrl ? (
               <img src={branding.logoUrl} alt={brandTitle} className="h-7 w-auto object-contain" />
             ) : (
               <div
                 className="w-7 h-7 rounded-lg flex items-center justify-center text-white font-bold text-xs"
-                style={{ backgroundColor: theme.colors.primary }}
+                style={{ backgroundColor: activeColors.primary }}
               >
                 {brandTitle.charAt(0)}
               </div>
             )}
-            <span className="font-bold text-sm tracking-tight hidden sm:inline">{brandTitle}</span>
+            <span
+              className="font-bold text-sm tracking-tight text-[var(--portal-text)] hidden sm:inline"
+              style={{ fontFamily: 'var(--portal-heading-font)' }}
+            >
+              {brandTitle}
+            </span>
           </Link>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <Button
             variant="outline"
             size="sm"
             onClick={() => setIsSearchOpen(true)}
-            className="h-9 px-3 rounded-xl font-medium text-xs gap-1.5 text-[var(--portal-muted)]"
+            className="min-h-[44px] px-3.5 rounded-xl font-medium text-xs gap-1.5 border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-muted)] hover:text-[var(--portal-text)] active:scale-[0.97] transition-transform"
           >
             <Search className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Search portal...</span>
-            <kbd className="hidden sm:inline text-[9px] bg-muted px-1.5 py-0.5 rounded border border-border">
+            <kbd className="hidden sm:inline text-[9px] bg-muted/60 px-1.5 py-0.5 rounded border border-[var(--portal-border)]">
               ⌘K
             </kbd>
           </Button>
+
+          {/* Scoped Portal Theme Switcher */}
+          <PortalThemeToggle variant="icon" />
 
           <Button
             variant="ghost"
             size="icon"
             onClick={handleCopyLink}
             title="Copy Link"
-            className="h-9 w-9 rounded-xl text-[var(--portal-muted)]"
+            className="min-h-[44px] min-w-[44px] rounded-xl text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-transform"
+            aria-label="Copy Link"
           >
             <Copy className="w-4 h-4" />
           </Button>
@@ -235,10 +268,10 @@ export default function PortalContentReaderClient({
                   <Link
                     key={sib.id}
                     href={`/portal/${slug}/content/${sib.type}/${sib.slug}`}
-                    className={`block px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                    className={`block px-3 py-2 rounded-xl text-xs font-medium transition-all active:scale-[0.98] ${
                       isActive
                         ? 'bg-[var(--portal-primary)] text-white font-bold shadow-xs'
-                        : 'text-[var(--portal-muted)] hover:text-foreground hover:bg-[var(--portal-bg)]'
+                        : 'text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:bg-[var(--portal-bg)]'
                     }`}
                   >
                     {sib.title}
@@ -257,31 +290,31 @@ export default function PortalContentReaderClient({
               {brandTitle}
             </Link>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="capitalize">{item.type}</span>
+            <Link href={`/portal/${slug}/content`} className="hover:underline capitalize">
+              {item.type}
+            </Link>
             <ChevronRight className="w-3.5 h-3.5" />
-            <span className="text-foreground font-bold truncate max-w-xs">{item.title}</span>
+            <span className="text-[var(--portal-text)] font-semibold truncate max-w-xs">{item.title}</span>
           </div>
 
-          {/* Header & Meta */}
-          <div className="space-y-4 border-b border-[var(--portal-border)] pb-6">
-            <div className="flex flex-wrap items-center gap-2">
+          {/* Header Section */}
+          <div className="space-y-4 border-b border-[var(--portal-border)] pb-8">
+            <div className="flex items-center gap-2">
               <Badge
                 variant="outline"
-                className="text-[10px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full"
-                style={{ borderColor: theme.colors.primary, color: theme.colors.primary }}
+                className="text-[10px] uppercase font-bold tracking-wider px-2 py-0.5"
+                style={{ color: activeColors.primary, borderColor: activeColors.primary }}
               >
-                {item.category || item.type}
+                {item.type}
               </Badge>
-              {item.tags?.map(t => (
-                <span key={t} className="text-xs text-[var(--portal-muted)] font-medium">
-                  #{t}
-                </span>
-              ))}
+              {item.category && (
+                <span className="text-xs font-bold text-[var(--portal-muted)]">{item.category}</span>
+              )}
             </div>
 
             <h1
-              className="text-3xl sm:text-4xl font-extrabold tracking-tight text-foreground"
-              style={{ fontFamily: `${theme.typography.headingFont}, sans-serif` }}
+              className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[var(--portal-text)]"
+              style={{ fontFamily: 'var(--portal-heading-font)' }}
             >
               {item.title}
             </h1>
@@ -295,13 +328,16 @@ export default function PortalContentReaderClient({
             {/* Author / Date Info */}
             <div className="flex items-center justify-between pt-2">
               <div className="flex items-center gap-3">
-                <Avatar className="w-9 h-9 border border-border">
-                  <AvatarFallback className="bg-primary/10 text-primary font-bold text-xs">
+                <Avatar className="w-9 h-9 border border-[var(--portal-border)]">
+                  <AvatarFallback
+                    className="font-bold text-xs"
+                    style={{ backgroundColor: `${activeColors.primary}20`, color: activeColors.primary }}
+                  >
                     {item.authors?.[0]?.name ? item.authors[0].name.charAt(0) : brandTitle.charAt(0)}
                   </AvatarFallback>
                 </Avatar>
                 <div className="text-xs">
-                  <p className="font-bold text-foreground">
+                  <p className="font-bold text-[var(--portal-text)]">
                     {item.authors?.[0]?.name || brandTitle}
                   </p>
                   <p className="text-[11px] text-[var(--portal-muted)]">
@@ -316,7 +352,7 @@ export default function PortalContentReaderClient({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleShareSocial('whatsapp')}
-                  className="h-8 px-2.5 rounded-xl text-xs font-bold text-emerald-600 hover:bg-emerald-500/10"
+                  className="min-h-[44px] px-3 rounded-xl text-xs font-bold text-emerald-600 hover:bg-emerald-500/10 active:scale-[0.97]"
                 >
                   WhatsApp
                 </Button>
@@ -324,7 +360,7 @@ export default function PortalContentReaderClient({
                   variant="ghost"
                   size="sm"
                   onClick={() => handleShareSocial('linkedin')}
-                  className="h-8 px-2.5 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-500/10"
+                  className="min-h-[44px] px-3 rounded-xl text-xs font-bold text-blue-600 hover:bg-blue-500/10 active:scale-[0.97]"
                 >
                   LinkedIn
                 </Button>
@@ -345,21 +381,35 @@ export default function PortalContentReaderClient({
           )}
 
           {item.type === 'resource' && item.media?.downloadUrl && (
-            <Card className="rounded-3xl border-2 border-primary/30 bg-primary/5 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <Card
+              className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
+              style={{ borderRadius: radiusCss }}
+            >
               <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-primary text-white flex items-center justify-center shadow-xs">
+                <div
+                  className="w-12 h-12 rounded-2xl text-white flex items-center justify-center shadow-xs shrink-0"
+                  style={{ backgroundColor: activeColors.primary, borderRadius: radiusCss }}
+                >
                   <FolderArchive className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-bold text-sm text-foreground">Download Resource Toolkit</h4>
-                  <p className="text-xs text-muted-foreground">
+                  <h4 className="font-bold text-sm text-[var(--portal-text)]">Download Resource Toolkit</h4>
+                  <p className="text-xs text-[var(--portal-muted)]">
                     {item.media.fileName || 'Resource File'} • {item.media.mimeType || 'Standard Format'}
                   </p>
                 </div>
               </div>
 
-              <a href={item.media.downloadUrl} download>
-                <Button className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 min-h-[42px] px-5">
+              <a
+                href={item.media.downloadUrl}
+                download
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <Button
+                  className="rounded-xl font-bold text-xs gap-2 min-h-[44px] px-5 active:scale-[0.97] transition-transform"
+                  style={primaryBtnStyle}
+                >
                   <Download className="w-4 h-4" /> Download File
                 </Button>
               </a>
@@ -367,7 +417,7 @@ export default function PortalContentReaderClient({
           )}
 
           {/* Rich Content Body */}
-          <article className="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed space-y-4">
+          <article className="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed space-y-4 text-[var(--portal-text)]">
             {item.content ? (
               <div className="whitespace-pre-wrap font-normal leading-relaxed text-[var(--portal-text)]">
                 {item.content}
@@ -380,7 +430,7 @@ export default function PortalContentReaderClient({
       </main>
 
       {/* ── Footer ────────────────────────────────────────────────────── */}
-      <footer className="border-t border-[var(--portal-border)] bg-[var(--portal-surface)] px-6 py-8 text-center text-xs text-[var(--portal-muted)]">
+      <footer className="border-t border-[var(--portal-border)] bg-[var(--portal-surface)] px-6 py-8 text-center text-xs text-[var(--portal-muted)] transition-colors">
         <p>{branding.copyrightText || `© ${new Date().getFullYear()} ${brandTitle}. All rights reserved.`}</p>
       </footer>
 
@@ -391,6 +441,77 @@ export default function PortalContentReaderClient({
         portalId={portal.id}
         portalSlug={slug}
       />
-    </div>
+    </>
+  );
+}
+
+/**
+ * Root Content Reader Client: Fetches portal and renders <PortalThemeProvider> boundary.
+ */
+export default function PortalContentReaderClient({
+  slug,
+  type,
+  itemSlug,
+}: PortalContentReaderClientProps) {
+  const firestore = useFirestore();
+
+  // 1. Query Portal
+  const portalQuery = useMemoFirebase(
+    () =>
+      firestore && slug
+        ? query(collection(firestore, 'portals'), where('slug', '==', slug), limit(1))
+        : null,
+    [firestore, slug]
+  );
+  const { data: portals, isLoading: isLoadingPortal } = useCollection<Portal>(portalQuery);
+  const portal = portals?.[0] ?? null;
+
+  if (isLoadingPortal) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col justify-between">
+        <header className="h-16 border-b border-border px-6 flex items-center justify-between">
+          <Skeleton className="h-8 w-32 rounded-xl" />
+          <Skeleton className="h-9 w-24 rounded-xl" />
+        </header>
+        <main className="max-w-4xl mx-auto w-full p-6 md:p-12 space-y-6 flex-1">
+          <Skeleton className="h-10 w-3/4 rounded-2xl" />
+          <Skeleton className="h-5 w-1/2 rounded-xl" />
+          <Skeleton className="h-72 w-full rounded-3xl pt-6" />
+        </main>
+        <footer className="h-16 border-t border-border" />
+      </div>
+    );
+  }
+
+  if (!portal) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+        <div className="max-w-md space-y-4">
+          <div className="w-14 h-14 rounded-2xl bg-muted flex items-center justify-center mx-auto text-muted-foreground">
+            <FileText className="w-7 h-7" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Portal Not Found</h2>
+          <p className="text-xs text-muted-foreground">The requested portal could not be found.</p>
+          <Link href="/">
+            <Button className="rounded-xl font-bold text-xs mt-2">Return Home</Button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <PortalThemeProvider
+      portalId={portal.id}
+      theme={portal.theme}
+      className="min-h-screen flex flex-col justify-between"
+    >
+      <PortalContentReaderView
+        slug={slug}
+        type={type}
+        itemSlug={itemSlug}
+        portal={portal}
+      />
+    </PortalThemeProvider>
   );
 }
