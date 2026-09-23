@@ -281,8 +281,8 @@ export default function PortalRuntimeClient({ slug, initialPortal }: PortalRunti
 
   const radiusCss = getPortalRadiusCss(theme.ui?.borderRadius);
   const googleFontsUrl = getGoogleFontsUrl(
-    theme.typography?.headingFont,
-    theme.typography?.bodyFont
+    theme.typography?.headingFont || 'Figtree',
+    theme.typography?.bodyFont || 'Figtree'
   );
 
 

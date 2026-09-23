@@ -45,6 +45,7 @@ interface PortalThemeCustomizerProps {
 }
 
 const FONT_OPTIONS = [
+  { label: 'Figtree (Modern / Clean - Active)', value: 'Figtree' },
   { label: 'Plus Jakarta Sans (Modern / Tech)', value: 'Plus Jakarta Sans' },
   { label: 'Inter (Clean / Neutral)', value: 'Inter' },
   { label: 'Geist (Sleek / Developer)', value: 'Geist' },

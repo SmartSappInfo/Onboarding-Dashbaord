@@ -94,8 +94,8 @@ export function PortalPageShell({
   const navigation = portal.navigation;
   const radiusCss = getPortalRadiusCss(theme.ui?.borderRadius);
   const googleFontsUrl = getGoogleFontsUrl(
-    theme.typography?.headingFont,
-    theme.typography?.bodyFont
+    theme.typography?.headingFont || 'Figtree',
+    theme.typography?.bodyFont || 'Figtree'
   );
   const brandTitle = branding?.brandName || portal.name;
 

@@ -69,8 +69,8 @@ export function getPortalThemeVariables(theme: PortalThemeConfig): Record<string
     '--portal-muted': theme?.colors?.mutedText || '#64748B',
     '--portal-border': theme?.colors?.border || '#E2E8F0',
     '--portal-radius': radiusCss,
-    '--portal-heading-font': `${theme?.typography?.headingFont || 'Plus Jakarta Sans'}, sans-serif`,
-    '--portal-body-font': `${theme?.typography?.bodyFont || 'Inter'}, sans-serif`,
+    '--portal-heading-font': `${theme?.typography?.headingFont || 'Figtree'}, sans-serif`,
+    '--portal-body-font': `${theme?.typography?.bodyFont || 'Figtree'}, sans-serif`,
   };
 }
 

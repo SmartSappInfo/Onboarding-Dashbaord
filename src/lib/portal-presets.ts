@@ -48,8 +48,8 @@ export const DEFAULT_THEME: PortalThemeConfig = {
     border: '#1F2937',
   },
   typography: {
-    headingFont: 'Plus Jakarta Sans',
-    bodyFont: 'Inter',
+    headingFont: 'Figtree',
+    bodyFont: 'Figtree',
     baseSize: 'md',
   },
   ui: {

@@ -160,15 +160,27 @@ export function PortalThemeProvider({
   // Effective mode resolves forcedMode first, then internalMode
   const effectiveMode = forcedMode || internalMode;
 
+  // ── Enforce Figtree as Universal Portal Typography Font ────────────────────
+  const resolvedTheme = React.useMemo(() => {
+    return {
+      ...theme,
+      typography: {
+        ...theme?.typography,
+        headingFont: 'Figtree',
+        bodyFont: 'Figtree',
+      },
+    };
+  }, [theme]);
+
   // Compute resolved active colors & CSS variables dictionary
   const activeColors = React.useMemo(
-    () => resolveActivePortalColors(theme, effectiveMode),
-    [theme, effectiveMode]
+    () => resolveActivePortalColors(resolvedTheme, effectiveMode),
+    [resolvedTheme, effectiveMode]
   );
 
   const themeStyles = React.useMemo(
-    () => resolvePortalThemeStyles(theme, effectiveMode),
-    [theme, effectiveMode]
+    () => resolvePortalThemeStyles(resolvedTheme, effectiveMode),
+    [resolvedTheme, effectiveMode]
   );
 
   // ── Synchronize HTML Document and Body Classes & Variables (Fixes Dialog / Modal Portals) ──
@@ -238,14 +250,14 @@ export function PortalThemeProvider({
   const contextValue: PortalThemeContextValue = React.useMemo(
     () => ({
       mode: effectiveMode,
-      theme,
+      theme: resolvedTheme,
       activeColors,
       colorMode: policy,
       canToggle,
       toggleTheme,
       setThemeMode,
     }),
-    [effectiveMode, theme, activeColors, policy, canToggle, toggleTheme, setThemeMode]
+    [effectiveMode, resolvedTheme, activeColors, policy, canToggle, toggleTheme, setThemeMode]
   );
 
   return (
@@ -254,7 +266,7 @@ export function PortalThemeProvider({
         suppressHydrationWarning
         data-portal-theme={effectiveMode}
         className={cn(
-          'portal-theme-root transition-colors duration-200 text-[var(--portal-text)] bg-[var(--portal-bg)]',
+          'portal-theme-root font-figtree transition-colors duration-200 text-[var(--portal-text)] bg-[var(--portal-bg)]',
           effectiveMode === 'dark' ? 'dark' : '',
           className
         )}

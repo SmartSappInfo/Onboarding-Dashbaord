@@ -380,8 +380,8 @@ export function resolvePortalThemeStyles(
     ['--portal-muted' as string]: activeColors.mutedText,
     ['--portal-border' as string]: activeColors.border,
     ['--portal-radius' as string]: radiusCss,
-    ['--portal-heading-font' as string]: `${theme.typography?.headingFont || 'Plus Jakarta Sans'}, sans-serif`,
-    ['--portal-body-font' as string]: `${theme.typography?.bodyFont || 'Inter'}, sans-serif`,
+    ['--portal-heading-font' as string]: `${theme.typography?.headingFont || 'Figtree'}, sans-serif`,
+    ['--portal-body-font' as string]: `${theme.typography?.bodyFont || 'Figtree'}, sans-serif`,
 
     // ── Local shadcn Variable Overrides (Isolation Shield) ──────────────────
     ['--background' as string]: `${bgHsl.h} ${bgHsl.s}% ${bgHsl.l}%`,
