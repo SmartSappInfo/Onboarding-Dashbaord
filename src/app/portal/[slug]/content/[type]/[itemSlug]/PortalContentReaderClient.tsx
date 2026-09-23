@@ -192,16 +192,17 @@ function PortalContentReaderView({
       {/* ── Top Header Bar ────────────────────────────────────────────── */}
       <header className="sticky top-0 z-30 border-b border-[var(--portal-border)] bg-[var(--portal-bg)]/90 backdrop-blur-md px-6 py-3 flex items-center justify-between transition-colors">
         <div className="flex items-center gap-4">
-          <Link href={`/portal/${slug}/content`}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-[var(--portal-surface)] text-[var(--portal-muted)] hover:text-[var(--portal-text)] active:scale-[0.97] transition-transform"
-              aria-label="Return to Catalog"
-            >
+          <Button
+            asChild
+            variant="ghost"
+            size="icon"
+            className="min-h-[44px] min-w-[44px] rounded-xl hover:bg-[var(--portal-surface)] text-[var(--portal-muted)] hover:text-[var(--portal-text)] active:scale-[0.97] transition-transform"
+            aria-label="Return to Catalog"
+          >
+            <Link href={`/portal/${slug}/content`}>
               <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
+            </Link>
+          </Button>
 
           <Link href={`/portal/${slug}`} className="flex items-center gap-2 group">
             {branding.logoUrl ? (
@@ -492,9 +493,9 @@ export default function PortalContentReaderClient({
           </div>
           <h2 className="text-xl font-bold text-foreground">Portal Not Found</h2>
           <p className="text-xs text-muted-foreground">The requested portal could not be found.</p>
-          <Link href="/">
-            <Button className="rounded-xl font-bold text-xs mt-2">Return Home</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs mt-2">
+            <Link href="/">Return Home</Link>
+          </Button>
         </div>
       </div>
     );

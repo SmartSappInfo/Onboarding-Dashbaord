@@ -65,31 +65,34 @@ export function PortalThemeProvider({
   const policy = theme.colorMode || 'user_choice';
   const canToggle = policy === 'user_choice' || policy === 'system';
 
-  // ── Determine Initial Theme Mode ──────────────────────────────────────────
+  // ── Determine Initial Theme Mode (SSR Hydration Safe) ─────────────────────
   const [internalMode, setInternalMode] = React.useState<'light' | 'dark'>(() => {
     if (forcedMode) return forcedMode;
     if (policy === 'light') return 'light';
     if (policy === 'dark') return 'dark';
+    return 'light'; // Deterministic server-safe default
+  });
 
-    // Client-side hydration from localStorage if user is permitted to choose
-    if (typeof window !== 'undefined' && portalId && canToggle) {
+  // Client-side hydration from localStorage or system preference
+  React.useEffect(() => {
+    if (forcedMode || policy === 'light' || policy === 'dark') return;
+
+    if (portalId && canToggle) {
       try {
         const stored = localStorage.getItem(`portal_theme_${portalId}`);
         if (stored === 'light' || stored === 'dark') {
-          return stored;
+          setInternalMode(stored);
+          return;
         }
       } catch {
         // Ignore localStorage errors (private browsing, quotas)
       }
     }
 
-    // Default to OS system preference or light
-    if (typeof window !== 'undefined' && window.matchMedia) {
-      return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      setInternalMode('dark');
     }
-
-    return 'light';
-  });
+  }, [forcedMode, policy, portalId, canToggle]);
 
   // Keep internal mode synced with forcedMode if provided (e.g. Studio Canvas)
   React.useEffect(() => {

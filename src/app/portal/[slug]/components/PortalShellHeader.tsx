@@ -280,15 +280,16 @@ export function PortalShellHeader({
                   Dashboard
                 </Button>
               ) : (
-                <Link href={`/portal/${slug}/dashboard`}>
-                  <Button
-                    size="sm"
-                    className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
-                    style={primaryBtnStyle}
-                  >
+                <Button
+                  asChild
+                  size="sm"
+                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
+                  style={primaryBtnStyle}
+                >
+                  <Link href={`/portal/${slug}/dashboard`}>
                     Dashboard
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               )
             ) : isPreview ? (
               <Button
@@ -299,15 +300,16 @@ export function PortalShellHeader({
                 Join Portal
               </Button>
             ) : (
-              <Link href={`/portal/${slug}/join`}>
-                <Button
-                  size="sm"
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
-                  style={primaryBtnStyle}
-                >
+              <Button
+                asChild
+                size="sm"
+                className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
+                style={primaryBtnStyle}
+              >
+                <Link href={`/portal/${slug}/join`}>
                   Join Portal
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )
           ) : navigation.headerActions.ctaButton?.label ? (
             isPreview ? (
@@ -319,15 +321,16 @@ export function PortalShellHeader({
                 {navigation.headerActions.ctaButton.label}
               </Button>
             ) : (
-              <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
-                <Button
-                  size="sm"
-                  className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
-                  style={primaryBtnStyle}
-                >
+              <Button
+                asChild
+                size="sm"
+                className="h-9 px-4 font-bold text-xs text-white shadow-sm transition-transform active:scale-[0.97]"
+                style={primaryBtnStyle}
+              >
+                <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
                   {navigation.headerActions.ctaButton.label}
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )
           ) : null}
         </div>

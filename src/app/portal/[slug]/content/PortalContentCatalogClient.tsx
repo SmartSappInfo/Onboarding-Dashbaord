@@ -283,19 +283,20 @@ function PortalContentCatalogView({
 
             {/* Dashboard / Auth CTA */}
             {user ? (
-              <Link href={`/portal/${slug}/dashboard`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-all"
-                >
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-all"
+              >
+                <Link href={`/portal/${slug}/dashboard`}>
                   <LayoutDashboard
                     className="w-3.5 h-3.5"
                     style={{ color: activeColors.primary }}
                   />
                   <span className="hidden sm:inline">Dashboard</span>
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             ) : (
               <Button
                 variant="ghost"
@@ -517,16 +518,17 @@ function PortalContentCatalogView({
                       </span>
                     )}
 
-                    <Link href={targetUrl}>
-                      <Button
-                        size="sm"
-                        className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97] transition-transform"
-                        style={primaryBtnStyle}
-                      >
+                    <Button
+                      asChild
+                      size="sm"
+                      className="min-h-[44px] px-3.5 rounded-xl font-bold text-xs gap-1.5 active:scale-[0.97] transition-transform"
+                      style={primaryBtnStyle}
+                    >
+                      <Link href={targetUrl}>
                         <span>Access</span>
                         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
-                      </Button>
-                    </Link>
+                      </Link>
+                    </Button>
                   </div>
                 </Card>
               );
@@ -621,9 +623,9 @@ export default function PortalContentCatalogClient({ slug }: PortalContentCatalo
           <p className="text-xs text-muted-foreground">
             The resource catalog you are looking for is unavailable.
           </p>
-          <Link href="/">
-            <Button className="rounded-xl font-bold text-xs mt-2">Return Home</Button>
-          </Link>
+          <Button asChild className="rounded-xl font-bold text-xs mt-2">
+            <Link href="/">Return Home</Link>
+          </Button>
         </div>
       </div>
     );

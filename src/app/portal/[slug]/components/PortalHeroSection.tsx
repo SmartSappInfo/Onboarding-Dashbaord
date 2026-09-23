@@ -128,15 +128,16 @@ export function PortalHeroSection({
                   Go to Your Dashboard <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
-                <Link href={`/portal/${slug}/dashboard`} className="w-full sm:w-auto">
-                  <Button
-                    size="lg"
-                    className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
-                    style={primaryBtnStyle}
-                  >
+                <Button
+                  asChild
+                  size="lg"
+                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
+                  style={primaryBtnStyle}
+                >
+                  <Link href={`/portal/${slug}/dashboard`}>
                     Go to Your Dashboard <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </Link>
+                  </Link>
+                </Button>
               )
             ) : isPreview ? (
               <Button
@@ -148,15 +149,16 @@ export function PortalHeroSection({
                 Join Portal <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Link href={`/portal/${slug}/join`} className="w-full sm:w-auto">
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
-                  style={primaryBtnStyle}
-                >
+              <Button
+                asChild
+                size="lg"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
+                style={primaryBtnStyle}
+              >
+                <Link href={`/portal/${slug}/join`}>
                   Join Portal <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )
           ) : navigation.headerActions?.ctaButton?.label ? (
             isPreview ? (
@@ -169,18 +171,16 @@ export function PortalHeroSection({
                 {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
               </Button>
             ) : (
-              <Link
-                href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}
-                className="w-full sm:w-auto"
+              <Button
+                asChild
+                size="lg"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
+                style={primaryBtnStyle}
               >
-                <Button
-                  size="lg"
-                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
-                  style={primaryBtnStyle}
-                >
+                <Link href={resolvePortalPath(navigation.headerActions.ctaButton.path || '/join', slug)}>
                   {navigation.headerActions.ctaButton.label} <ArrowRight className="w-4 h-4" />
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )
           ) : isPreview ? (
             <Button
@@ -192,15 +192,16 @@ export function PortalHeroSection({
               Get Started <ArrowRight className="w-4 h-4" />
             </Button>
           ) : (
-            <Link href={`/portal/${slug}/join`} className="w-full sm:w-auto">
-              <Button
-                size="lg"
-                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
-                style={primaryBtnStyle}
-              >
+            <Button
+              asChild
+              size="lg"
+              className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm text-white shadow-md transition-transform active:scale-[0.97] gap-2 flex items-center justify-center"
+              style={primaryBtnStyle}
+            >
+              <Link href={`/portal/${slug}/join`}>
                 Get Started <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
+              </Link>
+            </Button>
           )}
 
           {/* Secondary CTA: Browse Curriculum if Courses Enabled */}
@@ -216,16 +217,17 @@ export function PortalHeroSection({
                 Browse Curriculum
               </Button>
             ) : (
-              <Link href={`/portal/${slug}/learn`} className="w-full sm:w-auto">
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm border-2 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] transition-all active:scale-[0.97] gap-2 flex items-center justify-center"
-                  style={{ borderRadius: radiusCss }}
-                >
+              <Button
+                asChild
+                variant="outline"
+                size="lg"
+                className="w-full sm:w-auto min-h-[44px] px-6 font-bold text-sm border-2 border-[var(--portal-border)] bg-[var(--portal-bg)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] transition-all active:scale-[0.97] gap-2 flex items-center justify-center"
+                style={{ borderRadius: radiusCss }}
+              >
+                <Link href={`/portal/${slug}/learn`}>
                   Browse Curriculum
-                </Button>
-              </Link>
+                </Link>
+              </Button>
             )
           )}
         </div>
