@@ -38,6 +38,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { resolvePortalPath } from '@/lib/utils/portal-navigation';
+import { PortalThemeToggle } from './PortalThemeToggle';
 import { getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
 import type {
   PortalThemeConfig,
@@ -207,6 +208,9 @@ export function PortalShellHeader({
             </button>
           )}
 
+          {/* Theme Toggle (Client Independent Scoped Theme) */}
+          <PortalThemeToggle variant="icon" />
+
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -373,6 +377,9 @@ export function PortalShellHeader({
           </nav>
 
           <div className="pt-2 border-t border-[var(--portal-border)] flex flex-col gap-2">
+            {/* Theme Toggle (Mobile Drawer) */}
+            <PortalThemeToggle variant="drawer" />
+
             {!user && navigation.headerActions.showLoginButton && (
               <Button
                 variant="outline"

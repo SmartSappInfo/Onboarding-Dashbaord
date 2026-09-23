@@ -109,10 +109,18 @@ export interface PortalUIConfig {
 }
 
 export interface PortalThemeConfig {
+  /** Base light-mode theme color palette */
   colors: PortalThemeColors;
+  /**
+   * Explicit dark-mode theme color overrides.
+   * If omitted or partially defined, PortalThemeGenerator auto-computes
+   * harmonious dark tokens derived from the primary brand hue.
+   */
+  darkColors?: Partial<PortalThemeColors>;
   typography: PortalTypographyConfig;
   ui: PortalUIConfig;
-  colorMode: 'light' | 'dark' | 'system' | 'user_choice';
+  /** Theme presentation policy governing client-side theme behavior */
+  colorMode: 'user_choice' | 'light' | 'dark' | 'system';
   customCssVariables?: Record<string, string>;
 }
 

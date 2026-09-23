@@ -47,6 +47,7 @@ import { PortalShellHeader } from './components/PortalShellHeader';
 import { PortalHeroSection } from './components/PortalHeroSection';
 import { PortalSpacesGrid } from './components/PortalSpacesGrid';
 import { PortalShellFooter } from './components/PortalShellFooter';
+import { PortalThemeProvider } from './components/PortalThemeProvider';
 import type {
   Portal,
 } from '@/lib/types/portal';
@@ -283,27 +284,14 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
     theme.typography?.bodyFont
   );
 
-  const runtimeThemeStyles: React.CSSProperties = {
-    ['--portal-primary' as string]: theme.colors.primary,
-    ['--portal-secondary' as string]: theme.colors.secondary,
-    ['--portal-accent' as string]: theme.colors.accent,
-    ['--portal-bg' as string]: theme.colors.background,
-    ['--portal-surface' as string]: theme.colors.surface,
-    ['--portal-text' as string]: theme.colors.text,
-    ['--portal-muted' as string]: theme.colors.mutedText,
-    ['--portal-border' as string]: theme.colors.border,
-    ['--portal-radius' as string]: radiusCss,
-    ['--portal-heading-font' as string]: `${theme.typography?.headingFont || 'Plus Jakarta Sans'}, sans-serif`,
-    ['--portal-body-font' as string]: `${theme.typography?.bodyFont || 'Inter'}, sans-serif`,
-    fontFamily: `var(--portal-body-font)`,
-  };
 
   const brandTitle = branding.brandName || portal.name;
 
   return (
-    <div
-      style={runtimeThemeStyles}
-      className="min-h-screen flex flex-col justify-between bg-[var(--portal-bg)] text-[var(--portal-text)] transition-colors"
+    <PortalThemeProvider
+      portalId={portal.id}
+      theme={theme}
+      className="min-h-screen flex flex-col justify-between"
     >
       {/* ── Dynamic Google Fonts ────────────────────────────────────────── */}
       {googleFontsUrl && (
@@ -374,6 +362,6 @@ export default function PortalRuntimeClient({ slug }: PortalRuntimeClientProps) 
         open={isAuthModalOpen}
         onOpenChange={setIsAuthModalOpen}
       />
-    </div>
+    </PortalThemeProvider>
   );
 }

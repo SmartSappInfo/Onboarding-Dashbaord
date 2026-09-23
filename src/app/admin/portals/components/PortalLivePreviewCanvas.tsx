@@ -29,6 +29,8 @@ import {
   Smartphone,
   ExternalLink,
   RotateCcw,
+  Sun,
+  Moon,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -52,6 +54,7 @@ import { PortalShellFooter } from '@/app/portal/[slug]/components/PortalShellFoo
 import { PortalCurriculumPreview } from '@/app/portal/[slug]/components/PortalCurriculumPreview';
 import { PortalCommunityPreview } from '@/app/portal/[slug]/components/PortalCommunityPreview';
 import { PortalDashboardPreview } from '@/app/portal/[slug]/components/PortalDashboardPreview';
+import { PortalThemeProvider } from '@/app/portal/[slug]/components/PortalThemeProvider';
 
 export interface PortalLivePreviewCanvasProps {
   portal: Partial<Portal>;
@@ -107,26 +110,24 @@ export function PortalLivePreviewCanvas({
     return () => observer.disconnect();
   }, []);
 
+  const [canvasThemeMode, setCanvasThemeMode] = React.useState<'light' | 'dark'>(() => {
+    return deferredTheme.colorMode === 'dark' ? 'dark' : 'light';
+  });
+
+  // Automatically adapt canvas mode if owner selects strict light or dark policy in the studio
+  React.useEffect(() => {
+    if (deferredTheme.colorMode === 'dark') {
+      setCanvasThemeMode('dark');
+    } else if (deferredTheme.colorMode === 'light') {
+      setCanvasThemeMode('light');
+    }
+  }, [deferredTheme.colorMode]);
+
   const radiusCss = getPortalRadiusCss(deferredTheme.ui?.borderRadius);
   const googleFontsUrl = getGoogleFontsUrl(
     deferredTheme.typography?.headingFont,
     deferredTheme.typography?.bodyFont
   );
-
-  const previewStyles: React.CSSProperties = {
-    ['--portal-primary' as string]: deferredTheme.colors.primary,
-    ['--portal-secondary' as string]: deferredTheme.colors.secondary,
-    ['--portal-accent' as string]: deferredTheme.colors.accent,
-    ['--portal-bg' as string]: deferredTheme.colors.background,
-    ['--portal-surface' as string]: deferredTheme.colors.surface,
-    ['--portal-text' as string]: deferredTheme.colors.text,
-    ['--portal-muted' as string]: deferredTheme.colors.mutedText,
-    ['--portal-border' as string]: deferredTheme.colors.border,
-    ['--portal-radius' as string]: radiusCss,
-    ['--portal-heading-font' as string]: `${deferredTheme.typography?.headingFont || 'Plus Jakarta Sans'}, sans-serif`,
-    ['--portal-body-font' as string]: `${deferredTheme.typography?.bodyFont || 'Inter'}, sans-serif`,
-    fontFamily: `var(--portal-body-font)`,
-  };
 
   const brandDisplayName =
     deferredBranding.brandName ||
@@ -172,44 +173,80 @@ export function PortalLivePreviewCanvas({
 
       {/* ── Canvas Toolbar ─────────────────────────────────────────────── */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 bg-card border-b border-border shrink-0">
-        {/* Device Mode Switcher */}
-        <div className="flex items-center gap-1.5 bg-muted/60 p-1 rounded-2xl border border-border">
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setDevice('desktop')}
-            className={cn(
-              'h-8 min-h-[32px] px-3 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
-              device === 'desktop' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Monitor className="w-3.5 h-3.5" /> Desktop
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setDevice('tablet')}
-            className={cn(
-              'h-8 min-h-[32px] px-3 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
-              device === 'tablet' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Tablet className="w-3.5 h-3.5" /> Tablet
-          </Button>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={() => setDevice('mobile')}
-            className={cn(
-              'h-8 min-h-[32px] px-3 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
-              device === 'mobile' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Smartphone className="w-3.5 h-3.5" /> Mobile
-          </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {/* Device Mode Switcher */}
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setDevice('desktop')}
+              className={cn(
+                'h-8 min-h-[32px] px-3 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
+                device === 'desktop' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Monitor className="w-3.5 h-3.5" /> Desktop
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setDevice('tablet')}
+              className={cn(
+                'h-8 min-h-[32px] px-3 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
+                device === 'tablet' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Tablet className="w-3.5 h-3.5" /> Tablet
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setDevice('mobile')}
+              className={cn(
+                'h-8 min-h-[32px] px-3 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
+                device === 'mobile' ? 'bg-background shadow-xs text-primary' : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Smartphone className="w-3.5 h-3.5" /> Mobile
+            </Button>
+          </div>
+
+          {/* Theme Mode Preview Switcher (Independent of Admin Theme) */}
+          <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-2xl border border-border">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCanvasThemeMode('light')}
+              title="Preview Portal in Light Mode"
+              className={cn(
+                'h-8 min-h-[32px] px-2.5 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
+                canvasThemeMode === 'light'
+                  ? 'bg-background shadow-xs text-amber-600 dark:text-amber-400'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Sun className="w-3.5 h-3.5" /> Light
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCanvasThemeMode('dark')}
+              title="Preview Portal in Dark Mode"
+              className={cn(
+                'h-8 min-h-[32px] px-2.5 rounded-xl text-xs font-bold gap-1.5 transition-all active:scale-[0.97]',
+                canvasThemeMode === 'dark'
+                  ? 'bg-background shadow-xs text-indigo-500 dark:text-indigo-400'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Moon className="w-3.5 h-3.5" /> Dark
+            </Button>
+          </div>
         </div>
 
         {/* Route Navigator & Refresh */}
@@ -296,10 +333,12 @@ export function PortalLivePreviewCanvas({
             </div>
           )}
 
-          {/* Actual Simulated Portal Canvas with SSOT Components */}
-          <div
-            style={previewStyles}
-            className="min-h-[640px] flex flex-col justify-between bg-[var(--portal-bg)] text-[var(--portal-text)]"
+          {/* Actual Simulated Portal Canvas with SSOT Components & Isolated Theme */}
+          <PortalThemeProvider
+            forcedMode={canvasThemeMode}
+            theme={deferredTheme}
+            portalId={portal.id}
+            className="min-h-[640px] flex flex-col justify-between"
           >
             {/* ── Shared Header (SSOT) ────────────────── */}
             <PortalShellHeader
@@ -381,7 +420,7 @@ export function PortalLivePreviewCanvas({
               isPreview={true}
               onNavigateRoute={setPreviewRoute}
             />
-          </div>
+          </PortalThemeProvider>
         </div>
       </div>
     </div>

@@ -37,6 +37,16 @@ export const DEFAULT_THEME: PortalThemeConfig = {
     mutedText: '#64748B',
     border: '#E2E8F0',
   },
+  darkColors: {
+    primary: '#60A5FA',
+    secondary: '#0F172A',
+    accent: '#818CF8',
+    background: '#090D16',
+    surface: '#111827',
+    text: '#F8FAFC',
+    mutedText: '#94A3B8',
+    border: '#1F2937',
+  },
   typography: {
     headingFont: 'Plus Jakarta Sans',
     bodyFont: 'Inter',
@@ -46,7 +56,7 @@ export const DEFAULT_THEME: PortalThemeConfig = {
     borderRadius: 'lg',
     buttonStyle: 'flat',
   },
-  colorMode: 'system',
+  colorMode: 'user_choice',
 };
 
 export const DEFAULT_NAVIGATION: PortalNavigationConfig = {
