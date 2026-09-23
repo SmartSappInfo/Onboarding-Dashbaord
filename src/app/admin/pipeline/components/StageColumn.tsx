@@ -291,7 +291,14 @@ export default function StageColumn({
                                         <MoreVertical className="h-3.5 w-3.5" />
                                     </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[170px]">
+                                <DropdownMenuContent align="end" className="rounded-xl border-none shadow-2xl p-1.5 min-w-[180px]">
+                                    <DropdownMenuItem
+                                        onClick={() => setIsCreateDealOpen(true)}
+                                        className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-foreground hover:text-primary focus:text-primary focus:bg-primary/10 rounded-lg"
+                                    >
+                                        <Plus className="h-3.5 w-3.5 text-primary" />
+                                        Add Deal to Stage
+                                    </DropdownMenuItem>
                                     <DropdownMenuItem
                                         onClick={handleAddAutomationToStage}
                                         className="py-2 cursor-pointer font-semibold text-xs flex items-center gap-2 text-amber-600 dark:text-amber-400 focus:text-amber-600 focus:bg-amber-500/10 rounded-lg"
