@@ -46,6 +46,7 @@ import {
   Calendar,
   ExternalLink,
   ArrowRight,
+  CheckSquare,
 } from 'lucide-react';
 
 interface MemberOnboardingWidgetProps {
@@ -134,6 +135,8 @@ export function MemberOnboardingWidget({
         return <GraduationCap className="w-4 h-4 text-primary" />;
       case 'community_post':
         return <MessageSquare className="w-4 h-4 text-primary" />;
+      case 'action_task':
+        return <CheckSquare className="w-4 h-4 text-primary" />;
       case 'book_meeting':
         return <Calendar className="w-4 h-4 text-primary" />;
       default:
@@ -150,6 +153,8 @@ export function MemberOnboardingWidget({
         return firstCourse ? `/portal/${portalSlug}/learn/${firstCourse.slug}` : `/portal/${portalSlug}/learn`;
       case 'community_post':
         return `/portal/${portalSlug}/community`;
+      case 'action_task':
+        return `/portal/${portalSlug}/tasks`;
       case 'book_meeting':
         return 'https://calendly.com';
       default:

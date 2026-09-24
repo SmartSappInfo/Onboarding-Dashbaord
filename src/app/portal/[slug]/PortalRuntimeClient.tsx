@@ -48,6 +48,7 @@ import { PortalHeroSection } from './components/PortalHeroSection';
 import { PortalSpacesGrid } from './components/PortalSpacesGrid';
 import { PortalShellFooter } from './components/PortalShellFooter';
 import { PortalThemeProvider } from './components/PortalThemeProvider';
+import { PortalOnboardingBanner } from './components/PortalOnboardingBanner';
 import type {
   Portal,
 } from '@/lib/types/portal';
@@ -314,6 +315,16 @@ export default function PortalRuntimeClient({ slug, initialPortal }: PortalRunti
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onSignOut={() => auth && signOut(auth)}
       />
+
+      {/* ── Progressive Member Onboarding Banner ──────────────────────── */}
+      {user && isMember && (
+        <PortalOnboardingBanner
+          portalId={portal.id}
+          portalSlug={slug}
+          userId={user.uid}
+          membership={currentMembership}
+        />
+      )}
 
       {/* ── Main Content Space ────────────────────────────────────────── */}
       <main className="flex-1 flex flex-col">
