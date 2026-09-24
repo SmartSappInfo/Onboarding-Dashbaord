@@ -36,7 +36,6 @@ import {
   Loader2,
   Award,
   AlertCircle,
-  CheckCircle2,
 } from 'lucide-react';
 
 interface TaskSubmissionDropzoneModalProps {
@@ -201,7 +200,7 @@ export function TaskSubmissionDropzoneModal({
               <AlertCircle className="w-4 h-4 text-amber-500" /> Instructor Revision Request:
             </div>
             <p className="italic leading-relaxed pl-5">
-              "{existingSubmission.instructorFeedback}"
+              &ldquo;{existingSubmission.instructorFeedback}&rdquo;
             </p>
           </div>
         )}

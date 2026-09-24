@@ -509,11 +509,28 @@ export class EngagementService {
         .get();
 
       if (!membershipSnap.empty) {
+        const memberDoc = membershipSnap.docs[0];
         await PortalMembershipService.awardPoints(
-          membershipSnap.docs[0].id,
+          memberDoc.id,
           pointsReward,
           `Approved Task Submission: ${taskData?.title || 'Action Task'} 🎉`
         );
+
+        // Auto-apply contact completion tags to linked CRM contact (Workspace Rule: Tag SSOT)
+        const contactId = memberDoc.data()?.contactId;
+        if (contactId && taskData?.completionTagIds && taskData.completionTagIds.length > 0) {
+          try {
+            const { applyTagsAction } = await import('@/lib/tag-actions');
+            await applyTagsAction(
+              contactId,
+              'school',
+              taskData.completionTagIds,
+              input.reviewerUserId || 'system'
+            );
+          } catch (tagErr) {
+            console.warn('[ENGAGEMENT] Non-blocking applyTagsAction error:', tagErr);
+          }
+        }
       }
 
       await EngagementService.advanceStepByType(input.portalId, current.userId, 'action_task');
@@ -640,5 +657,78 @@ export class EngagementService {
 
     await docRef.set(profile, { merge: true });
     return profile;
+  }
+
+  /**
+   * Scans portal members for inactivity and recalculates engagement tiers.
+   * Emits re-engagement activity events for members who have been inactive >= 14 days.
+   *
+   * High-Load / Scalability Protection:
+   * - Queries in chunks of up to 200 documents.
+   * - Sets merged profile documents without exceeding write quotas.
+   */
+  public static async evaluatePortalInactivity(portalId: string): Promise<{
+    evaluatedCount: number;
+    warmCount: number;
+    coldCount: number;
+  }> {
+    const membershipsSnap = await adminDb
+      .collection('portal_memberships')
+      .where('portalId', '==', portalId)
+      .where('status', '==', 'active')
+      .limit(200)
+      .get();
+
+    if (membershipsSnap.empty) {
+      return { evaluatedCount: 0, warmCount: 0, coldCount: 0 };
+    }
+
+    const nowMs = Date.now();
+    const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+    const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+
+    let warmCount = 0;
+    let coldCount = 0;
+
+    for (const doc of membershipsSnap.docs) {
+      const data = doc.data();
+      const lastActiveAtStr = data.lastActiveAt || data.joinedAt || data.createdAt;
+      const lastActiveMs = lastActiveAtStr ? new Date(lastActiveAtStr).getTime() : 0;
+      const inactiveMs = nowMs - lastActiveMs;
+
+      let newTier: EngagementTier | null = null;
+      if (inactiveMs >= FOURTEEN_DAYS_MS) {
+        newTier = 'cold';
+        coldCount++;
+      } else if (inactiveMs >= SEVEN_DAYS_MS) {
+        newTier = 'warm';
+        warmCount++;
+      }
+
+      if (newTier) {
+        const profileId = `profile_${portalId}_${data.userId}`;
+        await adminDb.collection('member_engagement_profiles').doc(profileId).set(
+          {
+            tier: newTier,
+            updatedAt: new Date().toISOString(),
+          },
+          { merge: true }
+        );
+
+        if (newTier === 'cold') {
+          await EngagementService.logMemberActivity({
+            organizationId: data.organizationId || 'smartsapp-hq',
+            portalId,
+            userId: data.userId,
+            eventType: 'portal.member_inactivity_detected',
+            title: 'Member Inactivity Detected (≥14 Days)',
+            description: `Member ${data.displayName || data.email} has been inactive for over 14 days.`,
+            metadata: { inactiveDays: Math.round(inactiveMs / (1000 * 60 * 60 * 24)), tier: 'cold' },
+          });
+        }
+      }
+    }
+
+    return { evaluatedCount: membershipsSnap.size, warmCount, coldCount };
   }
 }

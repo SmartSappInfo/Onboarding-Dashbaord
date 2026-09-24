@@ -238,3 +238,14 @@ export async function logMemberActivityAction(
     return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to log activity.') };
   }
 }
+
+export async function evaluatePortalInactivityAction(
+  portalId: string
+): Promise<ActionResponse<{ evaluatedCount: number; warmCount: number; coldCount: number }>> {
+  try {
+    const result = await EngagementService.evaluatePortalInactivity(portalId);
+    return { success: true, data: result };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to evaluate portal inactivity.') };
+  }
+}

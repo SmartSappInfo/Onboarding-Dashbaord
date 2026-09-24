@@ -48,12 +48,10 @@ import {
   BookOpen,
   MessageSquare,
   CheckSquare,
-  Calendar,
   ExternalLink,
   Sparkles,
   ArrowRight,
   ArrowLeft,
-  Award,
   Loader2,
   PartyPopper,
 } from 'lucide-react';
@@ -85,7 +83,7 @@ export function PortalOnboardingModal({
 }: PortalOnboardingModalProps) {
   const { toast } = useToast();
 
-  const completedStepIds = progress?.completedStepIds || [];
+  const completedStepIds = React.useMemo(() => progress?.completedStepIds || [], [progress?.completedStepIds]);
   const progressPct = progress?.progressPercentage || 0;
   const isFullyCompleted = progress?.isCompleted || (steps.length > 0 && completedStepIds.length >= steps.length);
 
@@ -370,7 +368,7 @@ export function PortalOnboardingModal({
                     className="w-full rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 min-h-[44px] active:scale-[0.97] gap-2 shadow-sm"
                   >
                     {isProcessingStep ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-                    I've Watched the Orientation
+                    I&apos;ve Watched the Orientation
                   </Button>
                 )}
               </div>

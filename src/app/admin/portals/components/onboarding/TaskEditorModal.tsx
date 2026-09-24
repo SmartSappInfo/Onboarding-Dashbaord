@@ -298,7 +298,7 @@ export function TaskEditorModal({
               <TagIcon className="w-3.5 h-3.5 text-primary" /> Auto-Apply Contact Tags on Approval
             </Label>
             <p className="text-[11px] text-muted-foreground">
-              These CRM tags will be automatically applied to the member's linked Contact when their submission is approved.
+              These CRM tags will be automatically applied to the member&apos;s linked Contact when their submission is approved.
             </p>
             <div className="p-3 rounded-2xl border border-border/80 bg-card">
               <TagSelector

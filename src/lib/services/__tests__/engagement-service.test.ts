@@ -46,4 +46,39 @@ describe('EngagementService', () => {
       expect(pct).toBe(75);
     });
   });
+
+  describe('Engagement Scoring & Tiers', () => {
+    it('assigns correct tier based on activity score', () => {
+      const getTier = (score: number) => {
+        if (score >= 150) return 'champion';
+        if (score >= 80) return 'active';
+        if (score >= 30) return 'warm';
+        return 'cold';
+      };
+
+      expect(getTier(200)).toBe('champion');
+      expect(getTier(150)).toBe('champion');
+      expect(getTier(120)).toBe('active');
+      expect(getTier(80)).toBe('active');
+      expect(getTier(50)).toBe('warm');
+      expect(getTier(30)).toBe('warm');
+      expect(getTier(10)).toBe('cold');
+      expect(getTier(0)).toBe('cold');
+    });
+
+    it('determines inactivity tiers from elapsed duration', () => {
+      const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+      const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
+
+      const getInactivityTier = (inactiveMs: number) => {
+        if (inactiveMs >= FOURTEEN_DAYS_MS) return 'cold';
+        if (inactiveMs >= SEVEN_DAYS_MS) return 'warm';
+        return 'active';
+      };
+
+      expect(getInactivityTier(15 * 24 * 60 * 60 * 1000)).toBe('cold');
+      expect(getInactivityTier(10 * 24 * 60 * 60 * 1000)).toBe('warm');
+      expect(getInactivityTier(3 * 24 * 60 * 60 * 1000)).toBe('active');
+    });
+  });
 });

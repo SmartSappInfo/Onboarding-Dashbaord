@@ -31,12 +31,10 @@ import { DEFAULT_ONBOARDING_STEPS } from '@/lib/portal-presets';
 import { PortalOnboardingModal } from './PortalOnboardingModal';
 import {
   Sparkles,
-  CheckCircle2,
   ArrowRight,
   ChevronDown,
   ChevronUp,
   X,
-  Award,
 } from 'lucide-react';
 
 interface PortalOnboardingBannerProps {

@@ -28,7 +28,6 @@ import {
   ChevronDown,
   Pencil,
   Trash2,
-  CheckCircle2,
   Sparkles,
 } from 'lucide-react';
 import type { OnboardingStep, StepType } from '@/lib/types/engagement';

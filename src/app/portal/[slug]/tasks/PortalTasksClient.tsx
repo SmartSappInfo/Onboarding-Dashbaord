@@ -43,9 +43,7 @@ import {
   FileSpreadsheet,
   AlertCircle,
   Search,
-  Filter,
   CheckSquare,
-  ShieldCheck,
   Download,
 } from 'lucide-react';
 import {
@@ -54,7 +52,7 @@ import {
 } from '@/app/actions/engagement-actions';
 import type { Portal } from '@/lib/types/portal';
 import type { PortalMembership } from '@/lib/types/membership';
-import type { MemberTask, TaskSubmission, TaskPriority } from '@/lib/types/engagement';
+import type { MemberTask, TaskSubmission } from '@/lib/types/engagement';
 import { getPortalRadiusCss, getGoogleFontsUrl } from '@/lib/utils/portal-theme';
 import { PortalShellHeader } from '../components/PortalShellHeader';
 import { PortalShellFooter } from '../components/PortalShellFooter';
@@ -71,7 +69,7 @@ interface PortalTasksClientProps {
 export default function PortalTasksClient({ slug, initialPortal }: PortalTasksClientProps) {
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const { toast } = useToast();
 
   const [activeTab, setActiveTab] = React.useState<'all' | 'todo' | 'review' | 'completed'>('all');
@@ -544,7 +542,7 @@ export default function PortalTasksClient({ slug, initialPortal }: PortalTasksCl
                         <p className="font-bold flex items-center gap-1 text-[11px]">
                           <AlertCircle className="w-3.5 h-3.5 text-amber-500" /> Instructor Feedback:
                         </p>
-                        <p className="italic pl-4 text-[11px]">"{sub.instructorFeedback}"</p>
+                        <p className="italic pl-4 text-[11px]">&ldquo;{sub.instructorFeedback}&rdquo;</p>
                       </div>
                     )}
                   </div>
