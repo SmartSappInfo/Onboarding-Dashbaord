@@ -3,12 +3,19 @@
  *
  * Tracks granular video watch times, lesson completions, quiz evaluations,
  * assignment submissions, drip release schedules, and course certifications.
- * Zero `any` or `any[]` typing.
+ *
+ * Conforms to:
+ * - Strict typing: Zero `any` or `any[]` typing.
+ * - Assessment Gating: Enforces quiz passing score before lesson completion.
+ * - Video Percentage Automated Milestone: Auto-completes lesson upon reaching watch threshold.
+ * - Certificate Issuance: Auto-generates verified CourseCertificate on 100% course completion.
  */
 
 import { adminDb } from '@/lib/firebase-admin';
 import { PortalMembershipService } from '@/lib/services/portal-membership-service';
+import { ReleaseScheduleService } from '@/lib/services/release-schedule-service';
 import type {
+  Course,
   CourseLesson,
   CourseEnrollment,
   LearningProgress,
@@ -18,6 +25,7 @@ import type {
   AssessmentResult,
   SubmitAssignmentInput,
   ReleaseRule,
+  CourseCertificate,
 } from '@/lib/types/learning';
 
 export class LearningProgressService {
@@ -42,13 +50,15 @@ export class LearningProgressService {
     const organizationId = lesson?.organizationId || 'default-org';
 
     const now = new Date().toISOString();
-    let current = snap.exists ? (snap.data() as LearningProgress) : null;
+    const current = snap.exists ? (snap.data() as LearningProgress) : null;
 
+    // Automated completion threshold: explicit rule or default 85% for pure video lessons
     const shouldAutoCheckVideo =
-      lesson?.completionRule?.type === 'video_percentage' &&
-      watchPercentage >= (lesson.completionRule.minVideoPercentage || 80);
+      (lesson?.completionRule?.type === 'video_percentage' &&
+        watchPercentage >= (lesson.completionRule.minVideoPercentage || 80)) ||
+      (!lesson?.completionRule && lesson?.contentType === 'video' && watchPercentage >= 85);
 
-    const isCompleted = current?.isCompleted || shouldAutoCheckVideo;
+    const isCompleted = Boolean(current?.isCompleted || shouldAutoCheckVideo);
 
     const progress: LearningProgress = {
       id: progressId,
@@ -77,7 +87,10 @@ export class LearningProgressService {
       const { EngagementService } = await import('@/lib/services/engagement-service');
       await EngagementService.advanceStepByType(portalId, userId, 'start_course');
     } catch (e: unknown) {
-      console.warn('[LearningProgressService] advanceStepByType warning:', e instanceof Error ? e.message : 'Unknown');
+      console.warn(
+        '[LearningProgressService] advanceStepByType warning:',
+        e instanceof Error ? e.message : 'Unknown'
+      );
     }
 
     return progress;
@@ -100,7 +113,21 @@ export class LearningProgressService {
     const moduleId = lesson?.moduleId || 'default-module';
     const organizationId = lesson?.organizationId || 'default-org';
 
-    // 1. Mark lesson progress completed
+    // 1. Assessment Pass Gate: if lesson requires a passing quiz, verify it was passed
+    if (lesson?.completionRule?.type === 'assessment_pass') {
+      const currentProgressSnap = await adminDb.collection('learning_progress').doc(progressId).get();
+      const currentProgress = currentProgressSnap.exists
+        ? (currentProgressSnap.data() as LearningProgress)
+        : null;
+
+      if (!currentProgress?.assessmentPassed) {
+        throw new Error(
+          `Lesson "${lesson.title}" requires passing the knowledge quiz before it can be marked as complete.`
+        );
+      }
+    }
+
+    // 2. Mark lesson progress completed
     await adminDb.collection('learning_progress').doc(progressId).set(
       {
         id: progressId,
@@ -117,7 +144,7 @@ export class LearningProgressService {
       { merge: true }
     );
 
-    // 2. Add to PortalMembership completedLessonIds
+    // 3. Add to PortalMembership completedLessonIds
     const membershipSnap = await adminDb
       .collection('portal_memberships')
       .where('portalId', '==', portalId)
@@ -141,7 +168,7 @@ export class LearningProgressService {
       }
     }
 
-    // 3. Recalculate CourseEnrollment Progress
+    // 4. Recalculate CourseEnrollment Progress
     const totalLessonsSnap = await adminDb
       .collection('course_lessons')
       .where('courseId', '==', courseId)
@@ -156,7 +183,8 @@ export class LearningProgressService {
       .get();
     const completedCount = completedProgressSnap.size;
 
-    const progressPct = totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 100;
+    const progressPct =
+      totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 100;
     const isCourseCompleted = progressPct >= 100;
 
     const enrollSnap = await adminDb
@@ -169,6 +197,54 @@ export class LearningProgressService {
     if (!enrollSnap.empty) {
       const enrollDoc = enrollSnap.docs[0];
       const prevData = enrollDoc.data() as CourseEnrollment;
+
+      let certificateId: string | undefined = prevData.certificateId;
+
+      // 5. Course Completion: Generate verified certificate if enabled
+      if (isCourseCompleted) {
+        const courseSnap = await adminDb.collection('courses').doc(courseId).get();
+        const courseData = courseSnap.exists ? (courseSnap.data() as Course) : null;
+
+        if (courseData?.certificateEnabled && !certificateId) {
+          const certQuery = await adminDb
+            .collection('course_certificates')
+            .where('courseId', '==', courseId)
+            .where('userId', '==', userId)
+            .limit(1)
+            .get();
+
+          if (!certQuery.empty) {
+            certificateId = certQuery.docs[0].id;
+          } else {
+            const certRef = adminDb.collection('course_certificates').doc();
+            certificateId = certRef.id;
+
+            let recipientName = 'Learner';
+            if (!membershipSnap.empty) {
+              const mData = membershipSnap.docs[0].data();
+              recipientName = mData.memberName || mData.name || mData.email || 'Learner';
+            }
+
+            const verificationCode = `CERT-${courseId.slice(0, 4).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+            const certificate: CourseCertificate = {
+              id: certificateId,
+              organizationId,
+              portalId,
+              courseId,
+              userId,
+              membershipId,
+              courseTitle: courseData.title,
+              recipientName,
+              issuedAt: now,
+              verificationCode,
+            };
+
+            await certRef.set(certificate);
+          }
+        }
+      }
+
       await enrollDoc.ref.set(
         {
           progressPercentage: progressPct,
@@ -178,28 +254,35 @@ export class LearningProgressService {
           lastAccessedAt: now,
           status: isCourseCompleted ? 'completed' : prevData.status,
           completedAt: isCourseCompleted && !prevData.completedAt ? now : prevData.completedAt,
+          certificateId: certificateId || prevData.certificateId,
         },
         { merge: true }
       );
 
-      // 4. Award Gamification Points (+25 pts for Course Completion)
+      // 6. Award Gamification Points (+25 pts for Course Completion)
       if (isCourseCompleted && !prevData.completedAt && membershipId) {
-        await PortalMembershipService.awardPoints(membershipId, 25, `Completed Course: ${courseId}`);
+        await PortalMembershipService.awardPoints(
+          membershipId,
+          25,
+          `Completed Course: ${courseId}`
+        );
       }
     }
 
-    // 5. Automatically trigger 'start_course' onboarding step advancement
-    // CAUTION: Safe non-blocking execution to ensure lesson completion is always preserved.
+    // 7. Automatically trigger 'start_course' onboarding step advancement
     try {
       const { EngagementService } = await import('@/lib/services/engagement-service');
       await EngagementService.advanceStepByType(portalId, userId, 'start_course');
     } catch (e: unknown) {
-      console.warn('[LearningProgressService] advanceStepByType warning:', e instanceof Error ? e.message : 'Unknown');
+      console.warn(
+        '[LearningProgressService] advanceStepByType warning:',
+        e instanceof Error ? e.message : 'Unknown'
+      );
     }
   }
 
   /**
-   * Evaluate Drip Release Locks
+   * Evaluate Drip Release Locks (Delegates to ReleaseScheduleService)
    */
   public static evaluateLessonDripLock(
     rule: ReleaseRule | undefined,
@@ -211,50 +294,52 @@ export class LearningProgressService {
       return { isUnlocked: true };
     }
 
-    const now = Date.now();
+    const mockEnrollment: CourseEnrollment | null = enrollmentDate
+      ? {
+          id: 'mock-enrollment',
+          organizationId: 'mock-org',
+          portalId: 'mock-portal',
+          workspaceIds: [],
+          courseId: 'mock-course',
+          userId: 'mock-user',
+          source: 'membership_plan',
+          status: 'active',
+          progressPercentage: 0,
+          completedLessonCount: 0,
+          totalLessonCount: 1,
+          enrolledAt: enrollmentDate,
+          lastAccessedAt: enrollmentDate,
+        }
+      : null;
 
-    if (rule.type === 'specific_date' && rule.releaseDate) {
-      const unlockTime = new Date(rule.releaseDate).getTime();
-      if (now < unlockTime) {
-        return {
-          isUnlocked: false,
-          reason: `Unlocks on ${new Date(rule.releaseDate).toLocaleDateString()}`,
-        };
-      }
-    }
+    const mockLesson: CourseLesson = {
+      id: 'mock-lesson',
+      organizationId: 'mock-org',
+      portalId: 'mock-portal',
+      courseId: 'mock-course',
+      moduleId: 'mock-module',
+      title: 'Mock Lesson',
+      slug: 'mock-lesson',
+      contentType: 'video',
+      content: '',
+      completionRule: { type: 'manual_button' },
+      order: 1,
+      releaseRule: rule,
+      createdAt: '',
+      updatedAt: '',
+    };
 
-    if (rule.type === 'days_after_enrollment' && enrollmentDate && rule.daysDelay) {
-      const unlockTime = new Date(enrollmentDate).getTime() + rule.daysDelay * 24 * 60 * 60 * 1000;
-      if (now < unlockTime) {
-        const daysLeft = Math.ceil((unlockTime - now) / (24 * 60 * 60 * 1000));
-        return {
-          isUnlocked: false,
-          reason: `Unlocks in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
-        };
-      }
-    }
+    const res = ReleaseScheduleService.evaluateLessonRelease({
+      lesson: mockLesson,
+      enrollment: mockEnrollment,
+      memberJoinedAt: memberJoinDate,
+      completedLessonIds,
+    });
 
-    if (rule.type === 'days_after_join' && memberJoinDate && rule.daysDelay) {
-      const unlockTime = new Date(memberJoinDate).getTime() + rule.daysDelay * 24 * 60 * 60 * 1000;
-      if (now < unlockTime) {
-        const daysLeft = Math.ceil((unlockTime - now) / (24 * 60 * 60 * 1000));
-        return {
-          isUnlocked: false,
-          reason: `Unlocks in ${daysLeft} day${daysLeft > 1 ? 's' : ''}`,
-        };
-      }
-    }
-
-    if (rule.type === 'sequential_prerequisite' && rule.requiredLessonId) {
-      if (!completedLessonIds.includes(rule.requiredLessonId)) {
-        return {
-          isUnlocked: false,
-          reason: 'Complete previous required lesson to unlock.',
-        };
-      }
-    }
-
-    return { isUnlocked: true };
+    return {
+      isUnlocked: !res.isLocked,
+      reason: res.lockReason,
+    };
   }
 
   /**
@@ -327,7 +412,7 @@ export class LearningProgressService {
       { merge: true }
     );
 
-    // If passed and completion rule requires assessment, complete lesson
+    // If passed, complete lesson
     if (passed) {
       await LearningProgressService.completeLesson(
         input.courseId,

@@ -225,6 +225,7 @@ export interface CourseEnrollment {
   totalLessonCount: number;
 
   currentLessonId?: string; // Last active lesson for 1-click resume
+  certificateId?: string; // Verified certificate ID upon 100% completion
 
   enrolledAt: string;
   lastAccessedAt: string;
@@ -494,4 +495,22 @@ export interface SubmitAssignmentInput {
   fileUrl?: string;
   fileName?: string;
   fileSizeBytes?: number;
+}
+
+/**
+ * Course Certificate Entity
+ * Issued upon successful 100% course completion when certificateEnabled is true.
+ */
+export interface CourseCertificate {
+  id: string;
+  organizationId: string;
+  portalId: string;
+  courseId: string;
+  userId: string;
+  membershipId?: string;
+  courseTitle: string;
+  recipientName: string;
+  issuedAt: string;
+  verificationCode: string;
+  certificateUrl?: string;
 }
