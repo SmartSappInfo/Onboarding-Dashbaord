@@ -182,7 +182,7 @@ export default function PortalRuntimeClient({ slug, initialPortal }: PortalRunti
           <p className="text-sm text-muted-foreground">
             The experience portal you are looking for does not exist or may have been moved.
           </p>
-          <Button asChild className="rounded-xl font-bold text-xs mt-2 active:scale-[0.97]">
+          <Button asChild className="rounded-xl font-bold text-xs mt-2 active:scale-[0.97] min-h-[44px]">
             <Link href="/">Return Home</Link>
           </Button>
         </div>

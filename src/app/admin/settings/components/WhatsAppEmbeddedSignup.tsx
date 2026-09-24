@@ -30,6 +30,34 @@ interface Props {
  * (NEXT_PUBLIC_META_APP_ID + NEXT_PUBLIC_META_ES_CONFIG_ID), so the manual flow
  * remains the default until the platform's Meta app passes App Review.
  */
+interface FacebookLoginResponse {
+  authResponse?: {
+    code?: string;
+  };
+}
+
+interface FacebookSDK {
+  init: (config: { appId: string; autoLogAppEvents: boolean; xfbml: boolean; version: string }) => void;
+  login: (
+    callback: (response: FacebookLoginResponse) => void,
+    options?: {
+      config_id?: string;
+      response_type?: string;
+      override_default_response_type?: boolean;
+      extras?: {
+        setup?: Record<string, unknown>;
+        featureType?: string;
+        sessionInfoVersion?: string;
+      };
+    }
+  ) => void;
+}
+
+interface MetaWindow extends Window {
+  FB?: FacebookSDK;
+  fbAsyncInit?: () => void;
+}
+
 export default function WhatsAppEmbeddedSignup({ organizationId, onConnected }: Props) {
   const { user } = useUser();
   const { toast } = useToast();
@@ -66,10 +94,10 @@ export default function WhatsAppEmbeddedSignup({ organizationId, onConnected }: 
     }
     window.addEventListener('message', onMessage);
 
-    const w = window as unknown as { FB?: unknown; fbAsyncInit?: () => void };
+    const w = window as unknown as MetaWindow;
     if (!w.FB) {
       w.fbAsyncInit = function () {
-        (window as any).FB.init({ appId: APP_ID, autoLogAppEvents: true, xfbml: false, version: GRAPH_VERSION });
+        w.FB?.init({ appId: APP_ID!, autoLogAppEvents: true, xfbml: false, version: GRAPH_VERSION });
         setSdkReady(true);
       };
       const s = document.createElement('script');
@@ -86,13 +114,13 @@ export default function WhatsAppEmbeddedSignup({ organizationId, onConnected }: 
   }, [enabled]);
 
   const launch = React.useCallback(() => {
-    const FB = (window as any).FB;
+    const FB = (window as unknown as MetaWindow).FB;
     if (!FB || !user) return;
     setLoading(true);
     sessionRef.current = {};
 
     FB.login(
-      (response: any) => {
+      (response: FacebookLoginResponse) => {
         const code = response?.authResponse?.code;
         const { wabaId, phoneNumberId } = sessionRef.current;
         if (!code) {
