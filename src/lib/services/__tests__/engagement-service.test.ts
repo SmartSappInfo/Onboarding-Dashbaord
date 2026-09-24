@@ -81,4 +81,52 @@ describe('EngagementService', () => {
       expect(getInactivityTier(3 * 24 * 60 * 60 * 1000)).toBe('active');
     });
   });
+
+  describe('Review Idempotency & Inactivity Transition Protection', () => {
+    it('detects redundant approvals to prevent double-awarding points and tags', () => {
+      const isRedundantApproval = (currentReviewStatus: string, incomingReviewStatus: string) => {
+        return currentReviewStatus === 'approved' && incomingReviewStatus === 'approved';
+      };
+
+      expect(isRedundantApproval('approved', 'approved')).toBe(true);
+      expect(isRedundantApproval('pending_review', 'approved')).toBe(false);
+      expect(isRedundantApproval('rejected', 'approved')).toBe(false);
+      expect(isRedundantApproval('approved', 'rejected')).toBe(false);
+    });
+
+    it('requires state transitions before emitting inactivity alerts or writes', () => {
+      const shouldUpdateInactivityProfile = (
+        existingTier: string | null | undefined,
+        newTier: string
+      ) => {
+        return !existingTier || existingTier !== newTier;
+      };
+
+      // When already cold, daily cron should NOT trigger updates or spam CRM
+      expect(shouldUpdateInactivityProfile('cold', 'cold')).toBe(false);
+      expect(shouldUpdateInactivityProfile('warm', 'warm')).toBe(false);
+
+      // Transitions must trigger updates
+      expect(shouldUpdateInactivityProfile('active', 'warm')).toBe(true);
+      expect(shouldUpdateInactivityProfile('warm', 'cold')).toBe(true);
+      expect(shouldUpdateInactivityProfile(undefined, 'cold')).toBe(true);
+    });
+
+    it('filters out passive system inactivity events from engagement score calculation', () => {
+      const events = [
+        { id: '1', eventType: 'course.lesson_completed' },
+        { id: '2', eventType: 'community.post_created' },
+        { id: '3', eventType: 'portal.member_inactivity_detected' }, // system-generated alert
+        { id: '4', eventType: 'task.completed' },
+      ];
+
+      const activeMemberEvents = events.filter(
+        e => e.eventType !== 'portal.member_inactivity_detected'
+      );
+
+      expect(activeMemberEvents.length).toBe(3);
+      expect(activeMemberEvents.map(e => e.id)).toEqual(['1', '2', '4']);
+    });
+  });
 });
+

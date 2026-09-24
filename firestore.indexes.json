@@ -3101,6 +3101,24 @@
       ]
     },
     {
+      "collectionGroup": "portal_memberships",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {
+          "fieldPath": "portalId",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "lastInactivityEvaluatedAt",
+          "order": "ASCENDING"
+        }
+      ]
+    },
+    {
       "collectionGroup": "community_comments",
       "queryScope": "COLLECTION",
       "fields": [

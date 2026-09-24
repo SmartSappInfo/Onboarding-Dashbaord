@@ -91,12 +91,12 @@ export function SubmissionReviewQueue({
     fetchSubmissions();
   }, [fetchSubmissions]);
 
-  const handleOpenReview = (submission: TaskSubmission) => {
+  const handleOpenReview = React.useCallback((submission: TaskSubmission) => {
     setActiveSubmission(submission);
     setReviewStatus('approved');
     setFeedback('');
     setPointsAwarded(20);
-  };
+  }, []);
 
   const handleExecuteReview = async () => {
     if (!activeSubmission) return;
@@ -146,6 +146,85 @@ export function SubmissionReviewQueue({
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
   };
 
+  const renderedSubmissions = React.useMemo(() => {
+    return submissions.map(sub => (
+      <Card
+        key={sub.id}
+        className="rounded-3xl border-2 border-border p-5 space-y-4 bg-card shadow-2xs hover:border-primary/40 transition-all flex flex-col justify-between"
+      >
+        <div className="space-y-3">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="text-[11px] font-bold text-primary uppercase tracking-wider">
+                Assignment Submission
+              </div>
+              <h4 className="font-extrabold text-sm text-foreground">
+                Task ID: <span className="font-mono text-xs">{sub.taskId}</span>
+              </h4>
+            </div>
+            <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/20">
+              Awaiting Review
+            </Badge>
+          </div>
+
+          {/* Submitted file metadata */}
+          {sub.submittedFileUrl && (
+            <div className="p-3 rounded-2xl border border-border/80 bg-muted/30 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <FileText className="w-5 h-5 text-primary shrink-0" />
+                <div className="min-w-0">
+                  <p className="text-xs font-bold text-foreground truncate">
+                    {sub.submittedFileName || 'Attached Deliverable'}
+                  </p>
+                  {sub.submittedFileSizeBytes && (
+                    <p className="text-[10px] text-muted-foreground">
+                      {formatFileSize(sub.submittedFileSizeBytes)}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <a
+                href={sub.submittedFileUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline shrink-0 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              >
+                <Download className="w-4 h-4" />
+                View File
+              </a>
+            </div>
+          )}
+
+          {/* Notes from member */}
+          {sub.notes && (
+            <div className="p-3 rounded-xl bg-card border border-border/60 text-xs text-foreground/90 space-y-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase">
+                <MessageSquare className="w-3 h-3" /> Note from Member
+              </div>
+              <p className="italic leading-relaxed">{sub.notes}</p>
+            </div>
+          )}
+
+          <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+            <Calendar className="w-3 h-3" />
+            Submitted: {new Date(sub.submittedAt).toLocaleString()}
+          </div>
+        </div>
+
+        {/* Review CTA */}
+        <div className="pt-3 border-t border-border flex items-center justify-end">
+          <Button
+            onClick={() => handleOpenReview(sub)}
+            className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 min-h-[44px] w-full sm:w-auto active:scale-[0.97] shadow-sm"
+          >
+            Grade & Review Submission
+          </Button>
+        </div>
+      </Card>
+    ));
+  }, [submissions, handleOpenReview]);
+
   return (
     <div className="space-y-4">
       {/* Header controls */}
@@ -184,82 +263,7 @@ export function SubmissionReviewQueue({
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {submissions.map(sub => (
-            <Card
-              key={sub.id}
-              className="rounded-3xl border-2 border-border p-5 space-y-4 bg-card shadow-2xs hover:border-primary/40 transition-all flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="text-[11px] font-bold text-primary uppercase tracking-wider">
-                      Assignment Submission
-                    </div>
-                    <h4 className="font-extrabold text-sm text-foreground">
-                      Task ID: <span className="font-mono text-xs">{sub.taskId}</span>
-                    </h4>
-                  </div>
-                  <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/20">
-                    Awaiting Review
-                  </Badge>
-                </div>
-
-                {/* Submitted file metadata */}
-                {sub.submittedFileUrl && (
-                  <div className="p-3 rounded-2xl border border-border/80 bg-muted/30 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5 min-w-0">
-                      <FileText className="w-5 h-5 text-primary shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-foreground truncate">
-                          {sub.submittedFileName || 'Attached Deliverable'}
-                        </p>
-                        {sub.submittedFileSizeBytes && (
-                          <p className="text-[10px] text-muted-foreground">
-                            {formatFileSize(sub.submittedFileSizeBytes)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-
-                    <a
-                      href={sub.submittedFileUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline shrink-0 p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
-                    >
-                      <Download className="w-4 h-4" />
-                      View File
-                    </a>
-                  </div>
-                )}
-
-                {/* Notes from member */}
-                {sub.notes && (
-                  <div className="p-3 rounded-xl bg-card border border-border/60 text-xs text-foreground/90 space-y-1">
-                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground uppercase">
-                      <MessageSquare className="w-3 h-3" /> Note from Member
-                    </div>
-                    <p className="italic leading-relaxed">{sub.notes}</p>
-                  </div>
-                )}
-
-                <div className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-                  <Calendar className="w-3 h-3" />
-                  Submitted: {new Date(sub.submittedAt).toLocaleString()}
-                </div>
-              </div>
-
-              {/* Review CTA */}
-              <div className="pt-3 border-t border-border flex items-center justify-end">
-                <Button
-                  onClick={() => handleOpenReview(sub)}
-                  className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 min-h-[44px] w-full sm:w-auto active:scale-[0.97] shadow-sm"
-                >
-                  Grade & Review Submission
-                </Button>
-              </div>
-            </Card>
-          ))}
+          {renderedSubmissions}
         </div>
       )}
 

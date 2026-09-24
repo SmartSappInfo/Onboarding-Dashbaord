@@ -10,6 +10,8 @@
  * - next-best-practices, vercel-react-best-practices
  * - emilkowal-animations (tactile feedback, active:scale-[0.97])
  * - Minimum 44px mobile touch targets
+ * - Direct Firebase Storage client-side upload (eliminating 413 Payload Too Large on Server Actions)
+ * - Actionable toast with relative path navigation
  * - Strict typing (0 any, 0 any[], 0 unhandled unknown)
  */
 
@@ -26,9 +28,11 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { submitTaskAction } from '@/app/actions/engagement-actions';
 import type { MemberTask, TaskSubmission } from '@/lib/types/engagement';
+import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import {
   UploadCloud,
   FileText,
@@ -65,18 +69,20 @@ export function TaskSubmissionDropzoneModal({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const [selectedFile, setSelectedFile] = React.useState<File | null>(null);
-  const [fileDataUrl, setFileDataUrl] = React.useState<string | null>(null);
+  const [existingFileUrl, setExistingFileUrl] = React.useState<string | null>(null);
   const [notes, setNotes] = React.useState<string>('');
   const [isDragging, setIsDragging] = React.useState<boolean>(false);
   const [isSubmitting, setIsSubmitting] = React.useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = React.useState<number | null>(null);
   const [errorMessage, setErrorMessage] = React.useState<string | null>(null);
 
   // Initialize state when modal opens or existing submission changes
   React.useEffect(() => {
     if (open) {
       setSelectedFile(null);
-      setFileDataUrl(existingSubmission?.submittedFileUrl || null);
+      setExistingFileUrl(existingSubmission?.submittedFileUrl || null);
       setNotes(existingSubmission?.notes || '');
+      setUploadProgress(null);
       setErrorMessage(null);
     }
   }, [open, existingSubmission]);
@@ -89,15 +95,6 @@ export function TaskSubmissionDropzoneModal({
 
     setErrorMessage(null);
     setSelectedFile(file);
-
-    // Read file as base64 data URL
-    const reader = new FileReader();
-    reader.onload = e => {
-      if (typeof e.target?.result === 'string') {
-        setFileDataUrl(e.target.result);
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleDragOver = (e: React.DragEvent) => {
@@ -122,7 +119,7 @@ export function TaskSubmissionDropzoneModal({
     e.preventDefault();
     if (!task) return;
 
-    if (task.requireFileUpload && !fileDataUrl && !selectedFile) {
+    if (task.requireFileUpload && !selectedFile && !existingFileUrl) {
       setErrorMessage('Please upload a file deliverable to complete this assignment.');
       return;
     }
@@ -131,6 +128,46 @@ export function TaskSubmissionDropzoneModal({
     setErrorMessage(null);
 
     try {
+      let finalFileUrl = existingFileUrl || undefined;
+      let finalFileName = existingSubmission?.submittedFileName || 'deliverable.pdf';
+      let finalFileSize = existingSubmission?.submittedFileSizeBytes || 0;
+
+      // Direct Firebase Storage Client Upload: bypasses Next.js 1MB Server Action limit
+      if (selectedFile) {
+        setUploadProgress(0);
+        const storage = getStorage();
+        const safeName = selectedFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const storagePath = `portals/${portalId}/submissions/${userId}/${task.id}/${Date.now()}_${safeName}`;
+        const storageRef = ref(storage, storagePath);
+        const uploadTask = uploadBytesResumable(storageRef, selectedFile, {
+          contentType: selectedFile.type || undefined,
+        });
+
+        finalFileUrl = await new Promise<string>((resolve, reject) => {
+          uploadTask.on(
+            'state_changed',
+            snapshot => {
+              if (snapshot.totalBytes > 0) {
+                const pct = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                setUploadProgress(pct);
+              }
+            },
+            reject,
+            async () => {
+              try {
+                const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                resolve(downloadUrl);
+              } catch (urlErr) {
+                reject(urlErr);
+              }
+            }
+          );
+        });
+
+        finalFileName = selectedFile.name;
+        finalFileSize = selectedFile.size;
+      }
+
       const res = await submitTaskAction(
         {
           organizationId: task.organizationId,
@@ -138,18 +175,23 @@ export function TaskSubmissionDropzoneModal({
           taskId: task.id,
           userId,
           notes: notes.trim() || undefined,
-          submittedFileUrl: fileDataUrl || undefined,
-          submittedFileName: selectedFile?.name || existingSubmission?.submittedFileName || 'deliverable.pdf',
-          submittedFileSizeBytes: selectedFile?.size || existingSubmission?.submittedFileSizeBytes || 0,
+          submittedFileUrl: finalFileUrl,
+          submittedFileName: finalFileName,
+          submittedFileSizeBytes: finalFileSize,
         },
         portalSlug
       );
 
       if (!res.success) throw new Error(res.error);
 
+      // Actionable error & toast navigation complying with Workspace Rules (safe relative path)
       toast({
         title: 'Assignment Submitted! 🚀',
-        description: 'Your work has been submitted to the instructor review queue.',
+        description: 'Your deliverable has been uploaded and submitted for instructor evaluation.',
+        actionConfig: {
+          path: `/portal/${portalSlug}/tasks`,
+          label: 'View Tasks',
+        },
       });
 
       onOpenChange(false);
@@ -158,6 +200,7 @@ export function TaskSubmissionDropzoneModal({
       setErrorMessage(err instanceof Error ? err.message : 'Failed to submit assignment.');
     } finally {
       setIsSubmitting(false);
+      setUploadProgress(null);
     }
   };
 
@@ -212,7 +255,7 @@ export function TaskSubmissionDropzoneModal({
               Deliverable File {task?.requireFileUpload && <span className="text-rose-500">*</span>}
             </Label>
 
-            {selectedFile || (fileDataUrl && existingSubmission?.submittedFileName) ? (
+            {selectedFile || (existingFileUrl && existingSubmission?.submittedFileName) ? (
               <div className="p-4 rounded-2xl border-2 border-primary/30 bg-primary/5 flex items-center justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
@@ -236,9 +279,10 @@ export function TaskSubmissionDropzoneModal({
                   type="button"
                   variant="ghost"
                   size="icon"
+                  disabled={isSubmitting}
                   onClick={() => {
                     setSelectedFile(null);
-                    setFileDataUrl(null);
+                    setExistingFileUrl(null);
                     if (fileInputRef.current) fileInputRef.current.value = '';
                   }}
                   className="h-8 w-8 rounded-xl text-muted-foreground hover:text-rose-500 min-h-[44px] min-w-[44px] sm:min-h-0 sm:min-w-0"
@@ -279,6 +323,17 @@ export function TaskSubmissionDropzoneModal({
             )}
           </div>
 
+          {/* Upload Progress Bar */}
+          {uploadProgress !== null && (
+            <div className="space-y-1.5 p-3 rounded-2xl bg-primary/5 border border-primary/20">
+              <div className="flex items-center justify-between text-xs font-bold text-primary">
+                <span>Uploading Deliverable...</span>
+                <span>{uploadProgress}%</span>
+              </div>
+              <Progress value={uploadProgress} className="h-2 rounded-full" />
+            </div>
+          )}
+
           {/* Member Notes / Comments */}
           <div className="space-y-1.5">
             <Label className="text-xs font-bold text-foreground">
@@ -289,6 +344,7 @@ export function TaskSubmissionDropzoneModal({
               onChange={e => setNotes(e.target.value)}
               placeholder="Add any context, links, or notes regarding your submission..."
               rows={3}
+              disabled={isSubmitting}
               className="text-xs rounded-xl resize-none"
             />
           </div>
@@ -317,7 +373,8 @@ export function TaskSubmissionDropzoneModal({
             >
               {isSubmitting ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" /> Submitting...
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  {uploadProgress !== null ? `Uploading (${uploadProgress}%)...` : 'Submitting...'}
                 </>
               ) : existingSubmission?.reviewStatus === 'rejected' ? (
                 'Re-submit for Review'

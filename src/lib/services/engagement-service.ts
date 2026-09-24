@@ -483,6 +483,11 @@ export class EngagementService {
     const now = new Date().toISOString();
     const isApproved = input.reviewStatus === 'approved';
 
+    // Idempotency Protection: If already approved and review is still approved, return early to prevent double-awarding points or tags
+    if (current.reviewStatus === 'approved' && isApproved) {
+      return current;
+    }
+
     const taskSnap = await adminDb.collection('member_tasks').doc(input.taskId).get();
     const taskData = taskSnap.exists ? (taskSnap.data() as MemberTask) : null;
 
@@ -573,7 +578,10 @@ export class EngagementService {
 
   // ── Member Activity Timeline & CRM Sync ────────────────────────────────────
 
-  public static async logMemberActivity(input: LogMemberActivityInput): Promise<MemberActivityEvent> {
+  public static async logMemberActivity(
+    input: LogMemberActivityInput,
+    options?: { skipRecalculate?: boolean }
+  ): Promise<MemberActivityEvent> {
     const docRef = adminDb.collection('portal_member_activities').doc();
     const now = new Date().toISOString();
 
@@ -611,8 +619,10 @@ export class EngagementService {
       console.warn('[ENGAGEMENT] Non-blocking CRM log warning:', err);
     }
 
-    // Recalculate Engagement Profile
-    await EngagementService.recalculateEngagementScore(input.portalId, input.userId, input.organizationId);
+    // Recalculate Engagement Profile (skip if explicitly requested or if passive inactivity detection)
+    if (!options?.skipRecalculate && input.eventType !== 'portal.member_inactivity_detected') {
+      await EngagementService.recalculateEngagementScore(input.portalId, input.userId, input.organizationId);
+    }
 
     return activity;
   }
@@ -632,7 +642,11 @@ export class EngagementService {
       .where('userId', '==', userId)
       .get();
 
-    const totalActivities = activitiesSnap.size;
+    // Filter out passive system notifications like inactivity detections when computing active score
+    const activeMemberActivities = activitiesSnap.docs.filter(
+      d => d.data()?.eventType !== 'portal.member_inactivity_detected'
+    );
+    const totalActivities = activeMemberActivities.length;
 
     // Calculate score based on total activities & recency
     let score = totalActivities * 10;
@@ -664,25 +678,38 @@ export class EngagementService {
    * Emits re-engagement activity events for members who have been inactive >= 14 days.
    *
    * High-Load / Scalability Protection:
-   * - Queries in chunks of up to 200 documents.
+   * - Queries in chunks of up to 200 documents ordered by lastInactivityEvaluatedAt for round-robin rotation.
    * - Sets merged profile documents without exceeding write quotas.
+   * - Only updates and logs activity when a member's engagement tier actually changes.
    */
   public static async evaluatePortalInactivity(portalId: string): Promise<{
     evaluatedCount: number;
     warmCount: number;
     coldCount: number;
   }> {
-    const membershipsSnap = await adminDb
-      .collection('portal_memberships')
-      .where('portalId', '==', portalId)
-      .where('status', '==', 'active')
-      .limit(200)
-      .get();
+    let membershipsSnap;
+    try {
+      membershipsSnap = await adminDb
+        .collection('portal_memberships')
+        .where('portalId', '==', portalId)
+        .where('status', '==', 'active')
+        .orderBy('lastInactivityEvaluatedAt', 'asc')
+        .limit(200)
+        .get();
+    } catch {
+      membershipsSnap = await adminDb
+        .collection('portal_memberships')
+        .where('portalId', '==', portalId)
+        .where('status', '==', 'active')
+        .limit(200)
+        .get();
+    }
 
     if (membershipsSnap.empty) {
       return { evaluatedCount: 0, warmCount: 0, coldCount: 0 };
     }
 
+    const nowIso = new Date().toISOString();
     const nowMs = Date.now();
     const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
     const FOURTEEN_DAYS_MS = 14 * 24 * 60 * 60 * 1000;
@@ -690,8 +717,12 @@ export class EngagementService {
     let warmCount = 0;
     let coldCount = 0;
 
+    const memberUpdateBatch = adminDb.batch();
+
     for (const doc of membershipsSnap.docs) {
       const data = doc.data();
+      memberUpdateBatch.update(doc.ref, { lastInactivityEvaluatedAt: nowIso });
+
       const lastActiveAtStr = data.lastActiveAt || data.joinedAt || data.createdAt;
       const lastActiveMs = lastActiveAtStr ? new Date(lastActiveAtStr).getTime() : 0;
       const inactiveMs = nowMs - lastActiveMs;
@@ -707,28 +738,39 @@ export class EngagementService {
 
       if (newTier) {
         const profileId = `profile_${portalId}_${data.userId}`;
-        await adminDb.collection('member_engagement_profiles').doc(profileId).set(
-          {
-            tier: newTier,
-            updatedAt: new Date().toISOString(),
-          },
-          { merge: true }
-        );
+        const profileRef = adminDb.collection('member_engagement_profiles').doc(profileId);
+        const profileSnap = await profileRef.get();
+        const existingProfile = profileSnap.exists ? (profileSnap.data() as MemberEngagementProfile) : null;
 
-        if (newTier === 'cold') {
-          await EngagementService.logMemberActivity({
-            organizationId: data.organizationId || 'smartsapp-hq',
-            portalId,
-            userId: data.userId,
-            eventType: 'portal.member_inactivity_detected',
-            title: 'Member Inactivity Detected (≥14 Days)',
-            description: `Member ${data.displayName || data.email} has been inactive for over 14 days.`,
-            metadata: { inactiveDays: Math.round(inactiveMs / (1000 * 60 * 60 * 24)), tier: 'cold' },
-          });
+        // Quota & State Transition Protection: Only write and alert if tier actually changed
+        if (!existingProfile || existingProfile.tier !== newTier) {
+          await profileRef.set(
+            {
+              tier: newTier,
+              updatedAt: nowIso,
+            },
+            { merge: true }
+          );
+
+          if (newTier === 'cold') {
+            await EngagementService.logMemberActivity(
+              {
+                organizationId: data.organizationId || 'smartsapp-hq',
+                portalId,
+                userId: data.userId,
+                eventType: 'portal.member_inactivity_detected',
+                title: 'Member Inactivity Detected (≥14 Days)',
+                description: `Member ${data.displayName || data.email} has been inactive for over 14 days.`,
+                metadata: { inactiveDays: Math.round(inactiveMs / (1000 * 60 * 60 * 24)), tier: 'cold' },
+              },
+              { skipRecalculate: true }
+            );
+          }
         }
       }
     }
 
+    await memberUpdateBatch.commit();
     return { evaluatedCount: membershipsSnap.size, warmCount, coldCount };
   }
 }
