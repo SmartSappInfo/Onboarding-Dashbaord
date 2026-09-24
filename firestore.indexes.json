@@ -9689,6 +9689,51 @@
           "order": "DESCENDING"
         }
       ]
+    },
+    {
+      "collectionGroup": "member_onboarding_progress",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "progressPercentage", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "member_onboarding_progress",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "isCompleted", "order": "ASCENDING" },
+        { "fieldPath": "updatedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "member_tasks",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "isArchived", "order": "ASCENDING" },
+        { "fieldPath": "order", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "task_submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "taskId", "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "task_submissions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "portalId", "order": "ASCENDING" },
+        { "fieldPath": "userId", "order": "ASCENDING" },
+        { "fieldPath": "submittedAt", "order": "DESCENDING" }
+      ]
     }
   ],
   "fieldOverrides": []

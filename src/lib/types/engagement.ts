@@ -13,6 +13,7 @@ export type StepType =
   | 'complete_profile'
   | 'start_course'
   | 'community_post'
+  | 'action_task'
   | 'book_meeting'
   | 'custom_url';
 
@@ -21,13 +22,25 @@ export type AutoVerificationType =
   | 'has_profile'
   | 'has_started_lesson'
   | 'has_community_post'
+  | 'has_task_submission'
   | 'manual_confirm';
 
 export type TaskPriority = 'low' | 'medium' | 'high' | 'urgent';
 
 export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'skipped';
 
+export type SubmissionReviewStatus = 'pending_review' | 'approved' | 'rejected';
+
 export type EngagementTier = 'cold' | 'warm' | 'active' | 'champion';
+
+export type EngagementAutomationTrigger =
+  | 'portal.member_joined'
+  | 'portal.onboarding_step_completed'
+  | 'portal.onboarding_completed'
+  | 'portal.task_submitted'
+  | 'portal.task_approved'
+  | 'portal.course_completed'
+  | 'portal.member_inactive';
 
 // ── Sub-Entities ─────────────────────────────────────────────────────────────
 
@@ -43,9 +56,10 @@ export interface OnboardingStep {
   /** Automated verification mode for zero-code backoffice configuration */
   autoVerificationType?: AutoVerificationType;
   targetUrl?: string;
-  targetEntityId?: string; // e.g. Course ID or Space ID
+  targetEntityId?: string; // e.g. Course ID or Space ID or Task ID
   order: number;
   isRequired: boolean;
+  pointsReward?: number;
 }
 
 // ── Core Aggregates ──────────────────────────────────────────────────────────
@@ -65,7 +79,7 @@ export interface OnboardingFlow {
   steps: OnboardingStep[];
 
   isEnabled: boolean;
-  completionPoints: number; // e.g. +20 pts on completion
+  completionPoints: number; // e.g. +50 pts on completion
 
   createdAt: string;
   updatedAt: string;
@@ -104,9 +118,13 @@ export interface MemberTask {
   description?: string;
   priority: TaskPriority;
   dueDate?: string;
+  relativeDueDays?: number; // e.g. Due 3 days after joining
   pointsReward: number; // e.g. +15 pts
   targetPlanId?: string; // optional gating to plan
   actionUrl?: string;
+  requireFileUpload?: boolean;
+  downloadTemplateUrl?: string;
+  completionTagIds?: string[];
 
   isArchived: boolean;
   order: number;
@@ -124,12 +142,21 @@ export interface TaskSubmission {
   portalId: string;
   taskId: string;
   userId: string;
+  userName?: string;
+  userAvatarUrl?: string;
 
   status: TaskStatus;
+  reviewStatus?: SubmissionReviewStatus;
   notes?: string;
   submittedFileUrl?: string;
+  submittedFileName?: string;
+  submittedFileSizeBytes?: number;
+  instructorFeedback?: string;
+  reviewedBy?: string;
+  reviewedAt?: string;
 
   completedAt?: string;
+  submittedAt: string;
   updatedAt: string;
 }
 
@@ -196,9 +223,13 @@ export interface CreateTaskInput {
   description?: string;
   priority?: TaskPriority;
   dueDate?: string;
+  relativeDueDays?: number;
   pointsReward?: number;
   targetPlanId?: string;
   actionUrl?: string;
+  requireFileUpload?: boolean;
+  downloadTemplateUrl?: string;
+  completionTagIds?: string[];
   order?: number;
 }
 
@@ -207,9 +238,13 @@ export interface UpdateTaskInput {
   description?: string;
   priority?: TaskPriority;
   dueDate?: string;
+  relativeDueDays?: number;
   pointsReward?: number;
   targetPlanId?: string;
   actionUrl?: string;
+  requireFileUpload?: boolean;
+  downloadTemplateUrl?: string;
+  completionTagIds?: string[];
   isArchived?: boolean;
   order?: number;
 }
@@ -221,6 +256,29 @@ export interface CompleteTaskInput {
   userId: string;
   notes?: string;
   submittedFileUrl?: string;
+}
+
+export interface SubmitTaskInput {
+  organizationId: string;
+  portalId: string;
+  taskId: string;
+  userId: string;
+  userName?: string;
+  userAvatarUrl?: string;
+  notes?: string;
+  submittedFileUrl?: string;
+  submittedFileName?: string;
+  submittedFileSizeBytes?: number;
+}
+
+export interface ReviewTaskSubmissionInput {
+  submissionId: string;
+  portalId: string;
+  taskId: string;
+  userId: string;
+  reviewStatus: 'approved' | 'rejected';
+  feedback?: string;
+  reviewerUserId: string;
 }
 
 export interface LogMemberActivityInput {

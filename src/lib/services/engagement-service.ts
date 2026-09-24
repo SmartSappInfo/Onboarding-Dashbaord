@@ -23,6 +23,8 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   CompleteTaskInput,
+  SubmitTaskInput,
+  ReviewTaskSubmissionInput,
   LogMemberActivityInput,
   StepType,
   ReconcileOnboardingResult,
@@ -368,7 +370,18 @@ export class EngagementService {
   }
 
   public static async deleteTask(taskId: string): Promise<void> {
-    await adminDb.collection('member_tasks').doc(taskId).delete();
+    const taskRef = adminDb.collection('member_tasks').doc(taskId);
+    const subsSnap = await adminDb
+      .collection('task_submissions')
+      .where('taskId', '==', taskId)
+      .get();
+
+    const refsToDelete: FirebaseFirestore.DocumentReference[] = [taskRef, ...subsSnap.docs.map(d => d.ref)];
+    for (let i = 0; i < refsToDelete.length; i += 400) {
+      const batch = adminDb.batch();
+      refsToDelete.slice(i, i + 400).forEach(r => batch.delete(r));
+      await batch.commit();
+    }
   }
 
   public static async listPortalTasks(portalId: string): Promise<MemberTask[]> {
@@ -383,12 +396,24 @@ export class EngagementService {
   }
 
   public static async completeTask(input: CompleteTaskInput): Promise<TaskSubmission> {
+    return EngagementService.submitTask({
+      organizationId: input.organizationId,
+      portalId: input.portalId,
+      taskId: input.taskId,
+      userId: input.userId,
+      notes: input.notes,
+      submittedFileUrl: input.submittedFileUrl,
+    });
+  }
+
+  public static async submitTask(input: SubmitTaskInput): Promise<TaskSubmission> {
     const submissionId = `sub_${input.taskId}_${input.userId}`;
     const docRef = adminDb.collection('task_submissions').doc(submissionId);
     const taskSnap = await adminDb.collection('member_tasks').doc(input.taskId).get();
 
     const now = new Date().toISOString();
     const taskData = taskSnap.exists ? (taskSnap.data() as MemberTask) : null;
+    const requiresReview = Boolean(taskData?.requireFileUpload);
 
     const submission: TaskSubmission = {
       id: submissionId,
@@ -396,44 +421,127 @@ export class EngagementService {
       portalId: input.portalId,
       taskId: input.taskId,
       userId: input.userId,
+      userName: input.userName,
+      userAvatarUrl: input.userAvatarUrl,
       status: 'completed',
+      reviewStatus: requiresReview ? 'pending_review' : 'approved',
       notes: input.notes?.trim(),
       submittedFileUrl: input.submittedFileUrl,
-      completedAt: now,
+      submittedFileName: input.submittedFileName,
+      submittedFileSizeBytes: input.submittedFileSizeBytes,
+      submittedAt: now,
+      completedAt: requiresReview ? undefined : now,
       updatedAt: now,
     };
 
-    await docRef.set(submission);
+    await docRef.set(submission, { merge: true });
 
-    // Award Points for Task (+15 pts)
-    const pointsReward = taskData?.pointsReward || 15;
-    const membershipSnap = await adminDb
-      .collection('portal_memberships')
-      .where('portalId', '==', input.portalId)
-      .where('userId', '==', input.userId)
-      .limit(1)
-      .get();
+    // If auto-approved (no file review required), award points immediately
+    if (!requiresReview) {
+      const pointsReward = taskData?.pointsReward || 15;
+      const membershipSnap = await adminDb
+        .collection('portal_memberships')
+        .where('portalId', '==', input.portalId)
+        .where('userId', '==', input.userId)
+        .limit(1)
+        .get();
 
-    if (!membershipSnap.empty) {
-      await PortalMembershipService.awardPoints(
-        membershipSnap.docs[0].id,
-        pointsReward,
-        `Completed Action Task: ${taskData?.title || 'Daily Task'}`
-      );
+      if (!membershipSnap.empty) {
+        await PortalMembershipService.awardPoints(
+          membershipSnap.docs[0].id,
+          pointsReward,
+          `Completed Action Task: ${taskData?.title || 'Action Task'}`
+        );
+      }
     }
+
+    // Auto-advance action_task onboarding step if present
+    await EngagementService.advanceStepByType(input.portalId, input.userId, 'action_task');
 
     // Log Activity
     await EngagementService.logMemberActivity({
       organizationId: input.organizationId,
       portalId: input.portalId,
       userId: input.userId,
-      eventType: 'task.completed',
-      title: `Completed Task: ${taskData?.title || 'Action Task'}`,
-      description: `Earned +${pointsReward} points.`,
-      metadata: { taskId: input.taskId, pointsReward },
+      eventType: requiresReview ? 'task.submitted' : 'task.completed',
+      title: requiresReview ? `Submitted Task: ${taskData?.title || 'Action Task'}` : `Completed Task: ${taskData?.title || 'Action Task'}`,
+      description: requiresReview ? 'Awaiting instructor review.' : `Earned +${taskData?.pointsReward || 15} points.`,
+      metadata: { taskId: input.taskId, requiresReview },
     });
 
     return submission;
+  }
+
+  public static async reviewTaskSubmission(
+    input: ReviewTaskSubmissionInput
+  ): Promise<TaskSubmission> {
+    const docRef = adminDb.collection('task_submissions').doc(input.submissionId);
+    const snap = await docRef.get();
+    if (!snap.exists) throw new Error(`Submission ${input.submissionId} not found.`);
+
+    const current = snap.data() as TaskSubmission;
+    const now = new Date().toISOString();
+    const isApproved = input.reviewStatus === 'approved';
+
+    const taskSnap = await adminDb.collection('member_tasks').doc(input.taskId).get();
+    const taskData = taskSnap.exists ? (taskSnap.data() as MemberTask) : null;
+
+    const updated: TaskSubmission = {
+      ...current,
+      reviewStatus: input.reviewStatus,
+      instructorFeedback: input.feedback?.trim(),
+      reviewedBy: input.reviewerUserId,
+      reviewedAt: now,
+      completedAt: isApproved ? now : undefined,
+      status: isApproved ? 'completed' : 'pending',
+      updatedAt: now,
+    };
+
+    await docRef.set(updated, { merge: true });
+
+    if (isApproved) {
+      const pointsReward = taskData?.pointsReward || 15;
+      const membershipSnap = await adminDb
+        .collection('portal_memberships')
+        .where('portalId', '==', input.portalId)
+        .where('userId', '==', current.userId)
+        .limit(1)
+        .get();
+
+      if (!membershipSnap.empty) {
+        await PortalMembershipService.awardPoints(
+          membershipSnap.docs[0].id,
+          pointsReward,
+          `Approved Task Submission: ${taskData?.title || 'Action Task'} 🎉`
+        );
+      }
+
+      await EngagementService.advanceStepByType(input.portalId, current.userId, 'action_task');
+    }
+
+    // Log Activity
+    await EngagementService.logMemberActivity({
+      organizationId: current.organizationId,
+      portalId: input.portalId,
+      userId: current.userId,
+      eventType: isApproved ? 'task.approved' : 'task.rejected',
+      title: isApproved ? `Task Approved: ${taskData?.title || 'Action Task'}` : `Task Changes Requested: ${taskData?.title || 'Action Task'}`,
+      description: input.feedback || (isApproved ? 'Submission approved by instructor.' : 'Please update your submission.'),
+      metadata: { taskId: input.taskId, submissionId: input.submissionId, isApproved },
+    });
+
+    return updated;
+  }
+
+  public static async listPendingSubmissions(portalId: string): Promise<TaskSubmission[]> {
+    const snap = await adminDb
+      .collection('task_submissions')
+      .where('portalId', '==', portalId)
+      .where('reviewStatus', '==', 'pending_review')
+      .orderBy('submittedAt', 'desc')
+      .get();
+
+    return snap.docs.map(d => d.data() as TaskSubmission);
   }
 
   public static async listUserTaskSubmissions(portalId: string, userId: string): Promise<TaskSubmission[]> {

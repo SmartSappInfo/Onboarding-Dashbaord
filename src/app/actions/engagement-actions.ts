@@ -23,6 +23,8 @@ import type {
   CreateTaskInput,
   UpdateTaskInput,
   CompleteTaskInput,
+  SubmitTaskInput,
+  ReviewTaskSubmissionInput,
   LogMemberActivityInput,
   ReconcileOnboardingResult,
 } from '@/lib/types/engagement';
@@ -176,6 +178,51 @@ export async function completeTaskAction(
     return { success: true, data: sub };
   } catch (err: unknown) {
     return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to complete task.') };
+  }
+}
+
+export async function submitTaskAction(
+  input: SubmitTaskInput,
+  portalSlug?: string
+): Promise<ActionResponse<TaskSubmission>> {
+  try {
+    const sub = await EngagementService.submitTask(input);
+    if (portalSlug) {
+      revalidatePath(`/portal/${portalSlug}/dashboard`);
+      revalidatePath(`/portal/${portalSlug}/tasks`);
+    }
+    revalidatePath(`/admin/portals/${input.portalId}`);
+    return { success: true, data: sub };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to submit task.') };
+  }
+}
+
+export async function reviewTaskSubmissionAction(
+  input: ReviewTaskSubmissionInput,
+  portalSlug?: string
+): Promise<ActionResponse<TaskSubmission>> {
+  try {
+    const sub = await EngagementService.reviewTaskSubmission(input);
+    revalidatePath(`/admin/portals/${input.portalId}`);
+    if (portalSlug) {
+      revalidatePath(`/portal/${portalSlug}/dashboard`);
+      revalidatePath(`/portal/${portalSlug}/tasks`);
+    }
+    return { success: true, data: sub };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to review task submission.') };
+  }
+}
+
+export async function listPendingSubmissionsAction(
+  portalId: string
+): Promise<ActionResponse<TaskSubmission[]>> {
+  try {
+    const subs = await EngagementService.listPendingSubmissions(portalId);
+    return { success: true, data: subs };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.engagement-actions', err, undefined, 'Failed to list pending submissions.') };
   }
 }
 
