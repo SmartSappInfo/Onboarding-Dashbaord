@@ -31,6 +31,7 @@ import {
   Lock,
   ListOrdered,
   User,
+  Bookmark,
 } from 'lucide-react';
 import { listCoursesByPortalAction } from '@/app/actions/learning-actions';
 import type { Portal } from '@/lib/types/portal';
@@ -151,6 +152,10 @@ export default function PortalMemberDashboardClient({ slug, initialPortal }: Por
   const lessons = React.useMemo(() => (contentItems || []).filter(c => c.type === 'lesson'), [contentItems]);
   const resources = React.useMemo(() => (contentItems || []).filter(c => c.type === 'resource'), [contentItems]);
   const articles = React.useMemo(() => (contentItems || []).filter(c => c.type === 'article' || c.type === 'page'), [contentItems]);
+  const bookmarkedItems = React.useMemo(() => {
+    if (!contentItems || !membership?.bookmarkedContentIds) return [];
+    return contentItems.filter(c => membership.bookmarkedContentIds.includes(c.id));
+  }, [contentItems, membership?.bookmarkedContentIds]);
 
   const isLoading = (isLoadingPortal && !initialPortal) || isUserLoading || (user && isLoadingMembership);
 
@@ -287,6 +292,62 @@ export default function PortalMemberDashboardClient({ slug, initialPortal }: Por
           </div>
         </div>
 
+        {/* Membership Plan Tier Overview Card */}
+        <Card className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 space-y-4 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-xs font-bold text-[var(--portal-muted)] uppercase tracking-wider">
+                  Membership Tier:
+                </span>
+                <Badge
+                  variant="outline"
+                  className="text-xs font-extrabold px-2.5 py-0.5 border-[var(--portal-primary)] text-[var(--portal-primary)] bg-[var(--portal-primary)]/10"
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {memberPlan}
+                </Badge>
+                <Badge
+                  variant="outline"
+                  className="text-[10px] font-bold px-2 py-0.5 border-emerald-500/30 text-emerald-600 bg-emerald-500/10 capitalize"
+                >
+                  {membership?.status || 'Active'}
+                </Badge>
+              </div>
+              <p className="text-xs text-[var(--portal-muted)]">
+                Member since {membership?.joinedAt ? new Date(membership.joinedAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : 'Recently'}
+                {' • '}
+                <span className="text-[var(--portal-text)] font-semibold">
+                  {membership?.completedLessonIds?.length || 0} lessons completed
+                </span>
+              </p>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 flex-wrap">
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="rounded-xl font-bold text-xs min-h-[44px] border-[var(--portal-border)] text-[var(--portal-text)] hover:bg-[var(--portal-bg)] active:scale-[0.97]"
+              >
+                <Link href={`/portal/${slug}/join`}>
+                  Manage / Upgrade Tier
+                </Link>
+              </Button>
+              <Button
+                asChild
+                size="sm"
+                className="rounded-xl font-bold text-xs min-h-[44px] text-white active:scale-[0.97]"
+                style={{ backgroundColor: theme.colors.primary }}
+              >
+                <Link href={`/portal/${slug}/content`}>
+                  Browse Vault
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Card>
+
         {/* Onboarding Checklist Card */}
         <MemberOnboardingWidget
           portalId={portal.id}
@@ -298,20 +359,23 @@ export default function PortalMemberDashboardClient({ slug, initialPortal }: Por
 
         {/* Dashboard Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="w-full h-11 p-1 bg-[var(--portal-surface)] border border-[var(--portal-border)] rounded-2xl grid grid-cols-5">
-            <TabsTrigger value="courses" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
+          <TabsList className="w-full h-auto p-1 bg-[var(--portal-surface)] border border-[var(--portal-border)] rounded-2xl grid grid-cols-2 sm:grid-cols-6 gap-1">
+            <TabsTrigger value="courses" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <GraduationCap className="w-3.5 h-3.5" /> Curriculum ({effectiveCourses.length + lessons.length})
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
+            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <ListOrdered className="w-3.5 h-3.5" /> Tasks
             </TabsTrigger>
-            <TabsTrigger value="resources" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
+            <TabsTrigger value="bookmarks" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
+              <Bookmark className="w-3.5 h-3.5" /> Bookmarks ({bookmarkedItems.length})
+            </TabsTrigger>
+            <TabsTrigger value="resources" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <FolderArchive className="w-3.5 h-3.5" /> Toolkits ({resources.length})
             </TabsTrigger>
-            <TabsTrigger value="reading" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
+            <TabsTrigger value="reading" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <BookOpen className="w-3.5 h-3.5" /> Guides ({articles.length})
             </TabsTrigger>
-            <TabsTrigger value="credentials" className="rounded-xl text-xs font-bold gap-1.5 text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
+            <TabsTrigger value="credentials" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] text-[var(--portal-muted)] data-[state=active]:bg-[var(--portal-bg)] data-[state=active]:text-[var(--portal-text)] data-[state=active]:shadow-xs hover:text-[var(--portal-text)] transition-colors">
               <Award className="w-3.5 h-3.5" /> Badges
             </TabsTrigger>
           </TabsList>
@@ -433,6 +497,65 @@ export default function PortalMemberDashboardClient({ slug, initialPortal }: Por
               userId={user.uid}
               organizationId={portal.organizationId}
             />
+          </TabsContent>
+
+          {/* ── Tab: Bookmarks & Saved Vault ───────────────────────────── */}
+          <TabsContent value="bookmarks" className="space-y-4 pt-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div>
+                <h3 className="font-bold text-base text-foreground">Saved Bookmarks & Vault</h3>
+                <p className="text-xs text-muted-foreground">Resources and articles saved for quick reference.</p>
+              </div>
+              <Button asChild variant="ghost" size="sm" className="text-xs font-bold text-primary gap-1 active:scale-[0.97]">
+                <Link href={`/portal/${slug}/content`}>
+                  Browse Catalog <ArrowRight className="w-3 h-3" />
+                </Link>
+              </Button>
+            </div>
+
+            {bookmarkedItems.length === 0 ? (
+              <div className="p-10 text-center border-2 border-dashed rounded-3xl space-y-2 bg-muted/20">
+                <div className="w-10 h-10 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto text-muted-foreground">
+                  <Bookmark className="w-5 h-5" />
+                </div>
+                <h5 className="font-bold text-xs text-foreground">No Saved Bookmarks Yet</h5>
+                <p className="text-xs text-muted-foreground max-w-xs mx-auto">
+                  When browsing articles, documentation, or toolkits, bookmark your favorites to access them quickly here.
+                </p>
+                <Button asChild size="sm" className="rounded-xl font-bold text-xs min-h-[44px] mt-2 active:scale-[0.97]">
+                  <Link href={`/portal/${slug}/content`}>Explore Content Catalog</Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                {bookmarkedItems.map(item => (
+                  <Card
+                    key={item.id}
+                    className="rounded-3xl border-2 border-border p-5 space-y-3 hover:shadow-md transition-all flex flex-col justify-between"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Badge variant="outline" className="text-[9px] uppercase font-bold px-2 py-0.5 capitalize">
+                          {item.type}
+                        </Badge>
+                        {item.category && (
+                          <span className="text-[10px] text-muted-foreground font-semibold">{item.category}</span>
+                        )}
+                      </div>
+                      <h4 className="font-bold text-xs text-foreground leading-snug line-clamp-2">{item.title}</h4>
+                      {item.summary && (
+                        <p className="text-xs text-muted-foreground line-clamp-2 leading-relaxed">{item.summary}</p>
+                      )}
+                    </div>
+                    <Button asChild size="sm" className="w-full rounded-xl font-bold text-xs min-h-[44px] active:scale-[0.97]">
+                      <Link href={`/portal/${slug}/content/${item.type}/${item.slug}`}>
+                        Read Resource <ArrowRight className="w-3.5 h-3.5 ml-1" />
+                      </Link>
+                    </Button>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           {/* ── Tab 2: Resource Toolkits ───────────────────────────────── */}
