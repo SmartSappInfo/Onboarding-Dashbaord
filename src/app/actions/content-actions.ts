@@ -20,7 +20,7 @@ import type {
   ContentItemType,
 } from '@/lib/types/content';
 
-export interface ActionResponse<T = unknown> {
+export interface ActionResponse<T> {
   success: boolean;
   data?: T;
   error?: string;

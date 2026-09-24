@@ -10,6 +10,7 @@
  * - Comprehensive revision history and lifecycle tracking.
  */
 
+import type { PageBlock } from '@/lib/types';
 import type { PortalVisibility } from './portal';
 
 export type ContentItemType =
@@ -77,7 +78,17 @@ export interface ContentItem {
   title: string;
   slug: string;
   summary?: string;
-  content?: string; // Rich text / Markdown / HTML body
+  /**
+   * Plain-text body cache for search indexing, RSS feeds, and card snippets.
+   * When blocks are present, this is automatically synthesized via AST extraction.
+   * For legacy content, this contains raw Markdown / plain text.
+   */
+  content?: string;
+  /**
+   * Structured block tree for drag-and-drop authoring.
+   * Reuses the Page Builder block definitions and schemas.
+   */
+  blocks?: PageBlock[];
   pageDocumentId?: string; // Link to PageBuilder document when custom designed
   media?: ContentMedia;
   category?: string;
@@ -106,6 +117,7 @@ export interface ContentItemVersion {
   title: string;
   summary?: string;
   content?: string;
+  blocks?: PageBlock[];
   media?: ContentMedia;
   pageDocumentId?: string;
   createdBy: string;
@@ -122,6 +134,7 @@ export interface CreateContentItemInput {
   slug?: string;
   summary?: string;
   content?: string;
+  blocks?: PageBlock[];
   pageDocumentId?: string;
   media?: ContentMedia;
   category?: string;
@@ -141,6 +154,7 @@ export interface UpdateContentItemInput {
   slug?: string;
   summary?: string;
   content?: string;
+  blocks?: PageBlock[];
   pageDocumentId?: string;
   media?: ContentMedia;
   category?: string;

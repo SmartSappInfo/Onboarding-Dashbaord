@@ -11,6 +11,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import type { PageBlock } from '@/lib/types';
 import type {
   ContentItem,
   ContentItemType,
@@ -25,6 +26,105 @@ import { PortalEventService } from './portal-event-service';
 
 export class ContentService {
   private static COLLECTION = 'content_items';
+
+  /**
+   * Maximum depth for recursive block tree traversal to prevent call-stack overflow
+   * in the event of malformed or circularly linked block structures.
+   */
+  private static readonly MAX_BLOCK_TRAVERSAL_DEPTH = 10;
+
+  /**
+   * Maximum allowable payload size for blocks JSON (500 KB limit).
+   * Firestore documents are capped at 1 MB; capping blocks at 500 KB reserves
+   * headroom for metadata, versioning snapshots, and system indexing.
+   */
+  public static readonly MAX_BLOCKS_PAYLOAD_BYTES = 500 * 1024;
+
+  /**
+   * Recursively traverses an array of PageBlocks and extracts all author text
+   * to populate the searchable `content` plain-text string cache.
+   *
+   * Handles:
+   * - Standard text props (`content`, `title`, `subtitle`, `description`, `text`, `heading`)
+   * - List and FAQ items arrays (`items` containing strings or objects)
+   * - Nested layout blocks (`columns`, `container`)
+   */
+  public static extractPlainTextFromBlocks(
+    blocks?: PageBlock[],
+    depth = 0
+  ): string {
+    if (!Array.isArray(blocks) || blocks.length === 0 || depth > this.MAX_BLOCK_TRAVERSAL_DEPTH) {
+      return '';
+    }
+
+    const segments: string[] = [];
+
+    for (const block of blocks) {
+      if (!block || typeof block !== 'object' || !block.props) continue;
+
+      const props = block.props as Record<string, unknown>;
+
+      // 1. Direct text properties
+      const directProps = ['content', 'title', 'subtitle', 'description', 'text', 'heading'];
+      for (const key of directProps) {
+        const val = props[key];
+        if (typeof val === 'string' && val.trim().length > 0) {
+          segments.push(val.trim());
+        }
+      }
+
+      // 2. Structured items collections (Lists, FAQs, Feature lists, Steps)
+      if (Array.isArray(props.items)) {
+        for (const item of props.items) {
+          if (typeof item === 'string' && item.trim().length > 0) {
+            segments.push(item.trim());
+          } else if (item && typeof item === 'object') {
+            const itemRec = item as Record<string, unknown>;
+            const subProps = ['title', 'content', 'text', 'description', 'question', 'answer'];
+            for (const subKey of subProps) {
+              const subVal = itemRec[subKey];
+              if (typeof subVal === 'string' && subVal.trim().length > 0) {
+                segments.push(subVal.trim());
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Nested layout blocks (columns, containers)
+      if (Array.isArray(block.blocks) && block.blocks.length > 0) {
+        const nestedText = this.extractPlainTextFromBlocks(block.blocks, depth + 1);
+        if (nestedText) segments.push(nestedText);
+      }
+    }
+
+    // Join with clean paragraphs and deduplicate excess newlines
+    return segments.join('\n\n').replace(/\n{3,}/g, '\n\n');
+  }
+
+  /**
+   * Validates that the block tree does not exceed safe Firestore document size limits
+   * and contains no raw base64 data URIs.
+   */
+  public static validateBlockPayloadSize(blocks?: PageBlock[]): void {
+    if (!blocks || blocks.length === 0) return;
+
+    const serialized = JSON.stringify(blocks);
+    const byteLength = Buffer.byteLength(serialized, 'utf8');
+
+    if (byteLength > this.MAX_BLOCKS_PAYLOAD_BYTES) {
+      throw new Error(
+        `Block content exceeds the maximum size limit of 500 KB (current: ${Math.round(byteLength / 1024)} KB). Please optimize media by linking to uploaded assets rather than embedding large payloads.`
+      );
+    }
+
+    // Disallow base64 data URIs
+    if (serialized.includes('data:image/') || serialized.includes('data:video/')) {
+      throw new Error(
+        'Raw base64 media embedded directly into blocks is prohibited. Please use the media uploader to store images in cloud storage.'
+      );
+    }
+  }
 
   /**
    * Cleans and normalizes a string into a URL-safe kebab-case slug.
@@ -91,6 +191,14 @@ export class ContentService {
 
     const initialStatus: ContentStatus = input.status || 'draft';
 
+    if (input.blocks && input.blocks.length > 0) {
+      this.validateBlockPayloadSize(input.blocks);
+    }
+
+    const synthesizedContent = input.blocks && input.blocks.length > 0
+      ? this.extractPlainTextFromBlocks(input.blocks)
+      : (input.content || '');
+
     const newItem: ContentItem = {
       id: docRef.id,
       organizationId: input.organizationId,
@@ -100,7 +208,8 @@ export class ContentService {
       title: input.title.trim(),
       slug,
       summary: input.summary?.trim() || undefined,
-      content: input.content || '',
+      content: synthesizedContent,
+      blocks: input.blocks || [],
       pageDocumentId: input.pageDocumentId || undefined,
       media: input.media || undefined,
       category: input.category?.trim() || 'General',
@@ -134,7 +243,7 @@ export class ContentService {
 
     await docRef.set(newItem);
 
-    // Create initial revision snapshot in subcollection
+    // Create initial revision snapshot in subcollection with block AST
     const versionRef = docRef.collection('versions').doc('v1');
     const initialVersion: ContentItemVersion = {
       id: 'v1',
@@ -143,6 +252,7 @@ export class ContentService {
       title: newItem.title,
       summary: newItem.summary,
       content: newItem.content,
+      blocks: newItem.blocks,
       media: newItem.media,
       pageDocumentId: newItem.pageDocumentId,
       createdBy: userId,
@@ -193,12 +303,25 @@ export class ContentService {
       slug = this.sanitizeSlug(input.slug);
     }
 
+    if (input.blocks && input.blocks.length > 0) {
+      this.validateBlockPayloadSize(input.blocks);
+    }
+
+    const blocks = input.blocks !== undefined ? input.blocks : current.blocks;
+    let content = input.content !== undefined ? input.content : current.content;
+
+    // Re-synthesize content cache if blocks are modified
+    if (input.blocks !== undefined) {
+      content = this.extractPlainTextFromBlocks(input.blocks) || content || '';
+    }
+
     const updatedItem: ContentItem = {
       ...current,
       title: input.title !== undefined ? input.title.trim() : current.title,
       slug,
       summary: input.summary !== undefined ? input.summary.trim() : current.summary,
-      content: input.content !== undefined ? input.content : current.content,
+      content,
+      blocks,
       pageDocumentId: input.pageDocumentId !== undefined ? input.pageDocumentId : current.pageDocumentId,
       media: input.media !== undefined ? input.media : current.media,
       category: input.category !== undefined ? input.category.trim() : current.category,
@@ -224,7 +347,7 @@ export class ContentService {
 
     await docRef.set(updatedItem);
 
-    // Save version history snapshot
+    // Save version history snapshot with block AST
     const versionRef = docRef.collection('versions').doc(`v${nextVersion}`);
     const revision: ContentItemVersion = {
       id: `v${nextVersion}`,
@@ -233,11 +356,12 @@ export class ContentService {
       title: updatedItem.title,
       summary: updatedItem.summary,
       content: updatedItem.content,
+      blocks: updatedItem.blocks,
       media: updatedItem.media,
       pageDocumentId: updatedItem.pageDocumentId,
       createdBy: userId,
       createdAt: now,
-      changeNote: input.changeNote || 'Content updated',
+      changeNote: input.changeNote || `Updated to revision v${nextVersion}`,
     };
     await versionRef.set(revision);
 
