@@ -37,6 +37,7 @@ import {
   X,
   ExternalLink,
   LayoutDashboard,
+  CheckSquare,
   LogOut,
 } from 'lucide-react';
 import { resolvePortalPath } from '@/lib/utils/portal-navigation';
@@ -67,7 +68,7 @@ export interface PortalShellHeaderProps {
   isMember?: boolean;
   isPreview?: boolean;
   previewRoute?: string;
-  onNavigateRoute?: (route: '/' | '/learn' | '/community' | '/dashboard') => void;
+  onNavigateRoute?: (route: '/' | '/learn' | '/community' | '/dashboard' | '/tasks') => void;
   onOpenSearch?: () => void;
   onOpenAuth?: () => void;
   onSignOut?: () => void;
@@ -283,18 +284,33 @@ export function PortalShellHeader({
                   <p className="text-[11px] text-muted-foreground truncate">{user.email}</p>
                 </div>
                 {isPreview ? (
-                  <DropdownMenuItem
-                    onClick={() => onNavigateRoute?.('/dashboard')}
-                    className="text-xs font-semibold rounded-xl gap-2 cursor-pointer"
-                  >
-                    <LayoutDashboard className="w-3.5 h-3.5" /> My Learning Dashboard
-                  </DropdownMenuItem>
-                ) : (
-                  <DropdownMenuItem asChild className="text-xs font-semibold rounded-xl gap-2 cursor-pointer">
-                    <Link href={`/portal/${slug}/dashboard`}>
+                  <>
+                    <DropdownMenuItem
+                      onClick={() => onNavigateRoute?.('/dashboard')}
+                      className="text-xs font-semibold rounded-xl gap-2 cursor-pointer"
+                    >
                       <LayoutDashboard className="w-3.5 h-3.5" /> My Learning Dashboard
-                    </Link>
-                  </DropdownMenuItem>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onNavigateRoute?.('/tasks')}
+                      className="text-xs font-semibold rounded-xl gap-2 cursor-pointer"
+                    >
+                      <CheckSquare className="w-3.5 h-3.5" /> Action Tasks
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem asChild className="text-xs font-semibold rounded-xl gap-2 cursor-pointer">
+                      <Link href={`/portal/${slug}/dashboard`}>
+                        <LayoutDashboard className="w-3.5 h-3.5" /> My Learning Dashboard
+                      </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem asChild className="text-xs font-semibold rounded-xl gap-2 cursor-pointer">
+                      <Link href={`/portal/${slug}/tasks`}>
+                        <CheckSquare className="w-3.5 h-3.5" /> Action Tasks & Deliverables
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem

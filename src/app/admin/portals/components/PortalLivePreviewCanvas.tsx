@@ -69,7 +69,7 @@ export interface PortalLivePreviewCanvasProps {
 }
 
 export type DeviceMode = 'desktop' | 'tablet' | 'mobile';
-export type PreviewRoute = '/' | '/learn' | '/community' | '/dashboard' | '/content';
+export type PreviewRoute = '/' | '/learn' | '/community' | '/dashboard' | '/content' | '/tasks';
 export type ZoomLevel = 'fit' | '100' | '75' | '50';
 
 export function PortalLivePreviewCanvas({
@@ -411,7 +411,7 @@ export function PortalLivePreviewCanvas({
                 />
               )}
 
-              {previewRoute === '/dashboard' && (
+              {(previewRoute === '/dashboard' || previewRoute === '/tasks') && (
                 <PortalDashboardPreview
                   theme={deferredTheme}
                   radiusCss={radiusCss}
