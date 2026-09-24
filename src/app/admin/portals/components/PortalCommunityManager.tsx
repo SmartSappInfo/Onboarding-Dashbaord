@@ -27,6 +27,8 @@ import {
   deleteSpaceAction,
   listSpacesByPortalAction,
   listModerationReportsAction,
+  resolveModerationReportAction,
+  seedCommunitySpacesAction,
 } from '@/app/actions/community-actions';
 import type { CommunitySpace, ModerationReport } from '@/lib/types/community';
 import { CreateSpaceModal } from './CreateSpaceModal';
@@ -41,6 +43,7 @@ import {
   ExternalLink,
   CheckCircle2,
   Loader2,
+  Sparkles,
 } from 'lucide-react';
 
 interface PortalCommunityManagerProps {
@@ -61,6 +64,8 @@ export function PortalCommunityManager({
 
   const [activeTab, setActiveTab] = React.useState('spaces');
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [isSeeding, setIsSeeding] = React.useState(false);
+  const [resolvingId, setResolvingId] = React.useState<string | null>(null);
 
   // Modal State
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
@@ -160,6 +165,55 @@ export function PortalCommunityManager({
     }
   };
 
+  const handleSeedStarterSpaces = async () => {
+    try {
+      setIsSeeding(true);
+      const res = await seedCommunitySpacesAction(portalId, organizationId, portalSlug);
+      if (!res.success) throw new Error(res.error);
+      toast({
+        title: 'Channels Seeded! 🎉',
+        description: `Initialized ${res.data?.length || 0} starter community channels.`,
+      });
+      fetchServerCommunityData();
+    } catch (err: unknown) {
+      toast({
+        title: 'Seeding Failed',
+        description: err instanceof Error ? err.message : 'Could not initialize channels.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
+  const handleResolveReport = async (reportId: string, action: 'dismiss' | 'delete_target') => {
+    try {
+      setResolvingId(reportId);
+      const res = await resolveModerationReportAction({
+        reportId,
+        portalId,
+        action,
+      });
+      if (!res.success) throw new Error(res.error);
+      toast({
+        title: action === 'dismiss' ? 'Flag Dismissed' : 'Content Removed',
+        description:
+          action === 'dismiss'
+            ? 'Flag removed from review queue.'
+            : 'Flagged content permanently deleted from community.',
+      });
+      fetchServerCommunityData();
+    } catch (err: unknown) {
+      toast({
+        title: 'Action Failed',
+        description: err instanceof Error ? err.message : 'Could not process report.',
+        variant: 'destructive',
+      });
+    } finally {
+      setResolvingId(null);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* ── Tab Switcher ──────────────────────────────────────────────── */}
@@ -176,12 +230,25 @@ export function PortalCommunityManager({
         </Tabs>
 
         {activeTab === 'spaces' && (
-          <Button
-            onClick={handleOpenCreate}
-            className="h-10 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Create Space
-          </Button>
+          <div className="flex items-center gap-2">
+            {effectiveSpaces.length === 0 && (
+              <Button
+                variant="outline"
+                onClick={handleSeedStarterSpaces}
+                disabled={isSeeding}
+                className="h-10 rounded-2xl font-bold text-xs border-primary/30 text-primary hover:bg-primary/5 gap-1.5 shadow-2xs active:scale-[0.97]"
+              >
+                {isSeeding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                Seed Starter Channels
+              </Button>
+            )}
+            <Button
+              onClick={handleOpenCreate}
+              className="h-10 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm active:scale-[0.97]"
+            >
+              <Plus className="w-4 h-4" /> Create Space
+            </Button>
+          </div>
         )}
       </div>
 
@@ -276,9 +343,16 @@ export function PortalCommunityManager({
                   </div>
 
                   <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                    <Badge variant="secondary" className="text-[10px] font-bold uppercase capitalize">
-                      {space.visibility.replace('_', ' ')}
-                    </Badge>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Badge variant="secondary" className="text-[10px] font-bold uppercase capitalize">
+                        {space.visibility.replace('_', ' ')}
+                      </Badge>
+                      {space.visibility === 'plan_gated' && (
+                        <Badge variant="outline" className="text-[10px] font-semibold border-amber-500/30 text-amber-600 bg-amber-500/5">
+                          ⭐ {space.allowedPlanIds?.length || 0} Tier{space.allowedPlanIds?.length === 1 ? '' : 's'}
+                        </Badge>
+                      )}
+                    </div>
                     <span className="font-semibold text-[11px] text-foreground">
                       {space.postCount || 0} Posts
                     </span>
@@ -310,20 +384,56 @@ export function PortalCommunityManager({
             </div>
           ) : (
             <div className="space-y-3">
-              {effectiveReports.map(rep => (
-                <div key={rep.id} className="p-4 rounded-2xl border border-border bg-muted/20 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Badge variant="outline" className="text-[9px] uppercase font-bold text-amber-600">
-                      Report: {rep.targetType}
-                    </Badge>
-                    <span className="text-[10px] text-muted-foreground">
-                      {new Date(rep.createdAt).toLocaleString()}
-                    </span>
+              {effectiveReports.map(rep => {
+                const isResolving = resolvingId === rep.id;
+                return (
+                  <div key={rep.id} className="p-4 rounded-2xl border border-border bg-muted/20 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Badge variant="outline" className="text-[9px] uppercase font-bold text-amber-600">
+                        Report: {rep.targetType}
+                      </Badge>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(rep.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Reason: {rep.reason}</p>
+                      {rep.details && <p className="text-xs text-muted-foreground mt-0.5">{rep.details}</p>}
+                    </div>
+
+                    <div className="flex items-center justify-end gap-2 pt-2 border-t border-border/50">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        disabled={isResolving}
+                        onClick={() => handleResolveReport(rep.id, 'dismiss')}
+                        className="h-9 px-3 rounded-xl text-xs font-semibold hover:bg-muted/80 active:scale-[0.97] transition-all min-h-[36px] sm:min-h-[44px]"
+                      >
+                        {isResolving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                        ) : (
+                          <CheckCircle2 className="w-3.5 h-3.5 mr-1 text-emerald-600" />
+                        )}
+                        Dismiss Flag
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={isResolving}
+                        onClick={() => handleResolveReport(rep.id, 'delete_target')}
+                        className="h-9 px-3 rounded-xl text-xs font-semibold shadow-xs active:scale-[0.97] transition-all min-h-[36px] sm:min-h-[44px]"
+                      >
+                        {isResolving ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin mr-1" />
+                        ) : (
+                          <Trash2 className="w-3.5 h-3.5 mr-1" />
+                        )}
+                        Remove Content
+                      </Button>
+                    </div>
                   </div>
-                  <p className="text-xs font-bold text-foreground">Reason: {rep.reason}</p>
-                  {rep.details && <p className="text-xs text-muted-foreground">{rep.details}</p>}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </Card>

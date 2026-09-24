@@ -27,9 +27,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { collection, query, where, orderBy } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { createSpaceAction, updateSpaceAction } from '@/app/actions/community-actions';
 import type { CommunitySpace, SpaceVisibility } from '@/lib/types/community';
+import type { MembershipPlan } from '@/lib/types/membership';
 import { MessageSquare, Loader2 } from 'lucide-react';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
@@ -54,6 +57,7 @@ export function CreateSpaceModal({
   editingSpace,
   existingOrder = 1,
 }: CreateSpaceModalProps) {
+  const firestore = useFirestore();
   const { toast } = useToast();
 
   const [name, setName] = React.useState('');
@@ -61,8 +65,23 @@ export function CreateSpaceModal({
   const [description, setDescription] = React.useState('');
   const [icon, setIcon] = React.useState('💬');
   const [visibility, setVisibility] = React.useState<SpaceVisibility>('members_only');
+  const [allowedPlanIds, setAllowedPlanIds] = React.useState<string[]>([]);
   const [isDefault, setIsDefault] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Query membership plans for tier gating
+  const plansQuery = useMemoFirebase(
+    () =>
+      firestore && portalId
+        ? query(
+            collection(firestore, 'membership_plans'),
+            where('portalId', '==', portalId),
+            orderBy('order', 'asc')
+          )
+        : null,
+    [firestore, portalId]
+  );
+  const { data: plans, isLoading: isLoadingPlans } = useCollection<MembershipPlan>(plansQuery);
 
   React.useEffect(() => {
     if (editingSpace) {
@@ -71,6 +90,7 @@ export function CreateSpaceModal({
       setDescription(editingSpace.description || '');
       setIcon(editingSpace.icon || '💬');
       setVisibility(editingSpace.visibility);
+      setAllowedPlanIds(editingSpace.allowedPlanIds || []);
       setIsDefault(Boolean(editingSpace.isDefault));
     } else {
       setName('');
@@ -78,6 +98,7 @@ export function CreateSpaceModal({
       setDescription('');
       setIcon('💬');
       setVisibility('members_only');
+      setAllowedPlanIds([]);
       setIsDefault(false);
     }
   }, [editingSpace, open]);
@@ -100,6 +121,7 @@ export function CreateSpaceModal({
             description: description.trim(),
             icon: icon.trim(),
             visibility,
+            allowedPlanIds: visibility === 'plan_gated' ? allowedPlanIds : [],
             isDefault,
           },
           portalId,
@@ -118,6 +140,7 @@ export function CreateSpaceModal({
             description: description.trim(),
             icon: icon.trim() || '💬',
             visibility,
+            allowedPlanIds: visibility === 'plan_gated' ? allowedPlanIds : [],
             order: existingOrder,
             isDefault,
           },
@@ -186,6 +209,53 @@ export function CreateSpaceModal({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Plan Gating Picker if visibility === 'plan_gated' */}
+          {visibility === 'plan_gated' && (
+            <div className="space-y-2 p-3.5 rounded-2xl border border-primary/20 bg-primary/[0.03]">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-bold text-foreground">Allowed Membership Tiers</Label>
+                <span className="text-[10px] text-muted-foreground">Select plans with access</span>
+              </div>
+
+              {isLoadingPlans ? (
+                <div className="py-2 text-xs text-muted-foreground flex items-center gap-2">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-primary" /> Loading plans...
+                </div>
+              ) : !plans || plans.length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  No membership plans found. Create plans in the Membership tab first.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {plans.map(plan => {
+                    const isSelected = allowedPlanIds.includes(plan.id);
+                    return (
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => {
+                          setAllowedPlanIds(prev =>
+                            isSelected ? prev.filter(id => id !== plan.id) : [...prev, plan.id]
+                          );
+                        }}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border text-xs font-medium transition-all min-h-[44px] active:scale-[0.97] ${
+                          isSelected
+                            ? 'border-primary bg-primary/10 text-primary font-bold shadow-xs'
+                            : 'border-border bg-card text-foreground hover:bg-muted/40'
+                        }`}
+                      >
+                        <span className="truncate">{plan.name}</span>
+                        <span className="text-[10px] ml-1.5 opacity-80 uppercase font-semibold">
+                          {plan.price === 0 ? 'Free' : `${plan.currency} ${plan.price}`}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1.5">
             <Label className="text-xs font-bold">Description & Purpose</Label>
