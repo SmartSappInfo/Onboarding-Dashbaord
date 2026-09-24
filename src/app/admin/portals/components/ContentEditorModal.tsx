@@ -168,8 +168,23 @@ export function ContentEditorModal({
       setMedia(initialItem.media || {});
       setMetaTitle(initialItem.seo?.metaTitle || '');
       setMetaDescription(initialItem.seo?.metaDescription || '');
-      setBlocks(initialItem.blocks || []);
-      setSelectedBlockId(initialItem.blocks?.[0]?.id || null);
+      const initialBlocks: PageBlock[] =
+        initialItem.blocks && initialItem.blocks.length > 0
+          ? initialItem.blocks
+          : initialItem.content && initialItem.content.trim()
+            ? [
+                {
+                  id: `blk_text_${Date.now()}_legacy`,
+                  type: 'text',
+                  props: {
+                    content: initialItem.content,
+                    preset: 'paragraph',
+                  },
+                },
+              ]
+            : [];
+      setBlocks(initialBlocks);
+      setSelectedBlockId(initialBlocks[0]?.id || null);
     } else {
       setType(defaultType);
       setTitle('');

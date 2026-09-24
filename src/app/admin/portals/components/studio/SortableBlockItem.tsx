@@ -131,7 +131,7 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
             {...listeners}
             aria-label={`Drag to reorder ${blockLabel}`}
             title="Drag to reorder"
-            className="flex items-center justify-center w-7 h-7 sm:w-6 sm:h-6 rounded text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-grab active:cursor-grabbing transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
+            className="flex items-center justify-center w-8 h-8 sm:w-6 sm:h-6 min-h-[32px] min-w-[32px] sm:min-h-0 sm:min-w-0 rounded text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-grab active:cursor-grabbing transition-colors focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
           >
             <GripVertical className="w-3.5 h-3.5" />
           </button>
@@ -146,7 +146,7 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
             }}
             aria-label="Move block up"
             title="Move block up"
-            className="flex items-center justify-center w-7 h-7 sm:w-6 sm:h-6 rounded text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
+            className="flex items-center justify-center w-8 h-8 sm:w-6 sm:h-6 min-h-[32px] min-w-[32px] sm:min-h-0 sm:min-w-0 rounded text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
           >
             <ChevronUp className="w-3.5 h-3.5" />
           </button>
@@ -161,7 +161,7 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
             }}
             aria-label="Move block down"
             title="Move block down"
-            className="flex items-center justify-center w-7 h-7 sm:w-6 sm:h-6 rounded text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
+            className="flex items-center justify-center w-8 h-8 sm:w-6 sm:h-6 min-h-[32px] min-w-[32px] sm:min-h-0 sm:min-w-0 rounded text-slate-500 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 disabled:pointer-events-none active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
           >
             <ChevronDown className="w-3.5 h-3.5" />
           </button>
@@ -175,7 +175,7 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
             }}
             aria-label="Duplicate block"
             title="Duplicate block"
-            className="flex items-center justify-center w-7 h-7 sm:w-6 sm:h-6 rounded text-slate-500 hover:text-[var(--portal-primary,#3B82F6)] hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
+            className="flex items-center justify-center w-8 h-8 sm:w-6 sm:h-6 min-h-[32px] min-w-[32px] sm:min-h-0 sm:min-w-0 rounded text-slate-500 hover:text-[var(--portal-primary,#3B82F6)] hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-[var(--portal-primary,#3B82F6)]"
           >
             <Copy className="w-3 h-3" />
           </button>
@@ -189,7 +189,7 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
             }}
             aria-label="Delete block"
             title="Delete block"
-            className="flex items-center justify-center w-7 h-7 sm:w-6 sm:h-6 rounded text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-red-500"
+            className="flex items-center justify-center w-8 h-8 sm:w-6 sm:h-6 min-h-[32px] min-w-[32px] sm:min-h-0 sm:min-w-0 rounded text-slate-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 active:scale-[0.97] transition-all focus:outline-none focus:ring-1 focus:ring-red-500"
           >
             <Trash2 className="w-3 h-3" />
           </button>
