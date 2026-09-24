@@ -29,6 +29,7 @@ import type {
   ResourceType,
 } from '@/lib/types/membership';
 import type { UpdateMemberProfileInput } from '@/lib/types/engagement';
+import type { ContentItem } from '@/lib/types/content';
 
 // Standard action response envelope
 export interface ActionResult<T> {
@@ -449,5 +450,49 @@ export async function listPlansByPortalAction(
     return { success: true, data: plans };
   } catch (err) {
     return { success: false, error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to list plans.') };
+  }
+}
+
+export interface ContentAccessEvaluationResult {
+  access: EntitlementCheckResult;
+  sanitizedItem: ContentItem;
+}
+
+/**
+ * Server Action evaluating a visitor's access to a content item and returning
+ * a sanitized item projection (blocks truncated if access is denied).
+ */
+export async function evaluateContentAccessAction(
+  item: ContentItem,
+  userId: string | null | undefined,
+  portalId: string,
+  isOrgAdmin: boolean = false
+): Promise<ActionResult<ContentAccessEvaluationResult>> {
+  try {
+    const access = await EntitlementService.evaluateContentItemAccess(
+      item,
+      userId,
+      portalId,
+      isOrgAdmin
+    );
+    const sanitizedItem = EntitlementService.sanitizeContentItemForVisitor(item, access);
+    return {
+      success: true,
+      data: {
+        access,
+        sanitizedItem,
+      },
+    };
+  } catch (err) {
+    console.error('[ENTITLEMENT_ACTION] evaluateContentAccessAction failed:', err);
+    return {
+      success: false,
+      error: toClientErrorMessage(
+        'actions.membership-actions',
+        err,
+        undefined,
+        'Failed to evaluate content access.'
+      ),
+    };
   }
 }

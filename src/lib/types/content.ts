@@ -69,6 +69,16 @@ export interface ContentStats {
   lastViewedAt?: string;
 }
 
+export type ContentTeaserMode = 'summary' | 'first_block' | 'two_blocks' | 'none';
+
+export interface CustomPaywallConfig {
+  title?: string;
+  description?: string;
+  perks?: string[];
+  ctaText?: string;
+  upgradePlanSlug?: string;
+}
+
 export interface ContentItem {
   id: string;
   organizationId: string;
@@ -99,6 +109,26 @@ export interface ContentItem {
   scheduledAt?: string;
   visibility: PortalVisibility;
   accessRoles?: string[];
+  /**
+   * Plan IDs required to access this item when restricted by tier.
+   */
+  requiredPlanIds?: string[];
+  /**
+   * Teaser boundary configuration for paywall gating.
+   */
+  teaserMode?: ContentTeaserMode;
+  /**
+   * Optional custom paywall copy and perks override.
+   */
+  customPaywall?: CustomPaywallConfig;
+  /**
+   * Transient runtime flag set when item is gated by EntitlementService.
+   */
+  isGated?: boolean;
+  /**
+   * Transient runtime reason code explaining why access is denied.
+   */
+  accessDeniedReason?: string;
   seo?: ContentSeoConfig;
   stats?: ContentStats;
   order?: number;
@@ -144,6 +174,9 @@ export interface CreateContentItemInput {
   scheduledAt?: string;
   visibility?: PortalVisibility;
   accessRoles?: string[];
+  requiredPlanIds?: string[];
+  teaserMode?: ContentTeaserMode;
+  customPaywall?: CustomPaywallConfig;
   seo?: ContentSeoConfig;
   order?: number;
   parentId?: string;
@@ -164,6 +197,9 @@ export interface UpdateContentItemInput {
   scheduledAt?: string;
   visibility?: PortalVisibility;
   accessRoles?: string[];
+  requiredPlanIds?: string[];
+  teaserMode?: ContentTeaserMode;
+  customPaywall?: CustomPaywallConfig;
   seo?: ContentSeoConfig;
   order?: number;
   parentId?: string;

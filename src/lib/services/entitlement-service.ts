@@ -19,6 +19,8 @@ import type {
   EntitlementCheckResult,
   ResourceType,
 } from '../types/membership';
+import type { ContentItem } from '../types/content';
+import type { PageBlock } from '../types';
 
 const GRANTS_COLLECTION = 'access_grants';
 
@@ -197,5 +199,136 @@ export class EntitlementService {
 
     const grants = snap.docs.map(d => d.data() as AccessGrant);
     return grants.filter(g => this.isGrantValid(g));
+  }
+
+  /**
+   * Evaluates visitor/member access specifically for a ContentItem.
+   *
+   * Hierarchy:
+   * 1. Org/System Admin Bypass -> 'admin_bypass'
+   * 2. Public Item -> 'public_access'
+   * 3. Unauthenticated on Members-Only / Protected -> 'auth_required'
+   * 4. Member Status Verification -> 'membership_required' | 'membership_inactive'
+   * 5. Role Restrictions -> 'role_restricted'
+   * 6. Tier / Plan Entitlements -> 'plan_upgrade_required' | 'plan_entitlement'
+   * 7. Active Member Access -> 'member_access'
+   */
+  static async evaluateContentItemAccess(
+    item: ContentItem,
+    userId: string | null | undefined,
+    portalId: string,
+    isOrgAdmin: boolean = false
+  ): Promise<EntitlementCheckResult> {
+    // 1. Admin bypass
+    if (isOrgAdmin) {
+      return { hasAccess: true, reason: 'admin_bypass' };
+    }
+
+    // 2. Public items are accessible by all visitors
+    if (item.visibility === 'public') {
+      return { hasAccess: true, reason: 'public_access' };
+    }
+
+    // 3. Unauthenticated visitor cannot access protected items
+    if (!userId) {
+      return { hasAccess: false, reason: 'auth_required' };
+    }
+
+    // 4. Verify membership
+    const membership = await PortalMembershipService.getMembership(portalId, userId);
+    if (!membership) {
+      return { hasAccess: false, reason: 'membership_required' };
+    }
+
+    if (membership.status !== 'active') {
+      return { hasAccess: false, reason: 'membership_inactive', membership };
+    }
+
+    // Portal admin / instructor bypass
+    if (membership.role === 'owner' || membership.role === 'admin' || membership.role === 'instructor') {
+      return { hasAccess: true, reason: 'admin_bypass', membership };
+    }
+
+    // 5. Role restrictions
+    if (item.accessRoles && item.accessRoles.length > 0) {
+      if (!item.accessRoles.includes(membership.role)) {
+        return { hasAccess: false, reason: 'role_restricted', membership };
+      }
+    }
+
+    // 6. Direct Access Grant check for this content item
+    const grantSnap = await adminDb
+      .collection(GRANTS_COLLECTION)
+      .where('portalId', '==', portalId)
+      .where('userId', '==', userId)
+      .where('resourceType', '==', 'content_item')
+      .where('resourceId', '==', item.id)
+      .limit(1)
+      .get();
+
+    if (!grantSnap.empty) {
+      const grant = grantSnap.docs[0].data() as AccessGrant;
+      if (this.isGrantValid(grant)) {
+        return { hasAccess: true, reason: 'direct_grant', membership, grant };
+      }
+    }
+
+    // 7. Plan Tier restrictions
+    if (item.requiredPlanIds && item.requiredPlanIds.length > 0) {
+      if (!membership.planId || !item.requiredPlanIds.includes(membership.planId)) {
+        return {
+          hasAccess: false,
+          reason: 'plan_upgrade_required',
+          membership,
+          requiredPlanIds: item.requiredPlanIds,
+        };
+      }
+      return { hasAccess: true, reason: 'plan_entitlement', membership };
+    }
+
+    // 8. General Member Access
+    return { hasAccess: true, reason: 'member_access', membership };
+  }
+
+  /**
+   * Sanitizes a ContentItem before returning to a visitor.
+   * If visitor does not have full access, content blocks are truncated to the configured teaser
+   * and sensitive media download links are stripped, preventing data leaks.
+   */
+  static sanitizeContentItemForVisitor(
+    item: ContentItem,
+    accessResult: EntitlementCheckResult
+  ): ContentItem {
+    if (accessResult.hasAccess) {
+      return item;
+    }
+
+    // Determine how many blocks to preserve based on teaserMode
+    const mode = item.teaserMode || 'first_block';
+    let truncatedBlocks: PageBlock[] = [];
+
+    if (mode === 'none' || mode === 'summary') {
+      truncatedBlocks = [];
+    } else if (mode === 'two_blocks') {
+      truncatedBlocks = item.blocks ? item.blocks.slice(0, 2) : [];
+    } else {
+      // 'first_block' is default
+      truncatedBlocks = item.blocks ? item.blocks.slice(0, 1) : [];
+    }
+
+    return {
+      ...item,
+      blocks: truncatedBlocks,
+      // Clear sensitive direct download URLs on gated media
+      media: item.media
+        ? {
+            ...item.media,
+            downloadUrl: undefined,
+            fileUrl: undefined,
+          }
+        : undefined,
+      isGated: true,
+      accessDeniedReason: accessResult.reason,
+    };
   }
 }

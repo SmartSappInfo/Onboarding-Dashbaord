@@ -173,19 +173,27 @@ export interface AccessGrant {
 
 // ── 6. Entitlement Evaluation Result ─────────────────────────────────────────
 
+export type EntitlementDenialReason =
+  | 'admin_bypass'
+  | 'plan_entitlement'
+  | 'direct_grant'
+  | 'public_access'
+  | 'member_access'
+  | 'no_entitlement'
+  | 'auth_required'
+  | 'membership_required'
+  | 'membership_inactive'
+  | 'grant_expired'
+  | 'role_restricted'
+  | 'plan_upgrade_required';
+
 export interface EntitlementCheckResult {
   hasAccess: boolean;
-  reason:
-    | 'admin_bypass'
-    | 'plan_entitlement'
-    | 'direct_grant'
-    | 'public_access'
-    | 'no_entitlement'
-    | 'membership_inactive'
-    | 'grant_expired';
+  reason: EntitlementDenialReason;
   membership?: PortalMembership | null;
   grant?: AccessGrant | null;
   matchedPlan?: MembershipPlan | null;
+  requiredPlanIds?: string[];
   requiredPlanName?: string;
 }
 
