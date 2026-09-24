@@ -7,6 +7,8 @@ import type { CourseStatus } from '../types/learning';
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { ContentService } from '@/lib/services/content-service';
+import type { PageBlock } from '@/lib/types';
 import type {
   Course,
   CourseModule,
@@ -67,6 +69,9 @@ export class CourseService {
       defaultReleaseType: input.defaultReleaseType || 'immediate',
       learningObjectives: input.learningObjectives || [],
       certificateEnabled: input.certificateEnabled ?? true,
+      requiredPlanIds: input.requiredPlanIds || [],
+      visibility: input.visibility || 'public',
+      accessRoles: input.accessRoles || [],
       order: input.order ?? 1,
       featured: input.featured ?? false,
       totalModuleCount: 0,
@@ -102,6 +107,9 @@ export class CourseService {
       title: updates.title !== undefined ? updates.title.trim() : current.title,
       slug: updates.slug ? CourseService.sanitizeSlug(updates.slug) : current.slug,
       status: updates.status || current.status,
+      requiredPlanIds: updates.requiredPlanIds !== undefined ? updates.requiredPlanIds : current.requiredPlanIds,
+      visibility: updates.visibility || current.visibility,
+      accessRoles: updates.accessRoles !== undefined ? updates.accessRoles : current.accessRoles,
       publishedAt:
         updates.status === 'published' && !current.publishedAt ? now : current.publishedAt,
       updatedAt: now,
@@ -112,26 +120,24 @@ export class CourseService {
   }
 
   public static async deleteCourse(courseId: string): Promise<void> {
-    const batch = adminDb.batch();
+    // 1. Fetch all child modules and lessons
+    const [modulesSnap, lessonsSnap] = await Promise.all([
+      adminDb.collection('course_modules').where('courseId', '==', courseId).get(),
+      adminDb.collection('course_lessons').where('courseId', '==', courseId).get(),
+    ]);
 
-    // 1. Delete course
-    batch.delete(adminDb.collection('courses').doc(courseId));
+    const allRefs = [
+      adminDb.collection('courses').doc(courseId),
+      ...modulesSnap.docs.map(d => d.ref),
+      ...lessonsSnap.docs.map(d => d.ref),
+    ];
 
-    // 2. Cascade delete modules
-    const modulesSnap = await adminDb
-      .collection('course_modules')
-      .where('courseId', '==', courseId)
-      .get();
-    modulesSnap.docs.forEach(d => batch.delete(d.ref));
-
-    // 3. Delete lessons
-    const lessonsSnap = await adminDb
-      .collection('course_lessons')
-      .where('courseId', '==', courseId)
-      .get();
-    lessonsSnap.docs.forEach(d => batch.delete(d.ref));
-
-    await batch.commit();
+    // High-load protection: Chunk deletes into <= 400 operations to never exceed Firestore 500-op limit
+    for (let i = 0; i < allRefs.length; i += 400) {
+      const batch = adminDb.batch();
+      allRefs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
   }
 
   public static async listCourses(
@@ -237,19 +243,21 @@ export class CourseService {
     if (!snap.exists) return;
 
     const moduleData = snap.data() as CourseModule;
-    const batch = adminDb.batch();
 
-    // 1. Delete module
-    batch.delete(docRef);
-
-    // 2. Delete child lessons
+    // 1. Fetch child lessons
     const lessonsSnap = await adminDb
       .collection('course_lessons')
       .where('moduleId', '==', moduleId)
       .get();
-    lessonsSnap.docs.forEach(d => batch.delete(d.ref));
 
-    await batch.commit();
+    const allRefs = [docRef, ...lessonsSnap.docs.map(d => d.ref)];
+
+    // High-load protection: Chunk deletes into <= 400 operations to never exceed Firestore 500-op limit
+    for (let i = 0; i < allRefs.length; i += 400) {
+      const batch = adminDb.batch();
+      allRefs.slice(i, i + 400).forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
 
     // Recalculate module count
     const remainingCount = (
@@ -268,6 +276,15 @@ export class CourseService {
     const now = new Date().toISOString();
     const docRef = adminDb.collection('course_lessons').doc();
 
+    // 1. Block Studio payload validation & search text extraction
+    let synthesizedContent = input.content || '';
+    if (input.blocks && input.blocks.length > 0) {
+      ContentService.validateBlockPayloadSize(input.blocks);
+      if (!synthesizedContent.trim()) {
+        synthesizedContent = ContentService.extractPlainTextFromBlocks(input.blocks);
+      }
+    }
+
     const lesson: CourseLesson = {
       id: docRef.id,
       organizationId: input.organizationId,
@@ -278,7 +295,8 @@ export class CourseService {
       slug,
       summary: input.summary?.trim(),
       contentType: input.contentType || 'video',
-      content: input.content || '',
+      content: synthesizedContent,
+      blocks: input.blocks,
       videoUrl: input.videoUrl,
       videoDurationSeconds: input.videoDurationSeconds || 0,
       thumbnailUrl: input.thumbnailUrl,
@@ -317,11 +335,24 @@ export class CourseService {
     const current = snap.data() as CourseLesson;
     const now = new Date().toISOString();
 
+    // 1. Block Studio payload validation & search text extraction
+    let updatedContent = updates.content !== undefined ? updates.content : current.content;
+    if (updates.blocks !== undefined) {
+      if (updates.blocks.length > 0) {
+        ContentService.validateBlockPayloadSize(updates.blocks);
+        updatedContent = ContentService.extractPlainTextFromBlocks(updates.blocks);
+      } else if (updates.content === undefined) {
+        updatedContent = '';
+      }
+    }
+
     const updatedLesson: CourseLesson = {
       ...current,
       ...updates,
       title: updates.title !== undefined ? updates.title.trim() : current.title,
       slug: updates.slug ? CourseService.sanitizeSlug(updates.slug) : current.slug,
+      content: updatedContent,
+      blocks: updates.blocks !== undefined ? updates.blocks : current.blocks,
       updatedAt: now,
     };
 

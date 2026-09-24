@@ -46,7 +46,10 @@ import {
   listCoursesByPortalAction,
 } from '@/app/actions/learning-actions';
 import type { Course, CourseLevel, CourseStatus } from '@/lib/types/learning';
-import { CurriculumBuilderDrawer } from './CurriculumBuilderDrawer';
+import type { MembershipPlan } from '@/lib/types/membership';
+import { CurriculumEditorModal } from './CurriculumEditorModal';
+import { TagSelector } from '@/components/tags/TagSelector';
+import { cn } from '@/lib/utils';
 import {
   GraduationCap,
   Plus,
@@ -101,6 +104,18 @@ export function PortalCourseManager({
   const [level, setLevel] = React.useState<CourseLevel>('all_levels');
   const [estimatedDurationMinutes, setEstimatedDurationMinutes] = React.useState(60);
   const [certificateEnabled, setCertificateEnabled] = React.useState(true);
+  const [requiredPlanIds, setRequiredPlanIds] = React.useState<string[]>([]);
+  const [courseTags, setCourseTags] = React.useState<string[]>([]);
+
+  // Query Portal Membership Plans for course entitlement gating
+  const plansQuery = useMemoFirebase(
+    () =>
+      firestore && portalId
+        ? query(collection(firestore, 'portal_membership_plans'), where('portalId', '==', portalId))
+        : null,
+    [firestore, portalId]
+  );
+  const { data: membershipPlans } = useCollection<MembershipPlan>(plansQuery);
 
   const fetchServerCourses = React.useCallback(async () => {
     if (!portalId) return;
@@ -163,6 +178,8 @@ export function PortalCourseManager({
     setLevel('all_levels');
     setEstimatedDurationMinutes(60);
     setCertificateEnabled(true);
+    setRequiredPlanIds([]);
+    setCourseTags([]);
     setIsCreateOpen(true);
   };
 
@@ -178,6 +195,8 @@ export function PortalCourseManager({
     setLevel(course.level);
     setEstimatedDurationMinutes(course.estimatedDurationMinutes || 60);
     setCertificateEnabled(course.certificateEnabled);
+    setRequiredPlanIds(course.requiredPlanIds || []);
+    setCourseTags(course.tags || []);
     setIsCreateOpen(true);
   };
 
@@ -202,6 +221,8 @@ export function PortalCourseManager({
             thumbnailUrl: thumbnailUrl.trim(),
             category: category.trim(),
             level,
+            tags: courseTags,
+            requiredPlanIds,
             estimatedDurationMinutes: Number(estimatedDurationMinutes) || 60,
             certificateEnabled,
           },
@@ -223,6 +244,8 @@ export function PortalCourseManager({
           thumbnailUrl: thumbnailUrl.trim(),
           category: category.trim(),
           level,
+          tags: courseTags,
+          requiredPlanIds,
           estimatedDurationMinutes: Number(estimatedDurationMinutes) || 60,
           certificateEnabled,
           status: 'published',
@@ -351,6 +374,14 @@ export function PortalCourseManager({
                     </div>
                   )}
 
+                  <div className="absolute top-2.5 left-2.5 flex items-center gap-1.5">
+                    {c.requiredPlanIds && c.requiredPlanIds.length > 0 && (
+                      <Badge className="bg-background/80 backdrop-blur-xs text-foreground text-[9px] font-bold border border-border shadow-xs">
+                        🔒 Tier Gated
+                      </Badge>
+                    )}
+                  </div>
+
                   <div className="absolute top-2.5 right-2.5 flex items-center gap-1.5">
                     <Badge
                       className={`text-[9px] uppercase font-black px-2 py-0.5 border-0 ${
@@ -391,14 +422,14 @@ export function PortalCourseManager({
                 <Button
                   size="sm"
                   onClick={() => setCurriculumCourse(c)}
-                  className="flex-1 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-xs"
+                  className="flex-1 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-xs min-h-[44px] active:scale-[0.97]"
                 >
                   <Layers className="w-3.5 h-3.5" /> Curriculum Studio
                 </Button>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="outline" size="icon" className="h-8 w-8 rounded-xl shrink-0">
+                    <Button variant="outline" size="icon" className="h-11 w-11 rounded-xl shrink-0 min-h-[44px] active:scale-[0.97]">
                       <MoreVertical className="w-3.5 h-3.5" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -532,6 +563,62 @@ export function PortalCourseManager({
               />
             </div>
 
+            {/* Membership Plan Access Gate */}
+            {membershipPlans && membershipPlans.length > 0 && (
+              <div className="space-y-2 pt-2 border-t border-border">
+                <div className="space-y-0.5">
+                  <Label className="text-xs font-bold text-foreground">Membership Plan Access Gate</Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Select which membership tiers unlock this course. Leave empty to make available to all members.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  {membershipPlans.map(plan => {
+                    const isChecked = requiredPlanIds.includes(plan.id);
+                    return (
+                      <label
+                        key={plan.id}
+                        className={cn(
+                          'flex items-center gap-2.5 p-2.5 rounded-xl border text-xs cursor-pointer transition-colors',
+                          isChecked
+                            ? 'bg-primary/10 border-primary font-bold text-foreground'
+                            : 'bg-card border-border hover:border-primary/40 text-muted-foreground'
+                        )}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={e => {
+                            if (e.target.checked) {
+                              setRequiredPlanIds(prev => [...prev, plan.id]);
+                            } else {
+                              setRequiredPlanIds(prev => prev.filter(id => id !== plan.id));
+                            }
+                          }}
+                          className="rounded border-border text-primary focus:ring-primary h-4 w-4"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <span className="truncate block font-semibold">{plan.name}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {plan.price === 0 ? 'Free' : `$${plan.price}/${plan.interval || 'one-time'}`}
+                          </span>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Contact / Course Tags */}
+            <div className="space-y-1.5 pt-2 border-t border-border">
+              <Label className="text-xs font-bold">Course Tags & Segment Filters</Label>
+              <TagSelector
+                currentTagIds={courseTags}
+                onTagsChange={setCourseTags}
+              />
+            </div>
+
             <div className="pt-3 border-t border-border flex items-center justify-between">
               <div className="space-y-0.5">
                 <span className="text-xs font-bold text-foreground">Issue Completion Certificate</span>
@@ -567,12 +654,13 @@ export function PortalCourseManager({
         </DialogContent>
       </Dialog>
 
-      {/* ── Curriculum Builder Drawer ─────────────────────────────────── */}
-      <CurriculumBuilderDrawer
+      {/* ── Curriculum Studio Modal ───────────────────────────────────── */}
+      <CurriculumEditorModal
         open={Boolean(curriculumCourse)}
         onOpenChange={open => !open && setCurriculumCourse(null)}
         course={curriculumCourse}
         portalSlug={portalSlug}
+        onCurriculumChanged={() => fetchServerCourses()}
       />
     </div>
   );

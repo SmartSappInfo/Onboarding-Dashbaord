@@ -50,6 +50,14 @@ export class EnrollmentService {
       .limit(1)
       .get();
 
+    // 2.1 Enforce membership plan entitlement check (unless manual admin override)
+    if (source !== 'manual_admin' && Array.isArray(courseData?.requiredPlanIds) && courseData.requiredPlanIds.length > 0) {
+      const activePlanId = membershipSnap.empty ? null : membershipSnap.docs[0].data()?.planId;
+      if (!activePlanId || !courseData.requiredPlanIds.includes(activePlanId)) {
+        throw new Error('This course is exclusive to specific membership tiers. Please upgrade your membership to enroll.');
+      }
+    }
+
     const membershipId = !membershipSnap.empty ? membershipSnap.docs[0].id : undefined;
 
     const now = new Date().toISOString();
