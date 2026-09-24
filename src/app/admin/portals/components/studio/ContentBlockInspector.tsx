@@ -29,6 +29,8 @@ import {
   Trash2,
   X,
   MousePointerClick,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { PageBlock, BuilderResources } from '@/lib/types';
@@ -39,6 +41,10 @@ export interface ContentBlockInspectorProps {
   selectedBlock: PageBlock | null;
   resources?: BuilderResources;
   workspaceId?: string;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
   onUpdateProps: (blockId: string, patch: Record<string, unknown>) => void;
   onDeleteBlock: (blockId: string) => void;
   onDeselect: () => void;
@@ -58,6 +64,10 @@ export const ContentBlockInspector = React.memo(function ContentBlockInspector({
   selectedBlock,
   resources = DEFAULT_RESOURCES,
   workspaceId,
+  canUndo = false,
+  canRedo = false,
+  onUndo,
+  onRedo,
   onUpdateProps,
   onDeleteBlock,
   onDeselect,
@@ -134,6 +144,38 @@ export const ContentBlockInspector = React.memo(function ContentBlockInspector({
 
         {/* Action Controls */}
         <div className="flex items-center gap-1 shrink-0">
+          {/* Undo Quick Action */}
+          {onUndo && (
+            <button
+              type="button"
+              onClick={onUndo}
+              disabled={!canUndo}
+              title="Undo block changes (⌘Z)"
+              aria-label="Undo block changes"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {/* Redo Quick Action */}
+          {onRedo && (
+            <button
+              type="button"
+              onClick={onRedo}
+              disabled={!canRedo}
+              title="Redo block changes (⌘⇧Z)"
+              aria-label="Redo block changes"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+
+          {(onUndo || onRedo) && (
+            <div className="w-px h-4 bg-slate-200 dark:border-slate-800 mx-0.5" />
+          )}
+
           {/* Reset to Defaults */}
           <button
             type="button"

@@ -246,3 +246,36 @@ export interface CreatePortalContentTemplateInput {
   category?: 'article' | 'lesson' | 'resource' | 'documentation' | 'custom';
   blocks: PageBlock[];
 }
+
+/**
+ * {{Org_name}} Experience Platform — Content Studio Draft Contract
+ *
+ * Single source of truth for in-progress autosaved drafts across both
+ * local storage (0ms emergency flush) and Cloud Draft snapshots (cross-device sync).
+ *
+ * Rules:
+ * - Strictly typed: Zero `any`, zero `any[]`.
+ * - Multi-tenant isolated: scoped by `portalId` and `organizationId`.
+ */
+export interface ContentStudioDraft {
+  id: string;
+  portalId: string;
+  organizationId: string;
+  contentItemId: string | null;
+  title: string;
+  slug: string;
+  type: ContentItemType;
+  summary?: string;
+  category?: string;
+  tags?: string[];
+  blocks: PageBlock[];
+  visibility: PortalVisibility;
+  media?: ContentMedia;
+  seo?: ContentSeoConfig;
+  authorId: string;
+  authorName: string;
+  authorEmail?: string;
+  savedAt: string;
+  updatedAt: string;
+  version: number;
+}

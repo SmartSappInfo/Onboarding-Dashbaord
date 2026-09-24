@@ -22,8 +22,9 @@ interface PropertiesPanelProps {
   readonly onUpdate: (props: Record<string, unknown>) => void;
 }
 
-const TAB_TRIGGER_CLASS = 'text-[10px] py-1 rounded-md font-bold uppercase tracking-wider text-slate-300 hover:text-slate-100 data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-400';
-const INPUT_CLASS = 'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50';
+const TAB_TRIGGER_CLASS = 'text-[10px] py-1 rounded-md font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 data-[state=active]:bg-emerald-500/10 data-[state=active]:text-emerald-600 dark:data-[state=active]:text-emerald-400';
+const INPUT_CLASS = 'h-10 rounded-xl bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-200 focus:border-emerald-500/50';
+const SELECT_CONTENT_CLASS = 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-200 shadow-xl builder-popover-content';
 
 export const PropertiesPanel = React.memo(function PropertiesPanel({
   block,
@@ -90,19 +91,19 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
   const hasText = ['hero', 'text', 'cta', 'testimonial', 'stats', 'faq', 'video_hero', 'testimonial_grid', 'choice_cards', 'app_download', 'step_section', 'countdown'].includes(block.type);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300 select-none text-slate-200">
+    <div className="space-y-6 animate-in fade-in duration-300 select-none text-slate-900 dark:text-slate-200">
       {/* State Override Selector Controls */}
-      <div className="bg-slate-900 border border-slate-700/80 rounded-xl p-3 flex flex-col gap-2 shadow-sm">
+      <div className="bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl p-3 flex flex-col gap-2 shadow-xs">
         <div className="flex items-center justify-between">
-          <Label className="text-[10px] font-black uppercase text-slate-200 tracking-wider flex items-center gap-1.5">
-            <Sliders className="w-3.5 h-3.5 text-emerald-400" />
+          <Label className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-200 tracking-wider flex items-center gap-1.5">
+            <Sliders className="w-3.5 h-3.5 text-emerald-500 dark:text-emerald-400" />
             Style State Target
           </Label>
-          <span className="text-[9px] text-slate-200 font-bold uppercase tracking-wider bg-slate-950 border border-slate-700 px-1.5 py-0.5 rounded select-none">
+          <span className="text-[9px] text-slate-700 dark:text-slate-200 font-bold uppercase tracking-wider bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 rounded select-none">
             {activeState} override
           </span>
         </div>
-        <div className="grid grid-cols-4 gap-1 p-1 bg-slate-950 rounded-lg border border-slate-800">
+        <div className="grid grid-cols-4 gap-1 p-1 bg-white dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800">
           {(['default', 'hover', 'focus', 'disabled'] as const).map((st) => (
             <button
               key={st}
@@ -111,8 +112,8 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               className={cn(
                 "py-1 text-[9px] font-black uppercase tracking-wider rounded transition-all",
                 activeState === st 
-                  ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" 
-                  : "text-slate-300 hover:text-white hover:bg-slate-900"
+                  ? "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30" 
+                  : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-900"
               )}
             >
               {st}
@@ -122,7 +123,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
       </div>
 
       <Tabs defaultValue="properties" className="w-full">
-        <TabsList className="grid grid-cols-5 bg-slate-900 border border-slate-800 rounded-lg p-1">
+        <TabsList className="grid grid-cols-5 bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-1">
           <TabsTrigger value="properties" className={TAB_TRIGGER_CLASS} title="Properties">
             <Settings className="w-3.5 h-3.5" />
           </TabsTrigger>
@@ -161,7 +162,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Heading theme font" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+              <SelectContent className={SELECT_CONTENT_CLASS}>
                 <SelectItem value="heading">Theme Heading Font</SelectItem>
                 <SelectItem value="body">Theme Body Font</SelectItem>
                 <SelectItem value="sans">System Sans-Serif</SelectItem>
@@ -179,7 +180,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Left align" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+              <SelectContent className={SELECT_CONTENT_CLASS}>
                 <SelectItem value="left">Left</SelectItem>
                 <SelectItem value="center">Center</SelectItem>
                 <SelectItem value="right">Right</SelectItem>
@@ -199,11 +200,11 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
           </div>
 
           <div className="flex flex-col gap-1.5">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Color</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 tracking-wider">Text Color</Label>
             <div className="flex gap-2 items-center">
               <Input
                 type="color"
-                className="w-10 h-10 p-0 border border-slate-700 rounded-lg bg-slate-900 cursor-pointer shrink-0"
+                className="w-10 h-10 p-0 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 cursor-pointer shrink-0"
                 value={(props[getPrefixedKey('textColor')] as string) || '#0f172a'}
                 onChange={(e) => handleTypographyChange('textColor', e.target.value)}
               />
@@ -217,7 +218,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
           </div>
 
           <div className="flex items-center justify-between pt-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Text Gradient</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 tracking-wider">Text Gradient</Label>
             <Switch
               checked={!!props[getPrefixedKey('gradientText')]}
               onCheckedChange={(c) => handleTypographyChange('gradientText', c)}
@@ -231,12 +232,12 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <div className="flex gap-1.5 items-center">
                   <Input
                     type="color"
-                    className="w-8 h-8 p-0 border border-slate-700 rounded bg-slate-900 cursor-pointer"
+                    className="w-8 h-8 p-0 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900 cursor-pointer"
                     value={(props[getPrefixedKey('gradientFrom')] as string) || '#3B5FFF'}
                     onChange={(e) => handleTypographyChange('gradientFrom', e.target.value)}
                   />
                   <Input
-                    className="h-8 text-[10px] bg-slate-800 border-slate-700 text-slate-350 font-bold"
+                    className="h-8 text-[10px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-bold"
                     value={(props[getPrefixedKey('gradientFrom')] as string) || '#3B5FFF'}
                     onChange={(e) => handleTypographyChange('gradientFrom', e.target.value)}
                   />
@@ -247,12 +248,12 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <div className="flex gap-1.5 items-center">
                   <Input
                     type="color"
-                    className="w-8 h-8 p-0 border border-slate-700 rounded bg-slate-900 cursor-pointer"
+                    className="w-8 h-8 p-0 border border-slate-200 dark:border-slate-700 rounded bg-white dark:bg-slate-900 cursor-pointer"
                     value={(props[getPrefixedKey('gradientTo')] as string) || '#7C3AED'}
                     onChange={(e) => handleTypographyChange('gradientTo', e.target.value)}
                   />
                   <Input
-                    className="h-8 text-[10px] bg-slate-800 border-slate-700 text-slate-355 font-bold"
+                    className="h-8 text-[10px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-200 font-bold"
                     value={(props[getPrefixedKey('gradientTo')] as string) || '#7C3AED'}
                     onChange={(e) => handleTypographyChange('gradientTo', e.target.value)}
                   />
@@ -265,20 +266,20 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
         {/* ─── SPACING TAB ─── */}
         <TabsContent value="spacing" className="space-y-4 pt-4 text-left">
           <div className="flex flex-col gap-2">
-            <Label className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Visual Box Model (CSS)</Label>
+            <Label className="text-[10px] font-black uppercase text-slate-600 dark:text-slate-400 tracking-wider">Visual Box Model (CSS)</Label>
             
             {/* Figma / Webflow style nested visual Box Model spacing editor */}
-            <div className="relative w-full aspect-[16/10] border border-slate-800/80 rounded-2xl bg-slate-950 p-4 font-mono text-[9px] select-none text-slate-400">
+            <div className="relative w-full aspect-[16/10] border border-slate-200 dark:border-slate-800/80 rounded-2xl bg-slate-50 dark:bg-slate-950 p-4 font-mono text-[9px] select-none text-slate-600 dark:text-slate-400 shadow-xs">
               
               {/* Outer Margin Box wrapper */}
-              <div className="absolute inset-2 border border-slate-800/80 border-dashed rounded-xl bg-slate-900/10 flex items-center justify-center">
+              <div className="absolute inset-2 border border-slate-300 dark:border-slate-800/80 border-dashed rounded-xl bg-slate-100/60 dark:bg-slate-900/10 flex items-center justify-center">
                 <span className="absolute top-1 left-2 text-[8px] text-slate-500 font-bold uppercase select-none">Margin</span>
                 
                 {/* Margin top input */}
                 <input 
                   type="text" 
                   placeholder="0px"
-                  className="absolute top-1 w-12 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  className="absolute top-1 w-12 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                   value={(props[getPrefixedKey('marginTop')] as string) || ''}
                   onChange={(e) => handleSpacingChange('marginTop', e.target.value)}
                 />
@@ -286,7 +287,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <input 
                   type="text" 
                   placeholder="0px"
-                  className="absolute bottom-1 w-12 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  className="absolute bottom-1 w-12 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                   value={(props[getPrefixedKey('marginBottom')] as string) || ''}
                   onChange={(e) => handleSpacingChange('marginBottom', e.target.value)}
                 />
@@ -294,7 +295,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <input 
                   type="text" 
                   placeholder="0px"
-                  className="absolute left-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  className="absolute left-1 w-10 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                   value={(props[getPrefixedKey('marginLeft')] as string) || ''}
                   onChange={(e) => handleSpacingChange('marginLeft', e.target.value)}
                 />
@@ -302,20 +303,20 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                 <input 
                   type="text" 
                   placeholder="0px"
-                  className="absolute right-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                  className="absolute right-1 w-10 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                   value={(props[getPrefixedKey('marginRight')] as string) || ''}
                   onChange={(e) => handleSpacingChange('marginRight', e.target.value)}
                 />
 
                 {/* Inner Padding Box */}
-                <div className="absolute inset-x-12 inset-y-6 border border-slate-800/80 rounded-lg bg-slate-900/30 flex items-center justify-center">
+                <div className="absolute inset-x-12 inset-y-6 border border-slate-300 dark:border-slate-800/80 rounded-lg bg-white/70 dark:bg-slate-900/30 flex items-center justify-center">
                   <span className="absolute top-1 left-2 text-[8px] text-slate-500 font-bold uppercase select-none">Padding</span>
                   
                   {/* Padding top input */}
                   <input 
                     type="text" 
                     placeholder="0px"
-                    className="absolute top-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    className="absolute top-1 w-10 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                     value={(props[getPrefixedKey('paddingTop')] as string) || ''}
                     onChange={(e) => handleSpacingChange('paddingTop', e.target.value)}
                   />
@@ -323,7 +324,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <input 
                     type="text" 
                     placeholder="0px"
-                    className="absolute bottom-1 w-10 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    className="absolute bottom-1 w-10 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                     value={(props[getPrefixedKey('paddingBottom')] as string) || ''}
                     onChange={(e) => handleSpacingChange('paddingBottom', e.target.value)}
                   />
@@ -331,7 +332,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <input 
                     type="text" 
                     placeholder="0px"
-                    className="absolute left-1 w-8 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    className="absolute left-1 w-8 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                     value={(props[getPrefixedKey('paddingLeft')] as string) || ''}
                     onChange={(e) => handleSpacingChange('paddingLeft', e.target.value)}
                   />
@@ -339,13 +340,13 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <input 
                     type="text" 
                     placeholder="0px"
-                    className="absolute right-1 w-8 text-center bg-transparent border-0 hover:bg-slate-800/40 focus:bg-slate-800 text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
+                    className="absolute right-1 w-8 text-center bg-transparent border-0 hover:bg-slate-200/60 dark:hover:bg-slate-800/40 focus:bg-white dark:focus:bg-slate-800 text-slate-800 dark:text-slate-300 font-semibold p-0.5 rounded focus:outline-none focus:ring-1 focus:ring-emerald-500/30 text-[9px]"
                     value={(props[getPrefixedKey('paddingRight')] as string) || ''}
                     onChange={(e) => handleSpacingChange('paddingRight', e.target.value)}
                   />
 
                   {/* Absolute Center Content Label */}
-                  <div className="absolute inset-x-8 inset-y-4 bg-emerald-500/10 border border-emerald-500/20 rounded flex items-center justify-center text-emerald-400 font-bold uppercase text-[7px] tracking-wider select-none pointer-events-none">
+                  <div className="absolute inset-x-8 inset-y-4 bg-emerald-500/10 border border-emerald-500/20 rounded flex items-center justify-center text-emerald-600 dark:text-emerald-400 font-bold uppercase text-[7px] tracking-wider select-none pointer-events-none">
                     BLOCK
                   </div>
                 </div>
@@ -366,7 +367,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Select motion effect" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+              <SelectContent className={SELECT_CONTENT_CLASS}>
                 <SelectItem value="none">None (Immediate render)</SelectItem>
                 <SelectItem value="fade-in">Fade In</SelectItem>
                 <SelectItem value="slide-up">Slide Up</SelectItem>
@@ -389,7 +390,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
                   <SelectTrigger className={INPUT_CLASS}>
                     <SelectValue placeholder="Select trigger point" />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+                  <SelectContent className={SELECT_CONTENT_CLASS}>
                     <SelectItem value="on-load">On Page Load</SelectItem>
                     <SelectItem value="on-scroll">On Scroll Into View</SelectItem>
                     <SelectItem value="on-hover">On Mouse Hover</SelectItem>
@@ -442,10 +443,10 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
         <TabsContent value="advanced" className="space-y-4 pt-4 text-left">
           
           {/* Dynamic Data-Binding Selector Wizard */}
-          <div className="border border-slate-800 rounded-2xl p-4 bg-slate-950/50 flex flex-col gap-3">
-            <div className="flex items-center gap-1.5 pb-2 border-b border-slate-800">
-              <Sparkles className="w-4 h-4 text-emerald-400" />
-              <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-300">Data-Binding Wizard</h5>
+          <div className="border border-slate-200 dark:border-slate-800 rounded-2xl p-4 bg-slate-50/50 dark:bg-slate-950/50 flex flex-col gap-3">
+            <div className="flex items-center gap-1.5 pb-2 border-b border-slate-200 dark:border-slate-800">
+              <Sparkles className="w-4 h-4 text-emerald-500 dark:text-emerald-400" />
+              <h5 className="text-[10px] font-black uppercase tracking-wider text-slate-700 dark:text-slate-300">Data-Binding Wizard</h5>
             </div>
             
             <p className="text-[10px] text-slate-500 leading-normal">
@@ -454,15 +455,15 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
 
             <div className="space-y-3">
               <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-bold text-slate-400 uppercase">Target Field</Label>
+                <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">Target Field</Label>
                 <Select
                   value={bindField}
                   onValueChange={setBindField}
                 >
-                  <SelectTrigger className="h-8 rounded-lg bg-slate-900 border-slate-800 text-[10px] font-bold">
+                  <SelectTrigger className="h-8 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-900 dark:text-slate-200">
                     <SelectValue placeholder="Select target..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+                  <SelectContent className={SELECT_CONTENT_CLASS}>
                     <SelectItem value="title">Title / Heading</SelectItem>
                     <SelectItem value="subtitle">Subtitle / Subheading</SelectItem>
                     <SelectItem value="content">Main Content Text</SelectItem>
@@ -472,15 +473,15 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               </div>
 
               <div className="flex flex-col gap-1">
-                <Label className="text-[9px] font-bold text-slate-400 uppercase">Bind Variable</Label>
+                <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">Bind Variable</Label>
                 <Select
                   value={bindVar}
                   onValueChange={setBindVar}
                 >
-                  <SelectTrigger className="h-8 rounded-lg bg-slate-900 border-slate-800 text-[10px] font-bold">
+                  <SelectTrigger className="h-8 rounded-lg bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-[10px] font-bold text-slate-900 dark:text-slate-200">
                     <SelectValue placeholder="Select variable..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+                  <SelectContent className={SELECT_CONTENT_CLASS}>
                     {variables.length > 0 ? (
                       variables.map((v) => (
                         <SelectItem key={v.key} value={`{{${v.key}}}`}>
@@ -535,7 +536,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="All devices" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+              <SelectContent className={SELECT_CONTENT_CLASS}>
                 <SelectItem value="all">Display on All Devices</SelectItem>
                 <SelectItem value="desktop">Desktop Breakpoints Only</SelectItem>
                 <SelectItem value="mobile">Mobile Devices Only</SelectItem>
@@ -552,7 +553,7 @@ export const PropertiesPanel = React.memo(function PropertiesPanel({
               <SelectTrigger className={INPUT_CLASS}>
                 <SelectValue placeholder="Always render" />
               </SelectTrigger>
-              <SelectContent className="bg-slate-900 border-slate-800 text-slate-200 builder-popover-content">
+              <SelectContent className={SELECT_CONTENT_CLASS}>
                 <SelectItem value="all">Always Render Block</SelectItem>
                 <SelectItem value="has_tag">User Has Tenant Tags</SelectItem>
                 <SelectItem value="no_tag">User Lacks Tenant Tags</SelectItem>

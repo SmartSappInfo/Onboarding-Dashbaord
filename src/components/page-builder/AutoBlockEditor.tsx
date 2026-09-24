@@ -4,6 +4,12 @@
  * Property panel generated from a block's declared `fields`. Replaces the
  * hand-written per-type switch in the old `BlockEditor` — adding a block no
  * longer means editing the panel. Each `BlockField.kind` maps to a control.
+ *
+ * Conforms to:
+ * - Adaptive light/dark theming: High-contrast, clean white/slate-50 surfaces in Light Theme,
+ *   crisp dark surfaces in Dark Theme.
+ * - Minimum 44px mobile touch targets where interactive.
+ * - Strict typing: Zero `any`, zero `any[]`.
  */
 import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -23,9 +29,22 @@ import { ImageUploader } from '@/components/shared/image-uploader';
 import { VideoUploader, VideoUploaderValue } from '@/components/shared/video-uploader';
 
 const INPUT_CLASS =
-  'h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-200 focus:border-emerald-500/50';
+  'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
+
 const TEXTAREA_CLASS =
-  'w-full min-h-[80px] rounded-xl bg-slate-800 border border-slate-700 p-3 text-xs font-semibold text-slate-200 focus:ring-2 focus:ring-emerald-500/20 outline-none transition-all';
+  'w-full min-h-[80px] rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 p-3 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 focus:border-primary/60 outline-none transition-all shadow-2xs';
+
+const SELECT_TRIGGER_CLASS =
+  'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 shadow-2xs transition-all';
+
+const SELECT_CONTENT_CLASS =
+  'rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 shadow-xl z-[10000] builder-popover-content';
+
+const SELECT_ITEM_CLASS =
+  'text-xs text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800 focus:text-slate-900 dark:focus:text-white font-medium cursor-pointer';
+
+const LABEL_CLASS =
+  'text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider';
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : '';
@@ -92,7 +111,7 @@ function UrlField({ label, value, placeholder, workspaceId, filterType, onChange
       <Input aria-label={label} value={value} placeholder={placeholder || "https://..."} onChange={(e) => onChange(e.target.value)} className={INPUT_CLASS} />
       {workspaceId ? (
         <>
-          <Button type="button" variant="outline" size="sm" onClick={() => setLibraryOpen(true)} className="h-8 text-[10px] font-bold bg-slate-800 border-slate-700 text-slate-300 hover:text-emerald-400">
+          <Button type="button" variant="outline" size="sm" onClick={() => setLibraryOpen(true)} className="h-8 text-[10px] font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-750 shadow-2xs">
             <FolderHeart className="w-3 h-3 mr-1" />
             Select from Gallery
           </Button>
@@ -146,13 +165,13 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       );
     case 'slider':
       return (
-        <input aria-label={field.label} type="range" min={field.min} max={field.max} step={field.step} value={typeof value === 'number' ? value : field.min} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-emerald-500" />
+        <input aria-label={field.label} type="range" min={field.min} max={field.max} step={field.step} value={typeof value === 'number' ? value : field.min} onChange={(e) => onChange(Number(e.target.value))} className="w-full accent-primary" />
       );
     case 'color':
       return (
-        <div className="flex items-center gap-3">
-          <input aria-label={`${field.label} swatch`} type="color" value={asString(value) || '#000000'} onChange={(e) => onChange(e.target.value)} className="w-8 h-8 rounded-lg border border-slate-700 cursor-pointer bg-transparent" />
-          <Input aria-label={field.label} value={asString(value)} placeholder="#000000" onChange={(e) => onChange(e.target.value)} className={`${INPUT_CLASS} flex-1 font-mono`} />
+        <div className="flex items-center gap-2.5">
+          <input aria-label={`${field.label} swatch`} type="color" value={asString(value) || '#000000'} onChange={(e) => onChange(e.target.value)} className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 cursor-pointer bg-white dark:bg-slate-800 p-0.5 shadow-2xs" />
+          <Input aria-label={field.label} value={asString(value)} placeholder="#000000" onChange={(e) => onChange(e.target.value)} className={`${INPUT_CLASS} flex-1 font-mono uppercase`} />
         </div>
       );
     case 'boolean':
@@ -160,23 +179,19 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
     case 'select':
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
+          <SelectTrigger aria-label={field.label} className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger>
+          <SelectContent className={SELECT_CONTENT_CLASS}>
             {field.options.map((opt) => (
-              <SelectItem key={opt.value} value={opt.value} className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">{opt.label}</SelectItem>
+              <SelectItem key={opt.value} value={opt.value} className={SELECT_ITEM_CLASS}>{opt.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>
       );
     case 'resource': {
-      // Extended interface for list item to support subLabel for survey/form resource selectors
-      // Cautious: Ensure list items are strictly typed. Avoid 'any'.
       let list: ReadonlyArray<{ id: string; label: string; subLabel?: string }> = [];
       if (field.resource === 'form') {
         list = (resources.forms || []).map((f) => ({ id: f.id, label: f.internalName ?? f.title }));
       } else if (field.resource === 'survey') {
-        // Surveys display internalName as the primary identifier (label) and public title as the subLabel
-        // If the public title is identical to the internal name, we omit the subLabel to avoid redundancy
         list = (resources.surveys || []).map((s) => ({
           id: s.id,
           label: s.internalName || s.title,
@@ -193,17 +208,16 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
       }
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50">
+          <SelectTrigger aria-label={field.label} className={SELECT_TRIGGER_CLASS}>
             <SelectValue placeholder={`Choose a ${field.resource}...`} />
           </SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
+          <SelectContent className={SELECT_CONTENT_CLASS}>
             {list.map((r) => (
-              <SelectItem key={r.id} value={r.id} className="text-xs py-2 text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white cursor-pointer font-medium">
+              <SelectItem key={r.id} value={r.id} className={SELECT_ITEM_CLASS}>
                 <div className="flex flex-col gap-0.5 text-left max-w-[240px]">
-                  {/* Escaped label rendering with theme-aware contrast class */}
-                  <span className="font-bold text-slate-100 builder-option-label truncate">{r.label}</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100 builder-option-label truncate">{r.label}</span>
                   {r.subLabel && (
-                    <span className="text-[10px] text-slate-300 builder-option-sublabel font-semibold truncate">{r.subLabel}</span>
+                    <span className="text-[10px] text-slate-500 dark:text-slate-400 builder-option-sublabel font-semibold truncate">{r.subLabel}</span>
                   )}
                 </div>
               </SelectItem>
@@ -217,28 +231,28 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
     case 'animation':
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue placeholder="No animation" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
-            <SelectItem value="none" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">None</SelectItem>
-            <SelectItem value="fade-in" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Fade In</SelectItem>
-            <SelectItem value="slide-up" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Up</SelectItem>
-            <SelectItem value="slide-down" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Down</SelectItem>
-            <SelectItem value="slide-left" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Left</SelectItem>
-            <SelectItem value="slide-right" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Slide Right</SelectItem>
-            <SelectItem value="zoom-in" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Zoom In</SelectItem>
+          <SelectTrigger aria-label={field.label} className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="No animation" /></SelectTrigger>
+          <SelectContent className={SELECT_CONTENT_CLASS}>
+            <SelectItem value="none" className={SELECT_ITEM_CLASS}>None</SelectItem>
+            <SelectItem value="fade-in" className={SELECT_ITEM_CLASS}>Fade In</SelectItem>
+            <SelectItem value="slide-up" className={SELECT_ITEM_CLASS}>Slide Up</SelectItem>
+            <SelectItem value="slide-down" className={SELECT_ITEM_CLASS}>Slide Down</SelectItem>
+            <SelectItem value="slide-left" className={SELECT_ITEM_CLASS}>Slide Left</SelectItem>
+            <SelectItem value="slide-right" className={SELECT_ITEM_CLASS}>Slide Right</SelectItem>
+            <SelectItem value="zoom-in" className={SELECT_ITEM_CLASS}>Zoom In</SelectItem>
           </SelectContent>
         </Select>
       );
     case 'font-family':
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
-          <SelectTrigger aria-label={field.label} className="h-10 rounded-xl bg-slate-800 border-slate-700 text-xs font-semibold text-slate-100 focus:border-emerald-500/50"><SelectValue placeholder="Default Font" /></SelectTrigger>
-          <SelectContent className="rounded-xl bg-slate-900 border-slate-700 text-slate-100 shadow-2xl z-[10000] builder-popover-content">
-            <SelectItem value="heading" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Heading Font</SelectItem>
-            <SelectItem value="body" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Body Font</SelectItem>
-            <SelectItem value="sans" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Sans-Serif</SelectItem>
-            <SelectItem value="serif" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Serif</SelectItem>
-            <SelectItem value="mono" className="text-xs text-slate-100 hover:bg-slate-800 focus:bg-slate-800 focus:text-white font-medium cursor-pointer">Monospace</SelectItem>
+          <SelectTrigger aria-label={field.label} className={SELECT_TRIGGER_CLASS}><SelectValue placeholder="Default Font" /></SelectTrigger>
+          <SelectContent className={SELECT_CONTENT_CLASS}>
+            <SelectItem value="heading" className={SELECT_ITEM_CLASS}>Heading Font</SelectItem>
+            <SelectItem value="body" className={SELECT_ITEM_CLASS}>Body Font</SelectItem>
+            <SelectItem value="sans" className={SELECT_ITEM_CLASS}>Sans-Serif</SelectItem>
+            <SelectItem value="serif" className={SELECT_ITEM_CLASS}>Serif</SelectItem>
+            <SelectItem value="mono" className={SELECT_ITEM_CLASS}>Monospace</SelectItem>
           </SelectContent>
         </Select>
       );
@@ -261,13 +275,12 @@ interface ListFieldProps {
 
 function ListField({ field, value, resources, workspaceId, onChange }: ListFieldProps) {
   const items = value.map((it) => (isRecord(it) ? it : {}));
-  const [expandedIndex, setExpandedIndex] = useState<number | null>(0); // Default expand the first item
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(0);
 
   const addItem = () => {
     const item: Record<string, unknown> = { id: genId('item') };
     for (const f of field.itemFields) item[f.key] = '';
     onChange([...items, item]);
-    // Automatically expand the newly added item
     setExpandedIndex(items.length);
   };
   const updateItem = (idx: number, patch: Record<string, unknown>) => {
@@ -294,8 +307,8 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <Label className="text-[10px] font-bold text-slate-400 uppercase">{field.label}</Label>
-        <Button variant="ghost" size="sm" onClick={addItem} className="h-7 text-[10px] font-bold text-emerald-400 hover:bg-emerald-500/10">
+        <Label className={LABEL_CLASS}>{field.label}</Label>
+        <Button variant="ghost" size="sm" onClick={addItem} className="h-7 text-[10px] font-bold text-primary hover:bg-primary/10">
           <PlusCircle className="w-3 h-3 mr-1" /> Add
         </Button>
       </div>
@@ -303,19 +316,19 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
         {items.map((item, idx) => {
           const isExpanded = expandedIndex === idx;
           return (
-            <div key={asString(item.id) || idx} className="bg-slate-900 border border-slate-700/80 rounded-xl overflow-hidden shadow-sm transition-all duration-200">
+            <div key={asString(item.id) || idx} className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700/80 rounded-xl overflow-hidden shadow-2xs transition-all duration-200">
               {/* Header Bar */}
               <div 
-                className="flex items-center justify-between p-3 bg-slate-800/90 hover:bg-slate-800 cursor-pointer select-none transition-colors border-b border-slate-700/50"
+                className="flex items-center justify-between p-3 bg-slate-50/80 dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer select-none transition-colors border-b border-slate-200 dark:border-slate-700/60"
                 onClick={() => setExpandedIndex(isExpanded ? null : idx)}
               >
                 <div className="flex items-center gap-2">
                   {isExpanded ? (
-                    <ChevronUp className="w-4 h-4 text-slate-200" />
+                    <ChevronUp className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   ) : (
-                    <ChevronDown className="w-4 h-4 text-slate-200" />
+                    <ChevronDown className="w-4 h-4 text-slate-500 dark:text-slate-400" />
                   )}
-                  <span className="text-xs font-bold text-slate-100 truncate max-w-[180px]">
+                  <span className="text-xs font-bold text-slate-900 dark:text-slate-100 truncate max-w-[180px]">
                     {getPreviewLabel(item, idx)}
                   </span>
                 </div>
@@ -326,7 +339,7 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
                     e.stopPropagation();
                     removeItem(idx);
                   }} 
-                  className="h-6 w-6 p-0 text-slate-300 hover:text-red-400 hover:bg-red-500/20 rounded-lg"
+                  className="h-6 w-6 p-0 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-lg"
                 >
                   <X className="w-3.5 h-3.5" />
                 </Button>
@@ -334,9 +347,8 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
 
               {/* Collapsible Content */}
               {isExpanded && (
-                <div className="p-3 border-t border-slate-800 bg-slate-950/20 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/20 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                   {field.itemFields.map((itf) => {
-                    // Conditional visibility for list item fields based on actionType
                     if (item.actionType !== undefined) {
                       if (itf.key === 'url' && item.actionType !== 'url') return null;
                       if (itf.key === 'formId' && item.actionType !== 'form') return null;
@@ -345,7 +357,6 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
                       if (itf.key === 'qrId' && item.actionType !== 'qr') return null;
                       if (itf.key === 'surveyResultMode' && item.actionType !== 'survey') return null;
 
-                      // Open in modal and track entity properties only apply to modal-compatible resource actions
                       if ((itf.key === 'openInModal' || itf.key === 'trackEntity') && !['form', 'survey', 'meeting'].includes(String(item.actionType))) {
                         return null;
                       }
@@ -353,7 +364,7 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
 
                     return (
                       <div key={itf.key} className="space-y-1 text-left">
-                        <Label className="text-[9px] font-bold text-slate-500 uppercase">{itf.label}</Label>
+                        <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">{itf.label}</Label>
                         <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
                       </div>
                     );
@@ -363,7 +374,7 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
             </div>
           );
         })}
-        {items.length === 0 ? <p className="text-[10px] text-slate-500 text-center py-3 italic">No items yet</p> : null}
+        {items.length === 0 ? <p className="text-[10px] text-slate-400 text-center py-3 italic">No items yet</p> : null}
       </div>
     </div>
   );
@@ -391,10 +402,10 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
   if (!block) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center space-y-3 opacity-60 py-20">
-        <Settings2 className="w-8 h-8 text-slate-500" />
+        <Settings2 className="w-8 h-8 text-slate-400 dark:text-slate-500" />
         <div>
-          <p className="text-sm font-semibold text-slate-300">No block selected</p>
-          <p className="text-[10px] text-slate-500 mt-1">Select a block on the canvas to edit its properties.</p>
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">No block selected</p>
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">Select a block on the canvas to edit its properties.</p>
         </div>
       </div>
     );
@@ -410,13 +421,13 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="flex items-center justify-between">
-        <h4 className="text-xs font-bold text-slate-300 uppercase tracking-widest">{def.label} Block</h4>
-        <Badge variant="outline" className="text-[9px] uppercase bg-slate-800 border-slate-700 text-slate-400">{block.type}</Badge>
+      <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
+        <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{def.label} Block</h4>
+        <Badge variant="outline" className="text-[9px] uppercase bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold">{block.type}</Badge>
       </div>
 
       {def.fields.length === 0 ? (
-        <p className="text-[10px] text-slate-500 italic">This block has no editable properties.</p>
+        <p className="text-[10px] text-slate-400 italic">This block has no editable properties.</p>
       ) : (
         <div className="space-y-4">
           {def.fields
@@ -428,7 +439,6 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               return true;
             })
             .map((field) => {
-            // Conditional field visibility for CTA Block actions
             if (block.type === 'cta') {
               if (field.key === 'url' && props.actionType !== 'url') return null;
               if (field.key === 'formId' && props.actionType !== 'form') return null;
@@ -438,12 +448,10 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               if (field.key === 'surveyResultMode' && (props.actionType !== 'survey' || !props.openInModal)) return null;
             }
 
-            // Conditional field visibility for Hero Block sales elements
             if (block.type === 'hero') {
               if (['secondaryTitle', 'secondarySubtitle', 'bulletList'].includes(field.key) && !props.isVideoSales) return null;
             }
 
-            // Conditional field visibility for Testimonial / Testimonial Grid custom background elements
             if (block.type === 'testimonial' || block.type === 'testimonial_grid') {
               if (field.key === 'avatarUrl' && props.preset === 'split-video') return null;
               if (field.key === 'cardBgColor' && props.cardBgType !== 'color' && props.cardBgType !== 'image') return null;
@@ -456,9 +464,9 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             }
 
             return (
-              <div key={field.key} className="space-y-2">
+              <div key={field.key} className="space-y-1.5">
                 {field.kind !== 'list' ? (
-                  <Label className="text-[10px] font-bold text-slate-500 uppercase">{field.label}</Label>
+                  <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />
               </div>

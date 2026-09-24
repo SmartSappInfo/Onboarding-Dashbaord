@@ -1176,20 +1176,20 @@ export default function BuilderClient({ params }: { params: Promise<{ id: string
                 {/* ─── PROPERTIES PANEL ON THE RIGHT ─── */}
                 <div
                     className={cn(
-                        "flex flex-col bg-slate-900/90 border-l border-slate-700/50 backdrop-blur-md transition-all duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] overflow-hidden shrink-0",
+                        "flex flex-col bg-white/95 dark:bg-slate-900/90 border-l border-slate-200 dark:border-slate-700/50 backdrop-blur-md transition-all duration-300 [transition-timing-function:cubic-bezier(0.32,0.72,0,1)] overflow-hidden shrink-0",
                         isRightSidebarExpanded ? "w-72 opacity-100 border-l-border" : "w-0 opacity-0 border-l-0",
                         resolvedTheme === 'dark' && "dark"
                     )}
                 >
                     <div className="flex-1 text-left min-w-[288px] flex flex-col overflow-y-auto p-4 custom-scrollbar">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3 mb-2 select-none">
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                        <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3 mb-2 select-none">
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-slate-400">
                                 {editingHeader ? "Header Settings" : editingFooter ? "Footer Settings" : "Properties"}
                             </span>
                             <button
                                 type="button"
                                 onClick={() => setIsRightSidebarExpanded(false)}
-                                className="w-6 h-6 rounded-md flex items-center justify-center border border-slate-800 hover:border-slate-700 bg-slate-900/40 text-slate-500 hover:text-slate-300 transition-all active:scale-[0.97]"
+                                className="w-6 h-6 rounded-md flex items-center justify-center border border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-100/60 dark:bg-slate-900/40 text-slate-500 hover:text-slate-800 dark:hover:text-slate-300 transition-all active:scale-[0.97]"
                                 title="Collapse Panel"
                             >
                                 <ChevronRight className="w-3.5 h-3.5" />
