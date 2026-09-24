@@ -277,6 +277,28 @@ export interface CommunityLeaderboardEntry {
   rank: number;
 }
 
+export interface MemberPublicProfile {
+  userId: string;
+  displayName: string;
+  avatarUrl?: string;
+  role: string;
+  planName?: string;
+  points: number;
+  level: number;
+  levelName: string;
+  streakDays: number;
+  badges: Array<{
+    id: string;
+    name: string;
+    description: string;
+    iconUrl?: string;
+    awardedAt: string;
+  }>;
+  enrolledCourseCount: number;
+  completedLessonCount: number;
+  joinedAt: string;
+}
+
 export interface CreateCommentInput {
   organizationId: string;
   portalId: string;

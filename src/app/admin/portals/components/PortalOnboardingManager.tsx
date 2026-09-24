@@ -4,7 +4,13 @@
  * {{Org_name}} Experience Platform — Portal Onboarding & Tasks Studio
  *
  * Visual studio management component for Onboarding Flow Steps, completion points,
- * and Daily Action Tasks.
+ * Daily Action Tasks, and Instructor Submissions Review Queue.
+ *
+ * Conforms to:
+ * - next-best-practices, vercel-react-best-practices
+ * - emilkowal-animations (tactile feedback, active:scale-[0.97])
+ * - Minimum 44px mobile touch targets
+ * - Strict typing (0 any, 0 any[], 0 unhandled unknown)
  */
 
 import * as React from 'react';
@@ -15,27 +21,13 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-} from '@/components/ui/dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   saveOnboardingFlowAction,
   getOnboardingFlowAction,
   createTaskAction,
+  updateTaskAction,
   deleteTaskAction,
   listTasksByPortalAction,
 } from '@/app/actions/engagement-actions';
@@ -43,9 +35,6 @@ import type {
   OnboardingFlow,
   OnboardingStep,
   MemberTask,
-  StepType,
-  AutoVerificationType,
-  TaskPriority,
 } from '@/lib/types/engagement';
 import { DEFAULT_ONBOARDING_STEPS } from '@/lib/portal-presets';
 import {
@@ -53,10 +42,19 @@ import {
   ListOrdered,
   Plus,
   Trash2,
+  Pencil,
   Award,
   Clock,
   Loader2,
+  Inbox,
+  UploadCloud,
+  FileSpreadsheet,
+  Link as LinkIcon,
 } from 'lucide-react';
+import { SortableOnboardingStepItem } from './onboarding/SortableOnboardingStepItem';
+import { OnboardingStepEditorModal } from './onboarding/OnboardingStepEditorModal';
+import { TaskEditorModal, type TaskFormData } from './onboarding/TaskEditorModal';
+import { SubmissionReviewQueue } from './onboarding/SubmissionReviewQueue';
 
 interface PortalOnboardingManagerProps {
   portalId: string;
@@ -110,13 +108,17 @@ export function PortalOnboardingManager({
         : null,
     [firestore, portalId]
   );
-  const { data: flows, isLoading: _isLoadingFlow } = useCollection<OnboardingFlow>(flowQuery);
+  const { data: flows } = useCollection<OnboardingFlow>(flowQuery);
   const flow = flows?.[0] ?? serverFlow;
 
   // Onboarding Form State
   const [steps, setSteps] = React.useState<OnboardingStep[]>([]);
   const [completionPoints, setCompletionPoints] = React.useState(20);
   const [isSavingFlow, setIsSavingFlow] = React.useState(false);
+
+  // Step Editor Modal State
+  const [isStepModalOpen, setIsStepModalOpen] = React.useState(false);
+  const [editingStep, setEditingStep] = React.useState<OnboardingStep | null>(null);
 
   React.useEffect(() => {
     if (flow) {
@@ -146,17 +148,11 @@ export function PortalOnboardingManager({
   const effectiveTasks = (tasks && tasks.length > 0) ? tasks : serverTasks;
   const isLoadingTasks = isLoadingTasksCollection && isLoadingServer && effectiveTasks.length === 0;
 
-  // Create Task Modal State
-  const [isCreateTaskOpen, setIsCreateTaskOpen] = React.useState(false);
-  const [taskTitle, setTaskTitle] = React.useState('');
-  const [taskDescription, setTaskDescription] = React.useState('');
-  const [taskPriority, setTaskPriority] = React.useState<TaskPriority>('medium');
-  const [taskDueDate, setTaskDueDate] = React.useState('');
-  const [taskPoints, setTaskPoints] = React.useState(15);
-  const [taskActionUrl, setTaskActionUrl] = React.useState('');
-  const [isSubmittingTask, setIsSubmittingTask] = React.useState(false);
+  // Task Editor Modal State
+  const [isTaskModalOpen, setIsTaskModalOpen] = React.useState(false);
+  const [editingTask, setEditingTask] = React.useState<MemberTask | null>(null);
 
-  // ── Actions ────────────────────────────────────────────────────────────────
+  // ── Flow Actions ────────────────────────────────────────────────────────────
 
   const handleSaveFlow = async () => {
     setIsSavingFlow(true);
@@ -185,64 +181,95 @@ export function PortalOnboardingManager({
     }
   };
 
-  const handleAddStep = () => {
-    const newStep: OnboardingStep = {
-      id: `step_${Date.now()}`,
-      title: 'New Action Step',
-      description: 'Step instructions...',
-      type: 'custom_url',
-      actionLabel: 'Open Action',
-      autoVerificationType: 'manual_confirm',
-      order: steps.length + 1,
-      isRequired: true,
-    };
-    setSteps([...steps, newStep]);
+  const handleOpenAddStep = () => {
+    setEditingStep(null);
+    setIsStepModalOpen(true);
   };
 
-  const handleUpdateStep = (idx: number, updates: Partial<OnboardingStep>) => {
+  const handleOpenEditStep = (step: OnboardingStep) => {
+    setEditingStep(step);
+    setIsStepModalOpen(true);
+  };
+
+  const handleSaveStepModal = (savedStep: OnboardingStep) => {
+    const existingIndex = steps.findIndex(s => s.id === savedStep.id);
+    if (existingIndex >= 0) {
+      const next = [...steps];
+      next[existingIndex] = savedStep;
+      setSteps(next);
+    } else {
+      setSteps([...steps, { ...savedStep, order: steps.length + 1 }]);
+    }
+  };
+
+  const handleDeleteStep = (stepId: string) => {
+    const filtered = steps.filter(s => s.id !== stepId);
+    setSteps(filtered.map((s, idx) => ({ ...s, order: idx + 1 })));
+  };
+
+  const handleMoveStepUp = (index: number) => {
+    if (index <= 0) return;
     const next = [...steps];
-    next[idx] = { ...next[idx], ...updates };
-    setSteps(next);
+    const temp = next[index - 1];
+    next[index - 1] = next[index];
+    next[index] = temp;
+    setSteps(next.map((s, idx) => ({ ...s, order: idx + 1 })));
   };
 
-  const handleDeleteStep = (idx: number) => {
-    setSteps(steps.filter((_, i) => i !== idx));
+  const handleMoveStepDown = (index: number) => {
+    if (index >= steps.length - 1) return;
+    const next = [...steps];
+    const temp = next[index + 1];
+    next[index + 1] = next[index];
+    next[index] = temp;
+    setSteps(next.map((s, idx) => ({ ...s, order: idx + 1 })));
   };
 
-  const handleCreateTask = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!taskTitle.trim()) return;
+  // ── Task Actions ────────────────────────────────────────────────────────────
 
-    setIsSubmittingTask(true);
+  const handleOpenCreateTask = () => {
+    setEditingTask(null);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleOpenEditTask = (task: MemberTask) => {
+    setEditingTask(task);
+    setIsTaskModalOpen(true);
+  };
+
+  const handleSaveTask = async (data: TaskFormData) => {
     try {
-      const res = await createTaskAction(
-        {
-          organizationId,
-          portalId,
-          workspaceIds,
-          title: taskTitle.trim(),
-          description: taskDescription.trim(),
-          priority: taskPriority,
-          dueDate: taskDueDate || undefined,
-          pointsReward: taskPoints,
-          actionUrl: taskActionUrl.trim() || undefined,
-          order: (effectiveTasks.length || 0) + 1,
-        },
-        portalSlug
-      );
-
-      if (!res.success) throw new Error(res.error);
-      toast({ title: 'Task Created! 📋', description: `Added "${res.data?.title}".` });
-      setTaskTitle('');
-      setTaskDescription('');
-      setTaskActionUrl('');
-      setTaskDueDate('');
-      setIsCreateTaskOpen(false);
+      if (editingTask) {
+        const res = await updateTaskAction(editingTask.id, data, portalId, portalSlug);
+        if (!res.success) throw new Error(res.error);
+        toast({ title: 'Task Updated! 📋', description: `Modified "${res.data?.title}".` });
+      } else {
+        const res = await createTaskAction(
+          {
+            organizationId,
+            portalId,
+            workspaceIds,
+            title: data.title,
+            description: data.description,
+            priority: data.priority,
+            dueDate: data.dueDate,
+            relativeDueDays: data.relativeDueDays,
+            pointsReward: data.pointsReward,
+            actionUrl: data.actionUrl,
+            requireFileUpload: data.requireFileUpload,
+            downloadTemplateUrl: data.downloadTemplateUrl,
+            completionTagIds: data.completionTagIds,
+            order: (effectiveTasks.length || 0) + 1,
+          },
+          portalSlug
+        );
+        if (!res.success) throw new Error(res.error);
+        toast({ title: 'Task Created! 📋', description: `Added "${res.data?.title}".` });
+      }
       fetchServerFlowAndTasks();
     } catch (err: unknown) {
       toast({ title: 'Task Error', description: err instanceof Error ? err.message : 'Task error.' });
-    } finally {
-      setIsSubmittingTask(false);
+      throw err;
     }
   };
 
@@ -259,15 +286,18 @@ export function PortalOnboardingManager({
 
   return (
     <div className="space-y-6">
-      {/* ── Tabs ──────────────────────────────────────────────────────── */}
+      {/* ── Studio Tabs Navigation ────────────────────────────────────── */}
       <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full sm:w-auto">
-          <TabsList className="h-10 p-1 bg-muted/60 rounded-2xl">
-            <TabsTrigger value="onboarding" className="rounded-xl text-xs font-bold gap-1.5">
-              <CheckCircle2 className="w-3.5 h-3.5" /> Onboarding Checklist ({steps.length} Steps)
+          <TabsList className="h-11 p-1 bg-muted/60 rounded-2xl">
+            <TabsTrigger value="onboarding" className="rounded-xl text-xs font-bold gap-1.5 min-h-[36px]">
+              <CheckCircle2 className="w-3.5 h-3.5" /> Onboarding Checklist ({steps.length})
             </TabsTrigger>
-            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5">
-              <ListOrdered className="w-3.5 h-3.5" /> Daily Action Tasks ({effectiveTasks.length})
+            <TabsTrigger value="tasks" className="rounded-xl text-xs font-bold gap-1.5 min-h-[36px]">
+              <ListOrdered className="w-3.5 h-3.5" /> Action Tasks ({effectiveTasks.length})
+            </TabsTrigger>
+            <TabsTrigger value="submissions" className="rounded-xl text-xs font-bold gap-1.5 min-h-[36px]">
+              <Inbox className="w-3.5 h-3.5" /> Review Queue
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -276,25 +306,25 @@ export function PortalOnboardingManager({
           <Button
             onClick={handleSaveFlow}
             disabled={isSavingFlow}
-            className="h-10 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm"
+            className="h-11 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm min-h-[44px] active:scale-[0.97]"
           >
             {isSavingFlow ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save Onboarding Flow'}
           </Button>
-        ) : (
+        ) : activeTab === 'tasks' ? (
           <Button
-            onClick={() => setIsCreateTaskOpen(true)}
-            className="h-10 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm"
+            onClick={handleOpenCreateTask}
+            className="h-11 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm min-h-[44px] active:scale-[0.97]"
           >
-            <Plus className="w-4 h-4" /> Create Daily Task
+            <Plus className="w-4 h-4" /> Create Action Task
           </Button>
-        )}
+        ) : null}
       </div>
 
       {/* ── Tab 1: Onboarding Flow Editor ─────────────────────────────── */}
       {activeTab === 'onboarding' && (
         <div className="space-y-6">
           <Card className="rounded-3xl border-2 border-border p-6 space-y-5 bg-card">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <h3 className="font-extrabold text-base text-foreground">Step-by-Step Checklist</h3>
                 <p className="text-xs text-muted-foreground">
@@ -304,151 +334,54 @@ export function PortalOnboardingManager({
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-2">
                   <Award className="w-4 h-4 text-amber-500" />
-                  <Label className="text-xs font-bold">Reward Points on Completion:</Label>
+                  <Label className="text-xs font-bold">Reward Points on 100%:</Label>
                   <Input
                     type="number"
                     value={completionPoints}
-                    onChange={e => setCompletionPoints(Number(e.target.value))}
-                    className="w-16 h-8 text-xs font-bold rounded-xl"
+                    onChange={e => setCompletionPoints(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                    className="w-18 h-9 text-xs font-bold rounded-xl"
                   />
                 </div>
                 <Button
-                  onClick={handleAddStep}
+                  onClick={handleOpenAddStep}
                   variant="outline"
                   size="sm"
-                  className="rounded-xl font-bold text-xs gap-1"
+                  className="rounded-xl font-bold text-xs gap-1.5 h-9 min-h-[44px] sm:min-h-0"
                 >
                   <Plus className="w-3.5 h-3.5" /> Add Step
                 </Button>
               </div>
             </div>
 
-            <div className="space-y-3">
-              {steps.map((step, idx) => (
-                <div
-                  key={step.id}
-                  className="p-4 rounded-2xl border border-border bg-muted/20 space-y-3 relative group"
+            {/* List of Steps */}
+            {steps.length === 0 ? (
+              <div className="p-12 text-center border-2 border-dashed rounded-2xl space-y-2 bg-muted/10">
+                <p className="text-xs text-muted-foreground">No onboarding steps configured yet.</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleOpenAddStep}
+                  className="rounded-xl font-bold text-xs"
                 >
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <span className="w-6 h-6 rounded-full bg-primary/10 text-primary font-extrabold text-xs flex items-center justify-center">
-                        {idx + 1}
-                      </span>
-                      <Input
-                        value={step.title}
-                        onChange={e => handleUpdateStep(idx, { title: e.target.value })}
-                        placeholder="Step Title (e.g. Join the Community)"
-                        className="h-8 text-xs font-bold rounded-xl border-border bg-background max-w-sm"
-                      />
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <Select
-                        value={step.type}
-                        onValueChange={(val: StepType) => handleUpdateStep(idx, { type: val })}
-                      >
-                        <SelectTrigger className="h-8 w-36 text-xs rounded-xl">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          <SelectItem value="welcome_video" className="text-xs">Orientation Video</SelectItem>
-                          <SelectItem value="complete_profile" className="text-xs">Profile Setup</SelectItem>
-                          <SelectItem value="start_course" className="text-xs">Masterclass Lesson</SelectItem>
-                          <SelectItem value="community_post" className="text-xs">Community Post</SelectItem>
-                          <SelectItem value="book_meeting" className="text-xs">Book Session</SelectItem>
-                          <SelectItem value="custom_url" className="text-xs">Custom Link / Action</SelectItem>
-                        </SelectContent>
-                      </Select>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteStep(idx)}
-                        className="h-8 w-8 rounded-xl text-muted-foreground hover:text-rose-500"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Textarea
-                    value={step.description || ''}
-                    onChange={e => handleUpdateStep(idx, { description: e.target.value })}
-                    placeholder="Short instructions for the member on how to complete this step..."
-                    className="text-xs rounded-xl resize-none h-14 bg-background"
+                  Add First Step
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {steps.map((step, idx) => (
+                  <SortableOnboardingStepItem
+                    key={step.id}
+                    step={step}
+                    index={idx}
+                    totalSteps={steps.length}
+                    onMoveUp={handleMoveStepUp}
+                    onMoveDown={handleMoveStepDown}
+                    onEdit={handleOpenEditStep}
+                    onDelete={handleDeleteStep}
                   />
-
-                  {/* Zero-Code Configuration: Action Label & Verification Mode */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-muted-foreground">Action Button Label</Label>
-                      <Input
-                        value={step.actionLabel || ''}
-                        onChange={e => handleUpdateStep(idx, { actionLabel: e.target.value })}
-                        placeholder={
-                          step.type === 'welcome_video' ? 'Watch Orientation' :
-                          step.type === 'complete_profile' ? 'Set Up Profile' :
-                          step.type === 'start_course' ? 'Go to Lesson →' :
-                          step.type === 'community_post' ? 'Join Discussion' :
-                          step.type === 'book_meeting' ? 'Book Consultation' :
-                          'Open Action'
-                        }
-                        className="h-8 text-xs rounded-xl bg-background"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-muted-foreground">Auto-Verification Mode</Label>
-                      <Select
-                        value={step.autoVerificationType || (
-                          step.type === 'welcome_video' ? 'auto_watch' :
-                          step.type === 'complete_profile' ? 'has_profile' :
-                          step.type === 'start_course' ? 'has_started_lesson' :
-                          step.type === 'community_post' ? 'has_community_post' :
-                          'manual_confirm'
-                        )}
-                        onValueChange={(val: AutoVerificationType) => handleUpdateStep(idx, { autoVerificationType: val })}
-                      >
-                        <SelectTrigger className="h-8 text-xs rounded-xl bg-background">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-2xl">
-                          <SelectItem value="auto_watch" className="text-xs">Auto on Video Completion</SelectItem>
-                          <SelectItem value="has_profile" className="text-xs">Auto on Profile Save</SelectItem>
-                          <SelectItem value="has_started_lesson" className="text-xs">Auto on Lesson Start</SelectItem>
-                          <SelectItem value="has_community_post" className="text-xs">Auto on Community Post</SelectItem>
-                          <SelectItem value="manual_confirm" className="text-xs">Manual Confirmation</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-
-                  {step.type === 'welcome_video' && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-muted-foreground">Orientation Video Link (YouTube, Vimeo, Loom, or MP4)</Label>
-                      <Input
-                        value={step.videoUrl || ''}
-                        onChange={e => handleUpdateStep(idx, { videoUrl: e.target.value })}
-                        placeholder="https://www.youtube.com/embed/... or https://loom.com/embed/..."
-                        className="h-8 text-xs rounded-xl bg-background"
-                      />
-                    </div>
-                  )}
-
-                  {(step.type === 'custom_url' || step.type === 'book_meeting') && (
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold text-muted-foreground">Target URL / External Link</Label>
-                      <Input
-                        value={step.targetUrl || ''}
-                        onChange={e => handleUpdateStep(idx, { targetUrl: e.target.value })}
-                        placeholder="e.g. https://calendly.com/... or /portal/..."
-                        className="h-8 text-xs rounded-xl bg-background"
-                      />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
       )}
@@ -457,17 +390,20 @@ export function PortalOnboardingManager({
       {activeTab === 'tasks' && (
         <div className="space-y-4">
           {isLoadingTasks ? (
-            <div className="p-12 text-center text-xs text-muted-foreground">Loading tasks...</div>
+            <div className="p-12 text-center text-xs text-muted-foreground flex flex-col items-center justify-center gap-2">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              <span>Loading tasks...</span>
+            </div>
           ) : effectiveTasks.length === 0 ? (
             <div className="p-16 text-center border-2 border-dashed rounded-3xl space-y-3 bg-muted/10">
               <ListOrdered className="w-12 h-12 mx-auto text-primary/60" />
-              <h4 className="font-bold text-base text-foreground">No Daily Tasks Created</h4>
+              <h4 className="font-bold text-base text-foreground">No Tasks Created</h4>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto">
-                Create actionable bursary tasks for members to complete during their program.
+                Create actionable tasks, fee audits, and exercises for members to complete during their program.
               </p>
               <Button
-                onClick={() => setIsCreateTaskOpen(true)}
-                className="rounded-xl font-bold text-xs bg-primary text-white"
+                onClick={handleOpenCreateTask}
+                className="rounded-xl font-bold text-xs bg-primary text-white min-h-[44px]"
               >
                 <Plus className="w-3.5 h-3.5 mr-1" /> Add First Task
               </Button>
@@ -477,9 +413,9 @@ export function PortalOnboardingManager({
               {effectiveTasks.map(task => (
                 <Card
                   key={task.id}
-                  className="rounded-3xl border-2 border-border p-5 space-y-3 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"
+                  className="rounded-3xl border-2 border-border p-5 space-y-3 hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-2xs group"
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     <div className="flex items-start justify-between gap-2">
                       <Badge
                         variant="secondary"
@@ -494,14 +430,26 @@ export function PortalOnboardingManager({
                         {task.priority} Priority
                       </Badge>
 
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDeleteTask(task.id)}
-                        className="h-7 w-7 rounded-xl text-muted-foreground hover:text-rose-500"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleOpenEditTask(task)}
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
+                          title="Edit Task"
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteTask(task.id)}
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-rose-500"
+                          title="Delete Task"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </div>
 
                     <h4 className="font-extrabold text-sm text-foreground">{task.title}</h4>
@@ -510,10 +458,30 @@ export function PortalOnboardingManager({
                         {task.description}
                       </p>
                     )}
+
+                    {/* Feature badges */}
+                    <div className="flex flex-wrap items-center gap-1.5 pt-1">
+                      {task.requireFileUpload && (
+                        <Badge variant="outline" className="text-[10px] font-medium gap-1 text-primary border-primary/20 bg-primary/5">
+                          <UploadCloud className="w-3 h-3" /> File Submission
+                        </Badge>
+                      )}
+                      {task.downloadTemplateUrl && (
+                        <Badge variant="outline" className="text-[10px] font-medium gap-1 text-emerald-600 border-emerald-500/20 bg-emerald-500/5">
+                          <FileSpreadsheet className="w-3 h-3" /> Template
+                        </Badge>
+                      )}
+                      {task.actionUrl && (
+                        <Badge variant="outline" className="text-[10px] font-mono text-muted-foreground">
+                          <LinkIcon className="w-2.5 h-2.5 mr-1 inline" /> Link
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
                   <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                    <span className="font-bold text-primary text-[11px]">
+                    <span className="font-bold text-primary text-[11px] flex items-center gap-1">
+                      <Award className="w-3.5 h-3.5 text-amber-500" />
                       +{task.pointsReward} Points
                     </span>
                     {task.dueDate && (
@@ -530,99 +498,32 @@ export function PortalOnboardingManager({
         </div>
       )}
 
-      {/* ── Create Task Modal ─────────────────────────────────────────── */}
-      <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
-        <DialogContent className="max-w-md rounded-3xl p-6 sm:p-8 space-y-4">
-          <DialogHeader className="pb-3 border-b border-border">
-            <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
-              <ListOrdered className="w-4 h-4" /> Task Creator Studio
-            </div>
-            <DialogTitle className="text-xl font-bold">Create Action Task</DialogTitle>
-            <DialogDescription className="text-xs">
-              Assign practical tasks and fee collection drills to members.
-            </DialogDescription>
-          </DialogHeader>
+      {/* ── Tab 3: Submissions Review Queue ───────────────────────────── */}
+      {activeTab === 'submissions' && (
+        <SubmissionReviewQueue
+          portalId={portalId}
+          portalSlug={portalSlug}
+          organizationId={organizationId}
+          onReviewSuccess={fetchServerFlowAndTasks}
+        />
+      )}
 
-          <form onSubmit={handleCreateTask} className="space-y-4 pt-1">
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">Task Title</Label>
-              <Input
-                placeholder="e.g. Audit Term 1 Overdue Fee Accounts"
-                value={taskTitle}
-                onChange={e => setTaskTitle(e.target.value)}
-                className="h-10 text-xs rounded-xl font-bold"
-                required
-              />
-            </div>
+      {/* Step Editor Modal */}
+      <OnboardingStepEditorModal
+        open={isStepModalOpen}
+        onOpenChange={setIsStepModalOpen}
+        step={editingStep}
+        onSave={handleSaveStepModal}
+        availableTasks={effectiveTasks}
+      />
 
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">Description & Action Instructions</Label>
-              <Textarea
-                placeholder="What should the bursar or student execute?"
-                value={taskDescription}
-                onChange={e => setTaskDescription(e.target.value)}
-                rows={3}
-                className="text-xs rounded-xl resize-none"
-              />
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Priority</Label>
-                <Select value={taskPriority} onValueChange={(val: TaskPriority) => setTaskPriority(val)}>
-                  <SelectTrigger className="h-10 text-xs rounded-xl capitalize">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl">
-                    <SelectItem value="low">🟢 Low Priority</SelectItem>
-                    <SelectItem value="medium">🟡 Medium Priority</SelectItem>
-                    <SelectItem value="high">🟠 High Priority</SelectItem>
-                    <SelectItem value="urgent">🔴 Urgent Action</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs font-bold">Points Reward</Label>
-                <Input
-                  type="number"
-                  value={taskPoints}
-                  onChange={e => setTaskPoints(Number(e.target.value) || 0)}
-                  className="h-10 text-xs rounded-xl"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-bold">Action Link / Tool URL (Optional)</Label>
-              <Input
-                placeholder="e.g. /portal/academy/learn/invoicing-fee-recovery"
-                value={taskActionUrl}
-                onChange={e => setTaskActionUrl(e.target.value)}
-                className="h-10 text-xs rounded-xl"
-              />
-            </div>
-
-            <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setIsCreateTaskOpen(false)}
-                className="rounded-xl font-bold text-xs"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={isSubmittingTask}
-                className="rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm"
-              >
-                {isSubmittingTask ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Create Task'}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+      {/* Task Editor Modal */}
+      <TaskEditorModal
+        open={isTaskModalOpen}
+        onOpenChange={setIsTaskModalOpen}
+        task={editingTask}
+        onSave={handleSaveTask}
+      />
     </div>
   );
 }

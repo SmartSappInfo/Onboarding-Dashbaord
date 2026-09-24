@@ -29,6 +29,7 @@ import type {
   ReportContentInput,
   ResolveModerationInput,
   CommunityLeaderboardEntry,
+  MemberPublicProfile,
 } from '@/lib/types/community';
 
 export type ActionResponse<T> =
@@ -298,5 +299,17 @@ export async function seedCommunitySpacesAction(
     return { success: true, data: spaces };
   } catch (err: unknown) {
     return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to seed starter channels.') };
+  }
+}
+
+export async function getMemberPublicProfileAction(
+  portalId: string,
+  userId: string
+): Promise<ActionResponse<MemberPublicProfile | null>> {
+  try {
+    const profile = await CommunityService.getMemberPublicProfile(portalId, userId);
+    return { success: true, data: profile };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to load member profile.') };
   }
 }

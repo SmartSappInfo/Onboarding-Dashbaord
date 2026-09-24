@@ -27,6 +27,7 @@ import type {
   ResolveModerationInput,
   ResolveModerationAction,
   CommunityLeaderboardEntry,
+  MemberPublicProfile,
 } from '@/lib/types/community';
 
 export class CommunityService {
@@ -752,6 +753,56 @@ export class CommunityService {
         rank: index + 1,
       };
     });
+  }
+
+  /**
+   * Fetch public profile details for a community member (Rule 1 & 9).
+   */
+  public static async getMemberPublicProfile(
+    portalId: string,
+    userId: string
+  ): Promise<MemberPublicProfile | null> {
+    const snap = await adminDb
+      .collection('portal_memberships')
+      .where('portalId', '==', portalId)
+      .where('userId', '==', userId)
+      .limit(1)
+      .get();
+
+    if (snap.empty) return null;
+    const m = snap.docs[0].data();
+    const points = typeof m.points === 'number' ? m.points : 0;
+    let level = 1;
+    let levelName = 'Novice';
+    if (points >= 100) {
+      level = 5;
+      levelName = 'Grandmaster';
+    } else if (points >= 50) {
+      level = 4;
+      levelName = 'Leader';
+    } else if (points >= 25) {
+      level = 3;
+      levelName = 'Scholar';
+    } else if (points >= 10) {
+      level = 2;
+      levelName = 'Contributor';
+    }
+
+    return {
+      userId: m.userId || userId,
+      displayName: m.displayName || 'Community Member',
+      avatarUrl: m.avatarUrl || m.photoURL || undefined,
+      role: m.role || 'member',
+      planName: m.planName,
+      points,
+      level,
+      levelName,
+      streakDays: typeof m.streakDays === 'number' ? m.streakDays : 0,
+      badges: Array.isArray(m.badges) ? m.badges : [],
+      enrolledCourseCount: Array.isArray(m.enrolledCourseIds) ? m.enrolledCourseIds.length : 0,
+      completedLessonCount: Array.isArray(m.completedLessonIds) ? m.completedLessonIds.length : 0,
+      joinedAt: m.joinedAt || m.createdAt || new Date().toISOString(),
+    };
   }
 
   /**
