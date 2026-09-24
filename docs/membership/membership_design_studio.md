@@ -10,7 +10,41 @@
 3. **Dual-Mode AST Storage & Search Parity**: Content items persist structured `blocks: PageBlock[]` while automatically synthesizing a clean plain-text string into `item.content` on save, preserving full-text search indexing, card excerpts, and backwards-compatible rendering in `PortalContentReaderClient`.
 4. **Resilient Backoffice & No-Code Governance**: Backoffice administrators can save any custom block layout as a reusable starter template directly from the modal ("Save as Template") without engineering intervention.
 
-**Tech Stack:** Next.js 15, React 19, TypeScript (strictly 0 `any` / 0 `any[]`), Tailwind CSS v4, `@dnd-kit/core`, `@dnd-kit/sortable`, Framer Motion, Firebase Cloud Firestore.
+**Tech Stack:** Next.js 15, React 19, TypeScript (strictly 0 `any` / 0 `any[]` / 0 unhandled `unknown`), Tailwind CSS v4, `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`, Framer Motion, Firebase Cloud Firestore.
+
+---
+
+## 10 Mandatory Architectural & Production Standards
+
+Every phase and line of code must strictly conform to these 10 principles:
+1. **Skill Conformance & Standards Enforcement**:
+   - `next-best-practices`: Dynamic lazy-loading (`next/dynamic`) for heavy canvas, `@dnd-kit`, and modal components to protect initial page bundle. Explicit RSC boundaries in `/portal/[slug]/content/[type]/[itemSlug]`.
+   - `vercel-react-best-practices`:
+     - `rerender-memo`: Memoize `SortableBlockItem` with `React.memo` to eliminate cascading re-renders during active drag.
+     - `rerender-functional-setstate`: Use functional updater forms (`setBlocks(prev => ...)`) for stable callbacks.
+     - `rerender-use-deferred-value`: Defer inspector input updates (`useDeferredValue`) so high-frequency typing never blocks 60fps canvas painting.
+     - `rendering-content-visibility`: Apply `content-visibility: auto; contain-intrinsic-size: 1px 120px;` to offscreen blocks to support 100+ blocks without layout thrashing.
+   - `emilkowal-animations`:
+     - `PointerSensor` activation constraints (`activationConstraint: { distance: 5 }`) to distinguish intentional drag from clicks.
+     - Suppress iframe pointer events during drag (`isDragging ? 'pointer-events-none' : ''`) so mouse capture is never lost over video players.
+     - Hardware acceleration (`will-change: transform`, avoid CSS custom properties inside 60fps drag loops).
+     - Standard tactile feedback (`active:scale-[0.97]` on all buttons, duration <= 200ms).
+   - `backend-design`:
+     - Fetch-Enrich-Restore protocol: fetch item, synthesize AST search plain text, validate payload bounds (500KB cap), restore/persist atomically with version increment in subcollection.
+     - Scoped tenant isolation (`organizationId`, `portalId`, `workspaceIds`).
+   - `frontend-design`:
+     - Unified Figtree typography across studio canvas and portal reader.
+     - Dynamic portal CSS variables (`var(--portal-primary)`, `var(--portal-text)`, `var(--portal-background)`).
+     - Refined editorial feel, subtle hover boundaries, intuitive drag handles, clear empty state cards.
+2. **What Could Go Wrong & Systematic Resolutions**: All failure modes, edge cases, and quota bounds mapped in the Risk Matrix below.
+3. **Cross-Subsystem Impact & No-Code Backoffice Governance**: Reader, search, syllabus player, and resource vault protected. Backoffice empowered with no-code template saving and studio badge indicators.
+4. **Strict Typing & Everyday UI English**: Strictly 0 `any`, 0 `any[]`, 0 unhandled `unknown`. Clean everyday UI English ("Text & Headings", "Add Block", "Move Up", "Move Down", "Save Draft", "Publish Now"). Zero raw HTML or CSS leakage.
+5. **Firebase Indexes, Security Rules & Protocols**: Firestore rules permit public read for published content; writes strictly guarded by `if isAuthorized()`. Composite indexes verified.
+6. **Dependencies & Documentation**: Modern tooling (`@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`) properly configured.
+7. **Mobile-First & Touch Ergonomics**: `min-h-[44px]` touch targets, responsive sheets on mobile, 1-tap "Move Up / Move Down" buttons as a fail-safe mobile alternative to dragging.
+8. **Security & Data Protection**: DOMPurify HTML sanitization, URL protocol validation (`http:`, `https:` only), rejection of embedded base64 data URIs.
+9. **Performance Under Extreme Load**: Support 100+ blocks, heap memory management (8GB max-old-space-size for tsc), 500 KB block payload cap.
+10. **Inline Architectural Documentation**: Explanatory comments detailing change rationales, caution zones, and testability pointers.
 
 ---
 
@@ -18,12 +52,16 @@
 
 | Risk / Failure Mode | Likelihood & Impact | Architectural Mitigation Strategy |
 |:---|:---|:---|
-| **1. Data Drift & Search Desynchronization** | **High / Critical** | If an author edits blocks but `content` is not updated or diverges, the portal search engine and card snippets show stale or blank summaries. <br/>**Mitigation**: Implement `ContentService.extractPlainTextFromBlocks(blocks)` which runs atomically inside `createContentItem` and `updateContentItem`. It recursively extracts text from all text-bearing props (`title`, `content`, `description`, `items`) into a synchronized plain-text string stored in `item.content`. |
-| **2. Drag-and-Drop Jitter & 60fps Dropped Frames** | **Medium / High** | Dragging blocks on a canvas that has nested heavy components (iframes, video players, complex text) causes layout thrashing and dropped frames. <br/>**Mitigation**: Follow `emilkowal-animations` and `vercel-react-best-practices`: use `PointerSensor` with `activationConstraint: { distance: 5 }`, memoize `SortableBlockItem` with `React.memo`, suppress iframe pointer events during drag (`isDragging ? 'pointer-events-none' : ''`), apply `will-change: transform`, and avoid CSS variables in active 60fps drag loops. |
+| **1. Data Drift & Search Desynchronization** | **High / Critical** | If an author edits blocks but `content` is not updated or diverges, the portal search engine and card snippets show stale or blank summaries. <br/>**Mitigation**: Implement `ContentService.extractPlainTextFromBlocks(blocks)` which runs atomically inside `createContentItem` and `updateContentItem`. It recursively extracts text from all text-bearing props (`title`, `content`, `description`, `caption`, `items`, etc.) into a synchronized plain-text string stored in `item.content`. |
+| **2. Drag-and-Drop Jitter & 60fps Dropped Frames** | **Medium / High** | Dragging blocks on a canvas with heavy nested components (iframes, video players, rich text) causes layout thrashing and dropped frames. <br/>**Mitigation**: Follow `emilkowal-animations` and `vercel-react-best-practices`: use `PointerSensor` with `activationConstraint: { distance: 5 }`, memoize `SortableBlockItem` with `React.memo`, suppress iframe pointer events during drag (`isDragging ? 'pointer-events-none' : ''`), apply `will-change: transform`, and avoid CSS variables in active 60fps drag loops. |
 | **3. Accidental Dismissal & Data Loss** | **High / High** | Author spends 20 minutes creating a curriculum lesson, then accidentally clicks the backdrop or hits Escape, losing all unsaved blocks. <br/>**Mitigation**: Track dirty state (`isDirty`). Intercept Escape key and close attempts with an alert modal ("Unsaved Changes"). Implement a debounced local storage backup (`content_draft_${portalId}_${itemId || 'new'}`) that auto-restores if a session is abruptly interrupted. |
 | **4. Firestore 1MB Document Limit Breach** | **Low / Critical** | If authors paste huge base64 images into blocks, Firestore's 1MB document limit could be exceeded, throwing write failures. <br/>**Mitigation**: The property inspector uses `ImageUploader` and `VideoUploader` which upload binaries to Firebase Storage and only store lightweight CDN URLs. Add a payload size validation guard in `ContentService` that rejects payloads > 500KB with actionable toast feedback. |
 | **5. Mobile Touch & Scroll Gesture Conflicts** | **Medium / Medium** | Vertical scrolling on mobile screens can trigger drag-and-drop handles inadvertently. <br/>**Mitigation**: Isolate drag triggers exclusively to the drag grip icon (`GripVertical`), configure `TouchSensor` with delay/tolerance, enforce `min-h-[44px]` touch targets, and provide 1-tap "Move Up / Move Down" buttons as a fail-safe mobile alternative to dragging. |
 | **6. XSS Injection via User-Authored Blocks** | **Medium / Critical** | Malicious script tags or `javascript:` protocols inserted into block properties could compromise portal members. <br/>**Mitigation**: Sanitize all rendered HTML/markdown properties using `@/lib/page-builder/sanitize` before passing to DOM. Enforce strict link protocol validation (`http:`, `https:` only). |
+| **7. Duplicate Block IDs in Cloned Templates** | **High / Medium** | Inserting a starter template twice or duplicating a block produces identical IDs, breaking `@dnd-kit` sortable keys. <br/>**Mitigation**: `instantiateContentTemplate()` and block clone handlers recursively generate fresh `blk_${type}_${Date.now()}_${random}` IDs for every block and nested child. |
+| **8. Schema Desynchronization / Invalid Props** | **Medium / High** | Saved blocks missing required props could throw runtime errors inside `BlockRenderer`. <br/>**Mitigation**: Pass all blocks through `validateBlockProps(block)` which uses registered Zod schemas with fallback defaults, ensuring robust rendering without unhandled exceptions. |
+| **9. Theme Color Inconsistency in Light/Dark Modes** | **Medium / Medium** | Blocks with hardcoded background or text colors clash when members toggle light/dark modes. <br/>**Mitigation**: Blocks use semantic classes and portal CSS variables (`var(--portal-primary)`, `var(--portal-text)`, `var(--portal-background)`). |
+| **10. Ghost Search Results on Block Removal** | **Low / High** | Author removes all blocks on the canvas; stale plain text remains cached in `item.content`. <br/>**Mitigation**: `updateContentItem` explicitly checks if `input.blocks.length === 0` and resets `content = ''` unless explicit markdown body is provided (resolved in commit `a0377b35`). |
 
 ---
 
@@ -36,15 +74,17 @@
 | **Learning Curriculum & Lesson Player** (`/portal/[slug]/learn/*`) | Lessons are content items of type `'lesson'`. Instructors authoring rich lessons with video and checklists need syllabus integration. | Verify that lesson items authored in Content Studio load seamlessly in the curriculum syllabus player. |
 | **Downloadable Resource Vault** (`/portal/[slug]/content/resource/*`) | Resources require worksheet download URLs, MIME types, and file size indicators alongside block guides. | Ensure the "Details & SEO" panel keeps `ContentMedia` inputs (file URL, MIME, size) in sync with the block canvas. |
 | **Backoffice Content Management** (`PortalContentManager.tsx`) | Admins need visual clarity on which items are block-based vs legacy markdown, plus 1-click template creation. | Add a "Block Studio" badge in the content list and introduce a "Save as Template" action for recurring pedagogical layouts. |
+| **No-Code Template Governance** (`portal_content_templates`) | Administrators need to create and curate reusable lesson/article templates without developer intervention. | Provide a "Save as Reusable Template" action in the studio top bar that persists layouts to Firestore with immediate availability in the template picker. |
 
 ---
 
-## Firebase Indexes & Security Rules Verification
+## Firebase Indexes, Security Rules & Protocols
 
 1. **Security Rules (`firestore.rules`)**:
-   - `content_items/{itemId}` already allows public read (`allow get, list: if true;`), ensuring member portal access without authentication barriers.
+   - `content_items/{itemId}` allows public read (`allow get, list: if true;`), ensuring member portal access without authentication barriers.
    - `create, update, delete` is strictly guarded by `if isAuthorized();`, ensuring only authenticated organization and workspace managers can author content.
    - Subcollection `versions/{versionId}` is guarded by `if isAuthorized();`.
+   - `portal_content_templates/{templateId}` allows public read (`allow get, list: if true;`) and authenticated write (`allow create, update, delete: if isAuthorized();`).
 2. **Composite Indexes (`firestore.indexes.json`)**:
    - Verified that the following composite indexes exist and cover all studio and portal queries:
      - `portalId (ASC) + updatedAt (DESC)`
@@ -53,6 +93,11 @@
      - `portalId (ASC) + type (ASC) + category (ASC) + order (ASC)`
      - `portalId (ASC) + workspaceIds (ARRAY_CONTAINS) + status (ASC) + updatedAt (DESC)`
      - `portalId (ASC) + type (ASC) + slug (ASC)`
+3. **Fetch-Enrich-Restore Protocol**:
+   - Fetch item document and verify tenant tenancy.
+   - Synthesize search text via `extractPlainTextFromBlocks(blocks)`.
+   - Validate payload size <= 500 KB and reject base64 data URIs.
+   - Restore/persist document atomically and create an immutable revision snapshot in `versions/{versionId}`.
 
 ---
 
@@ -60,18 +105,19 @@
 
 | File Path | Action | Architectural Responsibility |
 |:---|:---|:---|
-| `src/lib/types/content.ts` | Modify | Add `blocks?: PageBlock[]` to `ContentItem`, `CreateContentItemInput`, `UpdateContentItemInput`, and `ContentItemVersion`. Zero `any`. |
-| `src/lib/services/content-service.ts` | Modify | Persist `blocks`, implement `extractPlainTextFromBlocks`, validate document payload size, and store plain-text AST cache. |
-| `src/lib/services/__tests__/content-service.test.ts` | Modify | Unit test verifying block persistence, plain-text synthesis, and revision snapshotting. |
-| `src/lib/page-builder/templates/content-templates.ts` | Create | Starter templates for curriculum lessons, standard articles, and video guides shared across builders. |
+| `src/lib/types/content.ts` | Complete | Add `blocks?: PageBlock[]` to `ContentItem`, `CreateContentItemInput`, `UpdateContentItemInput`, and `ContentItemVersion`. Zero `any`. |
+| `src/lib/services/content-service.ts` | Complete | Persist `blocks`, implement `extractPlainTextFromBlocks`, validate document payload size, and store plain-text AST cache. |
+| `src/lib/services/__tests__/content-service.test.ts` | Complete | Unit test verifying block persistence, plain-text synthesis, empty-block reset, and revision snapshotting. |
+| `src/lib/page-builder/templates/content-templates.ts` | Create | Starter templates for curriculum lessons, standard articles, downloadable resources, and knowledge base docs; ID regeneration helper. |
 | `src/lib/page-builder/templates/index.ts` | Modify | Re-export `CONTENT_STARTER_TEMPLATES` in the global template library. |
-| `src/lib/page-builder/registry.tsx` | Modify | Add helper `getContentStudioBlocks()` filtering out landing-page-specific bloat while preserving all media, layout, and article blocks. |
-| `src/app/admin/portals/components/studio/ContentBlockCanvas.tsx` | Create | Drag-and-drop sortable canvas using `@dnd-kit/sortable` and `BlockRenderer` with 60fps drag optimization. |
-| `src/app/admin/portals/components/studio/SortableBlockItem.tsx` | Create | Individual sortable block wrapper with drag handle, move up/down, duplicate, delete, and focus ring. |
-| `src/app/admin/portals/components/studio/BlockInsertButton.tsx` | Create | Touch-friendly "+ Add Block" hover line between blocks and at the end of the canvas. |
-| `src/app/admin/portals/components/studio/ContentBlockPalette.tsx` | Create | Categorized block library sidebar with instant search and 1-click or drag-to-insert. |
-| `src/app/admin/portals/components/studio/ContentBlockInspector.tsx` | Create | Dedicated inspector sidebar wrapping `AutoBlockEditor` for editing selected block properties. |
-| `src/app/admin/portals/components/ContentEditorModal.tsx` | Create | Full-screen overlay modal with top studio bar, 3-pane builder, Details/SEO tab, dirty state protection, and standardized `<TagSelector>`. Replaces `ContentEditorDrawer.tsx`. |
+| `src/lib/page-builder/registry.tsx` | Modify | Add `getContentStudioBlocks()` and `getContentStudioBlockCategories()` for clean palette rendering without marketing bloat. |
+| `src/lib/page-builder/__tests__/content-templates.test.ts` | Create | Unit tests validating template catalog, schema compliance, ID uniqueness, and registry filters. |
+| `src/app/admin/portals/components/studio/ContentBlockCanvas.tsx` | Create | Drag-and-drop sortable canvas using `@dnd-kit/sortable` and `BlockRenderer` with 60fps drag optimization, empty-state template picker. |
+| `src/app/admin/portals/components/studio/SortableBlockItem.tsx` | Create | Individual sortable block wrapper with drag handle, move up/down, duplicate, delete, and focus ring. Suppresses nested iframe events. |
+| `src/app/admin/portals/components/studio/BlockInsertButton.tsx` | Create | Touch-friendly "+ Add Block" hover line between blocks and at the end of the canvas. `min-h-[44px]` touch target. |
+| `src/app/admin/portals/components/studio/ContentBlockPalette.tsx` | Create | Categorized block library sidebar with instant search and 1-click or drag-to-insert using `getContentStudioBlockCategories()`. |
+| `src/app/admin/portals/components/studio/ContentBlockInspector.tsx` | Create | Dedicated inspector sidebar wrapping `AutoBlockEditor` for editing selected block properties with deferred input handling. |
+| `src/app/admin/portals/components/ContentEditorModal.tsx` | Create | Full-screen overlay modal with top studio bar, 3-pane builder, Details/SEO tab, dirty state protection, `<TagSelector>`, and "Save as Template" no-code action. Replaces `ContentEditorDrawer.tsx`. |
 | `src/app/admin/portals/components/PortalContentManager.tsx` | Modify | Mounts `<ContentEditorModal>` instead of `<ContentEditorDrawer>`, shows "Block Studio" badge in list. |
 | `src/app/portal/[slug]/content/[type]/[itemSlug]/PortalContentReaderClient.tsx` | Modify | Dual-mode content renderer: renders `BlockRenderer` when `item.blocks` exist, falls back to markdown for legacy items. |
 
@@ -79,7 +125,7 @@
 
 ## Phase-by-Phase Implementation Plan
 
-### Phase 1: Core Type Contracts, Payload Guards & Backend AST Support
+### Phase 1: Core Type Contracts, Payload Guards & Backend AST Support (COMPLETED)
 
 **Files:**
 - Modify: `src/lib/types/content.ts`
@@ -87,201 +133,16 @@
 - Modify: `src/app/actions/content-actions.ts`
 - Test: `src/lib/services/__tests__/content-service.test.ts`
 
-- [ ] **Step 1: Write failing unit tests for block storage, text extraction & payload size guard**
-
-In `src/lib/services/__tests__/content-service.test.ts`, add test cases for `blocks` persistence, `extractPlainTextFromBlocks`, and payload bounds:
-
-```typescript
-import { describe, it, expect } from 'vitest';
-import { ContentService } from '../content-service';
-import type { PageBlock } from '@/lib/types';
-
-describe('ContentService Block Persistence & AST Normalization', () => {
-  it('extracts plain text from nested block props for search indexing', () => {
-    const blocks: PageBlock[] = [
-      {
-        id: 'b1',
-        type: 'title',
-        props: { content: 'Introduction to Bursary Accounting' },
-      },
-      {
-        id: 'b2',
-        type: 'text',
-        props: { content: 'This lesson covers the fundamentals of fee collections.' },
-      },
-      {
-        id: 'b3',
-        type: 'procedure_list',
-        props: {
-          items: [
-            { title: 'Step 1: Reconcile deposits' },
-            { title: 'Step 2: Generate receipt voucher' },
-          ],
-        },
-      },
-    ];
-
-    const extracted = ContentService.extractPlainTextFromBlocks(blocks);
-    expect(extracted).toContain('Introduction to Bursary Accounting');
-    expect(extracted).toContain('This lesson covers the fundamentals of fee collections.');
-    expect(extracted).toContain('Step 1: Reconcile deposits');
-    expect(extracted).toContain('Step 2: Generate receipt voucher');
-  });
-
-  it('safely handles empty or malformed block arrays without throwing', () => {
-    expect(ContentService.extractPlainTextFromBlocks([])).toBe('');
-    expect(ContentService.extractPlainTextFromBlocks(undefined)).toBe('');
-  });
-});
-```
-
-- [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx vitest run src/lib/services/__tests__/content-service.test.ts`
-Expected: FAIL (`extractPlainTextFromBlocks` is not a function).
-
-- [ ] **Step 3: Update `src/lib/types/content.ts` with strict `PageBlock` contracts**
-
-Import `PageBlock` from `@/lib/types` and add `blocks?: PageBlock[]` to:
-- `ContentItem`
-- `ContentItemVersion`
-- `CreateContentItemInput`
-- `UpdateContentItemInput`
-
-```typescript
-import type { PageBlock } from '@/lib/types';
-import type { PortalVisibility } from './portal';
-
-export interface ContentItem {
-  id: string;
-  organizationId: string;
-  portalId: string;
-  workspaceIds: string[];
-  type: ContentItemType;
-  title: string;
-  slug: string;
-  summary?: string;
-  content?: string; // Rich text / Markdown / Synthesized plain text cache
-  blocks?: PageBlock[]; // Structured PageBlock tree for drag-and-drop authoring
-  pageDocumentId?: string;
-  media?: ContentMedia;
-  category?: string;
-  tags?: string[];
-  authors?: ContentAuthor[];
-  status: ContentStatus;
-  publishedAt?: string;
-  scheduledAt?: string;
-  visibility: PortalVisibility;
-  accessRoles?: string[];
-  seo?: ContentSeoConfig;
-  stats?: ContentStats;
-  order?: number;
-  parentId?: string;
-  version: number;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  updatedBy?: string;
-}
-```
-
-- [ ] **Step 4: Implement `extractPlainTextFromBlocks` & payload size guard in `src/lib/services/content-service.ts`**
-
-Add recursive plain-text extraction and document size limits:
-
-```typescript
-  /**
-   * Recursively traverses an array of PageBlocks and extracts author text
-   * to populate the searchable `content` string cache.
-   */
-  public static extractPlainTextFromBlocks(blocks: PageBlock[] = []): string {
-    if (!Array.isArray(blocks) || blocks.length === 0) return '';
-    const segments: string[] = [];
-
-    const traverse = (blockList: PageBlock[]) => {
-      for (const block of blockList) {
-        if (!block || !block.props) continue;
-
-        const { content, title, subtitle, description, text, items } = block.props;
-
-        if (typeof content === 'string' && content.trim()) segments.push(content.trim());
-        if (typeof title === 'string' && title.trim()) segments.push(title.trim());
-        if (typeof subtitle === 'string' && subtitle.trim()) segments.push(subtitle.trim());
-        if (typeof description === 'string' && description.trim()) segments.push(description.trim());
-        if (typeof text === 'string' && text.trim()) segments.push(text.trim());
-
-        if (Array.isArray(items)) {
-          for (const item of items) {
-            if (typeof item === 'string' && item.trim()) segments.push(item.trim());
-            else if (typeof item === 'object' && item !== null) {
-              const rec = item as Record<string, unknown>;
-              if (typeof rec.title === 'string' && rec.title.trim()) segments.push(rec.title.trim());
-              if (typeof rec.content === 'string' && rec.content.trim()) segments.push(rec.content.trim());
-              if (typeof rec.text === 'string' && rec.text.trim()) segments.push(rec.text.trim());
-              if (typeof rec.question === 'string' && rec.question.trim()) segments.push(rec.question.trim());
-              if (typeof rec.answer === 'string' && rec.answer.trim()) segments.push(rec.answer.trim());
-            }
-          }
-        }
-
-        if (Array.isArray(block.blocks) && block.blocks.length > 0) {
-          traverse(block.blocks);
-        }
-      }
-    };
-
-    traverse(blocks);
-    return segments.join('\n\n');
-  }
-```
-
-In `createContentItem`:
-```typescript
-    const synthesizedContent = input.blocks && input.blocks.length > 0
-      ? this.extractPlainTextFromBlocks(input.blocks)
-      : (input.content || '');
-
-    const newItem: ContentItem = {
-      // ... existing fields ...
-      content: synthesizedContent,
-      blocks: input.blocks || [],
-      // ...
-    };
-```
-
-In `updateContentItem`:
-```typescript
-    const blocks = input.blocks !== undefined ? input.blocks : current.blocks;
-    let content = input.content !== undefined ? input.content : current.content;
-    if (input.blocks !== undefined) {
-      content = this.extractPlainTextFromBlocks(input.blocks) || content || '';
-    }
-
-    const updatedItem: ContentItem = {
-      ...current,
-      content,
-      blocks,
-      // ...
-    };
-```
-
-Update `src/app/actions/content-actions.ts` to pass `blocks` through in create/update payloads.
-
-- [ ] **Step 5: Run tests and verify they pass**
-
-Run: `npx vitest run src/lib/services/__tests__/content-service.test.ts`
-Expected: PASS.
-
-- [ ] **Step 6: Commit changes locally**
-
-```bash
-git add src/lib/types/content.ts src/lib/services/content-service.ts src/lib/services/__tests__/content-service.test.ts src/app/actions/content-actions.ts
-git commit -m "feat(content): add structured blocks AST support and plain text extraction for search parity"
-```
+- [x] **Step 1: Write failing unit tests for block storage, text extraction & payload size guard**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Update `src/lib/types/content.ts` with strict `PageBlock` contracts** (0 `any` / 0 `any[]`)
+- [x] **Step 4: Implement `extractPlainTextFromBlocks` & payload size guard in `src/lib/services/content-service.ts`**
+- [x] **Step 5: Run tests and verify they pass (10/10 passed)**
+- [x] **Step 6: Commit changes locally** (`2d6d335e`, refined in `a0377b35`)
 
 ---
 
-### Phase 2: Shared Content Templates & Registry Filtering
+### Phase 2: Shared Content Templates & Registry Filtering (NEXT)
 
 **Files:**
 - Create: `src/lib/page-builder/templates/content-templates.ts`
@@ -289,110 +150,59 @@ git commit -m "feat(content): add structured blocks AST support and plain text e
 - Modify: `src/lib/page-builder/registry.tsx`
 - Test: `src/lib/page-builder/__tests__/content-templates.test.ts`
 
-- [ ] **Step 1: Write unit tests for content starter templates & block filter**
-
-Create `src/lib/page-builder/__tests__/content-templates.test.ts`:
-```typescript
-import { describe, it, expect } from 'vitest';
-import { CONTENT_STARTER_TEMPLATES } from '../templates/content-templates';
-import { getContentStudioBlocks } from '../registry';
-
-describe('Shared Content Starter Templates & Registry Filter', () => {
-  it('provides starter templates for articles, lessons, and video guides', () => {
-    expect(CONTENT_STARTER_TEMPLATES.length).toBeGreaterThanOrEqual(3);
-    const lessonTpl = CONTENT_STARTER_TEMPLATES.find(t => t.id === 'lesson-curriculum-starter');
-    expect(lessonTpl).toBeDefined();
-    expect(lessonTpl?.blocks.length).toBeGreaterThan(0);
-  });
-
-  it('filters out landing page marketing bloat while retaining content blocks', () => {
-    const blocks = getContentStudioBlocks();
-    const blockTypes = blocks.map(b => b.type);
-    
-    // Must include essential pedagogical and editorial blocks
-    expect(blockTypes).toContain('title');
-    expect(blockTypes).toContain('text');
-    expect(blockTypes).toContain('video');
-    expect(blockTypes).toContain('image');
-    expect(blockTypes).toContain('columns');
-    expect(blockTypes).toContain('divider');
-
-    // Must exclude campaign and marketing landing-page bloat
-    expect(blockTypes).not.toContain('countdown');
-  });
-});
-```
-
+- [ ] **Step 1: Write failing unit tests for content starter templates & block filter**
+  - Create `src/lib/page-builder/__tests__/content-templates.test.ts` asserting:
+    - 4 starter templates exist (`article-standard-starter`, `lesson-curriculum-starter`, `resource-download-starter`, `documentation-kb-starter`).
+    - Every block in each template parses cleanly through `validateBlockProps()`.
+    - `instantiateContentTemplate()` generates fresh unique IDs.
+    - `getContentStudioBlocks()` excludes marketing bloat (`countdown`, `app_download`, `payment_methods`, `logo_grid`).
+    - `getContentStudioBlockCategories()` provides 5 intuitive plain-English categories.
+    - Plain-text extraction produces non-empty text for search indexing.
 - [ ] **Step 2: Run test to verify it fails**
-
-Run: `npx vitest run src/lib/page-builder/__tests__/content-templates.test.ts`
-Expected: FAIL (`CONTENT_STARTER_TEMPLATES` not found).
-
+  - Run: `npx vitest run src/lib/page-builder/__tests__/content-templates.test.ts`
+  - Expected: FAIL.
 - [ ] **Step 3: Create `src/lib/page-builder/templates/content-templates.ts`**
-
-Define standard starter layouts with valid `PageBlock` structures (Standard Article, Curriculum Lesson, Downloadable Resource).
-
-- [ ] **Step 4: Update `src/lib/page-builder/registry.tsx` with `getContentStudioBlocks`**
-
-Add the helper in `src/lib/page-builder/registry.tsx`:
-```typescript
-/**
- * Returns blocks suitable for Content Studio (Articles, Lessons, Docs).
- * Excludes campaign landing page marketing widgets (countdown, payment gateways,
- * survey popups) while keeping all core editorial, media, and layout blocks.
- */
-export function getContentStudioBlocks(): AnyBlockDefinition[] {
-  const EXCLUDED_TYPES: PageBlockType[] = [
-    'countdown',
-    'app_download',
-    'payment_methods',
-    'logo_grid',
-  ];
-  return allBlocks().filter(block => !EXCLUDED_TYPES.includes(block.type));
-}
-```
-
-Re-export `CONTENT_STARTER_TEMPLATES` in `src/lib/page-builder/templates/index.ts`.
-
+  - Define `ContentStarterTemplate` interface.
+  - Implement the 4 high-fidelity starter templates.
+  - Implement `instantiateContentTemplate(templateId: string): PageBlock[]`.
+- [ ] **Step 4: Update `src/lib/page-builder/registry.tsx`**
+  - Implement `getContentStudioBlocks(): AnyBlockDefinition[]`.
+  - Implement `getContentStudioBlockCategories(): ContentStudioCategoryGroup[]`.
+  - Re-export in `src/lib/page-builder/templates/index.ts`.
 - [ ] **Step 5: Run tests and verify they pass**
-
-Run: `npx vitest run src/lib/page-builder/__tests__/content-templates.test.ts`
-Expected: PASS.
-
-- [ ] **Step 6: Commit changes locally**
-
-```bash
-git add src/lib/page-builder/templates/content-templates.ts src/lib/page-builder/templates/index.ts src/lib/page-builder/registry.tsx src/lib/page-builder/__tests__/content-templates.test.ts
-git commit -m "feat(page-builder): add shared content starter templates and getContentStudioBlocks registry filter"
-```
+  - Run: `npx vitest run src/lib/page-builder/__tests__/content-templates.test.ts src/lib/services/__tests__/content-service.test.ts`
+  - Expected: 100% PASS.
+- [ ] **Step 6: Run strict static analysis**
+  - Run: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit && npx eslint src/lib/page-builder/templates/content-templates.ts`
+  - Expected: 0 errors.
+- [ ] **Step 7: Commit changes locally**
+  - `git commit -m "feat(page-builder): implement Phase 2 - shared content starter templates and studio registry filtering"`
 
 ---
 
 ### Phase 3: Lightweight Sortable Block Canvas & Item Controls
 
 **Files:**
-- Create: `src/app/admin/portals/components/studio/SortableBlockItem.tsx`
 - Create: `src/app/admin/portals/components/studio/BlockInsertButton.tsx`
+- Create: `src/app/admin/portals/components/studio/SortableBlockItem.tsx`
 - Create: `src/app/admin/portals/components/studio/ContentBlockCanvas.tsx`
 
 - [ ] **Step 1: Create `BlockInsertButton.tsx`**
-
-Provides a sleek, accessible `min-h-[44px]` touch target "+ Add Block" hover line between any two blocks and at the bottom.
-
+  - Accessible `min-h-[44px]` touch target "+ Add Block" hover line between blocks and at canvas bottom.
+  - Plain English label, tactile feedback with `active:scale-[0.97]`.
 - [ ] **Step 2: Create `SortableBlockItem.tsx`**
-
-Wraps `BlockRenderer` with `@dnd-kit/sortable` hooks (`useSortable`), providing grip handle, move up/down, duplicate, delete, and focus ring. Suppresses pointer-events on nested iframe elements during drag to prevent mouse capture issues.
-
+  - Wraps `BlockRenderer` with `@dnd-kit/sortable` `useSortable`.
+  - Suppresses pointer events on nested iframes during drag (`isDragging ? 'pointer-events-none' : ''`).
+  - Controls toolbar: Drag Grip, Move Up, Move Down, Duplicate, Delete, Focus Outline.
+  - 1-tap Move Up / Move Down buttons provide mobile-friendly alternative to dragging.
+  - Memoized via `React.memo` for 60fps performance (`vercel-react-best-practices`).
 - [ ] **Step 3: Create `ContentBlockCanvas.tsx`**
-
-Integrates `@dnd-kit/core` `DndContext`, `SortableContext`, and empty-canvas starter templates. Applies `content-visibility: auto` to offscreen blocks to support 100+ blocks without layout lag.
-
+  - Wraps canvas in `@dnd-kit/core` `DndContext` and `SortableContext`.
+  - Configures `PointerSensor` (`activationConstraint: { distance: 5 }`) and `TouchSensor` (`delay: 150, tolerance: 5`).
+  - **Empty Canvas State**: Displays 4 interactive starter template cards (`CONTENT_STARTER_TEMPLATES`). 1-click hydration using `instantiateContentTemplate()`.
+  - Applies `content-visibility: auto; contain-intrinsic-size: 1px 120px;` to support 100+ blocks without layout lag.
 - [ ] **Step 4: Commit changes locally**
-
-```bash
-git add src/app/admin/portals/components/studio/BlockInsertButton.tsx src/app/admin/portals/components/studio/SortableBlockItem.tsx src/app/admin/portals/components/studio/ContentBlockCanvas.tsx
-git commit -m "feat(content-studio): implement SortableBlockItem and ContentBlockCanvas with drag-and-drop reordering"
-```
+  - `git commit -m "feat(content-studio): implement SortableBlockItem and ContentBlockCanvas with drag-and-drop reordering"`
 
 ---
 
@@ -403,19 +213,16 @@ git commit -m "feat(content-studio): implement SortableBlockItem and ContentBloc
 - Create: `src/app/admin/portals/components/studio/ContentBlockInspector.tsx`
 
 - [ ] **Step 1: Create `ContentBlockPalette.tsx`**
-
-Provides search filtering, categorized block groups, and click/drag-to-insert using `getContentStudioBlocks()`. Uses everyday simple English labels (Text, Title, Video, Image, List, Columns).
-
+  - Renders blocks grouped by `getContentStudioBlockCategories()`.
+  - Everyday plain-English labels (Text & Headings, Media & Forms, Steps & Lists, Layout Containers, Callouts & Quotes).
+  - Search filter input for instant lookup.
+  - 1-click or drag-to-insert into canvas.
 - [ ] **Step 2: Create `ContentBlockInspector.tsx`**
-
-Integrates [`AutoBlockEditor`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/components/page-builder/AutoBlockEditor.tsx) to provide the property inspector for whichever block is active. Includes reset to defaults and delete block actions.
-
+  - Dedicated property inspector wrapping `AutoBlockEditor`.
+  - Uses `useDeferredValue` for high-frequency text input to prevent canvas jank.
+  - Actions: Reset to Defaults, Delete Block, Deselect.
 - [ ] **Step 3: Commit changes locally**
-
-```bash
-git add src/app/admin/portals/components/studio/ContentBlockPalette.tsx src/app/admin/portals/components/studio/ContentBlockInspector.tsx
-git commit -m "feat(content-studio): implement ContentBlockPalette and ContentBlockInspector"
-```
+  - `git commit -m "feat(content-studio): implement ContentBlockPalette and ContentBlockInspector"`
 
 ---
 
@@ -426,24 +233,17 @@ git commit -m "feat(content-studio): implement ContentBlockPalette and ContentBl
 - Modify: `src/app/admin/portals/components/PortalContentManager.tsx`
 
 - [ ] **Step 1: Create `ContentEditorModal.tsx`**
-
-Replace drawer with full-screen studio overlay (`fixed inset-0 z-50 bg-background flex flex-col`).
-- Incorporates dirty state protection (`isDirty`) with unsaved changes dialog.
-- Debounced autosave backup to `localStorage` (`content_draft_${portalId}_${itemId || 'new'}`).
-- Incorporates standardized `<TagSelector>` in client/draft mode (`currentTagIds={tags}`, `onTagsChange={setTags}`).
-- Top Bar: Title editing, slug generator, type selector, Mode Switcher ("Block Studio" vs "Details & SEO"), Save Draft, Publish Now, keyboard shortcut (`Cmd/Ctrl + S`).
-- Backoffice No-Code Template Saving: "Save as Template" button in the menu allowing admins to save their custom layout directly into `portal_templates` without writing code.
-
-- [ ] **Step 2: Update `PortalContentManager.tsx` to mount `<ContentEditorModal>`**
-
-Replace `ContentEditorDrawer` with `ContentEditorModal`. Add a "Block Studio" badge in the content list to indicate block-authored content.
-
+  - Full-screen distraction-free modal (`fixed inset-0 z-50 bg-background flex flex-col`).
+  - Dirty state tracking (`isDirty`) with unsaved changes dialog.
+  - Debounced auto-save backup to `localStorage` (`content_draft_${portalId}_${itemId || 'new'}`).
+  - Standardized `<TagSelector>` in client/draft mode (`currentTagIds={tags}`, `onTagsChange={setTags}`).
+  - Top Studio Bar: Title inline editor, slug editor, type selector, Mode Switcher ("Block Studio" vs "Details & SEO"), Save Draft, Publish Now, keyboard shortcut (`Cmd/Ctrl + S`).
+  - **No-Code Template Saving**: "Save as Template" action saving layout to `portal_content_templates`.
+- [ ] **Step 2: Update `PortalContentManager.tsx`**
+  - Mount `<ContentEditorModal>` instead of `ContentEditorDrawer`.
+  - Add visual "Block Studio" badge in content list for block-authored items.
 - [ ] **Step 3: Commit changes locally**
-
-```bash
-git add src/app/admin/portals/components/ContentEditorModal.tsx src/app/admin/portals/components/PortalContentManager.tsx
-git commit -m "feat(content-studio): replace slide-over drawer with full-screen ContentEditorModal and standardized TagSelector"
-```
+  - `git commit -m "feat(content-studio): replace slide-over drawer with full-screen ContentEditorModal and standardized TagSelector"`
 
 ---
 
@@ -453,35 +253,10 @@ git commit -m "feat(content-studio): replace slide-over drawer with full-screen 
 - Modify: `src/app/portal/[slug]/content/[type]/[itemSlug]/PortalContentReaderClient.tsx`
 
 - [ ] **Step 1: Update `PortalContentReaderClient.tsx` to render `BlockRenderer` for structured blocks**
-
-Import `BlockRenderer` and `BlockRenderContext`. Pass the portal's active `ResolvedTheme` into `BlockRenderContext` so blocks render with the portal's active brand palette (`--portal-primary`) and Figtree typography.
-
-Render dual-mode:
-```tsx
-  {/* Rich Content Body: Dual Mode (Block AST vs Legacy Markdown) */}
-  <article className="max-w-none text-sm md:text-base leading-relaxed space-y-6 text-[var(--portal-text)]">
-    {item.blocks && item.blocks.length > 0 ? (
-      <div className="space-y-6">
-        {item.blocks.map((block) => (
-          <BlockRenderer key={block.id} block={block} ctx={blockRenderCtx} />
-        ))}
-      </div>
-    ) : item.content ? (
-      <div className="whitespace-pre-wrap font-normal leading-relaxed text-[var(--portal-text)]">
-        {item.content}
-      </div>
-    ) : (
-      <p className="text-xs text-[var(--portal-muted)] italic">No written body text provided.</p>
-    )}
-  </article>
-```
-
+  - Dual-mode body: If `item.blocks && item.blocks.length > 0`, render `BlockRenderer` with portal brand CSS variables (`var(--portal-primary)`); otherwise render legacy markdown.
+  - Figtree typography preserved throughout.
 - [ ] **Step 2: Commit changes locally**
-
-```bash
-git add src/app/portal/[slug]/content/[type]/[itemSlug]/PortalContentReaderClient.tsx
-git commit -m "feat(portal-reader): enable dual-mode BlockRenderer with fallback to legacy markdown"
-```
+  - `git commit -m "feat(portal-reader): enable dual-mode BlockRenderer with fallback to legacy markdown"`
 
 ---
 
@@ -491,32 +266,22 @@ git commit -m "feat(portal-reader): enable dual-mode BlockRenderer with fallback
 - Complete verification across all modified subsystems
 
 - [ ] **Step 1: Run complete Vitest suite**
-
-Run: `npx vitest run src/lib/services/__tests__/content-service.test.ts src/lib/page-builder/__tests__/content-templates.test.ts`
-Expected: 100% tests passing.
-
+  - Run: `npx vitest run src/lib/services/__tests__/content-service.test.ts src/lib/page-builder/__tests__/content-templates.test.ts`
+  - Expected: 100% tests passing.
 - [ ] **Step 2: Run strict TypeScript static analysis**
-
-Run: `npx tsc --noEmit`
-Expected: 0 errors. Confirm strictly 0 `any` / 0 `any[]` / 0 unhandled `unknown`.
-
+  - Run: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit`
+  - Expected: 0 errors. Confirm strictly 0 `any` / 0 `any[]` / 0 unhandled `unknown`.
 - [ ] **Step 3: Run ESLint**
-
-Run: `npx eslint src/app/admin/portals/components/ContentEditorModal.tsx src/app/admin/portals/components/studio/`
-Expected: 0 lint errors.
-
+  - Run: `npx eslint src/app/admin/portals/components/ContentEditorModal.tsx src/app/admin/portals/components/studio/`
+  - Expected: 0 lint errors.
 - [ ] **Step 4: DevTools browser verification**
-
-Navigate to `http://localhost:9002/admin/portals` in Chrome DevTools MCP:
-1. Click "Add Content" -> Verify full-screen overlay opens smoothly without horizontal scroll or FOUC.
-2. Drag and drop / insert blocks (Title, Video, Paragraph, List).
-3. Select a block -> Verify `AutoBlockEditor` opens in the property inspector and updates the canvas live.
-4. Switch to "Details & SEO" -> Verify `<TagSelector>` works seamlessly.
-5. Save draft -> Verify document saves with structured `blocks` and synthesized `content`.
-6. Open `/portal/academy/content/...` in reader -> Verify blocks render crisply with Figtree typography and zero hydration errors.
-
+  - Navigate to `http://localhost:9002/admin/portals` in Chrome DevTools MCP:
+    1. Click "Add Content" -> Verify full-screen overlay opens smoothly without horizontal scroll or FOUC.
+    2. Empty canvas shows 4 starter template cards. Click "Interactive Curriculum Lesson" -> Verify canvas populates instantly with video, objectives, checklist, and FAQ.
+    3. Drag and drop / reorder blocks with 60fps fluidity.
+    4. Select a block -> Verify `AutoBlockEditor` opens in inspector and updates canvas live.
+    5. Switch to "Details & SEO" -> Verify `<TagSelector>` functions smoothly.
+    6. Click "Save Draft" -> Verify document saves with structured `blocks` and synthesized plain-text `content`.
+    7. Open `/portal/academy/content/...` in reader -> Verify blocks render crisply with Figtree typography and zero hydration errors.
 - [ ] **Step 5: Final local commit**
-
-```bash
-git commit -am "chore(content-studio): finalize verified full-screen modal block builder"
-```
+  - `git commit -am "chore(content-studio): finalize verified full-screen modal block builder"`
