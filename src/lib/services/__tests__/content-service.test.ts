@@ -107,6 +107,34 @@ describe('ContentService', () => {
       expect(extracted).toContain('Within 5 business days.');
     });
 
+    it('extracts text from media captions, testimonials, and CTAs', () => {
+      const blocks: PageBlock[] = [
+        {
+          id: 'img1',
+          type: 'image',
+          props: { caption: 'Figure 1: Portal Dashboard Architecture', alt: 'Dashboard overview chart' },
+        },
+        {
+          id: 'quote1',
+          type: 'testimonial',
+          props: { quote: 'This transformed our bursary reconciliation workflow.', author: 'Dr. Mensah' },
+        },
+        {
+          id: 'cta1',
+          type: 'cta',
+          props: { title: 'Enroll Today', buttonText: 'Get Started Now' },
+        },
+      ];
+
+      const extracted = ContentService.extractPlainTextFromBlocks(blocks);
+      expect(extracted).toContain('Figure 1: Portal Dashboard Architecture');
+      expect(extracted).toContain('Dashboard overview chart');
+      expect(extracted).toContain('This transformed our bursary reconciliation workflow.');
+      expect(extracted).toContain('Dr. Mensah');
+      expect(extracted).toContain('Enroll Today');
+      expect(extracted).toContain('Get Started Now');
+    });
+
     it('safely handles empty arrays, undefined, and malformed blocks without throwing', () => {
       expect(ContentService.extractPlainTextFromBlocks([])).toBe('');
       expect(ContentService.extractPlainTextFromBlocks(undefined)).toBe('');

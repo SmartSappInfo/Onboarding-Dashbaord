@@ -64,8 +64,22 @@ export class ContentService {
 
       const props = block.props as Record<string, unknown>;
 
-      // 1. Direct text properties
-      const directProps = ['content', 'title', 'subtitle', 'description', 'text', 'heading'];
+      // 1. Direct text properties across editorial, media, title, and cta blocks
+      const directProps = [
+        'content',
+        'title',
+        'subtitle',
+        'subheading',
+        'description',
+        'text',
+        'heading',
+        'caption',
+        'kicker',
+        'quote',
+        'author',
+        'alt',
+        'buttonText',
+      ];
       for (const key of directProps) {
         const val = props[key];
         if (typeof val === 'string' && val.trim().length > 0) {
@@ -73,14 +87,28 @@ export class ContentService {
         }
       }
 
-      // 2. Structured items collections (Lists, FAQs, Feature lists, Steps)
+      // 2. Structured items collections (Lists, FAQs, Choice cards, Steps, Testimonials)
       if (Array.isArray(props.items)) {
         for (const item of props.items) {
           if (typeof item === 'string' && item.trim().length > 0) {
             segments.push(item.trim());
           } else if (item && typeof item === 'object') {
             const itemRec = item as Record<string, unknown>;
-            const subProps = ['title', 'content', 'text', 'description', 'question', 'answer'];
+            const subProps = [
+              'title',
+              'content',
+              'text',
+              'description',
+              'question',
+              'answer',
+              'quote',
+              'author',
+              'role',
+              'company',
+              'label',
+              'subheading',
+              'caption',
+            ];
             for (const subKey of subProps) {
               const subVal = itemRec[subKey];
               if (typeof subVal === 'string' && subVal.trim().length > 0) {
@@ -312,7 +340,11 @@ export class ContentService {
 
     // Re-synthesize content cache if blocks are modified
     if (input.blocks !== undefined) {
-      content = this.extractPlainTextFromBlocks(input.blocks) || content || '';
+      if (input.blocks.length > 0) {
+        content = this.extractPlainTextFromBlocks(input.blocks);
+      } else {
+        content = input.content !== undefined ? input.content : '';
+      }
     }
 
     const updatedItem: ContentItem = {
