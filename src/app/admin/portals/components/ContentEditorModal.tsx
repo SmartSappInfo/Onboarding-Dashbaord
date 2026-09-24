@@ -22,7 +22,7 @@
  * - Zero `any` or `any[]` typing.
  */
 
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   X,
   Save,
@@ -36,11 +36,7 @@ import {
   FileSpreadsheet,
   Globe,
   Share2,
-  Calendar,
-  Eye,
   AlertTriangle,
-  RotateCcw,
-  Check,
   ChevronDown,
   Loader2,
   PanelLeftClose,
@@ -149,7 +145,6 @@ export function ContentEditorModal({
 
   // Dirty state tracking
   const [isDirty, setIsDirty] = useState(false);
-  const [hasRestoredDraft, setHasRestoredDraft] = useState(false);
   const [localDraftNotice, setLocalDraftNotice] = useState<string | null>(null);
 
   const draftStorageKey = useMemo(() => {
@@ -275,7 +270,6 @@ export function ContentEditorModal({
       if (saved.seo?.metaTitle) setMetaTitle(saved.seo.metaTitle);
       if (saved.seo?.metaDescription) setMetaDescription(saved.seo.metaDescription);
 
-      setHasRestoredDraft(true);
       setLocalDraftNotice(null);
       setIsDirty(true);
       toast({ title: 'Draft Restored', description: 'Restored your unsaved changes.' });
@@ -389,24 +383,62 @@ export function ContentEditorModal({
   }, [blocks, selectedBlockId]);
 
   // Save Content Item Handler
-  const handleSave = async (publishImmediately: boolean = false) => {
-    if (!title.trim()) {
-      toast({
-        title: 'Title Required',
-        description: 'Please provide a title for this content item.',
-      });
-      return;
-    }
+  const handleSave = useCallback(
+    async (publishImmediately: boolean = false) => {
+      if (!title.trim()) {
+        toast({
+          title: 'Title Required',
+          description: 'Please provide a title for this content item.',
+        });
+        return;
+      }
 
-    setIsSubmitting(true);
-    try {
-      const targetStatus: ContentStatus = publishImmediately ? 'published' : status;
+      setIsSubmitting(true);
+      try {
+        const targetStatus: ContentStatus = publishImmediately ? 'published' : status;
 
-      if (initialItem) {
-        // Update
-        const res = await updateContentItemAction(
-          initialItem.id,
-          {
+        if (initialItem) {
+          // Update
+          const res = await updateContentItemAction(
+            initialItem.id,
+            {
+              title: title.trim(),
+              slug: slug.trim() || undefined,
+              summary: summary.trim(),
+              category: category.trim(),
+              tags,
+              blocks,
+              status: targetStatus,
+              visibility,
+              scheduledAt: scheduledAt || undefined,
+              media,
+              seo: {
+                metaTitle: metaTitle.trim() || title.trim(),
+                metaDescription: metaDescription.trim() || summary.trim(),
+              },
+            },
+            portalId
+          );
+
+          if (!res.success || !res.data) {
+            throw new Error(res.error || 'Failed to update content item.');
+          }
+
+          localStorage.removeItem(draftStorageKey);
+          setIsDirty(false);
+          toast({
+            title: publishImmediately ? 'Published! 🎉' : 'Changes Saved',
+            description: `"${title}" has been successfully updated.`,
+          });
+          onSaved?.(res.data);
+          onOpenChange(false);
+        } else {
+          // Create
+          const res = await createContentItemAction({
+            organizationId,
+            portalId,
+            workspaceIds,
+            type,
             title: title.trim(),
             slug: slug.trim() || undefined,
             summary: summary.trim(),
@@ -421,67 +453,54 @@ export function ContentEditorModal({
               metaTitle: metaTitle.trim() || title.trim(),
               metaDescription: metaDescription.trim() || summary.trim(),
             },
-          },
-          portalId
-        );
+          });
 
-        if (!res.success || !res.data) {
-          throw new Error(res.error || 'Failed to update content item.');
+          if (!res.success || !res.data) {
+            throw new Error(res.error || 'Failed to create content item.');
+          }
+
+          localStorage.removeItem(draftStorageKey);
+          setIsDirty(false);
+          toast({
+            title: publishImmediately ? 'Published! 🎉' : 'Draft Created',
+            description: `"${title}" is ready.`,
+          });
+          onSaved?.(res.data);
+          onOpenChange(false);
         }
-
-        localStorage.removeItem(draftStorageKey);
-        setIsDirty(false);
+      } catch (err) {
         toast({
-          title: publishImmediately ? 'Published! 🎉' : 'Changes Saved',
-          description: `"${title}" has been successfully updated.`,
+          title: 'Save Failed',
+          description: err instanceof Error ? err.message : 'An error occurred while saving.',
         });
-        onSaved?.(res.data);
-        onOpenChange(false);
-      } else {
-        // Create
-        const res = await createContentItemAction({
-          organizationId,
-          portalId,
-          workspaceIds,
-          type,
-          title: title.trim(),
-          slug: slug.trim() || undefined,
-          summary: summary.trim(),
-          category: category.trim(),
-          tags,
-          blocks,
-          status: targetStatus,
-          visibility,
-          scheduledAt: scheduledAt || undefined,
-          media,
-          seo: {
-            metaTitle: metaTitle.trim() || title.trim(),
-            metaDescription: metaDescription.trim() || summary.trim(),
-          },
-        });
-
-        if (!res.success || !res.data) {
-          throw new Error(res.error || 'Failed to create content item.');
-        }
-
-        localStorage.removeItem(draftStorageKey);
-        setIsDirty(false);
-        toast({
-          title: publishImmediately ? 'Published! 🎉' : 'Draft Created',
-          description: `"${title}" is ready.`,
-        });
-        onSaved?.(res.data);
-        onOpenChange(false);
+      } finally {
+        setIsSubmitting(false);
       }
-    } catch (err) {
-      toast({
-        title: 'Save Failed',
-        description: err instanceof Error ? err.message : 'An error occurred while saving.',
-      });
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+    },
+    [
+      title,
+      status,
+      initialItem,
+      portalId,
+      slug,
+      summary,
+      category,
+      tags,
+      blocks,
+      visibility,
+      scheduledAt,
+      media,
+      metaTitle,
+      metaDescription,
+      draftStorageKey,
+      onSaved,
+      onOpenChange,
+      organizationId,
+      workspaceIds,
+      type,
+      toast,
+    ]
+  );
 
   // "Save as Template" Handler
   const handleSaveAsTemplate = async () => {

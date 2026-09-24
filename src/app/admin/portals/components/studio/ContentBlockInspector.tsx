@@ -28,7 +28,6 @@ import {
   RotateCcw,
   Trash2,
   X,
-  Sparkles,
   MousePointerClick,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';

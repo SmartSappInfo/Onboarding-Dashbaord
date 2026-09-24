@@ -97,7 +97,7 @@ export const ContentBlockCanvas = React.memo(function ContentBlockCanvas({
   onChangeBlocks,
   onInsertAtIndex,
   resources = DEFAULT_RESOURCES,
-  workspaceId,
+  workspaceId: _workspaceId,
   portalPrimaryColor,
   className,
 }: ContentBlockCanvasProps) {
