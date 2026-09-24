@@ -8,7 +8,6 @@ import type { CourseStatus } from '../types/learning';
 
 import { adminDb } from '@/lib/firebase-admin';
 import { ContentService } from '@/lib/services/content-service';
-import type { PageBlock } from '@/lib/types';
 import type {
   Course,
   CourseModule,

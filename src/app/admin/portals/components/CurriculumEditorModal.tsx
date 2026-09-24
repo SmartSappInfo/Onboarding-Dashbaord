@@ -51,7 +51,6 @@ import {
   X,
   Loader2,
   CheckCircle2,
-  AlertCircle,
   Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -137,22 +136,8 @@ export function CurriculumEditorModal({
     return lessons.find(l => l.id === selectedLessonId) || null;
   }, [lessons, selectedLessonId]);
 
-  // ── Keyboard shortcut: Cmd/Ctrl + S to Save ────────────────────────────────
-  React.useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
-        e.preventDefault();
-        handleSaveAll();
-      }
-    };
-    if (open) {
-      window.addEventListener('keydown', handleKeyDown);
-      return () => window.removeEventListener('keydown', handleKeyDown);
-    }
-  }, [open, dirtyLessonIds, lessons]);
-
   // ── Save All Dirty Lessons ─────────────────────────────────────────────────
-  const handleSaveAll = async () => {
+  const handleSaveAll = React.useCallback(async () => {
     if (!course || dirtyLessonIds.size === 0) {
       toast({ title: 'All Saved', description: 'Curriculum is up to date.' });
       return;
@@ -205,7 +190,21 @@ export function CurriculumEditorModal({
     } finally {
       setIsSaving(false);
     }
-  };
+  }, [course, dirtyLessonIds, lessons, onCurriculumChanged, portalSlug, toast]);
+
+  // ── Keyboard shortcut: Cmd/Ctrl + S to Save ────────────────────────────────
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        handleSaveAll();
+      }
+    };
+    if (open) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [open, handleSaveAll]);
 
   // ── Module Handlers ────────────────────────────────────────────────────────
   const handleAddModule = async () => {

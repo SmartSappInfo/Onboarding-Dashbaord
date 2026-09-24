@@ -27,7 +27,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Card } from '@/components/ui/card';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   Select,
   SelectContent,
@@ -38,8 +38,6 @@ import {
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
 } from '@/components/ui/sheet';
 import type {
   CourseLesson,
@@ -62,11 +60,9 @@ import {
   Trash2,
   Download,
   Sliders,
-  Layers,
   GraduationCap,
   ExternalLink,
 } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 interface LessonInspectorPaneProps {
   lesson: CourseLesson | null;
@@ -87,7 +83,7 @@ export function LessonInspectorPane({
   courseId: _courseId,
   onUpdateLesson,
   onOpenQuizBuilder,
-  isSaving,
+  isSaving: _isSaving,
 }: LessonInspectorPaneProps) {
   const [activeTab, setActiveTab] = React.useState<'settings' | 'blocks'>('settings');
 
@@ -121,7 +117,7 @@ export function LessonInspectorPane({
       ];
     }
     return [];
-  }, [lesson?.id, lesson?.blocks, lesson?.content]);
+  }, [lesson]);
 
   // Selected block for Inspector
   const selectedBlock = React.useMemo(() => {

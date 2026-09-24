@@ -20,8 +20,6 @@ import type { CourseLesson, CourseModule } from '@/lib/types/learning';
 import type { ReleaseEvaluationResult } from '@/lib/services/release-schedule-service';
 import {
   Lock,
-  Calendar,
-  Clock,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,

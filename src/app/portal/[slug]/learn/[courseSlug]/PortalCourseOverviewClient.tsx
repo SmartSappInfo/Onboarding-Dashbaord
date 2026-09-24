@@ -189,7 +189,7 @@ export default function PortalCourseOverviewClient({
   }, [progressList]);
 
   // ── Plan Entitlement Gating Check ──────────────────────────────────────
-  const requiredPlanIds = course?.requiredPlanIds || [];
+  const requiredPlanIds = React.useMemo(() => course?.requiredPlanIds || [], [course?.requiredPlanIds]);
   const hasPlanRequirement = requiredPlanIds.length > 0;
   const isEnrolled = Boolean(enrollment);
 
