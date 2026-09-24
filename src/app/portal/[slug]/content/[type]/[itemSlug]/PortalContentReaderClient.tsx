@@ -43,6 +43,10 @@ import { getPortalRadiusCss, getPortalButtonInlineStyle } from '@/lib/utils/port
 import { getContrastRatio } from '@/lib/utils/portal-theme-generator';
 import type { Portal } from '@/lib/types/portal';
 import type { ContentItem } from '@/lib/types/content';
+import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
+import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { DEFAULT_THEME } from '@/lib/page-builder/resolve-theme';
+import '@/lib/page-builder/blocks';
 
 interface PortalContentReaderClientProps {
   slug: string;
@@ -143,6 +147,32 @@ function PortalContentReaderView({
       window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${url}`, '_blank');
     }
   };
+
+  const renderCtx: BlockRenderContext = React.useMemo(() => {
+    return {
+      mode: 'view',
+      theme: {
+        ...DEFAULT_THEME,
+        colors: {
+          ...DEFAULT_THEME.colors,
+          primary: activeColors.primary || DEFAULT_THEME.colors.primary,
+        },
+        typography: {
+          headingFont: 'Figtree, sans-serif',
+          bodyFont: 'Figtree, sans-serif',
+          baseSize: '16px',
+        },
+      },
+      interpolate: (text: string) => text,
+      resources: {
+        forms: [],
+        surveys: [],
+        agreements: [],
+        meetings: [],
+        qrCodes: [],
+      },
+    };
+  }, [activeColors.primary]);
 
   if (isLoadingContent) {
     return (
@@ -419,16 +449,24 @@ function PortalContentReaderView({
             </Card>
           )}
 
-          {/* Rich Content Body */}
-          <article className="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed space-y-4 text-[var(--portal-text)]">
-            {item.content ? (
-              <div className="whitespace-pre-wrap font-normal leading-relaxed text-[var(--portal-text)]">
-                {item.content}
-              </div>
-            ) : (
-              <p className="text-xs text-[var(--portal-muted)] italic">No written body text provided.</p>
-            )}
-          </article>
+          {/* Rich Content Body: Dual Mode (Modular PageBuilder Blocks vs Legacy Markdown) */}
+          {item.blocks && item.blocks.length > 0 ? (
+            <div className="space-y-6 pt-2">
+              {item.blocks.map((block) => (
+                <BlockRenderer key={block.id} block={block} ctx={renderCtx} />
+              ))}
+            </div>
+          ) : (
+            <article className="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed space-y-4 text-[var(--portal-text)]">
+              {item.content ? (
+                <div className="whitespace-pre-wrap font-normal leading-relaxed text-[var(--portal-text)]">
+                  {item.content}
+                </div>
+              ) : (
+                <p className="text-xs text-[var(--portal-muted)] italic">No written body text provided.</p>
+              )}
+            </article>
+          )}
         </div>
       </main>
 
