@@ -142,7 +142,7 @@ Every phase and line of code must strictly conform to these 10 principles:
 
 ---
 
-### Phase 2: Shared Content Templates & Registry Filtering (NEXT)
+### Phase 2: Shared Content Templates & Registry Filtering (COMPLETED)
 
 **Files:**
 - Create: `src/lib/page-builder/templates/content-templates.ts`
@@ -150,33 +150,13 @@ Every phase and line of code must strictly conform to these 10 principles:
 - Modify: `src/lib/page-builder/registry.tsx`
 - Test: `src/lib/page-builder/__tests__/content-templates.test.ts`
 
-- [ ] **Step 1: Write failing unit tests for content starter templates & block filter**
-  - Create `src/lib/page-builder/__tests__/content-templates.test.ts` asserting:
-    - 4 starter templates exist (`article-standard-starter`, `lesson-curriculum-starter`, `resource-download-starter`, `documentation-kb-starter`).
-    - Every block in each template parses cleanly through `validateBlockProps()`.
-    - `instantiateContentTemplate()` generates fresh unique IDs.
-    - `getContentStudioBlocks()` excludes marketing bloat (`countdown`, `app_download`, `payment_methods`, `logo_grid`).
-    - `getContentStudioBlockCategories()` provides 5 intuitive plain-English categories.
-    - Plain-text extraction produces non-empty text for search indexing.
-- [ ] **Step 2: Run test to verify it fails**
-  - Run: `npx vitest run src/lib/page-builder/__tests__/content-templates.test.ts`
-  - Expected: FAIL.
-- [ ] **Step 3: Create `src/lib/page-builder/templates/content-templates.ts`**
-  - Define `ContentStarterTemplate` interface.
-  - Implement the 4 high-fidelity starter templates.
-  - Implement `instantiateContentTemplate(templateId: string): PageBlock[]`.
-- [ ] **Step 4: Update `src/lib/page-builder/registry.tsx`**
-  - Implement `getContentStudioBlocks(): AnyBlockDefinition[]`.
-  - Implement `getContentStudioBlockCategories(): ContentStudioCategoryGroup[]`.
-  - Re-export in `src/lib/page-builder/templates/index.ts`.
-- [ ] **Step 5: Run tests and verify they pass**
-  - Run: `npx vitest run src/lib/page-builder/__tests__/content-templates.test.ts src/lib/services/__tests__/content-service.test.ts`
-  - Expected: 100% PASS.
-- [ ] **Step 6: Run strict static analysis**
-  - Run: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit && npx eslint src/lib/page-builder/templates/content-templates.ts`
-  - Expected: 0 errors.
-- [ ] **Step 7: Commit changes locally**
-  - `git commit -m "feat(page-builder): implement Phase 2 - shared content starter templates and studio registry filtering"`
+- [x] **Step 1: Write failing unit tests for content starter templates & block filter**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Create `src/lib/page-builder/templates/content-templates.ts`**
+- [x] **Step 4: Update `src/lib/page-builder/registry.tsx`**
+- [x] **Step 5: Run tests and verify they pass (6/6 passing)**
+- [x] **Step 6: Run strict static analysis (0 errors, 0 lint warnings)**
+- [x] **Step 7: Commit changes locally** (`b008312a`)
 
 ---
 
