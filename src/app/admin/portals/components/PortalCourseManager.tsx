@@ -111,7 +111,7 @@ export function PortalCourseManager({
   const plansQuery = useMemoFirebase(
     () =>
       firestore && portalId
-        ? query(collection(firestore, 'portal_membership_plans'), where('portalId', '==', portalId))
+        ? query(collection(firestore, 'membership_plans'), where('portalId', '==', portalId))
         : null,
     [firestore, portalId]
   );

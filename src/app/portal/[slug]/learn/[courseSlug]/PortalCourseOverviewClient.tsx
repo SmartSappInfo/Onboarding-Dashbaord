@@ -4,7 +4,14 @@
  * {{Org_name}} Experience Platform — Course Overview Landing Client
  *
  * Dedicated course syllabus and overview page featuring instructor bio,
- * module accordion previews, learning objectives, and 1-click enrollment CTA.
+ * module accordion previews with drip release status badges, learning objectives,
+ * plan entitlement paywall gating, and dynamic 1-click "Resume Learning" CTA.
+ *
+ * Architectural Notes:
+ * - Entitlement Gating: Enforces course.requiredPlanIds against user's active membership plan.
+ * - Drip Release Engine: Evaluates ReleaseScheduleService.evaluateLessonRelease & evaluateModuleRelease
+ *   to show real-time lock status (countdown days, prerequisite requirement, or specific date unlock).
+ * - High-accessibility: All touch targets >= 44px, keyboard navigable, full dark/light theme support.
  */
 
 import * as React from 'react';
@@ -16,6 +23,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Progress } from '@/components/ui/progress';
 import {
   Accordion,
   AccordionContent,
@@ -24,9 +32,11 @@ import {
 } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
 import { enrollInCourseAction } from '@/app/actions/learning-actions';
+import { ReleaseScheduleService } from '@/lib/services/release-schedule-service';
 import { PortalPageShell } from '../../components/PortalPageShell';
 import type { Portal } from '@/lib/types/portal';
-import type { Course, CourseModule, CourseLesson, CourseEnrollment } from '@/lib/types/learning';
+import type { Course, CourseModule, CourseLesson, CourseEnrollment, LearningProgress } from '@/lib/types/learning';
+import type { PortalMembership, MembershipPlan } from '@/lib/types/membership';
 import {
   ArrowRight,
   PlayCircle,
@@ -35,6 +45,11 @@ import {
   Clock,
   Award,
   Loader2,
+  Lock,
+  CheckCircle2,
+  Sparkles,
+  FileText,
+  HelpCircle,
 } from 'lucide-react';
 import { PortalAuthModal } from '../../components/PortalAuthModal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -113,7 +128,33 @@ export default function PortalCourseOverviewClient({
   );
   const { data: lessons } = useCollection<CourseLesson>(lessonsQuery);
 
-  // 5. Query Enrollment
+  // 5. Query Active Membership (for entitlement & drip release dates)
+  const membershipQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id && user?.uid
+        ? query(
+            collection(firestore, 'portal_memberships'),
+            where('portalId', '==', portal.id),
+            where('userId', '==', user.uid),
+            limit(1)
+          )
+        : null,
+    [firestore, portal?.id, user?.uid]
+  );
+  const { data: memberships } = useCollection<PortalMembership>(membershipQuery);
+  const membership = memberships?.[0] ?? null;
+
+  // 6. Query Membership Plans (to display tier names for gated courses)
+  const plansQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id
+        ? query(collection(firestore, 'membership_plans'), where('portalId', '==', portal.id))
+        : null,
+    [firestore, portal?.id]
+  );
+  const { data: membershipPlans } = useCollection<MembershipPlan>(plansQuery);
+
+  // 7. Query Enrollment
   const enrollmentQuery = useMemoFirebase(
     () =>
       firestore && course?.id && user?.uid
@@ -129,16 +170,81 @@ export default function PortalCourseOverviewClient({
   const { data: enrollments } = useCollection<CourseEnrollment>(enrollmentQuery);
   const enrollment = enrollments?.[0] ?? null;
 
-  const firstLesson = (lessons || [])[0] ?? null;
-  const targetLessonSlug = enrollment?.currentLessonId
-    ? (lessons || []).find(l => l.id === enrollment.currentLessonId)?.slug || firstLesson?.slug
-    : firstLesson?.slug;
+  // 8. Query Granular Learning Progress (to track completed lesson IDs)
+  const progressQuery = useMemoFirebase(
+    () =>
+      firestore && course?.id && user?.uid
+        ? query(
+            collection(firestore, 'learning_progress'),
+            where('courseId', '==', course.id),
+            where('userId', '==', user.uid)
+          )
+        : null,
+    [firestore, course?.id, user?.uid]
+  );
+  const { data: progressList } = useCollection<LearningProgress>(progressQuery);
+
+  const completedLessonIds = React.useMemo(() => {
+    return (progressList || []).filter(p => p.isCompleted).map(p => p.lessonId);
+  }, [progressList]);
+
+  // ── Plan Entitlement Gating Check ──────────────────────────────────────
+  const requiredPlanIds = course?.requiredPlanIds || [];
+  const hasPlanRequirement = requiredPlanIds.length > 0;
+  const isEnrolled = Boolean(enrollment);
+
+  const isPlanEntitled = React.useMemo(() => {
+    // If already enrolled, user was granted access
+    if (isEnrolled) return true;
+    if (!hasPlanRequirement) return true;
+    if (!membership || membership.status !== 'active') return false;
+    return Boolean(membership.planId && requiredPlanIds.includes(membership.planId));
+  }, [isEnrolled, hasPlanRequirement, membership, requiredPlanIds]);
+
+  const requiredPlanNames = React.useMemo(() => {
+    if (!hasPlanRequirement || !membershipPlans) return [];
+    return membershipPlans
+      .filter(p => requiredPlanIds.includes(p.id))
+      .map(p => p.name);
+  }, [hasPlanRequirement, membershipPlans, requiredPlanIds]);
+
+  // Determine current active lesson for dynamic resume CTA
+  const sortedLessons = React.useMemo(() => {
+    return [...(lessons || [])].sort((a, b) => a.order - b.order);
+  }, [lessons]);
+
+  const firstLesson = sortedLessons[0] ?? null;
+
+  const currentLesson = React.useMemo(() => {
+    if (!enrollment?.currentLessonId) return firstLesson;
+    return sortedLessons.find(l => l.id === enrollment.currentLessonId) || firstLesson;
+  }, [enrollment?.currentLessonId, sortedLessons, firstLesson]);
+
+  const currentLessonIndex = React.useMemo(() => {
+    if (!currentLesson) return 0;
+    return sortedLessons.findIndex(l => l.id === currentLesson.id);
+  }, [sortedLessons, currentLesson]);
+
+  const completedCount = completedLessonIds.length;
+  const totalCount = sortedLessons.length || 0;
 
   const handleEnroll = async () => {
     if (!portal || !course) return;
 
     if (!user) {
       setIsAuthModalOpen(true);
+      return;
+    }
+
+    if (!isPlanEntitled) {
+      toast({
+        title: 'Membership Tier Required',
+        description: `This course requires an active ${requiredPlanNames.join(' or ')} membership plan.`,
+        actionConfig: {
+          path: `/portal/${slug}/pricing`,
+          label: 'View Plans',
+        },
+      });
       return;
     }
 
@@ -177,7 +283,7 @@ export default function PortalCourseOverviewClient({
       <div className="min-h-screen bg-[var(--portal-bg,#ffffff)] flex items-center justify-center p-6 text-center">
         <div className="space-y-3">
           <h2 className="text-xl font-bold">Course Not Found</h2>
-          <Button asChild className="rounded-xl font-bold text-xs active:scale-[0.97]">
+          <Button asChild className="rounded-xl font-bold text-xs min-h-[44px] active:scale-[0.97]">
             <Link href={`/portal/${slug}/learn`}>
               Return to Catalog
             </Link>
@@ -188,15 +294,14 @@ export default function PortalCourseOverviewClient({
   }
 
   const theme = portal.theme;
-  const isEnrolled = Boolean(enrollment);
 
   return (
     <PortalPageShell portal={portal} slug={slug}>
       <div className="max-w-5xl mx-auto w-full p-6 md:p-10 space-y-10">
         {/* Course Hero Banner */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center bg-card p-6 sm:p-10 rounded-3xl border-2 border-border shadow-sm">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-center bg-card p-6 sm:p-10 rounded-3xl border-2 border-border shadow-xs">
           <div className="lg:col-span-2 space-y-4">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Badge className="bg-primary/10 text-primary border-0 text-[10px] font-bold uppercase tracking-wider">
                 {course.category || 'Academy Masterclass'}
               </Badge>
@@ -206,6 +311,13 @@ export default function PortalCourseOverviewClient({
               >
                 {course.level.replace('_', ' ')}
               </Badge>
+
+              {hasPlanRequirement && (
+                <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold gap-1">
+                  <Lock className="w-2.5 h-2.5" />
+                  {requiredPlanNames.length > 0 ? requiredPlanNames.join(' / ') : 'Tier Gated'}
+                </Badge>
+              )}
             </div>
 
             <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground leading-tight">
@@ -230,17 +342,66 @@ export default function PortalCourseOverviewClient({
               </div>
             </div>
 
-            {/* CTA Button */}
-            <div className="pt-3 flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-              {isEnrolled && targetLessonSlug ? (
+            {/* Plan Entitlement Gate Notice (if not enrolled and not entitled) */}
+            {hasPlanRequirement && !isPlanEntitled && (
+              <div className="p-4 rounded-2xl border-2 border-amber-500/30 bg-amber-500/5 dark:bg-amber-500/10 backdrop-blur-xs space-y-2">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-700 dark:text-amber-300">
+                  <Lock className="w-4 h-4 text-amber-600 shrink-0" />
+                  <span>Exclusive to {requiredPlanNames.join(' or ')} Members</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Upgrade your membership plan to unlock this complete course along with all downloadable materials and verified completion certificates.
+                </p>
+                <div className="pt-1">
+                  <Button
+                    asChild
+                    size="sm"
+                    className="h-9 px-4 rounded-xl font-bold text-xs bg-amber-600 hover:bg-amber-700 text-white min-h-[36px] active:scale-[0.97]"
+                  >
+                    <Link href={`/portal/${slug}/pricing`}>
+                      Explore Membership Plans <ArrowRight className="w-3.5 h-3.5 ml-1.5" />
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* CTA & Progress Strip */}
+            <div className="pt-3 space-y-3">
+              {isEnrolled && currentLesson && enrollment ? (
+                <div className="space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-muted-foreground">
+                    <span className="flex items-center gap-1.5 text-foreground">
+                      <Sparkles className="w-3.5 h-3.5 text-primary" />
+                      Current Progress: {enrollment.progressPercentage || 0}%
+                    </span>
+                    <span>
+                      {completedCount} of {totalCount} lessons completed
+                    </span>
+                  </div>
+                  <Progress value={enrollment.progressPercentage || 0} className="h-2 rounded-full" />
+                  <div className="pt-1">
+                    <Button
+                      asChild
+                      size="lg"
+                      className="w-full sm:w-auto h-12 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 hover:shadow-lg transition-all min-h-[44px]"
+                      style={{ backgroundColor: theme.colors.primary }}
+                    >
+                      <Link href={`/portal/${slug}/learn/${courseSlug}/${currentLesson.slug}`}>
+                        Resume Learning: Lesson {currentLessonIndex + 1} — {currentLesson.title}
+                        <ArrowRight className="w-4 h-4 ml-1" />
+                      </Link>
+                    </Button>
+                  </div>
+                </div>
+              ) : !isPlanEntitled ? (
                 <Button
                   asChild
                   size="lg"
-                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 hover:shadow-lg transition-all"
-                  style={{ backgroundColor: theme.colors.primary }}
+                  className="w-full sm:w-auto h-12 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 transition-all min-h-[44px] bg-amber-600 hover:bg-amber-700"
                 >
-                  <Link href={`/portal/${slug}/learn/${courseSlug}/${targetLessonSlug}`}>
-                    Resume Course ({enrollment?.progressPercentage || 0}%) <ArrowRight className="w-4 h-4" />
+                  <Link href={`/portal/${slug}/pricing`}>
+                    <Lock className="w-4 h-4 mr-1.5" /> Unlock with {requiredPlanNames.join(' / ')}
                   </Link>
                 </Button>
               ) : (
@@ -248,7 +409,7 @@ export default function PortalCourseOverviewClient({
                   size="lg"
                   onClick={handleEnroll}
                   disabled={isEnrolling}
-                  className="w-full sm:w-auto h-11 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 hover:shadow-lg transition-all"
+                  className="w-full sm:w-auto h-12 px-8 rounded-xl font-bold text-xs text-white shadow-md gap-2 active:scale-[0.97] hover:brightness-105 hover:shadow-lg transition-all min-h-[44px]"
                   style={{ backgroundColor: theme.colors.primary }}
                 >
                   {isEnrolling ? (
@@ -259,7 +420,7 @@ export default function PortalCourseOverviewClient({
                 </Button>
               )}
 
-              <div className="flex items-center gap-4 text-xs text-muted-foreground justify-center sm:justify-start">
+              <div className="flex items-center gap-4 text-xs text-muted-foreground justify-center sm:justify-start pt-1">
                 <span className="flex items-center gap-1 font-semibold">
                   <Layers className="w-3.5 h-3.5 text-primary" /> {lessons?.length || 0} Lessons
                 </span>
@@ -272,7 +433,7 @@ export default function PortalCourseOverviewClient({
 
           {/* Thumbnail / Certificate Card */}
           <div className="space-y-4">
-            <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted/60 border border-border shadow-xs">
+            <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted/60 border border-border shadow-2xs">
               {course.thumbnailUrl ? (
                 <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
               ) : (
@@ -294,7 +455,7 @@ export default function PortalCourseOverviewClient({
           </div>
         </div>
 
-        {/* Detailed Syllabus Accordion */}
+        {/* Detailed Syllabus Accordion with Drip Release Badges */}
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-border pb-3">
             <div>
@@ -307,7 +468,13 @@ export default function PortalCourseOverviewClient({
 
           <Accordion type="multiple" defaultValue={(modules || []).map(m => m.id)} className="space-y-3">
             {(modules || []).map((mod, modIdx) => {
-              const moduleLessons = (lessons || []).filter(l => l.moduleId === mod.id);
+              const moduleLessons = sortedLessons.filter(l => l.moduleId === mod.id);
+              const moduleRelease = ReleaseScheduleService.evaluateModuleRelease({
+                module: mod,
+                enrollment,
+                memberJoinedAt: membership?.joinedAt || membership?.createdAt,
+                completedLessonIds,
+              });
 
               return (
                 <AccordionItem
@@ -315,7 +482,7 @@ export default function PortalCourseOverviewClient({
                   value={mod.id}
                   className="rounded-2xl border-2 border-border bg-card overflow-hidden shadow-2xs"
                 >
-                  <AccordionTrigger className="px-5 py-4 hover:no-underline font-bold text-sm">
+                  <AccordionTrigger className="px-5 py-4 hover:no-underline font-bold text-sm min-h-[44px]">
                     <div className="flex items-center gap-3 text-left">
                       <Badge variant="outline" className="text-[10px] font-bold uppercase px-2 py-0.5">
                         Module {modIdx + 1}
@@ -323,38 +490,113 @@ export default function PortalCourseOverviewClient({
                       <span className="text-foreground">
                         {mod.title.replace(/^((module|section)\s*\d+[\s:.-]*)+/i, '').trim() || mod.title}
                       </span>
+                      {moduleRelease.isLocked && (
+                        <Badge variant="outline" className="text-[9px] font-bold bg-muted/60 text-muted-foreground border-border gap-1 ml-1">
+                          <Lock className="w-2.5 h-2.5" />
+                          {moduleRelease.daysRemaining !== undefined
+                            ? `Drips in ${moduleRelease.daysRemaining}d`
+                            : 'Module Locked'}
+                        </Badge>
+                      )}
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-5 pb-4 space-y-2 border-t border-border pt-3">
                     {moduleLessons.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-2">No lessons in this module yet.</p>
                     ) : (
-                      moduleLessons.map((lesson, lesIdx) => (
-                        <div
-                          key={lesson.id}
-                          className="flex items-center justify-between p-2.5 rounded-xl hover:bg-muted/40 transition-colors text-xs"
-                        >
-                          <div className="flex items-center gap-3">
-                            <PlayCircle className="w-4 h-4 text-primary shrink-0" />
-                            <span className="font-medium text-foreground">
-                              {lesIdx + 1}. {lesson.title}
-                            </span>
-                          </div>
+                      moduleLessons.map((lesson, lesIdx) => {
+                        const isCompleted = completedLessonIds.includes(lesson.id);
+                        const lessonRelease = ReleaseScheduleService.evaluateLessonRelease({
+                          lesson,
+                          module: mod,
+                          enrollment,
+                          memberJoinedAt: membership?.joinedAt || membership?.createdAt,
+                          completedLessonIds,
+                        });
 
-                          <div className="flex items-center gap-2">
-                            {lesson.isPreview && (
-                              <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] font-bold">
-                                Free Preview
-                              </Badge>
-                            )}
-                            <span className="text-[11px] text-muted-foreground">
-                              {lesson.videoDurationSeconds
-                                ? `${Math.round(lesson.videoDurationSeconds / 60)}m`
-                                : '10m'}
-                            </span>
+                        // Clickable if enrolled and unlocked, or if it's a free preview
+                        const isClickable = (isEnrolled && !lessonRelease.isLocked) || lesson.isPreview;
+
+                        const contentIcon =
+                          lesson.contentType === 'quiz' ? (
+                            <HelpCircle className="w-4 h-4 text-purple-500 shrink-0" />
+                          ) : lesson.contentType === 'article' || (lesson.blocks && lesson.blocks.length > 0) ? (
+                            <FileText className="w-4 h-4 text-blue-500 shrink-0" />
+                          ) : (
+                            <PlayCircle className="w-4 h-4 text-primary shrink-0" />
+                          );
+
+                        const rowContent = (
+                          <div
+                            className={`flex items-center justify-between p-3 rounded-xl transition-colors text-xs min-h-[44px] ${
+                              isClickable
+                                ? 'hover:bg-muted/60 cursor-pointer active:scale-[0.99]'
+                                : 'opacity-70 bg-muted/20 cursor-not-allowed'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              {isCompleted ? (
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />
+                              ) : !lessonRelease.isLocked || lesson.isPreview ? (
+                                contentIcon
+                              ) : (
+                                <Lock className="w-4 h-4 text-muted-foreground shrink-0" />
+                              )}
+                              <span className={`font-medium ${isCompleted ? 'text-muted-foreground line-through decoration-muted-foreground/50' : 'text-foreground'}`}>
+                                {lesIdx + 1}. {lesson.title}
+                              </span>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              {lesson.isPreview && (
+                                <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[9px] font-bold">
+                                  Free Preview
+                                </Badge>
+                              )}
+
+                              {lessonRelease.isLocked && !lesson.isPreview && (
+                                <Badge variant="outline" className="bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20 text-[9px] font-semibold">
+                                  {lessonRelease.daysRemaining !== undefined
+                                    ? `Unlocks in ${lessonRelease.daysRemaining}d`
+                                    : lesson.releaseRule?.type === 'sequential_prerequisite'
+                                    ? 'Requires Prerequisite'
+                                    : moduleRelease.isLocked
+                                    ? 'Module Locked'
+                                    : 'Scheduled'}
+                                </Badge>
+                              )}
+
+                              <span className="text-[11px] text-muted-foreground font-mono">
+                                {lesson.videoDurationSeconds
+                                  ? `${Math.round(lesson.videoDurationSeconds / 60)}m`
+                                  : '10m'}
+                              </span>
+
+                              {isClickable && (
+                                <ArrowRight className="w-3.5 h-3.5 text-muted-foreground ml-1" />
+                              )}
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+
+                        if (isClickable) {
+                          return (
+                            <Link
+                              key={lesson.id}
+                              href={`/portal/${slug}/learn/${courseSlug}/${lesson.slug}`}
+                              className="block focus:outline-hidden focus:ring-2 focus:ring-primary/20 rounded-xl"
+                            >
+                              {rowContent}
+                            </Link>
+                          );
+                        }
+
+                        return (
+                          <div key={lesson.id}>
+                            {rowContent}
+                          </div>
+                        );
+                      })
                     )}
                   </AccordionContent>
                 </AccordionItem>
