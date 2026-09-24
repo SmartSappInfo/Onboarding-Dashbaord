@@ -44,6 +44,8 @@ import {
   Lock,
   Layers,
   X,
+  Globe,
+  Sparkles,
 } from 'lucide-react';
 import { listContentItemsByPortalAction } from '@/app/actions/content-actions';
 import {
@@ -62,12 +64,21 @@ interface PortalContentCatalogClientProps {
   initialPortal?: Portal | null;
 }
 
+export type ContentAccessFilter = 'all' | 'public' | 'members' | 'exclusive';
+
 const TYPE_FILTER_TABS: { id: string; label: string; icon: React.ElementType }[] = [
   { id: 'all', label: 'All Resources', icon: Layers },
   { id: 'resource', label: 'Worksheets & Downloads', icon: FolderArchive },
   { id: 'doc', label: 'Documentation & Guides', icon: FileCode },
   { id: 'article', label: 'Articles & Insights', icon: Newspaper },
   { id: 'template', label: 'Templates & Models', icon: FileText },
+];
+
+const ACCESS_FILTER_TABS: { id: ContentAccessFilter; label: string; icon: React.ElementType }[] = [
+  { id: 'all', label: 'All Access', icon: Layers },
+  { id: 'public', label: 'Free / Public', icon: Globe },
+  { id: 'members', label: 'Member Only', icon: Lock },
+  { id: 'exclusive', label: 'Tier Exclusive', icon: Sparkles },
 ];
 
 /**
@@ -89,6 +100,7 @@ function PortalContentCatalogView({
 
   const [searchQuery, setSearchQuery] = React.useState('');
   const [selectedType, setSelectedType] = React.useState<string>(initialType);
+  const [selectedAccess, setSelectedAccess] = React.useState<ContentAccessFilter>('all');
 
   // Synchronize URL query parameter if present
   React.useEffect(() => {
@@ -157,6 +169,22 @@ function PortalContentCatalogView({
         }
       }
 
+      // Access matching
+      if (selectedAccess !== 'all') {
+        const isPublic = item.visibility === 'public';
+        const hasPlanRequirement = Boolean(item.requiredPlanIds && item.requiredPlanIds.length > 0);
+
+        if (selectedAccess === 'public' && !isPublic) {
+          return false;
+        }
+        if (selectedAccess === 'members' && (isPublic || hasPlanRequirement)) {
+          return false;
+        }
+        if (selectedAccess === 'exclusive' && !hasPlanRequirement) {
+          return false;
+        }
+      }
+
       // Search query matching
       if (searchQuery.trim() !== '') {
         const q = searchQuery.toLowerCase().trim();
@@ -171,7 +199,7 @@ function PortalContentCatalogView({
 
       return true;
     });
-  }, [effectiveItems, selectedType, searchQuery]);
+  }, [effectiveItems, selectedType, selectedAccess, searchQuery]);
 
   const theme = portal.theme;
   const radiusCss = getPortalRadiusCss(theme.ui?.borderRadius);
@@ -241,26 +269,82 @@ function PortalContentCatalogView({
         </div>
 
         {/* Filter Bar & Search Input */}
-        <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4 border-b border-[var(--portal-border)] pb-4">
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-            {TYPE_FILTER_TABS.map(tab => {
+        <div className="space-y-4 border-b border-[var(--portal-border)] pb-5">
+          <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+            {/* Category Tabs */}
+            <div className="flex items-center gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+              {TYPE_FILTER_TABS.map(tab => {
+                const IconComp = tab.icon;
+                const isActive = selectedType === tab.id;
+
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setSelectedType(tab.id)}
+                    className={cn(
+                      'min-h-[44px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition-all duration-150 active:scale-[0.97]',
+                      isActive
+                        ? 'text-white shadow-xs'
+                        : 'text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:bg-[var(--portal-surface)]'
+                    )}
+                    style={{
+                      backgroundColor: isActive ? 'var(--portal-primary, #3B82F6)' : 'transparent',
+                      borderRadius: radiusCss,
+                    }}
+                  >
+                    <IconComp className="w-3.5 h-3.5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Inline Keyword Filter */}
+            <div className="relative w-full md:w-72">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--portal-muted)]" />
+              <Input
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Filter by title, tags, or topic..."
+                className="pl-9 pr-8 min-h-[44px] text-xs bg-[var(--portal-surface)] border-[var(--portal-border)] text-[var(--portal-text)] placeholder:text-[var(--portal-muted)] font-medium"
+                style={{ borderRadius: radiusCss }}
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--portal-muted)] hover:text-[var(--portal-text)]"
+                  aria-label="Clear filter"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Access Filter Pills */}
+          <div className="flex items-center gap-2 overflow-x-auto pt-1 scrollbar-none text-xs">
+            <span className="text-[11px] font-bold text-[var(--portal-muted)] uppercase tracking-wider shrink-0 mr-1">
+              Access:
+            </span>
+            {ACCESS_FILTER_TABS.map(tab => {
               const IconComp = tab.icon;
-              const isActive = selectedType === tab.id;
+              const isActive = selectedAccess === tab.id;
 
               return (
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setSelectedType(tab.id)}
+                  onClick={() => setSelectedAccess(tab.id)}
                   className={cn(
-                    'min-h-[44px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-2 whitespace-nowrap transition-all duration-150 active:scale-[0.97]',
+                    'min-h-[38px] px-3.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all duration-150 active:scale-[0.97] border',
                     isActive
-                      ? 'text-white shadow-xs'
-                      : 'text-[var(--portal-muted)] hover:text-[var(--portal-text)] hover:bg-[var(--portal-surface)]'
+                      ? 'border-transparent text-white shadow-xs'
+                      : 'border-[var(--portal-border)] bg-[var(--portal-surface)] text-[var(--portal-muted)] hover:text-[var(--portal-text)]'
                   )}
                   style={{
-                    backgroundColor: isActive ? 'var(--portal-primary, #3B82F6)' : 'transparent',
+                    backgroundColor: isActive ? 'var(--portal-primary, #3B82F6)' : undefined,
                     borderRadius: radiusCss,
                   }}
                 >
@@ -269,28 +353,6 @@ function PortalContentCatalogView({
                 </button>
               );
             })}
-          </div>
-
-          {/* Inline Keyword Filter */}
-          <div className="relative w-full md:w-72">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--portal-muted)]" />
-            <Input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Filter by title, tags, or topic..."
-              className="pl-9 pr-8 min-h-[44px] text-xs bg-[var(--portal-surface)] border-[var(--portal-border)] text-[var(--portal-text)] placeholder:text-[var(--portal-muted)] font-medium"
-              style={{ borderRadius: radiusCss }}
-            />
-            {searchQuery && (
-              <button
-                type="button"
-                onClick={() => setSearchQuery('')}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 p-1 text-[var(--portal-muted)] hover:text-[var(--portal-text)]"
-                aria-label="Clear filter"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            )}
           </div>
         </div>
 
@@ -313,12 +375,13 @@ function PortalContentCatalogView({
             <p className="text-xs text-[var(--portal-muted)] max-w-sm mx-auto">
               Try adjusting your category filter or search keywords to find what you are looking for.
             </p>
-            {(selectedType !== 'all' || searchQuery) && (
+            {(selectedType !== 'all' || selectedAccess !== 'all' || searchQuery) && (
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => {
                   setSelectedType('all');
+                  setSelectedAccess('all');
                   setSearchQuery('');
                 }}
                 className="min-h-[44px] rounded-xl font-bold text-xs mt-2 border-[var(--portal-border)] text-[var(--portal-text)] hover:bg-[var(--portal-surface)] active:scale-[0.97] transition-transform"
@@ -331,7 +394,9 @@ function PortalContentCatalogView({
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredItems.map(item => {
               const IconComp = getItemTypeIcon(item.type);
-              const isGated = Boolean(item.visibility && item.visibility !== 'public');
+              const isPublic = item.visibility === 'public';
+              const isExclusive = Boolean(item.requiredPlanIds && item.requiredPlanIds.length > 0);
+              const isMemberGated = !isPublic && !isExclusive;
               const targetUrl = item.slug
                 ? `/portal/${slug}/content/${item.type}/${item.slug}`
                 : `/portal/${slug}/content?id=${item.id}`;
@@ -351,13 +416,27 @@ function PortalContentCatalogView({
                         <IconComp className="w-5 h-5" />
                       </div>
 
-                      <div className="flex items-center gap-1.5">
-                        {isGated && (
+                      <div className="flex items-center gap-1.5 flex-wrap justify-end">
+                        {isExclusive ? (
                           <Badge
                             variant="outline"
-                            className="text-[10px] font-bold text-amber-600 border-amber-500/30 gap-1 bg-amber-500/5"
+                            className="text-[10px] font-bold text-purple-600 dark:text-purple-400 border-purple-500/30 gap-1 bg-purple-500/10"
                           >
-                            <Lock className="w-3 h-3" /> Member
+                            <Sparkles className="w-3 h-3" /> Tier Exclusive
+                          </Badge>
+                        ) : isMemberGated ? (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-bold text-amber-600 dark:text-amber-400 border-amber-500/30 gap-1 bg-amber-500/10"
+                          >
+                            <Lock className="w-3 h-3" /> Member Only
+                          </Badge>
+                        ) : (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 border-emerald-500/30 gap-1 bg-emerald-500/10"
+                          >
+                            <Globe className="w-3 h-3" /> Free Access
                           </Badge>
                         )}
                         <Badge
@@ -397,7 +476,7 @@ function PortalContentCatalogView({
                   </div>
 
                   <div className="pt-3 border-t border-[var(--portal-border)] flex items-center justify-between gap-2">
-                    {item.media?.downloadUrl ? (
+                    {item.media?.downloadUrl && isPublic ? (
                       <a
                         href={item.media.downloadUrl}
                         target="_blank"
@@ -407,11 +486,16 @@ function PortalContentCatalogView({
                         <Download className="w-3.5 h-3.5" />
                         <span>Direct Download</span>
                       </a>
+                    ) : item.media?.downloadUrl && !isPublic ? (
+                      <span className="text-[11px] font-semibold text-[var(--portal-muted)] flex items-center gap-1">
+                        <Lock className="w-3 h-3 text-amber-500" />
+                        <span>Protected Toolkit</span>
+                      </span>
                     ) : (
                       <span className="text-[11px] font-semibold text-[var(--portal-muted)]">
                         {item.type === 'article' || item.type === 'page'
                           ? `${Math.max(1, Math.ceil((item.content?.length || 600) / 1000))} min read`
-                          : 'Knowledge Resource'}
+                          : isPublic ? 'Free Resource' : 'Member Resource'}
                       </span>
                     )}
 
@@ -422,7 +506,7 @@ function PortalContentCatalogView({
                       style={primaryBtnStyle}
                     >
                       <Link href={targetUrl}>
-                        <span>Access</span>
+                        <span>{isPublic ? 'Access' : 'Unlock & Read'}</span>
                         <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform duration-200" />
                       </Link>
                     </Button>

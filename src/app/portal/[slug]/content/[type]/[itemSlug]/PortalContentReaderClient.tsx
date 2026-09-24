@@ -20,7 +20,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { collection, query, where, limit } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,14 +35,18 @@ import {
   FileText,
   FolderArchive,
   Search,
+  Lock,
 } from 'lucide-react';
 import { PortalSearchModal } from '../../../components/PortalSearchModal';
+import { PortalAuthModal } from '../../../components/PortalAuthModal';
+import { PortalAccessGate } from '@/components/portal/PortalAccessGate';
 import { PortalThemeProvider, usePortalTheme } from '../../../components/PortalThemeProvider';
 import { PortalThemeToggle } from '../../../components/PortalThemeToggle';
 import { getPortalRadiusCss, getPortalButtonInlineStyle } from '@/lib/utils/portal-theme';
 import { getContrastRatio } from '@/lib/utils/portal-theme-generator';
 import type { Portal } from '@/lib/types/portal';
 import type { ContentItem } from '@/lib/types/content';
+import type { PortalMembership, EntitlementDenialReason, MembershipPlan } from '@/lib/types/membership';
 import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import { DEFAULT_THEME } from '@/lib/page-builder/resolve-theme';
@@ -106,6 +110,124 @@ function PortalContentReaderView({
     [firestore, portal?.id, type]
   );
   const { data: siblings } = useCollection<ContentItem>(siblingsQuery);
+
+  // 3. User Authentication & Portal Membership Resolution
+  const { user, isUserLoading } = useUser();
+  const [isAuthModalOpen, setIsAuthModalOpen] = React.useState(false);
+
+  const membershipQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id && user?.uid
+        ? query(
+            collection(firestore, 'portal_memberships'),
+            where('portalId', '==', portal.id),
+            where('userId', '==', user.uid),
+            limit(1)
+          )
+        : null,
+    [firestore, portal?.id, user?.uid]
+  );
+  const { data: memberships, isLoading: isLoadingMembership } = useCollection<PortalMembership>(membershipQuery);
+  const membership = memberships?.[0] ?? null;
+
+  // 4. Query Membership Plans to resolve plan display names for paywalls
+  const plansQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id
+        ? query(
+            collection(firestore, 'membership_plans'),
+            where('portalId', '==', portal.id)
+          )
+        : null,
+    [firestore, portal?.id]
+  );
+  const { data: plans } = useCollection<MembershipPlan>(plansQuery);
+
+  // 5. Evaluate Client-Side Entitlement
+  const entitlement = React.useMemo<{
+    hasAccess: boolean;
+    reason: EntitlementDenialReason;
+    requiredPlanName?: string;
+  }>(() => {
+    if (!item) return { hasAccess: true, reason: 'public_access' };
+
+    // Explicitly public items are accessible by all visitors
+    if (item.visibility === 'public') {
+      return { hasAccess: true, reason: 'public_access' };
+    }
+
+    // While authentication is determining, don't lock prematurely if user might be authenticated
+    if (isUserLoading || isLoadingMembership) {
+      return { hasAccess: false, reason: 'auth_required' };
+    }
+
+    // Unauthenticated visitors cannot access non-public content
+    if (!user) {
+      return { hasAccess: false, reason: 'auth_required' };
+    }
+
+    // User is authenticated but has no membership record in this portal
+    if (!membership) {
+      return { hasAccess: false, reason: 'membership_required' };
+    }
+
+    // Suspended or inactive membership
+    if (membership.status !== 'active') {
+      return { hasAccess: false, reason: 'membership_inactive' };
+    }
+
+    // Portal admin / instructor bypass
+    if (membership.role === 'owner' || membership.role === 'admin' || membership.role === 'instructor') {
+      return { hasAccess: true, reason: 'admin_bypass' };
+    }
+
+    // Role-based restrictions
+    if (item.accessRoles && item.accessRoles.length > 0) {
+      if (!item.accessRoles.includes(membership.role)) {
+        return { hasAccess: false, reason: 'role_restricted' };
+      }
+    }
+
+    // Plan tier restrictions
+    if (item.requiredPlanIds && item.requiredPlanIds.length > 0) {
+      if (!membership.planId || !item.requiredPlanIds.includes(membership.planId)) {
+        const matchingPlan = plans?.find(p => item.requiredPlanIds?.includes(p.id));
+        return {
+          hasAccess: false,
+          reason: 'plan_upgrade_required',
+          requiredPlanName: matchingPlan?.name || 'Exclusive Tier',
+        };
+      }
+      return { hasAccess: true, reason: 'plan_entitlement' };
+    }
+
+    return { hasAccess: true, reason: 'member_access' };
+  }, [item, isUserLoading, isLoadingMembership, user, membership, plans]);
+
+  // Compute visible blocks based on teaser mode if gated
+  const visibleBlocks = React.useMemo(() => {
+    if (!item?.blocks || item.blocks.length === 0) return [];
+    if (entitlement.hasAccess) return item.blocks;
+
+    const mode = item.teaserMode || 'first_block';
+    if (mode === 'none' || mode === 'summary') {
+      return [];
+    }
+    if (mode === 'two_blocks') {
+      return item.blocks.slice(0, 2);
+    }
+    return item.blocks.slice(0, 1);
+  }, [item?.blocks, item?.teaserMode, entitlement.hasAccess]);
+
+  // Compute visible content text based on teaser mode if gated
+  const visibleContent = React.useMemo(() => {
+    if (!item?.content) return '';
+    if (entitlement.hasAccess) return item.content;
+    const mode = item.teaserMode || 'first_block';
+    if (mode === 'none') return '';
+    const paragraphs = item.content.split('\n\n');
+    return paragraphs[0] || item.content.slice(0, 250);
+  }, [item?.content, item?.teaserMode, entitlement.hasAccess]);
 
   const theme = portal.theme;
   const branding = portal.branding;
@@ -400,7 +522,7 @@ function PortalContentReaderView({
             </div>
           </div>
 
-          {/* Media Player / Download Vault Banner */}
+          {/* Media Player Banner */}
           {item.media?.videoUrl && (
             <div className="rounded-3xl overflow-hidden border border-[var(--portal-border)] shadow-md bg-black aspect-video flex items-center justify-center">
               <iframe
@@ -412,7 +534,8 @@ function PortalContentReaderView({
             </div>
           )}
 
-          {item.type === 'resource' && item.media?.downloadUrl && (
+          {/* Download Resource Toolkit (Entitlement Gated) */}
+          {item.type === 'resource' && item.media?.downloadUrl && entitlement.hasAccess && (
             <Card
               className="rounded-3xl border-2 border-[var(--portal-border)] bg-[var(--portal-surface)] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm"
               style={{ borderRadius: radiusCss }}
@@ -449,23 +572,37 @@ function PortalContentReaderView({
             </Card>
           )}
 
-          {/* Rich Content Body: Dual Mode (Modular PageBuilder Blocks vs Legacy Markdown) */}
+          {/* Rich Content Body: Dual Mode (Modular PageBuilder Blocks vs Legacy Markdown) with Teaser Support */}
           {item.blocks && item.blocks.length > 0 ? (
             <div className="space-y-6 pt-2">
-              {item.blocks.map((block) => (
+              {visibleBlocks.map((block) => (
                 <BlockRenderer key={block.id} block={block} ctx={renderCtx} />
               ))}
             </div>
           ) : (
             <article className="prose dark:prose-invert max-w-none text-sm md:text-base leading-relaxed space-y-4 text-[var(--portal-text)]">
-              {item.content ? (
+              {visibleContent ? (
                 <div className="whitespace-pre-wrap font-normal leading-relaxed text-[var(--portal-text)]">
-                  {item.content}
+                  {visibleContent}
                 </div>
               ) : (
                 <p className="text-xs text-[var(--portal-muted)] italic">No written body text provided.</p>
               )}
             </article>
+          )}
+
+          {/* Access Gate & Paywall rendered when access is denied */}
+          {!entitlement.hasAccess && (
+            <PortalAccessGate
+              slug={slug}
+              portalName={brandTitle}
+              reason={entitlement.reason}
+              customPaywall={item.customPaywall}
+              onOpenAuthModal={() => setIsAuthModalOpen(true)}
+              requiredPlanName={entitlement.requiredPlanName}
+              itemType={item.type}
+              redirectUrl={`/portal/${slug}/content/${type}/${itemSlug}`}
+            />
           )}
         </div>
       </main>
@@ -481,6 +618,13 @@ function PortalContentReaderView({
         onOpenChange={setIsSearchOpen}
         portalId={portal.id}
         portalSlug={slug}
+      />
+
+      {/* Member Auth Modal (Sign In / Register / Reset) */}
+      <PortalAuthModal
+        open={isAuthModalOpen}
+        onOpenChange={setIsAuthModalOpen}
+        portal={portal}
       />
     </>
   );
