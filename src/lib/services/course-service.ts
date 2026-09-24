@@ -119,16 +119,31 @@ export class CourseService {
   }
 
   public static async deleteCourse(courseId: string): Promise<void> {
-    // 1. Fetch all child modules and lessons
-    const [modulesSnap, lessonsSnap] = await Promise.all([
+    // 1. Fetch all child modules, lessons, assessments, enrollments, progress, and certificates
+    const [
+      modulesSnap,
+      lessonsSnap,
+      assessmentsSnap,
+      enrollmentsSnap,
+      progressSnap,
+      certificatesSnap,
+    ] = await Promise.all([
       adminDb.collection('course_modules').where('courseId', '==', courseId).get(),
       adminDb.collection('course_lessons').where('courseId', '==', courseId).get(),
+      adminDb.collection('course_assessments').where('courseId', '==', courseId).get(),
+      adminDb.collection('course_enrollments').where('courseId', '==', courseId).get(),
+      adminDb.collection('learning_progress').where('courseId', '==', courseId).get(),
+      adminDb.collection('course_certificates').where('courseId', '==', courseId).get(),
     ]);
 
     const allRefs = [
       adminDb.collection('courses').doc(courseId),
       ...modulesSnap.docs.map(d => d.ref),
       ...lessonsSnap.docs.map(d => d.ref),
+      ...assessmentsSnap.docs.map(d => d.ref),
+      ...enrollmentsSnap.docs.map(d => d.ref),
+      ...progressSnap.docs.map(d => d.ref),
+      ...certificatesSnap.docs.map(d => d.ref),
     ];
 
     // High-load protection: Chunk deletes into <= 400 operations to never exceed Firestore 500-op limit

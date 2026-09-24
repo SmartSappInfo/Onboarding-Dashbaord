@@ -16,6 +16,7 @@ import { PortalMembershipService } from '@/lib/services/portal-membership-servic
 import { ReleaseScheduleService } from '@/lib/services/release-schedule-service';
 import type {
   Course,
+  CourseModule,
   CourseLesson,
   CourseEnrollment,
   LearningProgress,
@@ -113,7 +114,51 @@ export class LearningProgressService {
     const moduleId = lesson?.moduleId || 'default-module';
     const organizationId = lesson?.organizationId || 'default-org';
 
-    // 1. Assessment Pass Gate: if lesson requires a passing quiz, verify it was passed
+    // 1. Fetch enrollment, parent module, and membership to evaluate release schedule
+    const [enrollSnap, moduleSnap, membershipSnap] = await Promise.all([
+      adminDb
+        .collection('course_enrollments')
+        .where('courseId', '==', courseId)
+        .where('userId', '==', userId)
+        .limit(1)
+        .get(),
+      lesson?.moduleId ? adminDb.collection('course_modules').doc(lesson.moduleId).get() : null,
+      adminDb
+        .collection('portal_memberships')
+        .where('portalId', '==', portalId)
+        .where('userId', '==', userId)
+        .limit(1)
+        .get(),
+    ]);
+
+    const enrollment = !enrollSnap.empty ? (enrollSnap.docs[0].data() as CourseEnrollment) : null;
+    const parentModule = moduleSnap?.exists ? (moduleSnap.data() as CourseModule) : null;
+
+    const memberJoinedAt = !membershipSnap.empty
+      ? membershipSnap.docs[0].data().joinedAt || membershipSnap.docs[0].data().createdAt
+      : null;
+    const completedLessonIds: string[] = !membershipSnap.empty
+      ? membershipSnap.docs[0].data().completedLessonIds || []
+      : [];
+
+    // 2. Server-Side Drip Schedule Gate: Disallow completing lessons that are drip-locked
+    if (lesson && !lesson.isPreview) {
+      const releaseResult = ReleaseScheduleService.evaluateLessonRelease({
+        lesson,
+        module: parentModule,
+        enrollment,
+        memberJoinedAt,
+        completedLessonIds,
+      });
+
+      if (releaseResult.isLocked) {
+        throw new Error(
+          `Lesson "${lesson.title}" is locked and cannot be completed yet. ${releaseResult.lockReason || ''}`
+        );
+      }
+    }
+
+    // 3. Assessment Pass Gate: if lesson requires a passing quiz, verify it was passed
     if (lesson?.completionRule?.type === 'assessment_pass') {
       const currentProgressSnap = await adminDb.collection('learning_progress').doc(progressId).get();
       const currentProgress = currentProgressSnap.exists
@@ -127,7 +172,7 @@ export class LearningProgressService {
       }
     }
 
-    // 2. Mark lesson progress completed
+    // 4. Mark lesson progress completed
     await adminDb.collection('learning_progress').doc(progressId).set(
       {
         id: progressId,
@@ -144,14 +189,7 @@ export class LearningProgressService {
       { merge: true }
     );
 
-    // 3. Add to PortalMembership completedLessonIds
-    const membershipSnap = await adminDb
-      .collection('portal_memberships')
-      .where('portalId', '==', portalId)
-      .where('userId', '==', userId)
-      .limit(1)
-      .get();
-
+    // 5. Add to PortalMembership completedLessonIds
     let membershipId: string | undefined = undefined;
     if (!membershipSnap.empty) {
       const mem = membershipSnap.docs[0];
@@ -186,13 +224,6 @@ export class LearningProgressService {
     const progressPct =
       totalLessons > 0 ? Math.min(100, Math.round((completedCount / totalLessons) * 100)) : 100;
     const isCourseCompleted = progressPct >= 100;
-
-    const enrollSnap = await adminDb
-      .collection('course_enrollments')
-      .where('courseId', '==', courseId)
-      .where('userId', '==', userId)
-      .limit(1)
-      .get();
 
     if (!enrollSnap.empty) {
       const enrollDoc = enrollSnap.docs[0];

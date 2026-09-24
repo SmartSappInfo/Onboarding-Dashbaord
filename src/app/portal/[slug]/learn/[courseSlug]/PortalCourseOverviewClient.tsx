@@ -16,6 +16,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
@@ -435,7 +436,13 @@ export default function PortalCourseOverviewClient({
           <div className="space-y-4">
             <div className="relative aspect-video rounded-2xl overflow-hidden bg-muted/60 border border-border shadow-2xs">
               {course.thumbnailUrl ? (
-                <img src={course.thumbnailUrl} alt={course.title} className="w-full h-full object-cover" />
+                <Image
+                  src={course.thumbnailUrl}
+                  alt={course.title}
+                  fill
+                  unoptimized
+                  className="object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-1.5 p-4 text-center">
                   <BookOpen className="w-10 h-10 text-primary/60" />

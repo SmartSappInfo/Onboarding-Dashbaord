@@ -39,6 +39,7 @@ import { useToast } from '@/hooks/use-toast';
 import {
   completeLessonAction,
   submitAssessmentAction,
+  getSanitizedAssessmentAction,
 } from '@/app/actions/learning-actions';
 import { ReleaseScheduleService } from '@/lib/services/release-schedule-service';
 import { LessonDripLockCard } from './components/LessonDripLockCard';
@@ -53,6 +54,7 @@ import {
 import { PortalThemeProvider } from '../../../components/PortalThemeProvider';
 import { PortalThemeToggle } from '../../../components/PortalThemeToggle';
 import { PortalSearchModal } from '../../../components/PortalSearchModal';
+import { PortalAccessGate } from '@/components/portal/PortalAccessGate';
 import type { Portal } from '@/lib/types/portal';
 import type {
   Course,
@@ -63,7 +65,7 @@ import type {
   CourseAssessment,
   AssessmentResult,
 } from '@/lib/types/learning';
-import type { PortalMembership } from '@/lib/types/membership';
+import type { PortalMembership, MembershipPlan } from '@/lib/types/membership';
 import {
   PlayCircle,
   CheckCircle2,
@@ -177,20 +179,30 @@ export default function PortalCoursePlayerClient({
     return (lessons || []).find(l => l.slug === lessonSlug) || (lessons || [])[0] || null;
   }, [lessons, lessonSlug]);
 
-  // 5. Query Assessment for Current Lesson
-  const assessmentQuery = useMemoFirebase(
-    () =>
-      firestore && currentLesson?.id
-        ? query(
-            collection(firestore, 'course_assessments'),
-            where('lessonId', '==', currentLesson.id),
-            limit(1)
-          )
-        : null,
-    [firestore, currentLesson?.id]
-  );
-  const { data: assessments } = useCollection<CourseAssessment>(assessmentQuery);
-  const currentAssessment = assessments?.[0] ?? null;
+  // 5. Fetch Sanitized Assessment for Current Lesson via Server Action
+  // Security: Never query course_assessments directly on the client SDK to prevent answer key leakage
+  const [currentAssessment, setCurrentAssessment] = React.useState<CourseAssessment | null>(null);
+
+  React.useEffect(() => {
+    let isCancelled = false;
+    if (!currentLesson?.id) {
+      setCurrentAssessment(null);
+      return;
+    }
+    getSanitizedAssessmentAction(currentLesson.id)
+      .then(res => {
+        if (!isCancelled && res.success) {
+          setCurrentAssessment(res.data || null);
+        }
+      })
+      .catch(() => {
+        if (!isCancelled) setCurrentAssessment(null);
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentLesson?.id]);
 
   // 6. Query User Enrollment
   const enrollmentQuery = useMemoFirebase(
@@ -241,6 +253,31 @@ export default function PortalCoursePlayerClient({
   );
   const { data: memberships } = useCollection<PortalMembership>(membershipQuery);
   const membership = memberships?.[0] ?? null;
+
+  // 9. Query Membership Plans to resolve plan display names for paywalls
+  const plansQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id
+        ? query(collection(firestore, 'membership_plans'), where('portalId', '==', portal.id))
+        : null,
+    [firestore, portal?.id]
+  );
+  const { data: membershipPlans } = useCollection<MembershipPlan>(plansQuery);
+
+  // Course Tier Entitlement Calculation:
+  const requiredPlanIds = React.useMemo(() => course?.requiredPlanIds || [], [course?.requiredPlanIds]);
+  const hasPlanRequirement = requiredPlanIds.length > 0;
+
+  const isPlanEntitled = React.useMemo(() => {
+    if (!hasPlanRequirement) return true;
+    if (!membership || membership.status !== 'active') return false;
+    return Boolean(membership.planId && requiredPlanIds.includes(membership.planId));
+  }, [hasPlanRequirement, membership, requiredPlanIds]);
+
+  const requiredPlanName = React.useMemo(() => {
+    if (!hasPlanRequirement || !membershipPlans) return undefined;
+    return membershipPlans.filter(p => requiredPlanIds.includes(p.id)).map(p => p.name).join(' or ') || 'Exclusive Tier';
+  }, [hasPlanRequirement, membershipPlans, requiredPlanIds]);
 
   // ── Drip Release Evaluation for Current Lesson ─────────────────────────
   const currentModule = React.useMemo(() => {
@@ -435,6 +472,44 @@ export default function PortalCoursePlayerClient({
           <h2 className="text-xl font-bold">Lesson Not Found</h2>
           <Button asChild className="rounded-xl font-bold text-xs min-h-[44px]">
             <Link href={`/portal/${slug}/learn/${courseSlug}`}>Return to Course Overview</Link>
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Security Barrier 1: Check Course Membership Tier Entitlement
+  if (!isPlanEntitled && !currentLesson.isPreview) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <PortalAccessGate
+          slug={slug}
+          portalName={portal.name}
+          reason="plan_upgrade_required"
+          requiredPlanName={requiredPlanName}
+          itemType="course masterclass"
+          redirectUrl={`/portal/${slug}/pricing`}
+        />
+      </div>
+    );
+  }
+
+  // Security Barrier 2: Check Course Enrollment
+  if (!enrollment && !currentLesson.isPreview) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6 text-center">
+        <div className="max-w-md w-full p-8 rounded-3xl border-2 border-border bg-card shadow-lg space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center mx-auto text-primary">
+            <Lock className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Course Enrollment Required</h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            You must enroll in this masterclass to access the curriculum lessons and track your learning progress.
+          </p>
+          <Button asChild className="w-full rounded-xl font-bold text-xs min-h-[44px] active:scale-[0.97]">
+            <Link href={`/portal/${slug}/learn/${courseSlug}`}>
+              Go to Course Overview & Enroll <ArrowRight className="w-4 h-4 ml-1.5" />
+            </Link>
           </Button>
         </div>
       </div>

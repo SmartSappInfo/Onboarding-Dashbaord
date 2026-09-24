@@ -9,6 +9,7 @@
  */
 
 import { revalidatePath } from 'next/cache';
+import { adminDb } from '@/lib/firebase-admin';
 import { CourseService } from '@/lib/services/course-service';
 import { EnrollmentService } from '@/lib/services/enrollment-service';
 import { LearningProgressService } from '@/lib/services/learning-progress-service';
@@ -20,6 +21,7 @@ import type {
   CourseModule,
   CourseLesson,
   CourseEnrollment,
+  CourseAssessment,
   LearningProgress,
   AssessmentResult,
   AssignmentSubmission,
@@ -283,3 +285,48 @@ export async function submitAssignmentAction(
     return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to submit assignment.') };
   }
 }
+
+/**
+ * Fetch assessment with answer keys and explanations stripped for client learner rendering.
+ * Security: Prevents quiz answer leakage to student browsers via DevTools or network snooping.
+ */
+export async function getSanitizedAssessmentAction(
+  lessonId: string
+): Promise<ActionResponse<CourseAssessment | null>> {
+  try {
+    const snap = await adminDb
+      .collection('course_assessments')
+      .where('lessonId', '==', lessonId)
+      .limit(1)
+      .get();
+
+    if (snap.empty) {
+      return { success: true, data: null };
+    }
+
+    const docData = snap.docs[0].data() as CourseAssessment;
+    const sanitizedQuestions = (docData.questions || []).map(q => ({
+      ...q,
+      explanation: undefined, // Never reveal question explanations before grading
+      options: (q.options || []).map(opt => ({
+        id: opt.id,
+        text: opt.text,
+        isCorrect: false, // Security: zero answer key leakage to student client
+      })),
+    }));
+
+    const sanitizedAssessment: CourseAssessment = {
+      ...docData,
+      id: snap.docs[0].id,
+      questions: sanitizedQuestions,
+    };
+
+    return { success: true, data: sanitizedAssessment };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to fetch assessment.'),
+    };
+  }
+}
+
