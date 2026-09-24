@@ -319,3 +319,72 @@ export function allBlocks(): AnyBlockDefinition[] {
   );
 }
 
+/**
+ * Block types that are exclusively designed for landing-page marketing campaigns
+ * and should not appear in the editorial Content Studio block palette.
+ */
+const EXCLUDED_CONTENT_STUDIO_TYPES: ReadonlyArray<PageBlockType> = [
+  'countdown',
+  'app_download',
+  'payment_methods',
+  'logo_grid',
+];
+
+/**
+ * Returns block definitions suitable for Content Studio (Articles, Lessons, Resources, Docs).
+ * Excludes campaign landing page marketing widgets while retaining all core editorial,
+ * media, pedagogical, layout, and portal blocks.
+ */
+export function getContentStudioBlocks(): AnyBlockDefinition[] {
+  return allBlocks().filter(
+    (block) => !EXCLUDED_CONTENT_STUDIO_TYPES.includes(block.type)
+  );
+}
+
+export interface ContentStudioCategoryGroup {
+  category: 'text' | 'media' | 'lists' | 'layout' | 'engagement';
+  label: string;
+  description: string;
+  types: PageBlockType[];
+}
+
+/**
+ * Returns categorized block groupings organized for the Content Studio Block Palette UI.
+ * Provides clear, everyday plain-English categories and descriptions for authors.
+ */
+export function getContentStudioBlockCategories(): ContentStudioCategoryGroup[] {
+  return [
+    {
+      category: 'text',
+      label: 'Text & Headings',
+      description: 'Headlines, subtitles, paragraphs, callout boxes, dividers, and spacing',
+      types: ['title', 'text', 'divider', 'spacer'],
+    },
+    {
+      category: 'media',
+      label: 'Media & Forms',
+      description: 'Video players, captioned images, and lead forms',
+      types: ['video', 'image', 'form'],
+    },
+    {
+      category: 'lists',
+      label: 'Steps, Lists & FAQs',
+      description: 'Procedure checklists, step-by-step guides, FAQs, and choice cards',
+      types: ['step_section', 'procedure_list', 'faq', 'choice_cards'],
+    },
+    {
+      category: 'layout',
+      label: 'Layout Containers',
+      description: 'Multi-column grids and container wrappers for nested blocks',
+      types: ['columns', 'container'],
+    },
+    {
+      category: 'engagement',
+      label: 'Callouts & Quotes',
+      description: 'Action banners, testimonial quotes, and statistics',
+      types: ['cta', 'testimonial', 'stats'],
+    },
+  ];
+}
+
+
