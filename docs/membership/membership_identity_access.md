@@ -1,4 +1,4 @@
-# Phase 3: Identity, Access & Membership Engine — Implementation Plan
+# Phase 3: Identity, Access & Membership Engine — Production Implementation Plan
 
 > **Platform Dependency Chain:**
 > **Phase 0 (Architecture & Platform Prep) [COMPLETED]** → **Phase 1 (Experience Portal Core) [COMPLETED]** → **Phase 2 (Content Engine & Block Studio) [COMPLETED]** → **Phase 3 (Identity, Access & Membership Engine) [CURRENT]** → **Phase 4 (Learning Engine / LMS) [NEXT]** → **Phase 5 (Community Engine)** → **Phase 6 (Onboarding & Engagement)**.
@@ -52,7 +52,7 @@ Every phase and line of code must strictly conform to these 10 principles:
    - **Fetch-Enrich-Restore Protocol**: Atomic transactions for invitation seat increments, plan tier assignments, and membership status changes.
    - **Multi-Tenant Isolation**: Every Firestore query strictly scoped by `organizationId`, `portalId`, and `workspaceIds`.
    - **Zero Leaks**: Never send full content blocks over the wire to unauthenticated/unentitled clients. The server returns a sanitized teaser projection when access is withheld.
-5. **Strict Typing Standard**: Strictly ZERO `any`, `any[]`, or unhandled `unknown`. All props, Firebase snapshots, server action responses, and state hooks strictly typed.
+5. **Strict Typing Standard**: Strictly ZERO `any`, `any[]`, or unhandled `unknown`. All props, Firebase snapshots, server action responses, and state hooks strictly typed. Use inferred module types.
 6. **Actionable Toast Navigation Protocol**: Every toast prompting navigation or billing actions must pass `actionConfig` containing a relative path starting with `/` (e.g. `actionConfig: { path: '/portal/acme/dashboard', label: 'View Dashboard' }`). Direct external URLs or `javascript:` protocols strictly prohibited.
 7. **Single Source of Truth for Tags**: Member tagging and segmenting must exclusively use the standardized `<TagSelector>` component in client/draft mode.
 8. **Clean Everyday UI English**: Zero developer jargon in customer-facing UI. Use "Members", "Join Now", "Upgrade Plan", "Locked Lesson", "Sign In", "Invite People", "Free Trial".
@@ -150,6 +150,11 @@ Every phase and line of code must strictly conform to these 10 principles:
 │ Teaser Preview Length:                                                 │
 │ [ First Block (Recommended) ▼ ]                                       │
 │                                                                        │
+│ Paywall Customization (No-Code):                                       │
+│ Title:       [ Unlock Member Strategy Guide                        ]   │
+│ Description: [ Get access to frameworks and worksheets            ]   │
+│ Perks (CSV): [ 40+ Frameworks, Weekly Coaching, Direct Messaging   ]   │
+│                                                                        │
 │ Member Tags (Standardized TagSelector):                                │
 │ [ Strategy ✕ ]  [ Executive ✕ ]  [ + Select Tags ]                     │
 └────────────────────────────────────────────────────────────────────────┘
@@ -160,6 +165,7 @@ Every phase and line of code must strictly conform to these 10 principles:
    - Radio selector: **Public** | **Members Only** | **Tier Protected** | **Role Restricted**.
    - Plan Multi-Select: Dynamically loads the portal's active `MembershipPlan` tiers.
    - Teaser Boundary Selector: "Summary Only" | "First Block" | "First 2 Blocks" | "None (Full Lock)".
+   - **No-Code Paywall Copywriting**: Custom paywall headline, subheadline, and benefit bullet points configured per-item without touching code.
 2. **Backoffice Member Manager Upgrades (`PortalMemberManager.tsx`)**:
    - **Plan Selector Dropdown**: 1-click tier switching for any member in the table.
    - **Bulk Invite Modal (`InviteMemberModal.tsx`)**: Upgraded with CSV drag-and-drop, email preview chips, role selector, and course assignment.
@@ -174,7 +180,7 @@ Every phase and line of code must strictly conform to these 10 principles:
 
 | Risk / Failure Mode | Likelihood & Impact | Architectural Mitigation Strategy |
 |:---|:---|:---|
-| **1. Client-Side Paywall Bypass (DOM Inspection / Disabled JS)** | **High / Critical** | If content blocks are sent in the initial HTML or JSON payload and only hidden via CSS, technically savvy visitors can inspect DOM or view source to steal premium content. <br/>**Mitigation**: Implement server-side payload truncation (`ContentService.sanitizeForVisitor`). If the visitor lacks entitlement, the server action/resolver truncates `blocks` to only the configured teaser blocks (e.g. block 0) before serializing to the client. |
+| **1. Client-Side Paywall Bypass (DOM Inspection / Disabled JS)** | **High / Critical** | If content blocks are sent in the initial HTML or JSON payload and only hidden via CSS, technically savvy visitors can inspect DOM or view source to steal premium content. <br/>**Mitigation**: Implement server-side payload truncation (`ContentService.sanitizeForVisitor`). If the visitor lacks entitlement, the server action/resolver truncates `blocks` to only the configured teaser blocks (e.g. block 0) before serializing to the client. Unentitled visitors never receive full blocks in memory. |
 | **2. Stale Entitlement Caching on Plan Upgrade** | **High / High** | Member upgrades their plan or is granted access by an admin, but client caches report `hasAccess: false` due to stale Firestore snapshots. <br/>**Mitigation**: Use Firebase real-time listeners for active member sessions, and provide an explicit `revalidateEntitlements()` trigger on payment or plan change. |
 | **3. Open Redirect Vulnerability via Auth Return URLs** | **Medium / Critical** | An attacker crafts a link like `/portal/acme/auth/signin?redirect=https://evil.com` to phish members. <br/>**Mitigation**: Enforce the Workspace Actionable Error & Toast Navigation rule: validate `redirect` query parameter strictly. It MUST start with a single `/` and MUST NOT start with `//`, `http:`, `https:`, or `javascript:`. If invalid, default to `/portal/${slug}/dashboard`. |
 | **4. Race Condition in Multi-Use Invitation Seat Counts** | **Medium / High** | A 100-seat multi-use invite link opened simultaneously by multiple users could exceed `maxUses`. <br/>**Mitigation**: Increment `usedCount` strictly inside a Firestore transaction (`runTransaction`) in `PortalInvitationService.acceptInvitation`, checking `if (invite.usedCount >= invite.maxUses) throw new Error('Invitation limit reached');`. |
@@ -187,13 +193,87 @@ Every phase and line of code must strictly conform to these 10 principles:
 
 ---
 
+## Firebase Security Rules, Indexes & Protocols
+
+### 1. Firebase Security Rules (`firestore.rules`)
+Audited against the `firebase-security-rules-auditor` Red-Team criteria (Update Bypass, Authority Source, Storage Abuse, and Type Safety):
+
+```javascript
+// --- Experience Platform — Memberships & Directory ---
+match /portal_memberships/{membershipId} {
+  // Members can read their own membership; operators can read portal memberships
+  allow get: if isSignedIn() && (
+    resource.data.userId == request.auth.uid || isAuthorized()
+  );
+  allow list: if isSignedIn() && (
+    request.query.limit <= 100 && (
+      resource.data.userId == request.auth.uid || isAuthorized()
+    )
+  );
+  // Writes strictly guarded by Server Actions running under Admin SDK or authorized staff
+  allow create, update, delete: if isAuthorized();
+}
+
+// --- Experience Platform — Cryptographic Invitations ---
+match /portal_invitations/{invitationId} {
+  // Unauthenticated visitors can query pending invites by token to claim access
+  allow get: if isAuthorized() || resource.data.status == 'pending';
+  allow list: if isAuthorized();
+  allow create, update, delete: if isAuthorized();
+}
+
+// --- Experience Platform — Membership Plans & Tiers ---
+match /membership_plans/{planId} {
+  // Plans are publicly readable so visitors can view pricing and unlock tiers
+  allow get, list: if true;
+  allow create, update, delete: if isAuthorized();
+}
+
+// --- Experience Platform — Access Grants ---
+match /access_grants/{grantId} {
+  allow get: if isSignedIn() && (
+    resource.data.userId == request.auth.uid || isAuthorized()
+  );
+  allow list: if isSignedIn() && (
+    resource.data.userId == request.auth.uid || isAuthorized()
+  );
+  allow create, update, delete: if isAuthorized();
+}
+```
+
+### 2. Composite Indexes (`firestore.indexes.json`)
+Verified to exist and support high-scale querying:
+- `portal_memberships`: `portalId (ASC) + joinedAt (DESC)`
+- `portal_memberships`: `portalId (ASC) + role (ASC) + status (ASC) + joinedAt (DESC)`
+- `portal_memberships`: `portalId (ASC) + userId (ASC)`
+- `portal_memberships`: `portalId (ASC) + planId (ASC) + status (ASC)`
+- `portal_invitations`: `portalId (ASC) + token (ASC) + status (ASC)`
+- `portal_invitations`: `portalId (ASC) + createdAt (DESC)`
+- `membership_plans`: `portalId (ASC) + order (ASC)`
+- `membership_plans`: `portalId (ASC) + status (ASC) + price (ASC)`
+- `access_grants`: `portalId (ASC) + userId (ASC) + resourceType (ASC) + resourceId (ASC)`
+
+### 3. Fetch-Enrich-Restore Protocol
+To eliminate data drift between CRM contacts and portal memberships:
+1. **Fetch**: On login or invitation claim, fetch user profile and check for matching CRM contact by email.
+2. **Enrich**: Attach `portalId`, `planId`, and `contactId` to the `PortalMembership` document, and emit `member.joined` domain event.
+3. **Restore / Persist**: Atomically commit changes to Firestore; trigger non-blocking CRM contact tag update (`portal_member`, plan name tag).
+
+### 4. Seeding Protocol
+Run automated seeding to populate Academy plans and test memberships:
+```bash
+npx tsx src/app/seeds/seed-portal-memberships.ts smartsapp-hq
+```
+
+---
+
 ## Cross-Subsystem Impact Analysis
 
 | Subsystem | Potential Impact | Required Integration & Enhancement |
 |:---|:---|:---|
 | **Portal Content Reader** (`PortalContentReaderClient.tsx`) | Content reader must not display full body to unauthorized visitors. | Integrate `<PortalAccessGate>`: evaluate `EntitlementService`, show teaser + paywall when unentitled. |
 | **Portal Content Catalog** (`PortalContentCatalogClient.tsx`) | Visitors cannot tell which content requires membership before clicking. | Add lock badges (`🔒 Member Only`, `⭐ Pro`) and access filter chips. |
-| **Content Studio Modal** (`ContentEditorModal.tsx`) | Authors must configure access rules when authoring items. | Add "Visibility & Entitlements" panel in "Details & SEO" tab with plan selector and `<TagSelector>`. |
+| **Content Studio Modal** (`ContentEditorModal.tsx`) | Authors must configure access rules when authoring items. | Add "Visibility & Entitlements" panel in "Details & SEO" tab with plan selector, teaser mode, and `<TagSelector>`. |
 | **Invitation Route** (`PortalJoinClient.tsx`) | Must handle single-use and multi-use tokens, auto-assign roles and plan tiers. | Connect `acceptInvitationAction` to atomic transaction and redirect to `/dashboard`. |
 | **Member Dashboard** (`PortalMemberDashboardClient.tsx`) | Hub must reflect member tier, enrolled courses, bookmarks, and points. | Add `MembershipStatusCard`, bookmarks tab, and profile modal. |
 | **Learning Engine Player** (`PortalCoursePlayerClient.tsx`) | Lesson player will enforce enrollment and plan entitlements. | Pre-wire entitlement checks so lessons verify enrollment before playing. |
@@ -205,8 +285,9 @@ Every phase and line of code must strictly conform to these 10 principles:
 
 | File Path | Action | Architectural Responsibility |
 |:---|:---|:---|
-| `src/lib/types/membership.ts` | Refine | Ensure strict typing for plan intervals, access evaluation reasons, and teaser options. Zero `any`. |
-| `src/lib/services/entitlement-service.ts` | Refine | Add server-side teaser truncation (`sanitizeContentItemForVisitor`) and plan perk checks. |
+| `src/lib/types/membership.ts` | Refine | Strict typing for plan intervals, access evaluation reasons, and teaser options. Zero `any`. |
+| `src/lib/types/content.ts` | Refine | Add `teaserMode?: 'summary' \| 'first_block' \| 'two_blocks' \| 'none'`, `customPaywall?: { title?: string; description?: string; perks?: string[] }`. |
+| `src/lib/services/entitlement-service.ts` | Refine | Server-side teaser truncation (`sanitizeContentItemForVisitor`), plan perk checks, and role evaluation. |
 | `src/lib/services/__tests__/entitlement-service.test.ts` | Create/Refine | Comprehensive unit tests for public access, member-only access, tier gating, and admin bypass. |
 | `src/app/actions/membership-actions.ts` | Refine | Server actions for entitlement evaluation, plan subscription, and invitation acceptance. |
 | `src/components/portal/PortalAccessGate.tsx` | Create | High-contrast, frosted glass paywall card with teaser, perk bullet points, and sign-in/upgrade CTAs. |
@@ -217,7 +298,7 @@ Every phase and line of code must strictly conform to these 10 principles:
 | `src/app/portal/[slug]/auth/register/page.tsx` | Create | Branded full-page registration with automated membership provisioning. |
 | `src/app/portal/[slug]/auth/forgot-password/page.tsx` | Create | Branded password recovery page with clear success toasts. |
 | `src/app/portal/[slug]/dashboard/PortalMemberDashboardClient.tsx` | Modify | Upgraded member command center with tier status widget, bookmarks, and profile management. |
-| `src/app/admin/portals/components/ContentEditorModal.tsx` | Modify | Add "Visibility & Entitlements" panel in "Details & SEO" tab with plan selector and standardized `<TagSelector>`. |
+| `src/app/admin/portals/components/ContentEditorModal.tsx` | Modify | Add "Visibility & Entitlements" panel in "Details & SEO" tab with plan selector, teaser mode, and `<TagSelector>`. |
 | `src/app/admin/portals/components/PortalMemberManager.tsx` | Modify | Add quick tier-switching dropdown, member tag editing via `<TagSelector>`, and export to CSV. |
 
 ---
@@ -289,6 +370,7 @@ Every phase and line of code must strictly conform to these 10 principles:
   - Add "Visibility & Entitlements" section in the "Details & SEO" tab.
   - Radio options: Public | Members Only | Tier Protected | Role Restricted.
   - Plan multi-select dropdown for tier-restricted content.
+  - Teaser boundary selector & paywall copywriting inputs.
   - Standardized `<TagSelector>` for member tagging.
 - [ ] **Step 2: Update `PortalMemberManager.tsx`**
   - Add quick plan-switch dropdown on member table rows.
