@@ -48,6 +48,7 @@ import {
   archiveContentItemAction,
   deleteContentItemAction,
 } from '@/app/actions/content-actions';
+import { discardContentStudioDraftAction } from '@/app/actions/draft-actions';
 import type { ContentItem, ContentItemType } from '@/lib/types/content';
 
 interface PortalContentManagerProps {
@@ -85,6 +86,36 @@ export function PortalContentManager({
   const [editingItem, setEditingItem] = React.useState<ContentItem | null>(null);
   const [serverItems, setServerItems] = React.useState<ContentItem[]>([]);
   const [isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  // Active Session Recovery Tracking
+  interface ActiveStudioSession {
+    itemId: string | null;
+    title: string;
+    type: ContentItemType;
+    timestamp: number;
+  }
+  const [activeSession, setActiveSession] = React.useState<ActiveStudioSession | null>(null);
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined' || !portalId) return;
+    try {
+      const raw = localStorage.getItem(`content_studio_active_session_${portalId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw) as ActiveStudioSession;
+        // If session was saved within 24 hours
+        if (Date.now() - parsed.timestamp < 24 * 60 * 60 * 1000) {
+          setActiveSession(parsed);
+        } else {
+          localStorage.removeItem(`content_studio_active_session_${portalId}`);
+          setActiveSession(null);
+        }
+      } else {
+        setActiveSession(null);
+      }
+    } catch {
+      setActiveSession(null);
+    }
+  }, [portalId, isEditorOpen]);
 
   const fetchServerItems = React.useCallback(async () => {
     if (!portalId) return;
@@ -189,8 +220,71 @@ export function PortalContentManager({
     toast({ title: 'Link Copied', description: 'Content URL ready to share.' });
   };
 
+  const handleResumeSession = React.useCallback(() => {
+    if (!activeSession) return;
+    if (activeSession.itemId) {
+      const matched = effectiveItems.find(i => i.id === activeSession.itemId);
+      setEditingItem(matched || null);
+    } else {
+      setEditingItem(null);
+    }
+    setIsEditorOpen(true);
+  }, [activeSession, effectiveItems]);
+
+  const handleDiscardSession = React.useCallback(async () => {
+    if (!activeSession) return;
+    try {
+      const storageKey = `content_studio_draft_${portalId}_${activeSession.itemId || 'new'}`;
+      localStorage.removeItem(storageKey);
+      localStorage.removeItem(`content_studio_active_session_${portalId}`);
+      await discardContentStudioDraftAction(portalId, activeSession.itemId);
+      setActiveSession(null);
+      toast({ title: 'Session Cleared', description: 'Unsaved draft backup was discarded.' });
+    } catch {
+      setActiveSession(null);
+    }
+  }, [activeSession, portalId, toast]);
+
   return (
     <div className="space-y-6">
+      {/* ── Active Unsaved Session Recovery Banner ────────────────────── */}
+      {activeSession && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-amber-900 dark:text-amber-200 animate-in fade-in duration-200">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-bold truncate">
+                Unsaved Studio Session Detected
+              </p>
+              <p className="text-xs text-amber-700/80 dark:text-amber-400/80 truncate">
+                You have unsaved changes from a previous session for &ldquo;{activeSession.title || 'Untitled Document'}&rdquo;.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleResumeSession}
+              className="h-8 px-3 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+            >
+              Resume Editing
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={handleDiscardSession}
+              className="h-8 px-3 rounded-xl text-xs font-semibold text-amber-700 dark:text-amber-300 hover:bg-amber-500/20 active:scale-[0.97] transition-all min-h-[44px] sm:min-h-0"
+            >
+              Discard
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* ── Action Bar & Filters ──────────────────────────────────────── */}
       <Card className="rounded-2xl border-2 border-border shadow-sm">
         <CardHeader className="pb-4">

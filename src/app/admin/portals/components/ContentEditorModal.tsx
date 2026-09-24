@@ -45,18 +45,24 @@ import {
   PanelRightOpen,
   Lock,
   Shield,
+  Undo2,
+  Redo2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeSlug } from '@/lib/utils/slug-utils';
 import { TagSelector } from '@/components/tags/TagSelector';
 import { collection, query, where } from 'firebase/firestore';
-import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
+import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import {
   createContentItemAction,
   updateContentItemAction,
   createPortalContentTemplateAction,
 } from '@/app/actions/content-actions';
+import {
+  saveContentStudioDraftAction,
+  discardContentStudioDraftAction,
+} from '@/app/actions/draft-actions';
 import type {
   ContentItem,
   ContentItemType,
@@ -67,7 +73,7 @@ import type {
 } from '@/lib/types';
 import type { PortalVisibility } from '@/lib/types/portal';
 import type { MembershipPlan } from '@/lib/types/membership';
-import type { ContentTeaserMode, CustomPaywallConfig } from '@/lib/types/content';
+import type { ContentTeaserMode, CustomPaywallConfig, ContentStudioDraft } from '@/lib/types/content';
 import { getBlock, normalizeBlockType } from '@/lib/page-builder/registry';
 import { ContentBlockCanvas } from './studio/ContentBlockCanvas';
 import { ContentBlockPalette } from './studio/ContentBlockPalette';
@@ -171,9 +177,22 @@ export function ContentEditorModal({
   const [customPaywallPerks, setCustomPaywallPerks] = useState('');
   const [customPaywallCta, setCustomPaywallCta] = useState('');
 
+  // Current user for cloud draft authorship
+  const { user } = useUser();
+
   // Dirty state tracking
   const [isDirty, setIsDirty] = useState(false);
   const [localDraftNotice, setLocalDraftNotice] = useState<string | null>(null);
+
+  // ─── Undo / Redo History Stack (Bounded to 50 snapshots) ───
+  const MAX_HISTORY = 50;
+  const [history, setHistory] = useState<{
+    past: PageBlock[][];
+    future: PageBlock[][];
+  }>({ past: [], future: [] });
+
+  const canUndo = history.past.length > 0;
+  const canRedo = history.future.length > 0;
 
   const draftStorageKey = useMemo(() => {
     return `content_studio_draft_${portalId}_${initialItem?.id || 'new'}`;
@@ -242,6 +261,7 @@ export function ContentEditorModal({
       setSelectedBlockId(null);
     }
 
+    setHistory({ past: [], future: [] });
     setIsDirty(false);
     setViewMode('studio');
 
@@ -254,8 +274,9 @@ export function ContentEditorModal({
         const itemUpdatedDate = initialItem ? new Date(initialItem.updatedAt) : new Date(0);
 
         if (draftDate > itemUpdatedDate) {
+          const blockCount = savedDraft.blocks?.length || 0;
           setLocalDraftNotice(
-            `A local auto-save draft from ${draftDate.toLocaleTimeString()} is available.`
+            `Unsaved draft from ${draftDate.toLocaleTimeString()} (${blockCount} blocks) detected.`
           );
         }
       }
@@ -264,7 +285,7 @@ export function ContentEditorModal({
     }
   }, [open, initialItem, defaultType, draftStorageKey]);
 
-  // Debounced auto-save backup to localStorage when dirty
+  // ─── Tier 1: Fast Debounced (400ms) Auto-Save to LocalStorage ───
   useEffect(() => {
     if (!open || !isDirty) return;
 
@@ -284,16 +305,28 @@ export function ContentEditorModal({
           seo: { metaTitle, metaDescription },
         };
         localStorage.setItem(draftStorageKey, JSON.stringify(draftPayload));
+        // Track active editing session for root Content Manager detection upon reload
+        localStorage.setItem(
+          `content_studio_active_session_${portalId}`,
+          JSON.stringify({
+            itemId: initialItem?.id || null,
+            title: title || 'Untitled Document',
+            type,
+            timestamp: Date.now(),
+          })
+        );
       } catch {
         // Storage limit exceeded or disabled
       }
-    }, 2000);
+    }, 400);
 
     return () => clearTimeout(timer);
   }, [
     open,
     isDirty,
     draftStorageKey,
+    portalId,
+    initialItem,
     title,
     slug,
     summary,
@@ -307,18 +340,174 @@ export function ContentEditorModal({
     metaDescription,
   ]);
 
-  // Restore local draft handler
+  // ─── Emergency Synchronous Flush on Window Reload / Unload ───
+  useEffect(() => {
+    if (!open || !isDirty) return;
+
+    const handleBeforeUnload = () => {
+      try {
+        const draftPayload = {
+          timestamp: new Date().toISOString(),
+          title,
+          slug,
+          summary,
+          category,
+          tags,
+          blocks,
+          type,
+          visibility,
+          media,
+          seo: { metaTitle, metaDescription },
+        };
+        localStorage.setItem(draftStorageKey, JSON.stringify(draftPayload));
+        localStorage.setItem(
+          `content_studio_active_session_${portalId}`,
+          JSON.stringify({
+            itemId: initialItem?.id || null,
+            title: title || 'Untitled Document',
+            type,
+            timestamp: Date.now(),
+          })
+        );
+      } catch {
+        // Ignore errors on emergency unload
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [
+    open,
+    isDirty,
+    draftStorageKey,
+    portalId,
+    initialItem,
+    title,
+    slug,
+    summary,
+    category,
+    tags,
+    blocks,
+    type,
+    visibility,
+    media,
+    metaTitle,
+    metaDescription,
+  ]);
+
+  // ─── Tier 2: Debounced (3000ms) Cloud Draft Snapshot Sync ───
+  useEffect(() => {
+    if (!open || !isDirty || !portalId || !organizationId) return;
+
+    const cloudTimer = setTimeout(() => {
+      const draftPayload: ContentStudioDraft = {
+        id: `${portalId}_${initialItem?.id || 'new_' + (user?.uid || 'user')}`,
+        portalId,
+        organizationId,
+        contentItemId: initialItem?.id || null,
+        title: title || 'Untitled Document',
+        slug,
+        type,
+        summary,
+        category,
+        tags,
+        blocks,
+        visibility,
+        media,
+        seo: { metaTitle, metaDescription },
+        authorId: user?.uid || 'admin_user',
+        authorName: user?.displayName || user?.email || 'Author',
+        authorEmail: user?.email || undefined,
+        savedAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        version: initialItem?.version ? initialItem.version + 1 : 1,
+      };
+
+      saveContentStudioDraftAction(draftPayload).catch(() => {
+        // Non-blocking background sync failure fallback
+      });
+    }, 3000);
+
+    return () => clearTimeout(cloudTimer);
+  }, [
+    open,
+    isDirty,
+    portalId,
+    organizationId,
+    initialItem,
+    user,
+    title,
+    slug,
+    type,
+    summary,
+    category,
+    tags,
+    blocks,
+    visibility,
+    media,
+    metaTitle,
+    metaDescription,
+  ]);
+
+  // Helper to commit new blocks state with undo history snapshot
+  const commitBlocksWithHistory = useCallback(
+    (nextBlocks: PageBlock[]) => {
+      setHistory((prev) => ({
+        past: [...prev.past.slice(-(MAX_HISTORY - 1)), blocks],
+        future: [],
+      }));
+      setBlocks(nextBlocks);
+      setIsDirty(true);
+    },
+    [blocks]
+  );
+
+  // Undo Handler
+  const handleUndo = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.past.length === 0) return prev;
+      const previous = prev.past[prev.past.length - 1];
+      const newPast = prev.past.slice(0, prev.past.length - 1);
+      setBlocks(previous);
+      setIsDirty(true);
+      return {
+        past: newPast,
+        future: [blocks, ...prev.future],
+      };
+    });
+  }, [blocks]);
+
+  // Redo Handler
+  const handleRedo = useCallback(() => {
+    setHistory((prev) => {
+      if (prev.future.length === 0) return prev;
+      const next = prev.future[0];
+      const newFuture = prev.future.slice(1);
+      setBlocks(next);
+      setIsDirty(true);
+      return {
+        past: [...prev.past, blocks],
+        future: newFuture,
+      };
+    });
+  }, [blocks]);
+
+  // Reversible Restore local draft handler
   const handleRestoreDraft = () => {
     try {
       const savedDraftJson = localStorage.getItem(draftStorageKey);
       if (!savedDraftJson) return;
       const saved = JSON.parse(savedDraftJson);
+
+      // Push current canvas into undo history so the restoration is 100% reversible!
+      if (saved.blocks) {
+        commitBlocksWithHistory(saved.blocks);
+      }
       if (saved.title) setTitle(saved.title);
       if (saved.slug) setSlug(saved.slug);
       if (saved.summary) setSummary(saved.summary);
       if (saved.category) setCategory(saved.category);
       if (saved.tags) setTags(saved.tags);
-      if (saved.blocks) setBlocks(saved.blocks);
       if (saved.type) setType(saved.type);
       if (saved.visibility) setVisibility(saved.visibility);
       if (saved.media) setMedia(saved.media);
@@ -327,7 +516,10 @@ export function ContentEditorModal({
 
       setLocalDraftNotice(null);
       setIsDirty(true);
-      toast({ title: 'Draft Restored', description: 'Restored your unsaved changes.' });
+      toast({
+        title: 'Draft Restored 🎉',
+        description: `Restored ${saved.blocks?.length || 0} blocks. You can press ⌘Z to undo anytime.`,
+      });
     } catch {
       toast({ title: 'Error', description: 'Could not restore local draft.' });
     }
@@ -335,7 +527,10 @@ export function ContentEditorModal({
 
   const handleDiscardDraft = () => {
     localStorage.removeItem(draftStorageKey);
+    localStorage.removeItem(`content_studio_active_session_${portalId}`);
+    discardContentStudioDraftAction(portalId, initialItem?.id || null).catch(() => {});
     setLocalDraftNotice(null);
+    toast({ title: 'Draft Discarded', description: 'Local draft backup cleared.' });
   };
 
   // Title change with auto-slug
@@ -348,10 +543,12 @@ export function ContentEditorModal({
   };
 
   // Block canvas callbacks
-  const handleBlocksChange = useCallback((updated: PageBlock[]) => {
-    setBlocks(updated);
-    setIsDirty(true);
-  }, []);
+  const handleBlocksChange = useCallback(
+    (updated: PageBlock[]) => {
+      commitBlocksWithHistory(updated);
+    },
+    [commitBlocksWithHistory]
+  );
 
   const handleSelectBlock = useCallback((id: string | null) => {
     setSelectedBlockId(id);
@@ -382,9 +579,8 @@ export function ContentEditorModal({
 
       const updated = [...blocks];
       updated.splice(insertPos, 0, newBlock);
-      setBlocks(updated);
+      commitBlocksWithHistory(updated);
       setSelectedBlockId(newBlock.id);
-      setIsDirty(true);
       setPaletteInsertIndex(null);
       setMobilePaletteOpen(false);
       setMobileInspectorOpen(true);
@@ -394,7 +590,7 @@ export function ContentEditorModal({
         description: `Added ${def?.label || blockType} to document.`,
       });
     },
-    [blocks, paletteInsertIndex, toast]
+    [blocks, paletteInsertIndex, commitBlocksWithHistory, toast]
   );
 
   // Block inspector updates
@@ -410,26 +606,27 @@ export function ContentEditorModal({
 
   const handleDeleteBlock = useCallback(
     (blockId: string) => {
-      setBlocks((prev) => prev.filter((b) => b.id !== blockId));
+      const updated = blocks.filter((b) => b.id !== blockId);
+      commitBlocksWithHistory(updated);
       if (selectedBlockId === blockId) {
         setSelectedBlockId(null);
         setMobileInspectorOpen(false);
       }
-      setIsDirty(true);
     },
-    [selectedBlockId]
+    [blocks, selectedBlockId, commitBlocksWithHistory]
   );
 
-  const handleResetBlockDefaults = useCallback((blockId: string) => {
-    setBlocks((prev) =>
-      prev.map((b) => {
+  const handleResetBlockDefaults = useCallback(
+    (blockId: string) => {
+      const updated = blocks.map((b) => {
         if (b.id !== blockId) return b;
         const def = getBlock(normalizeBlockType(b.type));
         return def ? { ...b, props: { ...def.defaults } } : b;
-      })
-    );
-    setIsDirty(true);
-  }, []);
+      });
+      commitBlocksWithHistory(updated);
+    },
+    [blocks, commitBlocksWithHistory]
+  );
 
   // Currently selected block reference
   const selectedBlock = useMemo(() => {
@@ -498,6 +695,8 @@ export function ContentEditorModal({
           }
 
           localStorage.removeItem(draftStorageKey);
+          localStorage.removeItem(`content_studio_active_session_${portalId}`);
+          discardContentStudioDraftAction(portalId, initialItem?.id || null).catch(() => {});
           setIsDirty(false);
           toast({
             title: publishImmediately ? 'Published! 🎉' : 'Changes Saved',
@@ -536,6 +735,8 @@ export function ContentEditorModal({
           }
 
           localStorage.removeItem(draftStorageKey);
+          localStorage.removeItem(`content_studio_active_session_${portalId}`);
+          discardContentStudioDraftAction(portalId, null).catch(() => {});
           setIsDirty(false);
           toast({
             title: publishImmediately ? 'Published! 🎉' : 'Draft Created',
@@ -621,20 +822,50 @@ export function ContentEditorModal({
     }
   };
 
-  // Keyboard shortcut listener (Cmd/Ctrl + S)
+  // Keyboard shortcut listener (Cmd/Ctrl + S for Save, Cmd/Ctrl + Z for Undo, Cmd/Ctrl + Shift + Z / Ctrl + Y for Redo)
   useEffect(() => {
     if (!open) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Check if user is typing inside an input, textarea, or contentEditable element
+      const target = e.target as HTMLElement | null;
+      const isTextInput =
+        target &&
+        (target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.isContentEditable);
+
       if ((e.metaKey || e.ctrlKey) && e.key === 's') {
         e.preventDefault();
         handleSave(false);
+        return;
+      }
+
+      // If user is focused on a text input, let browser handle native text undo/redo
+      if (isTextInput) return;
+
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'y' || e.key === 'Y')) {
+        e.preventDefault();
+        handleRedo();
+        return;
+      }
+
+      if ((e.metaKey || e.ctrlKey) && (e.key === 'z' || e.key === 'Z')) {
+        e.preventDefault();
+        handleUndo();
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, handleSave]);
+  }, [open, handleSave, handleUndo, handleRedo]);
 
   // Exit Guard
   const handleRequestClose = () => {
@@ -719,35 +950,63 @@ export function ContentEditorModal({
           </div>
         </div>
 
-        {/* Center: View Switcher */}
-        <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shrink-0">
-          <button
-            type="button"
-            onClick={() => setViewMode('studio')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
-              viewMode === 'studio'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <Layers className="w-3.5 h-3.5 text-[var(--portal-primary,#3B82F6)]" />
-            <span>Block Studio</span>
-            <span className="hidden md:inline text-[10px] opacity-60">({blocks.length})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setViewMode('details')}
-            className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
-              viewMode === 'details'
-                ? 'bg-background text-foreground shadow-sm'
-                : 'text-muted-foreground hover:text-foreground'
-            )}
-          >
-            <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
-            <span>Details & SEO</span>
-          </button>
+        {/* Center: View Switcher & History Controls */}
+        <div className="flex items-center gap-2 shrink-0">
+          {/* History Controls */}
+          <div className="hidden sm:flex items-center p-0.5 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={handleUndo}
+              disabled={!canUndo}
+              title="Undo canvas change (⌘Z)"
+              aria-label="Undo canvas change"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-600 dark:text-slate-300 hover:text-foreground hover:bg-background/80 active:scale-[0.97] transition-all disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Undo2 className="w-3.5 h-3.5" />
+            </button>
+            <div className="w-px h-3.5 bg-slate-200 dark:bg-slate-800" />
+            <button
+              type="button"
+              onClick={handleRedo}
+              disabled={!canRedo}
+              title="Redo canvas change (⌘⇧Z)"
+              aria-label="Redo canvas change"
+              className="flex items-center justify-center w-7 h-7 rounded-lg text-slate-600 dark:text-slate-300 hover:text-foreground hover:bg-background/80 active:scale-[0.97] transition-all disabled:opacity-30 disabled:pointer-events-none"
+            >
+              <Redo2 className="w-3.5 h-3.5" />
+            </button>
+          </div>
+
+          {/* View Switcher */}
+          <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+            <button
+              type="button"
+              onClick={() => setViewMode('studio')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                viewMode === 'studio'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Layers className="w-3.5 h-3.5 text-[var(--portal-primary,#3B82F6)]" />
+              <span>Block Studio</span>
+              <span className="hidden md:inline text-[10px] opacity-60">({blocks.length})</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('details')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                viewMode === 'details'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <SlidersHorizontal className="w-3.5 h-3.5 text-emerald-500" />
+              <span>Details & SEO</span>
+            </button>
+          </div>
         </div>
 
         {/* Right: Actions */}
@@ -892,6 +1151,10 @@ export function ContentEditorModal({
                 onDeleteBlock={handleDeleteBlock}
                 onDeselect={() => setSelectedBlockId(null)}
                 onResetDefaults={handleResetBlockDefaults}
+                canUndo={canUndo}
+                canRedo={canRedo}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
                 className="h-full"
               />
             </aside>
@@ -945,6 +1208,10 @@ export function ContentEditorModal({
                     setMobileInspectorOpen(false);
                   }}
                   onResetDefaults={handleResetBlockDefaults}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onUndo={handleUndo}
+                  onRedo={handleRedo}
                   className="border-none"
                 />
               </div>

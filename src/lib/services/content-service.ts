@@ -23,12 +23,14 @@ import type {
   ContentSearchResult,
   PortalContentTemplate,
   CreatePortalContentTemplateInput,
+  ContentStudioDraft,
 } from '@/lib/types/content';
 import { PortalEventService } from './portal-event-service';
 
 export class ContentService {
   private static COLLECTION = 'content_items';
   private static TEMPLATES_COLLECTION = 'portal_content_templates';
+  private static DRAFTS_COLLECTION = 'content_drafts';
 
   /**
    * Maximum depth for recursive block tree traversal to prevent call-stack overflow
@@ -627,5 +629,62 @@ export class ContentService {
       .get();
 
     return snap.docs.map((doc) => doc.data() as PortalContentTemplate);
+  }
+
+  /**
+   * Persists an in-progress auto-save draft to Firestore for multi-device recovery.
+   */
+  public static async saveDraft(draft: ContentStudioDraft): Promise<void> {
+    if (!draft.portalId || !draft.organizationId) {
+      throw new Error('portalId and organizationId are required to save a draft.');
+    }
+    const docId = draft.id || `${draft.portalId}_${draft.contentItemId || 'new_' + draft.authorId}`;
+    const docRef = adminDb.collection(this.DRAFTS_COLLECTION).doc(docId);
+    await docRef.set({
+      ...draft,
+      id: docId,
+      updatedAt: new Date().toISOString(),
+    });
+  }
+
+  /**
+   * Fetches an active cloud draft for a specific portal content item.
+   */
+  public static async getDraft(
+    portalId: string,
+    contentItemId: string | null,
+    authorId?: string
+  ): Promise<ContentStudioDraft | null> {
+    const docId = `${portalId}_${contentItemId || 'new_' + (authorId || 'default')}`;
+    const doc = await adminDb.collection(this.DRAFTS_COLLECTION).doc(docId).get();
+    if (!doc.exists) return null;
+    return doc.data() as ContentStudioDraft;
+  }
+
+  /**
+   * Discards an active cloud draft.
+   */
+  public static async discardDraft(
+    portalId: string,
+    contentItemId: string | null,
+    authorId?: string
+  ): Promise<void> {
+    const docId = `${portalId}_${contentItemId || 'new_' + (authorId || 'default')}`;
+    await adminDb.collection(this.DRAFTS_COLLECTION).doc(docId).delete();
+  }
+
+  /**
+   * Lists all active unsaved cloud drafts for a specific portal (for backoffice management).
+   */
+  public static async listDraftsByPortal(
+    portalId: string
+  ): Promise<ContentStudioDraft[]> {
+    const snap = await adminDb
+      .collection(this.DRAFTS_COLLECTION)
+      .where('portalId', '==', portalId)
+      .orderBy('updatedAt', 'desc')
+      .get();
+
+    return snap.docs.map((doc) => doc.data() as ContentStudioDraft);
   }
 }

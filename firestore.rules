@@ -2406,6 +2406,11 @@ service cloud.firestore {
       }
     }
 
+    // --- {{Org_name}} Experience Platform — Content Studio Drafts (Backoffice Only) ---
+    match /content_drafts/{draftId} {
+      allow read, write: if isAuthorized();
+    }
+
     // --- {{Org_name}} Experience Platform — Memberships & Directory ---
     match /portal_memberships/{membershipId} {
       allow get, list: if isSignedIn() || isAuthorized();
