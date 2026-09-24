@@ -4,15 +4,18 @@
  * {{Org_name}} Experience Platform — Focused Course Learning Player & AI Tutor
  *
  * Dedicated LMS learning player with 3-column collapsible workspace:
- * - Left: Collapsible course syllabus module tree (desktop rail + mobile sheet).
- * - Center: Flexible, responsive video canvas, reading takeaways, quiz runner, and downloads.
+ * - Left: Collapsible course syllabus module tree (desktop rail + mobile sheet) with real-time drip release locks.
+ * - Center: Dual-mode content canvas (Phase 2 Block Studio blocks vs structured markdown), video canvas,
+ *   polite <LessonDripLockCard>, quiz runner with server-side answer protection, and toolkit downloads.
  * - Right: Non-modal, docked AI Learning Tutor panel (desktop aside + mobile bottom sheet).
  * - Mobile: Fixed bottom navigation bar with instant Syllabus, Lesson, AI Tutor, and Complete triggers.
  *
  * Architecture Notes:
  * - Conforms to next-best-practices, vercel-react-best-practices, emilkowal-animations.
- * - Non-blocking reading experience: AI panel is docked side-by-side with content.
- * - Zero any / any[].
+ * - Drip Release Schedules: Evaluates ReleaseScheduleService.evaluateLessonRelease for immediate,
+ *   specific date, days after enrollment, days after join, and sequential prerequisites.
+ * - Dual-mode rendering: Dynamically chooses between BlockRenderer (PageBlock[]) and clean typography prose.
+ * - Strict typing: Zero any / any[].
  */
 
 import * as React from 'react';
@@ -37,6 +40,12 @@ import {
   completeLessonAction,
   submitAssessmentAction,
 } from '@/app/actions/learning-actions';
+import { ReleaseScheduleService } from '@/lib/services/release-schedule-service';
+import { LessonDripLockCard } from './components/LessonDripLockCard';
+import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
+import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { DEFAULT_THEME } from '@/lib/page-builder/resolve-theme';
+import '@/lib/page-builder/blocks';
 import {
   AiTutorChatContent,
   LessonAiTutorDrawer,
@@ -54,6 +63,7 @@ import type {
   CourseAssessment,
   AssessmentResult,
 } from '@/lib/types/learning';
+import type { PortalMembership } from '@/lib/types/membership';
 import {
   PlayCircle,
   CheckCircle2,
@@ -70,6 +80,8 @@ import {
   PanelLeft,
   PanelLeftClose,
   Search,
+  Lock,
+  FileText,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -214,6 +226,46 @@ export default function PortalCoursePlayerClient({
     return (progressList || []).filter(p => p.isCompleted).map(p => p.lessonId);
   }, [progressList]);
 
+  // 8. Query User Active Membership (for joinedAt timestamp in drip calculations)
+  const membershipQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id && user?.uid
+        ? query(
+            collection(firestore, 'portal_memberships'),
+            where('portalId', '==', portal.id),
+            where('userId', '==', user.uid),
+            limit(1)
+          )
+        : null,
+    [firestore, portal?.id, user?.uid]
+  );
+  const { data: memberships } = useCollection<PortalMembership>(membershipQuery);
+  const membership = memberships?.[0] ?? null;
+
+  // ── Drip Release Evaluation for Current Lesson ─────────────────────────
+  const currentModule = React.useMemo(() => {
+    if (!modules || !currentLesson) return null;
+    return modules.find(m => m.id === currentLesson.moduleId) || null;
+  }, [modules, currentLesson]);
+
+  const currentLessonRelease = React.useMemo(() => {
+    if (!currentLesson) return { isLocked: false };
+    return ReleaseScheduleService.evaluateLessonRelease({
+      lesson: currentLesson,
+      module: currentModule,
+      enrollment,
+      memberJoinedAt: membership?.joinedAt || membership?.createdAt,
+      completedLessonIds,
+    });
+  }, [currentLesson, currentModule, enrollment, membership, completedLessonIds]);
+
+  const prerequisiteLesson = React.useMemo(() => {
+    if (!currentLessonRelease.prerequisiteLessonId || !lessons) return null;
+    return lessons.find(l => l.id === currentLessonRelease.prerequisiteLessonId) || null;
+  }, [currentLessonRelease.prerequisiteLessonId, lessons]);
+
+  const isCurrentLessonLocked = currentLessonRelease.isLocked && !currentLesson?.isPreview;
+
   // Current Lesson Index & Prev/Next Navigation
   const currentLessonIdx = React.useMemo(() => {
     if (!lessons || !currentLesson) return -1;
@@ -249,6 +301,34 @@ export default function PortalCoursePlayerClient({
     return ordered;
   }, [modules, lessons]);
 
+  // Block Render Context for Block Studio Canvas Lessons
+  const renderCtx: BlockRenderContext = React.useMemo(
+    () => ({
+      mode: 'view',
+      theme: {
+        ...DEFAULT_THEME,
+        colors: {
+          ...DEFAULT_THEME.colors,
+          primary: portal?.theme?.colors?.primary || DEFAULT_THEME.colors.primary,
+        },
+        typography: {
+          headingFont: 'Figtree, sans-serif',
+          bodyFont: 'Figtree, sans-serif',
+          baseSize: '16px',
+        },
+      },
+      interpolate: (text: string) => text,
+      resources: {
+        forms: [],
+        surveys: [],
+        agreements: [],
+        meetings: [],
+        qrCodes: [],
+      },
+    }),
+    [portal?.theme?.colors?.primary]
+  );
+
   // ── Actions ────────────────────────────────────────────────────────────────
 
   const handleMarkComplete = async () => {
@@ -264,6 +344,14 @@ export default function PortalCoursePlayerClient({
           },
         });
       }
+      return;
+    }
+
+    if (isCurrentLessonLocked) {
+      toast({
+        title: 'Lesson Locked',
+        description: 'You cannot mark a locked lesson as complete.',
+      });
       return;
     }
 
@@ -385,15 +473,28 @@ export default function PortalCoursePlayerClient({
         {(modules || []).map((mod, modIdx) => {
           const moduleLessons = (lessons || []).filter(l => l.moduleId === mod.id);
           const completedModuleLessons = moduleLessons.filter(l => completedLessonIds.includes(l.id));
-          // Sanitize module title to avoid "Module 1: Module 1: ..." duplication
           const cleanModuleTitle = mod.title.replace(/^((module|section)\s*\d+[\s:.-]*)+/i, '').trim() || mod.title;
+
+          const moduleRelease = ReleaseScheduleService.evaluateModuleRelease({
+            module: mod,
+            enrollment,
+            memberJoinedAt: membership?.joinedAt || membership?.createdAt,
+            completedLessonIds,
+          });
 
           return (
             <div key={mod.id} className="space-y-2">
               {/* Module Header: Row 1 = Module Number, Row 2 = Clean Module Title with distinct contrast */}
               <div className="px-2 pt-2 pb-1 space-y-0.5 border-b border-border/40">
                 <div className="flex items-center justify-between text-[11px] font-extrabold uppercase tracking-widest text-primary">
-                  <span>Module {modIdx + 1}</span>
+                  <div className="flex items-center gap-1.5">
+                    <span>Module {modIdx + 1}</span>
+                    {moduleRelease.isLocked && (
+                      <Badge variant="outline" className="text-[9px] font-bold bg-muted/60 text-muted-foreground border-border gap-1 py-0 px-1">
+                        <Lock className="w-2.5 h-2.5" /> Locked
+                      </Badge>
+                    )}
+                  </div>
                   <span className="text-[10px] font-medium text-muted-foreground lowercase">
                     {completedModuleLessons.length}/{moduleLessons.length} done
                   </span>
@@ -408,17 +509,35 @@ export default function PortalCoursePlayerClient({
                   const isCurrent = les.id === currentLesson.id;
                   const isDone = completedLessonIds.includes(les.id);
 
-                  return (
-                    <Link
-                      key={les.id}
-                      href={`/portal/${slug}/learn/${courseSlug}/${les.slug}`}
-                      onClick={() => options?.onSelectLesson?.()}
+                  const lesRelease = ReleaseScheduleService.evaluateLessonRelease({
+                    lesson: les,
+                    module: mod,
+                    enrollment,
+                    memberJoinedAt: membership?.joinedAt || membership?.createdAt,
+                    completedLessonIds,
+                  });
+
+                  const isLesLocked = lesRelease.isLocked && !les.isPreview;
+
+                  const contentIcon =
+                    les.contentType === 'quiz' ? (
+                      <HelpCircle className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-purple-500')} />
+                    ) : les.contentType === 'article' || (les.blocks && les.blocks.length > 0) ? (
+                      <FileText className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-blue-500')} />
+                    ) : (
+                      <PlayCircle className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-muted-foreground')} />
+                    );
+
+                  const rowContent = (
+                    <div
                       className={cn(
-                        'flex items-center justify-between p-2.5 rounded-xl text-xs transition-all active:scale-[0.98]',
+                        'flex items-center justify-between p-2.5 rounded-xl text-xs transition-all active:scale-[0.98] min-h-[40px]',
                         isCurrent
                           ? 'bg-primary text-white font-bold shadow-xs'
                           : isDone
                           ? 'text-foreground hover:bg-muted/60'
+                          : isLesLocked
+                          ? 'text-muted-foreground/60 bg-muted/20 opacity-70'
                           : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
                       )}
                     >
@@ -427,19 +546,49 @@ export default function PortalCoursePlayerClient({
                           <CheckCircle2
                             className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-emerald-500')}
                           />
+                        ) : isLesLocked ? (
+                          <Lock className="w-4 h-4 shrink-0 text-muted-foreground" />
                         ) : (
-                          <PlayCircle
-                            className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-muted-foreground')}
-                          />
+                          contentIcon
                         )}
                         <span className="truncate" title={les.title}>
                           {lesIdx + 1}. {les.title}
                         </span>
                       </div>
 
-                      <span className={cn('text-[10px] shrink-0 font-medium', isCurrent ? 'text-white/90' : 'text-muted-foreground')}>
-                        {les.videoDurationSeconds ? `${Math.round(les.videoDurationSeconds / 60)}m` : '10m'}
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        {les.isPreview && (
+                          <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[8px] font-bold px-1 py-0">
+                            Preview
+                          </Badge>
+                        )}
+                        {isLesLocked && (
+                          <Badge variant="outline" className="text-[8px] font-bold border-border bg-muted/50 text-muted-foreground px-1 py-0">
+                            {lesRelease.daysRemaining !== undefined ? `${lesRelease.daysRemaining}d` : 'Locked'}
+                          </Badge>
+                        )}
+                        <span className={cn('text-[10px] font-medium font-mono', isCurrent ? 'text-white/90' : 'text-muted-foreground')}>
+                          {les.videoDurationSeconds ? `${Math.round(les.videoDurationSeconds / 60)}m` : '10m'}
+                        </span>
+                      </div>
+                    </div>
+                  );
+
+                  if (isLesLocked) {
+                    return (
+                      <div key={les.id} title={lesRelease.lockReason || 'Lesson is locked'}>
+                        {rowContent}
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <Link
+                      key={les.id}
+                      href={`/portal/${slug}/learn/${courseSlug}/${les.slug}`}
+                      onClick={() => options?.onSelectLesson?.()}
+                    >
+                      {rowContent}
                     </Link>
                   );
                 })}
@@ -465,7 +614,7 @@ export default function PortalCoursePlayerClient({
           <button
             type="button"
             onClick={() => setIsMobileSyllabusOpen(true)}
-            className="lg:hidden p-2 rounded-xl border border-border hover:bg-muted text-foreground shrink-0 active:scale-[0.96]"
+            className="lg:hidden p-2 rounded-xl border border-border hover:bg-muted text-foreground shrink-0 active:scale-[0.96] min-h-[44px] min-w-[44px] flex items-center justify-center"
             aria-label="Toggle Syllabus Navigation"
           >
             <Menu className="w-4 h-4" />
@@ -487,7 +636,7 @@ export default function PortalCoursePlayerClient({
             asChild
             variant="ghost"
             size="icon"
-            className="sm:hidden h-8 w-8 min-h-[36px] min-w-[36px] rounded-xl shrink-0 text-muted-foreground hover:text-foreground active:scale-[0.97]"
+            className="sm:hidden h-9 w-9 min-h-[44px] min-w-[44px] rounded-xl shrink-0 text-muted-foreground hover:text-foreground active:scale-[0.97] flex items-center justify-center"
             aria-label="Back to Overview"
           >
             <Link href={`/portal/${slug}/learn/${courseSlug}`}>
@@ -533,7 +682,7 @@ export default function PortalCoursePlayerClient({
               size="sm"
               onClick={() => setIsAiPanelOpen(!isAiPanelOpen)}
               className={cn(
-                'hidden lg:flex rounded-xl font-bold text-xs gap-1.5 shadow-2xs transition-all active:scale-[0.98]',
+                'hidden lg:flex rounded-xl font-bold text-xs gap-1.5 shadow-2xs transition-all active:scale-[0.98] min-h-[40px]',
                 isAiPanelOpen
                   ? 'bg-primary text-white hover:bg-primary/90'
                   : 'bg-primary/10 text-primary hover:bg-primary/20 border-0'
@@ -550,7 +699,7 @@ export default function PortalCoursePlayerClient({
             <Button
               size="sm"
               onClick={() => setIsMobileAiTutorOpen(true)}
-              className="lg:hidden rounded-xl font-bold text-xs bg-primary/10 text-primary hover:bg-primary/20 border-0 gap-1.5 shadow-2xs"
+              className="lg:hidden rounded-xl font-bold text-xs bg-primary/10 text-primary hover:bg-primary/20 border-0 gap-1.5 shadow-2xs min-h-[40px]"
             >
               <Sparkles className="w-3.5 h-3.5" /> AI Tutor
             </Button>
@@ -595,6 +744,53 @@ export default function PortalCoursePlayerClient({
                     ? `${Math.round(les.videoDurationSeconds / 60)}m`
                     : '10m';
 
+                  const lesMod = modules?.find(m => m.id === les.moduleId);
+                  const lesRelease = ReleaseScheduleService.evaluateLessonRelease({
+                    lesson: les,
+                    module: lesMod,
+                    enrollment,
+                    memberJoinedAt: membership?.joinedAt || membership?.createdAt,
+                    completedLessonIds,
+                  });
+                  const isLesLocked = lesRelease.isLocked && !les.isPreview;
+
+                  const tile = (
+                    <div
+                      className={cn(
+                        'w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all active:scale-[0.95]',
+                        isCurrent
+                          ? 'bg-primary text-white shadow-xs ring-2 ring-primary/20 font-black'
+                          : isDone
+                          ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
+                          : isLesLocked
+                          ? 'bg-muted/30 text-muted-foreground/50 border border-border/30'
+                          : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50'
+                      )}
+                    >
+                      {isDone ? (
+                        <CheckCircle2 className={cn('w-4 h-4', isCurrent ? 'text-white' : 'text-emerald-500')} />
+                      ) : isLesLocked ? (
+                        <Lock className="w-3.5 h-3.5 text-muted-foreground/60" />
+                      ) : isCurrent ? (
+                        <PlayCircle className="w-4 h-4 text-white" />
+                      ) : (
+                        <span className="text-[11px] font-bold">{lessonNumber}</span>
+                      )}
+                    </div>
+                  );
+
+                  if (isLesLocked) {
+                    return (
+                      <div
+                        key={les.id}
+                        className="relative flex items-center justify-center w-full cursor-not-allowed opacity-60"
+                        title={`Lesson ${lessonNumber}: ${les.title} (Locked: ${lesRelease.lockReason || 'Schedule gated'})`}
+                      >
+                        {tile}
+                      </div>
+                    );
+                  }
+
                   return (
                     <Link
                       key={les.id}
@@ -606,24 +802,7 @@ export default function PortalCoursePlayerClient({
                       {isCurrent && (
                         <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 bg-primary rounded-r-full" />
                       )}
-                      <div
-                        className={cn(
-                          'w-10 h-10 rounded-xl flex items-center justify-center text-xs font-bold transition-all active:scale-[0.95]',
-                          isCurrent
-                            ? 'bg-primary text-white shadow-xs ring-2 ring-primary/20 font-black'
-                            : isDone
-                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20'
-                            : 'bg-muted/50 text-muted-foreground hover:text-foreground hover:bg-muted border border-border/50'
-                        )}
-                      >
-                        {isDone ? (
-                          <CheckCircle2 className={cn('w-4 h-4', isCurrent ? 'text-white' : 'text-emerald-500')} />
-                        ) : isCurrent ? (
-                          <PlayCircle className="w-4 h-4 text-white" />
-                        ) : (
-                          <span className="text-[11px] font-bold">{lessonNumber}</span>
-                        )}
-                      </div>
+                      {tile}
                     </Link>
                   );
                 })}
@@ -652,230 +831,258 @@ export default function PortalCoursePlayerClient({
 
         {/* ── Center Column: Content Player Canvas ──────────────────── */}
         <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-8 space-y-6 max-w-5xl mx-auto w-full transition-all duration-300 pb-28 lg:pb-12">
-          {/* Video Player Canvas */}
-          {currentLesson.contentType === 'video' && currentLesson.videoUrl && (
-            <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl border-2 border-border">
-              {currentLesson.videoUrl.includes('youtube.com') || currentLesson.videoUrl.includes('youtu.be') ? (
-                <iframe
-                  src={
-                    currentLesson.videoUrl.includes('watch?v=')
-                      ? currentLesson.videoUrl.replace('watch?v=', 'embed/')
-                      : currentLesson.videoUrl
-                  }
-                  title={currentLesson.title}
-                  className="w-full h-full border-0"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                />
-              ) : (
-                <video
-                  src={currentLesson.videoUrl}
-                  controls
-                  className="w-full h-full object-contain"
-                  poster={currentLesson.thumbnailUrl || course.thumbnailUrl}
-                />
-              )}
-            </div>
-          )}
-
-          {/* Lesson Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-[10px] uppercase font-bold px-2 py-0.5 capitalize">
-                  {currentLesson.contentType}
-                </Badge>
-                {isCurrentCompleted && (
-                  <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-bold gap-1">
-                    <Check className="w-3 h-3" /> Completed
-                  </Badge>
-                )}
-              </div>
-              <h1 className="text-xl sm:text-2xl font-black text-foreground">{currentLesson.title}</h1>
-            </div>
-
-            <Button
-              onClick={handleMarkComplete}
-              className={cn(
-                'rounded-xl font-bold text-xs gap-1.5 shadow-sm transition-transform active:scale-[0.97] min-h-[44px]',
-                isCurrentCompleted
-                  ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
-                  : 'bg-primary text-white hover:bg-primary/90'
-              )}
-            >
-              <CheckCircle2 className="w-4 h-4" />
-              {isCurrentCompleted ? 'Completed ✓ (Next)' : 'Mark as Complete & Next'}
-            </Button>
-          </div>
-
-          {/* Tabs: Notes, Quiz, Toolkits */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-            <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-2xl grid grid-cols-3">
-              <TabsTrigger value="notes" className="rounded-xl text-xs font-bold gap-1.5">
-                <BookOpen className="w-3.5 h-3.5" /> Notes & Takeaways
-              </TabsTrigger>
-              <TabsTrigger value="quiz" className="rounded-xl text-xs font-bold gap-1.5">
-                <HelpCircle className="w-3.5 h-3.5" /> Knowledge Quiz
-              </TabsTrigger>
-              <TabsTrigger value="downloads" className="rounded-xl text-xs font-bold gap-1.5">
-                <Download className="w-3.5 h-3.5" /> Toolkits ({currentLesson.attachments?.length || 0})
-              </TabsTrigger>
-            </TabsList>
-
-            {/* Tab 1: Notes */}
-            <TabsContent value="notes" className="space-y-4 pt-4">
-              <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-4 bg-card leading-relaxed">
-                {currentLesson.summary && (
-                  <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 text-xs font-medium text-foreground">
-                    <strong className="text-primary font-bold block mb-1">Lesson Objective:</strong>
-                    {currentLesson.summary}
-                  </div>
-                )}
-
-                <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm text-foreground/90 space-y-3">
-                  {currentLesson.content ? (
-                    <div className="whitespace-pre-line">{currentLesson.content}</div>
+          {/* Drip Release Lock Card (if current lesson is locked and not a preview) */}
+          {isCurrentLessonLocked ? (
+            <LessonDripLockCard
+              portalSlug={slug}
+              courseSlug={courseSlug}
+              courseTitle={course.title}
+              lessonTitle={currentLesson.title}
+              releaseResult={currentLessonRelease}
+              prerequisiteLesson={prerequisiteLesson}
+              parentModule={currentModule}
+            />
+          ) : (
+            <>
+              {/* Video Player Canvas */}
+              {currentLesson.contentType === 'video' && currentLesson.videoUrl && (
+                <div className="relative aspect-video rounded-3xl overflow-hidden bg-black shadow-2xl border-2 border-border">
+                  {currentLesson.videoUrl.includes('youtube.com') || currentLesson.videoUrl.includes('youtu.be') ? (
+                    <iframe
+                      src={
+                        currentLesson.videoUrl.includes('watch?v=')
+                          ? currentLesson.videoUrl.replace('watch?v=', 'embed/')
+                          : currentLesson.videoUrl
+                      }
+                      title={currentLesson.title}
+                      className="w-full h-full border-0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                    />
                   ) : (
-                    <p className="text-muted-foreground italic">
-                      No additional reading notes provided for this lesson. Use the video and quiz tabs.
-                    </p>
+                    <video
+                      src={currentLesson.videoUrl}
+                      controls
+                      className="w-full h-full object-contain"
+                      poster={currentLesson.thumbnailUrl || course.thumbnailUrl}
+                    />
                   )}
                 </div>
-              </Card>
-            </TabsContent>
-
-            {/* Tab 2: Interactive Quiz */}
-            <TabsContent value="quiz" className="space-y-4 pt-4">
-              {!currentAssessment ? (
-                <Card className="rounded-3xl border-2 border-border p-8 text-center space-y-2 bg-card">
-                  <HelpCircle className="w-10 h-10 mx-auto text-muted-foreground" />
-                  <h4 className="font-bold text-sm">No Scored Quiz for this Lesson</h4>
-                  <p className="text-xs text-muted-foreground">Click &quot;Mark as Complete&quot; to advance to the next topic.</p>
-                </Card>
-              ) : (
-                <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card">
-                  <div className="border-b border-border pb-3">
-                    <h3 className="font-bold text-base text-foreground">{currentAssessment.title}</h3>
-                    <p className="text-xs text-muted-foreground">
-                      Passing requirement: <strong>{currentAssessment.passingScore}%</strong>
-                    </p>
-                  </div>
-
-                  {quizResult && (
-                    <div
-                      className={cn(
-                        'p-4 rounded-2xl border text-xs font-bold flex items-center justify-between',
-                        quizResult.passed
-                          ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
-                          : 'bg-rose-500/10 border-rose-500/30 text-rose-600'
-                      )}
-                    >
-                      <span>
-                        {quizResult.passed ? '🎉 Passed!' : '❌ Not Passed.'} Your Score: {quizResult.score}% (
-                        {quizResult.correctAnswersCount}/{quizResult.totalQuestionsCount} correct)
-                      </span>
-                    </div>
-                  )}
-
-                  <div className="space-y-6">
-                    {currentAssessment.questions.map((q, qIdx) => (
-                      <div key={q.id || qIdx} className="space-y-3 p-4 rounded-2xl border border-border bg-muted/20">
-                        <p className="font-bold text-xs text-foreground">
-                          {qIdx + 1}. {q.questionText}
-                        </p>
-
-                        <div className="space-y-2">
-                          {q.options.map(opt => {
-                            const isSelected = (quizAnswers[q.id] || []).includes(opt.id);
-
-                            return (
-                              <button
-                                key={opt.id}
-                                type="button"
-                                onClick={() => handleSelectOption(q.id, opt.id, q.type === 'multiple_answer')}
-                                className={cn(
-                                  'w-full text-left p-3 rounded-xl border text-xs flex items-center gap-3 transition-colors',
-                                  isSelected
-                                    ? 'bg-primary text-white border-primary font-bold shadow-xs'
-                                    : 'bg-card border-border text-foreground hover:bg-muted/60'
-                                )}
-                              >
-                                <span
-                                  className={cn(
-                                    'w-5 h-5 rounded-lg flex items-center justify-center border text-[10px] font-bold',
-                                    isSelected ? 'bg-white text-primary border-white' : 'border-border'
-                                  )}
-                                >
-                                  {isSelected ? <Check className="w-3 h-3" /> : ''}
-                                </span>
-                                <span>{opt.text}</span>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <Button
-                    onClick={handleSubmitQuiz}
-                    disabled={isEvaluatingQuiz}
-                    className="w-full h-11 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm"
-                  >
-                    {isEvaluatingQuiz ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Quiz Answers'}
-                  </Button>
-                </Card>
               )}
-            </TabsContent>
 
-            {/* Tab 3: Downloads */}
-            <TabsContent value="downloads" className="space-y-4 pt-4">
-              {(!currentLesson.attachments || currentLesson.attachments.length === 0) ? (
-                <Card className="rounded-3xl border-2 border-border p-8 text-center space-y-2 bg-card">
-                  <Download className="w-10 h-10 mx-auto text-muted-foreground" />
-                  <h4 className="font-bold text-sm">No Downloadable Files</h4>
-                  <p className="text-xs text-muted-foreground">This lesson does not contain companion spreadsheets or PDFs.</p>
-                </Card>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  {currentLesson.attachments.map(att => (
-                    <Card key={att.id} className="p-4 rounded-2xl border-2 border-border flex items-center justify-between bg-card">
-                      <div className="space-y-0.5">
-                        <h5 className="font-bold text-xs text-foreground">{att.name}</h5>
-                        <p className="text-[10px] text-muted-foreground uppercase">{att.mimeType || 'Document'}</p>
+              {/* Lesson Header */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-border">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px] uppercase font-bold px-2 py-0.5 capitalize">
+                      {currentLesson.contentType}
+                    </Badge>
+                    {currentLesson.isPreview && (
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold">
+                        Free Preview
+                      </Badge>
+                    )}
+                    {isCurrentCompleted && (
+                      <Badge className="bg-emerald-500 text-white border-0 text-[10px] font-bold gap-1">
+                        <Check className="w-3 h-3" /> Completed
+                      </Badge>
+                    )}
+                  </div>
+                  <h1 className="text-xl sm:text-2xl font-black text-foreground">{currentLesson.title}</h1>
+                </div>
+
+                <Button
+                  onClick={handleMarkComplete}
+                  disabled={isCurrentLessonLocked}
+                  className={cn(
+                    'rounded-xl font-bold text-xs gap-1.5 shadow-xs transition-transform active:scale-[0.97] min-h-[44px]',
+                    isCurrentCompleted
+                      ? 'bg-emerald-500 hover:bg-emerald-600 text-white'
+                      : 'bg-primary text-white hover:bg-primary/90'
+                  )}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  {isCurrentCompleted ? 'Completed ✓ (Next)' : 'Mark as Complete & Next'}
+                </Button>
+              </div>
+
+              {/* Tabs: Notes & Blocks, Quiz, Toolkits */}
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <TabsList className="w-full h-11 p-1 bg-muted/60 rounded-2xl grid grid-cols-3">
+                  <TabsTrigger value="notes" className="rounded-xl text-xs font-bold gap-1.5 min-h-[36px]">
+                    <BookOpen className="w-3.5 h-3.5" /> Notes & Takeaways
+                  </TabsTrigger>
+                  <TabsTrigger value="quiz" className="rounded-xl text-xs font-bold gap-1.5 min-h-[36px]">
+                    <HelpCircle className="w-3.5 h-3.5" /> Knowledge Quiz
+                  </TabsTrigger>
+                  <TabsTrigger value="downloads" className="rounded-xl text-xs font-bold gap-1.5 min-h-[36px]">
+                    <Download className="w-3.5 h-3.5" /> Toolkits ({currentLesson.attachments?.length || 0})
+                  </TabsTrigger>
+                </TabsList>
+
+                {/* Tab 1: Notes & Takeaways (Dual-mode Block Studio / Markdown) */}
+                <TabsContent value="notes" className="space-y-4 pt-4">
+                  <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card leading-relaxed">
+                    {currentLesson.summary && (
+                      <div className="p-4 rounded-2xl bg-primary/5 border border-primary/20 text-xs font-medium text-foreground">
+                        <strong className="text-primary font-bold block mb-1">Lesson Objective:</strong>
+                        {currentLesson.summary}
                       </div>
-                      <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-primary text-white gap-1.5 active:scale-[0.97]">
-                        <a href={att.url} download target="_blank" rel="noreferrer">
-                          <Download className="w-3.5 h-3.5" /> Download
-                        </a>
+                    )}
+
+                    {/* Dual-Mode Body: Render Block Studio Canvas if blocks exist; fallback to formatted text */}
+                    {currentLesson.blocks && currentLesson.blocks.length > 0 ? (
+                      <div className="space-y-4">
+                        {currentLesson.blocks.map(block => (
+                          <BlockRenderer key={block.id} block={block} ctx={renderCtx} />
+                        ))}
+                      </div>
+                    ) : currentLesson.content ? (
+                      <div className="prose dark:prose-invert max-w-none text-xs sm:text-sm text-foreground/90 whitespace-pre-line leading-relaxed">
+                        {currentLesson.content}
+                      </div>
+                    ) : (
+                      <p className="text-muted-foreground italic text-xs">
+                        No additional reading notes provided for this lesson. Use the video and quiz tabs.
+                      </p>
+                    )}
+                  </Card>
+                </TabsContent>
+
+                {/* Tab 2: Interactive Quiz */}
+                <TabsContent value="quiz" className="space-y-4 pt-4">
+                  {!currentAssessment ? (
+                    <Card className="rounded-3xl border-2 border-border p-8 text-center space-y-2 bg-card">
+                      <HelpCircle className="w-10 h-10 mx-auto text-muted-foreground" />
+                      <h4 className="font-bold text-sm">No Scored Quiz for this Lesson</h4>
+                      <p className="text-xs text-muted-foreground">Click &quot;Mark as Complete&quot; to advance to the next topic.</p>
+                    </Card>
+                  ) : (
+                    <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card">
+                      <div className="border-b border-border pb-3">
+                        <h3 className="font-bold text-base text-foreground">{currentAssessment.title}</h3>
+                        <p className="text-xs text-muted-foreground">
+                          Passing requirement: <strong>{currentAssessment.passingScore}%</strong>
+                        </p>
+                      </div>
+
+                      {quizResult && (
+                        <div
+                          className={cn(
+                            'p-4 rounded-2xl border text-xs font-bold flex items-center justify-between',
+                            quizResult.passed
+                              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600'
+                              : 'bg-rose-500/10 border-rose-500/30 text-rose-600'
+                          )}
+                        >
+                          <span>
+                            {quizResult.passed ? '🎉 Passed!' : '❌ Not Passed.'} Your Score: {quizResult.score}% (
+                            {quizResult.correctAnswersCount}/{quizResult.totalQuestionsCount} correct)
+                          </span>
+                        </div>
+                      )}
+
+                      <div className="space-y-6">
+                        {currentAssessment.questions.map((q, qIdx) => (
+                          <div key={q.id || qIdx} className="space-y-3 p-4 rounded-2xl border border-border bg-muted/20">
+                            <p className="font-bold text-xs text-foreground">
+                              {qIdx + 1}. {q.questionText}
+                            </p>
+
+                            <div className="space-y-2">
+                              {q.options.map(opt => {
+                                const isSelected = (quizAnswers[q.id] || []).includes(opt.id);
+
+                                return (
+                                  <button
+                                    key={opt.id}
+                                    type="button"
+                                    onClick={() => handleSelectOption(q.id, opt.id, q.type === 'multiple_answer')}
+                                    className={cn(
+                                      'w-full text-left p-3.5 rounded-xl border text-xs flex items-center gap-3 transition-colors min-h-[44px]',
+                                      isSelected
+                                        ? 'bg-primary text-white border-primary font-bold shadow-xs'
+                                        : 'bg-card border-border text-foreground hover:bg-muted/60'
+                                    )}
+                                  >
+                                    <span
+                                      className={cn(
+                                        'w-5 h-5 rounded-lg flex items-center justify-center border text-[10px] font-bold shrink-0',
+                                        isSelected ? 'bg-white text-primary border-white' : 'border-border'
+                                      )}
+                                    >
+                                      {isSelected ? <Check className="w-3 h-3" /> : ''}
+                                    </span>
+                                    <span>{opt.text}</span>
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+
+                      <Button
+                        onClick={handleSubmitQuiz}
+                        disabled={isEvaluatingQuiz}
+                        className="w-full h-11 rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-xs min-h-[44px]"
+                      >
+                        {isEvaluatingQuiz ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Submit Quiz Answers'}
                       </Button>
                     </Card>
-                  ))}
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+                  )}
+                </TabsContent>
 
-          {/* Bottom Pagination Controls */}
-          <div className="pt-6 border-t border-border flex items-center justify-between gap-4">
-            {prevLesson ? (
-              <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] active:scale-[0.97]">
-                <Link href={`/portal/${slug}/learn/${courseSlug}/${prevLesson.slug}`}>
-                  <ArrowLeft className="w-3.5 h-3.5" /> Previous Lesson
-                </Link>
-              </Button>
-            ) : (
-              <div />
-            )}
+                {/* Tab 3: Downloads */}
+                <TabsContent value="downloads" className="space-y-4 pt-4">
+                  {(!currentLesson.attachments || currentLesson.attachments.length === 0) ? (
+                    <Card className="rounded-3xl border-2 border-border p-8 text-center space-y-2 bg-card">
+                      <Download className="w-10 h-10 mx-auto text-muted-foreground" />
+                      <h4 className="font-bold text-sm">No Downloadable Files</h4>
+                      <p className="text-xs text-muted-foreground">This lesson does not contain companion spreadsheets or PDFs.</p>
+                    </Card>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {currentLesson.attachments.map(att => (
+                        <Card key={att.id} className="p-4 rounded-2xl border-2 border-border flex items-center justify-between bg-card min-h-[64px]">
+                          <div className="space-y-0.5">
+                            <h5 className="font-bold text-xs text-foreground">{att.name}</h5>
+                            <p className="text-[10px] text-muted-foreground uppercase">{att.mimeType || 'Document'}</p>
+                          </div>
+                          <Button asChild size="sm" className="rounded-xl font-bold text-xs bg-primary text-white gap-1.5 active:scale-[0.97] min-h-[36px]">
+                            <a href={att.url} download target="_blank" rel="noreferrer">
+                              <Download className="w-3.5 h-3.5" /> Download
+                            </a>
+                          </Button>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+              </Tabs>
 
-            {nextLesson && (
-              <Button asChild size="sm" className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 min-h-[44px] active:scale-[0.97]">
-                <Link href={`/portal/${slug}/learn/${courseSlug}/${nextLesson.slug}`}>
-                  Next Lesson <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
-              </Button>
-            )}
-          </div>
+              {/* Bottom Pagination Controls */}
+              <div className="pt-6 border-t border-border flex items-center justify-between gap-4">
+                {prevLesson ? (
+                  <Button asChild variant="outline" size="sm" className="rounded-xl text-xs font-bold gap-1.5 min-h-[44px] active:scale-[0.97]">
+                    <Link href={`/portal/${slug}/learn/${courseSlug}/${prevLesson.slug}`}>
+                      <ArrowLeft className="w-3.5 h-3.5" /> Previous Lesson
+                    </Link>
+                  </Button>
+                ) : (
+                  <div />
+                )}
+
+                {nextLesson && (
+                  <Button asChild size="sm" className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 min-h-[44px] active:scale-[0.97]">
+                    <Link href={`/portal/${slug}/learn/${courseSlug}/${nextLesson.slug}`}>
+                      Next Lesson <ArrowRight className="w-3.5 h-3.5" />
+                    </Link>
+                  </Button>
+                )}
+              </div>
+            </>
+          )}
         </main>
 
         {/* ── Right Column: Docked Non-Modal AI Tutor Panel (Desktop) ── */}
@@ -983,13 +1190,24 @@ export default function PortalCoursePlayerClient({
         <button
           type="button"
           onClick={handleMarkComplete}
+          disabled={isCurrentLessonLocked}
           className={cn(
             'flex flex-col items-center justify-center gap-1 min-h-[44px] min-w-[64px] rounded-xl px-2 py-1 transition-transform active:scale-[0.95]',
-            isCurrentCompleted ? 'text-emerald-600 font-bold' : 'text-muted-foreground hover:text-foreground'
+            isCurrentLessonLocked
+              ? 'opacity-40 cursor-not-allowed text-muted-foreground'
+              : isCurrentCompleted
+              ? 'text-emerald-600 font-bold'
+              : 'text-muted-foreground hover:text-foreground'
           )}
         >
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="text-[10px]">{isCurrentCompleted ? 'Next →' : 'Complete'}</span>
+          {isCurrentLessonLocked ? (
+            <Lock className="w-5 h-5 text-muted-foreground" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5" />
+          )}
+          <span className="text-[10px]">
+            {isCurrentLessonLocked ? 'Locked' : isCurrentCompleted ? 'Next →' : 'Complete'}
+          </span>
         </button>
       </nav>
 
