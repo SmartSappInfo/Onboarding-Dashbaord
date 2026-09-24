@@ -6,6 +6,9 @@
  * Zero `any` or `any[]` typing.
  */
 
+import type { PageBlock } from '@/lib/types';
+import type { PortalVisibility } from '@/lib/types/portal';
+
 // ── Course & Content Status Types ────────────────────────────────────────────
 
 export type CourseStatus = 'draft' | 'scheduled' | 'published' | 'archived';
@@ -124,6 +127,10 @@ export interface Course {
   certificateEnabled: boolean;
   certificateTemplateId?: string;
 
+  requiredPlanIds?: string[];
+  visibility?: PortalVisibility;
+  accessRoles?: string[];
+
   order: number;
   featured?: boolean;
 
@@ -177,6 +184,7 @@ export interface CourseLesson {
 
   contentType: LessonContentType;
   content?: string; // Rich Markdown / HTML body
+  blocks?: PageBlock[]; // Structured PageBlock AST
   videoUrl?: string; // YouTube, Vimeo, Mux, or Direct MP4/HLS
   videoDurationSeconds?: number;
   thumbnailUrl?: string;
@@ -361,6 +369,9 @@ export interface CreateCourseInput {
   defaultReleaseType?: ReleaseScheduleType;
   learningObjectives?: string[];
   certificateEnabled?: boolean;
+  requiredPlanIds?: string[];
+  visibility?: PortalVisibility;
+  accessRoles?: string[];
   order?: number;
   featured?: boolean;
 }
@@ -384,6 +395,9 @@ export interface UpdateCourseInput {
   defaultReleaseType?: ReleaseScheduleType;
   learningObjectives?: string[];
   certificateEnabled?: boolean;
+  requiredPlanIds?: string[];
+  visibility?: PortalVisibility;
+  accessRoles?: string[];
   order?: number;
   featured?: boolean;
 }
@@ -415,6 +429,7 @@ export interface CreateLessonInput {
   summary?: string;
   contentType?: LessonContentType;
   content?: string;
+  blocks?: PageBlock[];
   videoUrl?: string;
   videoDurationSeconds?: number;
   thumbnailUrl?: string;
@@ -431,6 +446,7 @@ export interface UpdateLessonInput {
   summary?: string;
   contentType?: LessonContentType;
   content?: string;
+  blocks?: PageBlock[];
   videoUrl?: string;
   videoDurationSeconds?: number;
   thumbnailUrl?: string;
