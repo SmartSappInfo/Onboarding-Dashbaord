@@ -137,6 +137,59 @@ export async function updatePortalMemberProfileAction(
   }
 }
 
+/**
+ * Updates a member's assigned Membership Plan tier.
+ */
+export async function updateMembershipPlanAction(
+  membershipId: string,
+  planId: string | undefined,
+  planName: string | undefined,
+  portalId: string,
+  actorId: string = 'system'
+): Promise<ActionResult<PortalMembership>> {
+  try {
+    const updated = await PortalMembershipService.updateMembership(
+      membershipId,
+      { planId, planName },
+      actorId
+    );
+    revalidatePath(`/admin/portals/${portalId}`);
+    return { success: true, data: updated };
+  } catch (err) {
+    console.error('[MEMBERSHIP_ACTION] updateMembershipPlan failed:', err);
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member plan.'),
+    };
+  }
+}
+
+/**
+ * Updates a member's contact/experience tags.
+ */
+export async function updateMembershipTagsAction(
+  membershipId: string,
+  tags: string[],
+  portalId: string,
+  actorId: string = 'system'
+): Promise<ActionResult<PortalMembership>> {
+  try {
+    const updated = await PortalMembershipService.updateMembership(
+      membershipId,
+      { tags },
+      actorId
+    );
+    revalidatePath(`/admin/portals/${portalId}`);
+    return { success: true, data: updated };
+  } catch (err) {
+    console.error('[MEMBERSHIP_ACTION] updateMembershipTags failed:', err);
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.membership-actions', err, undefined, 'Failed to update member tags.'),
+    };
+  }
+}
+
 // ── 2. Invitations Actions ──────────────────────────────────────────────────
 
 export async function createInvitationAction(

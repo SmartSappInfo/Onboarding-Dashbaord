@@ -43,11 +43,15 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  Lock,
+  Shield,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
 import { sanitizeSlug } from '@/lib/utils/slug-utils';
 import { TagSelector } from '@/components/tags/TagSelector';
+import { collection, query, where } from 'firebase/firestore';
+import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import {
   createContentItemAction,
   updateContentItemAction,
@@ -62,6 +66,8 @@ import type {
   PageBlockType,
 } from '@/lib/types';
 import type { PortalVisibility } from '@/lib/types/portal';
+import type { MembershipPlan } from '@/lib/types/membership';
+import type { ContentTeaserMode, CustomPaywallConfig } from '@/lib/types/content';
 import { getBlock, normalizeBlockType } from '@/lib/page-builder/registry';
 import { ContentBlockCanvas } from './studio/ContentBlockCanvas';
 import { ContentBlockPalette } from './studio/ContentBlockPalette';
@@ -143,6 +149,28 @@ export function ContentEditorModal({
   const [metaDescription, setMetaDescription] = useState('');
   const [blocks, setBlocks] = useState<PageBlock[]>([]);
 
+  // Entitlement & Paywall State
+  const firestore = useFirestore();
+  const plansQuery = useMemoFirebase(
+    () =>
+      firestore && portalId
+        ? query(
+            collection(firestore, 'membership_plans'),
+            where('portalId', '==', portalId),
+            where('status', '==', 'active')
+          )
+        : null,
+    [firestore, portalId]
+  );
+  const { data: plans } = useCollection<MembershipPlan>(plansQuery);
+
+  const [requiredPlanIds, setRequiredPlanIds] = useState<string[]>([]);
+  const [teaserMode, setTeaserMode] = useState<ContentTeaserMode>('first_block');
+  const [customPaywallTitle, setCustomPaywallTitle] = useState('');
+  const [customPaywallDesc, setCustomPaywallDesc] = useState('');
+  const [customPaywallPerks, setCustomPaywallPerks] = useState('');
+  const [customPaywallCta, setCustomPaywallCta] = useState('');
+
   // Dirty state tracking
   const [isDirty, setIsDirty] = useState(false);
   const [localDraftNotice, setLocalDraftNotice] = useState<string | null>(null);
@@ -168,6 +196,12 @@ export function ContentEditorModal({
       setMedia(initialItem.media || {});
       setMetaTitle(initialItem.seo?.metaTitle || '');
       setMetaDescription(initialItem.seo?.metaDescription || '');
+      setRequiredPlanIds(initialItem.requiredPlanIds || []);
+      setTeaserMode(initialItem.teaserMode || 'first_block');
+      setCustomPaywallTitle(initialItem.customPaywall?.title || '');
+      setCustomPaywallDesc(initialItem.customPaywall?.description || '');
+      setCustomPaywallPerks((initialItem.customPaywall?.perks || []).join('\n'));
+      setCustomPaywallCta(initialItem.customPaywall?.ctaText || '');
       const initialBlocks: PageBlock[] =
         initialItem.blocks && initialItem.blocks.length > 0
           ? initialItem.blocks
@@ -198,6 +232,12 @@ export function ContentEditorModal({
       setMedia({});
       setMetaTitle('');
       setMetaDescription('');
+      setRequiredPlanIds([]);
+      setTeaserMode('first_block');
+      setCustomPaywallTitle('');
+      setCustomPaywallDesc('');
+      setCustomPaywallPerks('');
+      setCustomPaywallCta('');
       setBlocks([]);
       setSelectedBlockId(null);
     }
@@ -412,6 +452,21 @@ export function ContentEditorModal({
       try {
         const targetStatus: ContentStatus = publishImmediately ? 'published' : status;
 
+        const perksArray = customPaywallPerks
+          .split('\n')
+          .map((p) => p.trim())
+          .filter(Boolean);
+
+        const customPaywall: CustomPaywallConfig | undefined =
+          customPaywallTitle.trim() || customPaywallDesc.trim() || perksArray.length > 0 || customPaywallCta.trim()
+            ? {
+                title: customPaywallTitle.trim() || undefined,
+                description: customPaywallDesc.trim() || undefined,
+                perks: perksArray.length > 0 ? perksArray : undefined,
+                ctaText: customPaywallCta.trim() || undefined,
+              }
+            : undefined;
+
         if (initialItem) {
           // Update
           const res = await updateContentItemAction(
@@ -425,6 +480,9 @@ export function ContentEditorModal({
               blocks,
               status: targetStatus,
               visibility,
+              requiredPlanIds,
+              teaserMode,
+              customPaywall,
               scheduledAt: scheduledAt || undefined,
               media,
               seo: {
@@ -462,6 +520,9 @@ export function ContentEditorModal({
             blocks,
             status: targetStatus,
             visibility,
+            requiredPlanIds,
+            teaserMode,
+            customPaywall,
             scheduledAt: scheduledAt || undefined,
             media,
             seo: {
@@ -973,12 +1034,165 @@ export function ContentEditorModal({
                   className="w-full h-10 px-3 rounded-xl bg-background border border-slate-200 dark:border-slate-800 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--portal-primary,#3B82F6)] transition-all"
                 >
                   <option value="public">Public (Everyone)</option>
-                  <option value="members_only">Members Only</option>
-                  <option value="tier_restricted">Tier Restricted</option>
-                  <option value="private">Private (Admins Only)</option>
+                  <option value="membership_required">Membership Required (Tier Gated)</option>
+                  <option value="authenticated">Authenticated (Any Logged-in User)</option>
+                  <option value="invite_only">Invite Only (Explicit Grant)</option>
+                  <option value="password_protected">Password Protected</option>
                 </select>
               </div>
             </div>
+
+            {/* Visibility & Entitlements Governance Panel */}
+            {visibility !== 'public' && (
+              <div className="p-4 rounded-2xl border border-[var(--portal-primary,#3B82F6)]/20 bg-[var(--portal-primary,#3B82F6)]/[0.02] space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-7 h-7 rounded-lg bg-[var(--portal-primary,#3B82F6)]/10 flex items-center justify-center text-[var(--portal-primary,#3B82F6)]">
+                    <Lock className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-bold text-foreground">Access Entitlements & Paywall</h4>
+                    <p className="text-[11px] text-muted-foreground">
+                      Configure which membership tiers unlock this content and customize the teaser paywall.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Membership Tiers Selector */}
+                {plans && plans.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-xs font-bold text-foreground">Restricted to Specific Plans</label>
+                      <span className="text-[10px] text-muted-foreground">
+                        {requiredPlanIds.length === 0
+                          ? 'All active plans included'
+                          : `${requiredPlanIds.length} plan(s) selected`}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {plans.map((p) => {
+                        const isChecked = requiredPlanIds.includes(p.id);
+                        return (
+                          <label
+                            key={p.id}
+                            className={cn(
+                              'flex items-center gap-2.5 p-2.5 rounded-xl border text-xs font-medium cursor-pointer transition-all',
+                              isChecked
+                                ? 'border-[var(--portal-primary,#3B82F6)] bg-[var(--portal-primary,#3B82F6)]/10 text-foreground'
+                                : 'border-slate-200 dark:border-slate-800 bg-background text-muted-foreground hover:border-slate-300 dark:hover:border-slate-700'
+                            )}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setRequiredPlanIds((prev) =>
+                                  prev.includes(p.id) ? prev.filter((id) => id !== p.id) : [...prev, p.id]
+                                );
+                                setIsDirty(true);
+                              }}
+                              className="rounded border-slate-300 text-[var(--portal-primary,#3B82F6)] focus:ring-[var(--portal-primary,#3B82F6)] h-4 w-4"
+                            />
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-foreground truncate">{p.name}</span>
+                                <span className="text-[10px] text-muted-foreground">
+                                  {p.price === 0 ? 'Free' : `${(p.currency || 'USD').toUpperCase()} ${p.price}`}
+                                </span>
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      Tip: Leave all unselected to grant access to every active membership tier.
+                    </p>
+                  </div>
+                )}
+
+                {/* Teaser Mode Selector */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-foreground">Teaser Preview Boundary</label>
+                  <select
+                    value={teaserMode}
+                    onChange={(e) => {
+                      setTeaserMode(e.target.value as ContentTeaserMode);
+                      setIsDirty(true);
+                    }}
+                    className="w-full h-10 px-3 rounded-xl bg-background border border-slate-200 dark:border-slate-800 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--portal-primary,#3B82F6)] transition-all"
+                  >
+                    <option value="first_block">First Block Preview (Recommended — shows intro before paywall)</option>
+                    <option value="two_blocks">Two Blocks Preview (Extended intro preview)</option>
+                    <option value="summary">Summary Only (Only card overview visible, all blocks gated)</option>
+                    <option value="none">Immediate Lock (No content preview without access)</option>
+                  </select>
+                </div>
+
+                {/* Custom Paywall Copywriting */}
+                <div className="pt-2 border-t border-slate-200/60 dark:border-slate-800/60 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-foreground">Paywall Customization (Optional)</label>
+                    <span className="text-[10px] text-muted-foreground">Overrides default paywall copy</span>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-muted-foreground">Custom Paywall Title</label>
+                    <input
+                      type="text"
+                      value={customPaywallTitle}
+                      onChange={(e) => {
+                        setCustomPaywallTitle(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="e.g. Unlock Full Framework & Worksheets"
+                      className="w-full h-9 px-3 rounded-xl bg-background border border-slate-200 dark:border-slate-800 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--portal-primary,#3B82F6)] transition-all"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-muted-foreground">Custom Description</label>
+                    <textarea
+                      value={customPaywallDesc}
+                      onChange={(e) => {
+                        setCustomPaywallDesc(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      rows={2}
+                      placeholder="e.g. Join the membership tier to unlock download links and coaching..."
+                      className="w-full p-2.5 rounded-xl bg-background border border-slate-200 dark:border-slate-800 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--portal-primary,#3B82F6)] transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-muted-foreground">Perks Checklist (One perk per line)</label>
+                    <textarea
+                      value={customPaywallPerks}
+                      onChange={(e) => {
+                        setCustomPaywallPerks(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      rows={3}
+                      placeholder={"Full downloadable toolkit\nDirect instructor feedback\nLifetime access to updates"}
+                      className="w-full p-2.5 rounded-xl bg-background border border-slate-200 dark:border-slate-800 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--portal-primary,#3B82F6)] transition-all resize-none"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <label className="text-[11px] font-semibold text-muted-foreground">Custom Call-To-Action Button Text</label>
+                    <input
+                      type="text"
+                      value={customPaywallCta}
+                      onChange={(e) => {
+                        setCustomPaywallCta(e.target.value);
+                        setIsDirty(true);
+                      }}
+                      placeholder="e.g. Upgrade to Pro Access"
+                      className="w-full h-9 px-3 rounded-xl bg-background border border-slate-200 dark:border-slate-800 text-xs font-medium text-foreground focus:outline-none focus:ring-2 focus:ring-[var(--portal-primary,#3B82F6)] transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Tag Selection — Standardized TagSelector in Client/Draft Mode */}
             <div className="space-y-2">

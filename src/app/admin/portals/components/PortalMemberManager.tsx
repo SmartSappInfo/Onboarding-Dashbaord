@@ -26,6 +26,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
+import { TagSelector } from '@/components/tags/TagSelector';
+import {
   Users,
   UserPlus,
   Search,
@@ -37,12 +46,18 @@ import {
   Copy,
   Trash2,
   Sparkles,
+  Download,
+  Tag,
+  Check,
+  RefreshCw,
 } from 'lucide-react';
 import { InviteMemberModal } from './InviteMemberModal';
 import { MembershipPlanManager } from './MembershipPlanManager';
 import { AccessGrantAuditor } from './AccessGrantAuditor';
 import {
   updateMembershipRoleAction,
+  updateMembershipPlanAction,
+  updateMembershipTagsAction,
   suspendMembershipAction,
   reactivateMembershipAction,
   deleteMembershipAction,
@@ -84,6 +99,14 @@ export function PortalMemberManager({
   const [serverInvitations, setServerInvitations] = React.useState<PortalInvitation[]>([]);
   const [serverPlans, setServerPlans] = React.useState<MembershipPlan[]>([]);
   const [_isLoadingServer, setIsLoadingServer] = React.useState(true);
+
+  // Tag editing state
+  const [editingTagsMember, setEditingTagsMember] = React.useState<PortalMembership | null>(null);
+  const [memberDraftTags, setMemberDraftTags] = React.useState<string[]>([]);
+  const [isSavingTags, setIsSavingTags] = React.useState(false);
+
+  // Plan changing state
+  const [changingPlanMemberId, setChangingPlanMemberId] = React.useState<string | null>(null);
 
   const fetchServerData = React.useCallback(async () => {
     if (!portalId) return;
@@ -224,6 +247,100 @@ export function PortalMemberManager({
     }
   };
 
+  const handleOpenTagsModal = (member: PortalMembership) => {
+    setEditingTagsMember(member);
+    setMemberDraftTags(member.tags || []);
+  };
+
+  const handleSaveTags = async () => {
+    if (!editingTagsMember) return;
+    setIsSavingTags(true);
+    try {
+      const res = await updateMembershipTagsAction(editingTagsMember.id, memberDraftTags, portalId);
+      if (!res.success) throw new Error(res.error || 'Failed to update tags.');
+      toast({
+        title: 'Tags Updated',
+        description: `Contact tags updated for ${editingTagsMember.displayName}.`,
+      });
+      setEditingTagsMember(null);
+      fetchServerData();
+    } catch (err) {
+      toast({
+        title: 'Error',
+        description: err instanceof Error ? err.message : 'Tag update failed.',
+      });
+    } finally {
+      setIsSavingTags(false);
+    }
+  };
+
+  const handlePlanChange = async (member: PortalMembership, newPlanId: string) => {
+    setChangingPlanMemberId(member.id);
+    try {
+      const matchedPlan = effectivePlans.find((p) => p.id === newPlanId);
+      const res = await updateMembershipPlanAction(
+        member.id,
+        newPlanId ? newPlanId : undefined,
+        matchedPlan ? matchedPlan.name : undefined,
+        portalId
+      );
+      if (!res.success) throw new Error(res.error || 'Failed to update tier.');
+      toast({
+        title: 'Membership Tier Updated',
+        description: `${member.displayName} is now on ${matchedPlan ? matchedPlan.name : 'Free / Standard'} tier.`,
+      });
+      fetchServerData();
+    } catch (err) {
+      toast({
+        title: 'Tier Update Failed',
+        description: err instanceof Error ? err.message : 'Could not change tier.',
+      });
+    } finally {
+      setChangingPlanMemberId(null);
+    }
+  };
+
+  const handleExportMembersCsv = () => {
+    if (filteredMembers.length === 0) {
+      toast({
+        title: 'No Members to Export',
+        description: 'There are no members matching the current filter criteria.',
+      });
+      return;
+    }
+
+    const headers = ['Name', 'Email', 'Role', 'Status', 'Plan Tier', 'Points', 'Streak Days', 'Joined At', 'Tags'];
+    const csvRows = [
+      headers.join(','),
+      ...filteredMembers.map((m) => [
+        `"${(m.displayName || '').replace(/"/g, '""')}"`,
+        `"${(m.email || '').replace(/"/g, '""')}"`,
+        `"${m.role}"`,
+        `"${m.status}"`,
+        `"${(m.planName || 'None').replace(/"/g, '""')}"`,
+        m.points || 0,
+        m.streakDays || 0,
+        `"${m.joinedAt || ''}"`,
+        `"${(m.tags || []).join('; ').replace(/"/g, '""')}"`,
+      ].join(',')),
+    ];
+
+    const blob = new Blob([csvRows.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `members-${portalSlug}-${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    toast({
+      title: 'Export Complete',
+      description: `Successfully exported ${filteredMembers.length} member(s) to CSV.`,
+    });
+  };
+
   const handleCopyInviteLink = (token: string) => {
     if (typeof window === 'undefined') return;
     const url = `${window.location.origin}/portal/${portalSlug}/join?token=${token}`;
@@ -281,21 +398,34 @@ export function PortalMemberManager({
                   />
                 </div>
 
-                <div className="flex items-center gap-1.5 overflow-x-auto">
-                  {['all', 'member', 'student', 'instructor', 'moderator', 'admin'].map(r => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setSelectedRole(r)}
-                      className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 capitalize ${
-                        selectedRole === r
-                          ? 'bg-primary text-white shadow-xs'
-                          : 'bg-card text-muted-foreground border border-border hover:border-primary/40'
-                      }`}
-                    >
-                      {r}
-                    </button>
-                  ))}
+                <div className="flex items-center gap-2 overflow-x-auto">
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {['all', 'member', 'student', 'instructor', 'moderator', 'admin'].map(r => (
+                      <button
+                        key={r}
+                        type="button"
+                        onClick={() => setSelectedRole(r)}
+                        className={`text-xs px-3 py-1.5 rounded-xl font-bold transition-all shrink-0 capitalize ${
+                          selectedRole === r
+                            ? 'bg-primary text-white shadow-xs'
+                            : 'bg-card text-muted-foreground border border-border hover:border-primary/40'
+                        }`}
+                      >
+                        {r}
+                      </button>
+                    ))}
+                  </div>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExportMembersCsv}
+                    className="h-8 px-3 rounded-xl font-bold text-xs gap-1.5 border-border hover:bg-muted/40 shrink-0 active:scale-[0.97] transition-transform"
+                    title="Export filtered member list to CSV"
+                  >
+                    <Download className="w-3.5 h-3.5 text-muted-foreground" />
+                    <span className="hidden sm:inline">Export CSV</span>
+                  </Button>
                 </div>
               </div>
 
@@ -395,44 +525,102 @@ export function PortalMemberManager({
                               <Flame className="w-3 h-3" /> {member.streakDays}d streak
                             </span>
                           </div>
+
+                          {member.tags && member.tags.length > 0 && (
+                            <div className="flex flex-wrap items-center gap-1 pt-1">
+                              {member.tags.slice(0, 4).map((t) => (
+                                <span
+                                  key={t}
+                                  className="inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border"
+                                >
+                                  #{t}
+                                </span>
+                              ))}
+                              {member.tags.length > 4 && (
+                                <span className="text-[10px] text-muted-foreground font-semibold">
+                                  +{member.tags.length - 4} more
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
 
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
-                            <MoreVertical className="w-4 h-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="rounded-xl w-48">
-                          <DropdownMenuItem onClick={() => handleRoleChange(member, 'student')} className="text-xs font-semibold">
-                            Set as Student
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRoleChange(member, 'instructor')} className="text-xs font-semibold">
-                            Set as Instructor
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRoleChange(member, 'moderator')} className="text-xs font-semibold">
-                            Set as Moderator
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => handleRoleChange(member, 'admin')} className="text-xs font-semibold">
-                            Promote to Portal Admin
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          {member.status === 'active' ? (
-                            <DropdownMenuItem onClick={() => handleSuspend(member)} className="text-xs font-semibold text-amber-600">
-                              Suspend Access
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem onClick={() => handleReactivate(member)} className="text-xs font-semibold text-emerald-600">
-                              Reactivate Access
-                            </DropdownMenuItem>
+                      <div className="flex items-center gap-2 shrink-0">
+                        {effectivePlans.length > 0 && (
+                          <select
+                            value={member.planId || ''}
+                            disabled={changingPlanMemberId === member.id}
+                            onChange={(e) => handlePlanChange(member, e.target.value)}
+                            aria-label="Change membership plan tier"
+                            className="h-8 px-2 rounded-xl text-[11px] font-semibold bg-background border border-border text-foreground hover:border-primary/50 focus:outline-none focus:ring-2 focus:ring-primary/20 transition-all cursor-pointer min-w-[110px]"
+                            title="Quick switch plan tier"
+                          >
+                            <option value="">No Plan Tier</option>
+                            {effectivePlans.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleOpenTagsModal(member)}
+                          className="h-8 px-2.5 rounded-xl text-xs font-semibold gap-1 text-muted-foreground hover:text-foreground active:scale-[0.97] transition-transform"
+                          title="Manage contact tags"
+                        >
+                          <Tag className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="hidden sm:inline">Tags</span>
+                          {member.tags && member.tags.length > 0 && (
+                            <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                              {member.tags.length}
+                            </span>
                           )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem onClick={() => handleDelete(member)} className="text-xs font-semibold text-rose-500">
-                            <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete Member
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </Button>
+
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl w-48">
+                            <DropdownMenuItem onClick={() => handleOpenTagsModal(member)} className="text-xs font-semibold">
+                              <Tag className="w-3.5 h-3.5 mr-1 text-muted-foreground" /> Edit Contact Tags
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleRoleChange(member, 'student')} className="text-xs font-semibold">
+                              Set as Student
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRoleChange(member, 'instructor')} className="text-xs font-semibold">
+                              Set as Instructor
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRoleChange(member, 'moderator')} className="text-xs font-semibold">
+                              Set as Moderator
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => handleRoleChange(member, 'admin')} className="text-xs font-semibold">
+                              Promote to Portal Admin
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            {member.status === 'active' ? (
+                              <DropdownMenuItem onClick={() => handleSuspend(member)} className="text-xs font-semibold text-amber-600">
+                                Suspend Access
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem onClick={() => handleReactivate(member)} className="text-xs font-semibold text-emerald-600">
+                                Reactivate Access
+                              </DropdownMenuItem>
+                            )}
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => handleDelete(member)} className="text-xs font-semibold text-rose-500">
+                              <Trash2 className="w-3.5 h-3.5 mr-1" /> Delete Member
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -543,6 +731,62 @@ export function PortalMemberManager({
         workspaceIds={workspaceIds}
         plans={effectivePlans}
       />
+
+      {/* Contact Tag Management Modal via Standardized TagSelector in Client/Draft Mode */}
+      <Dialog
+        open={!!editingTagsMember}
+        onOpenChange={(open) => {
+          if (!open) setEditingTagsMember(null);
+        }}
+      >
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
+              <Tag className="w-4 h-4 text-primary" /> Manage Contact Tags
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Attach workspace tags to{' '}
+              <strong className="text-foreground">{editingTagsMember?.displayName}</strong> ({editingTagsMember?.email}){' '}
+              to synchronize CRM segmentations and automations.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-3 space-y-2">
+            <label className="text-xs font-bold text-foreground">Assigned Contact Tags</label>
+            <TagSelector
+              currentTagIds={memberDraftTags}
+              onTagsChange={setMemberDraftTags}
+            />
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setEditingTagsMember(null)}
+              className="rounded-xl text-xs font-bold active:scale-[0.97] transition-transform"
+            >
+              Cancel
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleSaveTags}
+              disabled={isSavingTags}
+              className="rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 active:scale-[0.97] transition-transform"
+            >
+              {isSavingTags ? (
+                <>
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Saving...
+                </>
+              ) : (
+                <>
+                  <Check className="w-3.5 h-3.5" /> Save Tags
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
