@@ -81,6 +81,7 @@ import { PortalAnalyticsManager } from '../components/PortalAnalyticsManager';
 import { PortalCredentialManager } from '../components/PortalCredentialManager';
 import { PortalEnterpriseManager } from '../components/PortalEnterpriseManager';
 import { PortalStudioCommandPalette } from '../components/PortalStudioCommandPalette';
+import { PortalPreviewModal } from '../components/PortalPreviewModal';
 import {
   updatePortalAction,
   publishPortalAction,
@@ -198,6 +199,7 @@ export default function PortalStudioClient({
   // Modal / Drawer states
   const [isAiCopilotOpen, setIsAiCopilotOpen] = React.useState(false);
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = React.useState(false);
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = React.useState(false);
   const [isSaving, setIsSaving] = React.useState(false);
   const [hasChanges, setHasChanges] = React.useState(false);
 
@@ -276,12 +278,26 @@ export default function PortalStudioClient({
     setActiveCategory(getCategoryForTab(tabId));
   };
 
-  // Keyboard shortcut listener for Command Palette (Cmd+K)
+  // Keyboard shortcut listener for Command Palette (Cmd+K) and Preview (Cmd+P)
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Cmd+K for Command Palette
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
         e.preventDefault();
         setIsCommandPaletteOpen(prev => !prev);
+      }
+      
+      // Cmd+P for Preview Modal
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
+        const isTextInput =
+          e.target instanceof HTMLInputElement ||
+          e.target instanceof HTMLTextAreaElement ||
+          (e.target as HTMLElement).isContentEditable;
+
+        if (!isTextInput) {
+          e.preventDefault();
+          setIsPreviewModalOpen(true);
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -504,6 +520,17 @@ export default function PortalStudioClient({
 
           {/* Right: Actions, Share Menu, AI Copilot & Save CTA */}
           <div className="flex flex-wrap items-center gap-2.5">
+            {/* Preview Button */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => setIsPreviewModalOpen(true)} 
+              className="h-10 min-h-[44px] px-3.5 rounded-xl font-bold text-xs bg-card hover:bg-muted text-foreground border-border hover:border-primary/40 gap-1.5 shadow-2xs active:scale-[0.97] transition-all"
+            >
+              <Eye className="w-4 h-4 text-primary" />
+              <span>Preview</span>
+              <span className="hidden xl:inline text-[10px] font-mono text-muted-foreground opacity-70">⌘P</span>
+            </Button>
             {/* AI Copilot Launcher */}
             <Button
               variant="outline"
@@ -1006,6 +1033,22 @@ export default function PortalStudioClient({
         onSelectTab={handleSelectTab}
         onSave={handleSave}
         onSetViewMode={handleSetViewMode}
+        onOpenPreview={() => setIsPreviewModalOpen(true)}
+      />
+
+      {/* ── Live Preview Simulator (Cmd+P) ──────────────────────────── */}
+      <PortalPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => setIsPreviewModalOpen(false)}
+        publishedUrl={effectivePortal.status === 'published' ? publicPath : undefined}
+        portal={effectivePortal}
+        theme={theme}
+        branding={branding}
+        navigation={navigation}
+        features={features}
+        primaryMode={primaryMode}
+        portalName={name}
+        slug={slug}
       />
     </PageContainerFluid>
   );

@@ -47,6 +47,10 @@ import {
   Shield,
   Undo2,
   Redo2,
+  Eye,
+  Monitor,
+  Tablet,
+  Smartphone,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
@@ -63,21 +67,17 @@ import {
   saveContentStudioDraftAction,
   discardContentStudioDraftAction,
 } from '@/app/actions/draft-actions';
-import type {
-  ContentItem,
-  ContentItemType,
-  ContentStatus,
-  ContentMedia,
-  PageBlock,
-  PageBlockType,
-} from '@/lib/types';
+import type { ContentItem, ContentItemType, ContentStatus, ContentMedia, PageBlock, PageBlockType, ResolvedTheme, BuilderResources } from '@/lib/types';
 import type { PortalVisibility } from '@/lib/types/portal';
 import type { MembershipPlan } from '@/lib/types/membership';
 import type { ContentTeaserMode, CustomPaywallConfig, ContentStudioDraft } from '@/lib/types/content';
 import { getBlock, normalizeBlockType } from '@/lib/page-builder/registry';
+import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { DEFAULT_THEME } from '@/lib/portal-presets';
 import { ContentBlockCanvas } from './studio/ContentBlockCanvas';
 import { ContentBlockPalette } from './studio/ContentBlockPalette';
 import { ContentBlockInspector } from './studio/ContentBlockInspector';
+import { BlockRenderer } from '@/components/page-builder/BlockRenderer';
 
 export interface ContentEditorModalProps {
   open: boolean;
@@ -114,7 +114,8 @@ export function ContentEditorModal({
   const { toast } = useToast();
 
   // Active view tab
-  const [viewMode, setViewMode] = useState<'studio' | 'details'>('studio');
+  const [viewMode, setViewMode] = useState<'studio' | 'preview' | 'details'>('studio');
+  const [previewViewport, setPreviewViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
 
   // Panel collapse toggles for desktop
   const [showLeftPalette, setShowLeftPalette] = useState(true);
@@ -995,6 +996,19 @@ export function ContentEditorModal({
             </button>
             <button
               type="button"
+              onClick={() => setViewMode('preview')}
+              className={cn(
+                'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
+                viewMode === 'preview'
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <Eye className="w-3.5 h-3.5 text-blue-500" />
+              <span>Preview</span>
+            </button>
+            <button
+              type="button"
               onClick={() => setViewMode('details')}
               className={cn(
                 'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all',
@@ -1217,6 +1231,68 @@ export function ContentEditorModal({
               </div>
             </div>
           )}
+        </div>
+      ) : viewMode === 'preview' ? (
+        <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/50 flex flex-col relative">
+          {/* Device Viewport Selector */}
+          <div className="sticky top-0 z-10 w-full flex justify-center py-4 bg-background/80 backdrop-blur-md border-b border-border">
+            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setPreviewViewport('desktop')}
+                className={cn('p-2 rounded-lg text-xs transition-all', previewViewport === 'desktop' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <Monitor className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewViewport('tablet')}
+                className={cn('p-2 rounded-lg text-xs transition-all', previewViewport === 'tablet' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <Tablet className="w-4 h-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setPreviewViewport('mobile')}
+                className={cn('p-2 rounded-lg text-xs transition-all', previewViewport === 'mobile' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+              >
+                <Smartphone className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1 p-6 flex flex-col items-center">
+            <div 
+              className="w-full bg-card border border-border shadow-sm min-h-[60vh] transition-all duration-300 mx-auto"
+              style={{
+                maxWidth: previewViewport === 'desktop' ? '800px' : previewViewport === 'tablet' ? '600px' : '390px'
+              }}
+            >
+              <div className="p-8 md:p-12">
+                <h1 className="text-3xl font-extrabold tracking-tight mb-4">{title || 'Untitled Document'}</h1>
+                {summary && <p className="text-lg text-muted-foreground mb-8">{summary}</p>}
+                <div className="space-y-6">
+                  {blocks.map(block => (
+                    <BlockRenderer 
+                      key={block.id} 
+                      block={block} 
+                      ctx={{ 
+                        mode: 'view', 
+                        viewport: previewViewport, 
+                        theme: { 
+                          ...DEFAULT_THEME, 
+                          colors: { ...DEFAULT_THEME.colors, primary: portalPrimaryColor || DEFAULT_THEME.colors.primary },
+                          typography: { headingFont: 'Figtree, sans-serif', bodyFont: 'Figtree, sans-serif', baseSize: '16px' }
+                        } as ResolvedTheme, 
+                        interpolate: (t: string) => t,
+                        resources: {} as BuilderResources
+                      }} 
+                    />
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       ) : (
         /* Details, Media & SEO View */

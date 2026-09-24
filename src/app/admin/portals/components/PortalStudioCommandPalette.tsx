@@ -75,6 +75,7 @@ export interface PortalStudioCommandPaletteProps {
   onSelectTab: (tabId: StudioTabId) => void;
   onSave: () => void;
   onSetViewMode: (mode: StudioViewMode) => void;
+  onOpenPreview?: () => void;
 }
 
 export function PortalStudioCommandPalette({
@@ -83,6 +84,7 @@ export function PortalStudioCommandPalette({
   onSelectTab,
   onSave,
   onSetViewMode,
+  onOpenPreview,
 }: PortalStudioCommandPaletteProps) {
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -106,6 +108,27 @@ export function PortalStudioCommandPalette({
 
         {/* Quick Studio Actions */}
         <CommandGroup heading="Studio Actions">
+          {onOpenPreview && (
+            <CommandItem
+              onSelect={() => {
+                onOpenPreview();
+                onClose();
+              }}
+              className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl cursor-pointer min-h-[44px] text-xs font-semibold"
+            >
+              <div className="w-7 h-7 rounded-lg bg-blue-500/10 text-blue-500 flex items-center justify-center shrink-0">
+                <Globe className="w-3.5 h-3.5" />
+              </div>
+              <div className="flex flex-col">
+                <span>Preview Portal Simulator</span>
+                <span className="text-[10px] text-muted-foreground font-normal">Real-time multi-device visual preview</span>
+              </div>
+              <div className="ml-auto flex items-center gap-1">
+                <span className="text-[10px] font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">⌘P</span>
+              </div>
+            </CommandItem>
+          )}
+
           <CommandItem
             onSelect={() => {
               onSave();
