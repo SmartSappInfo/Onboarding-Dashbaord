@@ -5,6 +5,8 @@
  * Reactions, and Moderation Reports. Zero `any` or `any[]` typing.
  */
 
+import type { PageBlock } from '@/lib/types';
+
 // ── Status & Enum Types ──────────────────────────────────────────────────────
 
 export type SpaceVisibility = 'public' | 'members_only' | 'plan_gated' | 'private_cohort';
@@ -93,6 +95,9 @@ export interface CommunityPost {
   content: string; // Rich Markdown text
   mediaUrls?: string[];
   tags?: string[];
+  lessonId?: string;
+  courseId?: string;
+  blocks?: PageBlock[];
 
   pollId?: string;
   pollData?: CommunityPoll;
@@ -230,6 +235,9 @@ export interface CreatePostInput {
   content: string;
   mediaUrls?: string[];
   tags?: string[];
+  lessonId?: string;
+  courseId?: string;
+  blocks?: PageBlock[];
   pollQuestion?: string;
   pollOptions?: string[];
   pollAllowMultiple?: boolean;
@@ -241,8 +249,32 @@ export interface UpdatePostInput {
   type?: PostType;
   mediaUrls?: string[];
   tags?: string[];
+  lessonId?: string;
+  courseId?: string;
+  blocks?: PageBlock[];
   isPinned?: boolean;
   isLocked?: boolean;
+}
+
+export type ResolveModerationAction = 'dismiss' | 'delete_target';
+
+export interface ResolveModerationInput {
+  reportId: string;
+  portalId: string;
+  action: ResolveModerationAction;
+  reviewedBy?: string;
+}
+
+export interface CommunityLeaderboardEntry {
+  userId: string;
+  membershipId: string;
+  displayName: string;
+  photoURL?: string;
+  role: string;
+  points: number;
+  level: number;
+  levelName: string;
+  rank: number;
 }
 
 export interface CreateCommentInput {

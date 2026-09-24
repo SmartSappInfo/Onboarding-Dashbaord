@@ -27,6 +27,8 @@ import type {
   CastPollVoteInput,
   ToggleReactionInput,
   ReportContentInput,
+  ResolveModerationInput,
+  CommunityLeaderboardEntry,
 } from '@/lib/types/community';
 
 export type ActionResponse<T> =
@@ -245,5 +247,56 @@ export async function listModerationReportsAction(
     return { success: true, data: reports };
   } catch (err: unknown) {
     return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to list moderation reports.') };
+  }
+}
+
+export async function resolveModerationReportAction(
+  input: ResolveModerationInput
+): Promise<ActionResponse<{ success: boolean; action: string }>> {
+  try {
+    const res = await CommunityService.resolveModerationReport(input);
+    revalidatePath(`/admin/portals/${input.portalId}`);
+    return { success: true, data: res };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to resolve report.') };
+  }
+}
+
+export async function listLessonPostsAction(
+  portalId: string,
+  lessonId: string
+): Promise<ActionResponse<CommunityPost[]>> {
+  try {
+    const posts = await CommunityService.listLessonPosts(portalId, lessonId);
+    return { success: true, data: posts };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to list lesson discussions.') };
+  }
+}
+
+export async function getCommunityLeaderboardAction(
+  portalId: string,
+  limitCount = 10
+): Promise<ActionResponse<CommunityLeaderboardEntry[]>> {
+  try {
+    const leaderboard = await CommunityService.getCommunityLeaderboard(portalId, limitCount);
+    return { success: true, data: leaderboard };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to load leaderboard.') };
+  }
+}
+
+export async function seedCommunitySpacesAction(
+  portalId: string,
+  organizationId: string,
+  portalSlug?: string
+): Promise<ActionResponse<CommunitySpace[]>> {
+  try {
+    const spaces = await CommunityService.seedCommunitySpaces(portalId, organizationId);
+    revalidatePath(`/admin/portals/${portalId}`);
+    if (portalSlug) revalidatePath(`/portal/${portalSlug}/community`);
+    return { success: true, data: spaces };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.community-actions', err, undefined, 'Failed to seed starter channels.') };
   }
 }

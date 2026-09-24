@@ -24,6 +24,9 @@ import type {
   CastPollVoteInput,
   ToggleReactionInput,
   ReportContentInput,
+  ResolveModerationInput,
+  ResolveModerationAction,
+  CommunityLeaderboardEntry,
 } from '@/lib/types/community';
 
 export class CommunityService {
@@ -89,15 +92,48 @@ export class CommunityService {
     return updated;
   }
 
+  /**
+   * Safe chunked batch deletion preventing Firestore 500-op batch overflow (Rule 9).
+   */
+  public static async chunkedBatchDelete(
+    docRefs: Array<FirebaseFirestore.DocumentReference>
+  ): Promise<void> {
+    const CHUNK_SIZE = 450;
+    for (let i = 0; i < docRefs.length; i += CHUNK_SIZE) {
+      const chunk = docRefs.slice(i, i + CHUNK_SIZE);
+      const batch = adminDb.batch();
+      chunk.forEach(ref => batch.delete(ref));
+      await batch.commit();
+    }
+  }
+
   public static async deleteSpace(spaceId: string): Promise<void> {
-    const batch = adminDb.batch();
-    batch.delete(adminDb.collection('community_spaces').doc(spaceId));
+    const spaceDocRef = adminDb.collection('community_spaces').doc(spaceId);
+    const refsToDelete: FirebaseFirestore.DocumentReference[] = [spaceDocRef];
 
-    // Delete child posts
+    // Collect child posts
     const postsSnap = await adminDb.collection('community_posts').where('spaceId', '==', spaceId).get();
-    postsSnap.docs.forEach(d => batch.delete(d.ref));
+    for (const postDoc of postsSnap.docs) {
+      refsToDelete.push(postDoc.ref);
+      const postData = postDoc.data() as CommunityPost;
 
-    await batch.commit();
+      // Collect child comments
+      const commentsSnap = await adminDb.collection('community_comments').where('postId', '==', postDoc.id).get();
+      commentsSnap.docs.forEach(d => refsToDelete.push(d.ref));
+
+      // Collect attached polls & votes
+      if (postData.pollId) {
+        refsToDelete.push(adminDb.collection('community_polls').doc(postData.pollId));
+        const votesSnap = await adminDb.collection('poll_votes').where('postId', '==', postDoc.id).get();
+        votesSnap.docs.forEach(d => refsToDelete.push(d.ref));
+      }
+
+      // Collect reactions
+      const reactionsSnap = await adminDb.collection('community_reactions').where('targetId', '==', postDoc.id).get();
+      reactionsSnap.docs.forEach(d => refsToDelete.push(d.ref));
+    }
+
+    await CommunityService.chunkedBatchDelete(refsToDelete);
   }
 
   public static async getSpaceById(spaceId: string): Promise<CommunitySpace | null> {
@@ -162,6 +198,19 @@ export class CommunityService {
       await pollRef.set(pollDoc);
     }
 
+    // Anti-spam rate-limiting guard (Rule 8 & 9: max 5 posts in 2 minutes)
+    const twoMinutesAgo = new Date(Date.now() - 2 * 60 * 1000).toISOString();
+    const recentPostsSnap = await adminDb
+      .collection('community_posts')
+      .where('portalId', '==', input.portalId)
+      .where('authorId', '==', input.authorId)
+      .where('createdAt', '>=', twoMinutesAgo)
+      .get();
+
+    if (recentPostsSnap.size >= 5) {
+      throw new Error('You are posting too frequently. Please wait a minute before publishing again.');
+    }
+
     const post: CommunityPost = {
       id: docRef.id,
       organizationId: input.organizationId,
@@ -178,6 +227,9 @@ export class CommunityService {
       content: input.content || '',
       mediaUrls: input.mediaUrls || [],
       tags: input.tags || [],
+      lessonId: input.lessonId || undefined,
+      courseId: input.courseId || undefined,
+      blocks: input.blocks || undefined,
       pollId,
       isPinned: false,
       isLocked: false,
@@ -238,6 +290,9 @@ export class CommunityService {
       ...current,
       ...updates,
       title: updates.title !== undefined ? updates.title.trim() : current.title,
+      lessonId: updates.lessonId !== undefined ? updates.lessonId : current.lessonId,
+      courseId: updates.courseId !== undefined ? updates.courseId : current.courseId,
+      blocks: updates.blocks !== undefined ? updates.blocks : current.blocks,
       updatedAt: now,
     };
 
@@ -251,21 +306,25 @@ export class CommunityService {
     if (!snap.exists) return;
 
     const postData = snap.data() as CommunityPost;
-    const batch = adminDb.batch();
+    const refsToDelete: FirebaseFirestore.DocumentReference[] = [docRef];
 
-    // 1. Delete post
-    batch.delete(docRef);
-
-    // 2. Delete attached comments
+    // 1. Collect attached child comments
     const commentsSnap = await adminDb.collection('community_comments').where('postId', '==', postId).get();
-    commentsSnap.docs.forEach(d => batch.delete(d.ref));
+    commentsSnap.docs.forEach(d => refsToDelete.push(d.ref));
 
-    // 3. Delete attached poll
+    // 2. Collect attached poll and poll votes
     if (postData.pollId) {
-      batch.delete(adminDb.collection('community_polls').doc(postData.pollId));
+      refsToDelete.push(adminDb.collection('community_polls').doc(postData.pollId));
+      const votesSnap = await adminDb.collection('poll_votes').where('postId', '==', postId).get();
+      votesSnap.docs.forEach(d => refsToDelete.push(d.ref));
     }
 
-    await batch.commit();
+    // 3. Collect attached reactions
+    const reactionsSnap = await adminDb.collection('community_reactions').where('targetId', '==', postId).get();
+    reactionsSnap.docs.forEach(d => refsToDelete.push(d.ref));
+
+    // 4. Safe chunked deletion preventing Firestore 500-op batch overflow (Rule 9)
+    await CommunityService.chunkedBatchDelete(refsToDelete);
 
     // Decrement space postCount
     const spaceSnap = await adminDb.collection('community_spaces').doc(postData.spaceId).get();
@@ -337,6 +396,19 @@ export class CommunityService {
   // ── Comment Operations ─────────────────────────────────────────────────────
 
   public static async createComment(input: CreateCommentInput): Promise<CommunityComment> {
+    // Anti-spam rate-limiting guard (Rule 8 & 9: max 10 comments in 1 minute)
+    const oneMinuteAgo = new Date(Date.now() - 60 * 1000).toISOString();
+    const recentCommentsSnap = await adminDb
+      .collection('community_comments')
+      .where('portalId', '==', input.portalId)
+      .where('authorId', '==', input.authorId)
+      .where('createdAt', '>=', oneMinuteAgo)
+      .get();
+
+    if (recentCommentsSnap.size >= 10) {
+      throw new Error('You are commenting too rapidly. Please pause for a moment.');
+    }
+
     const now = new Date().toISOString();
     const docRef = adminDb.collection('community_comments').doc();
 
@@ -391,14 +463,46 @@ export class CommunityService {
     if (!snap.exists) return;
 
     const data = snap.data() as CommunityComment;
-    await docRef.delete();
+    const refsToDelete: FirebaseFirestore.DocumentReference[] = [docRef];
+
+    // Find child replies
+    const repliesSnap = await adminDb
+      .collection('community_comments')
+      .where('parentCommentId', '==', commentId)
+      .get();
+    repliesSnap.docs.forEach(d => refsToDelete.push(d.ref));
+
+    // Find reactions
+    const reactSnap = await adminDb
+      .collection('community_reactions')
+      .where('targetId', '==', commentId)
+      .get();
+    reactSnap.docs.forEach(d => refsToDelete.push(d.ref));
+
+    await CommunityService.chunkedBatchDelete(refsToDelete);
 
     // Decrement post commentCount
     const postSnap = await adminDb.collection('community_posts').doc(data.postId).get();
     if (postSnap.exists) {
-      const currentComments = Math.max(0, (postSnap.data()?.commentCount || 1) - 1);
+      const currentComments = Math.max(0, (postSnap.data()?.commentCount || 1) - refsToDelete.length);
       await postSnap.ref.set({ commentCount: currentComments, updatedAt: new Date().toISOString() }, { merge: true });
     }
+  }
+
+  public static async listLessonPosts(
+    portalId: string,
+    lessonId: string,
+    limitCount = 30
+  ): Promise<CommunityPost[]> {
+    const snap = await adminDb
+      .collection('community_posts')
+      .where('portalId', '==', portalId)
+      .where('lessonId', '==', lessonId)
+      .orderBy('createdAt', 'desc')
+      .limit(limitCount)
+      .get();
+
+    return snap.docs.map(d => d.data() as CommunityPost);
   }
 
   public static async listPostComments(postId: string): Promise<CommunityComment[]> {
@@ -565,5 +669,195 @@ export class CommunityService {
       .get();
 
     return snap.docs.map(d => d.data() as ModerationReport);
+  }
+
+  /**
+   * Resolve a moderation report by either dismissing or cascading deleting the flagged content (Rule 8).
+   */
+  public static async resolveModerationReport(
+    input: ResolveModerationInput
+  ): Promise<{ success: boolean; action: ResolveModerationAction }> {
+    const docRef = adminDb.collection('moderation_reports').doc(input.reportId);
+    const snap = await docRef.get();
+    if (!snap.exists) throw new Error(`Report ${input.reportId} not found.`);
+
+    const report = snap.data() as ModerationReport;
+    const now = new Date().toISOString();
+
+    if (input.action === 'delete_target') {
+      if (report.targetType === 'post') {
+        await CommunityService.deletePost(report.targetId);
+      } else if (report.targetType === 'comment') {
+        await CommunityService.deleteComment(report.targetId);
+      }
+      await docRef.update({
+        status: 'action_taken',
+        reviewedBy: input.reviewedBy || 'admin',
+        reviewedAt: now,
+      });
+    } else {
+      await docRef.update({
+        status: 'dismissed',
+        reviewedBy: input.reviewedBy || 'admin',
+        reviewedAt: now,
+      });
+    }
+
+    return { success: true, action: input.action };
+  }
+
+  /**
+   * Skool-style Community Leaderboard: Top contributors by gamification points (Rule 1 & 9).
+   */
+  public static async getCommunityLeaderboard(
+    portalId: string,
+    limitCount = 10
+  ): Promise<CommunityLeaderboardEntry[]> {
+    const snap = await adminDb
+      .collection('portal_memberships')
+      .where('portalId', '==', portalId)
+      .where('status', '==', 'active')
+      .orderBy('points', 'desc')
+      .limit(limitCount)
+      .get();
+
+    return snap.docs.map((d, index) => {
+      const m = d.data();
+      const points = typeof m.points === 'number' ? m.points : 0;
+      let level = 1;
+      let levelName = 'Novice';
+      if (points >= 100) {
+        level = 5;
+        levelName = 'Grandmaster';
+      } else if (points >= 50) {
+        level = 4;
+        levelName = 'Leader';
+      } else if (points >= 25) {
+        level = 3;
+        levelName = 'Scholar';
+      } else if (points >= 10) {
+        level = 2;
+        levelName = 'Contributor';
+      }
+
+      return {
+        userId: m.userId || '',
+        membershipId: d.id,
+        displayName: m.displayName || 'Community Member',
+        photoURL: m.photoURL || undefined,
+        role: m.role || 'member',
+        points,
+        level,
+        levelName,
+        rank: index + 1,
+      };
+    });
+  }
+
+  /**
+   * Helper to verify if a member or role is entitled to access a space (Phase 3 Entitlements).
+   */
+  public static isUserEntitledToSpace(
+    space: CommunitySpace,
+    userPlanIds: string[] = [],
+    userRole?: string
+  ): boolean {
+    if (space.visibility === 'public' || space.visibility === 'members_only') {
+      return true;
+    }
+    if (userRole === 'admin' || userRole === 'owner') {
+      return true;
+    }
+    if (space.visibility === 'plan_gated') {
+      if (!space.allowedPlanIds || space.allowedPlanIds.length === 0) {
+        return true;
+      }
+      return space.allowedPlanIds.some(pid => userPlanIds.includes(pid));
+    }
+    return false;
+  }
+
+  /**
+   * 1-Click Starter Channel Seeding Protocol for Backoffice (Rule 3 & 5).
+   */
+  public static async seedCommunitySpaces(
+    portalId: string,
+    organizationId: string
+  ): Promise<CommunitySpace[]> {
+    const existing = await CommunityService.listPortalSpaces(portalId);
+    if (existing.length > 0) return existing;
+
+    const starters: Array<{
+      name: string;
+      slug: string;
+      description: string;
+      icon: string;
+      visibility: 'public' | 'members_only';
+      order: number;
+      isDefault: boolean;
+    }> = [
+      {
+        name: 'Announcements',
+        slug: 'announcements',
+        description: 'Official academy updates and masterclass news.',
+        icon: '📢',
+        visibility: 'public',
+        order: 1,
+        isDefault: false,
+      },
+      {
+        name: 'General Discussion',
+        slug: 'general',
+        description: 'Open forum for all school bursars, leaders, and peers.',
+        icon: '💬',
+        visibility: 'members_only',
+        order: 2,
+        isDefault: true,
+      },
+      {
+        name: 'Wins & Celebrations',
+        slug: 'wins',
+        description: 'Share tuition fee recovery wins and enrollment milestones!',
+        icon: '🎉',
+        visibility: 'members_only',
+        order: 3,
+        isDefault: false,
+      },
+      {
+        name: 'Questions & Answers',
+        slug: 'q-and-a',
+        description: 'Ask questions about invoices, payments, and policy.',
+        icon: '❓',
+        visibility: 'members_only',
+        order: 4,
+        isDefault: false,
+      },
+      {
+        name: 'Resource Sharing',
+        slug: 'resources',
+        description: 'Exchange templates, forms, and practical bursary guides.',
+        icon: '📁',
+        visibility: 'members_only',
+        order: 5,
+        isDefault: false,
+      },
+    ];
+
+    const created: CommunitySpace[] = [];
+    for (const s of starters) {
+      const space = await CommunityService.createSpace({
+        organizationId,
+        portalId,
+        name: s.name,
+        slug: s.slug,
+        description: s.description,
+        icon: s.icon,
+        visibility: s.visibility,
+        order: s.order,
+        isDefault: s.isDefault,
+      });
+      created.push(space);
+    }
+    return created;
   }
 }
