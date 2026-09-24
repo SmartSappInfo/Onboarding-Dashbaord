@@ -118,3 +118,29 @@ export function getPortalButtonInlineStyle(
       };
   }
 }
+
+/**
+ * Safely validates a redirect URL to prevent Open Redirect attacks.
+ * Strictly requires the path to begin with a single '/' and rejects protocols, '//', or 'javascript:'.
+ */
+export function validateRelativeRedirect(
+  redirectUrl: string | null | undefined,
+  fallback: string
+): string {
+  if (!redirectUrl || typeof redirectUrl !== 'string') {
+    return fallback;
+  }
+  const trimmed = redirectUrl.trim();
+  // Must start with exactly one '/' and not contain '://' or start with '//' or 'javascript:'
+  if (
+    !trimmed.startsWith('/') ||
+    trimmed.startsWith('//') ||
+    trimmed.startsWith('/\\') ||
+    trimmed.toLowerCase().startsWith('javascript:') ||
+    trimmed.includes('://')
+  ) {
+    return fallback;
+  }
+  return trimmed;
+}
+
