@@ -188,3 +188,25 @@ export interface ContentSearchResult {
   matchedFields: string[];
   snippet: string;
 }
+
+export interface PortalContentTemplate {
+  id: string;
+  portalId: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  category: 'article' | 'lesson' | 'resource' | 'documentation' | 'custom';
+  blocks: PageBlock[];
+  createdAt: string;
+  updatedAt: string;
+  createdBy: string;
+}
+
+export interface CreatePortalContentTemplateInput {
+  portalId: string;
+  organizationId: string;
+  name: string;
+  description: string;
+  category?: 'article' | 'lesson' | 'resource' | 'documentation' | 'custom';
+  blocks: PageBlock[];
+}

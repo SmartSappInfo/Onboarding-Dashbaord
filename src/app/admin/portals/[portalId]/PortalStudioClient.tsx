@@ -846,6 +846,7 @@ export default function PortalStudioClient({
                   portalSlug={slug}
                   organizationId={effectivePortal.organizationId}
                   workspaceIds={workspaceIds}
+                  portalPrimaryColor={effectivePortal.theme?.colors?.primary}
                 />
               )}
 

@@ -39,8 +39,9 @@ import {
   Share2,
   Video,
   Globe,
+  Layers,
 } from 'lucide-react';
-import { ContentEditorDrawer } from './ContentEditorDrawer';
+import { ContentEditorModal } from './ContentEditorModal';
 import {
   listContentItemsByPortalAction,
   publishContentItemAction,
@@ -54,6 +55,7 @@ interface PortalContentManagerProps {
   portalSlug: string;
   organizationId: string;
   workspaceIds: string[];
+  portalPrimaryColor?: string;
 }
 
 const TYPE_ICONS: Record<ContentItemType, React.ComponentType<{ className?: string }>> = {
@@ -72,6 +74,7 @@ export function PortalContentManager({
   portalSlug,
   organizationId,
   workspaceIds,
+  portalPrimaryColor,
 }: PortalContentManagerProps) {
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -305,6 +308,15 @@ export function PortalContentManager({
                           <Badge variant="outline" className="text-[9px] font-medium px-1.5 py-0 rounded-md">
                             {item.category}
                           </Badge>
+                          {item.blocks && item.blocks.length > 0 && (
+                            <Badge
+                              variant="outline"
+                              className="text-[9px] font-semibold px-1.5 py-0 rounded-md border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 gap-1 flex items-center"
+                            >
+                              <Layers className="w-2.5 h-2.5" />
+                              <span>{item.blocks.length} Blocks</span>
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-[11px] font-mono text-muted-foreground truncate">
                           /content/{item.type}/{item.slug}
@@ -376,8 +388,8 @@ export function PortalContentManager({
         </CardContent>
       </Card>
 
-      {/* ── Slide-over Editor Drawer ──────────────────────────────────── */}
-      <ContentEditorDrawer
+      {/* ── Full-Screen Content Studio Modal ──────────────────────────── */}
+      <ContentEditorModal
         open={isEditorOpen}
         onOpenChange={(isOpen) => {
           setIsEditorOpen(isOpen);
@@ -387,6 +399,7 @@ export function PortalContentManager({
         organizationId={organizationId}
         workspaceIds={workspaceIds}
         initialItem={editingItem}
+        portalPrimaryColor={portalPrimaryColor}
       />
     </div>
   );

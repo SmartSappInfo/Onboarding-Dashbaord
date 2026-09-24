@@ -18,6 +18,8 @@ import type {
   ContentFilterOptions,
   ContentSearchResult,
   ContentItemType,
+  PortalContentTemplate,
+  CreatePortalContentTemplateInput,
 } from '@/lib/types/content';
 
 export interface ActionResponse<T> {
@@ -163,3 +165,32 @@ export async function listContentItemsByPortalAction(
     };
   }
 }
+
+export async function createPortalContentTemplateAction(
+  input: CreatePortalContentTemplateInput
+): Promise<ActionResponse<PortalContentTemplate>> {
+  try {
+    const template = await ContentService.createPortalContentTemplate(input, 'admin_user');
+    return { success: true, data: template };
+  } catch (err) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to save template.'),
+    };
+  }
+}
+
+export async function listPortalContentTemplatesAction(
+  portalId: string
+): Promise<ActionResponse<PortalContentTemplate[]>> {
+  try {
+    const templates = await ContentService.listPortalContentTemplates(portalId);
+    return { success: true, data: templates };
+  } catch (err) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.content-actions', err, undefined, 'Failed to fetch templates.'),
+    };
+  }
+}
+

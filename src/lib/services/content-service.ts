@@ -21,11 +21,14 @@ import type {
   UpdateContentItemInput,
   ContentFilterOptions,
   ContentSearchResult,
+  PortalContentTemplate,
+  CreatePortalContentTemplateInput,
 } from '@/lib/types/content';
 import { PortalEventService } from './portal-event-service';
 
 export class ContentService {
   private static COLLECTION = 'content_items';
+  private static TEMPLATES_COLLECTION = 'portal_content_templates';
 
   /**
    * Maximum depth for recursive block tree traversal to prevent call-stack overflow
@@ -570,5 +573,53 @@ export class ContentService {
 
     // Sort by match score descending
     return results.sort((a, b) => b.matchScore - a.matchScore);
+  }
+
+  /**
+   * Persists a custom block arrangement as a reusable portal content template.
+   */
+  public static async createPortalContentTemplate(
+    input: CreatePortalContentTemplateInput,
+    userId: string = 'system'
+  ): Promise<PortalContentTemplate> {
+    if (!input.name.trim()) {
+      throw new Error('Template name is required.');
+    }
+    if (!input.blocks || input.blocks.length === 0) {
+      throw new Error('Cannot save an empty template. Please add at least one block.');
+    }
+    this.validateBlockPayloadSize(input.blocks);
+
+    const now = new Date().toISOString();
+    const docRef = adminDb.collection(this.TEMPLATES_COLLECTION).doc();
+    const template: PortalContentTemplate = {
+      id: docRef.id,
+      portalId: input.portalId,
+      organizationId: input.organizationId,
+      name: input.name.trim(),
+      description: input.description.trim(),
+      category: input.category || 'custom',
+      blocks: input.blocks,
+      createdAt: now,
+      updatedAt: now,
+      createdBy: userId,
+    };
+
+    await docRef.set(template);
+    return template;
+  }
+
+  /**
+   * Lists custom content templates created for a specific portal.
+   */
+  public static async listPortalContentTemplates(
+    portalId: string
+  ): Promise<PortalContentTemplate[]> {
+    const snap = await adminDb
+      .collection(this.TEMPLATES_COLLECTION)
+      .where('portalId', '==', portalId)
+      .get();
+
+    return snap.docs.map((doc) => doc.data() as PortalContentTemplate);
   }
 }
