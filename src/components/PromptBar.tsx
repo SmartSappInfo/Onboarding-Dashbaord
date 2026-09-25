@@ -263,10 +263,10 @@ const PromptBar: React.FC<PromptBarProps> = ({
   onStop,
   onAttach,
   onDictate,
-  background = '#27272a',
-  color = '#f5f5f5',
-  menuBackground = '#323236',
-  sparkColor = '#b39dff',
+  background = '#ffffff',
+  color = '#0f172a',
+  menuBackground = '#ffffff',
+  sparkColor = '#4f46e5',
   sparkBoost = 1,
   width = 400,
   radius = 16,
@@ -662,7 +662,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
       <style>{STYLE}</style>
       {open ? (
         <div
-          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[2] origin-bottom rounded-xl p-1 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.35),0_1px_2px_rgba(0,0,0,0.08)] [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] data-[kind=model]:right-auto data-[kind=model]:w-[280px] data-[kind=model]:max-h-[320px] data-[kind=model]:overflow-y-auto data-[kind=model]:origin-bottom-left data-[kind=effort]:right-auto data-[kind=effort]:w-[248px] data-[kind=effort]:origin-bottom-left data-[kind=effort]:px-3.5 data-[kind=effort]:pt-3 data-[kind=effort]:pb-3.5 motion-reduce:[animation:none]"
+          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[2] origin-bottom rounded-2xl p-1.5 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.16),0_1px_3px_rgba(0,0,0,0.06)] border border-[color:color-mix(in_srgb,var(--pb-ink)_12%,transparent)] [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] data-[kind=model]:right-auto data-[kind=model]:w-[280px] data-[kind=model]:max-h-[320px] data-[kind=model]:overflow-y-auto data-[kind=model]:origin-bottom-left data-[kind=effort]:right-auto data-[kind=effort]:w-[248px] data-[kind=effort]:origin-bottom-left data-[kind=effort]:px-3.5 data-[kind=effort]:pt-3 data-[kind=effort]:pb-3.5 motion-reduce:[animation:none]"
           role={open === 'effort' ? 'dialog' : 'listbox'}
           aria-label={
             open === 'at' ? 'Sources' : open === 'slash' ? 'Commands' : open === 'model' ? 'Models' : 'Effort'
@@ -779,7 +779,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
       ) : null}
 
       <div
-        className="relative isolate flex cursor-text flex-col gap-2 p-3 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:opacity-0 before:content-[''] before:[background:radial-gradient(140%_120%_at_0%_100%,color-mix(in_srgb,var(--pb-spark)_26%,transparent),transparent_62%)] before:[transition:opacity_500ms_ease] data-[max]:before:opacity-100"
+        className="relative isolate flex cursor-text flex-col gap-2 p-3 [background:var(--pb-bg)] [border-radius:var(--pb-radius)] border border-[color:color-mix(in_srgb,var(--pb-ink)_12%,transparent)] shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all duration-200 focus-within:border-[color:color-mix(in_srgb,var(--pb-spark)_60%,transparent)] focus-within:ring-2 focus-within:ring-[color:color-mix(in_srgb,var(--pb-spark)_20%,transparent)] before:pointer-events-none before:absolute before:inset-0 before:-z-10 before:rounded-[inherit] before:opacity-0 before:content-[''] before:[background:radial-gradient(140%_120%_at_0%_100%,color-mix(in_srgb,var(--pb-spark)_26%,transparent),transparent_62%)] before:[transition:opacity_500ms_ease] data-[max]:before:opacity-100"
         role="presentation"
         data-max={maxed ? '' : undefined}
         onPointerDown={e => {
@@ -896,7 +896,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
               key={action.key}
               type="button"
               disabled={action.disabled}
-              className="inline-flex h-7 flex-none cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 text-[12px] font-medium outline-none select-none [color:color-mix(in_srgb,var(--pb-ink)_70%,transparent)] [font:inherit] [-webkit-tap-highlight-color:transparent] [transition:background-color_150ms_ease,color_150ms_ease] disabled:opacity-40 disabled:cursor-not-allowed data-[active]:[background:color-mix(in_srgb,var(--pb-ink)_12%,transparent)] data-[active]:[color:var(--pb-ink)] [@media(hover:hover)_and_(pointer:fine)]:hover:[background:color-mix(in_srgb,var(--pb-ink)_8%,transparent)] [@media(hover:hover)_and_(pointer:fine)]:hover:[color:var(--pb-ink)]"
+              className="inline-flex h-7 flex-none cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg border-0 bg-transparent px-2.5 text-[12px] font-medium outline-none select-none [color:color-mix(in_srgb,var(--pb-ink)_70%,transparent)] [font:inherit] [-webkit-tap-highlight-color:transparent] [transition:background-color_150ms_ease,color_150ms_ease] disabled:opacity-40 disabled:cursor-not-allowed data-[active]:[background:color-mix(in_srgb,var(--pb-ink)_10%,transparent)] data-[active]:[color:var(--pb-ink)] [@media(hover:hover)_and_(pointer:fine)]:hover:[background:color-mix(in_srgb,var(--pb-ink)_6%,transparent)] [@media(hover:hover)_and_(pointer:fine)]:hover:[color:var(--pb-ink)]"
               aria-label={action.label}
               title={action.title ?? action.label}
               data-active={action.active ? '' : undefined}
@@ -934,7 +934,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
           ) : null}
           <button
             type="button"
-            className="relative inline-grid h-7 w-7 flex-none cursor-pointer touch-manipulation place-items-center rounded-lg border-0 p-0 outline-none select-none [background:color-mix(in_srgb,var(--pb-ink)_12%,var(--pb-bg))] [color:color-mix(in_srgb,var(--pb-ink)_55%,var(--pb-bg))] [font:inherit] [-webkit-tap-highlight-color:transparent] [transition:background-color_200ms_ease,color_200ms_ease,transform_160ms_cubic-bezier(0.23,1,0.32,1)] disabled:cursor-default data-[armed]:[background:var(--pb-ink)] data-[armed]:[color:var(--pb-bg)] data-[pressed]:[transform:scale(var(--pb-press))] motion-reduce:data-[pressed]:[transform:none]"
+            className="relative inline-grid h-7 w-7 flex-none cursor-pointer touch-manipulation place-items-center rounded-lg border-0 p-0 outline-none select-none [background:color-mix(in_srgb,var(--pb-ink)_10%,var(--pb-bg))] [color:color-mix(in_srgb,var(--pb-ink)_50%,var(--pb-bg))] [font:inherit] [-webkit-tap-highlight-color:transparent] [transition:background-color_200ms_ease,color_200ms_ease,transform_160ms_cubic-bezier(0.23,1,0.32,1)] disabled:cursor-default data-[armed]:[background:var(--pb-spark)] data-[armed]:[color:#ffffff] data-[pressed]:[transform:scale(var(--pb-press))] motion-reduce:data-[pressed]:[transform:none]"
             disabled={!armed}
             aria-label={busy ? 'Stop' : 'Send'}
             data-armed={armed ? '' : undefined}

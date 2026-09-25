@@ -43,6 +43,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTheme } from 'next-themes';
 import { useWorkspaceAiModel } from '@/hooks/use-workspace-ai-model';
 import { AiModelRegistry } from '@/lib/ai/model-registry';
 import {
@@ -109,6 +110,13 @@ export function UnifiedAiArchitectStudio({
 
   // Inculcated workspace AI model selector
   const { modelId, setModel, isUpdating: isModelUpdating } = useWorkspaceAiModel();
+  const { resolvedTheme } = useTheme();
+  const isDark = resolvedTheme === 'dark';
+
+  const pbBackground = isDark ? '#1e1e24' : '#ffffff';
+  const pbColor = isDark ? '#f4f4f5' : '#0f172a';
+  const pbMenuBackground = isDark ? '#27272e' : '#ffffff';
+  const pbSparkColor = isDark ? '#a78bfa' : '#4f46e5';
 
   // Primary state
   const [prompt, setPrompt] = React.useState('');
@@ -596,7 +604,7 @@ export function UnifiedAiArchitectStudio({
   return (
     <Card
       className={cn(
-        'w-full border-border/80 bg-card shadow-lg rounded-3xl overflow-hidden transition-all duration-200',
+        'w-full border-2 border-border/80 bg-card shadow-xl rounded-3xl overflow-hidden transition-all duration-200 backdrop-blur-xs',
         isDraggingOver && 'border-primary ring-4 ring-primary/10 bg-primary/5',
         className
       )}
@@ -616,7 +624,7 @@ export function UnifiedAiArchitectStudio({
         }
       }}
     >
-      <CardHeader className="p-6 pb-4 border-b border-border/60">
+      <CardHeader className="p-6 pb-4 border-b border-border/60 bg-muted/10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-2xl bg-primary/10 text-primary shadow-xs">
@@ -625,7 +633,7 @@ export function UnifiedAiArchitectStudio({
             <div>
               <CardTitle className="text-xl font-bold tracking-tight text-foreground flex items-center gap-2">
                 <span>AI Survey Architect Studio</span>
-                <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider border-primary/30 text-primary bg-primary/5">
+                <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider border-primary/30 text-primary bg-primary/10 rounded-full px-2.5 py-0.5">
                   Universal Ingestion
                 </Badge>
               </CardTitle>
@@ -641,7 +649,7 @@ export function UnifiedAiArchitectStudio({
               variant="outline"
               size="sm"
               onClick={() => setIsArchetypesModalOpen(true)}
-              className="h-9 px-3 rounded-xl border-border/80 text-xs font-semibold gap-1.5 active:scale-[0.97]"
+              className="h-9 px-3.5 rounded-xl border border-border/80 bg-background/80 hover:bg-muted text-xs font-semibold gap-1.5 shadow-xs transition-all active:scale-[0.97]"
             >
               <Layers className="h-3.5 w-3.5 text-primary" />
               <span>Archetypes Catalog</span>
@@ -758,13 +766,13 @@ export function UnifiedAiArchitectStudio({
             onSend={(text, detail) => handleExecute(text, detail)}
             onStop={onCancel}
             onAttach={pickFiles}
-            background="#27272a"
-            color="#f5f5f5"
-            menuBackground="#323236"
-            sparkColor="#b39dff"
+            background={pbBackground}
+            color={pbColor}
+            menuBackground={pbMenuBackground}
+            sparkColor={pbSparkColor}
             sparkBoost={1}
             width={720}
-            radius={16}
+            radius={18}
             maxRows={6}
             morphDuration={240}
             squash={0.12}
