@@ -418,9 +418,11 @@ registerBlock({
       );
     };
 
+    const headerContent = renderIntroHeader();
+
     return (
-      <div className="w-full py-2" role="region" aria-label="List Content" data-preset={preset}>
-        {renderIntroHeader()}
+      <div className={cn("w-full", headerContent ? "py-2" : "py-0.5")} role="region" aria-label="List Content" data-preset={preset}>
+        {headerContent}
 
         <ul
           role="list"
