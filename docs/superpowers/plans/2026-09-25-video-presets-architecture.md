@@ -225,7 +225,7 @@ All labels, tooltips, and presets use clear, simple English without tech jargon 
 - Modify: `src/lib/page-builder/blocks/video.tsx`
 - Test: `src/components/page-builder/__tests__/VideoPresetSchema.test.tsx`
 
-- [ ] **Step 1: Write the failing test for Video Preset Schema and Archetype Bundles**
+- [x] **Step 1: Write the failing test for Video Preset Schema and Archetype Bundles**
 
 ```typescript
 // src/components/page-builder/__tests__/VideoPresetSchema.test.tsx
@@ -284,21 +284,21 @@ describe('Video Block Schema & Archetype Bundles', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/VideoPresetSchema.test.tsx`
 Expected: FAIL with missing fields on video definition.
 
-- [ ] **Step 3: Update `src/lib/page-builder/blocks/video.tsx` with extended Zod schema and archetype defaults**
+- [x] **Step 3: Update `src/lib/page-builder/blocks/video.tsx` with extended Zod schema and archetype defaults**
 
 Update schema in `src/lib/page-builder/blocks/video.tsx` with `preset`, `aspectRatio`, `elevation`, `borderRadius`, `autoPlay`, `muted`, `loop`, `ambientGlow`, `hoverPreview`, `playButtonArchetype`, `controlsTheme`, and `overlayTint` with non-breaking transform defaults.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/VideoPresetSchema.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/lib/page-builder/blocks/video.tsx src/components/page-builder/__tests__/VideoPresetSchema.test.tsx
@@ -313,7 +313,7 @@ git commit -m "feat(video): extend video block schema with behavioral archetypes
 - Create: `src/components/page-builder/VideoPresetSelector.tsx`
 - Test: `src/components/page-builder/__tests__/VideoPresetSelector.test.tsx`
 
-- [ ] **Step 1: Write the failing test for VideoPresetSelector**
+- [x] **Step 1: Write the failing test for VideoPresetSelector**
 
 ```typescript
 // src/components/page-builder/__tests__/VideoPresetSelector.test.tsx
@@ -364,21 +364,21 @@ describe('VideoPresetSelector', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/VideoPresetSelector.test.tsx`
 Expected: FAIL with "Cannot find module '../VideoPresetSelector'"
 
-- [ ] **Step 3: Implement `src/components/page-builder/VideoPresetSelector.tsx`**
+- [x] **Step 3: Implement `src/components/page-builder/VideoPresetSelector.tsx`**
 
 Implement `VideoPresetSelector.tsx` with 4 miniature animated WYSIWYG wireframes, `VIDEO_PRESET_BUNDLES`, DOM focus management via `buttonRefs`, and mobile-first `min-h-[92px]` touch targets.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/VideoPresetSelector.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/page-builder/VideoPresetSelector.tsx src/components/page-builder/__tests__/VideoPresetSelector.test.tsx
@@ -393,7 +393,7 @@ git commit -m "feat(inspector): create VideoPresetSelector with 4 animated minia
 - Create: `src/components/page-builder/PlayButtonArchetypeSelector.tsx`
 - Test: `src/components/page-builder/__tests__/PlayButtonArchetypeSelector.test.tsx`
 
-- [ ] **Step 1: Write the failing test for PlayButtonArchetypeSelector**
+- [x] **Step 1: Write the failing test for PlayButtonArchetypeSelector**
 
 ```typescript
 // src/components/page-builder/__tests__/PlayButtonArchetypeSelector.test.tsx
@@ -433,21 +433,21 @@ describe('PlayButtonArchetypeSelector', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/PlayButtonArchetypeSelector.test.tsx`
 Expected: FAIL with "Cannot find module '../PlayButtonArchetypeSelector'"
 
-- [ ] **Step 3: Implement `src/components/page-builder/PlayButtonArchetypeSelector.tsx`**
+- [x] **Step 3: Implement `src/components/page-builder/PlayButtonArchetypeSelector.tsx`**
 
 Implement `PlayButtonArchetypeSelector.tsx` with Radar Pulse, Glassmorphic Pill, Minimal Bottom Badge, and Classic Disc wireframes, `buttonRefs` focus movement, and `min-h-[58px]` touch targets.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/PlayButtonArchetypeSelector.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/page-builder/PlayButtonArchetypeSelector.tsx src/components/page-builder/__tests__/PlayButtonArchetypeSelector.test.tsx
@@ -463,7 +463,7 @@ git commit -m "feat(inspector): create PlayButtonArchetypeSelector with motion w
 - Modify: `src/lib/page-builder/blocks/video.tsx`
 - Test: `src/components/page-builder/__tests__/VideoBlockRuntimeRender.test.tsx`
 
-- [ ] **Step 1: Write failing test for runtime video preset rendering**
+- [x] **Step 1: Write failing test for runtime video preset rendering**
 
 ```typescript
 // src/components/page-builder/__tests__/VideoBlockRuntimeRender.test.tsx
@@ -559,12 +559,12 @@ describe('Video Block Runtime Presets', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/VideoBlockRuntimeRender.test.tsx`
 Expected: FAIL with missing ambient glow or radar pulse trigger.
 
-- [ ] **Step 3: Update `src/components/video-embed.tsx` and `src/lib/page-builder/blocks/video.tsx`**
+- [x] **Step 3: Update `src/components/video-embed.tsx` and `src/lib/page-builder/blocks/video.tsx`**
 
 Implement:
 1. `VideoPlayButtonOverlay` support for `pulse`, `glass-pill`, `minimal-badge`, `standard`.
@@ -573,12 +573,12 @@ Implement:
 4. Tap-to-Unmute floating toggle for muted autoplaying archetypes.
 5. Kinetic hover preview support for micro-demo archetype.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/VideoBlockRuntimeRender.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/video-embed.tsx src/lib/page-builder/blocks/video.tsx src/components/page-builder/__tests__/VideoBlockRuntimeRender.test.tsx
@@ -594,7 +594,7 @@ git commit -m "feat(video): implement reactive ambient glow, motion play trigger
 - Modify: `src/lib/page-builder/blocks/video.tsx`
 - Test: `src/components/page-builder/__tests__/AutoBlockEditorVideoPresets.test.tsx`
 
-- [ ] **Step 1: Write failing test for AutoBlockEditor Video Preset routing**
+- [x] **Step 1: Write failing test for AutoBlockEditor Video Preset routing**
 
 ```typescript
 // src/components/page-builder/__tests__/AutoBlockEditorVideoPresets.test.tsx
@@ -632,12 +632,12 @@ describe('AutoBlockEditor Video Preset Routing', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/AutoBlockEditorVideoPresets.test.tsx`
 Expected: FAIL.
 
-- [ ] **Step 3: Update `src/components/page-builder/AutoBlockEditor.tsx` and `video.tsx`**
+- [x] **Step 3: Update `src/components/page-builder/AutoBlockEditor.tsx` and `video.tsx`**
 
 1. Route `preset` (for block type `'video'`) to `<VideoPresetSelector />`.
 2. Route `playButtonArchetype` to `<PlayButtonArchetypeSelector />`.
@@ -653,12 +653,12 @@ Expected: FAIL.
    - "Playback Mode"
    - "Elevation & Frame"
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/AutoBlockEditorVideoPresets.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/page-builder/AutoBlockEditor.tsx src/lib/page-builder/blocks/video.tsx src/components/page-builder/__tests__/AutoBlockEditorVideoPresets.test.tsx
@@ -672,22 +672,22 @@ git commit -m "feat(inspector): integrate VideoPresetSelector and PlayButtonArch
 **Files:**
 - All touched files
 
-- [ ] **Step 1: Run complete page-builder test suite**
+- [x] **Step 1: Run complete page-builder test suite**
 
 Run: `npx vitest run src/components/page-builder/__tests__/`
 Expected: All tests pass (including existing 68 tests and all new video preset tests).
 
-- [ ] **Step 2: Run strict TypeScript compilation check**
+- [x] **Step 2: Run strict TypeScript compilation check**
 
 Run: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
 
 Run: `npm run lint`
 Expected: 0 blocking errors or lint warnings.
 
-- [ ] **Step 4: Confirm clean local git working tree**
+- [x] **Step 4: Confirm clean local git working tree**
 
 Run: `git status`
 Expected: Clean working tree on local branch without any uncommitted leftovers. (DO NOT push to origin).
@@ -696,10 +696,10 @@ Expected: Clean working tree on local branch without any uncommitted leftovers. 
 
 ## 9. Verification Checkpoints & Success Metrics
 
-- [ ] **4 Distinct Video Archetypes:** Ambient Background Loop, Hero Walkthrough, Social Reel, Interactive Micro-Demo wireframes render in `VideoPresetSelector.tsx`.
-- [ ] **Reactive Ambient Lighting:** Soft blurred glow aura pulses behind container with `ambientGlow: true` and respects `prefers-reduced-motion`.
-- [ ] **Play Button Archetypes:** Radar pulse concentric waves, glassmorphic pill, minimal badge, and classic disc render accurately.
-- [ ] **Chassis Framing:** 16:9 desktop browser window with macOS dots and 9:16 vertical smartphone chassis frame video players cleanly without iframe clipping.
-- [ ] **Muted Autoplay Safety:** All autoplaying archetypes initialize with `muted: true` to adhere to browser security policies.
-- [ ] **Zero `any`:** Strict TypeScript compliance across all new and modified components.
-- [ ] **Local-Only Git:** Zero pushes to `origin/main` or remote repositories.
+- [x] **4 Distinct Video Archetypes:** Ambient Background Loop, Hero Walkthrough, Social Reel, Interactive Micro-Demo wireframes render in `VideoPresetSelector.tsx`.
+- [x] **Reactive Ambient Lighting:** Soft blurred glow aura pulses behind container with `ambientGlow: true` and respects `prefers-reduced-motion`.
+- [x] **Play Button Archetypes:** Radar pulse concentric waves, glassmorphic pill, minimal badge, and classic disc render accurately.
+- [x] **Chassis Framing:** 16:9 desktop browser window with macOS dots and 9:16 vertical smartphone chassis frame video players cleanly without iframe clipping.
+- [x] **Muted Autoplay Safety:** All autoplaying archetypes initialize with `muted: true` to adhere to browser security policies.
+- [x] **Zero `any`:** Strict TypeScript compliance across all new and modified components.
+- [x] **Local-Only Git:** Zero pushes to `origin/main` or remote repositories.
