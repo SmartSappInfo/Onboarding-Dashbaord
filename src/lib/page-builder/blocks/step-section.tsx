@@ -12,8 +12,14 @@ const schema = z.object({
   stepNumber:    z.number().int().min(1).default(1),
   heading:       z.string().default('Step Title'),
   description:   z.string().default('Fill out the required module fields details.'),
-  videoUrl:      z.string().default(''),
-  imageUrl:      z.string().default(''),
+  videoData:     z.object({
+    videoUrl: z.string().default(''),
+    thumbnailUrl: z.string().default(''),
+    title: z.string().default(''),
+    description: z.string().default(''),
+  }).default({}),
+  videoUrl:      z.string().optional().default(''),
+  imageUrl:      z.string().optional().default(''),
   mediaPosition: z.enum(['top', 'bottom', 'left', 'right']).default('bottom'),
   accentColor:   z.string().default('#10b981'),
 });
@@ -47,8 +53,7 @@ registerBlock({
     { kind: 'number', key: 'stepNumber', label: 'Step Index / Sequence' },
     { kind: 'text', key: 'heading', label: 'Step Headline' },
     { kind: 'textarea', key: 'description', label: 'Step Description' },
-    { kind: 'url', key: 'videoUrl', label: 'Embed Video Link (YouTube / Vimeo)' },
-    { kind: 'image', key: 'imageUrl', label: 'Step Image Source (Fallback)' },
+    { kind: 'video', key: 'videoData', label: 'Step Media' },
     { kind: 'select', key: 'mediaPosition', label: 'Media Align Placement', options: [
       { value: 'top', label: 'Media on Top' },
       { value: 'bottom', label: 'Media at Bottom' },
@@ -65,7 +70,9 @@ registerBlock({
   ],
   render: (props: StepSectionProps, _block, ctx) => {
     const isEdit = ctx.mode === 'edit';
-    const hasMedia = props.videoUrl || props.imageUrl;
+    const effectiveVideoUrl = props.videoData?.videoUrl || props.videoUrl || '';
+    const effectiveImageUrl = props.videoData?.thumbnailUrl || props.imageUrl || '';
+    const hasMedia = Boolean(effectiveVideoUrl || effectiveImageUrl);
     const mediaLeftOrRight = props.mediaPosition === 'left' || props.mediaPosition === 'right';
 
     const textStyle = {
@@ -78,15 +85,16 @@ registerBlock({
       if (!hasMedia) return null;
       return (
         <div className="w-full flex-1 aspect-video rounded-2xl overflow-hidden border border-slate-850 bg-slate-950 relative shadow-2xl">
-          {props.videoUrl ? (
+          {effectiveVideoUrl ? (
             <VideoEmbed
-              url={props.videoUrl}
+              url={effectiveVideoUrl}
+              thumbnailUrl={effectiveImageUrl || undefined}
               disabled={ctx.mode === 'edit' || ctx.isThumbnail}
               className="absolute inset-0 w-full h-full border-none shadow-none"
             />
-          ) : props.imageUrl ? (
+          ) : effectiveImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={props.imageUrl} alt={props.heading} className="w-full h-full object-cover" />
+            <img src={effectiveImageUrl} alt={props.heading} className="w-full h-full object-cover" />
           ) : null}
         </div>
       );
