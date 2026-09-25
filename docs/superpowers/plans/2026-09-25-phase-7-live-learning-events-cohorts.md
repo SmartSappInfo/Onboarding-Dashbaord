@@ -322,18 +322,19 @@ export interface ReleaseRule {
   - Modify: `src/lib/services/event-service.ts`
   - Modify: `src/lib/services/__tests__/event-service.test.ts`
   - Modify: `src/app/actions/event-actions.ts`
-- [ ] **Step 1: Write failing tests for calendar export and provider link generation**
+- [x] **Step 1: Write failing tests for calendar export and provider link generation**
   - Test `.ics` calendar content generation (DTSTART, DTEND, SUMMARY, URL, DESCRIPTION).
   - Test Google Calendar and Outlook web calendar URL generation.
   - Test meeting URL sanitization (reject `javascript:`, data URIs).
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   - Command: `npx vitest run src/lib/services/__tests__/event-calendar.test.ts`
-- [ ] **Step 3: Implement Calendar & Meeting Provider Utilities in `event-service.ts`**
+- [x] **Step 3: Implement Calendar & Meeting Provider Utilities in `event-service.ts`**
   - Add `generateEventIcs(event: LiveEvent): string`.
   - Add `generateCalendarWebUrls(event: LiveEvent): { google: string; outlook: string; yahoo: string }`.
+  - Add `sanitizeMeetingUrl(url: string): string`.
   - Integrate with `MeetingProviderService` to support auto-generating Zoom or Google Meet links.
-- [ ] **Step 4: Run tests and verify they pass**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(events): integrate calendar export and meeting provider bridge"`)
+- [x] **Step 4: Run tests and verify they pass**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(events): integrate calendar export and meeting provider bridge"`)
 
 ---
 

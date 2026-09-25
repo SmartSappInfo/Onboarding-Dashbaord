@@ -24,6 +24,131 @@ import type {
 } from '@/lib/types/events';
 
 export class EventService {
+  // ── Helpers & URL Sanitization ─────────────────────────────────────────────
+
+  public static sanitizeSlug(name: string): string {
+    const slug = name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/(^-|-$)+/g, '');
+    return slug || 'live-session';
+  }
+
+  /**
+   * Sanitizes meeting URLs against XSS exploits (javascript:, data:, vbscript: protocols).
+   * Strictly permits only valid http/https URLs.
+   */
+  public static sanitizeMeetingUrl(url: string): string {
+    if (!url || typeof url !== 'string') return '';
+    const trimmed = url.trim();
+    if (!trimmed) return '';
+
+    // Reject dangerous protocol injection immediately
+    if (/^(javascript|data|vbscript):/i.test(trimmed)) {
+      return '';
+    }
+
+    try {
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        return '';
+      }
+      return parsed.toString();
+    } catch {
+      return '';
+    }
+  }
+
+  private static formatUtcIcsDate(isoString: string): string {
+    const d = new Date(isoString);
+    if (isNaN(d.getTime())) return '';
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return (
+      d.getUTCFullYear() +
+      pad(d.getUTCMonth() + 1) +
+      pad(d.getUTCDate()) +
+      'T' +
+      pad(d.getUTCHours()) +
+      pad(d.getUTCMinutes()) +
+      pad(d.getUTCSeconds()) +
+      'Z'
+    );
+  }
+
+  private static escapeIcsText(text: string): string {
+    return text
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+
+  /**
+   * Generate RFC 5545 compliant VCALENDAR (.ics) content for Apple iCal, Outlook, and Google.
+   */
+  public static generateEventIcs(event: LiveEvent): string {
+    const dtStamp = this.formatUtcIcsDate(event.createdAt || new Date().toISOString());
+    const dtStart = this.formatUtcIcsDate(event.scheduledStartTime);
+    const dtEnd = this.formatUtcIcsDate(event.scheduledEndTime);
+    const summary = this.escapeIcsText(event.title);
+    const description = this.escapeIcsText(event.description || '');
+    const location = this.escapeIcsText(event.meetingUrl);
+    const uid = `${event.id}@smartsapp.com`;
+
+    return [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//SmartSapp//Experience Platform//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${dtStamp}`,
+      `DTSTART:${dtStart}`,
+      `DTEND:${dtEnd}`,
+      `SUMMARY:${summary}`,
+      `DESCRIPTION:${description}`,
+      `LOCATION:${location}`,
+      `URL:${event.meetingUrl}`,
+      'STATUS:CONFIRMED',
+      'END:VEVENT',
+      'END:VCALENDAR',
+    ].join('\r\n');
+  }
+
+  /**
+   * Generate 1-click web calendar links for Google Calendar, Outlook Web, and Yahoo Calendar.
+   */
+  public static generateCalendarWebUrls(event: LiveEvent): {
+    google: string;
+    outlook: string;
+    yahoo: string;
+  } {
+    const dtStart = this.formatUtcIcsDate(event.scheduledStartTime);
+    const dtEnd = this.formatUtcIcsDate(event.scheduledEndTime);
+    const title = encodeURIComponent(event.title);
+    const details = encodeURIComponent(event.description || '');
+    const location = encodeURIComponent(event.meetingUrl);
+
+    // Google Calendar
+    const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dtStart}/${dtEnd}&details=${details}&location=${location}`;
+
+    // Outlook Web
+    const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${title}&startdt=${encodeURIComponent(event.scheduledStartTime)}&enddt=${encodeURIComponent(event.scheduledEndTime)}&body=${details}&location=${location}`;
+
+    // Yahoo Calendar duration in HHMM format
+    const startMs = new Date(event.scheduledStartTime).getTime();
+    const endMs = new Date(event.scheduledEndTime).getTime();
+    const durationMins = Math.max(15, Math.round((endMs - startMs) / 60000));
+    const hours = Math.floor(durationMins / 60);
+    const mins = durationMins % 60;
+    const dur = `${String(hours).padStart(2, '0')}${String(mins).padStart(2, '0')}`;
+    const yahoo = `https://calendar.yahoo.com/?v=60&view=d&type=20&title=${title}&st=${dtStart}&dur=${dur}&desc=${details}&in_loc=${location}`;
+
+    return { google, outlook, yahoo };
+  }
+
   // ── Live Event CRUD ────────────────────────────────────────────────────────
 
   public static async createLiveEvent(input: CreateEventInput): Promise<LiveEvent> {
@@ -31,12 +156,13 @@ export class EventService {
     const now = new Date().toISOString();
 
     const slug = input.slug
-      ? input.slug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '')
-      : input.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
+      ? this.sanitizeSlug(input.slug)
+      : this.sanitizeSlug(input.title);
 
     const start = new Date(input.scheduledStartTime);
     const end = new Date(input.scheduledEndTime);
     const durationMinutes = input.durationMinutes || Math.max(15, Math.round((end.getTime() - start.getTime()) / (1000 * 60)));
+    const safeMeetingUrl = this.sanitizeMeetingUrl(input.meetingUrl);
 
     const event: LiveEvent = {
       id: docRef.id,
@@ -52,7 +178,7 @@ export class EventService {
       instructorTitle: input.instructorTitle?.trim(),
       instructorAvatarUrl: input.instructorAvatarUrl,
       meetingProvider: input.meetingProvider || 'zoom',
-      meetingUrl: input.meetingUrl.trim(),
+      meetingUrl: safeMeetingUrl,
       meetingId: input.meetingId?.trim(),
       meetingPasscode: input.meetingPasscode?.trim(),
       scheduledStartTime: input.scheduledStartTime,
@@ -90,11 +216,16 @@ export class EventService {
       durationMinutes = updates.durationMinutes || Math.max(15, Math.round((end.getTime() - start.getTime()) / (1000 * 60)));
     }
 
+    const meetingUrl = updates.meetingUrl !== undefined
+      ? this.sanitizeMeetingUrl(updates.meetingUrl)
+      : current.meetingUrl;
+
     const updated: LiveEvent = {
       ...current,
       ...updates,
       title: updates.title !== undefined ? updates.title.trim() : current.title,
-      slug: updates.slug !== undefined ? updates.slug.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '') : current.slug,
+      slug: updates.slug !== undefined ? this.sanitizeSlug(updates.slug) : current.slug,
+      meetingUrl,
       durationMinutes,
       updatedAt: now,
     };
