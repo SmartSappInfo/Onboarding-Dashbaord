@@ -27,7 +27,6 @@ import { registerBlock } from '../registry';
 import { sanitizeHtml } from '../sanitize';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 import VideoEmbed from '@/components/video-embed';
-import { cn } from '@/lib/utils';
 
 export type ProcedurePresetId =
   | 'connected-timeline'
@@ -36,7 +35,7 @@ export type ProcedurePresetId =
   | 'minimal-clean'
   | 'compact-badges';
 
-export type ProcedureMediaPosition = 'top' | 'left' | 'right' | 'hidden';
+export type ProcedureMediaPosition = 'top' | 'bottom' | 'left' | 'right' | 'hidden';
 
 export const procedureStepItemSchema = z.union([
   // Legacy string branch -> automatically transformed to rich step
@@ -73,7 +72,7 @@ const rawProcedureBlockSchema = z.object({
   items: z.array(z.union([z.string(), z.record(z.unknown())])).optional(),
   imageUrl: z.string().optional().default(''),
   videoUrl: z.string().optional().default(''),
-  mediaPosition: z.enum(['top', 'left', 'right', 'hidden']).default('top'),
+  mediaPosition: z.enum(['top', 'bottom', 'left', 'right', 'hidden']).default('top'),
   accentColor: z.string().default('#10b981'),
   showStepNumbers: z.boolean().default(true),
 });
@@ -194,7 +193,7 @@ registerBlock({
 
     // 1. Empty State
     if (props.steps.length === 0 && !props.imageUrl && !props.videoUrl) {
-      if (!isEdit) return null;
+      if (!isEdit) return <></>;
       return (
         <div className="w-full p-8 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/60 dark:bg-slate-900/40 text-center flex flex-col items-center justify-center gap-3 animate-in fade-in duration-200">
           <div
@@ -266,6 +265,7 @@ registerBlock({
               onChange={(val) => ctx.onPropChange?.({ title: val })}
               placeholder="Procedure Title"
               className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100 block"
+              isEdit={isEdit}
             />
           ) : hasTitle ? (
             <h3 className="text-2xl font-bold tracking-tight" style={{ color: ctx.theme.colors.text }}>
@@ -279,6 +279,7 @@ registerBlock({
               onChange={(val) => ctx.onPropChange?.({ subtitle: val })}
               placeholder="Add short procedural subtext or guidelines..."
               className="text-sm font-medium text-slate-500 dark:text-slate-400 block"
+              isEdit={isEdit}
             />
           ) : hasSubtitle ? (
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed">

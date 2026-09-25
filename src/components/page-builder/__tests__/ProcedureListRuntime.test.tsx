@@ -5,30 +5,12 @@ import { getBlock } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks/procedure-list';
 import type { ProcedureBlockProps } from '@/lib/page-builder/blocks/procedure-list';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 
 function createMockContext(mode: 'view' | 'edit' = 'view', onPropChange = vi.fn()): BlockRenderContext {
   return {
     mode,
-    theme: {
-      colors: {
-        primary: '#10b981',
-        secondary: '#047857',
-        accent: '#34d399',
-        background: '#ffffff',
-        surface: '#f8fafc',
-        text: '#0f172a',
-        muted: '#64748b',
-        border: '#e2e8f0',
-      },
-      typography: {
-        fontFamily: 'Figtree, sans-serif',
-        headingFont: 'Figtree, sans-serif',
-        baseSize: '16px',
-        scale: 1.25,
-      },
-      spacing: { unit: 4, pagePadding: '24px', sectionSpacing: '48px' },
-      borderRadius: '16px',
-    },
+    theme: resolveTheme(),
     interpolate: (str: string) => str,
     resources: {
       forms: [],

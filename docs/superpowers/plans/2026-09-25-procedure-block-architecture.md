@@ -122,13 +122,13 @@ In the Page Builder & Content Studio, the **Procedure Block** (`procedure_list`)
 - **Files:**
   - Create: `src/components/page-builder/__tests__/ProcedureListSchema.test.tsx`
   - Modify: `src/lib/page-builder/blocks/procedure-list.tsx`
-- [ ] **Step 1: Write failing schema tests**
+- [x] **Step 1: Write failing schema tests**
   - Test parsing legacy flat string steps (`steps: ['Step 1', 'Step 2']`).
   - Test parsing rich step objects (`steps: [{ id: 's1', title: 'Step 1', description: 'Desc' }]`).
   - Test default field generation and schema validation limits.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `npx vitest run src/components/page-builder/__tests__/ProcedureListSchema.test.tsx`
-- [ ] **Step 3: Implement `procedureStepItemSchema` and `procedureBlockSchema`**
+- [x] **Step 3: Implement `procedureStepItemSchema` and `procedureBlockSchema`**
   - In `src/lib/page-builder/blocks/procedure-list.tsx`, define:
     ```typescript
     export const procedureStepItemSchema = z.union([
@@ -148,8 +148,8 @@ In the Page Builder & Content Studio, the **Procedure Block** (`procedure_list`)
       }),
     ]);
     ```
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(procedure): implement backward-compatible universal step schema"`)
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(procedure): implement backward-compatible universal step schema"`)
 
 ---
 
@@ -159,21 +159,21 @@ In the Page Builder & Content Studio, the **Procedure Block** (`procedure_list`)
   - Modify: `src/lib/page-builder/blocks/procedure-list.tsx`
   - Modify: `src/app/p/[slug]/PublicPageClient.tsx`
   - Modify: `src/lib/services/content-service.ts`
-- [ ] **Step 1: Write failing runtime tests**
+- [x] **Step 1: Write failing runtime tests**
   - Test rendering `title` and `subtitle` on canvas.
   - Test rendering each of the 5 visual presets (`connected-timeline`, `elevated-cards`, `split-media`, `minimal-clean`, `compact-badges`).
   - Test interactive empty state card when 0 steps are present.
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement runtime renderer and presets in `procedure-list.tsx`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement runtime renderer and presets in `procedure-list.tsx`**
   - Add `<InlineEditable />` for title and subtitle in edit mode.
   - Render connected vertical timeline line with `accentColor`.
   - Render interactive empty state card with `[ + Add First Step ]` button.
   - Render companion media (image or video) based on `mediaPosition` (`top`, `left`, `right`, `hidden`).
-- [ ] **Step 4: Update `PublicPageClient.tsx` and `content-service.ts`**
+- [x] **Step 4: Update `PublicPageClient.tsx` and `content-service.ts`**
   - In `PublicPageClient.tsx`: remove `(step: any)`, support rich step rendering (`step.title` and `step.description`), and sanitize output.
   - In `content-service.ts`: check both `props.items` and `props.steps` in `extractPlainTextFromBlocks`.
-- [ ] **Step 5: Run tests to verify they pass**
-- [ ] **Step 6: Commit locally** (`git commit -m "feat(procedure): implement 5 visual presets, inline editing, and public runtime"`)
+- [x] **Step 5: Run tests to verify they pass**
+- [x] **Step 6: Commit locally** (`git commit -m "feat(procedure): implement 5 visual presets, inline editing, and public runtime"`)
 
 ---
 
@@ -183,13 +183,13 @@ In the Page Builder & Content Studio, the **Procedure Block** (`procedure_list`)
   - Create: `src/components/page-builder/ProcedurePresetSelector.tsx`
   - Modify: `src/lib/page-builder/blocks/procedure-list.tsx`
   - Modify: `src/components/page-builder/AutoBlockEditor.tsx`
-- [ ] **Step 1: Write failing selector test**
+- [x] **Step 1: Write failing selector test**
   - Test rendering 5 miniature wireframe cards.
   - Test WAI-ARIA `role="radiogroup"` and `role="radio"` with keyboard arrow navigation.
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement `ProcedurePresetSelector.tsx`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement `ProcedurePresetSelector.tsx`**
   - 5 tactile miniature WYSIWYG wireframes with active checkmark badge and `active:scale-[0.97]` press states.
-- [ ] **Step 4: Register fields and wire `AutoBlockEditor.tsx`**
+- [x] **Step 4: Register fields and wire `AutoBlockEditor.tsx`**
   - In `procedure-list.tsx`, register:
     - `preset` (`ProcedurePresetSelector`)
     - `title` (`kind: 'text'`)
@@ -199,26 +199,26 @@ In the Page Builder & Content Studio, the **Procedure Block** (`procedure_list`)
     - `mediaPosition` (`MediaPlacementSelector`)
     - `accentColor` (`kind: 'color'`)
   - In `AutoBlockEditor.tsx`, wire `isProcedurePreset` and suppress duplicate outer label.
-- [ ] **Step 5: Run tests to verify they pass**
-- [ ] **Step 6: Commit locally** (`git commit -m "feat(inspector): integrate ProcedurePresetSelector and rich step list management"`)
+- [x] **Step 5: Run tests to verify they pass**
+- [x] **Step 6: Commit locally** (`git commit -m "feat(inspector): integrate ProcedurePresetSelector and rich step list management"`)
 
 ---
 
 ### Phase 4: Full System Verification & Quality Gates
 - **Files:**
   - All test files across `src/components/page-builder/__tests__/` and `src/lib/services/__tests__/`
-- [ ] **Step 1: Run complete unit test suite**
+- [x] **Step 1: Run complete unit test suite**
   - Command: `npx vitest run src/components/page-builder/__tests__/ src/lib/services/__tests__/`
   - Target: 100% tests passing.
-- [ ] **Step 2: Run TypeScript strict check**
+- [x] **Step 2: Run TypeScript strict check**
   - Command: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit`
   - Target: 0 errors, strictly zero `any`/`any[]`/`unknown`.
-- [ ] **Step 3: Run ESLint verification**
+- [x] **Step 3: Run ESLint verification**
   - Command: `npm run lint`
   - Target: 0 errors.
-- [ ] **Step 4: Verify existing templates**
+- [x] **Step 4: Verify existing templates**
   - Verify `schools.ts` and `content-templates.ts` render with 0 regressions.
-- [ ] **Step 5: Final local commit** (`git commit -m "refactor(procedure): complete procedure block overhaul with verification"`)
+- [x] **Step 5: Final local commit** (`git commit -m "refactor(procedure): complete procedure block overhaul with verification"`)
   - **Strictly local commit — no remote push.**
 
 ---
