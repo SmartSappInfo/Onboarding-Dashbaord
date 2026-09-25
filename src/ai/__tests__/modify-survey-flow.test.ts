@@ -64,4 +64,69 @@ describe('modifySurveyFlow Input Schema', () => {
         expect(styledInput.currentSurvey.backgroundPattern).toBe('grid');
         expect(styledInput.currentSurvey.embedRedirectMode).toBe('parent');
     });
+
+    it('should validate output elements without branching blowup', async () => {
+        const { elementSchema, resultPageSchema, resultRuleSchema } = await import('../schemas/survey-schemas');
+
+        // Test singleElementSchema handles questions, layout blocks, and logic blocks
+        const validQuestion = elementSchema.parse({
+            id: 'q_admin_role',
+            type: 'text',
+            title: 'What is your role?',
+            isRequired: true,
+        });
+        expect(validQuestion.id).toBe('q_admin_role');
+
+        const validSection = elementSchema.parse({
+            id: 'sec_onboarding',
+            type: 'section',
+            title: 'Onboarding Flow',
+            renderAsPage: true,
+            stepperTitle: 'Flow',
+        });
+        expect(validSection.id).toBe('sec_onboarding');
+
+        const validLogic = elementSchema.parse({
+            id: 'logic_1',
+            type: 'logic',
+            rules: [{
+                sourceQuestionId: 'q_admin_role',
+                operator: 'isNotEmpty',
+                action: { type: 'show', targetElementId: 'sec_onboarding' }
+            }]
+        });
+        expect(validLogic.id).toBe('logic_1');
+
+        const validResultPage = resultPageSchema.parse({
+            id: 'rp_redesign_strategy',
+            name: 'Product Redesign Focus',
+            isDefault: true,
+            blocks: [
+                {
+                    id: 'b_head',
+                    type: 'heading',
+                    title: 'Product Redesign Focus',
+                    variant: 'h1',
+                },
+                {
+                    id: 'b_list',
+                    type: 'list',
+                    items: ['Reduce unnecessary steps', 'Group related tasks together'],
+                    listStyle: 'unordered',
+                }
+            ]
+        });
+        expect(validResultPage.name).toBe('Product Redesign Focus');
+        expect(validResultPage.blocks.length).toBe(2);
+
+        const validResultRule = resultRuleSchema.parse({
+            id: 'rr_default',
+            label: 'All Respondents',
+            minScore: 0,
+            maxScore: 100,
+            priority: 1,
+            pageId: 'rp_redesign_strategy',
+        });
+        expect(validResultRule.pageId).toBe('rp_redesign_strategy');
+    });
 });

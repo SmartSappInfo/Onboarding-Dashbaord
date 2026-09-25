@@ -122,7 +122,55 @@ export const phase2QuestionSchema = questionSchema;
 export const phase2LayoutBlockSchema = layoutBlockSchema;
 export const phase2ElementSchema = z.union([phase2QuestionSchema, phase2LayoutBlockSchema]);
 
-export const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
+export const ALL_ELEMENT_TYPES = [
+  ...QUESTION_TYPES,
+  ...LAYOUT_TYPES,
+  'logic',
+] as const;
+
+/**
+ * Single-object Element Schema without top-level unions/anyOf.
+ * Essential for Gemini / Claude structured outputs to prevent constraint branching blowup
+ * (resolves "[400 Bad Request] The specified schema produces a constraint that has too much branching for serving").
+ */
+export const surveyElementSchema = z.object({
+  id: z.string().describe('Unique kebab-case ID, e.g. q_entity_name or sec_profile or logic_skip'),
+  type: z.enum(ALL_ELEMENT_TYPES).describe('Element type (question, layout block, or logic)'),
+  title: z.string().optional().describe('Question title, section heading, or label'),
+  text: z.string().optional().describe('Body text for description blocks'),
+  description: z.string().optional().describe('Subtitle or description text'),
+  options: z.array(z.string()).optional().describe('REQUIRED for multiple-choice, dropdown, checkboxes. 2+ items.'),
+  allowOther: z.boolean().optional().describe('For checkboxes and multiple-choice — adds a free-text "Other" field'),
+  isRequired: z.boolean().optional().describe('true for critical questions'),
+  hidden: z.boolean().optional().describe('If true, hidden by default (can be shown via logic)'),
+  placeholder: z.string().optional().describe('Placeholder text for text/long-text/email/phone inputs'),
+  defaultValue: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
+  minLength: z.number().optional(),
+  maxLength: z.number().optional(),
+  enableScoring: z.boolean().optional().describe('MUST be true for this question to contribute to score calculation'),
+  points: z.number().optional(),
+  optionScores: z.array(z.number()).optional().describe('Point values per option. MUST be same length as options[]. For checkboxes, scores are cumulative.'),
+  yesScore: z.number().optional().describe('Points awarded when answer is "Yes" (yes-no only)'),
+  noScore: z.number().optional().describe('Points awarded when answer is "No" (yes-no only)'),
+  autoAdvance: z.boolean().optional().describe('Auto-proceed to next page on selection (yes-no, multiple-choice only)'),
+  renderAsPage: z.boolean().optional().describe('If true, this section starts a new page in multi-page mode'),
+  validateBeforeNext: z.boolean().optional().describe('If true, all required questions in this section must be filled before proceeding'),
+  stepperTitle: z.string().optional().describe('Short label shown in the progress stepper (e.g. "Profile", "Assessment")'),
+  variant: z.enum(HEADING_VARIANTS).optional().describe('Heading size variant'),
+  url: z.string().optional().describe('Media URL for image, video, audio, document blocks'),
+  html: z.string().optional().describe('Raw HTML for embed blocks'),
+  rules: z.array(z.object({
+    sourceQuestionId: z.string().describe('ID of the question whose answer triggers this rule'),
+    operator: z.enum(LOGIC_OPERATORS),
+    targetValue: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional().describe('Value to compare against'),
+    action: logicActionSchema,
+  })).optional().describe('Rules for logic blocks (when type is "logic")'),
+  style: z.object({
+    textAlign: z.enum(TEXT_ALIGN).optional(),
+  }).optional(),
+});
+
+export const elementSchema = surveyElementSchema;
 
 // ──────────────────────────────────────────────────────────
 // Result Page Schemas

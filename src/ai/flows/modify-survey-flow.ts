@@ -218,16 +218,18 @@ const modifySurveyFlow = ai.defineFlow(
             } catch (error: unknown) {
                 retries++;
                 const err = error as { message?: string; status?: number };
-                // Check for 503 (Service Unavailable) or 429 (Too Many Requests)
+                // Check for 503 (Service Unavailable), 429 (Too Many Requests), or 400 (Bad Request / Branching / Schema validation)
                 const isRetryable = err.message?.includes('503') || 
                                   err.message?.includes('429') || 
+                                  err.message?.includes('INVALID_ARGUMENT') ||
+                                  err.message?.includes('400') ||
                                   err.status === 503 || 
                                   err.status === 429;
 
                 if (isRetryable && retries < maxRetries) {
                     // Exponential backoff: 1s, 2s, 4s... plus jitter
                     const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
-                    console.warn(`AI Model Busy (Attempt ${retries}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`);
+                    console.warn(`AI Model Busy/Recovering (Attempt ${retries}/${maxRetries}). Retrying in ${Math.round(delay)}ms...`);
                     await new Promise(resolve => setTimeout(resolve, delay));
                     continue;
                 }

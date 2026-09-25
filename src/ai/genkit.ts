@@ -320,8 +320,15 @@ export async function getModel(
               lowerError.includes('unavailable') ||
               lowerError.includes('high demand') ||
               lowerError.includes('overloaded');
+
+            const isSchemaOrBranchingError =
+              errorMsg.includes('400') ||
+              errorMsg.includes('INVALID_ARGUMENT') ||
+              lowerError.includes('branching') ||
+              lowerError.includes('too much branching') ||
+              lowerError.includes('invalid argument');
                                 
-            if (isAuthOrNotFoundError || isQuotaError || isUnavailableError) {
+            if (isAuthOrNotFoundError || isQuotaError || isUnavailableError || isSchemaOrBranchingError) {
               const summaryErr = errorMsg.length > 120 ? `${errorMsg.slice(0, 117)}...` : errorMsg;
               console.warn(`[AI] Primary generation failed (${summaryErr}). Initiating resilient multi-model fallback.`);
 
@@ -342,13 +349,13 @@ export async function getModel(
               ).catch((e: unknown) => console.error('[AI] Telemetry logging failed:', e));
 
               // Ordered fallback candidate models on current key:
-              // 1. Flagship: Gemini 3 Flash (High speed, balanced)
-              // 2. High-Capacity Fast: Gemini 3.1 Flash-Lite (High throughput, unaffected by Pro quota locks)
-              // 3. Stable Fallback: Gemini 2.5 Flash
+              // 1. Stable Production Workhorse: Gemini 2.5 Flash (highest resilience against branching limits & quotas)
+              // 2. Flagship Preview: Gemini 3 Flash (High speed, balanced)
+              // 3. High-Capacity Fast: Gemini 3.1 Flash-Lite (High throughput, unaffected by Pro quota locks)
               const fallbackCandidates: string[] = [
+                'googleai/gemini-2.5-flash',
                 'googleai/gemini-3-flash-preview',
                 'googleai/gemini-3.1-flash-lite-preview',
-                'googleai/gemini-2.5-flash',
               ].filter((candidate) => candidate !== resolvedOptions.model);
 
               // Attempt fallback across candidates on CURRENT key
