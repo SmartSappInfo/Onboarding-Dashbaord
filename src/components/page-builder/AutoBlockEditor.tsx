@@ -41,6 +41,13 @@ import {
   DividerThicknessSelector,
   DividerSpacingSelector,
 } from './DividerSegmentedControls';
+import type {
+  DividerWidthType,
+  DividerThicknessType,
+  DividerSpacingType,
+  OptionItem,
+} from './DividerSegmentedControls';
+import { LineSpacingSelector } from './LineSpacingSelector';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
@@ -266,6 +273,15 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
           />
         );
       }
+      if (field.key === 'lineHeight' || field.key === 'lineSpacing') {
+        return (
+          <LineSpacingSelector
+            value={asString(value) || 'normal'}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
       if (field.key.endsWith('Size') || field.key.includes('FontSize')) {
         return (
           <SizeSliderControl
@@ -289,7 +305,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
         return (
           <DividerWidthSelector
             value={asString(value) || 'full'}
-            options={field.options as any}
+            options={field.options as unknown as ReadonlyArray<OptionItem<DividerWidthType>>}
             onChange={(val) => onChange(val)}
           />
         );
@@ -298,7 +314,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
         return (
           <DividerThicknessSelector
             value={asString(value) || 'hairline'}
-            options={field.options as any}
+            options={field.options as unknown as ReadonlyArray<OptionItem<DividerThicknessType>>}
             onChange={(val) => onChange(val)}
           />
         );
@@ -307,7 +323,7 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
         return (
           <DividerSpacingSelector
             value={asString(value) || 'medium'}
-            options={field.options as any}
+            options={field.options as unknown as ReadonlyArray<OptionItem<DividerSpacingType>>}
             onChange={(val) => onChange(val)}
           />
         );

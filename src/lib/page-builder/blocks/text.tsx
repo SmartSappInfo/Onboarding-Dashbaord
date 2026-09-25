@@ -13,6 +13,7 @@ const schema = z.object({
   fontSize: z.string().optional().default('default'),
   textColor: z.string().optional().default(''),
   textAlign: z.enum(['left', 'center', 'right', 'justify']).default('left'),
+  lineHeight: z.enum(['tight', 'normal', 'relaxed', 'loose']).default('normal'),
 }).catchall(z.unknown());
 
 type TextProps = z.infer<typeof schema>;
@@ -222,6 +223,28 @@ registerBlock({
     },
     {
       kind: 'select',
+      key: 'textAlign',
+      label: 'Text Alignment',
+      options: [
+        { value: 'left', label: 'Left' },
+        { value: 'center', label: 'Center' },
+        { value: 'right', label: 'Right' },
+        { value: 'justify', label: 'Justify' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'lineHeight',
+      label: 'Line Spacing',
+      options: [
+        { value: 'tight', label: 'Tight' },
+        { value: 'normal', label: 'Normal' },
+        { value: 'relaxed', label: 'Relaxed' },
+        { value: 'loose', label: 'Loose' },
+      ],
+    },
+    {
+      kind: 'select',
       key: 'fontSize',
       label: 'Font Size Override',
       options: [
@@ -284,6 +307,10 @@ registerBlock({
       : (props.textColor || baseColor);
 
     const defaultAlign = props.textAlign || 'left';
+    const lineHeightMultiplier = props.lineHeight === 'tight' ? '1.25'
+      : props.lineHeight === 'relaxed' ? '1.75'
+      : props.lineHeight === 'loose' ? '2'
+      : (preset === 'lead' ? '1.6' : preset === 'disclaimer' ? '1.4' : '1.5');
 
     // Map Tailwind font size classes to actual CSS values for the style injector if needed
     const defaultSize = props.fontSize && props.fontSize !== 'default'
@@ -296,10 +323,22 @@ registerBlock({
       : (preset === 'lead' ? '1.25rem' : preset === 'disclaimer' ? '0.75rem' : preset === 'quote' ? '1.125rem' : '1rem');
 
     const cssStyles = `
+      #text-block-${blockId},
+      #text-block-${blockId} p,
+      #text-block-${blockId} div,
+      #text-block-${blockId} h1,
+      #text-block-${blockId} h2,
+      #text-block-${blockId} h3,
+      #text-block-${blockId} h4,
+      #text-block-${blockId} h5,
+      #text-block-${blockId} h6,
+      #text-block-${blockId} li {
+        text-align: ${defaultAlign} !important;
+        line-height: ${lineHeightMultiplier} !important;
+      }
       #text-block-${blockId} {
         color: ${defaultColor} !important;
         font-family: ${defaultFont} !important;
-        text-align: ${defaultAlign} !important;
         font-size: ${defaultSize} !important;
       }
       #text-block-${blockId} a {

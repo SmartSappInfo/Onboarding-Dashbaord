@@ -23,6 +23,12 @@ import type {
   DividerSpacingType,
 } from '@/lib/page-builder/blocks/divider';
 
+export type {
+  DividerWidthType,
+  DividerThicknessType,
+  DividerSpacingType,
+};
+
 export interface OptionItem<T extends string = string> {
   value: T;
   label: string;
@@ -52,13 +58,14 @@ export function DividerWidthSelector({
     >
       {options.map((opt) => {
         const isSelected = value === opt.value;
-        const shortLabel = {
+        const shortLabels: Record<DividerWidthType, string> = {
           full: '100%',
           wide: '75%',
           medium: '50%',
           narrow: '25%',
           accent: '64px',
-        }[opt.value] || opt.label;
+        };
+        const shortLabel = shortLabels[opt.value] || opt.label;
 
         return (
           <button
@@ -109,19 +116,21 @@ export function DividerThicknessSelector({
     >
       {options.map((opt) => {
         const isSelected = value === opt.value;
-        const strokeHeight = {
+        const strokeHeights: Record<DividerThicknessType, string> = {
           hairline: 'h-[1px]',
           medium: 'h-[2px]',
           thick: 'h-[4px]',
           heavy: 'h-[6px]',
-        }[opt.value] || 'h-[1px]';
+        };
+        const strokeHeight = strokeHeights[opt.value] || 'h-[1px]';
 
-        const shortLabel = {
+        const shortLabels: Record<DividerThicknessType, string> = {
           hairline: '1px',
           medium: '2px',
           thick: '4px',
           heavy: '6px',
-        }[opt.value] || opt.label;
+        };
+        const shortLabel = shortLabels[opt.value] || opt.label;
 
         return (
           <button
@@ -182,19 +191,21 @@ export function DividerSpacingSelector({
     >
       {options.map((opt) => {
         const isSelected = value === opt.value;
-        const shortLabel = {
+        const shortLabels: Record<DividerSpacingType, string> = {
           compact: '16px',
           medium: '32px',
           relaxed: '48px',
           spacious: '64px',
-        }[opt.value] || opt.label;
+        };
+        const shortLabel = shortLabels[opt.value] || opt.label;
 
-        const subLabel = {
+        const subLabels: Record<DividerSpacingType, string> = {
           compact: 'Tight',
           medium: 'Normal',
           relaxed: 'Wide',
           spacious: 'Spacious',
-        }[opt.value];
+        };
+        const subLabel = subLabels[opt.value];
 
         return (
           <button
