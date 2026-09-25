@@ -52,6 +52,18 @@ export interface PromptBarModel {
   key: string;
   name: string;
   tag?: string;
+  description?: string;
+  icon?: ReactNode | IconSvgElement;
+}
+
+export interface PromptBarActionItem {
+  key: string;
+  label: string;
+  icon?: ReactNode | IconSvgElement;
+  onClick: () => void;
+  active?: boolean;
+  title?: string;
+  disabled?: boolean;
 }
 
 export interface PromptBarSendDetail {
@@ -70,6 +82,9 @@ export interface PromptBarProps {
   commands?: PromptBarCommand[];
   models?: PromptBarModel[];
   defaultModel?: string;
+  selectedModel?: string;
+  onModelChange?: (modelKey: string, model?: PromptBarModel) => void;
+  actions?: PromptBarActionItem[];
   efforts?: string[];
   defaultEffort?: string;
   onEffortChange?: (effort: string) => void;
@@ -104,7 +119,10 @@ type Row = {
   promptText?: string;
 };
 type Token = { kind: 'at' | 'slash'; query: string; start: number };
-type Latest = Pick<PromptBarProps, 'onSend' | 'onStop' | 'onAttach' | 'onDictate' | 'onEffortChange'>;
+type Latest = Pick<
+  PromptBarProps,
+  'onSend' | 'onStop' | 'onAttach' | 'onDictate' | 'onEffortChange' | 'onModelChange'
+>;
 type Spark = {
   x: number;
   y: number;
@@ -234,6 +252,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
   commands = DEFAULT_COMMANDS,
   models = DEFAULT_MODELS,
   defaultModel = '',
+  selectedModel,
+  onModelChange,
+  actions,
   efforts = DEFAULT_EFFORTS,
   defaultEffort = '',
   onEffortChange,
@@ -269,9 +290,9 @@ const PromptBar: React.FC<PromptBarProps> = ({
   const rowRefs = useRef<(HTMLButtonElement | null)[]>([]);
   const lastOpen = useRef<string | null>(null);
   const dictation = useRef(0);
-  const latest = useRef<Latest>({ onSend, onStop, onAttach, onDictate, onEffortChange });
+  const latest = useRef<Latest>({ onSend, onStop, onAttach, onDictate, onEffortChange, onModelChange });
   useLayoutEffect(() => {
-    latest.current = { onSend, onStop, onAttach, onDictate, onEffortChange };
+    latest.current = { onSend, onStop, onAttach, onDictate, onEffortChange, onModelChange };
   });
 
   const [internalDraft, setInternalDraft] = useState(value ?? '');
@@ -306,7 +327,15 @@ const PromptBar: React.FC<PromptBarProps> = ({
     }
   }, [propAttachments]);
 
-  const [modelKey, setModelKey] = useState(defaultModel);
+  const [internalModelKey, setInternalModelKey] = useState(selectedModel ?? defaultModel);
+  const modelKey = selectedModel !== undefined ? selectedModel : internalModelKey;
+
+  useEffect(() => {
+    if (selectedModel !== undefined) {
+      setInternalModelKey(selectedModel);
+    }
+  }, [selectedModel]);
+
   const [plusOpen, setPlusOpen] = useState(false);
   const [modelOpen, setModelOpen] = useState(false);
   const [effortOpen, setEffortOpen] = useState(false);
@@ -520,7 +549,8 @@ const PromptBar: React.FC<PromptBarProps> = ({
 
   const pick = (row: Row) => {
     if (open === 'model') {
-      setModelKey(row.key);
+      setInternalModelKey(row.key);
+      latest.current.onModelChange?.(row.key, models.find(m => m.key === row.key));
       setModelOpen(false);
       focusInput();
       return;
@@ -632,7 +662,7 @@ const PromptBar: React.FC<PromptBarProps> = ({
       <style>{STYLE}</style>
       {open ? (
         <div
-          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[2] origin-bottom rounded-xl p-1 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.35),0_1px_2px_rgba(0,0,0,0.08)] [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] data-[kind=model]:right-auto data-[kind=model]:w-[200px] data-[kind=model]:origin-bottom-left data-[kind=effort]:right-auto data-[kind=effort]:w-[248px] data-[kind=effort]:origin-bottom-left data-[kind=effort]:px-3.5 data-[kind=effort]:pt-3 data-[kind=effort]:pb-3.5 motion-reduce:[animation:none]"
+          className="absolute inset-x-0 bottom-[calc(100%+8px)] z-[2] origin-bottom rounded-xl p-1 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.35),0_1px_2px_rgba(0,0,0,0.08)] [animation:prompt-bar-pop_180ms_cubic-bezier(0.23,1,0.32,1)_both] [background:var(--pb-menu)] data-[kind=model]:right-auto data-[kind=model]:w-[280px] data-[kind=model]:max-h-[320px] data-[kind=model]:overflow-y-auto data-[kind=model]:origin-bottom-left data-[kind=effort]:right-auto data-[kind=effort]:w-[248px] data-[kind=effort]:origin-bottom-left data-[kind=effort]:px-3.5 data-[kind=effort]:pt-3 data-[kind=effort]:pb-3.5 motion-reduce:[animation:none]"
           role={open === 'effort' ? 'dialog' : 'listbox'}
           aria-label={
             open === 'at' ? 'Sources' : open === 'slash' ? 'Commands' : open === 'model' ? 'Models' : 'Effort'
@@ -861,6 +891,22 @@ const PromptBar: React.FC<PromptBarProps> = ({
               <span>{level}</span>
             </button>
           ) : null}
+          {actions?.map(action => (
+            <button
+              key={action.key}
+              type="button"
+              disabled={action.disabled}
+              className="inline-flex h-7 flex-none cursor-pointer touch-manipulation items-center gap-1.5 rounded-lg border-0 bg-transparent px-2 text-[12px] font-medium outline-none select-none [color:color-mix(in_srgb,var(--pb-ink)_70%,transparent)] [font:inherit] [-webkit-tap-highlight-color:transparent] [transition:background-color_150ms_ease,color_150ms_ease] disabled:opacity-40 disabled:cursor-not-allowed data-[active]:[background:color-mix(in_srgb,var(--pb-ink)_12%,transparent)] data-[active]:[color:var(--pb-ink)] [@media(hover:hover)_and_(pointer:fine)]:hover:[background:color-mix(in_srgb,var(--pb-ink)_8%,transparent)] [@media(hover:hover)_and_(pointer:fine)]:hover:[color:var(--pb-ink)]"
+              aria-label={action.label}
+              title={action.title ?? action.label}
+              data-active={action.active ? '' : undefined}
+              onMouseDown={e => e.preventDefault()}
+              onClick={action.onClick}
+            >
+              {action.icon ? renderIcon(action.icon, 13) : null}
+              <span>{action.label}</span>
+            </button>
+          ))}
           <span className="flex-auto" />
           {onDictate ? (
             <button
