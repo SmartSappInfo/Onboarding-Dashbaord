@@ -37,6 +37,7 @@ import { SystemResearchGovernanceMatrix } from './SystemResearchGovernanceMatrix
 import { SystemPredictiveIntelligenceMatrix } from './SystemPredictiveIntelligenceMatrix';
 import { SystemThemeGovernanceMatrix } from './SystemThemeGovernanceMatrix';
 import { SystemDispatchGovernanceMatrix } from './SystemDispatchGovernanceMatrix';
+import { SystemAiArchitectGovernanceMatrix } from './SystemAiArchitectGovernanceMatrix';
 
 export default function SurveyGovernanceClient() {
   const getToken = useBackofficeToken();
@@ -180,6 +181,9 @@ export default function SurveyGovernanceClient() {
 
       {/* Global System Dispatch & Blast Governance Matrix */}
       <SystemDispatchGovernanceMatrix />
+
+      {/* Global AI Survey Architect Governance Matrix */}
+      <SystemAiArchitectGovernanceMatrix />
 
       {/* Drop-off Intelligence Radar Section */}
       <div className="space-y-3">

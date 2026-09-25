@@ -1,34 +1,26 @@
 'use client';
 
+/**
+ * @fileoverview SmartSapp Survey Intelligence 2.0 — AI Survey Architect Container
+ *
+ * ARCHITECTURAL GUIDELINES (Rule 10 & Strict Zero-Any Invariant):
+ * 1. Unified Multi-Modal Experience: Mounts <UnifiedAiArchitectStudio> for composing prompts, documents,
+ *    links, and model selection without fragmented tab silos.
+ * 2. Synthesis Cockpit: Smoothly transitions into <ArchitectSynthesisCockpit> during generation with zero layout shift.
+ * 3. Chunked Architecture & Recovery: Retains intermediate blueprint and question caches to enable instant recovery on retry.
+ * 4. Self-Improving Learning Loop: Preserves learning signal creation via `createLearningSignalAction`.
+ * 5. Strict Zero-Any Invariant: Completely typed without `any` or `any[]`.
+ */
+
 import * as React from 'react';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { addDoc, collection, doc, setDoc, getDoc } from 'firebase/firestore';
 import { useFirestore, useUser } from '@/firebase';
 import type { Survey } from '@/lib/types';
 import { useWorkspace } from '@/context/WorkspaceContext';
-import AiModelSelector from '@/components/ai/AiModelSelector';
-import { RainbowButton } from '@/components/ui/rainbow-button';
-import { Loader2, Sparkles, Check, X, RotateCcw, FileText, MessageSquare, Zap, Save } from 'lucide-react';
-import { cn } from '@/lib/utils';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
+import { FileText, MessageSquare, Zap, Save } from 'lucide-react';
 
 // Chunked AI flow imports (server actions)
 import {
@@ -44,28 +36,21 @@ import { mergeSurveyPhases } from '@/ai/utils/merge-survey-phases';
 import { generateSurvey } from '@/ai/flows/generate-survey-flow';
 
 import { createLearningSignalAction } from '@/lib/learning-loop-actions';
-
-const formSchema = z.object({
-  sourceType: z.enum(['text', 'url', 'file']),
-  text: z.string().optional(),
-  url: z.string().optional().refine(val => !val || z.string().url().safeParse(val).success, {
-      message: "Please enter a valid URL."
-  }),
-});
-
-type FormData = z.infer<typeof formSchema>;
-
-type PhaseStatus = 'idle' | 'running' | 'complete' | 'failed';
-type PhaseId = 'blueprint' | 'questions' | 'logic' | 'saving';
-
-interface PhaseState {
-  id: PhaseId;
-  label: string;
-  description: string;
-  status: PhaseStatus;
-  error?: string;
-  icon: React.ElementType;
-}
+import {
+  type SystemAiArchitectGovernanceConfig,
+  getSystemAiArchitectGovernanceAction,
+} from '@/lib/surveys/survey-ai-architect-governance-actions';
+import {
+  type AttachedSourceFile,
+  type AttachedSourceUrl,
+  type ArchitectIntentConfig,
+} from '@/lib/surveys/survey-source-extractor';
+import { UnifiedAiArchitectStudio } from './UnifiedAiArchitectStudio';
+import {
+  ArchitectSynthesisCockpit,
+  type SynthesisPhaseId,
+  type SynthesisPhaseState,
+} from './ArchitectSynthesisCockpit';
 
 interface GeneratedSurveyData {
   title: string;
@@ -82,17 +67,18 @@ interface GeneratedSurveyData {
     isAiGenerated: boolean;
     learningSignalId: string;
     isFirstPublishComplete: boolean;
+    sourceMode?: string;
   };
 }
 
-const INITIAL_PHASES: PhaseState[] = [
+const INITIAL_PHASES: SynthesisPhaseState[] = [
   { id: 'blueprint', label: 'Blueprint', description: 'Analyzing content & designing structure', status: 'idle', icon: FileText },
   { id: 'questions', label: 'Questions', description: 'Generating questions & layout blocks', status: 'idle', icon: MessageSquare },
   { id: 'logic', label: 'Logic & Scoring', description: 'Adding scoring, logic & outcome pages', status: 'idle', icon: Zap },
   { id: 'saving', label: 'Saving', description: 'Persisting survey to database', status: 'idle', icon: Save },
 ];
 
-// Short content threshold — use legacy monolithic flow for very simple inputs
+// Short content threshold — use legacy monolithic flow for very simple inputs with no documents
 const SIMPLE_CONTENT_THRESHOLD = 500;
 
 export default function AiSurveyGenerator() {
@@ -102,30 +88,37 @@ export default function AiSurveyGenerator() {
   const { user } = useUser();
   const { activeOrganizationId, activeWorkspaceId } = useWorkspace();
   const { provider: liveProvider, modelId: liveModelId } = useLiveAiModel();
+
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [phases, setPhases] = React.useState<PhaseState[]>(INITIAL_PHASES);
+  const [phases, setPhases] = React.useState<SynthesisPhaseState[]>(INITIAL_PHASES);
   const [showProgress, setShowProgress] = React.useState(false);
+  const [governanceConfig, setGovernanceConfig] = React.useState<SystemAiArchitectGovernanceConfig | undefined>(undefined);
 
   // Cached intermediate results for retry
   const blueprintRef = React.useRef<unknown>(null);
   const questionsRef = React.useRef<{ elements: unknown[] } | null>(null);
   const logicRef = React.useRef<unknown>(null);
   const sourceTextRef = React.useRef<string>('');
+  const rawPromptRef = React.useRef<string>('');
   const providerRef = React.useRef<string>('googleai');
   const modelIdRef = React.useRef<string>('gemini-3.5-flash');
   const keyLevelRef = React.useRef<string>('App API');
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      sourceType: 'text',
-      text: '',
-      url: '',
-    },
-  });
+  // Load governance configuration on mount
+  React.useEffect(() => {
+    let isMounted = true;
+    void getSystemAiArchitectGovernanceAction().then((res) => {
+      if (isMounted && res.success && res.config) {
+        setGovernanceConfig(res.config);
+      }
+    });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
-  const updatePhase = (id: PhaseId, updates: Partial<PhaseState>) => {
-    setPhases(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  const updatePhase = (id: SynthesisPhaseId, updates: Partial<SynthesisPhaseState>) => {
+    setPhases((prev) => prev.map((p) => (p.id === id ? { ...p, ...updates } : p)));
   };
 
   const resetPhases = () => {
@@ -135,26 +128,24 @@ export default function AiSurveyGenerator() {
     logicRef.current = null;
   };
 
-  const getFailedPhase = (): PhaseId | null => {
-    const failed = phases.find(p => p.status === 'failed');
+  const getFailedPhase = (): SynthesisPhaseId | null => {
+    const failed = phases.find((p) => p.status === 'failed');
     return failed?.id || null;
   };
 
   const resolveModel = async () => {
-    let provider = liveProvider;
-    let modelId = liveModelId;
+    const provider = liveProvider;
+    const modelId = liveModelId;
     let keyLevel = 'App API';
-    
-    if (user && firestore) {
-      if (activeOrganizationId) {
-        const orgRef = doc(firestore, 'organizations', activeOrganizationId);
-        const orgSnap = await getDoc(orgRef);
-        if (orgSnap.exists()) {
-          const orgData = orgSnap.data();
-          if (provider === 'googleai' && orgData.geminiApiKey) keyLevel = 'Org API';
-          else if (provider === 'anthropic' && (orgData.claudeApiKey || orgData.anthropicApiKey)) keyLevel = 'Org API';
-          else if (provider === 'openrouter' && orgData.openRouterApiKey) keyLevel = 'Org API';
-        }
+
+    if (user && firestore && activeOrganizationId) {
+      const orgRef = doc(firestore, 'organizations', activeOrganizationId);
+      const orgSnap = await getDoc(orgRef);
+      if (orgSnap.exists()) {
+        const orgData = orgSnap.data();
+        if (provider === 'googleai' && orgData.geminiApiKey) keyLevel = 'Org API';
+        else if (provider === 'anthropic' && (orgData.claudeApiKey || orgData.anthropicApiKey)) keyLevel = 'Org API';
+        else if (provider === 'openrouter' && orgData.openRouterApiKey) keyLevel = 'Org API';
       }
     }
 
@@ -164,16 +155,11 @@ export default function AiSurveyGenerator() {
     return { provider, modelId, keyLevel };
   };
 
-  const runChunkedGeneration = async (content: string, sourceType: 'text' | 'url', startFrom?: PhaseId) => {
+  const runChunkedGeneration = async (content: string, sourceType: 'text' | 'url', startFrom?: SynthesisPhaseId) => {
     const { provider, modelId, keyLevel: _keyLevel } = await resolveModel();
     sourceTextRef.current = content;
 
-    // Resolve source text for URL inputs
-    let resolvedText = content;
-    if (sourceType === 'url') {
-      // URL resolution happens server-side in the flow
-      resolvedText = content;
-    }
+    const resolvedText = content;
 
     // Phase 1: Blueprint
     if (!startFrom || startFrom === 'blueprint') {
@@ -197,7 +183,7 @@ export default function AiSurveyGenerator() {
     // Phase 2: Questions
     if (!startFrom || startFrom === 'blueprint' || startFrom === 'questions') {
       if (!blueprintRef.current) throw new Error('Blueprint missing — cannot generate questions');
-      
+
       updatePhase('questions', { status: 'running', error: undefined });
       try {
         const typedBlueprint = blueprintRef.current as {
@@ -233,7 +219,7 @@ export default function AiSurveyGenerator() {
     // Phase 3: Logic & Scoring
     if (!startFrom || ['blueprint', 'questions', 'logic'].includes(startFrom)) {
       if (!blueprintRef.current || !questionsRef.current) throw new Error('Previous phases missing');
-      
+
       updatePhase('logic', { status: 'running', error: undefined });
       try {
         const typedBlueprint = blueprintRef.current as {
@@ -322,30 +308,21 @@ export default function AiSurveyGenerator() {
     return docRef.id;
   };
 
-  const onSubmit = async (data: FormData) => {
+  const handleStudioSubmit = async (payload: {
+    prompt: string;
+    finalEnvelope: string;
+    attachedFiles: AttachedSourceFile[];
+    attachedUrls: AttachedSourceUrl[];
+    intent: ArchitectIntentConfig;
+  }) => {
     if (!firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Firestore connection is not available.' });
       return;
     }
 
-    let content = '';
-    let sourceType: 'text' | 'url' = 'text';
-
-    if (form.getValues('sourceType') === 'text') {
-      if (!data.text || data.text.length < 50) {
-        form.setError('text', { message: 'Please provide at least 50 characters of text.' });
-        return;
-      }
-      content = data.text;
-      sourceType = 'text';
-    } else if (form.getValues('sourceType') === 'url') {
-      if (!data.url) {
-        form.setError('url', { message: 'Please provide a URL.' });
-        return;
-      }
-      content = data.url;
-      sourceType = 'url';
-    }
+    const content = payload.finalEnvelope;
+    rawPromptRef.current = payload.prompt;
+    sourceTextRef.current = content;
 
     setIsGenerating(true);
     resetPhases();
@@ -353,23 +330,27 @@ export default function AiSurveyGenerator() {
 
     try {
       const { provider, modelId, keyLevel } = await resolveModel();
-      
+
       toast({
-        title: 'Generation Started',
+        title: 'Architect Synthesis Started',
         description: `Model: ${modelId} | Billing: ${keyLevel}`,
       });
 
       let generatedData: GeneratedSurveyData | null = null;
 
-      // Fast-path: use legacy monolithic flow for very short content
-      if (sourceType === 'text' && content.length < SIMPLE_CONTENT_THRESHOLD) {
+      // Fast-path: use legacy monolithic flow for short inputs with zero attached files/URLs
+      if (
+        payload.attachedFiles.length === 0 &&
+        payload.attachedUrls.length === 0 &&
+        content.length < SIMPLE_CONTENT_THRESHOLD
+      ) {
         toast({
-          title: 'Quick Generation',
-          description: 'Using fast-path for short content...',
+          title: 'Quick Synthesis',
+          description: 'Using fast-path for concise prompt...',
         });
 
         const rawGenerated = await generateSurvey({
-          sourceType,
+          sourceType: 'text',
           content,
           organizationId: activeOrganizationId,
           provider,
@@ -377,13 +358,13 @@ export default function AiSurveyGenerator() {
         });
         generatedData = rawGenerated as unknown as GeneratedSurveyData;
 
-        // Mark all AI phases as complete for the stepper
+        // Mark all AI phases as complete for the cockpit
         updatePhase('blueprint', { status: 'complete' });
         updatePhase('questions', { status: 'complete' });
         updatePhase('logic', { status: 'complete' });
       } else {
-        // Chunked pipeline for complex content
-        const rawGenerated = await runChunkedGeneration(content, sourceType);
+        // Chunked pipeline for rich multi-modal content
+        const rawGenerated = await runChunkedGeneration(content, 'text');
         generatedData = rawGenerated as unknown as GeneratedSurveyData;
       }
 
@@ -393,41 +374,41 @@ export default function AiSurveyGenerator() {
 
       // Create Learning Signal before saving survey
       const signalResult = await createLearningSignalAction({
-        prompt: content,
+        prompt: payload.prompt || content,
         modelId,
         provider,
         artifactType: 'survey',
         initialState: generatedData,
         workspaceId: activeWorkspaceId || '',
         organizationId: activeOrganizationId || '',
-        userId: user!.uid,
+        userId: user ? user.uid : 'system',
       });
 
       const surveyId = await saveSurvey({
         ...generatedData,
         aiMetadata: {
           isAiGenerated: true,
-          learningSignalId: (signalResult.success && signalResult.id) ? signalResult.id : 'none',
+          learningSignalId: signalResult.success && signalResult.id ? signalResult.id : 'none',
           isFirstPublishComplete: false,
-        }
+          sourceMode: payload.attachedFiles.length > 0 ? 'multi_modal' : 'text',
+        },
       });
 
       toast({
-        title: 'Survey Generated!',
-        description: 'The AI has configured questions, scoring, and outcome pages.',
+        title: 'Survey Engine Constructed!',
+        description: 'Questions, sections, and scoring have been persisted.',
       });
 
-      // Brief pause to show completion state
-      await new Promise(r => setTimeout(r, 800));
+      // Brief pause to allow the user to see the completed 100% state
+      await new Promise((r) => setTimeout(r, 700));
       router.push(`/admin/surveys/${surveyId}/edit`);
-
     } catch (error: unknown) {
-      console.error(error);
+      console.error('[AiSurveyGenerator] Generation error:', error);
       const err = error instanceof Error ? error : new Error(String(error));
       const failedPhase = getFailedPhase();
       toast({
         variant: 'destructive',
-        title: failedPhase ? `Failed at ${failedPhase}` : 'Generation Failed',
+        title: failedPhase ? `Failed at ${failedPhase}` : 'Synthesis Paused',
         description: err.message || 'The AI failed to generate the survey. Please try again.',
       });
     } finally {
@@ -452,186 +433,48 @@ export default function AiSurveyGenerator() {
         throw new Error('AI model did not return a valid survey structure after retry.');
       }
 
-      const surveyId = await saveSurvey(generatedData);
+      const surveyId = await saveSurvey(generatedData as unknown as GeneratedSurveyData);
 
       toast({
-        title: 'Survey Generated!',
-        description: 'Successfully recovered and generated the survey.',
+        title: 'Survey Recovered!',
+        description: 'Successfully resumed and persisted survey engine.',
       });
 
-      await new Promise(r => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 700));
       router.push(`/admin/surveys/${surveyId}/edit`);
-
     } catch (error: unknown) {
-      console.error(error);
+      console.error('[AiSurveyGenerator] Retry error:', error);
       const err = error instanceof Error ? error : new Error(String(error));
       toast({
         variant: 'destructive',
         title: 'Retry Failed',
-        description: err.message || 'The retry also failed. Please try again with different content.',
+        description: err.message || 'The retry also failed. Please try modifying your prompt or sources.',
       });
     } finally {
       setIsGenerating(false);
     }
   };
 
-  const hasFailure = phases.some(p => p.status === 'failed');
-
   return (
- <Card className="max-w-3xl mx-auto shadow-2xl border bg-card/40 backdrop-blur-md rounded-[2rem] overflow-hidden">
- <CardHeader className="p-8 pb-8 border-b border-border/50 bg-transparent text-left relative">
- <div className="flex items-center justify-between mb-6">
- <div className="bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center border border-primary/20 shadow-inner">
- <Sparkles className="h-6 w-6 text-primary" />
-            </div>
- <CardTitle className="text-2xl font-semibold tracking-tight">AI Survey Architect</CardTitle>
-        </div>
- <CardDescription className="text-sm font-medium text-muted-foreground">Provide your source material and the AI will build a complete, scored assessment flow for you.</CardDescription>
-        
- <div className="mt-8 flex flex-col items-start">
- <AiModelSelector className="items-start" />
-        </div>
-    </CardHeader>
- <CardContent className="p-8 pt-8">
-        {/* Progress Stepper */}
-        {showProgress && (
- <div className="mb-8 p-6 rounded-2xl bg-muted/30 border border-border/50">
- <div className="grid grid-cols-4 gap-3">
-              {phases.map((phase, _index) => {
-                const Icon = phase.icon;
-                const isActive = phase.status === 'running';
-                const isComplete = phase.status === 'complete';
-                const isFailed = phase.status === 'failed';
-
-                return (
- <div key={phase.id} className="flex flex-col items-center text-center gap-2">
- <div className={cn(
-                      "w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-500",
-                      isComplete && "bg-emerald-500 border-emerald-500 text-white shadow-lg shadow-emerald-500/20",
-                      isActive && "bg-primary border-primary text-white shadow-lg shadow-primary/30 animate-pulse",
-                      isFailed && "bg-destructive border-destructive text-white shadow-lg shadow-destructive/20",
-                      !isComplete && !isActive && !isFailed && "bg-muted border-border text-muted-foreground"
-                    )}>
-                      {isComplete && <Check className="h-4 w-4" />}
-                      {isActive && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {isFailed && <X className="h-4 w-4" />}
-                      {phase.status === 'idle' && <Icon className="h-4 w-4" />}
-                    </div>
- <div>
- <p className={cn(
-                        "text-[10px] font-bold uppercase tracking-widest",
-                        isActive && "text-primary",
-                        isComplete && "text-emerald-600",
-                        isFailed && "text-destructive",
-                        phase.status === 'idle' && "text-muted-foreground"
-                      )}>
-                        {phase.label}
-                      </p>
- <p className="text-[9px] text-muted-foreground mt-0.5 leading-tight hidden sm:block">
-                        {isFailed ? phase.error?.substring(0, 40) : phase.description}
-                      </p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Retry Button */}
-            {hasFailure && !isGenerating && (
- <div className="mt-4 pt-4 border-t border-border/50 flex items-center justify-center gap-3">
- <p className="text-xs text-muted-foreground font-medium">
-                  Previous phases are cached — retry resumes from the failed step.
-                </p>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={handleRetry}
-                  className="rounded-xl font-bold gap-2"
-                >
- <RotateCcw className="h-3.5 w-3.5" />
-                  Retry
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
-
-        <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)}>
-                <Tabs
-                    defaultValue="text"
- className="w-full"
-                    onValueChange={(value) => form.setValue('sourceType', value as 'text' | 'url' | 'file')}
-                >
- <TabsList className="grid w-full grid-cols-3 h-12 bg-background/50 border shadow-inner p-1 rounded-2xl mb-8">
- <TabsTrigger value="text" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">Paste Text</TabsTrigger>
- <TabsTrigger value="url" className="font-bold rounded-xl data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg transition-all">From URL</TabsTrigger>
- <TabsTrigger value="file" disabled className="font-bold rounded-xl opacity-50">Upload File (Soon)</TabsTrigger>
-                </TabsList>
- <TabsContent value="text" className="mt-0">
-                    <FormField
-                        control={form.control}
-                        name="text"
-                        render={({ field }) => (
- <FormItem className="space-y-4">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Source Material</FormLabel>
-                                <FormControl>
-                                    <Textarea
-                                        placeholder="Paste a document outline, a list of requirements, or a quiz draft here..."
- className="min-h-[250px] text-sm leading-relaxed p-6 rounded-[2rem] bg-background/30 border-border/50 shadow-inner resize-none focus-visible:ring-1 focus-visible:ring-primary/20"
-                                        {...field}
-                                    />
-                                </FormControl>
- <FormDescription className="text-xs font-medium ml-1">
-                                    The AI will identify questions, sections, and logic rules based on your text.
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </TabsContent>
- <TabsContent value="url" className="mt-0">
-                    <FormField
-                        control={form.control}
-                        name="url"
-                        render={({ field }) => (
- <FormItem className="space-y-4">
- <FormLabel className="text-[10px] font-semibold text-muted-foreground ml-1">Target URL</FormLabel>
-                                <FormControl>
- <Input placeholder="https://..." {...field} value={field.value ?? ''} className="h-14 text-base rounded-2xl bg-background/30 border-border/50 shadow-inner focus-visible:ring-1 focus-visible:ring-primary/20 px-6" />
-                                </FormControl>
- <FormDescription className="text-xs font-medium ml-1">
-                                    Link to a public article, Google Doc, or webpage to parse for content.
-                                </FormDescription>
-                                <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                </TabsContent>
-            </Tabs>
- <div className="flex justify-between items-center mt-12 border-t border-border/50 pt-8">
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => router.push('/admin/surveys')}
-                      disabled={isGenerating}
- className="font-bold rounded-xl px-6 h-12 text-muted-foreground hover:text-foreground"
-                    >
-                        Cancel
-                    </Button>
-                    <RainbowButton 
-                        type="submit" 
-                        disabled={isGenerating} 
-                        className="h-14 px-8 rounded-full font-semibold text-sm gap-3 shadow-xl transition-all active:scale-95 text-white"
-                    >
- {isGenerating ? <Loader2 className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}
-                        {isGenerating ? 'Building Engine...' : 'Generate Intelligent Survey'}
-                    </RainbowButton>
-                </div>
-            </form>
-        </Form>
-    </CardContent>
-</Card>
+    <div className="w-full">
+      {showProgress ? (
+        <ArchitectSynthesisCockpit
+          phases={phases}
+          isGenerating={isGenerating}
+          onRetry={handleRetry}
+          onCancel={() => {
+            setShowProgress(false);
+            setIsGenerating(false);
+          }}
+        />
+      ) : (
+        <UnifiedAiArchitectStudio
+          isGenerating={isGenerating}
+          onSubmit={handleStudioSubmit}
+          onCancel={() => router.push('/admin/surveys')}
+          governanceConfig={governanceConfig}
+        />
+      )}
+    </div>
   );
 }
