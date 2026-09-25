@@ -245,4 +245,79 @@ describe('ReleaseScheduleService', () => {
       expect(result.isLocked).toBe(false);
     });
   });
+
+  describe('cohort-anchored drip releases', () => {
+    it('locks when days_after_cohort_start has not arrived yet', () => {
+      // Cohort started 2 days ago, rule requires 7 days delay
+      const cohortStartDate = new Date(Date.now() - 86400000 * 2).toISOString();
+      const result = ReleaseScheduleService.evaluateLessonRelease({
+        lesson: {
+          ...mockLesson,
+          releaseRule: { type: 'days_after_cohort_start', daysDelay: 7 },
+        },
+        module: mockModule,
+        cohortStartDate,
+      });
+
+      expect(result.isLocked).toBe(true);
+      expect(result.daysRemaining).toBe(5);
+      expect(result.lockReason).toContain('Unlocks 5 days after cohort begins');
+    });
+
+    it('unlocks when days_after_cohort_start has passed', () => {
+      // Cohort started 10 days ago, rule requires 7 days delay
+      const cohortStartDate = new Date(Date.now() - 86400000 * 10).toISOString();
+      const result = ReleaseScheduleService.evaluateLessonRelease({
+        lesson: {
+          ...mockLesson,
+          releaseRule: { type: 'days_after_cohort_start', daysDelay: 7 },
+        },
+        module: mockModule,
+        cohortStartDate,
+      });
+
+      expect(result.isLocked).toBe(false);
+    });
+
+    it('fails safe and locks if cohortStartDate is missing for cohort-anchored rule', () => {
+      const result = ReleaseScheduleService.evaluateLessonRelease({
+        lesson: {
+          ...mockLesson,
+          releaseRule: { type: 'days_after_cohort_start', daysDelay: 5 },
+        },
+        module: mockModule,
+        cohortStartDate: null,
+      });
+
+      expect(result.isLocked).toBe(true);
+      expect(result.lockReason).toBe('Requires active cohort schedule');
+    });
+
+    it('handles cohort_start_date unlocking appropriately', () => {
+      const futureStart = new Date(Date.now() + 86400000 * 4).toISOString();
+      const lockedResult = ReleaseScheduleService.evaluateLessonRelease({
+        lesson: {
+          ...mockLesson,
+          releaseRule: { type: 'cohort_start_date' },
+        },
+        module: mockModule,
+        cohortStartDate: futureStart,
+      });
+
+      expect(lockedResult.isLocked).toBe(true);
+      expect(lockedResult.lockReason).toContain('Unlocks when cohort starts');
+
+      const pastStart = new Date(Date.now() - 86400000 * 1).toISOString();
+      const unlockedResult = ReleaseScheduleService.evaluateLessonRelease({
+        lesson: {
+          ...mockLesson,
+          releaseRule: { type: 'cohort_start_date' },
+        },
+        module: mockModule,
+        cohortStartDate: pastStart,
+      });
+
+      expect(unlockedResult.isLocked).toBe(false);
+    });
+  });
 });

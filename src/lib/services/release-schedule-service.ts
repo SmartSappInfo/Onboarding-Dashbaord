@@ -40,6 +40,7 @@ export class ReleaseScheduleService {
     enrollment?: CourseEnrollment | null;
     memberJoinedAt?: string | null;
     completedLessonIds?: string[];
+    cohortStartDate?: string | null;
   }): ReleaseEvaluationResult {
     // 1. Free preview bypasses all schedule locks
     if (params.lesson.isPreview) {
@@ -52,7 +53,8 @@ export class ReleaseScheduleService {
         params.module.releaseRule,
         params.enrollment,
         params.memberJoinedAt,
-        params.completedLessonIds
+        params.completedLessonIds,
+        params.cohortStartDate
       );
       if (moduleResult.isLocked) {
         return {
@@ -68,7 +70,8 @@ export class ReleaseScheduleService {
       rule,
       params.enrollment,
       params.memberJoinedAt,
-      params.completedLessonIds
+      params.completedLessonIds,
+      params.cohortStartDate
     );
   }
 
@@ -80,13 +83,15 @@ export class ReleaseScheduleService {
     enrollment?: CourseEnrollment | null;
     memberJoinedAt?: string | null;
     completedLessonIds?: string[];
+    cohortStartDate?: string | null;
   }): ReleaseEvaluationResult {
     const rule = params.module.releaseRule || { type: 'immediate' };
     return this.evaluateRule(
       rule,
       params.enrollment,
       params.memberJoinedAt,
-      params.completedLessonIds
+      params.completedLessonIds,
+      params.cohortStartDate
     );
   }
 
@@ -97,7 +102,8 @@ export class ReleaseScheduleService {
     rule: ReleaseRule,
     enrollment?: CourseEnrollment | null,
     memberJoinedAt?: string | null,
-    completedLessonIds: string[] = []
+    completedLessonIds: string[] = [],
+    cohortStartDate?: string | null
   ): ReleaseEvaluationResult {
     const now = Date.now();
 
@@ -182,6 +188,56 @@ export class ReleaseScheduleService {
           isLocked: true,
           lockReason: 'Complete the prerequisite lesson to unlock',
           prerequisiteLessonId: rule.requiredLessonId,
+        };
+      }
+
+      case 'days_after_cohort_start': {
+        const effectiveCohortStart = cohortStartDate || rule.cohortStartDate;
+        const daysDelay = rule.daysDelay || 0;
+
+        if (!effectiveCohortStart) {
+          return {
+            isLocked: true,
+            lockReason: 'Requires active cohort schedule',
+            daysRemaining: daysDelay || 1,
+          };
+        }
+
+        const cohortStartTime = new Date(effectiveCohortStart).getTime();
+        if (isNaN(cohortStartTime)) return { isLocked: false };
+
+        const unlockTime = cohortStartTime + daysDelay * 86400000;
+        if (now >= unlockTime) return { isLocked: false };
+
+        const daysRemaining = Math.max(1, Math.ceil((unlockTime - now) / 86400000));
+        return {
+          isLocked: true,
+          lockReason: `Unlocks ${daysRemaining} day${daysRemaining === 1 ? '' : 's'} after cohort begins`,
+          unlockDate: new Date(unlockTime).toISOString(),
+          daysRemaining,
+        };
+      }
+
+      case 'cohort_start_date': {
+        const effectiveCohortStart = cohortStartDate || rule.cohortStartDate || rule.releaseDate;
+        if (!effectiveCohortStart) {
+          return {
+            isLocked: true,
+            lockReason: 'Requires active cohort schedule',
+          };
+        }
+
+        const cohortStartTime = new Date(effectiveCohortStart).getTime();
+        if (isNaN(cohortStartTime)) return { isLocked: false };
+        if (now >= cohortStartTime) return { isLocked: false };
+
+        const msDiff = cohortStartTime - now;
+        const daysRemaining = Math.max(1, Math.ceil(msDiff / 86400000));
+        return {
+          isLocked: true,
+          lockReason: `Unlocks when cohort starts on ${new Date(effectiveCohortStart).toLocaleDateString()}`,
+          unlockDate: effectiveCohortStart,
+          daysRemaining,
         };
       }
 

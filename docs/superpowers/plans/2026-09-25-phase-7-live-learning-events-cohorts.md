@@ -273,18 +273,18 @@ export interface ReleaseRule {
   - Modify: `src/lib/types/learning.ts` (extend `LessonContentType`, `CompletionRuleType`, `ReleaseScheduleType`, `ReleaseRule`, `CompletionRule`)
   - Modify: `firestore.rules` (add `cohort_members` rules)
   - Modify: `firestore.indexes.json` (add compound indexes for `course_cohorts`, `cohort_members`, `live_events`)
-- [ ] **Step 1: Write type & contract validation unit tests**
+- [x] **Step 1: Write type & contract validation unit tests**
   - Path: `src/lib/types/__tests__/events-types.test.ts`
   - Verify that `LiveEvent`, `CourseCohort`, `CohortMember`, and extended `ReleaseRule` compile and conform to strict typing.
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Command: `npx vitest run src/lib/types/__tests__/events-types.test.ts`
-- [ ] **Step 3: Update `src/lib/types/events.ts` and `src/lib/types/learning.ts`**
+- [x] **Step 3: Update `src/lib/types/events.ts` and `src/lib/types/learning.ts`**
   - Add `AttendanceStatus`, `CohortMemberStatus`, `days_after_cohort_start`, `cohort_start_date`, `live_session`, `attendance`.
-- [ ] **Step 4: Update `firestore.rules` and `firestore.indexes.json`**
+- [x] **Step 4: Update `firestore.rules` and `firestore.indexes.json`**
   - Add security rules for `cohort_members`.
   - Add compound indexes for `course_cohorts` (`portalId, courseId, startDate`) and `cohort_members` (`cohortId, status, joinedAt`).
-- [ ] **Step 5: Run tests and verify they pass**
-- [ ] **Step 6: Commit locally** (`git commit -m "feat(events): extend schema contracts, security rules, and firestore indexes for cohorts and live sessions"`)
+- [x] **Step 5: Run tests and verify they pass**
+- [x] **Step 6: Commit locally** (`git commit -m "feat(events): extend schema contracts, security rules, and firestore indexes for cohorts and live sessions"`)
 
 ---
 
@@ -295,24 +295,24 @@ export interface ReleaseRule {
   - Modify: `src/lib/services/release-schedule-service.ts`
   - Modify: `src/lib/services/__tests__/release-schedule-service.test.ts`
   - Modify: `src/app/actions/event-actions.ts`
-- [ ] **Step 1: Write failing cohort service tests**
+- [x] **Step 1: Write failing cohort service tests**
   - Test cohort creation with slug generation and default 'upcoming' status.
   - Test member enrollment with capacity check and transaction safety.
   - Test member removal with count decrement.
   - Test chunked batch deletion ($\le 400$ ops) when deleting a cohort with multiple members.
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   - Command: `npx vitest run src/lib/services/__tests__/cohort-service.test.ts`
-- [ ] **Step 3: Implement `CohortService`**
+- [x] **Step 3: Implement `CohortService`**
   - Implement `createCohort`, `updateCohort`, `deleteCohort`, `enrollMember`, `removeMember`, `listCohortMembers`, `getCohortById`.
   - Ensure zero `any`, transaction safety on capacity, and chunked batch operations.
-- [ ] **Step 4: Implement cohort-anchored drip in `ReleaseScheduleService`**
+- [x] **Step 4: Implement cohort-anchored drip in `ReleaseScheduleService`**
   - Add support for `days_after_cohort_start`: unlocks when `now >= cohortStartDate + (daysDelay * 86400000)`.
   - Add support for `cohort_start_date`: unlocks when `now >= cohortStartDate`.
   - Add tests in `src/lib/services/__tests__/release-schedule-service.test.ts`.
-- [ ] **Step 5: Export new server actions in `src/app/actions/event-actions.ts`**
+- [x] **Step 5: Export new server actions in `src/app/actions/event-actions.ts`**
   - `enrollCohortMemberAction`, `removeCohortMemberAction`, `listCohortMembersAction`.
-- [ ] **Step 6: Run tests and verify they pass**
-- [ ] **Step 7: Commit locally** (`git commit -m "feat(cohorts): implement CohortService and cohort-anchored drip release engine"`)
+- [x] **Step 6: Run tests and verify they pass**
+- [x] **Step 7: Commit locally** (`git commit -m "feat(cohorts): implement CohortService and cohort-anchored drip release engine"`)
 
 ---
 

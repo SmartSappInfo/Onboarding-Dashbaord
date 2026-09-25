@@ -10,12 +10,14 @@
 
 import { revalidatePath } from 'next/cache';
 import { EventService } from '@/lib/services/event-service';
+import { CohortService } from '@/lib/services/cohort-service';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 import type {
   LiveEvent,
   EventRegistration,
   CourseCohort,
+  CohortMember,
   CreateEventInput,
   UpdateEventInput,
   RegisterEventInput,
@@ -104,7 +106,7 @@ export async function listCohortsByPortalAction(
   courseId?: string
 ): Promise<ActionResponse<CourseCohort[]>> {
   try {
-    const cohorts = await EventService.listCourseCohorts(portalId, courseId);
+    const cohorts = await CohortService.listCourseCohorts(portalId, courseId);
     return { success: true, data: cohorts };
   } catch (err: unknown) {
     return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to list course cohorts.') };
@@ -195,7 +197,7 @@ export async function createCohortAction(
   portalSlug?: string
 ): Promise<ActionResponse<CourseCohort>> {
   try {
-    const cohort = await EventService.createCohort(input);
+    const cohort = await CohortService.createCohort(input);
     revalidatePath(`/admin/portals/${input.portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: cohort };
@@ -211,7 +213,7 @@ export async function updateCohortAction(
   portalSlug?: string
 ): Promise<ActionResponse<CourseCohort>> {
   try {
-    const cohort = await EventService.updateCohort(cohortId, updates);
+    const cohort = await CohortService.updateCohort(cohortId, updates);
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: cohort };
@@ -226,11 +228,69 @@ export async function deleteCohortAction(
   portalSlug?: string
 ): Promise<ActionResponse<boolean>> {
   try {
-    await EventService.deleteCohort(cohortId);
+    await CohortService.deleteCohort(cohortId);
     revalidatePath(`/admin/portals/${portalId}`);
     if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
     return { success: true, data: true };
   } catch (err: unknown) {
     return { success: false, error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to delete cohort.') };
+  }
+}
+
+export async function enrollCohortMemberAction(
+  input: {
+    organizationId: string;
+    portalId: string;
+    cohortId: string;
+    courseId: string;
+    userId: string;
+    userName: string;
+    userEmail: string;
+  },
+  portalSlug?: string
+): Promise<ActionResponse<CohortMember>> {
+  try {
+    const member = await CohortService.enrollMember(input);
+    revalidatePath(`/admin/portals/${input.portalId}`);
+    if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
+    return { success: true, data: member };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to enroll member in cohort.'),
+    };
+  }
+}
+
+export async function removeCohortMemberAction(
+  cohortId: string,
+  userId: string,
+  portalId: string,
+  portalSlug?: string
+): Promise<ActionResponse<boolean>> {
+  try {
+    await CohortService.removeMember(cohortId, userId);
+    revalidatePath(`/admin/portals/${portalId}`);
+    if (portalSlug) revalidatePath(`/portal/${portalSlug}/learn`);
+    return { success: true, data: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to remove member from cohort.'),
+    };
+  }
+}
+
+export async function listCohortMembersAction(
+  cohortId: string
+): Promise<ActionResponse<CohortMember[]>> {
+  try {
+    const members = await CohortService.listCohortMembers(cohortId);
+    return { success: true, data: members };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to list cohort members.'),
+    };
   }
 }
