@@ -111,7 +111,7 @@ export interface ImagePresetDefinition {
 - Modify: `src/lib/page-builder/blocks/image.tsx`
 - Test: `src/components/page-builder/__tests__/ImageBlockSchema.test.tsx`
 
-- [ ] **Step 1: Write the failing test for schema parsing, presets, and backward compatibility**
+- [x] **Step 1: Write the failing test for schema parsing, presets, and backward compatibility**
 
 ```typescript
 // src/components/page-builder/__tests__/ImageBlockSchema.test.tsx
@@ -168,12 +168,12 @@ describe('Image Block Schema & Backward Compatibility', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImageBlockSchema.test.tsx`
 Expected: FAIL with missing fields or undefined preset derivations.
 
-- [ ] **Step 3: Update `src/lib/page-builder/blocks/image.tsx` with extended Zod schema and defaults**
+- [x] **Step 3: Update `src/lib/page-builder/blocks/image.tsx` with extended Zod schema and defaults**
 
 ```typescript
 // Add to src/lib/page-builder/blocks/image.tsx
@@ -300,12 +300,12 @@ const schema = rawSchema.transform((data) => {
 });
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImageBlockSchema.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/lib/page-builder/blocks/image.tsx src/components/page-builder/__tests__/ImageBlockSchema.test.tsx
@@ -320,7 +320,7 @@ git commit -m "feat(image): extend image block schema with presets, framing, and
 - Create: `src/components/page-builder/AspectRatioSelector.tsx`
 - Test: `src/components/page-builder/__tests__/AspectRatioSelector.test.tsx`
 
-- [ ] **Step 1: Write the failing test for AspectRatioSelector**
+- [x] **Step 1: Write the failing test for AspectRatioSelector**
 
 ```typescript
 // src/components/page-builder/__tests__/AspectRatioSelector.test.tsx
@@ -371,12 +371,12 @@ describe('AspectRatioSelector', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/AspectRatioSelector.test.tsx`
 Expected: FAIL with "Cannot find module '../AspectRatioSelector'"
 
-- [ ] **Step 3: Implement `src/components/page-builder/AspectRatioSelector.tsx`**
+- [x] **Step 3: Implement `src/components/page-builder/AspectRatioSelector.tsx`**
 
 ```typescript
 'use client';
@@ -501,12 +501,12 @@ export function AspectRatioSelector({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/AspectRatioSelector.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/page-builder/AspectRatioSelector.tsx src/components/page-builder/__tests__/AspectRatioSelector.test.tsx
@@ -521,7 +521,7 @@ git commit -m "feat(inspector): create AspectRatioSelector component with propor
 - Create: `src/components/page-builder/ImagePresetSelector.tsx`
 - Test: `src/components/page-builder/__tests__/ImagePresetSelector.test.tsx`
 
-- [ ] **Step 1: Write the failing test for ImagePresetSelector**
+- [x] **Step 1: Write the failing test for ImagePresetSelector**
 
 ```typescript
 // src/components/page-builder/__tests__/ImagePresetSelector.test.tsx
@@ -573,12 +573,12 @@ describe('ImagePresetSelector', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImagePresetSelector.test.tsx`
 Expected: FAIL with "Cannot find module '../ImagePresetSelector'"
 
-- [ ] **Step 3: Implement `src/components/page-builder/ImagePresetSelector.tsx`**
+- [x] **Step 3: Implement `src/components/page-builder/ImagePresetSelector.tsx`**
 
 ```typescript
 'use client';
@@ -807,12 +807,12 @@ export function ImagePresetSelector({
 }
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImagePresetSelector.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/page-builder/ImagePresetSelector.tsx src/components/page-builder/__tests__/ImagePresetSelector.test.tsx
@@ -827,7 +827,7 @@ git commit -m "feat(inspector): create ImagePresetSelector with 8 miniature WYSI
 - Modify: `src/lib/page-builder/blocks/image.tsx`
 - Test: `src/components/page-builder/__tests__/ImageRuntimeRender.test.tsx`
 
-- [ ] **Step 1: Write the failing test for Image Block Runtime Rendering**
+- [x] **Step 1: Write the failing test for Image Block Runtime Rendering**
 
 ```typescript
 // src/components/page-builder/__tests__/ImageRuntimeRender.test.tsx
@@ -920,12 +920,12 @@ describe('Image Runtime Renderer', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImageRuntimeRender.test.tsx`
 Expected: FAIL with missing browser chrome headers or mobile speaker bar.
 
-- [ ] **Step 3: Update `src/lib/page-builder/blocks/image.tsx` with full visual rendering pipeline**
+- [x] **Step 3: Update `src/lib/page-builder/blocks/image.tsx` with full visual rendering pipeline**
 
 ```typescript
 // Implement full render method in src/lib/page-builder/blocks/image.tsx
@@ -983,12 +983,12 @@ const HOVER_EFFECT_CLASSES: Record<ImageHoverEffect, string> = {
 // </div>
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImageRuntimeRender.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/lib/page-builder/blocks/image.tsx src/components/page-builder/__tests__/ImageRuntimeRender.test.tsx
@@ -1003,7 +1003,7 @@ git commit -m "feat(image): implement complete image runtime rendering with devi
 - Modify: `src/components/page-builder/AutoBlockEditor.tsx`
 - Test: `src/components/page-builder/__tests__/AutoBlockEditorImagePresets.test.tsx`
 
-- [ ] **Step 1: Write the failing test for AutoBlockEditor image preset routing**
+- [x] **Step 1: Write the failing test for AutoBlockEditor image preset routing**
 
 ```typescript
 // src/components/page-builder/__tests__/AutoBlockEditorImagePresets.test.tsx
@@ -1043,12 +1043,12 @@ describe('AutoBlockEditor Image Preset Routing', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/AutoBlockEditorImagePresets.test.tsx`
 Expected: FAIL if ImagePresetSelector or AspectRatioSelector are not routed in `AutoBlockEditor.tsx`.
 
-- [ ] **Step 3: Update `src/components/page-builder/AutoBlockEditor.tsx`**
+- [x] **Step 3: Update `src/components/page-builder/AutoBlockEditor.tsx`**
 
 ```typescript
 // In src/components/page-builder/AutoBlockEditor.tsx:
@@ -1082,12 +1082,12 @@ const isAspectRatio = field.key === 'aspectRatio';
 // Exclude label if isImagePreset or isAspectRatio (they carry their own visual headers / radiogroups)
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/AutoBlockEditorImagePresets.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/components/page-builder/AutoBlockEditor.tsx src/components/page-builder/__tests__/AutoBlockEditorImagePresets.test.tsx
@@ -1102,7 +1102,7 @@ git commit -m "feat(inspector): integrate ImagePresetSelector and AspectRatioSel
 - Modify: `src/lib/page-builder/blocks/image.tsx`
 - Test: `src/components/page-builder/__tests__/ImageProgressiveDisclosure.test.tsx`
 
-- [ ] **Step 1: Write test verifying progressive disclosure options and preset synchronization**
+- [x] **Step 1: Write test verifying progressive disclosure options and preset synchronization**
 
 ```typescript
 // src/components/page-builder/__tests__/ImageProgressiveDisclosure.test.tsx
@@ -1132,12 +1132,12 @@ describe('Image Progressive Disclosure & Field Definitions', () => {
 });
 ```
 
-- [ ] **Step 2: Run test to verify it passes or fails**
+- [x] **Step 2: Run test to verify it passes or fails**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImageProgressiveDisclosure.test.tsx`
 Expected: Passes once field definitions in `image.tsx` match the exact labels.
 
-- [ ] **Step 3: Update `image.tsx` field descriptors with complete options and everyday UI English labels**
+- [x] **Step 3: Update `image.tsx` field descriptors with complete options and everyday UI English labels**
 
 ```typescript
 // Refined fields in registerBlock in src/lib/page-builder/blocks/image.tsx
@@ -1243,12 +1243,12 @@ fields: [
 ]
 ```
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run src/components/page-builder/__tests__/ImageProgressiveDisclosure.test.tsx`
 Expected: PASS
 
-- [ ] **Step 5: Commit changes locally**
+- [x] **Step 5: Commit changes locally**
 
 ```bash
 git add src/lib/page-builder/blocks/image.tsx src/components/page-builder/__tests__/ImageProgressiveDisclosure.test.tsx
@@ -1262,22 +1262,22 @@ git commit -m "feat(image): add progressive disclosure fine-tuning fields with e
 **Files:**
 - All changed files
 
-- [ ] **Step 1: Run complete page-builder test suite**
+- [x] **Step 1: Run complete page-builder test suite**
 
 Run: `npx vitest run src/components/page-builder/__tests__/`
 Expected: All tests pass (including existing 51 tests and all new test files).
 
-- [ ] **Step 2: Run strict TypeScript compilation check**
+- [x] **Step 2: Run strict TypeScript compilation check**
 
 Run: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit`
 Expected: 0 errors.
 
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
 
 Run: `npm run lint`
 Expected: 0 blocking errors or lint warnings.
 
-- [ ] **Step 4: Inspect Git status and verify local commit cleanliness**
+- [x] **Step 4: Inspect Git status and verify local commit cleanliness**
 
 Run: `git status`
 Expected: Clean working tree on local branch without any uncommitted leftovers. (DO NOT push to origin).
@@ -1286,11 +1286,11 @@ Expected: Clean working tree on local branch without any uncommitted leftovers. 
 
 ## 5. Verification Checkpoints & Success Metrics
 
-- [ ] **Visual Thumbnail Fidelity:** All 8 presets show exact miniature wireframes in `ImagePresetSelector.tsx`.
-- [ ] **Aspect Ratio Accuracy:** `1:1`, `4:3`, `16:9`, `21:9`, `9:16`, `3:4` render with proper CSS aspect ratios and zero CLS.
-- [ ] **Device Mockup Chrome:** Browser window displays 3 traffic-light dots and title bar; mobile chassis displays top speaker pill.
-- [ ] **Mask Performance:** Cathedral arch and circular masks clip cleanly without clipping edit buttons or breaking SSR.
-- [ ] **Backward Compatibility:** Older image blocks with `{ borderRadius: 'circle' }` render without errors or data migration.
-- [ ] **Mobile Touch Targets:** All buttons and radio cards satisfy $\ge 44\text{px}$ minimum touch target size.
-- [ ] **Zero `any`:** Strict TypeScript compliance across all new and modified components.
-- [ ] **Local-Only Git:** Zero pushes to `origin/main` or remote repositories.
+- [x] **Visual Thumbnail Fidelity:** All 8 presets show exact miniature wireframes in `ImagePresetSelector.tsx`.
+- [x] **Aspect Ratio Accuracy:** `1:1`, `4:3`, `16:9`, `21:9`, `9:16`, `3:4` render with proper CSS aspect ratios and zero CLS.
+- [x] **Device Mockup Chrome:** Browser window displays 3 traffic-light dots and title bar; mobile chassis displays top speaker pill.
+- [x] **Mask Performance:** Cathedral arch and circular masks clip cleanly without clipping edit buttons or breaking SSR.
+- [x] **Backward Compatibility:** Older image blocks with `{ borderRadius: 'circle' }` render without errors or data migration.
+- [x] **Mobile Touch Targets:** All buttons and radio cards satisfy $\ge 44\text{px}$ minimum touch target size.
+- [x] **Zero `any`:** Strict TypeScript compliance across all new and modified components.
+- [x] **Local-Only Git:** Zero pushes to `origin/main` or remote repositories.
