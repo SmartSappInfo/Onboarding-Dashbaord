@@ -43,12 +43,15 @@ export function PlaybackModeSelector({
           type="button"
           role="radio"
           aria-checked={currentMode === 'inline'}
-          tabIndex={0}
+          tabIndex={currentMode === 'inline' ? 0 : -1}
           onClick={() => onChange('inline')}
           onKeyDown={(e) => {
             if (e.key === ' ' || e.key === 'Enter') {
               e.preventDefault();
               onChange('inline');
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+              e.preventDefault();
+              onChange('modal');
             }
           }}
           className={cn(
@@ -87,12 +90,15 @@ export function PlaybackModeSelector({
           type="button"
           role="radio"
           aria-checked={currentMode === 'modal'}
-          tabIndex={0}
+          tabIndex={currentMode === 'modal' ? 0 : -1}
           onClick={() => onChange('modal')}
           onKeyDown={(e) => {
             if (e.key === ' ' || e.key === 'Enter') {
               e.preventDefault();
               onChange('modal');
+            } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+              e.preventDefault();
+              onChange('inline');
             }
           }}
           className={cn(

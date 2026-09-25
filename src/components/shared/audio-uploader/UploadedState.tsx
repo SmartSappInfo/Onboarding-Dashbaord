@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { RefreshCw, Trash2, FolderHeart, Link as LinkIcon, Upload, ArrowLeft, AudioWaveform } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { RefreshCw, Trash2, FolderHeart, Link as LinkIcon, Upload, ArrowLeft, AudioWaveform, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface UploadedStateProps {
@@ -22,6 +22,11 @@ export function UploadedState({
   onRemove
 }: UploadedStateProps) {
   const [isChanging, setIsChanging] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+
+  useEffect(() => {
+    setLoadError(false);
+  }, [audioUrl]);
 
   const getDisplayName = (url: string, explicitName?: string): string => {
     if (explicitName) return explicitName;
@@ -125,10 +130,21 @@ export function UploadedState({
             </div>
           </div>
 
-          <div className="pt-1">
-            <audio controls src={audioUrl} className="w-full h-10 min-h-[40px] rounded-lg">
+          <div className="pt-1 space-y-1">
+            <audio 
+              controls 
+              src={audioUrl} 
+              onError={() => setLoadError(true)}
+              className="w-full h-10 min-h-[40px] rounded-lg"
+            >
               Your browser does not support the audio element.
             </audio>
+            {loadError && (
+              <p className="text-[10px] text-amber-600 dark:text-amber-400 font-medium flex items-center gap-1.5 pt-0.5">
+                <AlertCircle className="w-3.5 h-3.5 flex-shrink-0" />
+                Unable to load audio preview. Check URL accessibility or permissions.
+              </p>
+            )}
           </div>
         </div>
       )}

@@ -45,7 +45,6 @@ import {
   PanelRightClose,
   PanelRightOpen,
   Lock,
-  Shield,
   Undo2,
   Redo2,
   Eye,
@@ -73,7 +72,6 @@ import type { PortalVisibility } from '@/lib/types/portal';
 import type { MembershipPlan } from '@/lib/types/membership';
 import type { ContentTeaserMode, CustomPaywallConfig, ContentStudioDraft } from '@/lib/types/content';
 import { getBlock, normalizeBlockType } from '@/lib/page-builder/registry';
-import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import { DEFAULT_THEME } from '@/lib/portal-presets';
 import { ContentBlockCanvas } from './studio/ContentBlockCanvas';
 import { ContentBlockPalette } from './studio/ContentBlockPalette';
@@ -787,6 +785,12 @@ export function ContentEditorModal({
       tags,
       blocks,
       visibility,
+      requiredPlanIds,
+      teaserMode,
+      customPaywallTitle,
+      customPaywallDesc,
+      customPaywallCta,
+      customPaywallPerks,
       scheduledAt,
       media,
       metaTitle,

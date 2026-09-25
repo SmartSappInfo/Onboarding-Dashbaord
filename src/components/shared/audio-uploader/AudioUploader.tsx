@@ -109,7 +109,8 @@ export function AudioUploader({
       onChange(downloadUrl);
       toast({
         title: 'Audio uploaded successfully',
-        description: effectiveWorkspaceId ? 'Registered in your Media Library.' : 'Applied successfully.'
+        description: effectiveWorkspaceId ? 'Registered in your Media Library.' : 'Applied successfully.',
+        actionConfig: effectiveWorkspaceId ? { path: '/admin/media', label: 'View in Library' } : undefined,
       });
     } catch (error) {
       console.error('Audio upload failed:', error);
@@ -180,6 +181,7 @@ export function AudioUploader({
           showGallery={Boolean(effectiveWorkspaceId)}
           maxSizeMB={maxAudioSizeMB}
           className={className}
+          onFileSelect={handleAudioUpload}
         />
       )}
 

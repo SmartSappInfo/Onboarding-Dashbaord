@@ -24,12 +24,10 @@ import {
   Heading,
   Image as ImageIcon,
   Video,
-  AlertCircle,
   ListChecks,
   HelpCircle,
   Columns as ColumnsIcon,
   Minus,
-  Download,
   Layers,
   Sparkles,
 } from 'lucide-react';
@@ -299,7 +297,7 @@ export const BlockInsertButton = React.memo(function BlockInsertButton({
             <button
               type="button"
               onClick={handleOpenFullSidebar}
-              className="w-full flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all min-h-[36px]"
+              className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800 active:scale-[0.97] transition-all min-h-[44px]"
             >
               <Layers className="w-3.5 h-3.5 text-[var(--portal-primary,#3B82F6)]" />
               <span>Browse all blocks in sidebar</span>

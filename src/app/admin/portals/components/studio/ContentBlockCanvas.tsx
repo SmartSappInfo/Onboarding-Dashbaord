@@ -50,7 +50,7 @@ import {
 import { cn } from '@/lib/utils';
 import type { PageBlock, PageBlockType, BuilderResources, ResolvedTheme } from '@/lib/types';
 import { DEFAULT_THEME } from '@/lib/page-builder/resolve-theme';
-import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { getBlock, type BlockRenderContext } from '@/lib/page-builder/registry';
 import {
   CONTENT_STARTER_TEMPLATES,
   instantiateContentTemplate,
@@ -241,11 +241,12 @@ export const ContentBlockCanvas = React.memo(function ContentBlockCanvas({
         onAddBlockOfType(blockType, targetIndex);
         return;
       }
+      const def = getBlock(blockType);
       const uniqueSuffix = Math.random().toString(36).slice(2, 7);
       const newBlock: PageBlock = {
         id: `blk_${blockType}_${Date.now()}_${uniqueSuffix}`,
         type: blockType,
-        props: {},
+        props: def?.defaults ? { ...def.defaults } : {},
       };
       const nextBlocks = [...blocks];
       nextBlocks.splice(targetIndex, 0, newBlock);

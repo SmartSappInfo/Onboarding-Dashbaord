@@ -10,6 +10,7 @@ interface EmptyStateProps {
   showGallery: boolean;
   maxSizeMB: number;
   className?: string;
+  onFileSelect?: (file: File) => void;
 }
 
 export function EmptyState({
@@ -18,7 +19,8 @@ export function EmptyState({
   onOpenLink,
   showGallery,
   maxSizeMB,
-  className
+  className,
+  onFileSelect
 }: EmptyStateProps) {
   const [dragActive, setDragActive] = useState(false);
 
@@ -36,6 +38,10 @@ export function EmptyState({
     e.preventDefault();
     e.stopPropagation();
     setDragActive(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && onFileSelect) {
+      onFileSelect(file);
+    }
   };
 
   return (

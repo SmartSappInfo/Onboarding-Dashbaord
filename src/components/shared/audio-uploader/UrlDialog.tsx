@@ -21,22 +21,34 @@ export function UrlDialog({
   const [url, setUrl] = useState(initialValue);
   const [error, setError] = useState('');
 
+  React.useEffect(() => {
+    if (open) {
+      setUrl(initialValue || '');
+      setError('');
+    }
+  }, [open, initialValue]);
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!url.trim()) {
+    const trimmed = url.trim();
+    if (!trimmed) {
       setError('Please provide a valid audio link.');
       return;
     }
 
     try {
-      new URL(url);
+      const parsed = new URL(trimmed);
+      if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+        setError('Please enter a valid HTTP or HTTPS audio URL.');
+        return;
+      }
     } catch {
       setError('Please enter a valid URL (e.g. https://domain.com/sound.mp3).');
       return;
     }
 
     setError('');
-    onConfirm(url.trim());
+    onConfirm(trimmed);
     onOpenChange(false);
   };
 
