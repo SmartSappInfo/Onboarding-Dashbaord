@@ -581,9 +581,9 @@ export function ContentEditorModal({
     setMobilePaletteOpen(true);
   }, []);
 
-  // Block palette addition callback
+  // Block palette addition callback (supports direct in-situ index or sidebar palette)
   const handleAddBlockOfType = useCallback(
-    (blockType: PageBlockType) => {
+    (blockType: PageBlockType, targetIndex?: number) => {
       const def = getBlock(normalizeBlockType(blockType));
       const uniqueSuffix = Math.random().toString(36).slice(2, 7);
       const newBlock: PageBlock = {
@@ -593,7 +593,11 @@ export function ContentEditorModal({
       };
 
       const insertPos =
-        paletteInsertIndex !== null ? paletteInsertIndex : blocks.length;
+        targetIndex !== undefined
+          ? targetIndex
+          : paletteInsertIndex !== null
+          ? paletteInsertIndex
+          : blocks.length;
 
       const updated = [...blocks];
       updated.splice(insertPos, 0, newBlock);
@@ -1125,16 +1129,16 @@ export function ContentEditorModal({
             )}
           </button>
 
-          {/* Center: Canvas Workspace */}
-          <main className="flex-1 h-full overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/50 p-4 sm:p-8">
-            <div className="max-w-3xl mx-auto space-y-4">
-              {/* Document Header in Canvas */}
-              <div className="p-6 bg-card border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3 shadow-sm">
+          {/* Center: Canvas Workspace (Realistic Editorial WYSIWYG Document Sheet) */}
+          <main className="flex-1 h-full overflow-y-auto bg-slate-100/70 dark:bg-zinc-950/70 p-4 sm:p-8">
+            <div className="max-w-3xl mx-auto bg-card border border-slate-200/80 dark:border-slate-800 rounded-2xl sm:rounded-3xl p-6 sm:p-10 shadow-xs transition-all min-h-[70vh]">
+              {/* Document Header in Canvas (Integrated directly into document paper) */}
+              <div className="pb-6 mb-6 border-b border-slate-100 dark:border-slate-800/60 space-y-3">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                     {type}
                   </span>
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-xs text-muted-foreground font-mono truncate">
                     /portal/[slug]/content/{type}/{slug || 'auto-generated'}
                   </span>
                 </div>
@@ -1143,7 +1147,7 @@ export function ContentEditorModal({
                   value={title}
                   onChange={(e) => handleTitleChange(e.target.value)}
                   placeholder="Enter document title..."
-                  className="w-full text-2xl sm:text-3xl font-extrabold bg-transparent text-foreground placeholder:text-muted-foreground/50 border-none outline-none focus:ring-0 p-0"
+                  className="w-full text-2xl sm:text-3xl font-extrabold bg-transparent text-foreground placeholder:text-muted-foreground/40 border-none outline-none focus:ring-0 p-0"
                 />
               </div>
 
@@ -1154,6 +1158,7 @@ export function ContentEditorModal({
                 onSelectBlock={handleSelectBlock}
                 onChangeBlocks={handleBlocksChange}
                 onInsertAtIndex={handleInsertAtIndex}
+                onAddBlockOfType={handleAddBlockOfType}
                 portalPrimaryColor={portalPrimaryColor}
               />
             </div>

@@ -48,7 +48,7 @@ import {
   Layers,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { PageBlock, BuilderResources, ResolvedTheme } from '@/lib/types';
+import type { PageBlock, PageBlockType, BuilderResources, ResolvedTheme } from '@/lib/types';
 import { DEFAULT_THEME } from '@/lib/page-builder/resolve-theme';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
 import {
@@ -64,6 +64,7 @@ export interface ContentBlockCanvasProps {
   onSelectBlock: (id: string | null) => void;
   onChangeBlocks: (blocks: PageBlock[]) => void;
   onInsertAtIndex: (index: number) => void;
+  onAddBlockOfType?: (blockType: PageBlockType, index?: number) => void;
   resources?: BuilderResources;
   workspaceId?: string;
   portalPrimaryColor?: string;
@@ -96,6 +97,7 @@ export const ContentBlockCanvas = React.memo(function ContentBlockCanvas({
   onSelectBlock,
   onChangeBlocks,
   onInsertAtIndex,
+  onAddBlockOfType,
   resources = DEFAULT_RESOURCES,
   workspaceId: _workspaceId,
   portalPrimaryColor,
@@ -232,10 +234,31 @@ export const ContentBlockCanvas = React.memo(function ContentBlockCanvas({
     [onChangeBlocks, onSelectBlock]
   );
 
-  // Start Blank Document Handler
+  // 1-Tap Direct Block Insertion (from Quick Picker)
+  const handleDirectInsertBlockType = useCallback(
+    (blockType: PageBlockType, targetIndex: number) => {
+      if (onAddBlockOfType) {
+        onAddBlockOfType(blockType, targetIndex);
+        return;
+      }
+      const uniqueSuffix = Math.random().toString(36).slice(2, 7);
+      const newBlock: PageBlock = {
+        id: `blk_${blockType}_${Date.now()}_${uniqueSuffix}`,
+        type: blockType,
+        props: {},
+      };
+      const nextBlocks = [...blocks];
+      nextBlocks.splice(targetIndex, 0, newBlock);
+      onChangeBlocks(nextBlocks);
+      onSelectBlock(newBlock.id);
+    },
+    [onAddBlockOfType, blocks, onChangeBlocks, onSelectBlock]
+  );
+
+  // Start Blank Document Handler — seeds with a clean text block immediately
   const handleStartBlank = useCallback(() => {
-    onInsertAtIndex(0);
-  }, [onInsertAtIndex]);
+    handleDirectInsertBlockType('text', 0);
+  }, [handleDirectInsertBlockType]);
 
   const blockIds = useMemo(() => blocks.map((b) => b.id), [blocks]);
 
@@ -342,12 +365,15 @@ export const ContentBlockCanvas = React.memo(function ContentBlockCanvas({
           {/* Top Insert Button (index 0) */}
           <BlockInsertButton
             index={0}
+            onInsertBlockType={handleDirectInsertBlockType}
             onInsert={onInsertAtIndex}
+            onOpenFullPalette={onInsertAtIndex}
             label="Insert Block at Top"
+            alwaysVisible={true}
           />
 
           {/* Render Sortable Blocks */}
-          <div className="space-y-2">
+          <div className="space-y-1.5 pt-2">
             {blocks.map((block, index) => (
               <React.Fragment key={block.id}>
                 <SortableBlockItem
@@ -365,22 +391,24 @@ export const ContentBlockCanvas = React.memo(function ContentBlockCanvas({
                 {/* Inter-block Insert Button */}
                 <BlockInsertButton
                   index={index + 1}
+                  onInsertBlockType={handleDirectInsertBlockType}
                   onInsert={onInsertAtIndex}
+                  onOpenFullPalette={onInsertAtIndex}
                 />
               </React.Fragment>
             ))}
           </div>
 
           {/* Canvas Bottom Quick Add Trigger */}
-          <div className="mt-6 flex justify-center">
-            <button
-              type="button"
-              onClick={() => onInsertAtIndex(blocks.length)}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-dashed border-slate-300 dark:border-slate-700 hover:border-[var(--portal-primary,#3B82F6)] hover:text-[var(--portal-primary,#3B82F6)] text-xs font-semibold text-muted-foreground bg-card/50 hover:bg-slate-50 dark:hover:bg-slate-900 active:scale-[0.97] transition-all min-h-[44px]"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Add Block to End</span>
-            </button>
+          <div className="mt-8 flex justify-center">
+            <BlockInsertButton
+              index={blocks.length}
+              onInsertBlockType={handleDirectInsertBlockType}
+              onInsert={onInsertAtIndex}
+              onOpenFullPalette={onInsertAtIndex}
+              label="Add Block to End"
+              alwaysVisible={true}
+            />
           </div>
         </SortableContext>
       </DndContext>

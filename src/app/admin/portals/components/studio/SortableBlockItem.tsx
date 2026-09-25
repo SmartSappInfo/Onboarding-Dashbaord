@@ -82,8 +82,6 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
-    contentVisibility: 'auto',
-    containIntrinsicSize: '1px 120px',
   };
 
   const handleContainerClick = (e: React.MouseEvent) => {
@@ -98,32 +96,30 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
       onClick={handleContainerClick}
       aria-label={`Block ${index + 1} of ${total}: ${blockLabel}`}
       className={cn(
-        'group/block relative rounded-xl transition-all duration-150',
-        'border border-dashed border-slate-200 dark:border-slate-800',
-        'hover:border-slate-400 dark:hover:border-slate-600',
-        'bg-card text-card-foreground',
+        'group/block relative rounded-xl transition-all duration-150 overflow-visible',
+        'border border-transparent hover:border-slate-300/80 dark:hover:border-slate-700/80 hover:bg-slate-50/40 dark:hover:bg-slate-900/20',
         selected &&
-          'ring-2 ring-[var(--portal-primary,#3B82F6)] border-[var(--portal-primary,#3B82F6)]/60 bg-[var(--portal-primary,#3B82F6)]/[0.015] shadow-sm',
-        isDragging && 'z-50 shadow-2xl ring-2 ring-[var(--portal-primary,#3B82F6)] bg-background'
+          'ring-2 ring-[var(--portal-primary,#3B82F6)] border-transparent bg-[var(--portal-primary,#3B82F6)]/[0.015] shadow-xs',
+        isDragging && 'z-50 shadow-2xl ring-2 ring-[var(--portal-primary,#3B82F6)] bg-background border-dashed border-slate-300'
       )}
     >
       {/* Top Floating Control Bar */}
       <div
         className={cn(
-          'absolute -top-3.5 left-3 right-3 flex items-center justify-between pointer-events-none z-20 transition-opacity duration-150',
+          'absolute -top-3.5 sm:-top-4 left-2 sm:left-3 right-2 sm:right-3 flex items-center justify-between pointer-events-none z-30 transition-opacity duration-150',
           selected
             ? 'opacity-100'
             : 'opacity-0 group-hover/block:opacity-100 group-focus-within/block:opacity-100'
         )}
       >
         {/* Block Type Badge */}
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm pointer-events-auto">
+        <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-md pointer-events-auto border border-white/10 dark:border-slate-900/10">
           {IconComponent && <IconComponent className="w-3 h-3 text-emerald-400 dark:text-emerald-600" />}
           <span>{blockLabel}</span>
         </div>
 
         {/* Action Buttons Toolbar */}
-        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-background/95 backdrop-blur-sm border border-slate-200 dark:border-slate-800 shadow-md pointer-events-auto">
+        <div className="flex items-center gap-0.5 p-0.5 rounded-lg bg-card/95 backdrop-blur-md border border-slate-200 dark:border-slate-800 shadow-md pointer-events-auto">
           {/* Drag Handle */}
           <button
             type="button"
@@ -196,10 +192,10 @@ export const SortableBlockItem = React.memo(function SortableBlockItem({
         </div>
       </div>
 
-      {/* Block Body Content */}
+      {/* Block Body Content — Streamlined for true WYSIWYG editorial rhythm */}
       <div
         className={cn(
-          'p-4 sm:p-5 transition-opacity',
+          'px-2 py-1.5 sm:px-3 sm:py-2 transition-opacity',
           isDragging && 'pointer-events-none select-none opacity-50'
         )}
       >
