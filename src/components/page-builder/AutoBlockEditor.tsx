@@ -36,6 +36,7 @@ import { VideoPresetSelector } from './VideoPresetSelector';
 import { PlayButtonArchetypeSelector } from './PlayButtonArchetypeSelector';
 import { AspectRatioSelector } from './AspectRatioSelector';
 import { DividerStyleSelector } from './DividerStyleSelector';
+import { NumberStepperControl } from './NumberStepperControl';
 import {
   DividerWidthSelector,
   DividerThicknessSelector,
@@ -184,7 +185,14 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
       return <VideoField label={field.label} value={value} workspaceId={workspaceId} onChange={(v) => onChange(v)} />;
     case 'number':
       return (
-        <Input aria-label={field.label} type="number" min={field.min} max={field.max} step={field.step} value={typeof value === 'number' ? value : ''} onChange={(e) => onChange(Number(e.target.value))} className={INPUT_CLASS} />
+        <NumberStepperControl
+          label={field.label}
+          value={typeof value === 'number' ? value : Number(value)}
+          min={field.min}
+          max={field.max}
+          step={field.step}
+          onChange={(v) => onChange(v)}
+        />
       );
     case 'slider':
       return (
