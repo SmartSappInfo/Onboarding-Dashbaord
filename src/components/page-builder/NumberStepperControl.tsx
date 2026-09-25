@@ -92,7 +92,7 @@ export function NumberStepperControl({
         disabled={isAtMin}
         onClick={handleDecrement}
         className={cn(
-          'flex items-center justify-center min-w-[44px] min-h-[44px] h-10 px-3 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/60 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100'
+          'flex items-center justify-center min-w-[44px] min-h-[44px] h-10 px-3 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/60 active:scale-[0.97] touch-manipulation transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100'
         )}
       >
         <Minus className="w-4 h-4" />
@@ -122,7 +122,7 @@ export function NumberStepperControl({
         disabled={isAtMax}
         onClick={handleIncrement}
         className={cn(
-          'flex items-center justify-center min-w-[44px] min-h-[44px] h-10 px-3 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/60 active:scale-[0.97] transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100'
+          'flex items-center justify-center min-w-[44px] min-h-[44px] h-10 px-3 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700/60 active:scale-[0.97] touch-manipulation transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100'
         )}
       >
         <Plus className="w-4 h-4" />

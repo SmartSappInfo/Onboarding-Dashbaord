@@ -93,11 +93,11 @@ export class ContentService {
       }
 
       // 2. Structured items collections (Lists, FAQs, Choice cards, Steps, Testimonials)
-      const listCollection = Array.isArray(props.items)
-        ? props.items
-        : (Array.isArray(props.steps) ? props.steps : null);
+      const collections: unknown[][] = [];
+      if (Array.isArray(props.items)) collections.push(props.items);
+      if (Array.isArray(props.steps)) collections.push(props.steps);
 
-      if (listCollection) {
+      for (const listCollection of collections) {
         for (const item of listCollection) {
           if (typeof item === 'string' && item.trim().length > 0) {
             segments.push(item.trim());
@@ -118,11 +118,15 @@ export class ContentService {
               'subheading',
               'caption',
             ];
+            const itemParts: string[] = [];
             for (const subKey of subProps) {
               const subVal = itemRec[subKey];
               if (typeof subVal === 'string' && subVal.trim().length > 0) {
-                segments.push(subVal.trim());
+                itemParts.push(subVal.trim());
               }
+            }
+            if (itemParts.length > 0) {
+              segments.push(itemParts.join('\n'));
             }
           }
         }

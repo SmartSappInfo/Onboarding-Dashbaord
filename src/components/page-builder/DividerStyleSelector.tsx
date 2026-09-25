@@ -155,6 +155,9 @@ export function DividerStyleSelector({
     }
   };
 
+  const selectedIndex = options.findIndex((o) => o.value === value);
+  const effectiveSelectedIndex = selectedIndex >= 0 ? selectedIndex : 0;
+
   return (
     <div
       role="radiogroup"
@@ -174,7 +177,7 @@ export function DividerStyleSelector({
             role="radio"
             aria-checked={isSelected}
             aria-label={option.label}
-            tabIndex={isSelected ? 0 : -1}
+            tabIndex={index === effectiveSelectedIndex ? 0 : -1}
             onClick={() => onChange(option.value as DividerStyleType)}
             onKeyDown={(e) => handleKeyDown(e, index)}
             className={cn(
