@@ -35,6 +35,12 @@ import { ImagePresetSelector } from './ImagePresetSelector';
 import { VideoPresetSelector } from './VideoPresetSelector';
 import { PlayButtonArchetypeSelector } from './PlayButtonArchetypeSelector';
 import { AspectRatioSelector } from './AspectRatioSelector';
+import { DividerStyleSelector } from './DividerStyleSelector';
+import {
+  DividerWidthSelector,
+  DividerThicknessSelector,
+  DividerSpacingSelector,
+} from './DividerSegmentedControls';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
@@ -266,6 +272,42 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
             label={field.label}
             value={asString(value)}
             options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'style' && field.options.some((o) => o.value === 'solid' || o.value === 'dashed')) {
+        return (
+          <DividerStyleSelector
+            value={asString(value) || 'solid'}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'width' && field.options.some((o) => o.value === 'full' || o.value === 'accent')) {
+        return (
+          <DividerWidthSelector
+            value={asString(value) || 'full'}
+            options={field.options as any}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'thickness' && field.options.some((o) => o.value === 'hairline' || o.value === 'heavy')) {
+        return (
+          <DividerThicknessSelector
+            value={asString(value) || 'hairline'}
+            options={field.options as any}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'spacing' && field.options.some((o) => o.value === 'compact' || o.value === 'spacious')) {
+        return (
+          <DividerSpacingSelector
+            value={asString(value) || 'medium'}
+            options={field.options as any}
             onChange={(val) => onChange(val)}
           />
         );
@@ -575,11 +617,17 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               if (field.key === 'cardBorderColor' && props.cardBgType === 'default') return null;
             }
 
+            if (block.type === 'divider') {
+              if (field.key === 'label' && props.style !== 'badge' && props.style !== 'notch') return null;
+              if (field.key === 'alignment' && props.width === 'full') return null;
+            }
+
             const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
             const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
             const isImagePreset = field.key === 'preset' && block.type === 'image';
             const isVideoPreset = field.key === 'preset' && block.type === 'video';
             const isPlayButtonArchetype = field.key === 'playButtonArchetype';
+            const isDividerStyle = field.key === 'style' && block.type === 'divider';
 
             return (
               <div key={field.key} className="space-y-1.5">
@@ -590,7 +638,8 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
                 !isPlaybackField &&
                 !isImagePreset &&
                 !isVideoPreset &&
-                !isPlayButtonArchetype ? (
+                !isPlayButtonArchetype &&
+                !isDividerStyle ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl
