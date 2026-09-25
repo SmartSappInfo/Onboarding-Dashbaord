@@ -55,9 +55,9 @@ import {
   HelpCircle,
   Quote,
   Zap,
-  FileText,
 } from 'lucide-react';
-import { UnifiedPromptBar } from '@/components/ai/PromptBar/UnifiedPromptBar';
+import PromptBar from '@/components/PromptBar';
+import { File02Icon } from '@hugeicons/core-free-icons';
 
 const formSchema = z.object({
   prompt: z.string().min(5, { message: 'Please enter a research inquiry of at least 5 characters.' }),
@@ -200,32 +200,48 @@ export default function AISummariesView({
             </div>
           </div>
 
-          <UnifiedPromptBar
-            placeholder="Ask any research inquiry across verified responses (e.g. Compare satisfaction between segments, identify top complaints)..."
-            value={form.watch('prompt')}
-            onChange={(val) => form.setValue('prompt', val)}
-            busy={isQuerying}
-            sources={[
-              {
-                key: 'responses',
-                name: `Verified Responses (${responses.length})`,
-                description: 'Cites exact verbatims and response IDs',
-                icon: FileText,
-              },
-            ]}
-            commands={SUGGESTED_PROMPTS.map((p) => ({
-              key: p,
-              label: p,
-              description: 'Preset analytical inquiry',
-              promptText: p,
-            }))}
-            disabled={responses.length === 0}
-            showModelSelector={false}
-            showEffortSelector={false}
-            showSourcesMenu={true}
-            showCommandsMenu={true}
-            onSend={(text) => void onSubmit({ prompt: text })}
-          />
+          <div className="flex justify-center w-full">
+            <PromptBar
+              placeholder={
+                responses.length === 0
+                  ? 'No responses submitted yet to analyze...'
+                  : 'Ask any research inquiry across verified responses (e.g. Compare satisfaction between segments)...'
+              }
+              value={form.watch('prompt')}
+              onChange={(val) => form.setValue('prompt', val)}
+              busy={isQuerying}
+              sources={[
+                {
+                  key: 'responses',
+                  name: `Verified Responses (${responses.length})`,
+                  description: 'Cites exact verbatims and response IDs',
+                  icon: File02Icon,
+                },
+              ]}
+              commands={SUGGESTED_PROMPTS.map((p) => ({
+                key: p,
+                name: p,
+                description: 'Preset analytical inquiry',
+                promptText: p,
+              }))}
+              models={[]}
+              efforts={[]}
+              onSend={(text) => void onSubmit({ prompt: text })}
+              background="#27272a"
+              color="#f5f5f5"
+              menuBackground="#323236"
+              sparkColor="#b39dff"
+              sparkBoost={1}
+              width={720}
+              radius={16}
+              maxRows={5}
+              morphDuration={240}
+              squash={0.12}
+              tilt={8}
+              pressScale={0.96}
+              className="w-full max-w-[720px]"
+            />
+          </div>
         </CardContent>
       </Card>
 

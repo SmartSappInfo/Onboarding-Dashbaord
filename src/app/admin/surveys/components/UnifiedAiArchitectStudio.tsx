@@ -50,13 +50,12 @@ import {
   formatUnifiedArchitectEnvelope,
 } from '@/lib/surveys/survey-source-extractor';
 import type { SystemAiArchitectGovernanceConfig } from '@/lib/surveys/survey-ai-architect-governance-actions';
-import { UnifiedPromptBar } from '@/components/ai/PromptBar/UnifiedPromptBar';
-import type {
-  PromptBarAttachment,
-  PromptBarSourceItem,
-  PromptBarCommandItem,
-  PromptBarEffortLevel,
-} from '@/components/ai/PromptBar/types';
+import PromptBar, {
+  type PromptBarSource,
+  type PromptBarCommand,
+  type PromptBarModel,
+  type PromptBarSendDetail,
+} from '@/components/PromptBar';
 import { Attachment01Icon, Globe02Icon } from '@hugeicons/core-free-icons';
 
 const DRAFT_STORAGE_KEY = 'smartsapp_ai_survey_studio_draft';
@@ -92,7 +91,7 @@ export function UnifiedAiArchitectStudio({
     scoringMode: 'auto',
     tone: 'professional',
   });
-  const [effort, setEffort] = React.useState<PromptBarEffortLevel>('medium');
+  const [effort, setEffort] = React.useState<string>('Medium');
   const [attachedFiles, setAttachedFiles] = React.useState<AttachedSourceFile[]>([]);
   const [attachedUrls, setAttachedUrls] = React.useState<AttachedSourceUrl[]>([]);
 
@@ -162,7 +161,7 @@ export function UnifiedAiArchitectStudio({
   }, [governanceConfig]);
 
   // Handle file uploads with client-side multi-format extraction
-  const handleFilesAdded = async (files: FileList | File[]) => {
+  const handleFilesAdded = React.useCallback(async (files: FileList | File[]) => {
     const fileArray = Array.from(files);
     if (!fileArray.length) return;
 
@@ -254,7 +253,7 @@ export function UnifiedAiArchitectStudio({
         });
       }
     }
-  };
+  }, [governanceConfig, toast]);
 
   const handleAddUrl = () => {
     setLinkInputError(null);
@@ -351,14 +350,19 @@ export function UnifiedAiArchitectStudio({
     hasExtractingFiles ||
     (!prompt.trim() && attachedFiles.length === 0 && attachedUrls.length === 0);
 
-  const handleExecute = () => {
-    if (isExecutingDisabled) return;
+  const handleExecute = (overridePrompt?: string, _sendDetail?: PromptBarSendDetail) => {
+    const effectivePrompt = (overridePrompt !== undefined ? overridePrompt : prompt).trim();
+    if (!effectivePrompt && attachedFiles.length === 0 && attachedUrls.length === 0) return;
+    if (isGenerating || hasExtractingFiles) return;
 
     const payload: ArchitectUnifiedPayload = {
-      prompt,
+      prompt: effectivePrompt,
       attachedFiles,
       attachedUrls,
-      intent,
+      intent: {
+        ...intent,
+        effort,
+      },
     };
 
     const finalEnvelope = formatUnifiedArchitectEnvelope(payload);
@@ -369,55 +373,66 @@ export function UnifiedAiArchitectStudio({
       .map((f) => ({ dataUri: f.dataUri!, name: f.name }));
 
     void onSubmit({
-      prompt,
+      prompt: effectivePrompt,
       finalEnvelope,
       attachedFiles,
       attachedUrls,
-      intent,
+      intent: {
+        ...intent,
+        effort,
+      },
       images: images.length > 0 ? images : undefined,
     });
   };
 
-  // Map attached files to PromptBar attachments
-  const promptBarAttachments: PromptBarAttachment[] = React.useMemo(() => {
-    return attachedFiles.map((file) => ({
-      id: file.id,
-      name: file.name,
-      size: file.size,
-      type: file.type,
-      thumbnailUrl: file.thumbnailUrl,
-      content: file.content,
-      charCount: file.charCount,
-      pageCount: file.pageCount,
-      status: file.status,
-      errorMessage: file.errorMessage,
-    }));
-  }, [attachedFiles]);
+  // Dynamic file picker invoking multi-format client extraction
+  const pickFiles = React.useCallback((): Promise<string[]> => {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.multiple = true;
+      input.accept =
+        '.pdf,.docx,.doc,.xlsx,.xls,.pptx,.ppt,.png,.jpg,.jpeg,.webp,.txt,.md,.csv,.json';
+      input.onchange = async () => {
+        if (input.files && input.files.length > 0) {
+          const files = Array.from(input.files);
+          await handleFilesAdded(files);
+          resolve(files.map((f) => f.name));
+        } else {
+          resolve([]);
+        }
+      };
+      input.click();
+    });
+  }, [handleFilesAdded]);
 
   // PromptBar Sources
-  const promptBarSources: PromptBarSourceItem[] = React.useMemo(() => [
-    {
-      key: 'files',
-      name: 'Photos & documents',
-      description: 'Attach PDF, DOCX, DOC, PPTX, XLSX, or Images',
-      icon: Attachment01Icon,
-      attach: true,
-    },
-    {
-      key: 'web',
-      name: 'Reference URL',
-      description: 'Include an online rubric, guideline, or article',
-      icon: Globe02Icon,
-      action: () => setIsLinkPopoverOpen(true),
-    },
-  ], []);
+  const promptBarSources: PromptBarSource[] = React.useMemo(
+    () => [
+      {
+        key: 'files',
+        name: 'Photos & files',
+        description: 'Upload from this device (PDF, DOCX, XLSX, PPTX, Images)',
+        icon: Attachment01Icon,
+        attach: true,
+      },
+      {
+        key: 'web',
+        name: 'Reference URL',
+        description: 'Include an online rubric, guideline, or article',
+        icon: Globe02Icon,
+        action: () => setIsLinkPopoverOpen(true),
+      },
+    ],
+    []
+  );
 
   // PromptBar Commands from Archetypes
-  const promptBarCommands: PromptBarCommandItem[] = React.useMemo(() => {
+  const promptBarCommands: PromptBarCommand[] = React.useMemo(() => {
     return activeArchetypes.map((archetype) => ({
       key: archetype.id,
-      label: archetype.title,
-      description: archetype.description,
+      name: `/${archetype.id}`,
+      description: `${archetype.title} - ${archetype.description}`,
       promptText: archetype.promptSeed,
       action: () => {
         setIntent((prev) => ({
@@ -428,6 +443,19 @@ export function UnifiedAiArchitectStudio({
       },
     }));
   }, [activeArchetypes]);
+
+  // PromptBar Models
+  const promptBarModels: PromptBarModel[] = React.useMemo(
+    () => [
+      { key: 'gemini-2.5-flash', name: 'Gemini 2.5 Flash', tag: 'Fast' },
+      { key: 'gemini-2.5-pro', name: 'Gemini 2.5 Pro', tag: 'Deep' },
+      { key: 'claude-3-7-sonnet', name: 'Claude 3.7 Sonnet', tag: 'Smart' },
+      { key: 'gpt-4o', name: 'GPT-4o', tag: 'Flagship' },
+    ],
+    []
+  );
+
+  const EFFORTS = React.useMemo(() => ['Low', 'Medium', 'High', 'Extra', 'Max'], []);
 
   return (
     <Card
@@ -544,26 +572,78 @@ export function UnifiedAiArchitectStudio({
           </div>
         )}
 
-        {/* Universal React Bits PromptBar Adaptation */}
-        <UnifiedPromptBar
-          placeholder="Describe your survey goals, outline requirements, or drop PDF, DOCX, XLSX, PPTX, or Images..."
-          value={prompt}
-          onChange={setPrompt}
-          busy={isGenerating || hasExtractingFiles}
-          sources={promptBarSources}
-          commands={promptBarCommands}
-          effort={effort}
-          onEffortChange={setEffort}
-          attachments={promptBarAttachments}
-          onAttachmentsChange={(updated) => {
-            const updatedIds = new Set(updated.map((u) => u.id));
-            setAttachedFiles((prev) => prev.filter((f) => updatedIds.has(f.id)));
-          }}
-          onFileSelected={(files) => void handleFilesAdded(files)}
-          onSend={handleExecute}
-          onCancel={onCancel}
-          autoFocus={true}
-        />
+        {/* Attached Images Thumbnail Shelf (Approach 1) */}
+        {attachedFiles.some((f) => f.type === 'image' && f.thumbnailUrl) && (
+          <div className="flex flex-wrap items-center gap-2 pt-1">
+            <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">
+              Images ({attachedFiles.filter((f) => f.type === 'image').length}):
+            </span>
+            {attachedFiles
+              .filter((f) => f.type === 'image' && f.thumbnailUrl)
+              .map((img) => (
+                <div
+                  key={img.id}
+                  className="relative group rounded-xl overflow-hidden border border-border/70 bg-muted/40 shadow-xs"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={img.thumbnailUrl}
+                    alt={img.name}
+                    className="h-12 w-12 object-cover"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={() => setAttachedFiles((prev) => prev.filter((f) => f.id !== img.id))}
+                      className="p-1 rounded-md bg-destructive text-white hover:bg-destructive/90"
+                      aria-label={`Remove image ${img.name}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+          </div>
+        )}
+
+        {/* React Bits Original PromptBar Component */}
+        <div className="flex justify-center w-full my-1">
+          <PromptBar
+            placeholder="Describe your survey goals, outline requirements, or attach documents & images..."
+            value={prompt}
+            onChange={setPrompt}
+            attachments={attachedFiles.map((f) => f.name)}
+            onAttachmentsChange={(remainingNames) => {
+              setAttachedFiles((prev) =>
+                prev.filter((f) => remainingNames.includes(f.name))
+              );
+            }}
+            sources={promptBarSources}
+            commands={promptBarCommands}
+            models={promptBarModels}
+            defaultModel="gemini-2.5-flash"
+            efforts={EFFORTS}
+            defaultEffort="Medium"
+            onEffortChange={setEffort}
+            busy={isGenerating || hasExtractingFiles}
+            onSend={(text, detail) => handleExecute(text, detail)}
+            onStop={onCancel}
+            onAttach={pickFiles}
+            background="#27272a"
+            color="#f5f5f5"
+            menuBackground="#323236"
+            sparkColor="#b39dff"
+            sparkBoost={1}
+            width={720}
+            radius={16}
+            maxRows={5}
+            morphDuration={240}
+            squash={0.12}
+            tilt={8}
+            pressScale={0.96}
+            className="w-full max-w-[720px]"
+          />
+        </div>
 
         {/* Secondary Architectural Intent & Polish Controls */}
         <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
@@ -638,7 +718,7 @@ export function UnifiedAiArchitectStudio({
 
             <RainbowButton
               type="button"
-              onClick={handleExecute}
+              onClick={() => handleExecute()}
               disabled={isExecutingDisabled}
               className="h-11 px-6 rounded-2xl font-bold text-sm gap-2 shadow-lg transition-all active:scale-[0.97] text-white"
             >

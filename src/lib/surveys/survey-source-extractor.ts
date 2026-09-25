@@ -63,6 +63,7 @@ export interface ArchitectIntentConfig {
   depth: ArchitectSurveyDepth; // compact: 3-5 Qs, standard: 6-10 Qs, in_depth: 11-15+ Qs
   scoringMode: ArchitectScoringMode; // auto: AI detects, scored: Pass/Fail quiz, feedback: un-scored survey
   tone?: 'professional' | 'conversational' | 'academic';
+  effort?: string;
 }
 
 export interface ArchitectUnifiedPayload {
