@@ -103,7 +103,7 @@ export function UnifiedAiArchitectStudio({
   const [linkInputError, setLinkInputError] = React.useState<string | null>(null);
   const [isPolishingPrompt, setIsPolishingPrompt] = React.useState(false);
 
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const isHydratedRef = React.useRef(false);
   const polishTimerRef = React.useRef<NodeJS.Timeout | null>(null);
 
   // Unmount cleanup for polish timer
@@ -131,11 +131,14 @@ export function UnifiedAiArchitectStudio({
       }
     } catch (e: unknown) {
       console.warn('[UnifiedAiArchitectStudio] Could not restore draft from session storage:', e);
+    } finally {
+      isHydratedRef.current = true;
     }
   }, []);
 
-  // Autosave to sessionStorage on updates
+  // Autosave to sessionStorage on updates (only after mount hydration completes)
   React.useEffect(() => {
+    if (!isHydratedRef.current) return;
     try {
       const draft = {
         prompt,
@@ -174,6 +177,16 @@ export function UnifiedAiArchitectStudio({
         continue;
       }
 
+      // Enforce Backoffice system governance allowed file types
+      if (governanceConfig?.allowedFileTypes && !governanceConfig.allowedFileTypes.includes(mappedType)) {
+        toast({
+          variant: 'destructive',
+          title: 'File Type Restricted',
+          description: `"${file.name}" (${mappedType.toUpperCase()}) is currently disabled by system governance policies.`,
+        });
+        continue;
+      }
+
       const fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
 
       // Insert placeholder extracting item
@@ -192,7 +205,10 @@ export function UnifiedAiArchitectStudio({
       try {
         const extracted = await extractTextFromFile(file, {
           maxFileSizeMb: governanceConfig?.maxFileUploadSizeMb ?? 10,
+          maxImageSizeMb: governanceConfig?.maxImageUploadSizeMb ?? 5,
           maxPdfPages: governanceConfig?.maxPdfPagesLimit ?? 20,
+          maxSpreadsheetRows: governanceConfig?.maxSpreadsheetRows ?? 500,
+          maxPresentationSlides: governanceConfig?.maxPresentationSlides ?? 30,
           maxCharsPerFile: governanceConfig?.maxSourceCharacterLimit ?? 25000,
         });
 
@@ -436,19 +452,6 @@ export function UnifiedAiArchitectStudio({
         }
       }}
     >
-      {/* Hidden file input for document attachment */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        multiple
-        className="hidden"
-        accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.ppt,.pptx,.xls,.xlsx,.txt,.md,.markdown,.csv,.json"
-        onChange={(e) => {
-          if (e.target.files) void handleFilesAdded(e.target.files);
-          e.target.value = '';
-        }}
-      />
-
       <CardHeader className="p-6 pb-4 border-b border-border/60">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">

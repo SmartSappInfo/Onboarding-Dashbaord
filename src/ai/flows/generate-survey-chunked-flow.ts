@@ -113,6 +113,14 @@ export async function generateSurveyBlueprint(input: BlueprintInput): Promise<Bl
 const QuestionsInputSchema = z.object({
   sourceText: z.string(),
   blueprint: BlueprintOutputSchema,
+  images: z
+    .array(
+      z.object({
+        dataUri: z.string(),
+        name: z.string().optional(),
+      })
+    )
+    .optional(),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
   modelId: z.string().optional().default('claude-3-5-sonnet'),
@@ -241,7 +249,13 @@ const generateQuestionsFlow = ai.defineFlow(
       const goldStandards = await getGoldStandardExamples(input.organizationId, 1);
       if (goldStandards.length > 0) {
         // Extract a condensed version of the elements to teach formatting without prompt bloat
-        const exampleElements = goldStandards[0].finalState?.elements?.slice(0, 5).map((e: any) => ({
+        const exampleElements = goldStandards[0].finalState?.elements?.slice(0, 5).map((e: {
+          type?: string;
+          title?: string;
+          options?: unknown[];
+          allowOther?: boolean;
+          autoAdvance?: boolean;
+        }) => ({
           type: e.type,
           title: e.title,
           options: e.options,
@@ -497,10 +511,11 @@ export async function generateSurveyChunked(input: {
     modelId,
   });
 
-  // Phase 2
+  // Phase 2 (forward native multimodal images so vision models can read questions directly from uploads)
   const questions = await generateSurveyQuestions({
     sourceText,
     blueprint,
+    images: input.images,
     organizationId: input.organizationId,
     provider,
     modelId,
@@ -509,7 +524,7 @@ export async function generateSurveyChunked(input: {
   // Phase 3
   const logic = await generateSurveyLogic({
     blueprint,
-    elements: questions.elements as any[],
+    elements: questions.elements,
     organizationId: input.organizationId,
     provider,
     modelId,
@@ -523,10 +538,41 @@ export async function generateSurveyChunked(input: {
 // ══════════════════════════════════════════════════════════
 
 /**
+ * Validates that an external URL target is safe for server-side resolution
+ * and does not point to internal metadata or RFC 1918 private subnets.
+ */
+function isSafePublicFetchUrl(urlString: string): boolean {
+  try {
+    const url = new URL(urlString);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+    const hostname = url.hostname.toLowerCase();
+    if (
+      hostname === 'localhost' ||
+      hostname.endsWith('.localhost') ||
+      hostname === '127.0.0.1' ||
+      hostname === '0.0.0.0' ||
+      hostname === '::1' ||
+      hostname === '169.254.169.254' || // Cloud provider instance metadata
+      hostname.startsWith('10.') ||
+      hostname.startsWith('192.168.') ||
+      /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(hostname)
+    ) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Resolves source text from URL or direct text input.
  */
 async function resolveSourceText(input: { sourceType: string; content: string }): Promise<string> {
   if (input.sourceType === 'url') {
+    if (!isSafePublicFetchUrl(input.content)) {
+      throw new Error('Disallowed URL target: internal or private addresses cannot be fetched.');
+    }
     try {
       const response = await fetch(input.content);
       if (!response.ok) throw new Error(`Failed to fetch URL: ${response.statusText}`);

@@ -270,35 +270,40 @@ export async function optimizeAndEncodeImage(
 
       img.onload = () => {
         URL.revokeObjectURL(objectUrl);
-        let { width, height } = img;
+        try {
+          let { width, height } = img;
 
-        if (width > maxDim || height > maxDim) {
-          if (width > height) {
-            height = Math.round((height * maxDim) / width);
-            width = maxDim;
-          } else {
-            width = Math.round((width * maxDim) / height);
-            height = maxDim;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
           }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+
+          if (!ctx) {
+            // Fallback if 2d context fails
+            const reader = new FileReader();
+            reader.onload = () => resolve({ dataUri: reader.result as string, width: img.width, height: img.height });
+            reader.onerror = () => reject(new Error('Failed to read image file'));
+            reader.readAsDataURL(file);
+            return;
+          }
+
+          ctx.drawImage(img, 0, 0, width, height);
+          const dataUri = canvas.toDataURL('image/jpeg', quality);
+          resolve({ dataUri, width, height });
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          reject(new Error(`Failed to downscale and encode image "${file.name}": ${msg}`));
         }
-
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-
-        if (!ctx) {
-          // Fallback if 2d context fails
-          const reader = new FileReader();
-          reader.onload = () => resolve({ dataUri: reader.result as string, width: img.width, height: img.height });
-          reader.onerror = () => reject(new Error('Failed to read image file'));
-          reader.readAsDataURL(file);
-          return;
-        }
-
-        ctx.drawImage(img, 0, 0, width, height);
-        const dataUri = canvas.toDataURL('image/jpeg', quality);
-        resolve({ dataUri, width, height });
       };
 
       img.onerror = () => {
@@ -546,7 +551,15 @@ export async function extractTextFromFile(
         const xmlText = await slideFile.async('text');
         // Extract text content inside <a:t>...</a:t>
         const textMatches = Array.from(xmlText.matchAll(/<a:t(?:\s+[^>]*)?>([^<]*)<\/a:t>/g), (m) => m[1]);
-        const slideText = textMatches.join(' ').replace(/\s+/g, ' ').trim();
+        const slideText = textMatches
+          .join(' ')
+          .replace(/&amp;/g, '&')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/\s+/g, ' ')
+          .trim();
         if (slideText) {
           slideParts.push(`--- Slide ${i + 1} ---\n${slideText}`);
         }
@@ -723,8 +736,13 @@ export function formatUnifiedArchitectEnvelope(payload: ArchitectUnifiedPayload)
   if (docFiles.length > 0) {
     parts.push('=== SOURCE MATERIAL ===');
     docFiles.forEach((doc, idx) => {
+      // Escape any occurrence of envelope delimiters inside untrusted document content
+      const sanitizedDocContent = doc.content
+        .replace(/=== END SOURCE MATERIAL ===/gi, '===[END SOURCE MATERIAL]===')
+        .replace(/=== SOURCE MATERIAL ===/gi, '===[SOURCE MATERIAL]===');
+
       parts.push(`--- BEGIN DOCUMENT ${idx + 1}: "${doc.name}" (${doc.type.toUpperCase()}, ${doc.charCount} chars) ---`);
-      parts.push(doc.content);
+      parts.push(sanitizedDocContent);
       parts.push(`--- END DOCUMENT ${idx + 1}: "${doc.name}" ---\n`);
     });
     parts.push('=== END SOURCE MATERIAL ===');

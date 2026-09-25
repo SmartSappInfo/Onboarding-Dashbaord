@@ -251,10 +251,10 @@ export function UnifiedPromptBar({
               Add Context / Sources
             </div>
             {sources.map((src) => (
-              <div
+              <button
+                type="button"
                 key={src.key}
-                role="button"
-                tabIndex={0}
+                role="menuitem"
                 onClick={() => handleSourceSelect(src)}
                 className="promptbar-popover-item group"
               >
@@ -267,11 +267,11 @@ export function UnifiedPromptBar({
                     )}
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 text-left">
                   <div className="text-xs font-semibold text-foreground truncate">{src.name}</div>
                   <div className="text-[10px] text-muted-foreground truncate">{src.description}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </motion.div>
         )}
@@ -279,6 +279,8 @@ export function UnifiedPromptBar({
         {openMenu === 'models' && showModelSelector && (
           <motion.div
             key="models-menu"
+            role="listbox"
+            aria-label="AI Model Tier"
             initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.98 }}
@@ -291,10 +293,11 @@ export function UnifiedPromptBar({
             {models.map((mod) => {
               const isSelected = activeModel?.key === mod.key;
               return (
-                <div
+                <button
+                  type="button"
                   key={mod.key}
-                  role="button"
-                  tabIndex={0}
+                  role="option"
+                  aria-selected={isSelected}
                   data-selected={isSelected}
                   onClick={() => {
                     onModelChange?.(mod);
@@ -310,7 +313,7 @@ export function UnifiedPromptBar({
                   >
                     <HugeiconsIcon icon={SparklesIcon} size={15} />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-left">
                     <div className="flex items-center justify-between gap-1">
                       <span className="text-xs font-semibold text-foreground truncate">{mod.name}</span>
                       {mod.badge && (
@@ -321,7 +324,7 @@ export function UnifiedPromptBar({
                     </div>
                     <div className="text-[10px] text-muted-foreground truncate">{mod.description}</div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </motion.div>
@@ -330,6 +333,8 @@ export function UnifiedPromptBar({
         {openMenu === 'effort' && showEffortSelector && (
           <motion.div
             key="effort-menu"
+            role="listbox"
+            aria-label="Reasoning Effort"
             initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.98 }}
@@ -342,10 +347,11 @@ export function UnifiedPromptBar({
             {EFFORT_OPTIONS.map((eff) => {
               const isSelected = effort === eff.key;
               return (
-                <div
+                <button
+                  type="button"
                   key={eff.key}
-                  role="button"
-                  tabIndex={0}
+                  role="option"
+                  aria-selected={isSelected}
                   data-selected={isSelected}
                   onClick={() => {
                     onEffortChange?.(eff.key);
@@ -361,11 +367,11 @@ export function UnifiedPromptBar({
                   >
                     <HugeiconsIcon icon={FlashIcon} size={15} />
                   </div>
-                  <div className="flex-1 min-w-0">
+                  <div className="flex-1 min-w-0 text-left">
                     <div className="text-xs font-semibold text-foreground">{eff.label}</div>
                     <div className="text-[10px] text-muted-foreground truncate">{eff.description}</div>
                   </div>
-                </div>
+                </button>
               );
             })}
           </motion.div>
@@ -374,6 +380,8 @@ export function UnifiedPromptBar({
         {openMenu === 'commands' && showCommandsMenu && commands.length > 0 && (
           <motion.div
             key="commands-menu"
+            role="menu"
+            aria-label="Quick-Start Commands"
             initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, scale: 0.96 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 4, scale: 0.98 }}
@@ -384,10 +392,10 @@ export function UnifiedPromptBar({
               Quick-Start Commands
             </div>
             {commands.map((cmd) => (
-              <div
+              <button
+                type="button"
                 key={cmd.key}
-                role="button"
-                tabIndex={0}
+                role="menuitem"
                 onClick={() => handleCommandSelect(cmd)}
                 className="promptbar-popover-item group"
               >
@@ -402,11 +410,11 @@ export function UnifiedPromptBar({
                     <HugeiconsIcon icon={SparklesIcon} size={15} />
                   )}
                 </div>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 text-left">
                   <div className="text-xs font-semibold text-foreground truncate">{cmd.label}</div>
                   <div className="text-[10px] text-muted-foreground truncate">{cmd.description}</div>
                 </div>
-              </div>
+              </button>
             ))}
           </motion.div>
         )}
