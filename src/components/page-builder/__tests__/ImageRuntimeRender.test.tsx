@@ -4,21 +4,15 @@ import { describe, it, expect } from 'vitest';
 import { BlockRenderer } from '../BlockRenderer';
 import type { PageBlock } from '@/lib/types';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import '@/lib/page-builder/blocks/image';
 
 const mockCtx: BlockRenderContext = {
   mode: 'view',
-  device: 'desktop',
-  theme: {
-    themeMode: 'light',
-    brandPrimaryColor: '#000000',
-    brandSecondaryColor: '#ffffff',
-    brandFontFamily: 'sans',
-    backgroundColor: '#ffffff',
-    textColor: '#000000',
-    primaryButtonBgColor: '#000000',
-    primaryButtonTextColor: '#ffffff',
-  },
+  viewport: 'desktop',
+  theme: resolveTheme(),
+  interpolate: (t: string) => t,
+  resources: { forms: [], surveys: [], agreements: [], meetings: [], qrCodes: [] },
 };
 
 describe('Image Runtime Renderer', () => {
