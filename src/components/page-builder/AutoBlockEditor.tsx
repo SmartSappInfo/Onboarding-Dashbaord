@@ -676,6 +676,10 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               if (field.key === 'alignment' && props.width === 'full') return null;
             }
 
+            if (block.type === 'list') {
+              if (['introTitle', 'introText', 'introAlignment'].includes(field.key) && !props.showIntroText) return null;
+            }
+
             const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
             const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
             const isImagePreset = field.key === 'preset' && block.type === 'image';
