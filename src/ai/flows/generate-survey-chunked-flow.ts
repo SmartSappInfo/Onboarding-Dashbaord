@@ -20,6 +20,8 @@ import { getBaseUrl } from '@/lib/utils/url-helpers';
 import {
   logicBlockSchema,
   elementSchema,
+  phase2ElementSchema,
+  QUESTION_TYPES,
   resultPageSchema,
   resultRuleSchema,
 } from '@/ai/schemas/survey-schemas';
@@ -128,9 +130,144 @@ const QuestionsInputSchema = z.object({
 type QuestionsInput = z.infer<typeof QuestionsInputSchema>;
 
 const QuestionsOutputSchema = z.object({
-  elements: z.array(elementSchema).describe('Complete array of sections, questions, headings, descriptions, and dividers. Do NOT include logic blocks or scoring fields.'),
+  elements: z.array(phase2ElementSchema).describe('Complete array of sections, questions, headings, descriptions, and dividers. Do NOT include logic blocks or scoring fields.'),
 });
 type QuestionsOutput = z.infer<typeof QuestionsOutputSchema>;
+
+export interface RawSurveyElement {
+  id: string;
+  type: string;
+  title?: string;
+  text?: string;
+  options?: string[];
+  isRequired?: boolean;
+  rules?: unknown[];
+  [key: string]: unknown;
+}
+
+/**
+ * Sanitizes and deduplicates elements generated in Phase 2:
+ * 1. Discards headless question elements (missing title or empty title).
+ * 2. Discards pure logic blocks (which belong exclusively to Phase 3).
+ * 3. Strips leaked `rules` or scoring properties from questions.
+ * 4. Deduplicates questions with identical or near-identical titles within each section.
+ * 5. Ensures choice questions (multiple-choice, checkboxes, dropdown) have valid options.
+ * 6. Guarantees unique IDs across all elements.
+ */
+export function sanitizeAndDeduplicateQuestions(
+  rawElements: RawSurveyElement[],
+  blueprint?: BlueprintOutput
+): RawSurveyElement[] {
+  const sanitized: RawSurveyElement[] = [];
+  const seenIds = new Set<string>();
+  const seenQuestionTitles = new Set<string>();
+
+  for (const raw of rawElements) {
+    if (!raw || typeof raw !== 'object') continue;
+
+    // 1. Strip logic blocks (handled exclusively in Phase 3)
+    if (raw.type === 'logic') continue;
+
+    const el = { ...raw };
+
+    // 2. Strip any accidental rules array
+    if ('rules' in el) {
+      delete el.rules;
+    }
+    // Strip any accidental scoring fields (Phase 3 handles scoring)
+    if ('enableScoring' in el) delete el.enableScoring;
+    if ('optionScores' in el) delete el.optionScores;
+
+    const isQuestion = (QUESTION_TYPES as readonly string[]).includes(el.type);
+
+    // 3. Question validation: must have non-empty title
+    if (isQuestion) {
+      const title = (typeof el.title === 'string' ? el.title : '').trim();
+      if (!title || title.length < 3) {
+        // Discard headless or empty stub question
+        continue;
+      }
+      el.title = title;
+
+      // Deduplication: normalize title to detect attention loops (like q_difficult_steps_v1...v30)
+      const normalizedTitle = title
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '')
+        .slice(0, 80);
+
+      const hasRealOptions = Array.isArray(el.options) && el.options.filter((o) => typeof o === 'string' && o.trim().length > 0).length >= 2;
+
+      // If we've already seen this exact question title:
+      // Prefer the one that has valid options if this is a choice question
+      if (seenQuestionTitles.has(normalizedTitle)) {
+        const existingIdx = sanitized.findIndex((s) => {
+          const sTitle = (typeof s.title === 'string' ? s.title : '').trim().toLowerCase().replace(/[^a-z0-9]/g, '').slice(0, 80);
+          return sTitle === normalizedTitle;
+        });
+
+        if (existingIdx !== -1) {
+          const existing = sanitized[existingIdx];
+          const existingHasRealOptions = Array.isArray(existing.options) && existing.options.filter((o) => typeof o === 'string' && o.trim().length > 0).length >= 2;
+
+          if (!existingHasRealOptions && hasRealOptions) {
+            // Replace earlier option-less stub with this complete question!
+            sanitized[existingIdx] = el;
+          }
+        }
+        // Skip duplicate
+        continue;
+      }
+      seenQuestionTitles.add(normalizedTitle);
+
+      if (el.isRequired === undefined) {
+        el.isRequired = false;
+      }
+    }
+
+    // 4. Ensure ID uniqueness
+    let finalId = (typeof el.id === 'string' && el.id.trim()) ? el.id.trim() : (isQuestion ? 'q_item' : 'el_item');
+    let counter = 1;
+    while (seenIds.has(finalId)) {
+      counter++;
+      finalId = `${el.id || (isQuestion ? 'q_item' : 'el_item')}_${counter}`;
+    }
+    el.id = finalId;
+    seenIds.add(finalId);
+
+    sanitized.push(el);
+  }
+
+  // 5. Ensure choice questions have valid options
+  for (const item of sanitized) {
+    if (['multiple-choice', 'checkboxes', 'dropdown'].includes(item.type)) {
+      const validOptions = Array.isArray(item.options) ? item.options.filter((o) => typeof o === 'string' && o.trim().length > 0) : [];
+      if (validOptions.length >= 2) {
+        item.options = validOptions;
+      } else {
+        item.options = ['Yes / Agree', 'No / Disagree', 'Other / Not Applicable'];
+        item.allowOther = true;
+      }
+    }
+  }
+
+  // 5. Ensure blueprint sections are present
+  if (blueprint?.sections && blueprint.sections.length > 0) {
+    const existingSectionIds = new Set(sanitized.filter((e) => e.type === 'section').map((e) => e.id));
+    if (existingSectionIds.size === 0) {
+      const sectionElements: RawSurveyElement[] = blueprint.sections.map((s) => ({
+        id: s.id,
+        type: 'section',
+        title: s.title,
+        stepperTitle: s.stepperTitle,
+        renderAsPage: true,
+        validateBeforeNext: true,
+      }));
+      sanitized.unshift(...sectionElements);
+    }
+  }
+
+  return sanitized;
+}
 
 const QUESTIONS_PROMPT = `You are an expert survey architect building the questions for a survey. You have been given a blueprint (section outline) and the original source material.
 
@@ -146,9 +283,9 @@ const QUESTIONS_PROMPT = `You are an expert survey architect building the questi
 - **Instruction/Category Lines**: Lines like "1. Ice Breaker Question" should NOT be separate blocks. Merge them into the question title (e.g., "Ice Breaker: [Question Text]") or use a \`heading\` block if it's a section title. NEVER generate a question block without options if the source material provides them immediately below.
 - **Description/Content Blocks**: For blocks with type \`description\`, \`text\`, or \`heading\`, you MUST follow the source copy EXACTLY. Do NOT summarize or rephrase. These are for introductory text or section notes, NOT for question options.
 - **Formatting**: Respect all whitespace, carriage returns, and paragraphs. Use double newlines (\`\\n\\n\`) in the \`content\` or \`description\` fields to preserve paragraph breaks. NEVER lump multiple paragraphs into a single block of text.
-- **De-duplication & Merging**: NEVER merge questions together. If the source material has repeated questions under different headings (e.g., "Persona 1", "Persona 2"), you MUST treat them as completely separate questions. Do NOT combine their options into one massive list.
 - **Option Boundaries**: Only extract options that belong immediately to a specific question. Stop extracting options when you reach a new heading or a new question.
 - **Unique Options**: Within a single question, NEVER repeat the exact same option twice. Every string in the \`options\` array MUST be unique.
+
 ### ELEMENT ORDERING:
 1. A \`section\` block (with \`renderAsPage: true\`, \`validateBeforeNext: true\`)
 2. Optional \`heading\` or \`description\` blocks for section instructions
@@ -173,20 +310,29 @@ const QUESTIONS_PROMPT = `You are an expert survey architect building the questi
 1. **"Other" Option Logic**: 
    - If the source text includes "Other" or "Please specify" as an option, do NOT add it to the \`options\` array.
    - Instead, set \`allowOther: true\` on the question element.
-2. **Unique IDs**: Every element MUST have a unique kebab-case ID (e.g. \`q_entity_name\`, \`sec_demographics\`, \`head_intro\`)
-3. **Section IDs**: Use the exact section IDs from the blueprint
-4. **Required Fields (STRICT)**: 
+2. **Strictly Single Question Instance (NO REPETITION)**: 
+   - Generate each question identified in the source text EXACTLY ONCE.
+   - NEVER generate duplicate variations, alternatives, or drafts of the same question (e.g. NEVER generate \`_v1\`, \`_v2\`, \`_v3\`, \`_checkboxes\`, etc.).
+3. **No Logic Blocks or Inline Rules in Phase 2 (STRICT)**: 
+   - Do NOT generate elements with \`type: "logic"\`.
+   - NEVER place a \`rules\` array inside any question or layout element. Phase 3 handles all logic, jumping, and branching.
+4. **Question Title is Mandatory (STRICT)**: 
+   - EVERY single question MUST have a descriptive non-empty \`title\` string containing the question text.
+   - NEVER output headless question stubs or question elements without a \`title\`.
+5. **Options Must Be Inlined**: 
+   - For \`multiple-choice\`, \`checkboxes\`, and \`dropdown\`, include the \`options\` array directly inside the question element.
+   - Never generate an options-less question followed by another copy of the question.
+6. **Unique IDs**: Every element MUST have a unique kebab-case ID (e.g. \`q_entity_name\`, \`sec_demographics\`, \`head_intro\`).
+7. **Section IDs**: Use the exact section IDs from the blueprint. Keep questions per section aligned with \`estimatedQuestions\` (typically 2-6 questions per section). Do NOT exceed 8 questions in a single section.
+8. **Required Fields (STRICT)**: 
    - Set \`isRequired: false\` by default for all questions.
    - ONLY set \`isRequired: true\` if the source text explicitly includes "Required", an asterisk (*), or if it is a critical contact field (Email/Phone).
-5. **autoAdvance (STRICT)**: 
+9. **autoAdvance (STRICT)**: 
    - Set \`autoAdvance: false\` for ALL questions by default.
    - EXCEPTION: You may ONLY set \`autoAdvance: true\` for the **last question** of a section IF AND ONLY IF the following section has \`renderAsPage: true\`. If the next section is NOT a new page, do NOT use autoAdvance.
-6. **Order Fidelity**: You MUST follow the exact top-to-bottom sequence of questions and sections provided in the source material. Never re-order, categorize, or mix them unless explicitly requested. The order in the source is intentional.
-7. **No Scoring**: Do NOT set \`enableScoring\`, \`optionScores\`, \`yesScore\`, or \`noScore\` — Phase 3 handles scoring
-8. **No Logic Blocks**: Do NOT generate elements with \`type: "logic"\` — Phase 3 handles logic
-9. **No Inline Logic**: NEVER place a "rules" array inside a question block. Logic is strictly handled in Phase 3.
-10. **Title is Required**: EVERY single question MUST have a "title" field. Do not generate empty question stubs.
-11. **Headings**: Use \`variant: "h1"\` for main titles, \`"h2"\` for section headers, \`"h3"\` for sub-headers
+10. **Order Fidelity**: You MUST follow the exact top-to-bottom sequence of questions and sections provided in the source material. Never re-order, categorize, or mix them unless explicitly requested. The order in the source is intentional.
+11. **No Scoring**: Do NOT set \`enableScoring\`, \`optionScores\`, \`yesScore\`, or \`noScore\` — Phase 3 handles scoring.
+12. **Headings**: Use \`variant: "h1"\` for main titles, \`"h2"\` for section headers, \`"h3"\` for sub-headers.
 
 ### ROOT JSON FORMAT:
 You MUST return a single JSON object with the "elements" key. NEVER return a naked array.
@@ -213,8 +359,9 @@ Before finalizing the JSON, verify:
 - [ ] Did I extract ALL options for every choice-based question?
 - [ ] If there were bullets (•, -, *) following a question, are they in the \`options\` array?
 - [ ] Did I set \`allowOther: true\` if "Other" was present?
-- [ ] Is the question order identical to the source text?
-- [ ] Are all \`autoAdvance\` values set to \`false\` except for the last question of a page?
+- [ ] Is every question generated once without \`_v1\`, \`_v2\` duplicate suffixes?
+- [ ] Are all logic blocks and \`rules\` arrays omitted (to be added in Phase 3)?
+- [ ] Does every question have a non-empty \`title\`?
 
 ### BLUEPRINT:
 Title: {{{title}}}
@@ -276,12 +423,20 @@ const generateQuestionsFlow = ai.defineFlow(
       phaseName: 'Questions',
     });
 
+    // Sanitize, strip rules, deduplicate loops, and ensure valid structure
+    const sanitizedElements = sanitizeAndDeduplicateQuestions(
+      result.elements as RawSurveyElement[],
+      input.blueprint
+    );
+
     // Validation: reject if too few elements were generated
-    if (!result.elements || result.elements.length < 3) {
+    if (!sanitizedElements || sanitizedElements.length < 3) {
       throw new Error('Phase 2 generated too few elements. The AI may not have understood the source material.');
     }
 
-    return result;
+    return {
+      elements: sanitizedElements as unknown as QuestionsOutput['elements'],
+    };
   }
 );
 
@@ -601,7 +756,8 @@ async function callAI<T>(params: {
   };
   phaseName: string;
 }): Promise<T> {
-  const { prompt, schema, input, phaseName } = params;
+  const { schema, input, phaseName } = params;
+  let activePrompt = params.prompt;
   const provider = input.provider || 'openrouter';
   const modelId = input.modelId || 'gemini-3.5-flash';
 
@@ -627,7 +783,7 @@ async function callAI<T>(params: {
           if (!apiKey) throw new Error('AI API keys are not configured. Please contact the administrator or add an OpenRouter API key in your organization settings.');
         }
 
-        const fullPrompt = `${prompt}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
+        const fullPrompt = `${activePrompt}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
 
         // Format user message with multimodal image parts if attached
         const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
@@ -681,7 +837,7 @@ async function callAI<T>(params: {
 
       // Construct prompt parts for Genkit multimodal vision
       const promptParts: Array<{ text?: string; media?: { url: string } }> = [
-        { text: prompt },
+        { text: activePrompt },
       ];
       if (input.images && input.images.length > 0) {
         for (const img of input.images) {
@@ -695,7 +851,7 @@ async function callAI<T>(params: {
 
       const { output } = await generatorAi.generate({
         model: resolvedModel.modelString,
-        prompt: promptParts.length > 1 ? (promptParts as unknown as string) : prompt,
+        prompt: promptParts.length > 1 ? (promptParts as unknown as string) : activePrompt,
         output: { schema },
       });
 
@@ -704,14 +860,32 @@ async function callAI<T>(params: {
 
     } catch (error: unknown) {
       retries++;
-      const isRetryable = getErrorMessage(error)?.includes('503') ||
-        getErrorMessage(error)?.includes('429') ||
+      const errorMsg = getErrorMessage(error) || '';
+      const isSchemaError =
+        errorMsg.includes('Schema validation failed') ||
+        errorMsg.includes('INVALID_ARGUMENT') ||
+        errorMsg.includes('ZodError') ||
+        errorMsg.includes('Parse Errors') ||
+        errorMsg.includes('Unexpected token') ||
+        errorMsg.includes('SyntaxError');
+
+      const isQuotaOrUnavailable =
+        errorMsg.includes('503') ||
+        errorMsg.includes('429') ||
         getErrorStatus(error) === 503 ||
         getErrorStatus(error) === 429;
 
+      const isRetryable = isQuotaOrUnavailable || isSchemaError;
+
       if (isRetryable && retries < maxRetries) {
         const delay = Math.pow(2, retries) * 1000 + Math.random() * 1000;
-        console.warn(`[CHUNKED:${phaseName}] Retrying (${retries}/${maxRetries}) in ${Math.round(delay)}ms...`);
+        console.warn(`[CHUNKED:${phaseName}] Retrying (${retries}/${maxRetries}) in ${Math.round(delay)}ms... reason: ${errorMsg.slice(0, 100)}`);
+        
+        // If this was a schema error, inject corrective guidance into the prompt for the retry
+        if (isSchemaError) {
+          activePrompt = `${activePrompt}\n\n### CRITICAL RECOVERY INSTRUCTION (PREVIOUS ATTEMPT FAILED SCHEMA VALIDATION):\nThe previous attempt failed validation: "${errorMsg.slice(0, 150)}". Ensure strictly valid JSON matching the exact schema requirements. Every question MUST have a 'title' string, do NOT output 'rules' or logic blocks, and do NOT output duplicate questions.`;
+        }
+
         await new Promise(resolve => setTimeout(resolve, delay));
         continue;
       }

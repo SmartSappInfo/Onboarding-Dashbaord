@@ -59,14 +59,14 @@ export const BACKGROUND_PATTERNS = [
 
 export const questionSchema = z.object({
   id: z.string().describe('Unique kebab-case ID, e.g. q_entity_name'),
-  title: z.string().describe('The question text displayed to the respondent'),
+  title: z.string().default('').describe('The question text displayed to the respondent'),
   type: z.enum(QUESTION_TYPES),
   options: z.array(z.string()).optional().describe('REQUIRED for multiple-choice, dropdown, checkboxes. 2+ items.'),
   allowOther: z.boolean().optional().describe('For checkboxes and multiple-choice — adds a free-text "Other" field'),
-  isRequired: z.boolean().describe('true for critical questions'),
+  isRequired: z.boolean().optional().default(false).describe('true for critical questions'),
   hidden: z.boolean().optional().describe('If true, hidden by default (can be shown via logic)'),
   placeholder: z.string().optional().describe('Placeholder text for text/long-text/email/phone inputs'),
-  defaultValue: z.any().optional(),
+  defaultValue: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional(),
   minLength: z.number().optional(),
   maxLength: z.number().optional(),
   enableScoring: z.boolean().optional().describe('MUST be true for this question to contribute to score calculation'),
@@ -109,10 +109,18 @@ export const logicBlockSchema = z.object({
   rules: z.array(z.object({
     sourceQuestionId: z.string().describe('ID of the question whose answer triggers this rule'),
     operator: z.enum(LOGIC_OPERATORS),
-    targetValue: z.any().optional().describe('Value to compare against'),
+    targetValue: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]).optional().describe('Value to compare against'),
     action: logicActionSchema,
   })),
 });
+
+/**
+ * Phase 2 Schema: Questions & Layout blocks ONLY.
+ * Excludes logicBlockSchema so that Gemini/OpenAI is never presented with rules or logic block definitions during question generation.
+ */
+export const phase2QuestionSchema = questionSchema;
+export const phase2LayoutBlockSchema = layoutBlockSchema;
+export const phase2ElementSchema = z.union([phase2QuestionSchema, phase2LayoutBlockSchema]);
 
 export const elementSchema = z.union([questionSchema, layoutBlockSchema, logicBlockSchema]);
 
