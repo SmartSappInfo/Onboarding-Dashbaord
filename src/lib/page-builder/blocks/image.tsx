@@ -150,15 +150,45 @@ const WIDTH_CLASSES = {
   small: 'max-w-[120px] w-full',
   medium: 'max-w-[320px] w-full',
   large: 'max-w-[640px] w-full',
-  full: 'w-full h-auto',
+  full: 'w-full',
+};
+
+const ASPECT_RATIO_CLASSES: Record<ImageAspectRatio, string> = {
+  auto: '',
+  '1:1': 'aspect-square',
+  '4:3': 'aspect-[4/3]',
+  '16:9': 'aspect-video',
+  '21:9': 'aspect-[21/9]',
+  '9:16': 'aspect-[9/16]',
+  '3:4': 'aspect-[3/4]',
 };
 
 const RADIUS_CLASSES: Record<ImageBorderRadius, string> = {
   none: 'rounded-none',
   rounded: 'rounded-2xl',
   squircle: 'rounded-[28px]',
-  circle: 'rounded-full aspect-square object-cover',
+  circle: 'rounded-full aspect-square',
   arch: 'rounded-t-[9999px] rounded-b-xl',
+};
+
+const ELEVATION_CLASSES: Record<ImageElevation, string> = {
+  none: 'border border-transparent shadow-none',
+  hairline: 'border border-slate-200/80 dark:border-zinc-800 shadow-2xs',
+  shadow: 'border border-slate-200/50 dark:border-zinc-800/80 shadow-[0_12px_24px_-8px_rgba(0,0,0,0.18)] dark:shadow-[0_12px_24px_-8px_rgba(0,0,0,0.6)]',
+  browser: 'border border-slate-300 dark:border-zinc-800 shadow-[0_16px_32px_-12px_rgba(0,0,0,0.2)] dark:shadow-[0_16px_32px_-12px_rgba(0,0,0,0.7)]',
+  mobile: 'border-[5px] border-slate-900 dark:border-zinc-800 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.25)]',
+};
+
+const HOVER_EFFECT_CLASSES: Record<ImageHoverEffect, string> = {
+  none: '',
+  zoom: 'transition-transform duration-300 ease-out group-hover:scale-105 motion-reduce:transition-none',
+  grayscale: 'grayscale group-hover:grayscale-0 transition-all duration-300 ease-out motion-reduce:transition-none',
+  duotone: 'mix-blend-multiply group-hover:mix-blend-normal transition-all duration-300 ease-out motion-reduce:transition-none',
+};
+
+const OBJECT_FIT_CLASSES: Record<ImageObjectFit, string> = {
+  cover: 'object-cover',
+  contain: 'object-contain',
 };
 
 registerBlock({
@@ -326,6 +356,10 @@ registerBlock({
       </>
     );
 
+    const isNeoBrutalist = props.preset === 'neo-brutalist';
+    const isBrowserMockup = props.elevation === 'browser';
+    const isMobileChassis = props.elevation === 'mobile';
+
     return (
       <div className={cn("w-full flex", {
         'justify-start': props.alignment === 'left',
@@ -333,22 +367,68 @@ registerBlock({
         'justify-end': props.alignment === 'right',
       })}>
         <figure className={cn(
-          "relative group overflow-hidden shadow-sm transition-all duration-300",
+          "relative group overflow-hidden transition-all duration-300 flex flex-col",
           WIDTH_CLASSES[props.width],
           RADIUS_CLASSES[props.borderRadius],
-          props.caption ? "border border-slate-200/40 dark:border-zinc-800/40 bg-white dark:bg-zinc-950" : "border border-transparent bg-transparent"
+          isNeoBrutalist
+            ? "border-2 border-slate-900 dark:border-white shadow-[4px_4px_0px_0px_rgba(15,23,42,1)] dark:shadow-[4px_4px_0px_0px_rgba(255,255,255,1)] bg-white dark:bg-zinc-950"
+            : ELEVATION_CLASSES[props.elevation],
+          (props.caption || isBrowserMockup || isMobileChassis)
+            ? "bg-white dark:bg-zinc-950"
+            : !isNeoBrutalist && props.elevation === 'none' ? "bg-transparent" : "bg-white dark:bg-zinc-950"
         )}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img 
-            src={props.src} 
-            alt={props.alt} 
-            className={cn("w-full object-cover", {
-              'h-full aspect-square': props.borderRadius === 'circle',
-              'h-auto': props.borderRadius !== 'circle'
-            })} 
-            loading="lazy" 
-          />
-          {changeButton}
+          {/* Desktop Browser Header Bar */}
+          {isBrowserMockup && (
+            <div
+              data-testid="browser-chrome-header"
+              className="h-7 px-3 bg-slate-100 dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 flex items-center gap-1.5 shrink-0 select-none"
+            >
+              <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
+              <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
+              <div className="mx-auto w-32 h-3.5 rounded-full bg-slate-200/70 dark:bg-zinc-800 flex items-center justify-center px-2">
+                <div className="w-12 h-1 bg-slate-400/60 dark:bg-zinc-600 rounded-full" />
+              </div>
+            </div>
+          )}
+
+          {/* Mobile Chassis Top Speaker Bar */}
+          {isMobileChassis && (
+            <div
+              data-testid="mobile-speaker-bar"
+              className="w-full h-4 bg-slate-900 dark:bg-zinc-900 flex items-center justify-center shrink-0 select-none"
+            >
+              <div className="w-8 h-1 rounded-full bg-slate-700 dark:bg-zinc-700" />
+            </div>
+          )}
+
+          {/* Responsive Image Container */}
+          <div className={cn(
+            "relative w-full overflow-hidden flex-1",
+            ASPECT_RATIO_CLASSES[props.aspectRatio],
+            {
+              'aspect-square': props.borderRadius === 'circle' && props.aspectRatio === 'auto',
+            }
+          )}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img 
+              src={props.src} 
+              alt={props.alt} 
+              className={cn(
+                "w-full",
+                OBJECT_FIT_CLASSES[props.objectFit],
+                HOVER_EFFECT_CLASSES[props.hoverEffect],
+                {
+                  'h-full': props.aspectRatio !== 'auto' || props.borderRadius === 'circle',
+                  'h-auto': props.aspectRatio === 'auto' && props.borderRadius !== 'circle',
+                }
+              )} 
+              loading="lazy" 
+            />
+            {changeButton}
+          </div>
+
+          {/* Inline Editable Caption */}
           {props.caption && (
             <InlineEditable
               tagName="figcaption"
