@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { getBlock } from '@/lib/page-builder/registry';
 import '@/lib/page-builder/blocks/list';
-import type { ListItem, ListProps } from '@/lib/page-builder/blocks/list';
+import type { ListProps } from '@/lib/page-builder/blocks/list';
 
 describe('List Block Intro Paragraph & Extended Presets Schema', () => {
   const listDef = getBlock('list');

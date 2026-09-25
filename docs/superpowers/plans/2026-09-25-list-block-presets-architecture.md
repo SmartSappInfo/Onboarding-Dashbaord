@@ -221,22 +221,22 @@ The properties panel visual picker presents an interactive $2\times 4$ grid of t
   - Modify: `src/lib/page-builder/blocks/list.tsx`
   - Modify: `src/app/p/[slug]/PublicPageClient.tsx`
   - Modify: `src/lib/services/content-service.ts`
-- [ ] **Step 1: Write failing runtime tests**
+- [x] **Step 1: Write failing runtime tests**
   - Test rendering "List Only" mode (no intro header rendered).
   - Test rendering "With Intro Text" (title + paragraph rendered above list).
   - Test rendering `stepped-gradient` and `bordered-rows` presets.
   - Test edit mode inline editable title and paragraph.
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement runtime rendering in `list.tsx`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement runtime rendering in `list.tsx`**
   - Render intro header with `<InlineEditable />` in edit mode for `introTitle` and `introText`.
   - Render `stepped-gradient` layout with gradient badge and connecting vertical line.
   - Render `bordered-rows` layout with bottom borders and trailing indicators.
   - Implement interactive empty state with `[ + Add First Item ]` button in edit mode.
-- [ ] **Step 4: Update `content-service.ts` and `PublicPageClient.tsx`**
+- [x] **Step 4: Update `content-service.ts` and `PublicPageClient.tsx`**
   - In `content-service.ts`: extract `props.introTitle` and `props.introText` in plain text search extraction.
   - In `PublicPageClient.tsx`: ensure fallback list rendering supports intro text.
-- [ ] **Step 5: Run tests to verify they pass**
-- [ ] **Step 6: Commit locally** (`git commit -m "feat(list): implement runtime intro text and new preset styles"`)
+- [x] **Step 5: Run tests to verify they pass**
+- [x] **Step 6: Commit locally** (`git commit -m "feat(list): implement runtime intro text, stepped-gradient and bordered-rows presets"`)
 
 ---
 
@@ -245,31 +245,31 @@ The properties panel visual picker presents an interactive $2\times 4$ grid of t
   - Create: `src/components/page-builder/__tests__/AutoBlockEditorListIntro.test.tsx`
   - Modify: `src/lib/page-builder/blocks/list.tsx` (fields definition)
   - Modify: `src/components/page-builder/AutoBlockEditor.tsx`
-- [ ] **Step 1: Write failing inspector tests**
+- [x] **Step 1: Write failing inspector tests**
   - Test that `preset` routes to `ListPresetSelector`.
   - Test that `showIntroText` toggle controls visibility of `introTitle`, `introText`, and `introAlignment`.
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Configure inspector fields in `list.tsx` and wire in `AutoBlockEditor.tsx`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Configure inspector fields in `list.tsx` and wire in `AutoBlockEditor.tsx`**
   - Register fields: `preset`, `showIntroText` (`boolean`), `introTitle` (`text`), `introText` (`textarea`), `introAlignment` (`select`), `items` (`list`), `columns`, `spacing`, `bulletColor`, `textColor`, `showDescriptions`.
   - Suppress duplicate outer labels for `preset`.
-- [ ] **Step 4: Run tests to verify they pass**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(inspector): wire intro paragraph toggle and fields in AutoBlockEditor"`)
+- [x] **Step 4: Run tests to verify they pass**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(inspector): wire intro paragraph toggle and progressive disclosure in AutoBlockEditor"`)
 
 ---
 
 ### Phase 5: Full Verification, Quality Gates & Local Commit
 - **Files:**
   - All test files across `src/components/page-builder/__tests__/` and `src/lib/services/__tests__/`
-- [ ] **Step 1: Run complete page builder test suite**
+- [x] **Step 1: Run complete page builder test suite**
   - Command: `npx vitest run src/components/page-builder/__tests__/`
-  - Target: 100% tests passing.
-- [ ] **Step 2: Run TypeScript strict check**
+  - Target: 100% tests passing (40 test files, 178 tests passed).
+- [x] **Step 2: Run TypeScript strict check**
   - Command: `NODE_OPTIONS='--max-old-space-size=8192' npx tsc --noEmit`
   - Target: 0 errors, strictly zero `any`/`any[]`/`unknown`.
-- [ ] **Step 3: Run ESLint verification**
-  - Command: `npm run lint`
+- [x] **Step 3: Run ESLint verification**
+  - Command: `npm run lint` / `npx eslint ...`
   - Target: 0 errors.
-- [ ] **Step 4: Final local commit** (`git commit -m "refactor(list): complete list block overhaul with verification"`)
+- [x] **Step 4: Final local commit** (`git commit -m "refactor(list): complete list block overhaul with verification"`)
   - **Strictly local commit — zero push to remote.**
 
 ---
