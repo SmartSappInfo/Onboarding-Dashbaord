@@ -6,12 +6,22 @@ import { sanitizeHtml } from '../sanitize';
 import { cn } from '@/lib/utils';
 import { isColorLight } from '../resolve-theme';
 
-export type ListPresetType = 'checklist' | 'bullet' | 'numbered' | 'cards' | 'minimal-dash' | 'icon-pill';
+export type ListPresetType =
+  | 'checklist'
+  | 'bullet'
+  | 'numbered'
+  | 'cards'
+  | 'minimal-dash'
+  | 'icon-pill'
+  | 'stepped-gradient'
+  | 'bordered-rows';
+
+export type ListIntroAlignment = 'left' | 'center';
 export type ListColumnsType = '1' | '2' | '3';
 export type ListSpacingType = 'compact' | 'normal' | 'relaxed';
 
 export const listItemSchema = z.object({
-  id: z.string(),
+  id: z.string().default(() => `item-${Math.random().toString(36).substring(2, 9)}`),
   title: z.string().default(''),
   description: z.string().optional().default(''),
   icon: z.string().optional().default(''),
@@ -20,9 +30,22 @@ export const listItemSchema = z.object({
 
 export type ListItem = z.infer<typeof listItemSchema>;
 
-const schema = z.object({
-  title: z.string().optional().default(''),
-  preset: z.enum(['checklist', 'bullet', 'numbered', 'cards', 'minimal-dash', 'icon-pill']).default('checklist'),
+export const rawListSchema = z.object({
+  title: z.string().optional().default(''), // Legacy fallback
+  showIntroText: z.boolean().default(false), // Toggle to show text above list
+  introTitle: z.string().optional().default(''), // Headline above intro paragraph
+  introText: z.string().optional().default(''), // Paragraph before list items
+  introAlignment: z.enum(['left', 'center']).default('left'),
+  preset: z.enum([
+    'checklist',
+    'bullet',
+    'numbered',
+    'cards',
+    'minimal-dash',
+    'icon-pill',
+    'stepped-gradient',
+    'bordered-rows',
+  ]).default('checklist'),
   columns: z.enum(['1', '2', '3']).default('1'),
   spacing: z.enum(['compact', 'normal', 'relaxed']).default('normal'),
   bulletColor: z.string().optional().default(''),
@@ -47,7 +70,18 @@ const schema = z.object({
   ]),
 }).catchall(z.unknown());
 
-export type ListProps = z.infer<typeof schema>;
+export const listSchema = rawListSchema.transform((data) => {
+  // Backward compatibility: map legacy title if present and introTitle is empty
+  const resolvedIntroTitle = data.introTitle || data.title || '';
+  const resolvedShowIntro = data.showIntroText || Boolean(resolvedIntroTitle || data.introText);
+  return {
+    ...data,
+    introTitle: resolvedIntroTitle,
+    showIntroText: resolvedShowIntro,
+  };
+});
+
+export type ListProps = z.infer<typeof listSchema>;
 
 // Premium SVG thumbnails for Block Variant Picker
 const ChecklistThumbnail = (
@@ -153,8 +187,8 @@ registerBlock({
     { kind: 'color', key: 'textColor', label: 'Custom Text Color' },
     { kind: 'boolean', key: 'showDescriptions', label: 'Show Subtitles & Descriptions' },
   ],
-  defaults: schema.parse({}),
-  schema,
+  defaults: listSchema.parse({}),
+  schema: listSchema,
   variants: [
     {
       id: 'list-checklist',

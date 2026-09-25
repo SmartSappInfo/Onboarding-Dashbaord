@@ -183,18 +183,18 @@ The properties panel visual picker presents an interactive $2\times 4$ grid of t
 - **Files:**
   - Create: `src/components/page-builder/__tests__/ListBlockIntroSchema.test.tsx`
   - Modify: `src/lib/page-builder/blocks/list.tsx`
-- [ ] **Step 1: Write failing schema tests**
+- [x] **Step 1: Write failing schema tests**
   - Test default schema with `showIntroText: false`.
   - Test transformation when legacy `title` is present (maps to `introTitle` and sets `showIntroText: true`).
   - Test valid presets accepting all 8 styles (`checklist`, `bullet`, `numbered`, `cards`, `minimal-dash`, `icon-pill`, `stepped-gradient`, `bordered-rows`).
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Command: `npx vitest run src/components/page-builder/__tests__/ListBlockIntroSchema.test.tsx`
-- [ ] **Step 3: Implement extended schema and types in `list.tsx`**
+- [x] **Step 3: Implement extended schema and types in `list.tsx`**
   - Add `rawListSchema` with `showIntroText`, `introTitle`, `introText`, `introAlignment`.
   - Add Zod `.transform()` adapter.
   - Export `ListProps`, `ListPresetType`, `ListIntroAlignment`.
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(list): extend schema with intro paragraph and 8 visual presets"`)
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(list): extend schema with intro paragraph and 8 visual presets"`)
 
 ---
 
