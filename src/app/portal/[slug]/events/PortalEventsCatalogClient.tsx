@@ -18,6 +18,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { registerForEventAction, recordJoinSessionAction } from '@/app/actions/event-actions';
+import { useToast } from '@/hooks/use-toast';
 import type { LiveEvent, EventRegistration } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
 import { getErrorMessage } from '@/lib/errors/report-error';

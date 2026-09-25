@@ -5,7 +5,7 @@
  * and cohort-anchored drip calculations without resource exhaustion.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { CohortService } from '../cohort-service';
 import type { CourseCohort } from '@/lib/types/events';
 

@@ -13,6 +13,7 @@ import { LearningProgressService } from '@/lib/services/learning-progress-servic
 import type {
   LiveEvent,
   EventRegistration,
+  AttendanceStatus,
   CourseCohort,
   CreateEventInput,
   UpdateEventInput,

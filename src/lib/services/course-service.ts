@@ -319,6 +319,7 @@ export class CourseService {
       releaseRule: input.releaseRule || { type: 'immediate' },
       order: input.order ?? 1,
       isPreview: input.isPreview ?? false,
+      liveEventId: input.liveEventId,
       createdAt: now,
       updatedAt: now,
     };
@@ -412,6 +413,16 @@ export class CourseService {
 
     if (snap.empty) return null;
     return snap.docs[0].data() as CourseLesson;
+  }
+
+  public static async listLessonsByCourse(courseId: string): Promise<CourseLesson[]> {
+    const snap = await adminDb
+      .collection('course_lessons')
+      .where('courseId', '==', courseId)
+      .orderBy('order', 'asc')
+      .get();
+
+    return snap.docs.map(d => d.data() as CourseLesson);
   }
 
   // ── Curriculum Aggregated Tree View ────────────────────────────────────────

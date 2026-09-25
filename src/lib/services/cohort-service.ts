@@ -16,7 +16,6 @@ import { adminDb } from '@/lib/firebase-admin';
 import type {
   CourseCohort,
   CohortMember,
-  CohortMemberStatus,
   CreateCohortInput,
   UpdateCohortInput,
 } from '@/lib/types/events';

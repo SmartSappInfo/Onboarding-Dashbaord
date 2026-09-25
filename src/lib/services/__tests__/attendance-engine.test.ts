@@ -8,9 +8,8 @@
  * 4. Automated lesson completion threshold evaluation.
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { EventService } from '../event-service';
-import type { LiveEvent, AttendanceStatus } from '@/lib/types/events';
 
 describe('EventService — Attendance Engine & LMS Completion Bridge', () => {
   describe('calculateAttendanceStatus', () => {

@@ -31,22 +31,31 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   createLiveEventAction,
   deleteLiveEventAction,
   publishEventReplayAction,
+  attachReplayToCourseLessonAction,
   createCohortAction,
   deleteCohortAction,
   listLiveEventsByPortalAction,
   listCohortsByPortalAction,
 } from '@/app/actions/event-actions';
+import {
+  listCoursesByPortalAction,
+  listLessonsByCourseAction,
+} from '@/app/actions/learning-actions';
 import type {
   LiveEvent,
   CourseCohort,
   EventType,
   MeetingProvider,
 } from '@/lib/types/events';
+import type { Course, CourseLesson } from '@/lib/types/learning';
+import { EventAttendanceModal } from './events/EventAttendanceModal';
+import { CohortRosterModal } from './events/CohortRosterModal';
 import {
   Calendar,
   Video,
@@ -58,6 +67,7 @@ import {
   Sparkles,
   PlayCircle,
   Loader2,
+  BookOpen,
 } from 'lucide-react';
 
 interface PortalEventsManagerProps {
@@ -143,6 +153,52 @@ export function PortalEventsManager({
   const [isReplayModalOpen, setIsReplayModalOpen] = React.useState(false);
   const [selectedEventForReplay, setSelectedEventForReplay] = React.useState<LiveEvent | null>(null);
   const [isCreateCohortOpen, setIsCreateCohortOpen] = React.useState(false);
+
+  // Attendance & Roster Modals State
+  const [selectedEventForAttendance, setSelectedEventForAttendance] = React.useState<LiveEvent | null>(null);
+  const [isAttendanceModalOpen, setIsAttendanceModalOpen] = React.useState(false);
+  const [selectedCohortForRoster, setSelectedCohortForRoster] = React.useState<CourseCohort | null>(null);
+  const [isRosterModalOpen, setIsRosterModalOpen] = React.useState(false);
+
+  // Replay Curriculum Attachment State
+  const [portalCourses, setPortalCourses] = React.useState<Course[]>([]);
+  const [selectedCourseId, setSelectedCourseId] = React.useState<string>('');
+  const [courseLessons, setCourseLessons] = React.useState<CourseLesson[]>([]);
+  const [selectedLessonId, setSelectedLessonId] = React.useState<string>('');
+  const [attachToLesson, setAttachToLesson] = React.useState<boolean>(false);
+  const [isLoadingLessons, setIsLoadingLessons] = React.useState<boolean>(false);
+
+  const loadPortalCourses = React.useCallback(async () => {
+    if (!portalId) return;
+    try {
+      const res = await listCoursesByPortalAction(portalId);
+      if (res.success && res.data) {
+        setPortalCourses(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    }
+  }, [portalId]);
+
+  const handleCourseChange = async (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedLessonId('');
+    if (!courseId) {
+      setCourseLessons([]);
+      return;
+    }
+    try {
+      setIsLoadingLessons(true);
+      const res = await listLessonsByCourseAction(courseId);
+      if (res.success && res.data) {
+        setCourseLessons(res.data);
+      }
+    } catch {
+      // Graceful fallback
+    } finally {
+      setIsLoadingLessons(false);
+    }
+  };
 
   // Create Event Form State
   const [title, setTitle] = React.useState('');
@@ -239,6 +295,13 @@ export function PortalEventsManager({
     setRecordingUrl(event.recordingUrl || '');
     setAiSummary(event.aiSummary || '');
     setKeyTakeaways(event.keyTakeaways?.join('\n') || '');
+    setAttachToLesson(Boolean(event.courseId && event.lessonId));
+    setSelectedCourseId(event.courseId || '');
+    setSelectedLessonId(event.lessonId || '');
+    if (event.courseId) {
+      handleCourseChange(event.courseId);
+    }
+    loadPortalCourses();
     setIsReplayModalOpen(true);
   };
 
@@ -266,6 +329,26 @@ export function PortalEventsManager({
       );
 
       if (!res.success) throw new Error(res.error);
+
+      // Attach replay to selected course lesson if requested
+      if (attachToLesson && selectedCourseId && selectedLessonId) {
+        const attachRes = await attachReplayToCourseLessonAction(
+          {
+            eventId: selectedEventForReplay.id,
+            courseId: selectedCourseId,
+            lessonId: selectedLessonId,
+            portalId,
+          },
+          portalSlug
+        );
+        if (!attachRes.success) {
+          toast({
+            title: 'Curriculum Link Note',
+            description: attachRes.error || 'Replay published, but could not link to course lesson.',
+          });
+        }
+      }
+
       toast({ title: 'Replay Published! 🎥', description: 'Session replay & AI summary live for students.' });
       setIsReplayModalOpen(false);
       fetchServerEventsAndCohorts();
@@ -390,6 +473,18 @@ export function PortalEventsManager({
                         <Button
                           variant="ghost"
                           size="icon"
+                          onClick={() => {
+                            setSelectedEventForAttendance(event);
+                            setIsAttendanceModalOpen(true);
+                          }}
+                          title="View Attendance Roster"
+                          className="h-7 w-7 rounded-xl text-muted-foreground hover:text-primary active:scale-[0.97]"
+                        >
+                          <Users className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => handleOpenReplay(event)}
                           title="Manage Replay & AI Summary"
                           className="h-7 w-7 rounded-xl text-muted-foreground hover:text-primary"
@@ -428,18 +523,33 @@ export function PortalEventsManager({
                     </div>
                   </div>
 
-                  <div className="pt-3 border-t border-border flex items-center justify-between text-xs">
-                    {event.recordingUrl ? (
-                      <Badge className="bg-emerald-500 text-white font-bold text-[9px] gap-1 py-0.5">
-                        <PlayCircle className="w-2.5 h-2.5" /> Replay Active
-                      </Badge>
-                    ) : (
-                      <span className="text-[10px] text-muted-foreground">Upcoming Live</span>
-                    )}
+                  <div className="pt-3 border-t border-border flex items-center justify-between text-xs gap-2">
+                    <div className="flex items-center gap-1.5">
+                      {event.recordingUrl ? (
+                        <Badge className="bg-emerald-500 text-white font-bold text-[9px] gap-1 py-0.5">
+                          <PlayCircle className="w-2.5 h-2.5" /> Replay Active
+                        </Badge>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground">Upcoming Live</span>
+                      )}
+                    </div>
 
-                    <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[11px] flex items-center gap-1 hover:underline">
-                      Host Room <ExternalLink className="w-3 h-3" />
-                    </a>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setSelectedEventForAttendance(event);
+                          setIsAttendanceModalOpen(true);
+                        }}
+                        className="h-8 min-h-[32px] px-2.5 rounded-xl font-bold text-[11px] gap-1 border-border hover:bg-muted active:scale-[0.97]"
+                      >
+                        <Users className="w-3 h-3 text-primary" /> Attendance ({event.attendedCount ?? 0})
+                      </Button>
+                      <a href={event.meetingUrl} target="_blank" rel="noreferrer" className="text-primary font-bold text-[11px] flex items-center gap-1 hover:underline">
+                        Host <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
                   </div>
                 </Card>
               ))}
@@ -496,10 +606,24 @@ export function PortalEventsManager({
                   </div>
 
                   <div className="pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
-                    <span>{cohort.enrolledCount} Students Enrolled</span>
-                    <span className="font-bold text-primary text-[11px]">
-                      Cap: {cohort.maxCapacity || 'Unlimited'}
-                    </span>
+                    <div>
+                      <p className="font-semibold text-foreground text-[11px]">{cohort.enrolledCount} Enrolled</p>
+                      <span className="font-bold text-primary text-[10px]">
+                        Cap: {cohort.maxCapacity || 'Unlimited'}
+                      </span>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedCohortForRoster(cohort);
+                        setIsRosterModalOpen(true);
+                      }}
+                      className="h-8 min-h-[32px] px-3 rounded-xl font-bold text-[11px] gap-1.5 border-border hover:bg-muted active:scale-[0.97]"
+                    >
+                      <Users className="w-3 h-3 text-primary" /> Manage Roster
+                    </Button>
                   </div>
                 </Card>
               ))}
@@ -727,6 +851,73 @@ export function PortalEventsManager({
               />
             </div>
 
+            {/* Attach Replay to Course Lesson */}
+            <div className="pt-3 border-t border-border space-y-3">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="attachToLesson"
+                  checked={attachToLesson}
+                  onCheckedChange={checked => setAttachToLesson(Boolean(checked))}
+                />
+                <label
+                  htmlFor="attachToLesson"
+                  className="text-xs font-bold leading-none cursor-pointer flex items-center gap-1.5"
+                >
+                  <BookOpen className="w-3.5 h-3.5 text-primary" /> Attach Replay to Course Lesson
+                </label>
+              </div>
+
+              {attachToLesson && (
+                <div className="p-3 bg-muted/40 rounded-2xl border border-border/80 space-y-3 animate-in fade-in-50 duration-200">
+                  <div className="space-y-1.5">
+                    <Label className="text-[11px] font-bold">Select Course</Label>
+                    <Select
+                      value={selectedCourseId}
+                      onValueChange={handleCourseChange}
+                    >
+                      <SelectTrigger className="h-9 text-xs rounded-xl">
+                        <SelectValue placeholder="Choose a course..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {portalCourses.map(c => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.title}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {selectedCourseId && (
+                    <div className="space-y-1.5">
+                      <Label className="text-[11px] font-bold">Select Lesson</Label>
+                      {isLoadingLessons ? (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                          <Loader2 className="w-3 h-3 animate-spin text-primary" /> Loading lessons...
+                        </div>
+                      ) : (
+                        <Select
+                          value={selectedLessonId}
+                          onValueChange={setSelectedLessonId}
+                        >
+                          <SelectTrigger className="h-9 text-xs rounded-xl">
+                            <SelectValue placeholder="Choose a lesson..." />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl">
+                            {courseLessons.map(l => (
+                              <SelectItem key={l.id} value={l.id}>
+                                {l.title}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
             <div className="pt-4 border-t border-border flex items-center justify-end gap-3">
               <Button
                 type="button"
@@ -827,6 +1018,30 @@ export function PortalEventsManager({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* ── Event Attendance Modal ────────────────────────────────────── */}
+      <EventAttendanceModal
+        isOpen={isAttendanceModalOpen}
+        onClose={() => {
+          setIsAttendanceModalOpen(false);
+          setSelectedEventForAttendance(null);
+        }}
+        event={selectedEventForAttendance}
+        portalId={portalId}
+        portalSlug={portalSlug}
+      />
+
+      {/* ── Cohort Roster Modal ───────────────────────────────────────── */}
+      <CohortRosterModal
+        isOpen={isRosterModalOpen}
+        onClose={() => {
+          setIsRosterModalOpen(false);
+          setSelectedCohortForRoster(null);
+        }}
+        cohort={selectedCohortForRoster}
+        portalId={portalId}
+        portalSlug={portalSlug}
+      />
     </div>
   );
 }

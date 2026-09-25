@@ -45,6 +45,8 @@ import type {
   ReleaseScheduleType,
   LessonAttachment,
 } from '@/lib/types/learning';
+import type { LiveEvent } from '@/lib/types/events';
+import { listLiveEventsByPortalAction } from '@/app/actions/event-actions';
 import type { PageBlock, PageBlockType } from '@/lib/types';
 import { ContentBlockCanvas } from '../studio/ContentBlockCanvas';
 import { ContentBlockPalette } from '../studio/ContentBlockPalette';
@@ -62,6 +64,8 @@ import {
   Sliders,
   GraduationCap,
   ExternalLink,
+  Radio,
+  Loader2,
 } from 'lucide-react';
 
 interface LessonInspectorPaneProps {
@@ -78,7 +82,7 @@ interface LessonInspectorPaneProps {
 export function LessonInspectorPane({
   lesson,
   allLessons,
-  portalId: _portalId,
+  portalId,
   portalSlug: _portalSlug,
   courseId: _courseId,
   onUpdateLesson,
@@ -86,6 +90,34 @@ export function LessonInspectorPane({
   isSaving: _isSaving,
 }: LessonInspectorPaneProps) {
   const [activeTab, setActiveTab] = React.useState<'settings' | 'blocks'>('settings');
+
+  // Live Events for live_session lessons
+  const [portalEvents, setPortalEvents] = React.useState<LiveEvent[]>([]);
+  const [isLoadingEvents, setIsLoadingEvents] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!portalId) return;
+    let isMounted = true;
+    setIsLoadingEvents(true);
+    listLiveEventsByPortalAction(portalId)
+      .then(res => {
+        if (isMounted && res.success && res.data) {
+          setPortalEvents(res.data);
+        }
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (isMounted) setIsLoadingEvents(false);
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, [portalId]);
+
+  const selectedLiveEvent = React.useMemo(() => {
+    if (!lesson?.liveEventId) return null;
+    return portalEvents.find(e => e.id === lesson.liveEventId) || null;
+  }, [lesson?.liveEventId, portalEvents]);
 
   // Block Studio State
   const [selectedBlockId, setSelectedBlockId] = React.useState<string | null>(null);
@@ -296,6 +328,7 @@ export function LessonInspectorPane({
                     <SelectItem value="article">📄 Reading Guide / Article</SelectItem>
                     <SelectItem value="quiz">🎯 Knowledge Quiz</SelectItem>
                     <SelectItem value="assignment">📝 Practical Assignment</SelectItem>
+                    <SelectItem value="live_session">📡 Live Session / Workshop</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -312,6 +345,113 @@ export function LessonInspectorPane({
               </div>
             </div>
           </Card>
+
+          {/* Live Session & Attendance Requirements */}
+          {lesson.contentType === 'live_session' && (
+            <Card className="rounded-3xl border-2 border-border p-6 space-y-4 bg-card shadow-2xs">
+              <div className="flex items-center justify-between">
+                <h3 className="text-xs font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Radio className="w-3.5 h-3.5 text-rose-500 animate-pulse" /> Live Session & Attendance Requirements
+                </h3>
+                <Badge variant="outline" className="text-[10px] font-bold text-rose-500 border-rose-500/30">
+                  Automated LMS Verification
+                </Badge>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-bold">Link to Live Event / Webinar</Label>
+                  {isLoadingEvents ? (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground p-2">
+                      <Loader2 className="w-3 h-3 animate-spin text-primary" /> Loading live sessions...
+                    </div>
+                  ) : (
+                    <Select
+                      value={lesson.liveEventId || ''}
+                      onValueChange={eventId => {
+                        const matchedEvent = portalEvents.find(e => e.id === eventId);
+                        onUpdateLesson({
+                          liveEventId: eventId,
+                          completionRule: {
+                            type: 'attendance',
+                            minAttendancePercentage: lesson.completionRule?.minAttendancePercentage || 70,
+                          },
+                          videoUrl: lesson.videoUrl || matchedEvent?.meetingUrl,
+                        });
+                      }}
+                    >
+                      <SelectTrigger className="h-10 text-xs rounded-xl">
+                        <SelectValue placeholder="Select a live event..." />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl">
+                        {portalEvents.map(event => (
+                          <SelectItem key={event.id} value={event.id}>
+                            {event.title} ({new Date(event.scheduledStartTime).toLocaleDateString()} • {event.meetingProvider.toUpperCase()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                </div>
+
+                {selectedLiveEvent && (
+                  <div className="p-3.5 rounded-2xl bg-muted/40 border border-border/80 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-foreground">{selectedLiveEvent.title}</span>
+                      <Badge className="text-[9px] font-bold uppercase capitalize bg-primary text-white">
+                        {selectedLiveEvent.meetingProvider}
+                      </Badge>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground space-y-1">
+                      <p>Instructor: {selectedLiveEvent.instructorName}</p>
+                      <p>Scheduled: {new Date(selectedLiveEvent.scheduledStartTime).toLocaleString()}</p>
+                      <p>Duration: {selectedLiveEvent.durationMinutes} minutes</p>
+                    </div>
+                    {selectedLiveEvent.meetingUrl && (
+                      <a
+                        href={selectedLiveEvent.meetingUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs text-primary font-bold hover:underline inline-flex items-center gap-1 pt-1"
+                      >
+                        Room Link <ExternalLink className="w-3 h-3" />
+                      </a>
+                    )}
+                  </div>
+                )}
+
+                {/* Attendance threshold setting */}
+                <div className="space-y-2 pt-2 border-t border-border">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs font-bold">Minimum Attendance Threshold</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Students must attend at least this percentage of the session to receive milestone completion.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={lesson.completionRule?.minAttendancePercentage ?? 70}
+                        onChange={e =>
+                          onUpdateLesson({
+                            completionRule: {
+                              type: 'attendance',
+                              minAttendancePercentage: Math.min(100, Math.max(1, Number(e.target.value) || 70)),
+                            },
+                          })
+                        }
+                        className="h-9 w-20 text-xs rounded-xl text-center font-bold"
+                      />
+                      <span className="text-xs font-bold text-muted-foreground">%</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
 
           {/* Video Player & Media Preview */}
           {lesson.contentType === 'video' && (
@@ -407,6 +547,8 @@ export function LessonInspectorPane({
                       <SelectItem value="immediate">Available Immediately</SelectItem>
                       <SelectItem value="days_after_enrollment">Days After Enrollment</SelectItem>
                       <SelectItem value="days_after_join">Days After Joining Membership</SelectItem>
+                      <SelectItem value="days_after_cohort_start">Days After Cohort Start</SelectItem>
+                      <SelectItem value="cohort_start_date">On Cohort Start Date</SelectItem>
                       <SelectItem value="specific_date">Specific Calendar Date</SelectItem>
                       <SelectItem value="sequential_prerequisite">Sequential Prerequisite</SelectItem>
                     </SelectContent>
@@ -415,7 +557,8 @@ export function LessonInspectorPane({
 
                 {/* Conditional rule inputs */}
                 {(lesson.releaseRule?.type === 'days_after_enrollment' ||
-                  lesson.releaseRule?.type === 'days_after_join') && (
+                  lesson.releaseRule?.type === 'days_after_join' ||
+                  lesson.releaseRule?.type === 'days_after_cohort_start') && (
                   <div className="space-y-1.5">
                     <Label className="text-xs font-bold">Days Delay</Label>
                     <div className="flex items-center gap-2">
@@ -427,15 +570,28 @@ export function LessonInspectorPane({
                           onUpdateLesson({
                             releaseRule: {
                               ...lesson.releaseRule,
-                              type: lesson.releaseRule?.type || 'days_after_enrollment',
+                              type: lesson.releaseRule?.type || 'days_after_cohort_start',
                               daysDelay: Number(e.target.value) || 1,
                             },
                           })
                         }
                         className="h-10 text-xs rounded-xl text-center w-24"
                       />
-                      <span className="text-xs text-muted-foreground font-semibold">days after trigger</span>
+                      <span className="text-xs text-muted-foreground font-semibold">
+                        {lesson.releaseRule?.type === 'days_after_cohort_start'
+                          ? 'days after cohort start'
+                          : 'days after trigger'}
+                      </span>
                     </div>
+                  </div>
+                )}
+
+                {lesson.releaseRule?.type === 'cohort_start_date' && (
+                  <div className="space-y-1.5 flex flex-col justify-end">
+                    <Label className="text-xs font-bold">Release Anchor</Label>
+                    <p className="text-xs text-muted-foreground bg-muted/30 p-2.5 rounded-xl border border-border">
+                      Unlocks synchronously at 00:00 UTC on the student&apos;s enrolled cohort start date.
+                    </p>
                   </div>
                 )}
 

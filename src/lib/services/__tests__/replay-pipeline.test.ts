@@ -37,8 +37,8 @@ describe('EventService — Replay & AI Pipeline', () => {
 
   it('formats replay payload with video, duration, AI summary, and action items', () => {
     const replayInput: PublishReplayInput = {
-      portalId: 'portal-1',
-      eventId: 'evt-ai-101',
+      portalId: mockCompletedEvent.portalId,
+      eventId: mockCompletedEvent.id,
       recordingUrl: 'https://cdn.example.com/recordings/ai-lesson-1.mp4',
       recordingDurationSeconds: 3600,
       aiSummary: 'Comprehensive overview of multimodal prompting and structured schema outputs.',

@@ -209,6 +209,7 @@ export interface CourseLesson {
 
   assessmentId?: string;
   assignmentId?: string;
+  liveEventId?: string;
 
   createdAt: string;
   updatedAt: string;
@@ -450,6 +451,7 @@ export interface CreateLessonInput {
   releaseRule?: ReleaseRule;
   order?: number;
   isPreview?: boolean;
+  liveEventId?: string;
 }
 
 export interface UpdateLessonInput {
@@ -469,6 +471,7 @@ export interface UpdateLessonInput {
   isPreview?: boolean;
   assessmentId?: string;
   assignmentId?: string;
+  liveEventId?: string;
 }
 
 export interface SubmitAssessmentInput {

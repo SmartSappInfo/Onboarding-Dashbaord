@@ -192,6 +192,17 @@ export async function deleteLessonAction(
   }
 }
 
+export async function listLessonsByCourseAction(
+  courseId: string
+): Promise<ActionResponse<CourseLesson[]>> {
+  try {
+    const lessons = await CourseService.listLessonsByCourse(courseId);
+    return { success: true, data: lessons };
+  } catch (err: unknown) {
+    return { success: false, error: toClientErrorMessage('actions.learning-actions', err, undefined, 'Failed to list lessons.') };
+  }
+}
+
 // ── Enrollment & Progress Actions ────────────────────────────────────────────
 
 export async function enrollInCourseAction(

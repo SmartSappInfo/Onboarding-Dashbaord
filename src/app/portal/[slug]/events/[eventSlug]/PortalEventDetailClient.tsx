@@ -22,6 +22,7 @@ import {
   recordJoinSessionAction,
   recordEventAttendanceAction,
 } from '@/app/actions/event-actions';
+import { useToast } from '@/hooks/use-toast';
 import type { LiveEvent, EventRegistration } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
 import { getErrorMessage } from '@/lib/errors/report-error';
