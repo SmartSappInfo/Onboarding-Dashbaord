@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { sanitizeAndDeduplicateQuestions, type RawSurveyElement } from '../flows/generate-survey-chunked-flow';
+import { sanitizeAndDeduplicateQuestions, type RawSurveyElement } from '../utils/sanitize-survey-questions';
 import { phase2ElementSchema } from '../schemas/survey-schemas';
 
 describe('Phase 2 Schema & Question Sanitization Engine', () => {
