@@ -37,6 +37,7 @@ import { PlayButtonArchetypeSelector } from './PlayButtonArchetypeSelector';
 import { AspectRatioSelector } from './AspectRatioSelector';
 import { DividerStyleSelector } from './DividerStyleSelector';
 import { NumberStepperControl } from './NumberStepperControl';
+import { MediaPlacementSelector } from './MediaPlacementSelector';
 import {
   DividerWidthSelector,
   DividerThicknessSelector,
@@ -277,6 +278,15 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
         return (
           <AspectRatioSelector
             value={asString(value) || 'auto'}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'mediaPosition') {
+        return (
+          <MediaPlacementSelector
+            value={asString(value) || 'bottom'}
             options={field.options}
             onChange={(val) => onChange(val)}
           />
@@ -663,6 +673,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             const isListPreset = field.key === 'preset' && block.type === 'list';
             const isPlayButtonArchetype = field.key === 'playButtonArchetype';
             const isDividerStyle = field.key === 'style' && block.type === 'divider';
+            const isMediaPlacement = field.key === 'mediaPosition';
 
             return (
               <div key={field.key} className="space-y-1.5">
@@ -675,7 +686,8 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
                 !isVideoPreset &&
                 !isListPreset &&
                 !isPlayButtonArchetype &&
-                !isDividerStyle ? (
+                !isDividerStyle &&
+                !isMediaPlacement ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl
