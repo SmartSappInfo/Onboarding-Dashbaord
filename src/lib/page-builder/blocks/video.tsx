@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import { uploadPageMedia } from '../upload';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
+import { cn } from '@/lib/utils';
 
 export type VideoPresetArchetypeId =
   | 'ambient-loop'
@@ -511,8 +512,45 @@ registerBlock({
     const hasText = Boolean(displayTitle || displayDescription);
     const isOverlay = position === 'overlay';
 
+    // Responsive aspect ratio container class
+    const aspectRatioClass = {
+      '16:9': 'aspect-video w-full',
+      '9:16': 'aspect-[9/16] w-full max-w-[340px] sm:max-w-[380px] mx-auto',
+      '1:1': 'aspect-square w-full max-w-[480px] mx-auto',
+      '4:3': 'aspect-[4/3] w-full max-w-[640px] mx-auto',
+    }[props.aspectRatio || '16:9'];
+
+    // Border radius mapping
+    const borderRadiusClass = props.elevation === 'browser'
+      ? 'rounded-2xl'
+      : props.elevation === 'mobile'
+      ? 'rounded-[2.5rem]'
+      : {
+          none: 'rounded-none',
+          rounded: 'rounded-2xl',
+          squircle: 'rounded-[2rem]',
+        }[props.borderRadius || 'rounded'];
+
+    // Elevation framing classes
+    const elevationClass = {
+      none: 'border-0 shadow-none',
+      hairline: 'border border-black/10 dark:border-white/10 shadow-2xs',
+      shadow: 'shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-black/10 dark:border-white/10',
+      browser: 'border border-slate-300 dark:border-slate-700 shadow-xl',
+      mobile: 'border-[6px] sm:border-[8px] border-slate-900 shadow-2xl',
+    }[props.elevation || 'none'];
+
     return (
-      <div className="w-full text-left space-y-2">
+      <div className="w-full text-left space-y-2 relative">
+        {/* Reactive Ambient Glow Aura */}
+        {props.ambientGlow && (
+          <div
+            data-testid="ambient-reactive-glow"
+            aria-hidden="true"
+            className="absolute -inset-4 sm:-inset-6 rounded-3xl bg-radial from-primary/30 via-primary/10 to-transparent blur-2xl opacity-60 pointer-events-none -z-10 scale-105 motion-reduce:hidden will-change-transform transform-gpu"
+          />
+        )}
+
         {/* Top Title & Description */}
         {hasText && position === 'top' && (
           <div className="space-y-1 mb-2">
@@ -529,75 +567,136 @@ registerBlock({
           </div>
         )}
 
-        {/* Video Player / Thumbnail Container */}
-        <div className="group rounded-2xl overflow-hidden border border-black/10 shadow-sm aspect-video bg-black relative">
-          {playInline ? (
-            <VideoEmbed
-              url={finalVideoUrl}
-              thumbnailUrl={finalThumbnailUrl || undefined}
-              disabled={ctx.mode === 'edit' || ctx.isThumbnail}
-              title={displayTitle}
-              description={displayDescription}
-              showOverlayText={isOverlay && hasText}
-            />
-          ) : (
-            <>
-              <div 
-                onClick={() => {
-                  if (ctx.mode === 'edit' || ctx.isThumbnail) return;
-                  setModalOpen(true);
-                }}
-                className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden group shadow-sm transition-all"
-              >
-                {finalThumbnailUrl ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img 
-                    src={finalThumbnailUrl} 
-                    alt={displayTitle || "Video thumbnail preview"} 
-                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                  />
-                ) : (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-200/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
-                    <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Tutorial</span>
-                  </div>
-                )}
-                <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
-
-                {/* Overlay Title & Description on Thumbnail */}
-                {isOverlay && hasText && (
-                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none z-10 text-left">
-                    {displayTitle && (
-                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow line-clamp-2 leading-snug">
-                        {displayTitle}
-                      </h3>
-                    )}
-                    {displayDescription && (
-                      <p className="text-xs sm:text-sm text-white/85 line-clamp-2 mt-1 leading-snug drop-shadow-sm">
-                        {displayDescription}
-                      </p>
-                    )}
-                  </div>
-                )}
-              </div>
-              
-              <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-                <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
-                  <DialogTitle className="sr-only">Video Player</DialogTitle>
-                  {/* CAUTION: Use VideoEmbed instead of raw iframe to transform YouTube watch URLs into embed URLs and render HTML5 video players for hosted MP4 files */}
-                  {modalOpen && (
-                    <VideoEmbed
-                      url={finalVideoUrl}
-                      thumbnailUrl={finalThumbnailUrl || undefined}
-                      autoPlay={true}
-                      disabled={false}
-                      className="w-full h-full border-0 rounded-none shadow-none"
-                    />
-                  )}
-                </DialogContent>
-              </Dialog>
-            </>
+        {/* Video Player / Device Frame Outer Shell */}
+        <div
+          className={cn(
+            "group overflow-hidden bg-black relative flex flex-col",
+            aspectRatioClass,
+            borderRadiusClass,
+            elevationClass
           )}
-          {changeControls}
+        >
+          {/* Desktop Browser Window Chrome Header */}
+          {props.elevation === 'browser' && (
+            <div
+              data-testid="browser-chrome-header"
+              className="h-7 px-3 bg-slate-200/90 dark:bg-slate-800/90 border-b border-slate-300 dark:border-slate-700/80 flex items-center gap-1.5 select-none z-20 shrink-0 relative"
+            >
+              <div className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56] border border-black/10" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e] border border-black/10" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f] border border-black/10" />
+              </div>
+              <div className="flex-1 flex justify-center px-4">
+                <div className="w-full max-w-[280px] h-4 rounded-full bg-slate-100 dark:bg-slate-900 border border-slate-300/60 dark:border-slate-700/60 flex items-center justify-center px-2">
+                  <span className="text-[9px] font-mono text-slate-500 dark:text-slate-400 truncate">
+                    https://player.smartsapp.com
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Smartphone Chassis Speaker Bar */}
+          {props.elevation === 'mobile' && (
+            <div
+              data-testid="mobile-speaker-bar"
+              className="h-5 bg-slate-950 w-full flex items-center justify-center select-none z-20 shrink-0 relative"
+            >
+              <div className="w-12 h-1 rounded-full bg-slate-700" />
+            </div>
+          )}
+
+          {/* Viewport Area */}
+          <div className="flex-1 w-full h-full relative overflow-hidden">
+            {playInline ? (
+              <VideoEmbed
+                url={finalVideoUrl}
+                thumbnailUrl={finalThumbnailUrl || undefined}
+                disabled={ctx.mode === 'edit' || ctx.isThumbnail}
+                title={displayTitle}
+                description={displayDescription}
+                showOverlayText={isOverlay && hasText}
+                autoPlay={ctx.mode !== 'edit' && !ctx.isThumbnail && props.autoPlay}
+                muted={props.muted}
+                loop={props.loop}
+                hoverPreview={ctx.mode !== 'edit' && !ctx.isThumbnail && props.hoverPreview}
+                playButtonArchetype={props.playButtonArchetype}
+                controlsTheme={props.controlsTheme}
+                overlayTint={props.overlayTint}
+                className="w-full h-full border-0 rounded-none shadow-none"
+              />
+            ) : (
+              <>
+                <div 
+                  onClick={() => {
+                    if (ctx.mode === 'edit' || ctx.isThumbnail) return;
+                    setModalOpen(true);
+                  }}
+                  className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden group shadow-sm transition-all"
+                >
+                  {finalThumbnailUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img 
+                      src={finalThumbnailUrl} 
+                      alt={displayTitle || "Video thumbnail preview"} 
+                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-200/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
+                      <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Tutorial</span>
+                    </div>
+                  )}
+
+                  {/* Dark Tint Overlay on Thumbnail */}
+                  {props.overlayTint === 'dark-30' && (
+                    <div className="absolute inset-0 bg-black/30 pointer-events-none z-10" />
+                  )}
+                  {props.overlayTint === 'dark-50' && (
+                    <div className="absolute inset-0 bg-black/50 pointer-events-none z-10" />
+                  )}
+
+                  <VideoPlayButtonOverlay
+                    archetype={props.playButtonArchetype}
+                    label={props.playButtonArchetype === 'standard' ? "TAP TO WATCH VIDEO" : undefined}
+                  />
+
+                  {/* Overlay Title & Description on Thumbnail */}
+                  {isOverlay && hasText && (
+                    <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none z-10 text-left">
+                      {displayTitle && (
+                        <h3 className="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow line-clamp-2 leading-snug">
+                          {displayTitle}
+                        </h3>
+                      )}
+                      {displayDescription && (
+                        <p className="text-xs sm:text-sm text-white/85 line-clamp-2 mt-1 leading-snug drop-shadow-sm">
+                          {displayDescription}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                  <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
+                    <DialogTitle className="sr-only">Video Player</DialogTitle>
+                    {/* CAUTION: Use VideoEmbed instead of raw iframe to transform YouTube watch URLs into embed URLs and render HTML5 video players for hosted MP4 files */}
+                    {modalOpen && (
+                      <VideoEmbed
+                        url={finalVideoUrl}
+                        thumbnailUrl={finalThumbnailUrl || undefined}
+                        autoPlay={true}
+                        disabled={false}
+                        className="w-full h-full border-0 rounded-none shadow-none"
+                      />
+                    )}
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+            {changeControls}
+          </div>
         </div>
 
         {/* Bottom Title & Description */}
