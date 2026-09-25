@@ -8,7 +8,7 @@ import { registerBlock } from '../registry';
 import { RawDebouncedInput, RawDebouncedTextarea } from '@/components/page-builder/DebouncedInputs';
 import VideoEmbed from '@/components/video-embed';
 
-const schema = z.object({
+export const stepSectionSchema = z.object({
   stepNumber:    z.number().int().min(1).default(1),
   heading:       z.string().default('Step Title'),
   description:   z.string().default('Fill out the required module fields details.'),
@@ -17,13 +17,18 @@ const schema = z.object({
     thumbnailUrl: z.string().default(''),
     title: z.string().default(''),
     description: z.string().default(''),
-  }).default({}),
+  }).default({
+    videoUrl: '',
+    thumbnailUrl: '',
+    title: '',
+    description: '',
+  }),
   videoUrl:      z.string().optional().default(''),
   imageUrl:      z.string().optional().default(''),
   mediaPosition: z.enum(['top', 'bottom', 'left', 'right']).default('bottom'),
   accentColor:   z.string().default('#10b981'),
 });
-type StepSectionProps = z.infer<typeof schema>;
+export type StepSectionProps = z.infer<typeof stepSectionSchema>;
 
 // Module-level static SVGs for variants (rerender-no-inline-components)
 const MediaBottomThumbnail = (
@@ -62,8 +67,8 @@ registerBlock({
     ] },
     { kind: 'color', key: 'accentColor', label: 'Accent Border Color' },
   ],
-  defaults: schema.parse({}),
-  schema,
+  defaults: stepSectionSchema.parse({}),
+  schema: stepSectionSchema,
   variants: [
     { id: 'step-bottom', label: 'Media at Bottom', thumbnail: MediaBottomThumbnail, defaults: { mediaPosition: 'bottom' } },
     { id: 'step-right', label: 'Media on Right', thumbnail: MediaRightThumbnail, defaults: { mediaPosition: 'right' } },

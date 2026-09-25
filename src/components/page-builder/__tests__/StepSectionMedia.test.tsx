@@ -6,7 +6,7 @@ import { BlockRenderer } from '../BlockRenderer';
 import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import type { PageBlock } from '@/lib/types';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
-import '@/lib/page-builder/blocks/step-section';
+import { stepSectionSchema } from '@/lib/page-builder/blocks/step-section';
 
 const mockCtx: BlockRenderContext = {
   mode: 'view',
@@ -40,7 +40,7 @@ describe('Step Section Unified Media & Schema', () => {
       mediaPosition: 'right',
     };
 
-    const parsed = stepDef.schema.safeParse(legacyProps);
+    const parsed = stepSectionSchema.safeParse(legacyProps);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.videoUrl).toBe('https://youtube.com/watch?v=12345678901');
@@ -58,7 +58,7 @@ describe('Step Section Unified Media & Schema', () => {
       },
     };
 
-    const parsed = stepDef.schema.safeParse(newProps);
+    const parsed = stepSectionSchema.safeParse(newProps);
     expect(parsed.success).toBe(true);
     if (parsed.success) {
       expect(parsed.data.videoData?.videoUrl).toBe('https://youtube.com/watch?v=abcdefghijk');
