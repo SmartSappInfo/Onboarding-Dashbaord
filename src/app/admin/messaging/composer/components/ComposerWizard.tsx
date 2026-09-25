@@ -54,6 +54,9 @@ import { EntitySelector } from './EntitySelector';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
 import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
+import { PreFlightCockpit } from './PreFlightCockpit';
+import { PublishPreviewCanvas } from './PublishPreviewCanvas';
+import { SafeguardBlastModal } from './SafeguardBlastModal';
 import { useAudiences } from '@/lib/audience-hooks';
 import { getEffectiveContactTypes } from '@/lib/contact-type-actions';
 import type { InvitationRecipient } from '@/lib/contacts/contact-repository';
@@ -221,7 +224,7 @@ interface ComposerWizardProps {
 export default function ComposerWizard({ composerContext }: ComposerWizardProps = {}) {
     const firestore = useFirestore();
     const { user } = useUser();
-    const { activeWorkspace, activeWorkspaceId, activeOrganizationId } = useWorkspace();
+    const { activeWorkspace, activeWorkspaceId, activeOrganizationId, currentOrganization } = useWorkspace();
     const { toast } = useToast();
     const searchParams = useSearchParams();
 
@@ -229,6 +232,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [isSubmitting, setIsSubmitting] = React.useState(false);
     const [isQuickCreateOpen, setIsQuickCreateOpen] = React.useState(false);
     const [isTestModalOpen, setIsTestModalOpen] = React.useState(false);
+    const [isBlastModalOpen, setIsBlastModalOpen] = React.useState(false);
     const [isRefining, setIsRefining] = React.useState(false);
     const [selectedTone, _setSelectedTone] = React.useState<'formal'|'friendly'|'urgent'|'concise'>('formal');
     const [csvData, setCsvData] = React.useState<CSVRecord[]>([]);
@@ -1363,116 +1367,69 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                     </Card>
                 )}
 
-                {/* ── STEP 5: Publish ──────────────────────────────────────── */}
+                {/* ── STEP 5: Publish & Dispatch Studio ─────────────────────── */}
                 {step === 5 && (
                     <Card className="rounded-2xl border shadow-xl overflow-hidden">
                         <CardHeader className="bg-muted/30 border-b p-6">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20"><Send className="h-5 w-5" /></div>
-                                <div>
-                                    <CardTitle className="text-lg font-semibold">Publish</CardTitle>
-                                    <CardDescription className="text-xs font-medium text-muted-foreground/70">Configure sender, preview, test, schedule, and send.</CardDescription>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="p-2.5 bg-primary text-white rounded-xl shadow-lg shadow-primary/20">
+                                        <Send className="h-5 w-5" />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2">
+                                            <CardTitle className="text-lg font-bold">Publish &amp; Dispatch</CardTitle>
+                                            {composerContext?.category === 'surveys' && (
+                                                <Badge variant="outline" className="text-[10px] font-bold border-primary/30 text-primary bg-primary/5">
+                                                    Survey Outreach
+                                                </Badge>
+                                            )}
+                                        </div>
+                                        <CardDescription className="text-xs font-medium text-muted-foreground/70">
+                                            Configure sender identity, preview high-fidelity rendering, schedule, and send.
+                                        </CardDescription>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <Badge variant="secondary" className="text-xs font-semibold py-1 px-3">
+                                        Step 5 of 5
+                                    </Badge>
                                 </div>
                             </div>
                         </CardHeader>
                         <CardContent className="p-6 space-y-6">
-                            <div className="grid grid-cols-1 lg:grid-cols-10 gap-6">
-                                {/* Left: config */}
-                                <div className="space-y-5 lg:col-span-3">
-                                    {/* Sender profile */}
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Sender Profile</Label>
-                                        <Controller name="senderProfileId" control={control} render={({ field }) => (
-                                            <SenderProfileSelector
-                                                channel={watchedChannel}
-                                                value={field.value}
-                                                onChange={field.onChange}
-                                                organizationId={activeOrganizationId}
-                                                workspaceId={activeWorkspaceId}
-                                                defaultSentinelValue={watchedChannel === 'whatsapp' ? 'whatsapp' : 'default'}
-                                                defaultLabel={watchedChannel === 'whatsapp' ? 'WhatsApp Business Account' : 'Default Active Profile'}
-                                                allowDefault={true}
-                                                placeholder="Select sender..."
-                                                triggerClassName="h-12 rounded-xl bg-muted/20 border-border/50 font-semibold"
-                                            />
-                                        )} />
-                                    </div>
-
-                                    {/* Scheduling */}
-                                    <div className="space-y-2">
-                                        <Label className="text-[10px] font-bold text-primary uppercase tracking-widest">Delivery</Label>
-                                        <div className="flex items-center justify-between p-3.5 rounded-xl bg-muted/20 border border-border/50">
-                                            <div className="flex items-center gap-2">
-                                                <CalendarClock className="h-4 w-4 text-muted-foreground" />
-                                                <span className="text-xs font-semibold">Schedule for later</span>
-                                            </div>
-                                            <Controller name="isScheduled" control={control} render={({ field }) => (
-                                                <Switch checked={field.value} onCheckedChange={field.onChange} />
-                                            )} />
-                                        </div>
-                                        {watchedIsScheduled && (
-                                            <Controller name="scheduledAt" control={control} render={({ field }) => (
-                                                <DateTimePicker value={field.value} onChange={field.onChange} />
-                                            )} />
-                                        )}
-                                    </div>
-
-                                    {/* Summary */}
-                                    <div className="grid grid-cols-2 gap-3">
-                                        <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-1">
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Recipients</p>
-                                            <p className="text-2xl font-bold text-primary tabular-nums">
-                                                {audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
-                                            </p>
-                                        </div>
-                                        <div className="p-4 rounded-xl bg-muted/20 border border-border/50 space-y-1">
-                                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Delivery</p>
-                                            <p className={cn('text-sm font-bold flex items-center gap-1.5', watchedIsScheduled ? 'text-primary' : 'text-emerald-600')}>
-                                                {watchedIsScheduled ? <CalendarClock className="h-4 w-4" /> : <Zap className="h-4 w-4" />}
-                                                {watchedIsScheduled ? 'Scheduled' : 'Immediate'}
-                                            </p>
-                                        </div>
-                                    </div>
-
-                                    {/* Test dispatch */}
-                                    <Button type="button" variant="outline" onClick={() => setIsTestModalOpen(true)}
-                                        className="w-full h-11 rounded-xl font-semibold border-primary/20 text-primary hover:bg-primary/5 gap-2 text-xs">
-                                        <FlaskConical className="h-4 w-4" /> Send Test Message
-                                    </Button>
-
-                                    {/* Audit note */}
-                                    <div className="flex items-start gap-3 p-3.5 rounded-xl bg-blue-50 border border-blue-200">
-                                        <Info className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
-                                        <p className="text-[10px] font-semibold text-blue-800 leading-relaxed">All dispatches are logged for audit. Messages use official organizational gateways.</p>
-                                    </div>
-
-                                    {/* High-volume warning */}
-                                    {(audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) > 50 && (
-                                        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-50 border border-amber-200">
-                                            <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
-                                            <p className="text-[10px] font-semibold text-amber-800 leading-relaxed">
-                                                High volume: {audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length} messages. Estimated time: ~{Math.ceil((audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) * 0.5 / 60)} min.
-                                            </p>
-                                        </div>
-                                    )}
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+                                {/* Left: Pre-Flight Dispatch Cockpit */}
+                                <div className="lg:col-span-4 min-w-0">
+                                    <PreFlightCockpit
+                                        control={control}
+                                        channel={watchedChannel}
+                                        senderProfileId={watchedSenderProfileId}
+                                        isScheduled={watchedIsScheduled}
+                                        scheduledAt={watch('scheduledAt')}
+                                        recipientCount={audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
+                                        audienceSource={audienceSource}
+                                        activeOrganizationId={activeOrganizationId}
+                                        activeWorkspaceId={activeWorkspaceId}
+                                        onScheduleToggle={(scheduled) => setValue('isScheduled', scheduled, { shouldDirty: true })}
+                                        onOpenTestModal={() => setIsTestModalOpen(true)}
+                                    />
                                 </div>
 
-                                {/* Right: preview */}
-                                <div className="space-y-2 lg:col-span-7">
-                                    <Label className="text-[10px] font-bold text-primary uppercase tracking-widest flex items-center gap-1.5">
-                                        <Eye className="h-3 w-3" /> Live Preview
-                                    </Label>
-                                    {selectedTemplate ? (
-                                        <MessagePreviewer
-                                            template={selectedTemplate}
-                                            variables={{ ...sampleVariables, ...getValues('variables'), ...(watchedMode === 'bulk' ? csvData[0] : {}) }}
-                                            styles={styles || []}
-                                        />
-                                    ) : (
-                                        <div className="p-8 rounded-xl border-2 border-dashed border-border/50 text-center text-muted-foreground text-xs">
-                                            No template selected
-                                        </div>
-                                    )}
+                                {/* Right: High-Fidelity Client Simulation Canvas */}
+                                <div className="lg:col-span-8 min-w-0">
+                                    <PublishPreviewCanvas
+                                        template={selectedTemplate}
+                                        variables={{ ...sampleVariables, ...(getValues('variables') as Record<string, string | number | boolean | null | undefined>), ...(watchedMode === 'bulk' ? (csvData[0] as Record<string, string | number | boolean | null | undefined>) : {}) }}
+                                        styles={styles || []}
+                                        channel={watchedChannel}
+                                        onOpenTestModal={() => setIsTestModalOpen(true)}
+                                        activeSenderName={currentOrganization?.name || 'SmartSapp'}
+                                        activeSenderIdentifier={currentOrganization?.email || 'info@smartsapp.com'}
+                                        sampleRecipientName="Jane Doe"
+                                        sampleRecipientIdentifier={watchedChannel === 'email' ? 'jane.doe@example.com' : '+233 50 123 4567'}
+                                        smsBalance={smsBalance}
+                                    />
                                 </div>
                             </div>
 
@@ -1493,6 +1450,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             isSubmitting={isSubmitting}
                             nextDisabled={!watch('senderProfileId') || (watchedMode === 'single' && (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0))}
                             nextLabel={watchedIsScheduled ? (watchedMode === 'single' ? 'Schedule Message' : 'Schedule Broadcast') : (watchedMode === 'single' ? 'Send Now' : 'Execute Broadcast')} 
+                            onNext={(audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) > 50 && !watchedIsScheduled ? () => setIsBlastModalOpen(true) : undefined}
                         />
                     </Card>
                 )}
@@ -1699,6 +1657,22 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                     </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
+
+            {/* ── High-Volume Blast Confirmation Modal ── */}
+            <SafeguardBlastModal
+                open={isBlastModalOpen}
+                onOpenChange={setIsBlastModalOpen}
+                onConfirm={() => {
+                    setIsBlastModalOpen(false);
+                    form.handleSubmit(onSubmit)();
+                }}
+                recipientCount={audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
+                channel={watchedChannel}
+                senderProfileLabel={watchedSenderProfileId === 'default' ? 'Default Active Profile' : watchedSenderProfileId}
+                isScheduled={watchedIsScheduled}
+                scheduledAt={watch('scheduledAt')}
+                isSubmitting={isSubmitting}
+            />
         </div>
     );
 }
