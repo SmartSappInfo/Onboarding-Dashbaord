@@ -21,6 +21,7 @@
  */
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -80,6 +81,22 @@ export function CurriculumEditorModal({
   const [isSaving, setIsSaving] = React.useState(false);
   const [isDirty, setIsDirty] = React.useState(false);
   const [isMobileTreeOpen, setIsMobileTreeOpen] = React.useState(false);
+
+  // Hydration & DOM Mount Guard for Body Portal
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Body scroll lock
+  React.useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
 
   // Active Lesson for Quiz Builder modal
   const [activeQuizLesson, setActiveQuizLesson] = React.useState<CourseLesson | null>(null);
@@ -352,10 +369,11 @@ export function CurriculumEditorModal({
     onOpenChange(false);
   };
 
-  if (!open || !course) return null;
+  if (!open || !course || !mounted) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-background flex flex-col overflow-hidden animate-in fade-in-0 duration-200">
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] bg-background flex flex-col overflow-hidden animate-in fade-in-0 duration-200">
       {/* ── Studio Top Bar ────────────────────────────────────────────── */}
       <header className="h-16 px-4 sm:px-6 border-b border-border bg-card/80 backdrop-blur-md flex items-center justify-between gap-4 shrink-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -510,4 +528,6 @@ export function CurriculumEditorModal({
       )}
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

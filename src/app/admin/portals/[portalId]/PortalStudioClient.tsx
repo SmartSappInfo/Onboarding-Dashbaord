@@ -287,15 +287,15 @@ export default function PortalStudioClient({
         setIsCommandPaletteOpen(prev => !prev);
       }
       
-      // Cmd+P for Preview Modal
+      // Cmd+P for Preview Modal (unconditionally prevent browser print dialog)
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'p') {
+        e.preventDefault();
         const isTextInput =
           e.target instanceof HTMLInputElement ||
           e.target instanceof HTMLTextAreaElement ||
           (e.target as HTMLElement).isContentEditable;
 
         if (!isTextInput) {
-          e.preventDefault();
           setIsPreviewModalOpen(true);
         }
       }

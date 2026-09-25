@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { createPortal } from 'react-dom';
 import { X, Sparkles, ExternalLink, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +20,22 @@ export function PortalPreviewModal({
   publishedUrl,
   ...canvasProps
 }: PortalPreviewModalProps) {
+  // Mount state for SSR portal safety
+  const [mounted, setMounted] = React.useState(false);
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Body scroll lock
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [isOpen]);
+
   // Handle escape key
   React.useEffect(() => {
     if (!isOpen) return;
@@ -31,9 +48,10 @@ export function PortalPreviewModal({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
+  const modalContent = (
     <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md flex flex-col overflow-hidden animate-in fade-in duration-200">
       {/* Top Header Toolbar */}
       <div className="h-14 min-h-[56px] border-b border-border bg-card/50 px-4 flex items-center justify-between shrink-0 shadow-sm">
@@ -94,4 +112,6 @@ export function PortalPreviewModal({
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

@@ -23,6 +23,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import {
   X,
   Save,
@@ -116,6 +117,22 @@ export function ContentEditorModal({
   // Active view tab
   const [viewMode, setViewMode] = useState<'studio' | 'preview' | 'details'>('studio');
   const [previewViewport, setPreviewViewport] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
+
+  // Hydration & DOM Mount Guard for Body Portal
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Lock background body scroll when full-screen studio modal is open
+  useEffect(() => {
+    if (!open) return;
+    const originalOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+    };
+  }, [open]);
 
   // Panel collapse toggles for desktop
   const [showLeftPalette, setShowLeftPalette] = useState(true);
@@ -877,10 +894,11 @@ export function ContentEditorModal({
     }
   };
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
+  if (typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 bg-background text-foreground flex flex-col overflow-hidden animate-in fade-in duration-200">
+  const modalContent = (
+    <div className="fixed inset-0 z-[100] bg-background text-foreground flex flex-col overflow-hidden animate-in fade-in duration-200">
       {/* Local Auto-Save Recovery Banner */}
       {localDraftNotice && (
         <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 flex items-center justify-between text-xs text-amber-700 dark:text-amber-400 z-30">
@@ -1198,7 +1216,7 @@ export function ContentEditorModal({
 
           {/* Mobile Palette Sheet Modal */}
           {mobilePaletteOpen && (
-            <div className="md:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col justify-end">
+            <div className="md:hidden fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex flex-col justify-end">
               <div className="bg-background rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
                 <ContentBlockPalette
                   onSelectBlockType={handleAddBlockOfType}
@@ -1211,7 +1229,7 @@ export function ContentEditorModal({
 
           {/* Mobile Inspector Sheet Modal */}
           {mobileInspectorOpen && selectedBlock && (
-            <div className="lg:hidden fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col justify-end">
+            <div className="lg:hidden fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex flex-col justify-end">
               <div className="bg-background rounded-t-3xl max-h-[85vh] flex flex-col overflow-hidden animate-in slide-in-from-bottom duration-200">
                 <ContentBlockInspector
                   selectedBlock={selectedBlock}
@@ -1235,61 +1253,99 @@ export function ContentEditorModal({
       ) : viewMode === 'preview' ? (
         <div className="flex-1 overflow-y-auto bg-slate-50/50 dark:bg-zinc-950/50 flex flex-col relative">
           {/* Device Viewport Selector */}
-          <div className="sticky top-0 z-10 w-full flex justify-center py-4 bg-background/80 backdrop-blur-md border-b border-border">
-            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+          <div className="sticky top-0 z-10 w-full flex justify-center py-3 bg-background/80 backdrop-blur-md border-b border-border">
+            <div className="flex items-center p-1 rounded-xl bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 gap-1">
               <button
                 type="button"
                 onClick={() => setPreviewViewport('desktop')}
-                className={cn('p-2 rounded-lg text-xs transition-all', previewViewport === 'desktop' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn(
+                  'min-h-[44px] px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.97]',
+                  previewViewport === 'desktop'
+                    ? 'bg-background shadow-xs text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                aria-label="Desktop preview"
               >
                 <Monitor className="w-4 h-4" />
+                <span className="hidden sm:inline">Desktop</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewViewport('tablet')}
-                className={cn('p-2 rounded-lg text-xs transition-all', previewViewport === 'tablet' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn(
+                  'min-h-[44px] px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.97]',
+                  previewViewport === 'tablet'
+                    ? 'bg-background shadow-xs text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                aria-label="Tablet preview"
               >
                 <Tablet className="w-4 h-4" />
+                <span className="hidden sm:inline">Tablet</span>
               </button>
               <button
                 type="button"
                 onClick={() => setPreviewViewport('mobile')}
-                className={cn('p-2 rounded-lg text-xs transition-all', previewViewport === 'mobile' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground')}
+                className={cn(
+                  'min-h-[44px] px-3.5 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-[0.97]',
+                  previewViewport === 'mobile'
+                    ? 'bg-background shadow-xs text-foreground font-bold'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+                aria-label="Mobile preview"
               >
                 <Smartphone className="w-4 h-4" />
+                <span className="hidden sm:inline">Mobile</span>
               </button>
             </div>
           </div>
           
           <div className="flex-1 p-6 flex flex-col items-center">
             <div 
-              className="w-full bg-card border border-border shadow-sm min-h-[60vh] transition-all duration-300 mx-auto"
+              className="w-full bg-card border border-border shadow-sm min-h-[60vh] transition-all duration-300 mx-auto rounded-2xl overflow-hidden"
               style={{
                 maxWidth: previewViewport === 'desktop' ? '800px' : previewViewport === 'tablet' ? '600px' : '390px'
               }}
             >
               <div className="p-8 md:p-12">
-                <h1 className="text-3xl font-extrabold tracking-tight mb-4">{title || 'Untitled Document'}</h1>
+                <h1 className="text-3xl font-extrabold tracking-tight mb-4 text-foreground">{title || 'Untitled Document'}</h1>
                 {summary && <p className="text-lg text-muted-foreground mb-8">{summary}</p>}
-                <div className="space-y-6">
-                  {blocks.map(block => (
-                    <BlockRenderer 
-                      key={block.id} 
-                      block={block} 
-                      ctx={{ 
-                        mode: 'view', 
-                        viewport: previewViewport, 
-                        theme: { 
-                          ...DEFAULT_THEME, 
-                          colors: { ...DEFAULT_THEME.colors, primary: portalPrimaryColor || DEFAULT_THEME.colors.primary },
-                          typography: { headingFont: 'Figtree, sans-serif', bodyFont: 'Figtree, sans-serif', baseSize: '16px' }
-                        } as ResolvedTheme, 
-                        interpolate: (t: string) => t,
-                        resources: {} as BuilderResources
-                      }} 
-                    />
-                  ))}
-                </div>
+                {blocks.length === 0 ? (
+                  <div className="py-12 text-center border-2 border-dashed border-border rounded-xl">
+                    <p className="text-sm font-semibold text-muted-foreground">No content blocks added yet.</p>
+                    <p className="text-xs text-muted-foreground/80 mt-1">Switch to Block Studio view to add and design blocks.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {blocks.map(block => {
+                      const def = getBlock(normalizeBlockType(block.type));
+                      return (
+                        <div key={block.id} className="relative">
+                          {def ? (
+                            <BlockRenderer 
+                              block={block} 
+                              ctx={{ 
+                                mode: 'view', 
+                                viewport: previewViewport, 
+                                theme: { 
+                                  ...DEFAULT_THEME, 
+                                  colors: { ...DEFAULT_THEME.colors, primary: portalPrimaryColor || DEFAULT_THEME.colors.primary },
+                                  typography: { headingFont: 'Figtree, sans-serif', bodyFont: 'Figtree, sans-serif', baseSize: '16px' }
+                                } as ResolvedTheme, 
+                                interpolate: (t: string) => t,
+                                resources: {} as BuilderResources
+                              }} 
+                            />
+                          ) : (
+                            <div className="p-4 rounded-xl border border-dashed border-border bg-muted/30 text-xs text-muted-foreground">
+                              Block preview unavailable for type: <span className="font-mono font-semibold">{block.type}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -1610,7 +1666,7 @@ export function ContentEditorModal({
 
       {/* Unsaved Changes Confirmation Modal */}
       {confirmExitOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-slate-200 dark:border-slate-800 rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-amber-500/10 text-amber-500 shrink-0">
@@ -1653,7 +1709,7 @@ export function ContentEditorModal({
 
       {/* "Save as Template" Modal Dialog */}
       {templateDialogOpen && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[110] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-card border border-slate-200 dark:border-slate-800 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in zoom-in-95 duration-150">
             <div className="flex items-center gap-3">
               <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-[var(--portal-primary,#3B82F6)]/10 text-[var(--portal-primary,#3B82F6)] shrink-0">
@@ -1715,4 +1771,6 @@ export function ContentEditorModal({
       )}
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
