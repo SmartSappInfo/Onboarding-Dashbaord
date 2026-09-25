@@ -18,7 +18,6 @@ import {
   Smartphone, 
   FlaskConical, 
   Eye, 
-  ShieldCheck, 
   CheckCircle2, 
   Clock, 
   CheckCheck,

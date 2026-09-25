@@ -36,6 +36,7 @@ import SystemDecisionPlaybookMatrix from './SystemDecisionPlaybookMatrix';
 import { SystemResearchGovernanceMatrix } from './SystemResearchGovernanceMatrix';
 import { SystemPredictiveIntelligenceMatrix } from './SystemPredictiveIntelligenceMatrix';
 import { SystemThemeGovernanceMatrix } from './SystemThemeGovernanceMatrix';
+import { SystemDispatchGovernanceMatrix } from './SystemDispatchGovernanceMatrix';
 
 export default function SurveyGovernanceClient() {
   const getToken = useBackofficeToken();
@@ -176,6 +177,9 @@ export default function SurveyGovernanceClient() {
 
       {/* Global System Theme & Brand Governance Matrix */}
       <SystemThemeGovernanceMatrix />
+
+      {/* Global System Dispatch & Blast Governance Matrix */}
+      <SystemDispatchGovernanceMatrix />
 
       {/* Drop-off Intelligence Radar Section */}
       <div className="space-y-3">

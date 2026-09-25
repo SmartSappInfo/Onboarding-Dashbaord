@@ -20,7 +20,7 @@ import type { SurveyDistributionCampaign } from './survey-v2-types';
 import { generateTrackingToken, buildSurveyAttributionUrl } from './survey-attribution';
 import { getBaseUrl } from '@/lib/utils/url-helpers';
 import { sendMessage } from '@/lib/messaging-engine';
-import { requireWorkspace } from '@/lib/auth/require-auth';
+import { requireWorkspace, requireAuth } from '@/lib/auth/require-auth';
 // SECURITY (audit F9): report detail server-side; return an opaque message + ref.
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 
@@ -294,3 +294,80 @@ export async function estimateAudienceSizeAction(
     return { count: 0 };
   }
 }
+
+export interface SystemDispatchGovernanceConfig {
+  highVolumeThreshold: number;
+  rateLimitThroughput: number;
+  requireImmediateConfirmation: boolean;
+  enforceVerifiedDomain: boolean;
+  enableAuditLogging: boolean;
+  defaultSenderAlias?: string;
+}
+
+/**
+ * Retrieves global platform dispatch governance policies from system_settings.
+ */
+export async function getSystemDispatchGovernanceAction(): Promise<{
+  success: boolean;
+  config: SystemDispatchGovernanceConfig;
+  error?: string;
+}> {
+  const defaultConfig: SystemDispatchGovernanceConfig = {
+    highVolumeThreshold: 50,
+    rateLimitThroughput: 30,
+    requireImmediateConfirmation: true,
+    enforceVerifiedDomain: false,
+    enableAuditLogging: true,
+    defaultSenderAlias: 'SmartSapp Notifications',
+  };
+
+  try {
+    const docRef = adminDb.collection('system_settings').doc('survey_dispatch_governance');
+    const docSnap = await docRef.get();
+
+    if (docSnap.exists) {
+      return {
+        success: true,
+        config: { ...defaultConfig, ...docSnap.data() } as SystemDispatchGovernanceConfig,
+      };
+    }
+
+    return { success: true, config: defaultConfig };
+  } catch (err: unknown) {
+    console.error('[survey-campaign-actions] getSystemDispatchGovernanceAction error:', err);
+    return {
+      success: false,
+      config: defaultConfig,
+      error: toClientErrorMessage('surveys.survey-campaign-actions', err, undefined, 'Failed to load dispatch governance'),
+    };
+  }
+}
+
+/**
+ * Saves global platform dispatch governance policies to system_settings.
+ */
+export async function saveSystemDispatchGovernanceAction(
+  config: SystemDispatchGovernanceConfig
+): Promise<{ success: boolean; error?: string }> {
+  await requireAuth();
+
+  try {
+    const docRef = adminDb.collection('system_settings').doc('survey_dispatch_governance');
+    await docRef.set(
+      {
+        ...config,
+        updatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+
+    return { success: true };
+  } catch (err: unknown) {
+    console.error('[survey-campaign-actions] saveSystemDispatchGovernanceAction error:', err);
+    return {
+      success: false,
+      error: toClientErrorMessage('surveys.survey-campaign-actions', err, undefined, 'Failed to save dispatch governance'),
+    };
+  }
+}
+

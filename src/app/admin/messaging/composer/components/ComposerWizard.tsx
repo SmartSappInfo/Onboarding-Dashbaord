@@ -7,7 +7,6 @@ import * as z from 'zod';
 import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import type { MessageTemplate, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle } from '@/lib/types';
-import { resolveVariables, renderBlocksToHtml, plainTextToHtml } from '@/lib/messaging-utils';
 import { createBulkMessageJob, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
@@ -17,12 +16,8 @@ import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
-import { parseMarkdownLinksToHtml } from '@/lib/utils/markdown-link-parser';
-import { resolveBrandingPreview } from '@/lib/utils/resolve-branding-preview';
-import { getDefaultStyle } from '@/lib/services/style-resolver';
 import { useWorkspace } from '@/context/WorkspaceContext';
 import Link from 'next/link';
-import DOMPurify from 'isomorphic-dompurify';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -30,17 +25,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 
-import { Switch } from '@/components/ui/switch';
-import { DateTimePicker } from '@/components/ui/datetime-picker';
 import {
-    Check, ChevronRight, Smartphone, Mail, MessageCircle, Users, Upload, Loader2, Eye,
-    X, AlertCircle, Info, CalendarClock, Building, Trophy, TrendingUp, Zap,
-    CheckCircle2, Target, Layers, Wand2, ArrowLeft, FileText, ClipboardList,
-    Calendar, Database, PlusCircle, FlaskConical, Tag, Send, Settings2,
+    Check, ChevronRight, Smartphone, Mail, MessageCircle, Users, Upload, Loader2,
+    X, AlertCircle, Info, Building, Trophy, TrendingUp,
+    CheckCircle2, Target, Layers, Wand2, ArrowLeft, FileText,
+    PlusCircle, Tag, Send, Settings2,
     User, Filter, BookmarkCheck,
 } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
-import { SmartSappIcon } from '@/components/icons';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import {
@@ -53,7 +45,6 @@ import { TagAudienceSelector, type TagSegment } from './TagAudienceSelector';
 import { EntitySelector } from './EntitySelector';
 import { cn } from '@/lib/utils';
 import { MessagingTemplateSelector } from '../../../components/MessagingTemplateSelector';
-import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
 import { PreFlightCockpit } from './PreFlightCockpit';
 import { PublishPreviewCanvas } from './PublishPreviewCanvas';
 import { SafeguardBlastModal } from './SafeguardBlastModal';
@@ -1677,124 +1668,3 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     );
 }
 
-// ─── MessagePreviewer ─────────────────────────────────────────────────────────
-function MessagePreviewer({ template, variables, styles = [] }: { template: MessageTemplate; variables: Record<string, unknown>; styles?: MessageStyle[] }) {
-    const { activeOrganizationId, activeWorkspaceId, activeOrganization } = useWorkspace();
-    const combinedVars = { ...variables } as Record<string, unknown>;
-
-    if (variables.ai_refined_body) {
-        return (
-            <div className="rounded-2xl border-2 overflow-hidden shadow-lg p-6 bg-card">
-                <div className="flex items-center gap-2 mb-3 text-emerald-600">
-                    <Wand2 className="h-3.5 w-3.5" />
-                    <span className="text-[10px] font-bold">AI Polished Draft</span>
-                </div>
-                <div className="whitespace-pre-wrap font-medium leading-relaxed text-sm prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(resolveVariables(variables.ai_refined_body, combinedVars), { USE_PROFILES: { html: true } }) }} />
-            </div>
-        );
-    }
-
-    let activeStyle: MessageStyle | null = null;
-    if (template.styleId !== 'none') {
-        const styleIdToUse = template.styleId;
-        if (!styleIdToUse || styleIdToUse === 'default') {
-            activeStyle = getDefaultStyle(styles, activeOrganizationId, activeWorkspaceId) || null;
-        } else {
-            activeStyle = styles.find(s => s.id === styleIdToUse) || null;
-        }
-    }
-
-    let styleWrapper = '';
-    if (activeStyle) {
-        if (template.target === 'internal_team') {
-            styleWrapper = activeStyle.htmlWrapperInternal || activeStyle.htmlWrapper || '';
-        } else {
-            styleWrapper = activeStyle.htmlWrapperExternal || activeStyle.htmlWrapper || '';
-        }
-
-        if (styleWrapper) {
-            const brandingData = {
-                name: String(combinedVars.org_name || activeOrganization?.name || 'Your Organization'),
-                logoUrl: String(combinedVars.org_logo_url || activeOrganization?.logoUrl || ''),
-                email: String(combinedVars.org_email || activeOrganization?.email || ''),
-                phone: String(combinedVars.org_phone || activeOrganization?.phone || ''),
-                address: String(combinedVars.org_address || activeOrganization?.address || ''),
-                website: String(combinedVars.org_website || activeOrganization?.website || ''),
-                footerHtml: activeStyle.footerHtml,
-                footerEnabled: activeStyle.footerEnabled !== false
-            };
-            const styleOverrides = {
-                primaryColor: activeStyle.primaryColor,
-                secondaryColor: activeStyle.secondaryColor,
-                fontFamily: activeStyle.fontFamily,
-                backgroundColor: activeStyle.backgroundColor,
-                textColor: activeStyle.textColor,
-                cardBackgroundColor: activeStyle.cardBackgroundColor,
-                borderRadius: activeStyle.borderRadius,
-                footerHtml: activeStyle.footerHtml,
-                footerEnabled: activeStyle.footerEnabled !== false
-            };
-            styleWrapper = resolveBrandingPreview(styleWrapper, brandingData, styleOverrides);
-        }
-    }
-
-    let resolvedBody = '';
-    if (template.channel === 'email') {
-        if (template.contentMode === 'rich_builder' || template.blocks?.length) {
-            resolvedBody = renderBlocksToHtml(template.blocks || [], combinedVars, {
-                wrapper: styleWrapper || undefined,
-                style: activeStyle || undefined
-            });
-        } else {
-            let resolved = resolveVariables(template.body || '', combinedVars);
-            if (styleWrapper && styleWrapper.includes('{{content}}')) {
-                let contentHtml = resolved;
-                if (template.contentMode === 'plain_text' || !template.contentMode) {
-                    const escaped = contentHtml
-                        .replace(/&/g, '&amp;')
-                        .replace(/</g, '&lt;')
-                        .replace(/>/g, '&gt;')
-                        .replace(/"/g, '&quot;');
-                    const withLinks = parseMarkdownLinksToHtml(escaped);
-                    contentHtml = withLinks.replace(/\n/g, '<br>\n');
-                }
-                resolvedBody = resolveVariables(styleWrapper, combinedVars).replace('{{content}}', contentHtml);
-            } else if (template.contentMode === 'plain_text' || !template.contentMode) {
-                resolvedBody = plainTextToHtml(resolved);
-            } else {
-                resolvedBody = resolved;
-            }
-        }
-    } else {
-        resolvedBody = resolveVariables(template.body || '', combinedVars);
-    }
-
-    if (template.channel === 'email') {
-        return (
-            <div className="rounded-2xl border-2 overflow-hidden shadow-lg bg-card flex flex-col h-[380px]">
-                <div className="p-4 border-b bg-muted/20 shrink-0">
-                    <p className="text-[9px] font-bold tracking-widest text-muted-foreground uppercase mb-1">Subject</p>
-                    <p className="font-semibold text-sm truncate">{resolveVariables(template.subject || '', combinedVars) || '(No Subject)'}</p>
-                </div>
-                <iframe srcDoc={resolvedBody} className="flex-1 w-full border-none bg-card" title="High Fidelity Preview" />
-            </div>
-        );
-    }
-
-    return (
-        <div className="rounded-2xl border-2 overflow-hidden shadow-lg bg-muted/10 max-w-xs mx-auto">
-            <div className="p-6 space-y-4">
-                <div className="flex items-center justify-between">
-                    <SmartSappIcon className="h-6 w-6 text-primary opacity-20" />
-                    <p className="text-[9px] font-bold text-primary/40 tracking-widest uppercase">SMS Preview</p>
-                </div>
-                <div className="p-4 bg-card border rounded-2xl relative shadow-md">
-                    <div className="absolute -left-2 top-6 w-4 h-4 bg-card border-l border-b rotate-45 rounded-sm" />
-                    <p className="text-sm text-foreground leading-relaxed font-medium whitespace-pre-wrap">{resolvedBody}</p>
-                </div>
-                <p className="text-center text-[9px] font-semibold text-muted-foreground">~{Math.ceil(resolvedBody.length / 160)} segment(s)</p>
-            </div>
-        </div>
-    );
-}

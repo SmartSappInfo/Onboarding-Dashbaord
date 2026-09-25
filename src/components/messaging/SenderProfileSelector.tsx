@@ -221,17 +221,6 @@ export function SenderProfileSelector({
           )}
         >
           <div className="flex items-center gap-2 truncate text-left w-full mr-2">
-            {isCurrentValueSentinel ? (
-              <ShieldCheck
-                className={cn(
-                  'text-primary shrink-0',
-                  compact ? 'h-3.5 w-3.5' : 'h-4 w-4'
-                )}
-              />
-            ) : showChannelIcon && channel !== 'all' ? (
-              <ChannelIcon channel={channel} />
-            ) : null}
-
             <SelectValue placeholder={isLoading ? 'Loading profiles...' : placeholder} />
           </div>
         </SelectTrigger>
@@ -258,7 +247,10 @@ export function SenderProfileSelector({
                     {resolvedDefaultLabel}
                   </span>
                   {defaultProfile && (
-                    <span className="text-muted-foreground font-normal text-[10px] truncate max-w-[200px]">
+                    <span 
+                      className="text-muted-foreground font-normal text-[10px] truncate max-w-[280px] sm:max-w-xs md:max-w-sm"
+                      title={`${defaultProfile.name}${defaultProfile.identifier ? ` • ${defaultProfile.identifier}` : ''}`}
+                    >
                       ({defaultProfile.name}
                       {showIdentifier && defaultProfile.identifier
                         ? ` • ${defaultProfile.identifier}`
@@ -270,7 +262,7 @@ export function SenderProfileSelector({
                 {defaultProfile && (
                   <Badge
                     variant="outline"
-                    className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0 h-4 border-primary/30 text-primary bg-primary/5"
+                    className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0 h-4 border-primary/30 text-primary bg-primary/5 shrink-0"
                   >
                     Auto
                   </Badge>
@@ -299,7 +291,10 @@ export function SenderProfileSelector({
                     {showChannelIcon && <ChannelIcon channel={p.channel} />}
                     <span className="font-semibold text-foreground">{p.name}</span>
                     {showIdentifier && p.identifier && (
-                      <span className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40 truncate max-w-[180px]">
+                      <span 
+                        className="text-[10px] text-muted-foreground bg-muted/60 px-1.5 py-0.5 rounded border border-border/40 truncate max-w-[220px] sm:max-w-xs md:max-w-sm"
+                        title={p.identifier}
+                      >
                         {p.identifier}
                       </span>
                     )}
