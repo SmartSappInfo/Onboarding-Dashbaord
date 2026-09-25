@@ -12,6 +12,7 @@ import './image';
 import './video';
 import './spacer';
 import './divider';
+import './list';
 // Data display
 import './faq';
 import './testimonial';

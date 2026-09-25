@@ -181,6 +181,14 @@ export function normalizeBlockType(rawType: string): PageBlockType {
     case 'numberedlist':
       return 'procedure_list';
 
+    case 'list':
+    case 'listsection':
+    case 'bulletlist':
+    case 'checklist':
+    case 'featurelist':
+    case 'listgroup':
+      return 'list';
+
     case 'ctasection':
     case 'cta':
     case 'calltoaction':

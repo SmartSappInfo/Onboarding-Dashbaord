@@ -48,6 +48,7 @@ import type {
   OptionItem,
 } from './DividerSegmentedControls';
 import { LineSpacingSelector } from './LineSpacingSelector';
+import { ListPresetSelector } from './ListPresetSelector';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
@@ -235,6 +236,15 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
                   onChange(val);
                 }
               }}
+            />
+          );
+        }
+        if (field.options.some((o) => o.value === 'checklist' && field.options.some((x) => x.value === 'minimal-dash'))) {
+          return (
+            <ListPresetSelector
+              value={asString(value) || 'checklist'}
+              options={field.options}
+              onChange={(val) => onChange(val)}
             />
           );
         }
@@ -642,6 +652,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
             const isImagePreset = field.key === 'preset' && block.type === 'image';
             const isVideoPreset = field.key === 'preset' && block.type === 'video';
+            const isListPreset = field.key === 'preset' && block.type === 'list';
             const isPlayButtonArchetype = field.key === 'playButtonArchetype';
             const isDividerStyle = field.key === 'style' && block.type === 'divider';
 
@@ -654,6 +665,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
                 !isPlaybackField &&
                 !isImagePreset &&
                 !isVideoPreset &&
+                !isListPreset &&
                 !isPlayButtonArchetype &&
                 !isDividerStyle ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>

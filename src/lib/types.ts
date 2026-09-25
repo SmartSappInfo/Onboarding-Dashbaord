@@ -6085,6 +6085,7 @@ export interface WidgetDefinition {
 export type PageBlockType =
   | 'hero'
   | 'text'
+  | 'list'
   | 'form'
   | 'cta'
   | 'faq'

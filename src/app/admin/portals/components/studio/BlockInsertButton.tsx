@@ -25,6 +25,7 @@ import {
   Image as ImageIcon,
   Video,
   ListChecks,
+  ListOrdered,
   HelpCircle,
   Columns as ColumnsIcon,
   Minus,
@@ -91,6 +92,12 @@ const QUICK_BLOCKS: QuickBlockOption[] = [
     label: 'Video Lecture',
     description: 'YouTube, Vimeo, Wistia or MP4 embed',
     icon: Video,
+  },
+  {
+    type: 'list',
+    label: 'List Group',
+    description: 'Bulleted, numbered, and feature checklist items',
+    icon: ListOrdered,
   },
   {
     type: 'procedure_list',
