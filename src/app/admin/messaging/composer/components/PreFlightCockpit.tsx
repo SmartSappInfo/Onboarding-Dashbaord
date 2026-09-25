@@ -27,6 +27,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { DateTimePicker } from '@/components/ui/datetime-picker';
 import { SenderProfileSelector } from '@/components/messaging/SenderProfileSelector';
+import type { SenderProfile } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 export interface PreFlightCockpitProps<TFieldValues extends FieldValues = FieldValues> {
@@ -41,6 +42,8 @@ export interface PreFlightCockpitProps<TFieldValues extends FieldValues = FieldV
   activeWorkspaceId?: string;
   onScheduleToggle: (scheduled: boolean) => void;
   onOpenTestModal: () => void;
+  onSelectSenderProfile?: (profile: SenderProfile | null) => void;
+  highVolumeThreshold?: number;
 }
 
 export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>({
@@ -52,6 +55,8 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
   activeOrganizationId,
   activeWorkspaceId,
   onScheduleToggle,
+  onSelectSenderProfile,
+  highVolumeThreshold = 50,
 }: PreFlightCockpitProps<TFieldValues>) {
   // Compute estimated throughput time (approx 30 msgs/sec for gateways)
   const estimatedSeconds = Math.max(1, Math.ceil((recipientCount * 0.5)));
@@ -78,6 +83,7 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
               channel={channel}
               value={field.value}
               onChange={field.onChange}
+              onSelectProfile={onSelectSenderProfile}
               organizationId={activeOrganizationId}
               workspaceId={activeWorkspaceId}
               defaultSentinelValue={channel === 'whatsapp' ? 'whatsapp' : 'default'}
@@ -202,8 +208,8 @@ export function PreFlightCockpit<TFieldValues extends FieldValues = FieldValues>
             </div>
           </div>
 
-          {/* Dynamic High-Volume Notice (Only appears when recipient count > 50) */}
-          {recipientCount > 50 && (
+          {/* Dynamic High-Volume Notice (Only appears when recipient count > highVolumeThreshold) */}
+          {recipientCount > highVolumeThreshold && (
             <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center gap-2 text-amber-700 dark:text-amber-300 text-[10px] font-semibold">
               <ShieldAlert className="h-3.5 w-3.5 text-amber-600 shrink-0" />
               <span>High volume dispatch: delivery will proceed in throttled batches to protect domain reputation.</span>

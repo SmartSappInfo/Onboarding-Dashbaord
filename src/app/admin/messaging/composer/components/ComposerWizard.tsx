@@ -6,7 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { collection, query, where, orderBy, limit, doc, onSnapshot } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import type { MessageTemplate, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle } from '@/lib/types';
+import type { MessageTemplate, Meeting, Survey, PDFForm, SurveyResponse, Submission, TemplateVariable, MessageStyle, SenderProfile } from '@/lib/types';
 import { createBulkMessageJob, processJobChunkBackground } from '@/lib/bulk-messaging';
 import { resolveContact } from '@/lib/contact-adapter';
 import { fetchSmsBalanceAction } from '@/lib/mnotify-actions';
@@ -14,6 +14,7 @@ import { fetchContextualData, resolveRecipientContacts, updateEntityLastContacte
 import { contactResolutionChannel } from '@/lib/messaging/channel-registry';
 import { getVariablesForContext } from '@/lib/template-variable-utils';
 import { getWorkspaceVariablesAction } from '@/lib/fields-actions';
+import { getSystemDispatchGovernanceAction } from '@/lib/surveys/survey-campaign-actions';
 import { refineMessage } from '@/ai/flows/refine-message-flow';
 import { useToast } from '@/hooks/use-toast';
 import { useWorkspace } from '@/context/WorkspaceContext';
@@ -249,6 +250,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
     const [jobTotal, setJobTotal] = React.useState(0);
     const [_availableVariables, setAvailableVariables] = React.useState<TemplateVariable[]>([]);
     const [selectedTemplate, setSelectedTemplate] = React.useState<MessageTemplate | null>(null);
+    const [selectedSenderProfile, setSelectedSenderProfile] = React.useState<SenderProfile | null>(null);
+    const [blastThreshold, setBlastThreshold] = React.useState<number>(50);
 
     const form = useForm<FormData>({
         resolver: zodResolver(formSchema),
@@ -429,6 +432,16 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
             setValue('senderProfileId', 'default');
         }
     }, [watchedChannel, watchedSenderProfileId, setValue]);
+
+    React.useEffect(() => {
+        getSystemDispatchGovernanceAction()
+            .then(res => {
+                if (res.success && res.config?.highVolumeThreshold) {
+                    setBlastThreshold(res.config.highVolumeThreshold);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     React.useEffect(() => {
         if (!searchParams) return;
@@ -1404,6 +1417,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         activeWorkspaceId={activeWorkspaceId}
                                         onScheduleToggle={(scheduled) => setValue('isScheduled', scheduled, { shouldDirty: true })}
                                         onOpenTestModal={() => setIsTestModalOpen(true)}
+                                        onSelectSenderProfile={setSelectedSenderProfile}
+                                        highVolumeThreshold={blastThreshold}
                                     />
                                 </div>
 
@@ -1415,8 +1430,8 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                                         styles={styles || []}
                                         channel={watchedChannel}
                                         onOpenTestModal={() => setIsTestModalOpen(true)}
-                                        activeSenderName={currentOrganization?.name || 'SmartSapp'}
-                                        activeSenderIdentifier={currentOrganization?.email || 'info@smartsapp.com'}
+                                        activeSenderName={selectedSenderProfile?.name || currentOrganization?.name || 'SmartSapp'}
+                                        activeSenderIdentifier={selectedSenderProfile?.identifier || currentOrganization?.email || 'info@smartsapp.com'}
                                         sampleRecipientName="Jane Doe"
                                         sampleRecipientIdentifier={watchedChannel === 'email' ? 'jane.doe@example.com' : '+233 50 123 4567'}
                                         smsBalance={smsBalance}
@@ -1441,7 +1456,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                             isSubmitting={isSubmitting}
                             nextDisabled={!watch('senderProfileId') || (watchedMode === 'single' && (audienceSource === 'individual' ? watchedSelectedEntityIds.length === 0 : filteredRecipients.length === 0))}
                             nextLabel={watchedIsScheduled ? (watchedMode === 'single' ? 'Schedule Message' : 'Schedule Broadcast') : (watchedMode === 'single' ? 'Send Now' : 'Execute Broadcast')} 
-                            onNext={(audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) > 50 && !watchedIsScheduled ? () => setIsBlastModalOpen(true) : undefined}
+                            onNext={(audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length) > blastThreshold && !watchedIsScheduled ? () => setIsBlastModalOpen(true) : undefined}
                         />
                     </Card>
                 )}
@@ -1659,7 +1674,7 @@ export default function ComposerWizard({ composerContext }: ComposerWizardProps 
                 }}
                 recipientCount={audienceSource === 'individual' ? watchedSelectedEntityIds.length : filteredRecipients.length}
                 channel={watchedChannel}
-                senderProfileLabel={watchedSenderProfileId === 'default' ? 'Default Active Profile' : watchedSenderProfileId}
+                senderProfileLabel={selectedSenderProfile ? `${selectedSenderProfile.name}${selectedSenderProfile.identifier ? ` (${selectedSenderProfile.identifier})` : ''}` : (watchedSenderProfileId === 'default' ? 'Default Active Profile' : watchedSenderProfileId)}
                 isScheduled={watchedIsScheduled}
                 scheduledAt={watch('scheduledAt')}
                 isSubmitting={isSubmitting}

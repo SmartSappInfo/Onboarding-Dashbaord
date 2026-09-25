@@ -312,6 +312,8 @@ export async function getSystemDispatchGovernanceAction(): Promise<{
   config: SystemDispatchGovernanceConfig;
   error?: string;
 }> {
+  await requireAuth();
+
   const defaultConfig: SystemDispatchGovernanceConfig = {
     highVolumeThreshold: 50,
     rateLimitThroughput: 30,
