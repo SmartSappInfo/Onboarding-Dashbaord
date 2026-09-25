@@ -661,6 +661,82 @@ export class EventService {
     return { ...(snap.data() as LiveEvent), ...updates };
   }
 
+  /**
+   * Helper to format lesson video, summary, and attachment payload from replay assets.
+   */
+  public static buildCurriculumReplayPayload(params: {
+    recordingUrl: string;
+    recordingDurationSeconds?: number;
+    aiSummary?: string;
+    slideDeckUrl?: string;
+  }): {
+    videoUrl: string;
+    videoDurationSeconds?: number;
+    summary?: string;
+    attachments?: Array<{ id: string; name: string; url: string; mimeType: string }>;
+  } {
+    const attachments = params.slideDeckUrl
+      ? [
+          {
+            id: 'slides',
+            name: 'Session Slide Deck',
+            url: params.slideDeckUrl,
+            mimeType: 'application/pdf',
+          },
+        ]
+      : undefined;
+
+    return {
+      videoUrl: params.recordingUrl,
+      videoDurationSeconds: params.recordingDurationSeconds,
+      summary: params.aiSummary,
+      attachments,
+    };
+  }
+
+  /**
+   * 1-Click attachment of a live event replay into a curriculum lesson.
+   * Updates the lesson videoUrl, duration, AI summary, and slide attachments.
+   */
+  public static async attachReplayToCourseLesson(params: {
+    eventId: string;
+    courseId: string;
+    lessonId: string;
+    portalId: string;
+  }): Promise<void> {
+    const eventSnap = await adminDb.collection('live_events').doc(params.eventId).get();
+    if (!eventSnap.exists) {
+      throw new Error(`Event ${params.eventId} not found.`);
+    }
+
+    const event = eventSnap.data() as LiveEvent;
+    if (!event.recordingUrl) {
+      throw new Error(`Event "${event.title}" does not have a published recording URL yet.`);
+    }
+
+    const lessonRef = adminDb.collection('course_lessons').doc(params.lessonId);
+    const lessonSnap = await lessonRef.get();
+    if (!lessonSnap.exists) {
+      throw new Error(`Lesson ${params.lessonId} not found.`);
+    }
+
+    const replayPayload = this.buildCurriculumReplayPayload({
+      recordingUrl: event.recordingUrl,
+      recordingDurationSeconds: event.recordingDurationSeconds,
+      aiSummary: event.aiSummary,
+      slideDeckUrl: event.slideDeckUrl,
+    });
+
+    const now = new Date().toISOString();
+    await lessonRef.set(
+      {
+        ...replayPayload,
+        updatedAt: now,
+      },
+      { merge: true }
+    );
+  }
+
   // ── Course Cohorts CRUD ───────────────────────────────────────────────────
 
   public static async createCohort(input: CreateCohortInput): Promise<CourseCohort> {

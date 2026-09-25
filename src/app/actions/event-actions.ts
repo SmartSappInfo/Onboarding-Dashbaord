@@ -242,6 +242,31 @@ export async function publishEventReplayAction(
   }
 }
 
+export async function attachReplayToCourseLessonAction(
+  params: {
+    eventId: string;
+    courseId: string;
+    lessonId: string;
+    portalId: string;
+  },
+  portalSlug?: string
+): Promise<ActionResponse<boolean>> {
+  try {
+    await EventService.attachReplayToCourseLesson(params);
+    revalidatePath(`/admin/portals/${params.portalId}`);
+    if (portalSlug) {
+      revalidatePath(`/portal/${portalSlug}/learn`);
+      revalidatePath(`/portal/${portalSlug}/courses/${params.courseId}`);
+    }
+    return { success: true, data: true };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to attach replay to lesson.'),
+    };
+  }
+}
+
 // ── Course Cohort Actions ───────────────────────────────────────────────────
 
 export async function createCohortAction(

@@ -366,16 +366,16 @@ export interface ReleaseRule {
   - Modify: `src/lib/services/event-service.ts`
   - Modify: `src/lib/services/course-service.ts`
   - Modify: `src/app/actions/event-actions.ts`
-- [ ] **Step 1: Write failing replay pipeline tests**
+- [x] **Step 1: Write failing replay pipeline tests**
   - Test publishing replay with video URL, duration, AI summary, key takeaways, and action items.
   - Test "Attach Replay to Course Lesson": verify the target `CourseLesson` receives the recording URL as its video URL and attachments.
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   - Command: `npx vitest run src/lib/services/__tests__/replay-pipeline.test.ts`
-- [ ] **Step 3: Implement Replay-to-Curriculum Attachment in `event-service.ts`**
+- [x] **Step 3: Implement Replay-to-Curriculum Attachment in `event-service.ts`**
   - Add `attachReplayToCourseLesson(eventId: string, courseId: string, lessonId: string): Promise<void>`.
   - Add server action `attachReplayToCourseLessonAction`.
-- [ ] **Step 4: Run tests and verify they pass**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(replay): implement post-session replay and AI summary curriculum integration"`)
+- [x] **Step 4: Run tests and verify they pass**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(replay): implement post-session replay and AI summary curriculum integration"`)
 
 ---
 
