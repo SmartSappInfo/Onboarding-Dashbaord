@@ -2,17 +2,19 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Transform the Video block across the Page Builder and Portal Content Studio into an industry-grade, 1-click video preset system bundling container styling (inherited from image presets: 16:9, 9:16, 1:1, browser window, mobile chassis) with behavioral runtime archetypes (Ambient Background Loop, Hero Walkthrough, Social Reel, Interactive Micro-Demo), reactive ambient glow lighting, motion play triggers (Radar pulse, Glassmorphic pill, Minimal bottom badge), kinetic hover previews, and custom player chrome with zero data drift and full backward compatibility.
+**Goal:** Transform video components across the Page Builder, Portal Content Studio, and Public Landing Pages into an industry-grade, 1-click video preset system bundling container styling (inherited from image presets: 16:9, 9:16, 1:1, browser window, mobile chassis) with behavioral runtime archetypes (Ambient Background Loop, Hero Walkthrough, Social Reel, Interactive Micro-Demo), reactive ambient glow lighting, motion play triggers (Radar pulse, Glassmorphic pill, Minimal bottom badge), kinetic hover previews, and custom player chrome with zero data drift, robust mobile accessibility, and complete backward compatibility.
 
 **Architecture:** Hybrid "Behavioral Preset Archetype + Progressive Disclosure" pattern. Tier 1 provides 4 visual miniature animated wireframe archetype cards (`ambient-loop`, `hero-walkthrough`, `social-reel`, `micro-demo`) that configure container geometry, elevation, autoplay, sound, and play triggers in a single click. Tier 2 progressively discloses granular adjustments (Aspect Ratio, Device Enclosure, Play Button Archetype, Ambient Glow, Kinetic Hover Preview, Player Chrome). The universal `BlockRenderer` and `VideoEmbed` ensure all presets render identically across Page Builder Canvas, Campaign Landing Pages, Portal Content Reader, and LMS Course Lesson Player.
 
-**Tech Stack:** Next.js 15, React 19, TypeScript (strictly 0 `any`, 0 `any[]`, 0 unhandled `unknown`), Tailwind CSS v4, Lucide React, Vitest, React Testing Library.
+**Tech Stack:** Next.js 15, React 19, TypeScript (strictly 0 `any`, 0 `any[]`, 0 unhandled `unknown`), Tailwind CSS v4, Lucide React, Vitest, React Testing Library, Firebase Firestore.
 
 ---
 
 ## 1. Architectural Strategy & Design System
 
 ### 1.1 How Image Presets Translate into Video Presets
+
+While an image preset defines **geometry, masking, and elevation**, a video preset defines **appearance + behavioral archetype**:
 
 $$\text{Image Preset} = \text{Shape/Mask} + \text{Aspect Ratio} + \text{Elevation/Chassis} + \text{Hover Transition}$$
 $$\text{Video Preset} = \underbrace{\text{Container Styling (inherited from Image)}}_{\text{Aspect Ratio, Radius/Chassis, Elevation}} + \underbrace{\text{Runtime Engine Archetype}}_{\text{Autoplay, Audio State, Player Chrome, Play Triggers, Lightbox/Inline, Reactive Glow}}$$
@@ -21,8 +23,8 @@ $$\text{Video Preset} = \underbrace{\text{Container Styling (inherited from Imag
 
 | Archetype | Visual Enclosure | Runtime Behavior | Play Trigger & Audio |
 | :--- | :--- | :--- | :--- |
-| **1. Ambient Background Loop** (`ambient-loop`) | 16:9 Widescreen or Full, subtle border, with **Reactive Ambient Glow** halo behind container (`blur(40px) opacity-60`). | Autoplay: `true`, Muted: `true`, Loop: `true`, Controls: `false`. 30% Dark Tint (`bg-black/30`) for typography contrast. | No play button; perpetual atmospheric background motion. |
-| **2. Hero Walkthrough** (`hero-walkthrough`) | 16:9 Landscape framed inside **Desktop Browser Window** (macOS 3 traffic dots `#ff5f56`, `#ffbd2e`, `#27c93f` + URL pill) or Deep Floating Shadow. | Autoplay: `false`. Mode: Lightbox Modal (or Inline). | **Radar / Pulse Play Button** (pulsing concentric ping rings + glass disc). Audio starts unmuted on click. |
+| **1. Ambient Background Loop** (`ambient-loop`) | 16:9 Widescreen or Full-Bleed, subtle or no border, with **Reactive Ambient Glow** halo behind container (`blur(40px) opacity-60`). | Autoplay: `true`, Muted: `true`, Loop: `true`, Controls: `false`. 30% Dark Tint (`bg-black/30`) for high headline contrast. | No play button; perpetual atmospheric background motion. |
+| **2. Hero Walkthrough** (`hero-walkthrough`) | 16:9 Landscape framed inside **Desktop Browser Window** (macOS 3 traffic dots `#ff5f56`, `#ffbd2e`, `#27c93f` + URL pill) or Deep Floating Shadow. | Autoplay: `false`. Mode: Lightbox Modal (or Inline). | **Radar / Pulse Play Button** (pulsing concentric ping rings + glass disc). Audio starts unmuted on user click. |
 | **3. Social Reel / Story** (`social-reel`) | **9:16 Vertical**, framed inside **Frameless iPhone Mobile Chassis** with top speaker notch and bezel. | Autoplay: `true` (muted) or click to play, Loop: `true`. | Floating **"Tap to Unmute 🔇"** badge or dynamic animated equalizer bars. Tap toggles sound without interrupting playback. |
 | **4. Interactive Micro-Demo** (`micro-demo`) | 16:9 or 4:3 Standard, Clean Rounded Card (16px) or Browser Window. | **Kinetic Hover Preview** (mouse enter starts silent loop; mouse leave pauses/resets). Click opens full unmuted player. | **Minimalist Bottom Scrubber Line** (2px micro-scrubber anchored to bottom edge) or discreet bottom badge (`▶ 2 min`). |
 
@@ -65,45 +67,157 @@ export interface VideoPresetBundleAttributes {
 
 ---
 
-## 2. Failure Mode & Resilience Analysis (What Could Go Wrong & Resolutions)
+## 2. Failure Mode, Risk & Resilience Analysis (What Could Go Wrong & Resolutions)
 
 ### Risk 1: Browser Autoplay Policy & Audio Rejections
 - **Potential Failure:** Modern browsers (Safari, Chrome, iOS) strictly reject unmuted autoplay (`NotAllowedError: play() failed because the user didn't interact with the document first`).
+- **Root Cause:** W3C / browser audio policy restrictions against unprompted audio playback.
 - **Engineered Resolution:** Strict enforcement of `muted = true` whenever `autoPlay = true`. Any archetype configured with autoplay (such as `ambient-loop` and `social-reel`) always initializes with `muted={true}` and `playsInline={true}`. Sound is only activated after a direct user tap/click on the "Tap to Unmute" trigger.
 
-### Risk 2: Ambient Glow GPU Overdraw & Memory Leaks on Mobile
+### Risk 2: Provider URL & Parameter Diversity (YouTube, Vimeo, Loom, Direct MP4)
+- **Potential Failure:** Different video providers support different URL parameters (`autoplay=1&mute=1` vs `background=1` vs HTML5 `<video autoplay muted loop>`). If a user applies the `ambient-loop` preset to a YouTube URL, but YouTube iframe doesn't receive `mute=1&controls=0&loop=1&playlist={id}`, it will show standard YouTube UI, red play button, and fail autoplay.
+- **Root Cause:** Provider API heterogeneity.
+- **Engineered Resolution:** Deep URL normalization inside `VideoEmbed.tsx`:
+  - **YouTube:** Injects `autoplay=1&mute=1&controls=0&loop=1&playlist=${ytid}&modestbranding=1&rel=0`.
+  - **Vimeo:** Injects `background=1&autoplay=1&loop=1&muted=1`.
+  - **Loom:** Appends `hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true`.
+  - **Direct MP4 / Firebase Storage:** Configures `<video autoPlay muted loop playsInline controls={false} />`.
+
+### Risk 3: Ambient Glow GPU Overdraw & Memory Leaks on Mobile
 - **Potential Failure:** Rendering a duplicate video element or high-radius CSS blur filter (`blur(60px)`) on mobile devices can cause heavy GPU memory usage or frame drops.
+- **Root Cause:** Continuous Gaussian blur calculation over high-resolution video streams on low-power mobile GPUs.
 - **Engineered Resolution:**
-  1. On mobile viewports or devices with `prefers-reduced-motion`, use a lightweight radial gradient glow (`radial-gradient(circle, rgba(primary, 0.3) 0%, transparent 70%)`) with `pointer-events-none -z-10`.
-  2. The glow container uses `will-change-transform` and is strictly clipped behind the primary video frame.
+  1. CSS-only hardware-accelerated radial ambient aura using `bg-radial` with `will-change: transform; transform: translateZ(0); pointer-events: none; -z-10`.
+  2. Respect `prefers-reduced-motion`: automatically disable the animated glow when the visitor enables reduced motion (`motion-reduce:hidden`).
+  3. Never mount a second active decoding video element; use a lightweight blurred radial backdrop to keep CPU/GPU utilization near zero.
 
-### Risk 3: Iframe Clipping inside Rounded Masks & Device Chassis
-- **Potential Failure:** Embedded YouTube/Vimeo iframes can ignore parent CSS `border-radius` during video initialization in Safari/WebKit, popping out of rounded corners or chassis bezels.
-- **Engineered Resolution:** Standard WebKit anti-clipping container recipe: `overflow: hidden; isolation: isolate; -webkit-mask-image: -webkit-radial-gradient(white, black);` on the player container. This forces hardware-accelerated clipping on all iframe elements across WebKit, Gecko, and Blink.
+### Risk 4: WebKit Iframe Radius Clipping (Corner Bleed)
+- **Potential Failure:** In WebKit/Safari, `<iframe>` elements (YouTube/Vimeo) often bleed through `rounded-2xl` corners or device frames during rendering transitions.
+- **Root Cause:** GPU compositing layering bugs between native CSS borders and foreign iframe surfaces.
+- **Engineered Resolution:** Standard WebKit anti-clipping container recipe: `overflow: hidden; isolation: isolate; -webkit-mask-image: -webkit-radial-gradient(white, black); border-radius: ...;` on the player container. This forces Safari's compositing engine to clip the iframe surface cleanly.
 
-### Risk 4: Hover Preview Conflicts with Touch Screens
-- **Potential Failure:** Kinetic hover preview expects `mouseenter` and `mouseleave`. On touch screens (smartphones/tablets), touch triggers a simulated hover that doesn't clear, causing unexpected looping.
+### Risk 5: Touch Devices vs. Hover Previews (Kinetic Hover Conflict)
+- **Potential Failure:** Hover previews on mobile devices trigger on tap, preventing the user from clicking the video or modal.
+- **Root Cause:** Simulated mouse events on mobile browsers when touching screen elements.
 - **Engineered Resolution:** Media query gating via CSS `@media (hover: hover) and (pointer: fine)`. On touch devices, hover preview gracefully degrades to tap-to-play with immediate feedback.
 
-### Risk 5: Backward Compatibility & Legacy Video Blocks
+### Risk 6: Security & Embed Injection (XSS / Malicious URLs)
+- **Potential Failure:** User-supplied video URLs might contain `javascript:`, base64 payloads, or malicious iframes.
+- **Root Cause:** Unsanitized user inputs rendered into iframe sources or video src attributes.
+- **Engineered Resolution:** URL sanitization whitelist supporting strictly `http:` and `https:`, parsing recognized video provider hosts (`youtube.com`, `youtu.be`, `vimeo.com`, `loom.com`, and approved cloud storage URLs like Firebase Storage `firebasestorage.googleapis.com`). Restrict iframe sandbox attributes (`sandbox="allow-scripts allow-same-origin allow-presentation"`).
+
+### Risk 7: Backward Compatibility & Legacy Video Blocks
 - **Potential Failure:** Existing video blocks store `{ url, thumbnailUrl, title, description, titlePosition, playMode, videoData }` without `preset`, `ambientGlow`, or `playButtonArchetype`.
+- **Root Cause:** Schema parse rejection on missing fields.
 - **Engineered Resolution:** Non-breaking Zod `.transform()` adapter: all new attributes have smart defaults. If `preset` is missing, legacy blocks map to `hero-walkthrough` with `standard` play button and their existing `playMode` preserved, ensuring 100% fidelity on existing pages.
 
 ---
 
-## 3. Cross-Feature Impact & Scope Boundary
+## 3. Cross-Feature Impact & Backoffice Empowerment
+
+### 3.1 Cross-Feature Impact Matrix
 
 | Affected Feature / Surface | Impact Analysis | Mitigation & Testing Requirement |
 | :--- | :--- | :--- |
 | **Page Builder Canvas (`Canvas.tsx`)** | Renders video block in `mode="edit"`. Must support "Change Video" source dialog, cover settings, and live archetype reflection without autoplaying audio in the editor. | Ensure video autoplay is disabled when `ctx.mode === 'edit'`, but visual chassis, play buttons, and ambient glow render WYSIWYG. |
 | **Campaign Landing Pages (`PublicPageClient.tsx` / `PageRenderer.tsx`)** | Public view mode (`mode="view"`). Full runtime execution of Ambient Loop, Hero Walkthrough modal, Social Reel unmuting, and Micro-Demo hover. | Verify zero layout shift, seamless modal launching, and flawless mobile touch handling. |
 | **Portal Content Studio & Reader (`ContentBlockCanvas.tsx`, `PortalContentReaderClient.tsx`)** | Instructors/admins embedding video tutorials in portal articles. | Verify browser chassis, iPhone frames, and ambient glow render properly inside reader containers. |
-| **LMS Lesson Player (`PortalCoursePlayerClient.tsx`)** | Students watching video lessons. | Ensure video player aspect ratios (16:9, 9:16) adapt fluidly within lesson player layouts. |
+| **LMS Lesson Player (`PortalCoursePlayerClient.tsx`)** | Students watching video lessons. | Ensure video player aspect ratios (16:9, 9:16) adapt fluidly within lesson player layouts without breaking layout flow. |
+| **Hero Block (`hero.tsx`) & Testimonial Block (`testimonial.tsx`)** | Hero Video Sales pages and video testimonials use `VideoEmbed`. | Upgrades to `VideoEmbed` automatically elevate video sales letters and video testimonials across the entire platform with zero code duplication. |
 | **Undo / Redo & Autosave (`useUndoRedo`, `useAutosave`)** | Changing archetypes updates block props via `onUpdateProps`. | Archetype bundles update props cleanly in a single action, allowing 1-click undo/redo. |
+
+### 3.2 Backoffice Empowerment (Managing Presets Without Touching Code)
+1. **1-Click Archetype Gallery in Inspector:**
+   In `AutoBlockEditor.tsx`, administrators select from the 4 visual archetypes. Selecting an archetype automatically bundles optimal container frames, aspect ratios, autoplay flags, and play triggers.
+2. **Progressive Disclosure Fine-Tuning:**
+   Administrators can fine-tune specific controls (e.g. toggling ambient glow on/off, adjusting aspect ratio from 16:9 to 9:16, changing the play button trigger to a glassmorphic pill) without resetting or losing the archetype.
+3. **Workspace Default Theme Integration:**
+   Play buttons and ambient glows automatically inherit the workspace's brand primary color token (`var(--primary)` / `brandPrimaryColor`), guaranteeing consistent branding across all pages.
 
 ---
 
-## 4. Phase-by-Phase Implementation Plan
+## 4. Database, Security Rules & Public Scoping
+
+### 4.1 Single Source of Truth & Data Integrity
+All video block properties are stored within the block's `props` JSON object inside Firestore documents:
+- Campaign Pages: `campaign_pages/{pageId}/versions/{versionId}` $\to$ `blocks[]`
+- Portal Content: `portals/{portalId}/content/{contentId}` $\to$ `blocks[]`
+
+**Fetch / Enrich / Restore Protocol:**
+1. **Fetch:** Block data is retrieved from Firestore as raw JSON.
+2. **Enrich:** `BlockRenderer` passes the raw props through `videoDef.schema.safeParse(...)`. The `.transform()` adapter enriches missing fields with archetype defaults without mutating the database.
+3. **Restore / Save:** When modified in the editor, `onUpdateProps` emits a non-mutating patch back to the page state, which `useAutosave` saves to Firestore.
+
+### 4.2 Firebase Firestore Security Rules
+Public campaign pages and published portal articles require unauthenticated read access for video blocks, but strict isolation for editing:
+
+```javascript
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Campaign Pages: Public reads for published pages
+    match /campaign_pages/{pageId} {
+      allow read: if resource.data.status == 'published' || request.auth != null;
+      allow write: if request.auth != null;
+      
+      match /versions/{versionId} {
+        allow read: if get(/databases/$(database)/documents/campaign_pages/$(pageId)).data.status == 'published' 
+                    || request.auth != null;
+        allow write: if request.auth != null;
+      }
+    }
+
+    // Portal Articles & LMS Lessons: Read-scoped to portal access
+    match /portals/{portalId}/content/{contentId} {
+      allow read: if resource.data.status == 'published' || request.auth != null;
+      allow write: if request.auth != null;
+    }
+  }
+}
+```
+
+No database migration script is needed because the schema's `.transform()` adapter guarantees 100% backward compatibility for existing blocks.
+
+---
+
+## 5. Mobile-First Ergonomics & Everyday UI English
+
+### 5.1 Touch Targets & Mobile Gestures
+- **Minimum 44px Touch Targets:** All interactive archetype cards in `VideoPresetSelector.tsx` (`min-h-[92px]`), play buttons in `PlayButtonArchetypeSelector.tsx` (`min-h-[58px]`), and runtime play button overlays (`w-14 h-14` / `min-h-[44px]`) exceed mobile accessibility requirements.
+- **Tactile Feedback:** Emil Kowalski micro-interaction tokens (`active:scale-[0.97]`, `duration-200 ease-out`).
+- **Touch Gating:** Hover preview features are gated behind `@media (hover: hover)` to prevent tap-freeze on mobile screens.
+
+### 5.2 Everyday UI English
+All labels, tooltips, and presets use clear, simple English without tech jargon or raw code:
+- *"Ambient Background Loop"* — Autoplay, muted, soft glow
+- *"Hero Walkthrough"* — Desktop window, pulse play button
+- *"Social Reel / Story"* — Vertical phone format, tap to unmute
+- *"Interactive Micro-Demo"* — Play on hover, bottom progress line
+- *"Play Button Style"* — Radar Pulse, Glass Pill, Minimal Badge, Classic Disc
+- *"Ambient Reactive Glow"* — Soft colorful glow behind video
+- *"Dark Tint Overlay"* — Improves text readability on top of video
+
+---
+
+## 6. Security, Sanitization & Vulnerability Protection
+
+1. **Protocol Sanitization:** `sanitizeVideoUrl()` rejects any protocol other than `http:`, `https:`, or relative paths `/`, blocking `javascript:`, `data:`, and `vbscript:` attacks.
+2. **Provider Parsing & Sandbox:** Video IDs are extracted via strict regular expressions validating 11-character YouTube IDs and numeric Vimeo IDs.
+3. **Iframe Sandboxing:** Rendered iframes include `sandbox="allow-scripts allow-same-origin allow-presentation"` and `allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"`.
+4. **Zero HTML/CSS Leakage:** All captions and descriptions use React sanitized text nodes or `InlineEditable` with `html={false}`.
+
+---
+
+## 7. Performance & High-Load Architecture
+
+1. **Lazy Loading:** Video poster thumbnails use `next/image` with `priority={false}` and `decoding="async"`.
+2. **Zero Secondary Decoding:** Ambient glow utilizes pure CSS radial gradient rendering (`blur-2xl opacity-60 pointer-events-none -z-10 scale-105`) rather than a second decoding `<video>` element, saving 50MB+ RAM and eliminating mobile CPU thermal throttling.
+3. **Event Listener Teardown:** All hover and audio event listeners are wrapped in standard React `useEffect` hooks with deterministic cleanup callbacks.
+4. **Batch Operation Safety:** Autosave debouncing (`useAutosave`) batches prop updates, preventing Firestore quota exhaustion under rapid typing or slider changes.
+
+---
+
+## 8. Phase-by-Phase Trackable Implementation Plan
 
 ### Task 1: Video Block Schema Extension & Archetype Bundle Adapter
 
@@ -177,101 +291,7 @@ Expected: FAIL with missing fields on video definition.
 
 - [ ] **Step 3: Update `src/lib/page-builder/blocks/video.tsx` with extended Zod schema and archetype defaults**
 
-```typescript
-// Extended schema in src/lib/page-builder/blocks/video.tsx
-export type VideoPresetArchetypeId =
-  | 'ambient-loop'
-  | 'hero-walkthrough'
-  | 'social-reel'
-  | 'micro-demo';
-
-export type VideoPlayButtonArchetype = 'pulse' | 'glass-pill' | 'minimal-badge' | 'standard';
-export type VideoControlsTheme = 'standard' | 'minimal-line' | 'ghost' | 'floating-island';
-export type VideoOverlayTint = 'none' | 'dark-30' | 'dark-50';
-
-const rawSchema = z.object({
-  url: z.string().optional(),
-  thumbnailUrl: z.string().optional(),
-  title: z.string().optional(),
-  description: z.string().optional(),
-  titlePosition: z.enum(['top', 'bottom', 'overlay']).default('overlay').optional(),
-  videoData: z.object({
-    videoUrl: z.string().default(''),
-    thumbnailUrl: z.string().default(''),
-    title: z.string().default(''),
-    description: z.string().default(''),
-    titlePosition: z.enum(['top', 'bottom', 'overlay']).default('overlay').optional(),
-  }).default({}),
-  provider: z.enum(['youtube', 'vimeo', 'loom']).default('youtube'),
-  playMode: z.enum(['inline', 'modal']).default('inline'),
-  preset: z.enum(['ambient-loop', 'hero-walkthrough', 'social-reel', 'micro-demo']).optional(),
-  aspectRatio: z.enum(['16:9', '9:16', '1:1', '4:3']).default('16:9'),
-  elevation: z.enum(['none', 'hairline', 'shadow', 'browser', 'mobile']).default('hairline'),
-  borderRadius: z.enum(['none', 'rounded', 'squircle']).default('rounded'),
-  autoPlay: z.boolean().default(false),
-  muted: z.boolean().default(false),
-  loop: z.boolean().default(false),
-  ambientGlow: z.boolean().default(false),
-  hoverPreview: z.boolean().default(false),
-  playButtonArchetype: z.enum(['pulse', 'glass-pill', 'minimal-badge', 'standard']).default('standard'),
-  controlsTheme: z.enum(['standard', 'minimal-line', 'ghost', 'floating-island']).default('standard'),
-  overlayTint: z.enum(['none', 'dark-30', 'dark-50']).default('none'),
-});
-
-const schema = rawSchema.transform((data) => {
-  if (!data.preset) {
-    return {
-      ...data,
-      preset: 'hero-walkthrough' as const,
-      playButtonArchetype: data.playMode === 'modal' ? ('pulse' as const) : data.playButtonArchetype,
-    };
-  }
-
-  if (data.preset === 'ambient-loop' && !data.autoPlay) {
-    return {
-      ...data,
-      autoPlay: true,
-      muted: true,
-      loop: true,
-      ambientGlow: true,
-      overlayTint: 'dark-30' as const,
-      aspectRatio: '16:9' as const,
-      playMode: 'inline' as const,
-    };
-  }
-  if (data.preset === 'hero-walkthrough' && data.elevation === 'hairline') {
-    return {
-      ...data,
-      aspectRatio: '16:9' as const,
-      elevation: 'browser' as const,
-      playButtonArchetype: 'pulse' as const,
-    };
-  }
-  if (data.preset === 'social-reel' && data.aspectRatio === '16:9') {
-    return {
-      ...data,
-      aspectRatio: '9:16' as const,
-      elevation: 'mobile' as const,
-      borderRadius: 'squircle' as const,
-      loop: true,
-      autoPlay: true,
-      muted: true,
-      playButtonArchetype: 'minimal-badge' as const,
-    };
-  }
-  if (data.preset === 'micro-demo' && !data.hoverPreview) {
-    return {
-      ...data,
-      hoverPreview: true,
-      loop: true,
-      controlsTheme: 'minimal-line' as const,
-      aspectRatio: '16:9' as const,
-    };
-  }
-
-  return data;
-});
-```
+Update schema in `src/lib/page-builder/blocks/video.tsx` with `preset`, `aspectRatio`, `elevation`, `borderRadius`, `autoPlay`, `muted`, `loop`, `ambientGlow`, `hoverPreview`, `playButtonArchetype`, `controlsTheme`, and `overlayTint` with non-breaking transform defaults.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -351,252 +371,7 @@ Expected: FAIL with "Cannot find module '../VideoPresetSelector'"
 
 - [ ] **Step 3: Implement `src/components/page-builder/VideoPresetSelector.tsx`**
 
-```typescript
-'use client';
-
-/**
- * @fileOverview VideoPresetSelector — 1-Click Miniature Wireframe Video Archetype Picker
- *
- * Displays 4 distinct video archetypes with miniature animated WYSIWYG wireframes:
- * 1. Ambient Background Loop (Ambient glow halo, muted loop, text contrast tint)
- * 2. Hero Walkthrough (Browser window frame, centered radar pulse play button, lightbox)
- * 3. Social Reel / Story (Vertical 9:16 smartphone chassis with tap-to-unmute badge)
- * 4. Interactive Micro-Demo (Clean card with bottom 2px scrubber line and hover cue)
- */
-
-import React from 'react';
-import { CheckCircle2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import type { VideoPresetBundleAttributes } from '@/lib/page-builder/blocks/video';
-
-export const VIDEO_PRESET_BUNDLES: Record<string, VideoPresetBundleAttributes> = {
-  'ambient-loop': {
-    aspectRatio: '16:9',
-    elevation: 'none',
-    borderRadius: 'rounded',
-    playMode: 'inline',
-    autoPlay: true,
-    muted: true,
-    loop: true,
-    ambientGlow: true,
-    hoverPreview: false,
-    playButtonArchetype: 'standard',
-    controlsTheme: 'ghost',
-    overlayTint: 'dark-30',
-  },
-  'hero-walkthrough': {
-    aspectRatio: '16:9',
-    elevation: 'browser',
-    borderRadius: 'rounded',
-    playMode: 'modal',
-    autoPlay: false,
-    muted: false,
-    loop: false,
-    ambientGlow: false,
-    hoverPreview: false,
-    playButtonArchetype: 'pulse',
-    controlsTheme: 'standard',
-    overlayTint: 'none',
-  },
-  'social-reel': {
-    aspectRatio: '9:16',
-    elevation: 'mobile',
-    borderRadius: 'squircle',
-    playMode: 'inline',
-    autoPlay: true,
-    muted: true,
-    loop: true,
-    ambientGlow: false,
-    hoverPreview: false,
-    playButtonArchetype: 'minimal-badge',
-    controlsTheme: 'ghost',
-    overlayTint: 'none',
-  },
-  'micro-demo': {
-    aspectRatio: '16:9',
-    elevation: 'hairline',
-    borderRadius: 'rounded',
-    playMode: 'inline',
-    autoPlay: false,
-    muted: true,
-    loop: true,
-    ambientGlow: false,
-    hoverPreview: true,
-    playButtonArchetype: 'standard',
-    controlsTheme: 'minimal-line',
-    overlayTint: 'none',
-  },
-};
-
-export interface VideoPresetOption {
-  value: string;
-  label: string;
-}
-
-export interface VideoPresetSelectorProps {
-  value?: string;
-  options: ReadonlyArray<VideoPresetOption>;
-  onChange: (value: string, bundle?: VideoPresetBundleAttributes) => void;
-  className?: string;
-}
-
-function renderVideoMiniaturePreview(presetKey: string) {
-  switch (presetKey) {
-    case 'ambient-loop':
-      return (
-        <div className="w-full h-full flex items-center justify-center p-2 bg-slate-950 relative overflow-hidden">
-          {/* Ambient Glow Aura */}
-          <div className="absolute inset-0 bg-radial from-blue-500/40 via-purple-500/20 to-transparent blur-md scale-110" />
-          <div className="relative w-16 h-10 rounded-md bg-slate-900 border border-slate-700/60 shadow-lg flex flex-col items-center justify-center">
-            <div className="w-6 h-1 bg-white/70 rounded-full mb-1" />
-            <div className="w-10 h-1 bg-white/40 rounded-full" />
-            <div className="absolute bottom-1 right-1 text-[7px] font-mono text-blue-400">LOOP</div>
-          </div>
-        </div>
-      );
-
-    case 'hero-walkthrough':
-      return (
-        <div className="w-full h-full flex items-center justify-center p-2 bg-slate-100 dark:bg-slate-900">
-          <div className="w-18 h-11 rounded-t-sm rounded-b-xs bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 shadow-xs flex flex-col overflow-hidden">
-            <div className="h-3 bg-slate-200 dark:bg-slate-700 px-1 flex items-center gap-0.5 border-b border-slate-300 dark:border-slate-700">
-              <div className="w-1 h-1 rounded-full bg-red-400" />
-              <div className="w-1 h-1 rounded-full bg-amber-400" />
-              <div className="w-1 h-1 rounded-full bg-emerald-400" />
-            </div>
-            <div className="flex-1 bg-slate-900 flex items-center justify-center relative">
-              {/* Radar pulse play disc */}
-              <div className="w-5 h-5 rounded-full bg-primary/30 flex items-center justify-center animate-ping absolute" />
-              <div className="w-5 h-5 rounded-full bg-primary text-white flex items-center justify-center relative z-10 shadow-xs">
-                <div className="w-0 h-0 border-y-[3px] border-y-transparent border-l-[5px] border-l-white ml-0.5" />
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-
-    case 'social-reel':
-      return (
-        <div className="w-full h-full flex items-center justify-center p-1.5 bg-slate-100 dark:bg-slate-900">
-          <div className="w-8 h-12 rounded-lg bg-slate-900 border-2 border-slate-700 shadow-xs flex flex-col items-center overflow-hidden relative">
-            <div className="w-2.5 h-0.5 rounded-full bg-slate-600 mt-1 mb-0.5" />
-            <div className="flex-1 w-full bg-slate-800 flex flex-col justify-end p-1">
-              <div className="px-1 py-0.5 rounded-full bg-white/20 text-[6px] text-white font-bold w-fit mb-0.5">
-                🔇 UNMUTE
-              </div>
-            </div>
-          </div>
-        </div>
-      );
-
-    case 'micro-demo':
-      return (
-        <div className="w-full h-full flex items-center justify-center p-2 bg-slate-100 dark:bg-slate-900">
-          <div className="w-16 h-10 rounded-md bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-700 overflow-hidden flex flex-col justify-between">
-            <div className="flex-1 bg-slate-200 dark:bg-slate-750 flex items-center justify-center">
-              <span className="text-[8px] font-black text-slate-500">HOVER ▶</span>
-            </div>
-            {/* 2px bottom micro-scrubber */}
-            <div className="h-0.5 w-full bg-slate-300 dark:bg-slate-700">
-              <div className="h-full w-2/3 bg-primary" />
-            </div>
-          </div>
-        </div>
-      );
-
-    default:
-      return <div className="w-full h-full bg-slate-200 dark:bg-slate-800" />;
-  }
-}
-
-export function VideoPresetSelector({
-  value,
-  options,
-  onChange,
-  className,
-}: VideoPresetSelectorProps) {
-  const currentVal = value || options[0]?.value;
-  const buttonRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
-
-  const selectArchetype = (key: string, idx?: number) => {
-    onChange(key, VIDEO_PRESET_BUNDLES[key]);
-    if (typeof idx === 'number' && buttonRefs.current[idx]) {
-      buttonRefs.current[idx]?.focus();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.preventDefault();
-      selectArchetype(options[currentIndex].value, currentIndex);
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      const nextIdx = (currentIndex + 1) % options.length;
-      selectArchetype(options[nextIdx].value, nextIdx);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prevIdx = (currentIndex - 1 + options.length) % options.length;
-      selectArchetype(options[prevIdx].value, prevIdx);
-    }
-  };
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Video Preset Archetype"
-      className={cn("grid grid-cols-2 gap-2 w-full select-none", className)}
-    >
-      {options.map((opt, idx) => {
-        const isSelected = currentVal === opt.value;
-
-        return (
-          <button
-            key={opt.value}
-            ref={(el) => { buttonRefs.current[idx] = el; }}
-            type="button"
-            role="radio"
-            aria-label={opt.label}
-            aria-checked={isSelected}
-            tabIndex={isSelected ? 0 : -1}
-            onClick={() => selectArchetype(opt.value, idx)}
-            onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={cn(
-              "group relative flex flex-col p-1.5 rounded-xl border text-left transition-all duration-200 cursor-pointer outline-none min-h-[92px]",
-              "active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40",
-              isSelected
-                ? "bg-primary/[0.04] dark:bg-primary/[0.1] border-primary shadow-xs ring-1 ring-primary/40"
-                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/70 dark:hover:bg-slate-850/60"
-            )}
-          >
-            <div className="relative w-full h-14 rounded-lg overflow-hidden border border-slate-200/80 dark:border-slate-700/60 shadow-inner flex items-center justify-center mb-1.5 transition-transform group-hover:scale-[1.01]">
-              {renderVideoMiniaturePreview(opt.value)}
-              {isSelected && (
-                <div className="absolute top-1 right-1 p-0.5 rounded-full bg-primary text-white shadow-sm animate-in zoom-in-75 duration-150">
-                  <CheckCircle2 className="w-3 h-3 text-white fill-current" />
-                </div>
-              )}
-            </div>
-
-            <div className="px-0.5 w-full">
-              <span
-                className={cn(
-                  "text-[11px] font-bold leading-tight block truncate",
-                  isSelected
-                    ? "text-primary dark:text-primary font-black"
-                    : "text-slate-800 dark:text-slate-200 group-hover:text-foreground"
-                )}
-                title={opt.label}
-              >
-                {opt.label}
-              </span>
-            </div>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-```
+Implement `VideoPresetSelector.tsx` with 4 miniature animated WYSIWYG wireframes, `VIDEO_PRESET_BUNDLES`, DOM focus management via `buttonRefs`, and mobile-first `min-h-[92px]` touch targets.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -665,146 +440,7 @@ Expected: FAIL with "Cannot find module '../PlayButtonArchetypeSelector'"
 
 - [ ] **Step 3: Implement `src/components/page-builder/PlayButtonArchetypeSelector.tsx`**
 
-```typescript
-'use client';
-
-/**
- * @fileOverview PlayButtonArchetypeSelector — Visual Trigger Style Control
- *
- * Renders 4 distinct play button triggers:
- * 1. Radar / Pulse Waves (Expanding concentric ping rings)
- * 2. Glassmorphic Pill ("Watch Demo ▶")
- * 3. Minimal Bottom Badge (Discreet bottom-left badge)
- * 4. Classic Disc (Centered frosted disc)
- */
-
-import React from 'react';
-import { Play, Sparkles } from 'lucide-react';
-import { cn } from '@/lib/utils';
-
-export interface PlayButtonOption {
-  value: string;
-  label: string;
-}
-
-export interface PlayButtonArchetypeSelectorProps {
-  value?: string;
-  options: ReadonlyArray<PlayButtonOption>;
-  onChange: (value: string) => void;
-  className?: string;
-}
-
-function renderPlayButtonWireframe(key: string) {
-  switch (key) {
-    case 'pulse':
-      return (
-        <div className="relative w-7 h-7 flex items-center justify-center">
-          <div className="absolute inset-0 rounded-full bg-primary/30 animate-ping opacity-60" />
-          <div className="w-6 h-6 rounded-full bg-primary text-white flex items-center justify-center shadow-xs">
-            <Play className="w-2.5 h-2.5 fill-current ml-0.5" />
-          </div>
-        </div>
-      );
-
-    case 'glass-pill':
-      return (
-        <div className="px-2 py-0.5 rounded-full bg-slate-900/80 dark:bg-white/20 border border-white/20 text-white flex items-center gap-1 shadow-xs">
-          <Play className="w-2 h-2 fill-current" />
-          <span className="text-[8px] font-bold">Watch Demo</span>
-        </div>
-      );
-
-    case 'minimal-badge':
-      return (
-        <div className="w-full flex justify-start pl-1">
-          <div className="px-1.5 py-0.5 rounded-md bg-black/75 text-white flex items-center gap-0.5 text-[8px] font-bold">
-            <Play className="w-1.5 h-1.5 fill-current" /> 2 min
-          </div>
-        </div>
-      );
-
-    case 'standard':
-    default:
-      return (
-        <div className="w-6 h-6 rounded-full bg-white/90 dark:bg-slate-800 text-foreground flex items-center justify-center shadow-xs border border-border">
-          <Play className="w-2.5 h-2.5 fill-current ml-0.5 text-primary" />
-        </div>
-      );
-  }
-}
-
-export function PlayButtonArchetypeSelector({
-  value,
-  options,
-  onChange,
-  className,
-}: PlayButtonArchetypeSelectorProps) {
-  const currentVal = value || options[0]?.value;
-  const buttonRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
-
-  const selectStyle = (val: string, idx?: number) => {
-    onChange(val);
-    if (typeof idx === 'number' && buttonRefs.current[idx]) {
-      buttonRefs.current[idx]?.focus();
-    }
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
-    if (e.key === ' ' || e.key === 'Enter') {
-      e.preventDefault();
-      selectStyle(options[currentIndex].value, currentIndex);
-    } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-      e.preventDefault();
-      const nextIdx = (currentIndex + 1) % options.length;
-      selectStyle(options[nextIdx].value, nextIdx);
-    } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-      e.preventDefault();
-      const prevIdx = (currentIndex - 1 + options.length) % options.length;
-      selectStyle(options[prevIdx].value, prevIdx);
-    }
-  };
-
-  return (
-    <div
-      role="radiogroup"
-      aria-label="Play Button Style"
-      className={cn("grid grid-cols-2 gap-1.5 w-full select-none", className)}
-    >
-      {options.map((opt, idx) => {
-        const isSelected = currentVal === opt.value;
-
-        return (
-          <button
-            key={opt.value}
-            ref={(el) => { buttonRefs.current[idx] = el; }}
-            type="button"
-            role="radio"
-            aria-label={opt.label}
-            aria-checked={isSelected}
-            tabIndex={isSelected ? 0 : -1}
-            onClick={() => selectStyle(opt.value, idx)}
-            onKeyDown={(e) => handleKeyDown(e, idx)}
-            className={cn(
-              "group relative flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all duration-200 cursor-pointer outline-none min-h-[58px]",
-              "active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary/40",
-              isSelected
-                ? "bg-primary/[0.06] dark:bg-primary/[0.12] border-primary text-primary shadow-2xs ring-1 ring-primary/40 font-bold"
-                : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-850"
-            )}
-          >
-            <div className="h-6 flex items-center justify-center mb-1">
-              {renderPlayButtonWireframe(opt.value)}
-            </div>
-            <span className="text-[10px] font-semibold leading-none truncate w-full block">
-              {opt.label}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-```
+Implement `PlayButtonArchetypeSelector.tsx` with Radar Pulse, Glassmorphic Pill, Minimal Bottom Badge, and Classic Disc wireframes, `buttonRefs` focus movement, and `min-h-[58px]` touch targets.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -930,23 +566,12 @@ Expected: FAIL with missing ambient glow or radar pulse trigger.
 
 - [ ] **Step 3: Update `src/components/video-embed.tsx` and `src/lib/page-builder/blocks/video.tsx`**
 
-1. In `src/components/video-embed.tsx`:
-   - Enhance `VideoPlayButtonOverlay` to accept `archetype?: VideoPlayButtonArchetype`.
-   - Render Radar Pulse (`animate-ping` concentric ring), Glassmorphic Pill (`"Watch Demo ▶"`), or Minimal Badge.
-   - Add Tap-to-Unmute floating toggle with audio equalizer animation.
-2. In `src/lib/page-builder/blocks/video.tsx`:
-   - Add Ambient Reactive Glow aura:
-     ```tsx
-     {props.ambientGlow && (
-       <div
-         data-testid="ambient-reactive-glow"
-         className="absolute -inset-4 bg-radial from-primary/30 via-purple-500/15 to-transparent blur-2xl opacity-60 pointer-events-none -z-10 scale-105 motion-reduce:hidden"
-       />
-     )}
-     ```
-   - Render Browser Window chrome or Mobile Chassis speaker notch.
-   - Apply responsive aspect ratio classes (`aspect-video`, `aspect-[9/16]`, `aspect-square`, `aspect-[4/3]`).
-   - Add 30% Dark Tint overlay for ambient loop archetype.
+Implement:
+1. `VideoPlayButtonOverlay` support for `pulse`, `glass-pill`, `minimal-badge`, `standard`.
+2. Reactive Ambient Glow aura with hardware-accelerated transforms and `motion-reduce:hidden`.
+3. Desktop browser window header chrome with 3 colored dots and mobile phone chassis speaker bar.
+4. Tap-to-Unmute floating toggle for muted autoplaying archetypes.
+5. Kinetic hover preview support for micro-demo archetype.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1014,22 +639,19 @@ Expected: FAIL.
 
 - [ ] **Step 3: Update `src/components/page-builder/AutoBlockEditor.tsx` and `video.tsx`**
 
-1. In `AutoBlockEditor.tsx`:
-   - Import `VideoPresetSelector` and `PlayButtonArchetypeSelector`.
-   - Route `preset` (for block type `'video'`) to `<VideoPresetSelector />`.
-   - Route `playButtonArchetype` to `<PlayButtonArchetypeSelector />`.
-   - Suppress duplicate outer labels for `isVideoPreset` and `isPlayButtonArchetype`.
-2. In `video.tsx`:
-   - Expose fine-tuning controls with clean everyday UI English labels:
-     - "Preset Archetype"
-     - "Aspect Ratio"
-     - "Play Button Trigger Style"
-     - "Ambient Reactive Glow"
-     - "Kinetic Hover Preview"
-     - "Control Bar Theme"
-     - "Dark Tint Overlay"
-     - "Playback Mode"
-     - "Elevation & Frame"
+1. Route `preset` (for block type `'video'`) to `<VideoPresetSelector />`.
+2. Route `playButtonArchetype` to `<PlayButtonArchetypeSelector />`.
+3. Suppress duplicate outer labels for `isVideoPreset` and `isPlayButtonArchetype`.
+4. Expose clean everyday UI English fine-tuning labels in `video.tsx`:
+   - "Preset Archetype"
+   - "Aspect Ratio"
+   - "Play Button Trigger Style"
+   - "Ambient Reactive Glow"
+   - "Kinetic Hover Preview"
+   - "Control Bar Theme"
+   - "Dark Tint Overlay"
+   - "Playback Mode"
+   - "Elevation & Frame"
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -1072,7 +694,7 @@ Expected: Clean working tree on local branch without any uncommitted leftovers. 
 
 ---
 
-## 5. Verification Checkpoints & Success Metrics
+## 9. Verification Checkpoints & Success Metrics
 
 - [ ] **4 Distinct Video Archetypes:** Ambient Background Loop, Hero Walkthrough, Social Reel, Interactive Micro-Demo wireframes render in `VideoPresetSelector.tsx`.
 - [ ] **Reactive Ambient Lighting:** Soft blurred glow aura pulses behind container with `ambientGlow: true` and respects `prefers-reduced-motion`.
