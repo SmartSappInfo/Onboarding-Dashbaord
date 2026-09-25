@@ -11,6 +11,8 @@ describe('ListPresetSelector Component', () => {
     { value: 'cards', label: 'Item Cards' },
     { value: 'minimal-dash', label: 'Minimal Dash' },
     { value: 'icon-pill', label: 'Compact Pills' },
+    { value: 'stepped-gradient', label: 'Stepped Gradient' },
+    { value: 'bordered-rows', label: 'Bordered Rows' },
   ];
 
   it('renders with radiogroup role and aria-label', () => {
@@ -19,10 +21,10 @@ describe('ListPresetSelector Component', () => {
     expect(group).toBeInTheDocument();
   });
 
-  it('renders all 6 preset style options with radio role', () => {
+  it('renders all 8 preset style options with radio role', () => {
     render(<ListPresetSelector value="checklist" options={options} onChange={() => {}} />);
     const radios = screen.getAllByRole('radio');
-    expect(radios).toHaveLength(6);
+    expect(radios).toHaveLength(8);
 
     expect(screen.getByRole('radio', { name: /Checkmark Feature List/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Classic Bulleted List/i })).toBeInTheDocument();
@@ -30,6 +32,8 @@ describe('ListPresetSelector Component', () => {
     expect(screen.getByRole('radio', { name: /Item Cards/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Minimal Dash/i })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: /Compact Pills/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Stepped Gradient/i })).toBeInTheDocument();
+    expect(screen.getByRole('radio', { name: /Bordered Rows/i })).toBeInTheDocument();
   });
 
   it('marks active preset with aria-checked="true" and tabIndex 0', () => {
@@ -64,8 +68,8 @@ describe('ListPresetSelector Component', () => {
     fireEvent.keyDown(checklistRadio, { key: 'ArrowRight' });
     expect(handleChange).toHaveBeenCalledWith('bullet');
 
-    // ArrowLeft should cycle backward from index 0 to index 5 (icon-pill)
+    // ArrowLeft should cycle backward from index 0 to index 7 (bordered-rows)
     fireEvent.keyDown(checklistRadio, { key: 'ArrowLeft' });
-    expect(handleChange).toHaveBeenCalledWith('icon-pill');
+    expect(handleChange).toHaveBeenCalledWith('bordered-rows');
   });
 });

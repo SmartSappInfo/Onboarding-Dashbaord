@@ -135,6 +135,41 @@ function renderListMiniatureWireframe(presetKey: string) {
         </div>
       );
 
+    // 7. Stepped Gradient
+    case 'stepped-gradient':
+      return (
+        <div className="w-full h-full flex flex-col justify-center gap-1.5 p-2 bg-slate-100 dark:bg-slate-900 relative">
+          <div className="absolute left-[13px] top-3 bottom-3 w-[1px] bg-primary/30" />
+          <div className="flex items-center gap-2 relative z-10">
+            <div className="w-3 h-3 rounded-full bg-linear-to-br from-primary to-accent text-white text-[7px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+              1
+            </div>
+            <div className="w-18 h-1.5 bg-slate-800 dark:bg-slate-200 rounded-full" />
+          </div>
+          <div className="flex items-center gap-2 relative z-10">
+            <div className="w-3 h-3 rounded-full bg-linear-to-br from-primary to-accent text-white text-[7px] font-black flex items-center justify-center shrink-0 shadow-2xs">
+              2
+            </div>
+            <div className="w-14 h-1.5 bg-slate-800 dark:bg-slate-200 rounded-full" />
+          </div>
+        </div>
+      );
+
+    // 8. Bordered Rows
+    case 'bordered-rows':
+      return (
+        <div className="w-full h-full flex flex-col justify-center p-1.5 bg-slate-100 dark:bg-slate-900 divide-y divide-slate-200 dark:divide-slate-800">
+          <div className="flex items-center justify-between py-1 px-1">
+            <div className="w-16 h-1.5 bg-slate-800 dark:bg-slate-200 rounded-full" />
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
+          </div>
+          <div className="flex items-center justify-between py-1 px-1">
+            <div className="w-14 h-1.5 bg-slate-800 dark:bg-slate-200 rounded-full" />
+            <div className="w-1.5 h-1.5 rounded-full bg-primary/60 shrink-0" />
+          </div>
+        </div>
+      );
+
     // 6. Classic Bullet (Default)
     case 'bullet':
     default:
@@ -164,6 +199,8 @@ export function ListPresetSelector({
   className,
 }: ListPresetSelectorProps) {
   const currentVal = value || options[0]?.value || 'checklist';
+  const selectedIndex = options.findIndex((o) => o.value === currentVal);
+  const effectiveSelectedIndex = selectedIndex >= 0 ? selectedIndex : 0;
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
     let nextIdx = currentIndex;
@@ -202,13 +239,13 @@ export function ListPresetSelector({
             type="button"
             role="radio"
             aria-checked={isSelected}
-            tabIndex={isSelected ? 0 : -1}
+            tabIndex={idx === effectiveSelectedIndex ? 0 : -1}
             aria-label={opt.label}
             onClick={() => onChange(opt.value as ListPresetType)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
             className={cn(
               "group relative flex flex-col p-1.5 rounded-xl border text-left transition-all duration-200 cursor-pointer outline-none min-h-[92px]",
-              "active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/40",
+              "active:scale-[0.98] touch-manipulation focus-visible:ring-2 focus-visible:ring-primary/40",
               isSelected
                 ? "bg-primary/[0.04] dark:bg-primary/[0.1] border-primary shadow-xs ring-1 ring-primary/40"
                 : "bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 hover:bg-slate-50/70 dark:hover:bg-slate-850/60"

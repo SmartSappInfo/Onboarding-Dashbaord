@@ -202,16 +202,16 @@ The properties panel visual picker presents an interactive $2\times 4$ grid of t
 - **Files:**
   - Modify: `src/components/page-builder/__tests__/ListPresetSelector.test.tsx`
   - Modify: `src/components/page-builder/ListPresetSelector.tsx`
-- [ ] **Step 1: Update selector tests for all 8 presets**
+- [x] **Step 1: Update selector tests for all 8 presets**
   - Test rendering wireframes for `stepped-gradient` and `bordered-rows`.
   - Test WAI-ARIA `role="radiogroup"` / `role="radio"` and roving tabindex.
-- [ ] **Step 2: Run test to verify it fails**
-- [ ] **Step 3: Implement wireframe previews in `ListPresetSelector.tsx`**
+- [x] **Step 2: Run test to verify it fails**
+- [x] **Step 3: Implement wireframe previews in `ListPresetSelector.tsx`**
   - Wireframe for `stepped-gradient` (gradient numbered nodes with connecting trace).
   - Wireframe for `bordered-rows` (horizontal borders with chevron marker).
   - Ensure `touch-manipulation`, active states, and mobile touch targets $\ge 44\text{px}$.
-- [ ] **Step 4: Run test to verify it passes**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(inspector): upgrade ListPresetSelector with 8 visual wireframe styles"`)
+- [x] **Step 4: Run test to verify it passes**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(inspector): upgrade ListPresetSelector with 8 visual wireframe styles"`)
 
 ---
 
