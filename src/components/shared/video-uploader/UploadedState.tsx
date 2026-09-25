@@ -41,10 +41,20 @@ const POSITION_OPTIONS: Array<{
     label: 'Top',
     desc: 'Above video',
     wireframe: (
-      <div className="w-full h-7 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-1 flex flex-col justify-between overflow-hidden">
-        <div className="w-3/5 h-1 bg-emerald-500/80 dark:bg-emerald-400 rounded-full" />
-        <div className="w-full h-3 rounded bg-slate-300/60 dark:bg-slate-700 flex items-center justify-center">
-          <Play className="w-1.5 h-1.5 text-slate-500 dark:text-slate-400 fill-current" />
+      <div className="w-full aspect-[16/10] rounded-[4px] bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-1.5 flex flex-col justify-between overflow-hidden shadow-2xs">
+        {/* Title & description bars ABOVE video */}
+        <div className="flex flex-col gap-0.5 w-full">
+          <div className="w-3/5 h-1.5 rounded-[2px] bg-emerald-500" />
+          <div className="w-2/5 h-0.5 rounded-[1.5px] bg-slate-400/80 dark:bg-slate-500" />
+        </div>
+        {/* Video Player Box with small round corner */}
+        <div className="w-full flex-1 mt-1 rounded-[3px] bg-slate-200/90 dark:bg-slate-700/90 border border-slate-300 dark:border-slate-600 flex flex-col justify-between p-0.5 shadow-2xs relative overflow-hidden">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-0 h-0 border-y-[2.5px] border-y-transparent border-l-[4.5px] border-l-slate-700 dark:border-l-slate-300 ml-0.5" />
+          </div>
+          <div className="w-full h-0.5 bg-slate-300 dark:bg-slate-600 rounded-[1px] flex items-center relative">
+            <div className="w-1/4 h-full bg-slate-700 dark:bg-slate-300 rounded-[1px]" />
+          </div>
         </div>
       </div>
     ),
@@ -54,12 +64,15 @@ const POSITION_OPTIONS: Array<{
     label: 'Overlay',
     desc: 'On thumbnail',
     wireframe: (
-      <div className="w-full h-7 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-0 flex flex-col justify-end overflow-hidden relative">
-        <div className="absolute inset-0 bg-slate-300/60 dark:bg-slate-700 flex items-center justify-center">
-          <Play className="w-1.5 h-1.5 text-slate-500 dark:text-slate-400 fill-current mb-1" />
+      <div className="w-full aspect-[16/10] rounded-[4px] bg-slate-800 dark:bg-slate-950 border border-slate-700/80 flex flex-col justify-between overflow-hidden shadow-2xs relative">
+        {/* Video player play icon */}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="w-0 h-0 border-y-[3px] border-y-transparent border-l-[5px] border-l-white/90 ml-0.5" />
         </div>
-        <div className="relative w-full h-2.5 bg-gradient-to-t from-black/80 to-transparent p-0.5 flex flex-col justify-end">
-          <div className="w-2/3 h-0.5 bg-white/90 rounded-full" />
+        {/* Gradient overlay at bottom of thumbnail with text */}
+        <div className="relative w-full bg-gradient-to-t from-black/90 via-black/60 to-transparent p-1 pt-1.5 flex flex-col gap-0.5">
+          <div className="w-3/5 h-1.5 rounded-[2px] bg-white/95" />
+          <div className="w-2/5 h-0.5 rounded-[1.5px] bg-white/60" />
         </div>
       </div>
     ),
@@ -69,11 +82,21 @@ const POSITION_OPTIONS: Array<{
     label: 'Bottom',
     desc: 'Below video',
     wireframe: (
-      <div className="w-full h-7 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-1 flex flex-col justify-between overflow-hidden">
-        <div className="w-full h-3 rounded bg-slate-300/60 dark:bg-slate-700 flex items-center justify-center">
-          <Play className="w-1.5 h-1.5 text-slate-500 dark:text-slate-400 fill-current" />
+      <div className="w-full aspect-[16/10] rounded-[4px] bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-1.5 flex flex-col justify-between overflow-hidden shadow-2xs">
+        {/* Video Player Box with small round corner */}
+        <div className="w-full flex-1 mb-1 rounded-[3px] bg-slate-200/90 dark:bg-slate-700/90 border border-slate-300 dark:border-slate-600 flex flex-col justify-between p-0.5 shadow-2xs relative overflow-hidden">
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-0 h-0 border-y-[2.5px] border-y-transparent border-l-[4.5px] border-l-slate-700 dark:border-l-slate-300 ml-0.5" />
+          </div>
+          <div className="w-full h-0.5 bg-slate-300 dark:bg-slate-600 rounded-[1px] flex items-center relative">
+            <div className="w-1/4 h-full bg-slate-700 dark:bg-slate-300 rounded-[1px]" />
+          </div>
         </div>
-        <div className="w-3/5 h-1 bg-emerald-500/80 dark:bg-emerald-400 rounded-full" />
+        {/* Title & description bars BELOW video */}
+        <div className="flex flex-col gap-0.5 w-full">
+          <div className="w-3/5 h-1.5 rounded-[2px] bg-emerald-500" />
+          <div className="w-2/5 h-0.5 rounded-[1.5px] bg-slate-400/80 dark:bg-slate-500" />
+        </div>
       </div>
     ),
   },
@@ -461,25 +484,32 @@ export function UploadedState({
                       tabIndex={isSelected ? 0 : -1}
                       onClick={() => handlePositionChange(option.id)}
                       onKeyDown={(e) => {
+                        let nextIdx = idx;
                         if (e.key === ' ' || e.key === 'Enter') {
                           e.preventDefault();
                           handlePositionChange(option.id);
+                          return;
                         } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
                           e.preventDefault();
-                          const nextIdx = (idx + 1) % POSITION_OPTIONS.length;
-                          handlePositionChange(POSITION_OPTIONS[nextIdx].id);
+                          nextIdx = (idx + 1) % POSITION_OPTIONS.length;
                         } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
                           e.preventDefault();
-                          const prevIdx = (idx - 1 + POSITION_OPTIONS.length) % POSITION_OPTIONS.length;
-                          handlePositionChange(POSITION_OPTIONS[prevIdx].id);
+                          nextIdx = (idx - 1 + POSITION_OPTIONS.length) % POSITION_OPTIONS.length;
+                        } else {
+                          return;
                         }
+
+                        handlePositionChange(POSITION_OPTIONS[nextIdx].id);
+                        const container = e.currentTarget.closest('[role="radiogroup"]');
+                        const buttons = container?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+                        buttons?.[nextIdx]?.focus();
                       }}
                       className={cn(
-                        "relative flex flex-col p-2 rounded-xl border text-left transition-all duration-200 cursor-pointer outline-none min-h-[74px]",
-                        "active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-emerald-500/40",
+                        "relative flex flex-col p-2.5 rounded-2xl border text-left transition-all duration-200 cursor-pointer outline-none min-h-[44px]",
+                        "active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-emerald-500/40",
                         isSelected
-                          ? "bg-emerald-500/[0.08] dark:bg-emerald-500/[0.15] border-emerald-500 text-emerald-950 dark:text-emerald-100 shadow-2xs ring-1 ring-emerald-500/30"
-                          : "bg-muted/20 dark:bg-slate-900 border-border/70 hover:border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                          ? "border-2 border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/20 text-emerald-950 dark:text-emerald-100 shadow-xs"
+                          : "border border-border/80 dark:border-slate-800 bg-white dark:bg-slate-900/60 hover:border-border text-muted-foreground hover:text-foreground hover:bg-muted/30"
                       )}
                     >
                       {/* Mini Wireframe */}

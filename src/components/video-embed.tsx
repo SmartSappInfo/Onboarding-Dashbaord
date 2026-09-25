@@ -178,7 +178,7 @@ const VideoEmbed = ({
               </h3>
             )}
             {description && (
-              <p className="text-xs sm:text-sm text-white/85 line-clamp-2 mt-1 leading-snug drop-shadow-xs">
+              <p className="text-xs sm:text-sm text-white/85 line-clamp-2 mt-1 leading-snug drop-shadow-sm">
                 {description}
               </p>
             )}

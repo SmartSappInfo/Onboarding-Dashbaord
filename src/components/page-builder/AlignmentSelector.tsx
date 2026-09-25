@@ -75,18 +75,25 @@ export function AlignmentSelector({
   const currentVal = value || 'center';
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
+    let nextIdx = currentIndex;
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
       onChange(effectiveOptions[currentIndex].value);
+      return;
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
-      const nextIdx = (currentIndex + 1) % effectiveOptions.length;
-      onChange(effectiveOptions[nextIdx].value);
+      nextIdx = (currentIndex + 1) % effectiveOptions.length;
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault();
-      const prevIdx = (currentIndex - 1 + effectiveOptions.length) % effectiveOptions.length;
-      onChange(effectiveOptions[prevIdx].value);
+      nextIdx = (currentIndex - 1 + effectiveOptions.length) % effectiveOptions.length;
+    } else {
+      return;
     }
+
+    onChange(effectiveOptions[nextIdx].value);
+    const container = e.currentTarget.closest('[role="radiogroup"]');
+    const buttons = container?.querySelectorAll<HTMLButtonElement>('[role="radio"]');
+    buttons?.[nextIdx]?.focus();
   };
 
   return (
@@ -112,7 +119,7 @@ export function AlignmentSelector({
             onClick={() => onChange(opt.value)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all duration-150 outline-none min-h-[38px]",
+              "flex-1 flex items-center justify-center gap-1.5 py-2 px-2.5 rounded-lg text-xs font-bold transition-all duration-150 outline-none min-h-[44px] sm:min-h-[38px]",
               "active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-primary/40",
               isSelected
                 ? "bg-white dark:bg-slate-900 text-primary dark:text-primary shadow-xs border border-slate-200/80 dark:border-slate-700 font-extrabold"

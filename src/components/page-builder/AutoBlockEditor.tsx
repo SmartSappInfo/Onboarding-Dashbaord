@@ -404,10 +404,11 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
                     }
 
                     const isItemSizeField = itf.key.endsWith('Size') || itf.key.includes('FontSize');
+                    const isItemPlaybackField = itf.key === 'playMode' || itf.key === 'playbackMode';
 
                     return (
                       <div key={itf.key} className="space-y-1 text-left">
-                        {itf.kind !== 'video' && itf.kind !== 'image' && !isItemSizeField && (
+                        {itf.kind !== 'video' && itf.kind !== 'image' && !isItemSizeField && !isItemPlaybackField && (
                           <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">{itf.label}</Label>
                         )}
                         <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
@@ -515,10 +516,11 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             }
 
             const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
+            const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
 
             return (
               <div key={field.key} className="space-y-1.5">
-                {field.kind !== 'list' && field.kind !== 'video' && field.kind !== 'image' && !isSizeField ? (
+                {field.kind !== 'list' && field.kind !== 'video' && field.kind !== 'image' && !isSizeField && !isPlaybackField ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />

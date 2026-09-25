@@ -701,8 +701,8 @@ export default function PublicPageClient({
                                                     {block.type === 'video' && (block.props.videoData?.videoUrl || block.props.url) && (() => {
                                                         const videoUrl = block.props.videoData?.videoUrl || block.props.url;
                                                         const thumbUrl = block.props.videoData?.thumbnailUrl || block.props.thumbnailUrl;
-                                                        const rawTitle = block.props.videoData?.title || block.props.title || '';
-                                                        const rawDesc = block.props.videoData?.description || block.props.description || '';
+                                                        const rawTitle = (block.props.videoData?.title || block.props.title || '').trim();
+                                                        const rawDesc = (block.props.videoData?.description || block.props.description || '').trim();
                                                         const title = interpolate(rawTitle);
                                                         const description = interpolate(rawDesc);
                                                         const position = block.props.videoData?.titlePosition || block.props.titlePosition || 'overlay';
@@ -711,9 +711,9 @@ export default function PublicPageClient({
                                                         return (
                                                             <div className="w-full text-left space-y-2">
                                                                 {hasText && position === 'top' && (
-                                                                    <div className="space-y-1 mb-2">
-                                                                        {title && <h3 className="text-base sm:text-lg font-bold text-foreground">{title}</h3>}
-                                                                        {description && <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>}
+                                                                    <div className="space-y-1 mb-2 break-words">
+                                                                        {title && <h3 className="text-base sm:text-lg font-bold text-foreground leading-snug tracking-tight">{title}</h3>}
+                                                                        {description && <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{description}</p>}
                                                                     </div>
                                                                 )}
                                                                 <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm aspect-video bg-black group relative">
@@ -726,9 +726,9 @@ export default function PublicPageClient({
                                                                     />
                                                                 </div>
                                                                 {hasText && position === 'bottom' && (
-                                                                    <div className="space-y-1 mt-2">
-                                                                        {title && <h3 className="text-base sm:text-lg font-bold text-foreground">{title}</h3>}
-                                                                        {description && <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>}
+                                                                    <div className="space-y-1 mt-2 break-words">
+                                                                        {title && <h3 className="text-base sm:text-lg font-bold text-foreground leading-snug tracking-tight">{title}</h3>}
+                                                                        {description && <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{description}</p>}
                                                                     </div>
                                                                 )}
                                                             </div>
