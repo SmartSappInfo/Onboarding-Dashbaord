@@ -4,21 +4,14 @@ import { describe, it, expect } from 'vitest';
 import { BlockRenderer } from '../BlockRenderer';
 import type { PageBlock } from '@/lib/types';
 import type { BlockRenderContext } from '@/lib/page-builder/registry';
+import { resolveTheme } from '@/lib/page-builder/resolve-theme';
 import '@/lib/page-builder/blocks/video';
 
 const mockCtx: BlockRenderContext = {
   mode: 'view',
-  device: 'desktop',
-  theme: {
-    themeMode: 'light',
-    brandPrimaryColor: '#000000',
-    brandSecondaryColor: '#ffffff',
-    brandFontFamily: 'sans',
-    backgroundColor: '#ffffff',
-    textColor: '#000000',
-    primaryButtonBgColor: '#000000',
-    primaryButtonTextColor: '#ffffff',
-  },
+  theme: resolveTheme(),
+  interpolate: (t) => t,
+  resources: { forms: [], surveys: [], agreements: [] },
 };
 
 describe('Video Block Runtime Presets', () => {
