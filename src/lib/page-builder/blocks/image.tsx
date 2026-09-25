@@ -1,5 +1,19 @@
 'use client';
 
+/**
+ * @fileOverview Image Block Definition & Runtime Renderer
+ *
+ * Implements the Image Presets, Masking, Framing & Interactive Behavior Architecture.
+ * Supports:
+ * - 8 visual presets: clean-card, browser-mockup, mobile-chassis, cathedral-arch,
+ *   circular-avatar, floating-elevated, interactive-zoom, neo-brutalist.
+ * - Geometric masks: none (sharp), rounded (16px), squircle (28px), circle (avatar), cathedral arch.
+ * - Aspect ratios: auto, 1:1, 4:3, 16:9, 21:9, 9:16, 3:4.
+ * - Elevation & device frames: flat, hairline, shadow, browser mockup, mobile chassis.
+ * - Interactive hover states: none, scale zoom, grayscale reveal, duotone wash.
+ * - Backward compatibility adapter for legacy blocks with { borderRadius: 'none' | 'rounded' | 'circle' }.
+ */
+
 import React, { useState } from 'react';
 import { z } from 'zod';
 import { ImageIcon, Edit } from 'lucide-react';
@@ -8,16 +22,129 @@ import { cn } from '@/lib/utils';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import { InlineEditable } from '@/components/page-builder/InlineEditable';
 
-const schema = z.object({
+export type ImagePresetId =
+  | 'clean-card'
+  | 'browser-mockup'
+  | 'mobile-chassis'
+  | 'cathedral-arch'
+  | 'circular-avatar'
+  | 'floating-elevated'
+  | 'interactive-zoom'
+  | 'neo-brutalist';
+
+export type ImageAspectRatio = 'auto' | '1:1' | '4:3' | '16:9' | '21:9' | '9:16' | '3:4';
+export type ImageBorderRadius = 'none' | 'rounded' | 'squircle' | 'circle' | 'arch';
+export type ImageElevation = 'none' | 'hairline' | 'shadow' | 'browser' | 'mobile';
+export type ImageHoverEffect = 'none' | 'zoom' | 'grayscale' | 'duotone';
+export type ImageObjectFit = 'cover' | 'contain';
+
+const rawSchema = z.object({
   src: z.string().default(''),
   alt: z.string().default(''),
   caption: z.string().default(''),
   captionColor: z.string().default('#475569'),
   width: z.enum(['small', 'medium', 'large', 'full']).default('full'),
-  borderRadius: z.enum(['none', 'rounded', 'circle']).default('rounded'),
   alignment: z.enum(['left', 'center', 'right']).default('center'),
+  preset: z.enum([
+    'clean-card',
+    'browser-mockup',
+    'mobile-chassis',
+    'cathedral-arch',
+    'circular-avatar',
+    'floating-elevated',
+    'interactive-zoom',
+    'neo-brutalist',
+  ]).optional(),
+  borderRadius: z.enum(['none', 'rounded', 'squircle', 'circle', 'arch']).default('rounded'),
+  aspectRatio: z.enum(['auto', '1:1', '4:3', '16:9', '21:9', '9:16', '3:4']).default('auto'),
+  elevation: z.enum(['none', 'hairline', 'shadow', 'browser', 'mobile']).default('hairline'),
+  hoverEffect: z.enum(['none', 'zoom', 'grayscale', 'duotone']).default('none'),
+  objectFit: z.enum(['cover', 'contain']).default('cover'),
 });
-type ImageProps = z.infer<typeof schema>;
+
+// Backward compatibility & preset smart-defaults transform
+const schema = rawSchema.transform((data) => {
+  // If legacy props provided without preset:
+  if (!data.preset) {
+    if (data.borderRadius === 'circle') {
+      return {
+        ...data,
+        preset: 'circular-avatar' as const,
+        aspectRatio: data.aspectRatio === 'auto' ? ('1:1' as const) : data.aspectRatio,
+        borderRadius: 'circle' as const,
+      };
+    }
+    if (data.borderRadius === 'none') {
+      return {
+        ...data,
+        preset: 'neo-brutalist' as const,
+        elevation: data.elevation === 'hairline' ? ('shadow' as const) : data.elevation,
+        borderRadius: 'none' as const,
+      };
+    }
+    return {
+      ...data,
+      preset: 'clean-card' as const,
+    };
+  }
+
+  // Preset smart defaults mapping
+  if (data.preset === 'browser-mockup') {
+    return {
+      ...data,
+      elevation: 'browser' as const,
+      borderRadius: 'rounded' as const,
+      aspectRatio: data.aspectRatio === 'auto' ? ('16:9' as const) : data.aspectRatio,
+    };
+  }
+  if (data.preset === 'mobile-chassis') {
+    return {
+      ...data,
+      elevation: 'mobile' as const,
+      borderRadius: 'squircle' as const,
+      aspectRatio: data.aspectRatio === 'auto' ? ('9:16' as const) : data.aspectRatio,
+    };
+  }
+  if (data.preset === 'cathedral-arch') {
+    return {
+      ...data,
+      borderRadius: 'arch' as const,
+      aspectRatio: data.aspectRatio === 'auto' ? ('3:4' as const) : data.aspectRatio,
+    };
+  }
+  if (data.preset === 'circular-avatar') {
+    return {
+      ...data,
+      borderRadius: 'circle' as const,
+      aspectRatio: data.aspectRatio === 'auto' ? ('1:1' as const) : data.aspectRatio,
+    };
+  }
+  if (data.preset === 'floating-elevated') {
+    return {
+      ...data,
+      elevation: 'shadow' as const,
+      borderRadius: 'rounded' as const,
+    };
+  }
+  if (data.preset === 'interactive-zoom') {
+    return {
+      ...data,
+      hoverEffect: 'zoom' as const,
+      borderRadius: 'rounded' as const,
+    };
+  }
+  if (data.preset === 'neo-brutalist') {
+    return {
+      ...data,
+      borderRadius: 'none' as const,
+      elevation: 'shadow' as const,
+    };
+  }
+
+  return data;
+});
+
+type ImageProps = z.output<typeof schema>;
 
 const WIDTH_CLASSES = {
   small: 'max-w-[120px] w-full',
@@ -26,10 +153,12 @@ const WIDTH_CLASSES = {
   full: 'w-full h-auto',
 };
 
-const RADIUS_CLASSES = {
+const RADIUS_CLASSES: Record<ImageBorderRadius, string> = {
   none: 'rounded-none',
   rounded: 'rounded-2xl',
+  squircle: 'rounded-[28px]',
   circle: 'rounded-full aspect-square object-cover',
+  arch: 'rounded-t-[9999px] rounded-b-xl',
 };
 
 registerBlock({
@@ -39,6 +168,79 @@ registerBlock({
   icon: ImageIcon,
   fields: [
     { kind: 'image', key: 'src', label: 'Image URL' },
+    {
+      kind: 'select',
+      key: 'preset',
+      label: 'Preset Style',
+      options: [
+        { value: 'clean-card', label: 'Clean Card' },
+        { value: 'browser-mockup', label: 'Browser Window' },
+        { value: 'mobile-chassis', label: 'Mobile Chassis' },
+        { value: 'cathedral-arch', label: 'Cathedral Arch' },
+        { value: 'circular-avatar', label: 'Circular Avatar' },
+        { value: 'floating-elevated', label: 'Floating Elevated' },
+        { value: 'interactive-zoom', label: 'Interactive Zoom' },
+        { value: 'neo-brutalist', label: 'Neo-Brutalist' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'aspectRatio',
+      label: 'Aspect Ratio',
+      options: [
+        { value: 'auto', label: 'Auto (Original)' },
+        { value: '1:1', label: '1:1 Square' },
+        { value: '4:3', label: '4:3 Standard' },
+        { value: '16:9', label: '16:9 Landscape' },
+        { value: '21:9', label: '21:9 Ultra-Wide' },
+        { value: '9:16', label: '9:16 Vertical' },
+        { value: '3:4', label: '3:4 Portrait' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'borderRadius',
+      label: 'Corner Shape & Mask',
+      options: [
+        { value: 'none', label: 'Sharp (0px)' },
+        { value: 'rounded', label: 'Card (16px)' },
+        { value: 'squircle', label: 'Squircle (28px)' },
+        { value: 'arch', label: 'Cathedral Arch' },
+        { value: 'circle', label: 'Circle / Pill' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'elevation',
+      label: 'Elevation & Frame',
+      options: [
+        { value: 'none', label: 'None (Flat)' },
+        { value: 'hairline', label: 'Subtle Hairline Border' },
+        { value: 'shadow', label: 'Floating Drop Shadow' },
+        { value: 'browser', label: 'Desktop Browser Window' },
+        { value: 'mobile', label: 'Mobile Phone Chassis' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'hoverEffect',
+      label: 'Hover Animation',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'zoom', label: 'Scale & Zoom' },
+        { value: 'grayscale', label: 'Grayscale to Color' },
+        { value: 'duotone', label: 'Duotone Wash' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'objectFit',
+      label: 'Image Fit Mode',
+      options: [
+        { value: 'cover', label: 'Fill & Cover (Crop to fit)' },
+        { value: 'contain', label: 'Fit Inside (No crop)' },
+      ],
+    },
     { kind: 'text', key: 'alt', label: 'Alt Text' },
     { kind: 'text', key: 'caption', label: 'Caption' },
     { kind: 'color', key: 'captionColor', label: 'Caption Text Color' },
@@ -51,16 +253,6 @@ registerBlock({
         { value: 'medium', label: 'Medium (320px)' },
         { value: 'large', label: 'Large (640px)' },
         { value: 'full', label: 'Full Width (100%)' },
-      ],
-    },
-    {
-      kind: 'select',
-      key: 'borderRadius',
-      label: 'Border Style',
-      options: [
-        { value: 'none', label: 'Square (Sharp edges)' },
-        { value: 'rounded', label: 'Rounded Card (16px)' },
-        { value: 'circle', label: 'Circular (Avatar style)' },
       ],
     },
     {
