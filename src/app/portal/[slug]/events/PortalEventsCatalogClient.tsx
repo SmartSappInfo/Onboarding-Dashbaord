@@ -17,8 +17,7 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
-import { registerForEventAction } from '@/app/actions/event-actions';
+import { registerForEventAction, recordJoinSessionAction } from '@/app/actions/event-actions';
 import type { LiveEvent, EventRegistration } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -31,8 +30,11 @@ import {
   ExternalLink,
   CheckCircle2,
   Loader2,
+  Tv,
 } from 'lucide-react';
 import { PortalPageShell } from '../components/PortalPageShell';
+import { AddToCalendarDropdown } from './components/AddToCalendarDropdown';
+import { EventCountdownBadge } from './components/EventCountdownBadge';
 
 interface PortalEventsCatalogClientProps {
   slug: string;
@@ -117,6 +119,64 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
       toast({ title: 'Registration Failed', description: getErrorMessage(err) });
     } finally {
       setRegisteringEventId(null);
+    }
+  };
+
+  const handleJoinRoom = React.useCallback(
+    (event: LiveEvent) => {
+      if (user && portal) {
+        // Fire-and-forget join timestamp tracking for attendance engine
+        void recordJoinSessionAction({
+          eventId: event.id,
+          userId: user.uid,
+          portalId: portal.id,
+          userName: user.displayName || user.email?.split('@')[0] || 'Member',
+          userEmail: user.email || '',
+        });
+      }
+      window.open(event.meetingUrl, '_blank', 'noopener,noreferrer');
+    },
+    [user, portal]
+  );
+
+  const getProviderBadge = (provider: string) => {
+    switch (provider) {
+      case 'zoom':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1 px-2 py-0.5"
+          >
+            <Video className="w-3 h-3 text-blue-600" /> Zoom
+          </Badge>
+        );
+      case 'google_meet':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 px-2 py-0.5"
+          >
+            <Video className="w-3 h-3 text-emerald-600" /> Google Meet
+          </Badge>
+        );
+      case 'teams':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border-indigo-500/20 gap-1 px-2 py-0.5"
+          >
+            <Tv className="w-3 h-3 text-indigo-600" /> Teams
+          </Badge>
+        );
+      default:
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-muted text-muted-foreground border-border gap-1 px-2 py-0.5"
+          >
+            <Video className="w-3 h-3 text-muted-foreground" /> Live Room
+          </Badge>
+        );
     }
   };
 
@@ -222,27 +282,32 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
                   className="rounded-3xl border-2 border-border p-6 space-y-5 hover:shadow-lg hover:border-primary/40 transition-all flex flex-col justify-between bg-card shadow-xs"
                 >
                   <div className="space-y-4">
-                    <div className="flex items-center justify-between gap-2">
-                      <Badge
-                        variant="outline"
-                        className="text-[9px] font-bold uppercase capitalize bg-primary/10 text-primary border-primary/20"
-                      >
-                        {event.type.replace('_', ' ')}
-                      </Badge>
+                    <div className="flex items-center justify-between gap-2 flex-wrap">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] font-bold uppercase capitalize bg-primary/10 text-primary border-primary/20"
+                        >
+                          {event.type.replace('_', ' ')}
+                        </Badge>
+                        {getProviderBadge(event.meetingProvider)}
+                      </div>
 
-                      {hasReplay ? (
-                        <Badge className="bg-emerald-500 text-white font-bold text-[9px] gap-1 py-0.5">
-                          <PlayCircle className="w-2.5 h-2.5" /> Replay & Summary
-                        </Badge>
-                      ) : isRegistered ? (
-                        <Badge className="bg-primary text-white font-bold text-[9px] gap-1 py-0.5">
-                          <CheckCircle2 className="w-2.5 h-2.5" /> Registered ✓
-                        </Badge>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground font-semibold">
-                          {event.meetingProvider.toUpperCase()}
-                        </span>
-                      )}
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <EventCountdownBadge
+                          scheduledStartTime={event.scheduledStartTime}
+                          scheduledEndTime={event.scheduledEndTime}
+                        />
+                        {hasReplay ? (
+                          <Badge className="bg-emerald-500 text-white font-bold text-[9px] gap-1 py-0.5">
+                            <PlayCircle className="w-2.5 h-2.5" /> Replay
+                          </Badge>
+                        ) : isRegistered ? (
+                          <Badge className="bg-primary text-white font-bold text-[9px] gap-1 py-0.5">
+                            <CheckCircle2 className="w-2.5 h-2.5" /> Registered ✓
+                          </Badge>
+                        ) : null}
+                      </div>
                     </div>
 
                     <div className="space-y-1.5">
@@ -293,31 +358,41 @@ export function PortalEventsCatalogClient({ slug }: PortalEventsCatalogClientPro
                     </div>
                   </div>
 
-                  <div className="pt-4 border-t border-border flex items-center justify-between gap-3">
-                    <Button asChild variant="outline" size="sm" className="flex-1 rounded-xl text-xs font-bold active:scale-[0.97]">
+                  <div className="pt-4 border-t border-border flex items-center justify-between gap-2 flex-wrap sm:flex-nowrap">
+                    <Button asChild variant="outline" size="sm" className="min-h-[44px] flex-1 rounded-xl text-xs font-bold active:scale-[0.97]">
                       <Link href={`/portal/${slug}/events/${event.slug}`}>
                         Details
                       </Link>
                     </Button>
 
                     {hasReplay ? (
-                      <Button asChild size="sm" className="flex-1 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-2xs active:scale-[0.97]">
+                      <Button asChild size="sm" className="min-h-[44px] flex-1 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-2xs active:scale-[0.97]">
                         <Link href={`/portal/${slug}/events/${event.slug}/replay`}>
                           <PlayCircle className="w-3.5 h-3.5" /> Watch Replay
                         </Link>
                       </Button>
                     ) : isRegistered ? (
-                      <Button asChild size="sm" className="flex-1 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 gap-1 shadow-2xs active:scale-[0.97]">
-                        <a href={event.meetingUrl} target="_blank" rel="noreferrer">
-                          Join Room <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </Button>
+                      <>
+                        <AddToCalendarDropdown
+                          event={event}
+                          buttonText="Calendar"
+                          size="sm"
+                          className="min-h-[44px] flex-initial px-3"
+                        />
+                        <Button
+                          size="sm"
+                          onClick={() => handleJoinRoom(event)}
+                          className="min-h-[44px] flex-1 rounded-xl text-xs font-bold bg-emerald-600 text-white hover:bg-emerald-700 gap-1.5 shadow-2xs active:scale-[0.97]"
+                        >
+                          <Video className="w-3.5 h-3.5" /> Enter Live Room <ExternalLink className="w-3 h-3" />
+                        </Button>
+                      </>
                     ) : (
                       <Button
                         size="sm"
                         disabled={isRegistering}
                         onClick={() => handleRegister(event)}
-                        className="flex-1 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1 shadow-2xs"
+                        className="min-h-[44px] flex-1 rounded-xl text-xs font-bold bg-primary text-white hover:bg-primary/90 gap-1 shadow-2xs active:scale-[0.97]"
                       >
                         {isRegistering ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Register Free'}
                       </Button>

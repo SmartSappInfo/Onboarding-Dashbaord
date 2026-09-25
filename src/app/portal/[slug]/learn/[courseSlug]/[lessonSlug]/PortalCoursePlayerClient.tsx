@@ -66,6 +66,7 @@ import type {
   AssessmentResult,
 } from '@/lib/types/learning';
 import type { PortalMembership, MembershipPlan } from '@/lib/types/membership';
+import type { CourseCohort, CohortMember } from '@/lib/types/events';
 import {
   PlayCircle,
   CheckCircle2,
@@ -84,6 +85,9 @@ import {
   Search,
   Lock,
   FileText,
+  Radio,
+  MessagesSquare,
+  Video,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -264,6 +268,38 @@ export default function PortalCoursePlayerClient({
   );
   const { data: membershipPlans } = useCollection<MembershipPlan>(plansQuery);
 
+  // 10. Query Cohort Membership for this user in this course
+  const cohortMemberQuery = useMemoFirebase(
+    () =>
+      firestore && course?.id && user?.uid
+        ? query(
+            collection(firestore, 'cohort_members'),
+            where('courseId', '==', course.id),
+            where('userId', '==', user.uid),
+            where('status', '==', 'active'),
+            limit(1)
+          )
+        : null,
+    [firestore, course?.id, user?.uid]
+  );
+  const { data: cohortMembers } = useCollection<CohortMember>(cohortMemberQuery);
+  const userCohortMember = cohortMembers?.[0] ?? null;
+
+  // 11. Query Cohort Details if member is assigned
+  const cohortQuery = useMemoFirebase(
+    () =>
+      firestore && userCohortMember?.cohortId
+        ? query(
+            collection(firestore, 'course_cohorts'),
+            where('id', '==', userCohortMember.cohortId),
+            limit(1)
+          )
+        : null,
+    [firestore, userCohortMember?.cohortId]
+  );
+  const { data: userCohorts } = useCollection<CourseCohort>(cohortQuery);
+  const userCohort = userCohorts?.[0] ?? null;
+
   // Course Tier Entitlement Calculation:
   const requiredPlanIds = React.useMemo(() => course?.requiredPlanIds || [], [course?.requiredPlanIds]);
   const hasPlanRequirement = requiredPlanIds.length > 0;
@@ -293,8 +329,9 @@ export default function PortalCoursePlayerClient({
       enrollment,
       memberJoinedAt: membership?.joinedAt || membership?.createdAt,
       completedLessonIds,
+      cohortStartDate: userCohort?.startDate,
     });
-  }, [currentLesson, currentModule, enrollment, membership, completedLessonIds]);
+  }, [currentLesson, currentModule, enrollment, membership, completedLessonIds, userCohort?.startDate]);
 
   const prerequisiteLesson = React.useMemo(() => {
     if (!currentLessonRelease.prerequisiteLessonId || !lessons) return null;
@@ -544,6 +581,27 @@ export default function PortalCoursePlayerClient({
         )}
       </div>
 
+      {userCohort && (
+        <div className="p-3 rounded-2xl bg-primary/5 border border-primary/20 space-y-1">
+          <div className="flex items-center justify-between gap-1">
+            <Badge className="bg-primary text-white text-[9px] font-bold uppercase tracking-wider py-0 px-1.5">
+              {userCohort.name}
+            </Badge>
+            {userCohort.linkedSpaceId && (
+              <Link
+                href={`/portal/${slug}/community/${userCohort.linkedSpaceId}`}
+                className="text-[10px] text-primary font-bold hover:underline flex items-center gap-0.5"
+              >
+                <MessagesSquare className="w-3 h-3" /> Space 💬
+              </Link>
+            )}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            Cohort pacing • Starts {new Date(userCohort.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+          </p>
+        </div>
+      )}
+
       <div className="space-y-4">
         {(modules || []).map((mod, modIdx) => {
           const moduleLessons = (lessons || []).filter(l => l.moduleId === mod.id);
@@ -555,6 +613,7 @@ export default function PortalCoursePlayerClient({
             enrollment,
             memberJoinedAt: membership?.joinedAt || membership?.createdAt,
             completedLessonIds,
+            cohortStartDate: userCohort?.startDate,
           });
 
           return (
@@ -590,12 +649,15 @@ export default function PortalCoursePlayerClient({
                     enrollment,
                     memberJoinedAt: membership?.joinedAt || membership?.createdAt,
                     completedLessonIds,
+                    cohortStartDate: userCohort?.startDate,
                   });
 
                   const isLesLocked = lesRelease.isLocked && !les.isPreview;
 
                   const contentIcon =
-                    les.contentType === 'quiz' ? (
+                    les.contentType === 'live_session' ? (
+                      <Radio className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-rose-500 animate-pulse')} />
+                    ) : les.contentType === 'quiz' ? (
                       <HelpCircle className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-purple-500')} />
                     ) : les.contentType === 'article' || (les.blocks && les.blocks.length > 0) ? (
                       <FileText className={cn('w-4 h-4 shrink-0', isCurrent ? 'text-white' : 'text-blue-500')} />
@@ -826,6 +888,7 @@ export default function PortalCoursePlayerClient({
                     enrollment,
                     memberJoinedAt: membership?.joinedAt || membership?.createdAt,
                     completedLessonIds,
+                    cohortStartDate: userCohort?.startDate,
                   });
                   const isLesLocked = lesRelease.isLocked && !les.isPreview;
 

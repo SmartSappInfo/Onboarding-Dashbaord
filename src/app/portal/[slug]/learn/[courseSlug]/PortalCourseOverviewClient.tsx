@@ -20,6 +20,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { collection, query, where, limit, orderBy } from 'firebase/firestore';
 import { useCollection, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -38,6 +39,8 @@ import { PortalPageShell } from '../../components/PortalPageShell';
 import type { Portal } from '@/lib/types/portal';
 import type { Course, CourseModule, CourseLesson, CourseEnrollment, LearningProgress } from '@/lib/types/learning';
 import type { PortalMembership, MembershipPlan } from '@/lib/types/membership';
+import type { LiveEvent, CourseCohort, CohortMember } from '@/lib/types/events';
+import { EventCountdownBadge } from '../../events/components/EventCountdownBadge';
 import {
   ArrowRight,
   PlayCircle,
@@ -51,6 +54,10 @@ import {
   Sparkles,
   FileText,
   HelpCircle,
+  Users,
+  Video,
+  MessagesSquare,
+  Radio,
 } from 'lucide-react';
 import { PortalAuthModal } from '../../components/PortalAuthModal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -188,6 +195,53 @@ export default function PortalCourseOverviewClient({
   const completedLessonIds = React.useMemo(() => {
     return (progressList || []).filter(p => p.isCompleted).map(p => p.lessonId);
   }, [progressList]);
+
+  // 9. Query Cohort Membership for this user in this course
+  const cohortMemberQuery = useMemoFirebase(
+    () =>
+      firestore && course?.id && user?.uid
+        ? query(
+            collection(firestore, 'cohort_members'),
+            where('courseId', '==', course.id),
+            where('userId', '==', user.uid),
+            where('status', '==', 'active'),
+            limit(1)
+          )
+        : null,
+    [firestore, course?.id, user?.uid]
+  );
+  const { data: cohortMembers } = useCollection<CohortMember>(cohortMemberQuery);
+  const userCohortMember = cohortMembers?.[0] ?? null;
+
+  // 10. Query Cohort Details if member is assigned
+  const cohortQuery = useMemoFirebase(
+    () =>
+      firestore && userCohortMember?.cohortId
+        ? query(
+            collection(firestore, 'course_cohorts'),
+            where('id', '==', userCohortMember.cohortId),
+            limit(1)
+          )
+        : null,
+    [firestore, userCohortMember?.cohortId]
+  );
+  const { data: userCohorts } = useCollection<CourseCohort>(cohortQuery);
+  const userCohort = userCohorts?.[0] ?? null;
+
+  // 11. Query Live Events linked to this course
+  const courseEventsQuery = useMemoFirebase(
+    () =>
+      firestore && portal?.id && course?.id
+        ? query(
+            collection(firestore, 'live_events'),
+            where('portalId', '==', portal.id),
+            where('courseId', '==', course.id),
+            orderBy('scheduledStartTime', 'asc')
+          )
+        : null,
+    [firestore, portal?.id, course?.id]
+  );
+  const { data: courseEvents } = useCollection<LiveEvent>(courseEventsQuery);
 
   // ── Plan Entitlement Gating Check ──────────────────────────────────────
   const requiredPlanIds = React.useMemo(() => course?.requiredPlanIds || [], [course?.requiredPlanIds]);
@@ -462,6 +516,79 @@ export default function PortalCourseOverviewClient({
           </div>
         </div>
 
+        {/* Active Cohort Status & Community Space Banner */}
+        {userCohort && (
+          <div className="p-6 rounded-3xl border-2 border-primary/30 bg-primary/5 relative overflow-hidden flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2">
+                <Badge className="bg-primary text-white font-bold text-[10px] uppercase tracking-wider">
+                  Active Cohort
+                </Badge>
+                <span className="text-xs text-muted-foreground font-semibold">
+                  Starts {new Date(userCohort.startDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                </span>
+              </div>
+              <h3 className="font-black text-lg text-foreground">{userCohort.name}</h3>
+              <p className="text-xs text-muted-foreground flex items-center gap-2">
+                <Users className="w-3.5 h-3.5 text-primary" />
+                <span>{userCohort.enrolledCount} Students Enrolled</span>
+                <span>•</span>
+                <span>Synchronous curriculum pacing</span>
+              </p>
+            </div>
+
+            {userCohort.linkedSpaceId && (
+              <Button asChild variant="outline" className="min-h-[44px] rounded-xl font-bold text-xs gap-2 active:scale-[0.97] bg-card hover:bg-muted shadow-2xs">
+                <Link href={`/portal/${slug}/community/${userCohort.linkedSpaceId}`}>
+                  <MessagesSquare className="w-4 h-4 text-primary" /> Join Cohort Space 💬
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+
+        {/* Course-Linked Live Sessions & Masterclasses */}
+        {courseEvents && courseEvents.length > 0 && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between border-b border-border pb-2">
+              <h3 className="font-bold text-base text-foreground flex items-center gap-2">
+                <Radio className="w-4 h-4 text-rose-500 animate-pulse" />
+                Live Sessions & Cohort Masterclasses
+              </h3>
+              <Link href={`/portal/${slug}/events`} className="text-xs text-primary font-bold hover:underline">
+                All Sessions →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {courseEvents.slice(0, 2).map(evt => (
+                <Card key={evt.id} className="p-5 rounded-2xl border-2 border-border bg-card space-y-3 flex flex-col justify-between shadow-2xs">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <EventCountdownBadge scheduledStartTime={evt.scheduledStartTime} scheduledEndTime={evt.scheduledEndTime} />
+                      <Badge variant="outline" className="text-[9px] uppercase font-bold bg-primary/10 text-primary border-primary/20">
+                        {evt.meetingProvider.toUpperCase()}
+                      </Badge>
+                    </div>
+                    <h4 className="font-extrabold text-sm text-foreground line-clamp-1">{evt.title}</h4>
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Clock className="w-3.5 h-3.5 text-primary" />
+                      <span>{new Date(evt.scheduledStartTime).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                      <span>•</span>
+                      <span>{evt.durationMinutes}m</span>
+                    </p>
+                  </div>
+                  <Button asChild variant="outline" size="sm" className="min-h-[44px] rounded-xl text-xs font-bold active:scale-[0.97]">
+                    <Link href={`/portal/${slug}/events/${evt.slug}`}>
+                      {evt.recordingUrl ? 'Watch Replay' : 'Session Details & Join'}
+                    </Link>
+                  </Button>
+                </Card>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Detailed Syllabus Accordion with Drip Release Badges */}
         <div className="space-y-4">
           <div className="flex items-center justify-between border-b border-border pb-3">
@@ -481,6 +608,7 @@ export default function PortalCourseOverviewClient({
                 enrollment,
                 memberJoinedAt: membership?.joinedAt || membership?.createdAt,
                 completedLessonIds,
+                cohortStartDate: userCohort?.startDate,
               });
 
               return (
@@ -519,6 +647,7 @@ export default function PortalCourseOverviewClient({
                           enrollment,
                           memberJoinedAt: membership?.joinedAt || membership?.createdAt,
                           completedLessonIds,
+                          cohortStartDate: userCohort?.startDate,
                         });
 
                         // Clickable if enrolled and unlocked, or if it's a free preview

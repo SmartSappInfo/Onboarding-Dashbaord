@@ -16,8 +16,12 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { useToast } from '@/hooks/use-toast';
-import { registerForEventAction, cancelEventRegistrationAction } from '@/app/actions/event-actions';
+import {
+  registerForEventAction,
+  cancelEventRegistrationAction,
+  recordJoinSessionAction,
+  recordEventAttendanceAction,
+} from '@/app/actions/event-actions';
 import type { LiveEvent, EventRegistration } from '@/lib/types/events';
 import type { Portal } from '@/lib/types/portal';
 import { getErrorMessage } from '@/lib/errors/report-error';
@@ -28,10 +32,17 @@ import {
   Users,
   PlayCircle,
   ExternalLink,
-  CalendarPlus,
   Loader2,
+  CheckCircle2,
+  Download,
+  Sparkles,
+  ListChecks,
+  Award,
+  Tv,
 } from 'lucide-react';
 import { PortalPageShell } from '../../components/PortalPageShell';
+import { AddToCalendarDropdown } from '../components/AddToCalendarDropdown';
+import { EventCountdownBadge } from '../components/EventCountdownBadge';
 
 interface PortalEventDetailClientProps {
   slug: string;
@@ -168,35 +179,85 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
     }
   };
 
-  const handleDownloadIcs = () => {
+  const [hasClaimedPoints, setHasClaimedPoints] = React.useState(false);
+
+  const handleJoinLiveSession = React.useCallback(() => {
     if (!event) return;
-    const startIso = new Date(event.scheduledStartTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-    const endIso = new Date(event.scheduledEndTime).toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+    if (user && portal) {
+      // Fire-and-forget join timestamp tracking for attendance engine
+      void recordJoinSessionAction({
+        eventId: event.id,
+        userId: user.uid,
+        portalId: portal.id,
+        userName: user.displayName || user.email?.split('@')[0] || 'Member',
+        userEmail: user.email || '',
+      });
+    }
+    window.open(event.meetingUrl, '_blank', 'noopener,noreferrer');
+  }, [event, user, portal]);
 
-    const icsContent = [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//SmartSapp Experience Platform//EN',
-      'BEGIN:VEVENT',
-      `SUMMARY:${event.title}`,
-      `DESCRIPTION:${event.description || 'Masterclass session'}\\n\\nJoin Room: ${event.meetingUrl}`,
-      `DTSTART:${startIso}`,
-      `DTEND:${endIso}`,
-      `LOCATION:${event.meetingUrl}`,
-      'STATUS:CONFIRMED',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n');
+  const handleClaimPoints = async () => {
+    if (!user || !event || !portal) return;
+    try {
+      await recordEventAttendanceAction(
+        {
+          portalId: portal.id,
+          eventId: event.id,
+          userId: user.uid,
+          attendedDurationSeconds: (event.durationMinutes || 60) * 60,
+        },
+        slug,
+        eventSlug
+      );
+      setHasClaimedPoints(true);
+      toast({
+        title: 'Points Awarded! 🏆',
+        description: '+20 Attendance Points added to your profile.',
+      });
+    } catch (err: unknown) {
+      toast({ title: 'Claim Failed', description: getErrorMessage(err) });
+    }
+  };
 
-    const blob = new Blob([icsContent], { type: 'text/calendar;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `${event.slug}-invitation.ics`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    toast({ title: 'Calendar Downloaded! 📅', description: 'Add the .ics file to Apple Calendar or Outlook.' });
+  const getProviderBadge = (provider: string) => {
+    switch (provider) {
+      case 'zoom':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-blue-500/10 text-blue-600 border-blue-500/20 gap-1 px-2.5 py-0.5"
+          >
+            <Video className="w-3.5 h-3.5 text-blue-600" /> Zoom
+          </Badge>
+        );
+      case 'google_meet':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 border-emerald-500/20 gap-1 px-2.5 py-0.5"
+          >
+            <Video className="w-3.5 h-3.5 text-emerald-600" /> Google Meet
+          </Badge>
+        );
+      case 'teams':
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-indigo-500/10 text-indigo-600 border-indigo-500/20 gap-1 px-2.5 py-0.5"
+          >
+            <Tv className="w-3.5 h-3.5 text-indigo-600" /> Teams
+          </Badge>
+        );
+      default:
+        return (
+          <Badge
+            variant="outline"
+            className="text-[10px] font-bold bg-muted text-muted-foreground border-border gap-1 px-2.5 py-0.5"
+          >
+            <Video className="w-3.5 h-3.5 text-muted-foreground" /> Live Room
+          </Badge>
+        );
+    }
   };
 
   if (isLoadingPortal || isLoadingEvent) {
@@ -241,10 +302,16 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
           }}
         >
           <div className="space-y-3 max-w-2xl relative z-10">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Badge className="bg-white/20 hover:bg-white/30 text-white border-0 text-xs font-bold px-3 py-1 uppercase tracking-wider">
                 {event.type.replace('_', ' ')}
               </Badge>
+              {getProviderBadge(event.meetingProvider)}
+              <EventCountdownBadge
+                scheduledStartTime={event.scheduledStartTime}
+                scheduledEndTime={event.scheduledEndTime}
+                className="bg-white/20 text-white border-white/30"
+              />
               {hasReplay && (
                 <Badge className="bg-emerald-500 text-white font-bold text-xs px-3 py-1 gap-1">
                   <PlayCircle className="w-3.5 h-3.5" /> Replay Ready
@@ -283,33 +350,125 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
 
         {/* Action & Schedule Split Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column: Agenda & Speaker Bio */}
+          {/* Left Column: Replay Player OR Agenda & Speaker Bio */}
           <div className="lg:col-span-2 space-y-6">
-            <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card">
-              <div className="space-y-2">
-                <h3 className="font-extrabold text-lg text-foreground">Session Overview</h3>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  {event.description || 'Interactive live session covering practical implementations and drills.'}
-                </p>
-              </div>
-
-              {/* Speaker Card */}
-              <div className="p-5 rounded-2xl border border-border bg-muted/20 flex items-center gap-4">
-                <Avatar className="w-14 h-14 border-2 border-white shadow-md">
-                  {event.instructorAvatarUrl && <AvatarImage src={event.instructorAvatarUrl} alt={event.instructorName} />}
-                  <AvatarFallback className="bg-primary text-white font-black text-lg">
-                    {event.instructorName.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="space-y-1">
-                  <span className="text-[10px] uppercase font-bold text-primary tracking-wider">Session Host</span>
-                  <h4 className="font-extrabold text-base text-foreground">{event.instructorName}</h4>
-                  {event.instructorTitle && (
-                    <p className="text-xs text-muted-foreground">{event.instructorTitle}</p>
+            {hasReplay ? (
+              <div className="space-y-6">
+                {/* Video Playback Canvas */}
+                <div className="aspect-video w-full rounded-3xl overflow-hidden bg-black shadow-2xl border-2 border-border relative">
+                  {event.recordingUrl ? (
+                    event.recordingUrl.includes('youtube') || event.recordingUrl.includes('youtu.be') ? (
+                      <iframe
+                        src={event.recordingUrl.replace('watch?v=', 'embed/')}
+                        className="w-full h-full border-0"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : event.recordingUrl.includes('vimeo') ? (
+                      <iframe
+                        src={event.recordingUrl.replace('vimeo.com/', 'player.vimeo.com/video/')}
+                        className="w-full h-full border-0"
+                        allow="autoplay; fullscreen; picture-in-picture"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <video src={event.recordingUrl} controls className="w-full h-full object-contain" />
+                    )
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center text-white space-y-2">
+                      <PlayCircle className="w-12 h-12 text-primary" />
+                      <p className="text-xs font-semibold">Recording is processing...</p>
+                    </div>
                   )}
                 </div>
+
+                {/* Claim Attendance Points & Overview */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-5 rounded-2xl border border-border bg-card shadow-xs">
+                  <div>
+                    <h4 className="font-extrabold text-sm text-foreground">Interactive Masterclass Replay</h4>
+                    <p className="text-xs text-muted-foreground">Catch up on this live session and claim your learning milestones.</p>
+                  </div>
+                  {user && !hasClaimedPoints && (
+                    <Button
+                      onClick={handleClaimPoints}
+                      className="min-h-[44px] rounded-xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-1.5 shadow-sm active:scale-[0.97]"
+                    >
+                      <Award className="w-4 h-4" /> Claim Attendance (+20 pts)
+                    </Button>
+                  )}
+                </div>
+
+                {/* AI Executive Summary & Takeaways */}
+                <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card">
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider">
+                      <Sparkles className="w-4 h-4" /> AI Executive Summary
+                    </div>
+                    <p className="text-xs text-foreground leading-relaxed">
+                      {event.aiSummary || 'Complete video replay of the live masterclass session. Review the practical demonstrations and guidance presented.'}
+                    </p>
+                  </div>
+
+                  {event.keyTakeaways && event.keyTakeaways.length > 0 && (
+                    <div className="space-y-3 pt-4 border-t border-border">
+                      <h4 className="font-extrabold text-sm text-foreground">Key Takeaways & Core Lessons</h4>
+                      <ul className="space-y-2">
+                        {event.keyTakeaways.map((takeaway, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs text-muted-foreground leading-relaxed">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                            <span>{takeaway}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {event.actionItems && event.actionItems.length > 0 && (
+                    <div className="space-y-3 pt-4 border-t border-border">
+                      <div className="flex items-center gap-2 text-foreground font-extrabold text-sm">
+                        <ListChecks className="w-4 h-4 text-primary" /> Action Items & Implementation Checklist
+                      </div>
+                      <ul className="space-y-2">
+                        {event.actionItems.map((item, idx) => (
+                          <li key={idx} className="flex items-start gap-2.5 text-xs text-muted-foreground leading-relaxed">
+                            <div className="w-4 h-4 rounded-md border border-primary/40 bg-primary/5 flex items-center justify-center shrink-0 mt-0.5">
+                              <span className="text-[10px] font-bold text-primary">{idx + 1}</span>
+                            </div>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </Card>
               </div>
-            </Card>
+            ) : (
+              <Card className="rounded-3xl border-2 border-border p-6 sm:p-8 space-y-6 bg-card">
+                <div className="space-y-2">
+                  <h3 className="font-extrabold text-lg text-foreground">Session Overview</h3>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    {event.description || 'Interactive live session covering practical implementations and drills.'}
+                  </p>
+                </div>
+
+                {/* Speaker Card */}
+                <div className="p-5 rounded-2xl border border-border bg-muted/20 flex items-center gap-4">
+                  <Avatar className="w-14 h-14 border-2 border-white shadow-md">
+                    {event.instructorAvatarUrl && <AvatarImage src={event.instructorAvatarUrl} alt={event.instructorName} />}
+                    <AvatarFallback className="bg-primary text-white font-black text-lg">
+                      {event.instructorName.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="space-y-1">
+                    <span className="text-[10px] uppercase font-bold text-primary tracking-wider">Session Host</span>
+                    <h4 className="font-extrabold text-base text-foreground">{event.instructorName}</h4>
+                    {event.instructorTitle && (
+                      <p className="text-xs text-muted-foreground">{event.instructorTitle}</p>
+                    )}
+                  </div>
+                </div>
+              </Card>
+            )}
           </div>
 
           {/* Right Column: Ticket Card & Registration Controls */}
@@ -348,44 +507,60 @@ export function PortalEventDetailClient({ slug, eventSlug }: PortalEventDetailCl
               {/* Action Buttons */}
               <div className="space-y-2.5">
                 {hasReplay ? (
-                  <Button asChild className="w-full h-11 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm active:scale-[0.97]">
-                    <Link href={`/portal/${slug}/events/${event.slug}/replay`}>
-                      <PlayCircle className="w-4 h-4" /> Watch Replay & AI Summary
-                    </Link>
-                  </Button>
+                  <div className="space-y-3">
+                    <Button asChild className="w-full min-h-[48px] rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm active:scale-[0.97]">
+                      <Link href={`/portal/${slug}/events/${event.slug}/replay`}>
+                        <PlayCircle className="w-4 h-4" /> Open Full Replay Page
+                      </Link>
+                    </Button>
+                    {event.slideDeckUrl && (
+                      <Button asChild variant="outline" className="w-full min-h-[44px] rounded-2xl font-bold text-xs gap-2 active:scale-[0.97]">
+                        <a href={event.slideDeckUrl} target="_blank" rel="noopener noreferrer">
+                          <Download className="w-4 h-4 text-primary" /> Download Slide Deck
+                        </a>
+                      </Button>
+                    )}
+                  </div>
                 ) : isRegistered ? (
-                  <div className="space-y-2">
-                    <Button asChild className="w-full h-11 rounded-2xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-700 gap-2 shadow-sm active:scale-[0.97]">
-                      <a href={event.meetingUrl} target="_blank" rel="noreferrer">
-                        <Video className="w-4 h-4" /> Enter Live Room <ExternalLink className="w-3.5 h-3.5" />
-                      </a>
+                  <div className="space-y-2.5">
+                    <Button
+                      onClick={handleJoinLiveSession}
+                      className="w-full min-h-[48px] rounded-2xl font-bold text-xs bg-emerald-600 text-white hover:bg-emerald-700 gap-2 shadow-sm active:scale-[0.97]"
+                    >
+                      <Video className="w-4 h-4" /> Enter Live Room <ExternalLink className="w-3.5 h-3.5" />
                     </Button>
 
-                    <Button
-                      variant="outline"
-                      onClick={handleDownloadIcs}
-                      className="w-full h-10 rounded-2xl font-bold text-xs gap-2"
-                    >
-                      <CalendarPlus className="w-4 h-4 text-primary" /> Add to Calendar (.ics)
-                    </Button>
+                    <AddToCalendarDropdown
+                      event={event}
+                      buttonText="Sync to Calendar"
+                      className="w-full min-h-[44px]"
+                    />
 
                     <Button
                       variant="ghost"
                       onClick={handleCancelRegistration}
                       disabled={isSubmitting}
-                      className="w-full h-8 text-[11px] text-muted-foreground hover:text-rose-500"
+                      className="w-full min-h-[40px] text-[11px] text-muted-foreground hover:text-rose-500 active:scale-[0.97]"
                     >
                       Cancel Registration
                     </Button>
                   </div>
                 ) : (
-                  <Button
-                    onClick={handleRegister}
-                    disabled={isSubmitting}
-                    className="w-full h-11 rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm"
-                  >
-                    {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Register for Session (Free)'}
-                  </Button>
+                  <div className="space-y-2.5">
+                    <Button
+                      onClick={handleRegister}
+                      disabled={isSubmitting}
+                      className="w-full min-h-[48px] rounded-2xl font-bold text-xs bg-primary text-white hover:bg-primary/90 gap-2 shadow-sm active:scale-[0.97]"
+                    >
+                      {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Register for Session (Free)'}
+                    </Button>
+                    <AddToCalendarDropdown
+                      event={event}
+                      variant="outline"
+                      buttonText="Add to Calendar (.ics)"
+                      className="w-full min-h-[44px]"
+                    />
+                  </div>
                 )}
               </div>
             </Card>

@@ -22,6 +22,12 @@ import type {
   CreateCohortInput,
   UpdateCohortInput,
 } from '@/lib/types/events';
+import {
+  generateEventIcs as generateEventIcsUtil,
+  generateCalendarWebUrls as generateCalendarWebUrlsUtil,
+  formatUtcIcsDate as formatUtcIcsDateUtil,
+  type CalendarWebUrls,
+} from '@/lib/utils/event-calendar-utils';
 
 export class EventService {
   // ── Helpers & URL Sanitization ─────────────────────────────────────────────
@@ -60,93 +66,22 @@ export class EventService {
     }
   }
 
-  private static formatUtcIcsDate(isoString: string): string {
-    const d = new Date(isoString);
-    if (isNaN(d.getTime())) return '';
-    const pad = (n: number) => String(n).padStart(2, '0');
-    return (
-      d.getUTCFullYear() +
-      pad(d.getUTCMonth() + 1) +
-      pad(d.getUTCDate()) +
-      'T' +
-      pad(d.getUTCHours()) +
-      pad(d.getUTCMinutes()) +
-      pad(d.getUTCSeconds()) +
-      'Z'
-    );
-  }
-
-  private static escapeIcsText(text: string): string {
-    return text
-      .replace(/\\/g, '\\\\')
-      .replace(/;/g, '\\;')
-      .replace(/,/g, '\\,')
-      .replace(/\r?\n/g, '\\n');
+  public static formatUtcIcsDate(isoString: string): string {
+    return formatUtcIcsDateUtil(isoString);
   }
 
   /**
    * Generate RFC 5545 compliant VCALENDAR (.ics) content for Apple iCal, Outlook, and Google.
    */
   public static generateEventIcs(event: LiveEvent): string {
-    const dtStamp = this.formatUtcIcsDate(event.createdAt || new Date().toISOString());
-    const dtStart = this.formatUtcIcsDate(event.scheduledStartTime);
-    const dtEnd = this.formatUtcIcsDate(event.scheduledEndTime);
-    const summary = this.escapeIcsText(event.title);
-    const description = this.escapeIcsText(event.description || '');
-    const location = this.escapeIcsText(event.meetingUrl);
-    const uid = `${event.id}@smartsapp.com`;
-
-    return [
-      'BEGIN:VCALENDAR',
-      'VERSION:2.0',
-      'PRODID:-//SmartSapp//Experience Platform//EN',
-      'CALSCALE:GREGORIAN',
-      'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${uid}`,
-      `DTSTAMP:${dtStamp}`,
-      `DTSTART:${dtStart}`,
-      `DTEND:${dtEnd}`,
-      `SUMMARY:${summary}`,
-      `DESCRIPTION:${description}`,
-      `LOCATION:${location}`,
-      `URL:${event.meetingUrl}`,
-      'STATUS:CONFIRMED',
-      'END:VEVENT',
-      'END:VCALENDAR',
-    ].join('\r\n');
+    return generateEventIcsUtil(event);
   }
 
   /**
    * Generate 1-click web calendar links for Google Calendar, Outlook Web, and Yahoo Calendar.
    */
-  public static generateCalendarWebUrls(event: LiveEvent): {
-    google: string;
-    outlook: string;
-    yahoo: string;
-  } {
-    const dtStart = this.formatUtcIcsDate(event.scheduledStartTime);
-    const dtEnd = this.formatUtcIcsDate(event.scheduledEndTime);
-    const title = encodeURIComponent(event.title);
-    const details = encodeURIComponent(event.description || '');
-    const location = encodeURIComponent(event.meetingUrl);
-
-    // Google Calendar
-    const google = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dtStart}/${dtEnd}&details=${details}&location=${location}`;
-
-    // Outlook Web
-    const outlook = `https://outlook.live.com/calendar/0/deeplink/compose?path=/calendar/action/compose&rru=addevent&subject=${title}&startdt=${encodeURIComponent(event.scheduledStartTime)}&enddt=${encodeURIComponent(event.scheduledEndTime)}&body=${details}&location=${location}`;
-
-    // Yahoo Calendar duration in HHMM format
-    const startMs = new Date(event.scheduledStartTime).getTime();
-    const endMs = new Date(event.scheduledEndTime).getTime();
-    const durationMins = Math.max(15, Math.round((endMs - startMs) / 60000));
-    const hours = Math.floor(durationMins / 60);
-    const mins = durationMins % 60;
-    const dur = `${String(hours).padStart(2, '0')}${String(mins).padStart(2, '0')}`;
-    const yahoo = `https://calendar.yahoo.com/?v=60&view=d&type=20&title=${title}&st=${dtStart}&dur=${dur}&desc=${details}&in_loc=${location}`;
-
-    return { google, outlook, yahoo };
+  public static generateCalendarWebUrls(event: LiveEvent): CalendarWebUrls {
+    return generateCalendarWebUrlsUtil(event);
   }
 
   // ── Live Event CRUD ────────────────────────────────────────────────────────
