@@ -163,6 +163,13 @@ describe('survey-source-extractor', () => {
       expect(result.content).toContain('[Content truncated: exceeded character cap of 100 characters]');
       expect(result.content.startsWith('A'.repeat(100))).toBe(true);
     });
+
+    it('rejects unsupported binary files with descriptive error message', async () => {
+      const binFile = new File([new Uint8Array([0x00, 0x01, 0x02])], 'installer.exe', {
+        type: 'application/octet-stream',
+      });
+      await expect(extractTextFromFile(binFile)).rejects.toThrow(/Unsupported file type/);
+    });
   });
 
   describe('ARCHETYPE_PRESETS', () => {

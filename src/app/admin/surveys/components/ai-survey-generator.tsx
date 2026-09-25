@@ -338,8 +338,16 @@ export default function AiSurveyGenerator() {
 
       let generatedData: GeneratedSurveyData | null = null;
 
-      // Fast-path: use legacy monolithic flow for short inputs with zero attached files/URLs
-      if (
+      // Check for pure URL input (0 attached files, 1 URL, no custom prompt) -> direct chunked scraper
+      if (payload.attachedFiles.length === 0 && payload.attachedUrls.length === 1 && !payload.prompt.trim()) {
+        toast({
+          title: 'Scraping Web Reference',
+          description: `Extracting content from ${payload.attachedUrls[0].domain}...`,
+        });
+        const rawGenerated = await runChunkedGeneration(payload.attachedUrls[0].url, 'url');
+        generatedData = rawGenerated as unknown as GeneratedSurveyData;
+      } else if (
+        // Fast-path: use legacy monolithic flow for short inputs with zero attached files/URLs
         payload.attachedFiles.length === 0 &&
         payload.attachedUrls.length === 0 &&
         content.length < SIMPLE_CONTENT_THRESHOLD
@@ -418,22 +426,58 @@ export default function AiSurveyGenerator() {
 
   const handleRetry = async () => {
     const failedPhase = getFailedPhase();
-    if (!failedPhase || failedPhase === 'saving') return;
+    if (!failedPhase) return;
 
     setIsGenerating(true);
 
     try {
-      const generatedData = await runChunkedGeneration(
-        sourceTextRef.current,
-        'text',
-        failedPhase
-      );
+      const { provider, modelId } = await resolveModel();
+      let generatedData: GeneratedSurveyData | null = null;
+
+      if (failedPhase === 'saving') {
+        // Recovery path: intermediate phases 1-3 already completed and cached in memory
+        if (!blueprintRef.current || !questionsRef.current || !logicRef.current) {
+          throw new Error('Previous synthesis phases missing. Please restart generation from studio.');
+        }
+        generatedData = mergeSurveyPhases(
+          blueprintRef.current as Parameters<typeof mergeSurveyPhases>[0],
+          questionsRef.current as unknown as Parameters<typeof mergeSurveyPhases>[1],
+          logicRef.current as Parameters<typeof mergeSurveyPhases>[2]
+        ) as unknown as GeneratedSurveyData;
+      } else {
+        const rawGenerated = await runChunkedGeneration(
+          sourceTextRef.current,
+          'text',
+          failedPhase
+        );
+        generatedData = rawGenerated as unknown as GeneratedSurveyData;
+      }
 
       if (!generatedData || !generatedData.title) {
         throw new Error('AI model did not return a valid survey structure after retry.');
       }
 
-      const surveyId = await saveSurvey(generatedData as unknown as GeneratedSurveyData);
+      // Re-create or register Learning Signal
+      const signalResult = await createLearningSignalAction({
+        prompt: rawPromptRef.current || sourceTextRef.current,
+        modelId,
+        provider,
+        artifactType: 'survey',
+        initialState: generatedData,
+        workspaceId: activeWorkspaceId || '',
+        organizationId: activeOrganizationId || '',
+        userId: user ? user.uid : 'system',
+      });
+
+      const surveyId = await saveSurvey({
+        ...generatedData,
+        aiMetadata: {
+          isAiGenerated: true,
+          learningSignalId: signalResult.success && signalResult.id ? signalResult.id : 'retry_recovered',
+          isFirstPublishComplete: false,
+          sourceMode: 'recovered_retry',
+        },
+      });
 
       toast({
         title: 'Survey Recovered!',

@@ -10,8 +10,9 @@
  * 3. Strict Zero-Any Invariant: Completely typed schema interfaces and error handling.
  */
 
+import { z } from 'zod';
 import { adminDb } from '@/lib/firebase-admin';
-import { requireAuth } from '@/lib/auth/require-auth';
+import { requireSystemAdmin } from '@/lib/auth/require-auth';
 import { toClientErrorMessage } from '@/lib/errors/report-error';
 
 export interface SystemAiArchitectGovernanceConfig {
@@ -33,6 +34,19 @@ export const DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG: SystemAiArchitectGovernance
   enablePromptPolishCopilot: true,
   enabledArchetypeIds: ['csat_nps', 'pulse_360', 'scored_quiz', 'pmf_survey', 'event_feedback', 'lead_intake'],
 };
+
+/**
+ * Zod validation schema for updating global architect governance parameters.
+ * Prevents out-of-bounds numbers that would cause browser OOMs or LLM token burn.
+ */
+export const SystemAiArchitectGovernanceUpdateSchema = z.object({
+  maxFileUploadSizeMb: z.number().int().min(1).max(50).optional(),
+  maxPdfPagesLimit: z.number().int().min(1).max(100).optional(),
+  maxSourceCharacterLimit: z.number().int().min(1000).max(100000).optional(),
+  defaultModelTier: z.enum(['fast', 'flagship']).optional(),
+  enablePromptPolishCopilot: z.boolean().optional(),
+  enabledArchetypeIds: z.array(z.string().regex(/^[a-z0-9_-]+$/)).max(20).optional(),
+});
 
 /**
  * Retrieves the global AI Survey Architect governance configuration.
@@ -78,6 +92,7 @@ export async function getSystemAiArchitectGovernanceAction(): Promise<{
 
 /**
  * Saves the global AI Survey Architect governance configuration.
+ * Strictly gated to platform system administrators.
  */
 export async function saveSystemAiArchitectGovernanceAction(
   config: Partial<SystemAiArchitectGovernanceConfig>
@@ -85,12 +100,21 @@ export async function saveSystemAiArchitectGovernanceAction(
   success: boolean;
   error?: string;
 }> {
-  const authUser = await requireAuth();
+  const authUser = await requireSystemAdmin();
+
+  const parseResult = SystemAiArchitectGovernanceUpdateSchema.safeParse(config);
+  if (!parseResult.success) {
+    const errorDetails = parseResult.error.errors.map((e) => `${e.path.join('.')}: ${e.message}`).join(', ');
+    return {
+      success: false,
+      error: `Invalid governance parameters: ${errorDetails}`,
+    };
+  }
 
   try {
     const docRef = adminDb.collection('system_settings').doc('survey_ai_architect_governance');
     const payload: Partial<SystemAiArchitectGovernanceConfig> = {
-      ...config,
+      ...parseResult.data,
       updatedAt: new Date().toISOString(),
       updatedBy: authUser.profile?.email || authUser.uid,
     };

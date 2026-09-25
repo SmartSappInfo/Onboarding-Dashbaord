@@ -117,7 +117,7 @@ export function ArchitectSynthesisCockpit({
             </div>
           </div>
 
-          <div className="mt-5 space-y-1.5">
+          <div className="mt-5 space-y-1.5" role="status" aria-live="polite">
             <h3 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
               {failedPhase
                 ? `Synthesis Paused at ${failedPhase.label}`

@@ -31,6 +31,11 @@ vi.mock('@/lib/auth/require-auth', () => ({
     profile: { email: 'admin@smartsapp.com' },
     isSystemAdmin: true,
   }),
+  requireSystemAdmin: vi.fn().mockResolvedValue({
+    uid: 'admin_usr_123',
+    profile: { email: 'admin@smartsapp.com' },
+    isSystemAdmin: true,
+  }),
 }));
 
 describe('survey-ai-architect-governance-actions', () => {
@@ -86,6 +91,16 @@ describe('survey-ai-architect-governance-actions', () => {
         }),
         { merge: true }
       );
+    });
+
+    it('rejects out-of-bounds file size or page limit configurations', async () => {
+      const res = await saveSystemAiArchitectGovernanceAction({
+        maxFileUploadSizeMb: 999, // Max allowed is 50
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toContain('Invalid governance parameters');
+      expect(mockSet).not.toHaveBeenCalled();
     });
   });
 });

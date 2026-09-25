@@ -318,8 +318,17 @@ export function SystemAiArchitectGovernanceMatrix() {
               return (
                 <div
                   key={preset.id}
+                  role="checkbox"
+                  aria-checked={isActive}
+                  tabIndex={0}
                   onClick={() => toggleArchetype(preset.id)}
-                  className={`cursor-pointer select-none p-3.5 rounded-xl border transition-all duration-200 active:scale-[0.98] ${
+                  onKeyDown={(e) => {
+                    if (e.key === ' ' || e.key === 'Enter') {
+                      e.preventDefault();
+                      toggleArchetype(preset.id);
+                    }
+                  }}
+                  className={`cursor-pointer select-none p-3.5 rounded-xl border transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary active:scale-[0.98] ${
                     isActive
                       ? 'border-primary/40 bg-primary/[0.04] shadow-sm'
                       : 'border-border/60 bg-background/50 opacity-60 hover:opacity-90'

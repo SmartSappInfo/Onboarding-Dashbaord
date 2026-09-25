@@ -49,6 +49,7 @@ import {
   type ArchitectUnifiedPayload,
   ARCHETYPE_PRESETS,
   type ArchetypePreset,
+  categorizeFileType,
   extractTextFromFile,
   validateAndParseUrl,
   formatUnifiedArchitectEnvelope,
@@ -99,6 +100,16 @@ export function UnifiedAiArchitectStudio({
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+  const polishTimerRef = React.useRef<NodeJS.Timeout | null>(null);
+
+  // Unmount cleanup for polish timer
+  React.useEffect(() => {
+    return () => {
+      if (polishTimerRef.current) {
+        clearTimeout(polishTimerRef.current);
+      }
+    };
+  }, []);
 
   // Restore draft from sessionStorage on mount
   React.useEffect(() => {
@@ -149,18 +160,17 @@ export function UnifiedAiArchitectStudio({
     if (!fileArray.length) return;
 
     for (const file of fileArray) {
+      const mappedType = categorizeFileType(file);
+      if (mappedType === 'other') {
+        toast({
+          variant: 'destructive',
+          title: 'Unsupported File Format',
+          description: `"${file.name}" cannot be parsed. Please attach PDF, Markdown, TXT, CSV, or JSON documents.`,
+        });
+        continue;
+      }
+
       const fileId = `file_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
-      const fileType = file.name.split('.').pop()?.toLowerCase();
-      const mappedType =
-        fileType === 'pdf'
-          ? 'pdf'
-          : fileType === 'md' || fileType === 'markdown'
-          ? 'markdown'
-          : fileType === 'csv'
-          ? 'csv'
-          : fileType === 'json'
-          ? 'json'
-          : 'text';
 
       // Insert placeholder extracting item
       const newFileItem: AttachedSourceFile = {
@@ -289,7 +299,12 @@ export function UnifiedAiArchitectStudio({
 
   // Archetype selection
   const handleApplyArchetype = (preset: ArchetypePreset) => {
-    setPrompt(preset.promptSeed);
+    const currentPrompt = prompt.trim();
+    if (currentPrompt && !currentPrompt.includes(preset.promptSeed)) {
+      setPrompt(`${currentPrompt}\n\n[Archetype Directive: ${preset.title}]\n${preset.promptSeed}`);
+    } else {
+      setPrompt(preset.promptSeed);
+    }
     setIntent((prev) => ({
       ...prev,
       depth: preset.defaultDepth,
@@ -298,7 +313,7 @@ export function UnifiedAiArchitectStudio({
 
     toast({
       title: `Applied "${preset.title}" Archetype`,
-      description: 'Pre-populated architectural directives and question depth.',
+      description: 'Loaded architectural directives and question depth.',
     });
 
     if (textareaRef.current) {
@@ -316,8 +331,12 @@ export function UnifiedAiArchitectStudio({
       return;
     }
 
+    if (polishTimerRef.current) {
+      clearTimeout(polishTimerRef.current);
+    }
+
     setIsPolishingPrompt(true);
-    setTimeout(() => {
+    polishTimerRef.current = setTimeout(() => {
       const trimmed = prompt.trim();
       const polished = `Create a structured, enterprise-grade survey based on the following requirements:\n\n${trimmed}\n\nKey Requirements:\n- Group questions into coherent thematic sections with clear stepper titles.\n- Include appropriate response scales (Likert, Multi-choice, Rating) and helpful description tips.\n- Establish logical branching between sections where applicable.\n- Provide an engaging completion message and actionable summary.`;
       setPrompt(polished);
@@ -329,8 +348,18 @@ export function UnifiedAiArchitectStudio({
     }, 450);
   };
 
+  const hasExtractingFiles = attachedFiles.some((f) => f.status === 'extracting');
+
   // Form submission handler
   const handleExecute = () => {
+    if (hasExtractingFiles) {
+      toast({
+        title: 'Documents Still Extracting',
+        description: 'Please wait a moment while your attached files finish parsing.',
+      });
+      return;
+    }
+
     const trimmedPrompt = prompt.trim();
     const hasFiles = attachedFiles.some((f) => f.status === 'ready');
     const hasUrls = attachedUrls.length > 0;
@@ -373,7 +402,7 @@ export function UnifiedAiArchitectStudio({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       e.preventDefault();
-      if (!isGenerating) {
+      if (!isGenerating && !hasExtractingFiles) {
         handleExecute();
       }
     }
@@ -381,6 +410,7 @@ export function UnifiedAiArchitectStudio({
 
   const isExecutingDisabled =
     isGenerating ||
+    hasExtractingFiles ||
     (!prompt.trim() && !attachedFiles.some((f) => f.status === 'ready') && attachedUrls.length === 0);
 
   return (
@@ -449,7 +479,7 @@ export function UnifiedAiArchitectStudio({
                 key={preset.id}
                 type="button"
                 onClick={() => handleApplyArchetype(preset)}
-                className="shrink-0 h-9 px-3.5 rounded-xl border border-border/70 bg-background/60 hover:bg-accent hover:border-primary/40 text-xs font-semibold text-foreground transition-all duration-200 active:scale-[0.97] flex items-center gap-2 shadow-xs group"
+                className="shrink-0 min-h-[44px] px-3.5 rounded-xl border border-border/70 bg-background/60 hover:bg-accent hover:border-primary/40 text-xs font-semibold text-foreground transition-all duration-200 active:scale-[0.97] flex items-center gap-2 shadow-xs group"
               >
                 <span className="text-[10px] font-bold text-primary group-hover:text-primary transition-colors">
                   {preset.badge}
@@ -578,6 +608,7 @@ export function UnifiedAiArchitectStudio({
                     <SlidersHorizontal className="h-3 w-3 text-muted-foreground" />
                     <span className="text-[11px] font-semibold text-muted-foreground">Depth:</span>
                     <select
+                      aria-label="Select Target Survey Depth"
                       value={intent.depth}
                       onChange={(e) =>
                         setIntent((prev) => ({
@@ -598,6 +629,7 @@ export function UnifiedAiArchitectStudio({
                     <Award className="h-3 w-3 text-muted-foreground" />
                     <span className="text-[11px] font-semibold text-muted-foreground">Mode:</span>
                     <select
+                      aria-label="Select Survey Scoring Mode"
                       value={intent.scoringMode}
                       onChange={(e) =>
                         setIntent((prev) => ({
@@ -737,6 +769,11 @@ export function UnifiedAiArchitectStudio({
                 <>
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Synthesizing...</span>
+                </>
+              ) : hasExtractingFiles ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Reading Docs...</span>
                 </>
               ) : (
                 <>
