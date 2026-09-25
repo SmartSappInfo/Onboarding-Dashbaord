@@ -11,11 +11,13 @@
  */
 
 import * as React from 'react';
-import type { SystemAiArchitectGovernanceConfig } from '@/lib/surveys/survey-ai-architect-governance-actions';
+import {
+  type SystemAiArchitectGovernanceConfig,
+  DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG,
+} from '@/lib/surveys/survey-ai-architect-governance-types';
 import {
   getSystemAiArchitectGovernanceAction,
   saveSystemAiArchitectGovernanceAction,
-  DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG,
 } from '@/lib/surveys/survey-ai-architect-governance-actions';
 import { ARCHETYPE_PRESETS } from '@/lib/surveys/survey-source-extractor';
 import { useToast } from '@/hooks/use-toast';

@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import {
   getSystemAiArchitectGovernanceAction,
   saveSystemAiArchitectGovernanceAction,
-  DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG,
 } from '../survey-ai-architect-governance-actions';
+import { DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG } from '../survey-ai-architect-governance-types';
 
 const mockGet = vi.fn();
 const mockSet = vi.fn().mockResolvedValue(undefined);
