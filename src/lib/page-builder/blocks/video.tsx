@@ -185,7 +185,7 @@ registerBlock({
                   onClick={() => fileInputRef.current?.click()}
                   className="w-full h-12 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200 shadow-md shadow-emerald-500/10"
                 >
-                  <Upload className="w-4 h-4" /> Upload Video File
+                  <Upload className="w-4 h-4" /> Upload
                 </Button>
                 <Button
                   type="button"
@@ -199,7 +199,7 @@ registerBlock({
                   }}
                   className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
-                  <FolderHeart className="w-4 h-4 text-emerald-500" /> Select from Media Gallery
+                  <FolderHeart className="w-4 h-4 text-emerald-500" /> Library
                 </Button>
                 <Button
                   type="button"
@@ -207,7 +207,7 @@ registerBlock({
                   onClick={() => setShowLinkInput(true)}
                   className="w-full h-12 rounded-xl text-xs font-bold bg-slate-800/85 border border-slate-700/80 text-slate-200 hover:bg-slate-750 hover:border-emerald-500/50 hover:text-white flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.98] transition-all duration-200"
                 >
-                  <LinkIcon className="w-4 h-4 text-emerald-500" /> Paste Video Link (YouTube, Vimeo, etc.)
+                  <LinkIcon className="w-4 h-4 text-emerald-500" /> Link
                 </Button>
               </div>
             ) : (

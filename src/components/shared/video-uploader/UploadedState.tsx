@@ -100,7 +100,7 @@ export function UploadedState({
                 onClick={() => { onTriggerReplaceVideo(); setIsChangingVideo(false); }}
                 className="w-full h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center gap-1 active:scale-[0.97] transition-all"
               >
-                <Upload className="w-3.5 h-3.5" /> Upload File
+                <Upload className="w-3.5 h-3.5" /> Upload
               </Button>
               {showGallery && (
                 <Button
@@ -110,7 +110,7 @@ export function UploadedState({
                   onClick={() => { onTriggerGalleryVideo(); setIsChangingVideo(false); }}
                   className="w-full h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground flex items-center justify-center gap-1 active:scale-[0.97] transition-all"
                 >
-                  <FolderHeart className="w-3.5 h-3.5" /> Media Gallery
+                  <FolderHeart className="w-3.5 h-3.5" /> Library
                 </Button>
               )}
               <Button
@@ -120,7 +120,7 @@ export function UploadedState({
                 onClick={() => { onOpenLinkVideo(); setIsChangingVideo(false); }}
                 className="w-full h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground flex items-center justify-center gap-1 active:scale-[0.97] transition-all"
               >
-                <LinkIcon className="w-3.5 h-3.5" /> Paste Video Link
+                <LinkIcon className="w-3.5 h-3.5" /> Link
               </Button>
             </div>
             <button
@@ -201,7 +201,7 @@ export function UploadedState({
                 onClick={() => { onTriggerReplaceThumbnail(); setIsChangingThumbnail(false); }}
                 className="w-full h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white active:scale-[0.97] flex items-center justify-center gap-1"
               >
-                <Upload className="w-3.5 h-3.5" /> Upload Cover Image
+                <Upload className="w-3.5 h-3.5" /> Upload
               </Button>
               {showGallery && (
                 <Button
@@ -211,7 +211,7 @@ export function UploadedState({
                   onClick={() => { onTriggerGalleryThumbnail(); setIsChangingThumbnail(false); }}
                   className="w-full h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent active:scale-[0.97] flex items-center justify-center gap-1"
                 >
-                  <FolderHeart className="w-3.5 h-3.5" /> Media Gallery
+                  <FolderHeart className="w-3.5 h-3.5" /> Library
                 </Button>
               )}
               {onOpenAiDesigner && (
@@ -232,7 +232,7 @@ export function UploadedState({
                 onClick={() => { onOpenLinkThumbnail(); setIsChangingThumbnail(false); }}
                 className="w-full h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent active:scale-[0.97] flex items-center justify-center gap-1"
               >
-                <LinkIcon className="w-3.5 h-3.5" /> Paste Image Link
+                <LinkIcon className="w-3.5 h-3.5" /> Link
               </Button>
             </div>
             <button

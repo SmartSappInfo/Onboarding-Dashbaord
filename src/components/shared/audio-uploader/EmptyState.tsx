@@ -1,15 +1,12 @@
 import React, { useState } from 'react';
-import { Film, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
+import { Music, Upload, FolderHeart, Link as LinkIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 interface EmptyStateProps {
-  onTriggerReplace?: () => void;
-  onTriggerReplaceVideo?: () => void;
-  onOpenGallery?: () => void;
-  onOpenGalleryVideo?: () => void;
-  onOpenLink?: () => void;
-  onOpenLinkVideo?: () => void;
+  onTriggerReplace: () => void;
+  onOpenGallery: () => void;
+  onOpenLink: () => void;
   showGallery: boolean;
   maxSizeMB: number;
   className?: string;
@@ -17,18 +14,12 @@ interface EmptyStateProps {
 
 export function EmptyState({
   onTriggerReplace,
-  onTriggerReplaceVideo,
   onOpenGallery,
-  onOpenGalleryVideo,
   onOpenLink,
-  onOpenLinkVideo,
   showGallery,
   maxSizeMB,
   className
 }: EmptyStateProps) {
-  const triggerReplace = onTriggerReplace || onTriggerReplaceVideo || (() => {});
-  const openGallery = onOpenGallery || onOpenGalleryVideo || (() => {});
-  const openLink = onOpenLink || onOpenLinkVideo || (() => {});
   const [dragActive, setDragActive] = useState(false);
 
   const handleDrag = (e: React.DragEvent<HTMLDivElement>) => {
@@ -60,21 +51,21 @@ export function EmptyState({
       onDragLeave={handleDrag}
       onDragOver={handleDrag}
       onDrop={handleDrop}
-      onClick={triggerReplace}
+      onClick={onTriggerReplace}
     >
       <div className="w-10 h-10 rounded-full bg-muted border border-border flex items-center justify-center text-muted-foreground">
-        <Film className="w-5 h-5" />
+        <Music className="w-5 h-5 text-violet-500" />
       </div>
 
       <div className="space-y-1">
         <p className="text-xs font-bold text-foreground hidden md:block">
-          Drag & drop video here or click to browse
+          Drag & drop audio here or click to browse
         </p>
         <p className="text-xs font-bold text-foreground block md:hidden">
-          Tap to upload video or browse
+          Tap to upload audio or browse
         </p>
         <p className="text-[10px] font-medium text-muted-foreground">
-          MP4 • MOV • AVI • Max {maxSizeMB}MB
+          MP3 • WAV • OGG • M4A • Max {maxSizeMB}MB
         </p>
       </div>
 
@@ -85,7 +76,7 @@ export function EmptyState({
         <Button
           type="button"
           size="sm"
-          onClick={triggerReplace}
+          onClick={onTriggerReplace}
           className="h-8 rounded-xl text-[10px] font-bold bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 shrink-0 active:scale-[0.97] transition-transform duration-150"
         >
           <Upload className="w-3.5 h-3.5" /> Upload
@@ -95,7 +86,7 @@ export function EmptyState({
             type="button"
             variant="outline"
             size="sm"
-            onClick={openGallery}
+            onClick={onOpenGallery}
             className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0 active:scale-[0.97] transition-transform duration-150"
           >
             <FolderHeart className="w-3.5 h-3.5" /> Library
@@ -105,7 +96,7 @@ export function EmptyState({
           type="button"
           variant="outline"
           size="sm"
-          onClick={openLink}
+          onClick={onOpenLink}
           className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0 active:scale-[0.97] transition-transform duration-150"
         >
           <LinkIcon className="w-3.5 h-3.5" /> Link

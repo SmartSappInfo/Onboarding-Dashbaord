@@ -27,6 +27,7 @@ import TipTapEditor from '@/app/admin/pages/[id]/builder/components/TipTapEditor
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 import { ImageUploader } from '@/components/shared/image-uploader';
 import { VideoUploader, VideoUploaderValue } from '@/components/shared/video-uploader';
+import { PlaybackModeSelector } from './PlaybackModeSelector';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
@@ -113,7 +114,7 @@ function UrlField({ label, value, placeholder, workspaceId, filterType, onChange
         <>
           <Button type="button" variant="outline" size="sm" onClick={() => setLibraryOpen(true)} className="h-8 text-[10px] font-bold bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:text-primary hover:bg-slate-50 dark:hover:bg-slate-750 shadow-2xs">
             <FolderHeart className="w-3 h-3 mr-1" />
-            Select from Gallery
+            Library
           </Button>
           <MediaSelectorDialog
             open={libraryOpen}
@@ -177,6 +178,14 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
     case 'boolean':
       return <Switch aria-label={field.label} checked={Boolean(value)} onCheckedChange={(checked) => onChange(checked)} />;
     case 'select':
+      if (field.key === 'playMode' || field.key === 'playbackMode') {
+        return (
+          <PlaybackModeSelector
+            value={asString(value) || 'inline'}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
       return (
         <Select value={asString(value)} onValueChange={(val) => onChange(val)}>
           <SelectTrigger aria-label={field.label} className={SELECT_TRIGGER_CLASS}><SelectValue /></SelectTrigger>
@@ -364,7 +373,9 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
 
                     return (
                       <div key={itf.key} className="space-y-1 text-left">
-                        <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">{itf.label}</Label>
+                        {itf.kind !== 'video' && itf.kind !== 'image' && (
+                          <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">{itf.label}</Label>
+                        )}
                         <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
                       </div>
                     );
@@ -465,7 +476,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
 
             return (
               <div key={field.key} className="space-y-1.5">
-                {field.kind !== 'list' ? (
+                {field.kind !== 'list' && field.kind !== 'video' && field.kind !== 'image' ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />

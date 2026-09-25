@@ -124,7 +124,7 @@ export function UploadedState({ imageUrl, showGallery, onTriggerReplace, onTrigg
                   onClick={() => { onTriggerGallery(); setIsChanging(false); }}
                   className="h-8 rounded-xl text-[10px] font-bold bg-background border border-input text-foreground hover:bg-accent hover:text-accent-foreground flex items-center gap-1 px-3 shrink-0 transition-all outline-none shadow-md"
                 >
-                  <FolderHeart className="w-3.5 h-3.5" /> Media
+                  <FolderHeart className="w-3.5 h-3.5" /> Library
                 </button>
               )}
               <button

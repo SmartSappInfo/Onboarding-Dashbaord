@@ -12,14 +12,10 @@
  */
 
 import * as React from 'react';
-import { useState } from 'react';
 import { ImageUploader } from '@/components/shared/image-uploader';
 import { VideoUploader, type VideoUploaderValue } from '@/components/shared/video-uploader';
 import { DocumentUploader } from '@/components/shared/document-uploader';
-import MediaSelectorDialog from '../../media/components/media-selector-dialog';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { AudioWaveform, Library } from 'lucide-react';
+import { AudioUploader } from '@/components/shared/audio-uploader';
 import type { MediaAsset } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
@@ -59,7 +55,6 @@ export const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
     }: MediaSelectProps,
     _ref
   ) => {
-    const [audioLibraryOpen, setAudioLibraryOpen] = useState(false);
     const hiddenInputRef = React.useRef<HTMLInputElement | null>(null);
 
     React.useImperativeHandle(_ref, () => hiddenInputRef.current as HTMLInputElement);
@@ -149,64 +144,16 @@ export const MediaSelect = React.forwardRef<HTMLInputElement, MediaSelectProps>(
     // Audio media selection
     if (filterType === 'audio') {
       return (
-        <>
-          <div className={cn('space-y-2 w-full', className)}>
-            {hiddenInput}
-            {label && (
-              <label className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
-                {label}
-              </label>
-            )}
-            {value ? (
-              <div className="p-3 rounded-xl border border-border bg-muted/20 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2 min-w-0">
-                  <AudioWaveform className="w-5 h-5 text-primary shrink-0" />
-                  <audio controls src={value} className="h-8 max-w-[260px]" />
-                </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => triggerChange('')}
-                  className="text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-50"
-                >
-                  Remove
-                </Button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <Input
-                  value={value || ''}
-                  onChange={(e) => triggerChange(e.target.value)}
-                  placeholder="Paste audio URL (.mp3, .wav)..."
-                  className="h-10 rounded-xl bg-muted/20 border-border text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAudioLibraryOpen(true)}
-                  className="h-10 rounded-xl text-xs font-semibold gap-1.5 shrink-0"
-                >
-                  <Library className="w-4 h-4" /> Media Library
-                </Button>
-              </div>
-            )}
-            {description && (
-              <p className="text-[10px] text-muted-foreground">{description}</p>
-            )}
-          </div>
-          <MediaSelectorDialog
-            open={audioLibraryOpen}
-            onOpenChange={setAudioLibraryOpen}
-            onSelectAsset={(asset) => {
-              triggerChange(asset.url);
-              setAudioLibraryOpen(false);
-            }}
-            filterType="audio"
+        <div className={cn('w-full', className)}>
+          {hiddenInput}
+          <AudioUploader
+            value={value || ''}
+            onChange={(url: string) => triggerChange(url)}
+            label={label}
+            description={description}
             workspaceId={workspaceId}
           />
-        </>
+        </div>
       );
     }
 

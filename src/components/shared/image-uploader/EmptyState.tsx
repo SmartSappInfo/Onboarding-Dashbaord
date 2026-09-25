@@ -70,7 +70,7 @@ export function EmptyState({ onTriggerReplace, onOpenGallery, onOpenLink, showGa
         </Button>
         {showGallery && (
           <Button type="button" variant="outline" size="sm" onClick={onOpenGallery} className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0">
-            <FolderHeart className="w-3.5 h-3.5" /> Media
+            <FolderHeart className="w-3.5 h-3.5" /> Library
           </Button>
         )}
         <Button type="button" variant="outline" size="sm" onClick={onOpenLink} className="h-8 rounded-xl text-[10px] font-bold bg-background border-border text-foreground hover:bg-accent hover:text-accent-foreground gap-1 px-2.5 shrink-0">
