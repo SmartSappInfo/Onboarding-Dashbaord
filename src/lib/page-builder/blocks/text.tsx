@@ -9,7 +9,7 @@ import { isColorLight } from '../resolve-theme';
 const schema = z.object({
   content: z.string().default('<p>Start writing your content here…</p>'),
   preset: z.enum(['paragraph', 'lead', 'disclaimer', 'quote', 'two-columns', 'checklist']).default('paragraph'),
-  textColorMode: z.enum(['dark', 'light']).default('dark'),
+  textColorMode: z.enum(['dark', 'light']).default('dark').optional(),
   fontSize: z.string().optional().default('default'),
   textColor: z.string().optional().default(''),
   textAlign: z.enum(['left', 'center', 'right', 'justify']).default('left'),
@@ -222,15 +222,6 @@ registerBlock({
     },
     {
       kind: 'select',
-      key: 'textColorMode',
-      label: 'Text Color Theme',
-      options: [
-        { value: 'dark', label: 'Dark Text (For Light Backgrounds)' },
-        { value: 'light', label: 'Light Text (For Dark/Hero Backgrounds)' },
-      ],
-    },
-    {
-      kind: 'select',
       key: 'fontSize',
       label: 'Font Size Override',
       options: [
@@ -262,7 +253,6 @@ registerBlock({
   render: (props: TextProps, _block, ctx) => {
     const isEdit = ctx.mode === 'edit';
     const preset = props.preset || 'paragraph';
-    const isLight = props.textColorMode === 'light';
     const blockId = _block.id;
 
     const handleBlur = (newHtml: string) => {
@@ -279,9 +269,9 @@ registerBlock({
 
     const defaultFont = resolveFont(props.fontFamily as string | undefined);
     
-    // Determine effective light text layout dynamically based on block setting and system theme
+    // Determine effective light text layout dynamically based on system theme
     const isDarkTheme = ctx.themeMode === 'dark';
-    const effectiveIsLight = isLight || isDarkTheme;
+    const effectiveIsLight = isDarkTheme;
 
     // Theme and Preset based text colors
     const baseColor = effectiveIsLight

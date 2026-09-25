@@ -16,7 +16,7 @@ const schema = z.object({
     'elegant-serif', 
     'badge-capsule'
   ]).default('section-heading'),
-  textColorMode: z.enum(['dark', 'light']).default('dark'),
+  textColorMode: z.enum(['dark', 'light']).default('dark').optional(),
   title: z.string().default('Industry-leading Title Preset'),
   tagline: z.string().optional().default('Tagline'),
   subheading: z.string().optional().default('Provide context or supporting description for this section.'),
@@ -106,15 +106,6 @@ registerBlock({
         { value: 'badge-capsule', label: 'Micro-Capsule Badge' },
       ],
     },
-    {
-      kind: 'select',
-      key: 'textColorMode',
-      label: 'Text Color Theme',
-      options: [
-        { value: 'dark', label: 'Dark Text (For Light Backgrounds)' },
-        { value: 'light', label: 'Light Text (For Dark/Hero Backgrounds)' },
-      ],
-    },
     { kind: 'text', key: 'title', label: 'Headline Text' },
     { kind: 'text', key: 'tagline', label: 'Top Tagline (Optional)' },
     { kind: 'textarea', key: 'subheading', label: 'Subheading/Description (Optional)' },
@@ -195,22 +186,12 @@ registerBlock({
     const focusRingClass = isEdit ? "focus-visible:ring-2 focus-visible:ring-emerald-500/50 focus-visible:ring-offset-2 outline-none rounded p-0.5 transition-all" : "";
     
     const preset = props.preset;
-    const isLight = props.textColorMode === 'light';
-
     const titleSize = props.customTitleSize && props.customTitleSize !== 'default' ? props.customTitleSize : null;
     const taglineSize = props.customTaglineSize && props.customTaglineSize !== 'default' ? props.customTaglineSize : null;
     const subheadingSize = props.customSubheadingSize && props.customSubheadingSize !== 'default' ? props.customSubheadingSize : null;
-    
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    const [_hasMounted, setHasMounted] = React.useState(false);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    React.useEffect(() => {
-      setHasMounted(true);
-    }, []);
 
     const isDarkTheme = ctx.themeMode === 'dark';
-    const effectiveIsLight = isLight || isDarkTheme;
+    const effectiveIsLight = isDarkTheme;
 
     let titleClass = effectiveIsLight ? 'text-white' : 'text-slate-900 dark:text-white';
     let taglineClass = effectiveIsLight ? 'text-blue-400' : 'text-[#3B5FFF] dark:text-blue-400';

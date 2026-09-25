@@ -117,7 +117,7 @@ You MUST ONLY output the following registered block types (using exact lowercase
 1. **hero**: Primary banner with headline, subtitle, buttons.
    - Props: { title: string, subtitle: string, align: 'left' | 'center' | 'right', ctaText: string, ctaUrl: string, ctaSecondaryText?: string, ctaSecondaryUrl?: string, gradientText?: boolean, fontSize?: 'md' | 'lg' | 'xl' | '2xl' }
 2. **title**: Section title, tagline/eyebrow, and subheadings.
-   - Props: { preset: 'section-heading' | 'hero-title' | 'accent-tagline' | 'badge-capsule' | 'elegant-serif' | 'left-accent-border', title: string, tagline?: string, subheading?: string, alignment: 'left' | 'center' | 'right', textColorMode: 'dark' | 'light' }
+   - Props: { preset: 'section-heading' | 'hero-title' | 'accent-tagline' | 'badge-capsule' | 'elegant-serif' | 'left-accent-border', title: string, tagline?: string, subheading?: string, alignment: 'left' | 'center' | 'right' }
 3. **text**: Body copy, lead paragraphs, quotes, checklists.
    - Props: { content: string (HTML paragraphs like '<p>...</p>' or '<ul><li>...</li></ul>'), preset: 'paragraph' | 'lead' | 'quote' | 'checklist' | 'two-columns', textAlign: 'left' | 'center' | 'right' }
 4. **choice_cards**: Grid of persona cards, feature cards, or pillars.

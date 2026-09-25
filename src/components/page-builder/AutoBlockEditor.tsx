@@ -358,6 +358,7 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
               {isExpanded && (
                 <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/40 dark:bg-slate-950/20 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                   {field.itemFields.map((itf) => {
+                    if (itf.key === 'textColorMode') return null;
                     if (item.actionType !== undefined) {
                       if (itf.key === 'url' && item.actionType !== 'url') return null;
                       if (itf.key === 'formId' && item.actionType !== 'form') return null;
@@ -443,6 +444,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
         <div className="space-y-4">
           {def.fields
             .filter((field) => {
+              if (field.key === 'textColorMode') return false;
               const hiddenFields = HIDE_TEXT_FIELDS_BY_BLOCK[block.type];
               if (hiddenFields && hiddenFields.includes(field.key)) {
                 return false;

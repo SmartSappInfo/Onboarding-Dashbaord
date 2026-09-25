@@ -13,7 +13,7 @@ const item = z.object({
 
 const schema = z.object({
   items: z.array(item).default([]),
-  textColorMode: z.enum(['dark', 'light']).default('dark'),
+  textColorMode: z.enum(['dark', 'light']).default('dark').optional(),
   customQuestionColor: z.string().optional().default(''),
   customAnswerColor: z.string().optional().default(''),
 }).catchall(z.unknown());
@@ -53,15 +53,6 @@ registerBlock({
         { kind: 'textarea', key: 'answer', label: 'Answer' },
       ],
     },
-    {
-      kind: 'select',
-      key: 'textColorMode',
-      label: 'Text Color Theme',
-      options: [
-        { value: 'dark', label: 'Dark Text (For Light Backgrounds)' },
-        { value: 'light', label: 'Light Text (For Dark/Hero Backgrounds)' },
-      ],
-    },
     { kind: 'color', key: 'customQuestionColor', label: 'Custom Question Color' },
     { kind: 'color', key: 'customAnswerColor', label: 'Custom Answer Color' },
   ],
@@ -81,9 +72,8 @@ registerBlock({
     },
   ],
   render: (props: FaqProps, _block, ctx) => {
-    const isLight = props.textColorMode === 'light';
     const isDarkTheme = ctx.themeMode === 'dark';
-    const effectiveIsLight = isLight || isDarkTheme;
+    const effectiveIsLight = isDarkTheme;
 
     if (props.items.length === 0) {
       if (ctx.mode !== 'edit') return <></>;
