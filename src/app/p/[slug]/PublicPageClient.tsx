@@ -650,21 +650,45 @@ export default function PublicPageClient({
                                                     )}
 
                                                     {block.type === 'procedure_list' && (
-                                                        <div className="space-y-6">
+                                                        <div className="space-y-6 text-left">
+                                                            {Boolean(block.props.title) && (
+                                                                <h3 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                                                                    {interpolate(String(block.props.title))}
+                                                                </h3>
+                                                            )}
+                                                            {Boolean(block.props.subtitle) && (
+                                                                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                                                    {interpolate(String(block.props.subtitle))}
+                                                                </p>
+                                                            )}
                                                             {block.props.imageUrl && (
                                                                 <div className="rounded-2xl overflow-hidden border border-border/20 dark:border-zinc-800/50 shadow-inner bg-slate-100 dark:bg-zinc-900">
-                                                                    <img src={block.props.imageUrl} alt={block.props.title} className="w-full h-auto" />
+                                                                    <img src={String(block.props.imageUrl)} alt={String(block.props.title || 'Procedure image')} className="w-full h-auto" />
                                                                 </div>
                                                             )}
                                                             <ul className="grid grid-cols-1 gap-3">
-                                                                {block.props.steps?.map((step: any, sIdx: number) => (
-                                                                    <li key={sIdx} className="flex items-start gap-4 p-5 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 border border-border/20 dark:border-zinc-800/50">
-                                                                        <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                                                            <span className="text-sm font-bold text-primary">{sIdx + 1}</span>
-                                                                        </div>
-                                                                        <p className="text-lg font-medium leading-relaxed text-slate-700 dark:text-slate-300" dangerouslySetInnerHTML={{ __html: step }} />
-                                                                    </li>
-                                                                ))}
+                                                                {Array.isArray(block.props.steps) && block.props.steps.map((rawStep: unknown, sIdx: number) => {
+                                                                    const stepTitle = typeof rawStep === 'string'
+                                                                        ? rawStep
+                                                                        : (rawStep && typeof rawStep === 'object' && 'title' in rawStep ? String(rawStep.title) : '');
+                                                                    const stepDesc = rawStep && typeof rawStep === 'object' && 'description' in rawStep
+                                                                        ? String(rawStep.description)
+                                                                        : '';
+
+                                                                    return (
+                                                                        <li key={sIdx} className="flex items-start gap-4 p-5 rounded-xl bg-slate-50/50 dark:bg-zinc-900/30 border border-border/20 dark:border-zinc-800/50">
+                                                                            <div className="mt-1 flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+                                                                                <span className="text-sm font-bold text-primary">{sIdx + 1}</span>
+                                                                            </div>
+                                                                            <div className="flex-1 space-y-1">
+                                                                                <p className="text-base font-semibold leading-relaxed text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: interpolate(stepTitle) }} />
+                                                                                {stepDesc && (
+                                                                                    <p className="text-sm font-normal leading-relaxed text-slate-600 dark:text-slate-400" dangerouslySetInnerHTML={{ __html: interpolate(stepDesc) }} />
+                                                                                )}
+                                                                            </div>
+                                                                        </li>
+                                                                    );
+                                                                })}
                                                             </ul>
                                                         </div>
                                                     )}

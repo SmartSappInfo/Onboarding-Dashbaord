@@ -93,8 +93,12 @@ export class ContentService {
       }
 
       // 2. Structured items collections (Lists, FAQs, Choice cards, Steps, Testimonials)
-      if (Array.isArray(props.items)) {
-        for (const item of props.items) {
+      const listCollection = Array.isArray(props.items)
+        ? props.items
+        : (Array.isArray(props.steps) ? props.steps : null);
+
+      if (listCollection) {
+        for (const item of listCollection) {
           if (typeof item === 'string' && item.trim().length > 0) {
             segments.push(item.trim());
           } else if (item && typeof item === 'object') {
