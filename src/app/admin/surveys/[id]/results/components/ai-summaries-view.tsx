@@ -45,8 +45,6 @@ import {
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
   Loader2,
@@ -54,11 +52,12 @@ import {
   MoreVertical,
   Copy,
   Trash2,
-  Send,
   HelpCircle,
   Quote,
   Zap,
+  FileText,
 } from 'lucide-react';
+import { UnifiedPromptBar } from '@/components/ai/PromptBar/UnifiedPromptBar';
 
 const formSchema = z.object({
   prompt: z.string().min(5, { message: 'Please enter a research inquiry of at least 5 characters.' }),
@@ -201,46 +200,32 @@ export default function AISummariesView({
             </div>
           </div>
 
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-              <FormField
-                control={form.control}
-                name="prompt"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormControl>
-                      <Textarea
-                        placeholder="e.g. Compare satisfaction between day students and boarders regarding cafeteria food, and highlight top complaints..."
-                        className="min-h-[90px] rounded-xl resize-none text-xs leading-relaxed"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage className="text-xs" />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex justify-end">
-                <Button
-                  type="submit"
-                  disabled={isQuerying || responses.length === 0}
-                  className="h-10 px-5 gap-2 font-semibold active:scale-[0.97]"
-                >
-                  {isQuerying ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      Synthesizing Evidence...
-                    </>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4" />
-                      Ask Research Assistant
-                    </>
-                  )}
-                </Button>
-              </div>
-            </form>
-          </Form>
+          <UnifiedPromptBar
+            placeholder="Ask any research inquiry across verified responses (e.g. Compare satisfaction between segments, identify top complaints)..."
+            value={form.watch('prompt')}
+            onChange={(val) => form.setValue('prompt', val)}
+            busy={isQuerying}
+            sources={[
+              {
+                key: 'responses',
+                name: `Verified Responses (${responses.length})`,
+                description: 'Cites exact verbatims and response IDs',
+                icon: FileText,
+              },
+            ]}
+            commands={SUGGESTED_PROMPTS.map((p) => ({
+              key: p,
+              label: p,
+              description: 'Preset analytical inquiry',
+              promptText: p,
+            }))}
+            disabled={responses.length === 0}
+            showModelSelector={false}
+            showEffortSelector={false}
+            showSourcesMenu={true}
+            showCommandsMenu={true}
+            onSend={(text) => void onSubmit({ prompt: text })}
+          />
         </CardContent>
       </Card>
 

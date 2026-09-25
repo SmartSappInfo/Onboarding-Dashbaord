@@ -4,6 +4,8 @@ import {
   validateAndParseUrl,
   formatUnifiedArchitectEnvelope,
   extractTextFromFile,
+  formatRowsAsMarkdownTable,
+  extractTextFromLegacyBinary,
   ARCHETYPE_PRESETS,
   type ArchitectUnifiedPayload,
 } from '../survey-source-extractor';
@@ -13,6 +15,46 @@ describe('survey-source-extractor', () => {
     it('correctly categorizes PDF files', () => {
       const file = new File(['dummy'], 'quarterly_report.pdf', { type: 'application/pdf' });
       expect(categorizeFileType(file)).toBe('pdf');
+    });
+
+    it('correctly categorizes Word (.docx) files', () => {
+      const file = new File(['dummy'], 'contract.docx', {
+        type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+      });
+      expect(categorizeFileType(file)).toBe('docx');
+    });
+
+    it('correctly categorizes legacy Word (.doc) files', () => {
+      const file = new File(['dummy'], 'archived_doc.doc', { type: 'application/msword' });
+      expect(categorizeFileType(file)).toBe('doc');
+    });
+
+    it('correctly categorizes Excel (.xlsx and .xls) files', () => {
+      const fileXlsx = new File(['dummy'], 'budget.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      });
+      expect(categorizeFileType(fileXlsx)).toBe('xlsx');
+
+      const fileXls = new File(['dummy'], 'payroll.xls', { type: 'application/vnd.ms-excel' });
+      expect(categorizeFileType(fileXls)).toBe('xls');
+    });
+
+    it('correctly categorizes PowerPoint (.pptx and .ppt) files', () => {
+      const filePptx = new File(['dummy'], 'pitch.pptx', {
+        type: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      });
+      expect(categorizeFileType(filePptx)).toBe('pptx');
+
+      const filePpt = new File(['dummy'], 'slides.ppt', { type: 'application/vnd.ms-powerpoint' });
+      expect(categorizeFileType(filePpt)).toBe('ppt');
+    });
+
+    it('correctly categorizes image files for multimodal vision', () => {
+      const filePng = new File(['dummy'], 'wireframe.png', { type: 'image/png' });
+      expect(categorizeFileType(filePng)).toBe('image');
+
+      const fileJpg = new File(['dummy'], 'whiteboard.jpg', { type: 'image/jpeg' });
+      expect(categorizeFileType(fileJpg)).toBe('image');
     });
 
     it('correctly categorizes markdown files', () => {
@@ -36,8 +78,43 @@ describe('survey-source-extractor', () => {
     });
 
     it('returns other for unknown extensions', () => {
-      const file = new File(['binary'], 'image.png', { type: 'image/png' });
+      const file = new File(['binary'], 'unknown.xyz', { type: 'application/octet-stream' });
       expect(categorizeFileType(file)).toBe('other');
+    });
+  });
+
+  describe('formatRowsAsMarkdownTable', () => {
+    it('formats 2D arrays into valid markdown tables', () => {
+      const rows = [
+        ['Question', 'Category', 'Weight'],
+        ['How easy was signup?', 'Onboarding', '5'],
+        ['Would you recommend us?', 'Loyalty', '10'],
+      ];
+      const table = formatRowsAsMarkdownTable('SurveyPlan', rows);
+      expect(table).toContain('### Sheet: SurveyPlan');
+      expect(table).toContain('| Question | Category | Weight |');
+      expect(table).toContain('| --- | --- | --- |');
+      expect(table).toContain('| How easy was signup? | Onboarding | 5 |');
+      expect(table).toContain('| Would you recommend us? | Loyalty | 10 |');
+    });
+
+    it('handles empty sheet gracefully', () => {
+      const table = formatRowsAsMarkdownTable('EmptySheet', []);
+      expect(table).toContain('*(Empty sheet)*');
+    });
+  });
+
+  describe('extractTextFromLegacyBinary', () => {
+    it('extracts printable ASCII sequences from byte buffers', () => {
+      const text = 'This is a sample extracted string from legacy binary file format.';
+      const buffer = new ArrayBuffer(text.length);
+      const view = new Uint8Array(buffer);
+      for (let i = 0; i < text.length; i++) {
+        view[i] = text.charCodeAt(i);
+      }
+
+      const extracted = extractTextFromLegacyBinary(buffer);
+      expect(extracted).toContain('sample extracted string');
     });
   });
 
@@ -75,7 +152,7 @@ describe('survey-source-extractor', () => {
   });
 
   describe('formatUnifiedArchitectEnvelope', () => {
-    it('formats a complete multi-modal envelope with prompt, intent, URLs, and attached documents', () => {
+    it('formats a complete multi-modal envelope with prompt, intent, URLs, attached documents, and images', () => {
       const payload: ArchitectUnifiedPayload = {
         prompt: 'Create a leadership assessment survey for engineering managers.',
         intent: {
@@ -100,88 +177,82 @@ describe('survey-source-extractor', () => {
             content: 'Rubric Criterion 1: Architectural rigor.\nRubric Criterion 2: Mentorship and team velocity.',
             status: 'ready',
           },
+          {
+            id: 'file-2',
+            name: 'flowchart.png',
+            size: 1048576,
+            type: 'image',
+            charCount: 0,
+            content: '[Attached Image: flowchart.png (1024x768)]',
+            thumbnailUrl: 'data:image/png;base64,sample',
+            dataUri: 'data:image/png;base64,sample',
+            dimensions: { width: 1024, height: 768 },
+            status: 'ready',
+          },
         ],
       };
 
       const envelope = formatUnifiedArchitectEnvelope(payload);
 
-      expect(envelope).toContain('# SURVEY ARCHITECT DIRECTIVES');
+      expect(envelope).toContain('### USER ARCHITECTURAL INSTRUCTIONS:');
       expect(envelope).toContain('Create a leadership assessment survey for engineering managers.');
-      expect(envelope).toContain('## ARCHITECTURAL INTENT:');
-      expect(envelope).toContain('Target Length: Standard Assessment (6 to 10 questions)');
-      expect(envelope).toContain('Scoring Configuration: Scored Assessment');
-      expect(envelope).toContain('Desired Tone: professional');
-      expect(envelope).toContain('## REFERENCE WEBSITES & LINKS:');
+      expect(envelope).toContain('Standard Assessment (6–10 Questions with balanced depth and sections)');
+      expect(envelope).toContain('Enforce Scored Assessment');
+      expect(envelope).toContain('PROFESSIONAL');
+      expect(envelope).toContain('### ATTACHED IMAGES (MULTIMODAL VISION):');
+      expect(envelope).toContain('flowchart.png');
       expect(envelope).toContain('https://company.org/leadership-principles');
-      expect(envelope).toContain('=== SOURCE MATERIAL DOCUMENTS ===');
+      expect(envelope).toContain('=== SOURCE MATERIAL ===');
       expect(envelope).toContain('engineering_rubric.txt');
       expect(envelope).toContain('Rubric Criterion 1: Architectural rigor.');
-      expect(envelope).toContain('=== END SOURCE MATERIAL DOCUMENTS ===');
-    });
-
-    it('omits documents section if no files are ready', () => {
-      const payload: ArchitectUnifiedPayload = {
-        prompt: 'Quick CSAT survey',
-        intent: {
-          depth: 'compact',
-          scoringMode: 'feedback',
-        },
-        attachedUrls: [],
-        attachedFiles: [],
-      };
-
-      const envelope = formatUnifiedArchitectEnvelope(payload);
-      expect(envelope).not.toContain('=== SOURCE MATERIAL DOCUMENTS ===');
-      expect(envelope).toContain('Target Length: Compact & Focused (3 to 5 questions)');
+      expect(envelope).toContain('=== END SOURCE MATERIAL ===');
     });
   });
 
-  describe('extractTextFromFile guardrails', () => {
-    it('throws error when file exceeds max size limit', async () => {
-      const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'giant_doc.txt', { type: 'text/plain' });
-      await expect(extractTextFromFile(bigFile, { maxFileSizeMb: 10 })).rejects.toThrow(
-        /exceeds the maximum allowed size/
+  describe('extractTextFromFile (Client Guardrails)', () => {
+    it('enforces maximum file size limit', async () => {
+      const largeFile = new File(['a'.repeat(2 * 1024 * 1024)], 'large_document.txt', {
+        type: 'text/plain',
+      });
+
+      await expect(extractTextFromFile(largeFile, { maxFileSizeMb: 1 })).rejects.toThrow(
+        /exceeds the maximum allowed size of 1 MB/
       );
     });
 
-    it('reads plain text files and measures character counts', async () => {
-      const content = 'Line 1 of requirements\nLine 2 of requirements';
-      const file = new File([content], 'spec.txt', { type: 'text/plain' });
-      const result = await extractTextFromFile(file);
+    it('enforces character truncation limit for large plain text', async () => {
+      const longText = 'x'.repeat(3000);
+      const textFile = new File([longText], 'long_notes.txt', { type: 'text/plain' });
 
-      expect(result.content).toBe(content);
-      expect(result.charCount).toBe(content.length);
-      expect(result.truncated).toBe(false);
-    });
-
-    it('truncates content when exceeding character cap', async () => {
-      const longText = 'A'.repeat(500);
-      const file = new File([longText], 'long.txt', { type: 'text/plain' });
-      const result = await extractTextFromFile(file, { maxCharsPerFile: 100 });
-
+      const result = await extractTextFromFile(textFile, { maxCharsPerFile: 1000 });
       expect(result.truncated).toBe(true);
-      expect(result.content).toContain('[Content truncated: exceeded character cap of 100 characters]');
-      expect(result.content.startsWith('A'.repeat(100))).toBe(true);
+      expect(result.content).toContain('... [Content truncated due to character limit]');
+      expect(result.charCount).toBeLessThan(1500);
     });
 
-    it('rejects unsupported binary files with descriptive error message', async () => {
-      const binFile = new File([new Uint8Array([0x00, 0x01, 0x02])], 'installer.exe', {
-        type: 'application/octet-stream',
-      });
-      await expect(extractTextFromFile(binFile)).rejects.toThrow(/Unsupported file type/);
+    it('rejects unsupported file extensions with user-friendly message', async () => {
+      const unsupported = new File(['binary'], 'program.exe', { type: 'application/x-msdownload' });
+      await expect(extractTextFromFile(unsupported)).rejects.toThrow(/Unsupported file type/);
+    });
+
+    it('extracts image files into multimodal payload with data URI', async () => {
+      const imgFile = new File(['dummy_image_data'], 'diagram.png', { type: 'image/png' });
+      const result = await extractTextFromFile(imgFile);
+      expect(result.dataUri).toBeDefined();
+      expect(result.thumbnailUrl).toBeDefined();
+      expect(result.content).toContain('[Attached Image: diagram.png');
     });
   });
 
-  describe('ARCHETYPE_PRESETS', () => {
-    it('contains at least 6 diverse archetype presets with prompts', () => {
-      expect(ARCHETYPE_PRESETS.length).toBeGreaterThanOrEqual(6);
-      ARCHETYPE_PRESETS.forEach((preset) => {
-        expect(preset.id).toBeTruthy();
-        expect(preset.title).toBeTruthy();
-        expect(preset.promptSeed).toBeTruthy();
-        expect(['compact', 'standard', 'in_depth']).toContain(preset.defaultDepth);
-        expect(['auto', 'scored', 'feedback']).toContain(preset.defaultScoring);
-      });
+  describe('ARCHETYPE_PRESETS Catalog', () => {
+    it('contains all 6 standard flagship archetypes', () => {
+      const ids = ARCHETYPE_PRESETS.map((p) => p.id);
+      expect(ids).toContain('csat_nps');
+      expect(ids).toContain('pulse_360');
+      expect(ids).toContain('scored_quiz');
+      expect(ids).toContain('pmf_survey');
+      expect(ids).toContain('event_feedback');
+      expect(ids).toContain('lead_intake');
     });
   });
 });

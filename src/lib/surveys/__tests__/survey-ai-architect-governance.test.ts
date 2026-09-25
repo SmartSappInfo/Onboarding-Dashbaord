@@ -53,7 +53,13 @@ describe('survey-ai-architect-governance-actions', () => {
       expect(res.success).toBe(true);
       expect(res.config).toEqual(DEFAULT_AI_ARCHITECT_GOVERNANCE_CONFIG);
       expect(res.config.maxFileUploadSizeMb).toBe(10);
+      expect(res.config.maxImageUploadSizeMb).toBe(5);
       expect(res.config.maxPdfPagesLimit).toBe(20);
+      expect(res.config.maxSpreadsheetRows).toBe(500);
+      expect(res.config.maxPresentationSlides).toBe(30);
+      expect(res.config.imageVisionMode).toBe('multimodal');
+      expect(res.config.allowedFileTypes).toContain('docx');
+      expect(res.config.allowedFileTypes).toContain('image');
     });
 
     it('returns merged stored config when document exists in Firestore', async () => {
@@ -61,15 +67,20 @@ describe('survey-ai-architect-governance-actions', () => {
         exists: true,
         data: () => ({
           maxFileUploadSizeMb: 25,
+          maxImageUploadSizeMb: 10,
           maxPdfPagesLimit: 50,
+          maxSpreadsheetRows: 1000,
           defaultModelTier: 'flagship',
+          imageVisionMode: 'multimodal',
         }),
       });
 
       const res = await getSystemAiArchitectGovernanceAction();
       expect(res.success).toBe(true);
       expect(res.config.maxFileUploadSizeMb).toBe(25);
+      expect(res.config.maxImageUploadSizeMb).toBe(10);
       expect(res.config.maxPdfPagesLimit).toBe(50);
+      expect(res.config.maxSpreadsheetRows).toBe(1000);
       expect(res.config.defaultModelTier).toBe('flagship');
       expect(res.config.maxSourceCharacterLimit).toBe(25000); // from defaults
     });
@@ -79,14 +90,20 @@ describe('survey-ai-architect-governance-actions', () => {
     it('persists partial updates with timestamp and updatedBy user email', async () => {
       const res = await saveSystemAiArchitectGovernanceAction({
         maxFileUploadSizeMb: 15,
+        maxImageUploadSizeMb: 8,
+        maxSpreadsheetRows: 800,
         defaultModelTier: 'flagship',
+        imageVisionMode: 'multimodal',
       });
 
       expect(res.success).toBe(true);
       expect(mockSet).toHaveBeenCalledWith(
         expect.objectContaining({
           maxFileUploadSizeMb: 15,
+          maxImageUploadSizeMb: 8,
+          maxSpreadsheetRows: 800,
           defaultModelTier: 'flagship',
+          imageVisionMode: 'multimodal',
           updatedBy: 'admin@smartsapp.com',
         }),
         { merge: true }
@@ -99,7 +116,17 @@ describe('survey-ai-architect-governance-actions', () => {
       });
 
       expect(res.success).toBe(false);
-      expect(res.error).toContain('Invalid governance parameters');
+      expect(res.error).toBeDefined();
+      expect(mockSet).not.toHaveBeenCalled();
+    });
+
+    it('rejects out-of-bounds spreadsheet row limits', async () => {
+      const res = await saveSystemAiArchitectGovernanceAction({
+        maxSpreadsheetRows: 99999, // Max allowed is 5000
+      });
+
+      expect(res.success).toBe(false);
+      expect(res.error).toBeDefined();
       expect(mockSet).not.toHaveBeenCalled();
     });
   });

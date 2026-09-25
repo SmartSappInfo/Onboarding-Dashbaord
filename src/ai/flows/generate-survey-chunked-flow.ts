@@ -31,6 +31,14 @@ import {
 const BlueprintInputSchema = z.object({
   sourceType: z.enum(['text', 'url']),
   content: z.string(),
+  images: z
+    .array(
+      z.object({
+        dataUri: z.string(),
+        name: z.string().optional(),
+      })
+    )
+    .optional(),
   organizationId: z.string().optional(),
   provider: z.string().optional().default('anthropic'),
   modelId: z.string().optional().default('claude-3-5-sonnet'),
@@ -467,6 +475,7 @@ import { getErrorMessage, getErrorStatus } from '@/lib/errors/report-error';
 export async function generateSurveyChunked(input: {
   sourceType: 'text' | 'url';
   content: string;
+  images?: Array<{ dataUri: string; name?: string }>;
   organizationId?: string;
   provider?: string;
   modelId?: string;
@@ -482,6 +491,7 @@ export async function generateSurveyChunked(input: {
   const blueprint = await generateSurveyBlueprint({
     content: sourceText,
     sourceType: 'text',
+    images: input.images,
     organizationId: input.organizationId,
     provider,
     modelId,
@@ -537,7 +547,12 @@ async function resolveSourceText(input: { sourceType: string; content: string })
 async function callAI<T>(params: {
   prompt: string;
   schema: z.ZodTypeAny; // z.ZodTypeAny to support ZodDefault/ZodOptional wrappers
-  input: { organizationId?: string; provider?: string; modelId?: string };
+  input: {
+    organizationId?: string;
+    provider?: string;
+    modelId?: string;
+    images?: Array<{ dataUri: string; name?: string }>;
+  };
   phaseName: string;
 }): Promise<T> {
   const { prompt, schema, input, phaseName } = params;
@@ -568,6 +583,21 @@ async function callAI<T>(params: {
 
         const fullPrompt = `${prompt}\n\nYou MUST return raw, strictly well-formed JSON matching the exact schema requirements defined. Do not use markdown wrappers.`;
 
+        // Format user message with multimodal image parts if attached
+        const userContent: Array<{ type: string; text?: string; image_url?: { url: string } }> = [
+          { type: 'text', text: fullPrompt },
+        ];
+        if (input.images && input.images.length > 0) {
+          for (const img of input.images) {
+            if (img.dataUri && img.dataUri.startsWith('data:')) {
+              userContent.push({
+                type: 'image_url',
+                image_url: { url: img.dataUri },
+              });
+            }
+          }
+        }
+
         const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
           headers: {
@@ -580,7 +610,7 @@ async function callAI<T>(params: {
             response_format: { type: 'json_object' },
             messages: [
               { role: 'system', content: 'You are an AI generating exactly formatted JSON mapping back to strict schema constraints. Every response MUST be a single JSON object wrapped in the appropriate root key (e.g. "elements" or "sections").' },
-              { role: 'user', content: fullPrompt },
+              { role: 'user', content: userContent.length > 1 ? userContent : fullPrompt },
             ],
           }),
         });
@@ -594,7 +624,7 @@ async function callAI<T>(params: {
         return schema.parse(parsed);
       }
 
-      // Native Genkit path (Gemini, OpenAI)
+      // Native Genkit path (Gemini, OpenAI, Anthropic)
       const resolvedModel = await getModel({
         organizationId: input.organizationId,
         provider,
@@ -603,9 +633,23 @@ async function callAI<T>(params: {
 
       const generatorAi = resolvedModel.customAi || ai;
 
+      // Construct prompt parts for Genkit multimodal vision
+      const promptParts: Array<{ text?: string; media?: { url: string } }> = [
+        { text: prompt },
+      ];
+      if (input.images && input.images.length > 0) {
+        for (const img of input.images) {
+          if (img.dataUri && img.dataUri.startsWith('data:')) {
+            promptParts.push({
+              media: { url: img.dataUri },
+            });
+          }
+        }
+      }
+
       const { output } = await generatorAi.generate({
         model: resolvedModel.modelString,
-        prompt,
+        prompt: promptParts.length > 1 ? (promptParts as unknown as string) : prompt,
         output: { schema },
       });
 

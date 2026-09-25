@@ -100,6 +100,7 @@ export default function AiSurveyGenerator() {
   const logicRef = React.useRef<unknown>(null);
   const sourceTextRef = React.useRef<string>('');
   const rawPromptRef = React.useRef<string>('');
+  const imagesRef = React.useRef<Array<{ dataUri: string; name?: string }> | undefined>(undefined);
   const providerRef = React.useRef<string>('googleai');
   const modelIdRef = React.useRef<string>('gemini-3.5-flash');
   const keyLevelRef = React.useRef<string>('App API');
@@ -126,6 +127,7 @@ export default function AiSurveyGenerator() {
     blueprintRef.current = null;
     questionsRef.current = null;
     logicRef.current = null;
+    imagesRef.current = undefined;
   };
 
   const getFailedPhase = (): SynthesisPhaseId | null => {
@@ -155,9 +157,17 @@ export default function AiSurveyGenerator() {
     return { provider, modelId, keyLevel };
   };
 
-  const runChunkedGeneration = async (content: string, sourceType: 'text' | 'url', startFrom?: SynthesisPhaseId) => {
+  const runChunkedGeneration = async (
+    content: string,
+    sourceType: 'text' | 'url',
+    startFrom?: SynthesisPhaseId,
+    images?: Array<{ dataUri: string; name?: string }>
+  ) => {
     const { provider, modelId, keyLevel: _keyLevel } = await resolveModel();
     sourceTextRef.current = content;
+    if (images) {
+      imagesRef.current = images;
+    }
 
     const resolvedText = content;
 
@@ -168,6 +178,7 @@ export default function AiSurveyGenerator() {
         blueprintRef.current = await generateSurveyBlueprint({
           sourceType,
           content: resolvedText,
+          images: imagesRef.current,
           organizationId: activeOrganizationId,
           provider,
           modelId,
@@ -314,6 +325,7 @@ export default function AiSurveyGenerator() {
     attachedFiles: AttachedSourceFile[];
     attachedUrls: AttachedSourceUrl[];
     intent: ArchitectIntentConfig;
+    images?: Array<{ dataUri: string; name?: string }>;
   }) => {
     if (!firestore) {
       toast({ variant: 'destructive', title: 'Error', description: 'Firestore connection is not available.' });
@@ -372,7 +384,12 @@ export default function AiSurveyGenerator() {
         updatePhase('logic', { status: 'complete' });
       } else {
         // Chunked pipeline for rich multi-modal content
-        const rawGenerated = await runChunkedGeneration(content, 'text');
+        const rawGenerated = await runChunkedGeneration(
+          content,
+          'text',
+          undefined,
+          payload.images
+        );
         generatedData = rawGenerated as unknown as GeneratedSurveyData;
       }
 
@@ -448,7 +465,8 @@ export default function AiSurveyGenerator() {
         const rawGenerated = await runChunkedGeneration(
           sourceTextRef.current,
           'text',
-          failedPhase
+          failedPhase,
+          imagesRef.current
         );
         generatedData = rawGenerated as unknown as GeneratedSurveyData;
       }

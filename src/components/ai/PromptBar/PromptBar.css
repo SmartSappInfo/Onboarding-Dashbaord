@@ -1,0 +1,154 @@
+/**
+ * @fileoverview Universal AI PromptBar Styling
+ * 
+ * DESIGN PRINCIPLES:
+ * 1. Semantic HSL Tokens: Perfectly binds to Tailwind/CSS custom properties.
+ * 2. Mobile Ergonomics: 16px font-size to prevent iOS Safari auto-zoom; min-h-[44px] touch targets.
+ * 3. Emil Kowalski Motion: Spring physics, active tactile compression (scale 0.97), and smooth opacity bridging.
+ */
+
+.promptbar-container {
+  position: relative;
+  width: 100%;
+  border-radius: 1.25rem;
+  background-color: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.02);
+  transition: border-color 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.promptbar-container:focus-within {
+  border-color: hsl(var(--primary) / 0.6);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.12), 0 8px 24px -4px rgba(0, 0, 0, 0.08);
+}
+
+.promptbar-textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-size: 1rem;
+  line-height: 1.5;
+  color: hsl(var(--foreground));
+  padding: 0.875rem 1rem 0.5rem 1rem;
+  font-family: inherit;
+}
+
+@media (min-width: 640px) {
+  .promptbar-textarea {
+    font-size: 0.875rem;
+    padding: 0.75rem 1rem 0.375rem 1rem;
+  }
+}
+
+.promptbar-textarea::placeholder {
+  color: hsl(var(--muted-foreground) / 0.7);
+}
+
+.promptbar-pill-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.75rem;
+  background-color: hsl(var(--muted) / 0.6);
+  color: hsl(var(--muted-foreground));
+  border: 1px solid hsl(var(--border) / 0.6);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.promptbar-pill-btn:hover {
+  background-color: hsl(var(--muted));
+  color: hsl(var(--foreground));
+  border-color: hsl(var(--border));
+}
+
+.promptbar-pill-btn:active {
+  transform: scale(0.97);
+}
+
+.promptbar-action-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 9999px;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  transition: transform 0.12s ease-out, opacity 0.15s ease-out, background-color 0.15s ease-out;
+  cursor: pointer;
+}
+
+.promptbar-action-btn:hover {
+  opacity: 0.92;
+}
+
+.promptbar-action-btn:active {
+  transform: scale(0.95);
+}
+
+.promptbar-action-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.promptbar-popover-menu {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  z-index: 50;
+  min-width: 220px;
+  max-width: 320px;
+  max-height: 280px;
+  overflow-y: auto;
+  border-radius: 1rem;
+  background-color: hsl(var(--popover));
+  color: hsl(var(--popover-foreground));
+  border: 1px solid hsl(var(--border));
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+  padding: 0.375rem;
+  transform-origin: bottom left;
+}
+
+.promptbar-popover-item {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 0.625rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.12s ease;
+  user-select: none;
+}
+
+.promptbar-popover-item:hover,
+.promptbar-popover-item[data-selected="true"] {
+  background-color: hsl(var(--accent));
+  color: hsl(var(--accent-foreground));
+}
+
+.promptbar-attachment-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.75rem;
+  background-color: hsl(var(--muted) / 0.5);
+  border: 1px solid hsl(var(--border) / 0.8);
+  font-size: 0.75rem;
+  max-width: 240px;
+  transition: border-color 0.15s ease;
+}
+
+.promptbar-attachment-chip:hover {
+  border-color: hsl(var(--border));
+}
