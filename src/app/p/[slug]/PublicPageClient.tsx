@@ -826,6 +826,46 @@ export default function PublicPageClient({
                                                             <div dangerouslySetInnerHTML={{ __html: sanitizeHtml(String(block.props.html)) }} />
                                                         </>
                                                     )}
+
+                                                    {block.type === 'list' && block.props.items?.length > 0 && (() => {
+                                                        const showIntro = Boolean(block.props.showIntroText || block.props.introTitle || block.props.title);
+                                                        const introTitle = block.props.introTitle || block.props.title;
+                                                        const introText = block.props.introText;
+                                                        const isCenter = block.props.introAlignment === 'center';
+                                                        return (
+                                                            <div className="w-full space-y-4 text-left">
+                                                                {showIntro && (introTitle || introText) && (
+                                                                    <div className={cn("space-y-1 mb-4", isCenter && "text-center")}>
+                                                                        {introTitle && (
+                                                                            <h3 className="text-xl font-bold tracking-tight text-slate-900 dark:text-slate-100">
+                                                                                {interpolate(String(introTitle))}
+                                                                            </h3>
+                                                                        )}
+                                                                        {introText && (
+                                                                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                                                                                {interpolate(String(introText))}
+                                                                            </p>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                                <ul className="space-y-3">
+                                                                    {block.props.items.map((item: any, iIdx: number) => (
+                                                                        <li key={item.id || iIdx} className="flex items-start gap-3">
+                                                                            <div className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 text-xs font-bold">
+                                                                                ✓
+                                                                            </div>
+                                                                            <div className="flex-1 min-w-0">
+                                                                                <div className="text-sm font-bold text-slate-800 dark:text-slate-200" dangerouslySetInnerHTML={{ __html: sanitizeHtml(interpolate(String(item.title || ''))) }} />
+                                                                                {item.description && (
+                                                                                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5" dangerouslySetInnerHTML={{ __html: sanitizeHtml(interpolate(String(item.description))) }} />
+                                                                                )}
+                                                                            </div>
+                                                                        </li>
+                                                                    ))}
+                                                                </ul>
+                                                            </div>
+                                                        );
+                                                    })()}
                                                 </div>
                                             ))}
                                         </div>

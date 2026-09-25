@@ -84,6 +84,8 @@ export class ContentService {
         'author',
         'alt',
         'buttonText',
+        'introTitle',
+        'introText',
       ];
       for (const key of directProps) {
         const val = props[key];
