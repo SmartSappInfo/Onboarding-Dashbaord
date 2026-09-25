@@ -88,5 +88,38 @@ describe('EventService — Attendance Engine & LMS Completion Bridge', () => {
     it('clamps negative durations to 0', () => {
       expect(EventService.capAttendedDuration(-500, 60)).toBe(0);
     });
+
+    it('strictly bounds client-reported duration by server wall-clock elapsed time', () => {
+      // Joined 300 seconds (5 mins) ago.
+      const joinedAt = '2026-10-01T14:00:00.000Z';
+      const leftAt = '2026-10-01T14:05:00.000Z'; // 300s elapsed
+
+      // Malicious client claims 50,000 seconds of attendance
+      const verifiedSpoofed = EventService.verifyAttendedDuration({
+        claimedDurationSeconds: 50000,
+        joinedAt,
+        leftAt,
+        scheduledDurationMinutes: 60,
+      });
+      // Should be bounded to elapsed (300s) + 60s tolerance = 360s
+      expect(verifiedSpoofed).toBe(360);
+
+      // Honest client claims 250 seconds (less than elapsed 300s)
+      const verifiedHonest = EventService.verifyAttendedDuration({
+        claimedDurationSeconds: 250,
+        joinedAt,
+        leftAt,
+        scheduledDurationMinutes: 60,
+      });
+      expect(verifiedHonest).toBe(250);
+
+      // Omitting claimed duration automatically uses exact wall-clock elapsed time (300s)
+      const verifiedOmitted = EventService.verifyAttendedDuration({
+        joinedAt,
+        leftAt,
+        scheduledDurationMinutes: 60,
+      });
+      expect(verifiedOmitted).toBe(300);
+    });
   });
 });

@@ -340,6 +340,29 @@ export class EventService {
     return Math.min(durationSeconds, maxAllowed);
   }
 
+  /**
+   * Evaluates server-side verified attended duration.
+   * Prevents client spoofing by capping claimed duration against wall-clock elapsed time
+   * between join and leave timestamps, with a 60-second tolerance for network latency.
+   */
+  public static verifyAttendedDuration(params: {
+    claimedDurationSeconds?: number;
+    joinedAt: string;
+    leftAt: string;
+    scheduledDurationMinutes: number;
+  }): number {
+    const joinedMs = new Date(params.joinedAt).getTime();
+    const leftMs = new Date(params.leftAt).getTime();
+    const elapsedSeconds = Math.max(0, Math.round((leftMs - joinedMs) / 1000));
+    const serverMaxSeconds = elapsedSeconds + 60; // 60s tolerance for clock drift
+
+    const rawDuration = params.claimedDurationSeconds !== undefined
+      ? Math.min(Math.max(0, params.claimedDurationSeconds), serverMaxSeconds)
+      : elapsedSeconds;
+
+    return this.capAttendedDuration(rawDuration, params.scheduledDurationMinutes);
+  }
+
   public static async recordEventAttendance(input: RecordAttendanceInput): Promise<EventRegistration> {
     const regId = `reg_${input.eventId}_${input.userId}`;
     const regRef = adminDb.collection('event_registrations').doc(regId);
@@ -503,15 +526,16 @@ export class EventService {
 
     const current = regSnap.exists ? (regSnap.data() as EventRegistration) : null;
     const joinedAt = current?.joinedAt || now;
-
-    let rawDuration = input.durationSeconds;
-    if (rawDuration === undefined) {
-      const elapsedMs = new Date(now).getTime() - new Date(joinedAt).getTime();
-      rawDuration = Math.max(0, Math.round(elapsedMs / 1000));
-    }
-
     const scheduledMins = eventData?.durationMinutes || 60;
-    const attendedDurationSeconds = this.capAttendedDuration(rawDuration, scheduledMins);
+
+    // Server-side verified duration capping: prevents client spoofing beyond elapsed wall-clock time
+    const attendedDurationSeconds = this.verifyAttendedDuration({
+      claimedDurationSeconds: input.durationSeconds,
+      joinedAt,
+      leftAt: now,
+      scheduledDurationMinutes: scheduledMins,
+    });
+
     const status = this.calculateAttendanceStatus({
       attendedDurationSeconds,
       scheduledDurationMinutes: scheduledMins,
