@@ -29,10 +29,29 @@ export interface ImagePresetOption {
   label: string;
 }
 
+export type ImagePresetBundleAttributes = {
+  borderRadius: 'none' | 'rounded' | 'squircle' | 'circle' | 'arch';
+  aspectRatio: 'auto' | '1:1' | '4:3' | '16:9' | '21:9' | '9:16' | '3:4';
+  elevation: 'none' | 'hairline' | 'shadow' | 'browser' | 'mobile';
+  hoverEffect: 'none' | 'zoom' | 'grayscale' | 'duotone';
+  objectFit: 'cover' | 'contain';
+};
+
+export const IMAGE_PRESET_BUNDLES: Record<string, ImagePresetBundleAttributes> = {
+  'clean-card': { borderRadius: 'rounded', aspectRatio: 'auto', elevation: 'hairline', hoverEffect: 'none', objectFit: 'cover' },
+  'browser-mockup': { borderRadius: 'rounded', aspectRatio: '16:9', elevation: 'browser', hoverEffect: 'none', objectFit: 'cover' },
+  'mobile-chassis': { borderRadius: 'squircle', aspectRatio: '9:16', elevation: 'mobile', hoverEffect: 'none', objectFit: 'cover' },
+  'cathedral-arch': { borderRadius: 'arch', aspectRatio: '3:4', elevation: 'hairline', hoverEffect: 'none', objectFit: 'cover' },
+  'circular-avatar': { borderRadius: 'circle', aspectRatio: '1:1', elevation: 'hairline', hoverEffect: 'none', objectFit: 'cover' },
+  'floating-elevated': { borderRadius: 'rounded', aspectRatio: 'auto', elevation: 'shadow', hoverEffect: 'none', objectFit: 'cover' },
+  'interactive-zoom': { borderRadius: 'rounded', aspectRatio: 'auto', elevation: 'hairline', hoverEffect: 'zoom', objectFit: 'cover' },
+  'neo-brutalist': { borderRadius: 'none', aspectRatio: 'auto', elevation: 'shadow', hoverEffect: 'none', objectFit: 'cover' },
+};
+
 export interface ImagePresetSelectorProps {
   value?: string;
   options: ReadonlyArray<ImagePresetOption>;
-  onChange: (value: string) => void;
+  onChange: (value: string, bundle?: ImagePresetBundleAttributes) => void;
   className?: string;
 }
 
@@ -147,19 +166,27 @@ export function ImagePresetSelector({
   className,
 }: ImagePresetSelectorProps) {
   const currentVal = value || options[0]?.value;
+  const buttonRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+
+  const selectPreset = (key: string, idx?: number) => {
+    onChange(key, IMAGE_PRESET_BUNDLES[key]);
+    if (typeof idx === 'number' && buttonRefs.current[idx]) {
+      buttonRefs.current[idx]?.focus();
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      onChange(options[currentIndex].value);
+      selectPreset(options[currentIndex].value, currentIndex);
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
       const nextIdx = (currentIndex + 1) % options.length;
-      onChange(options[nextIdx].value);
+      selectPreset(options[nextIdx].value, nextIdx);
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault();
       const prevIdx = (currentIndex - 1 + options.length) % options.length;
-      onChange(options[prevIdx].value);
+      selectPreset(options[prevIdx].value, prevIdx);
     }
   };
 
@@ -175,12 +202,13 @@ export function ImagePresetSelector({
         return (
           <button
             key={opt.value}
+            ref={(el) => { buttonRefs.current[idx] = el; }}
             type="button"
             role="radio"
             aria-label={opt.label}
             aria-checked={isSelected}
             tabIndex={isSelected ? 0 : -1}
-            onClick={() => onChange(opt.value)}
+            onClick={() => selectPreset(opt.value, idx)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
             className={cn(
               "group relative flex flex-col p-1.5 rounded-xl border text-left transition-all duration-200 cursor-pointer outline-none min-h-[92px]",

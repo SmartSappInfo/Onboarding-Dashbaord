@@ -143,9 +143,10 @@ interface FieldControlProps {
   resources: BuilderResources;
   workspaceId?: string;
   onChange: (value: unknown) => void;
+  onUpdateProps?: (patch: Record<string, unknown>) => void;
 }
 
-export function FieldControl({ field, value, resources, workspaceId, onChange }: FieldControlProps) {
+export function FieldControl({ field, value, resources, workspaceId, onChange, onUpdateProps }: FieldControlProps) {
   switch (field.kind) {
     case 'text':
       return (
@@ -197,7 +198,13 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
             <ImagePresetSelector
               value={asString(value) || 'clean-card'}
               options={field.options}
-              onChange={(val) => onChange(val)}
+              onChange={(val, bundle) => {
+                if (bundle && onUpdateProps) {
+                  onUpdateProps({ preset: val, ...bundle });
+                } else {
+                  onChange(val);
+                }
+              }}
             />
           );
         }
@@ -545,7 +552,6 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
             const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
             const isImagePreset = field.key === 'preset' && block.type === 'image';
-            const isAspectRatio = field.key === 'aspectRatio';
 
             return (
               <div key={field.key} className="space-y-1.5">
@@ -554,11 +560,17 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
                 field.kind !== 'image' &&
                 !isSizeField &&
                 !isPlaybackField &&
-                !isImagePreset &&
-                !isAspectRatio ? (
+                !isImagePreset ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
-                <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />
+                <FieldControl
+                  field={field}
+                  value={props[field.key]}
+                  resources={resources}
+                  workspaceId={workspaceId}
+                  onChange={(v) => onUpdateProps(block.id, { [field.key]: v })}
+                  onUpdateProps={(patch) => onUpdateProps(block.id, patch)}
+                />
               </div>
             );
           })}

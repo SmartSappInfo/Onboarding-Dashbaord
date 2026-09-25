@@ -77,8 +77,8 @@ const schema = rawSchema.transform((data) => {
     if (data.borderRadius === 'none') {
       return {
         ...data,
-        preset: 'neo-brutalist' as const,
-        elevation: data.elevation === 'hairline' ? ('shadow' as const) : data.elevation,
+        preset: 'clean-card' as const,
+        elevation: 'none' as const,
         borderRadius: 'none' as const,
       };
     }
@@ -88,56 +88,53 @@ const schema = rawSchema.transform((data) => {
     };
   }
 
-  // Preset smart defaults mapping
-  if (data.preset === 'browser-mockup') {
+  // If a preset was assigned without explicit fine-tuning overrides (i.e. still at raw defaults):
+  if (data.preset === 'browser-mockup' && data.elevation === 'hairline') {
     return {
       ...data,
       elevation: 'browser' as const,
-      borderRadius: 'rounded' as const,
       aspectRatio: data.aspectRatio === 'auto' ? ('16:9' as const) : data.aspectRatio,
     };
   }
-  if (data.preset === 'mobile-chassis') {
+  if (data.preset === 'mobile-chassis' && data.elevation === 'hairline') {
     return {
       ...data,
       elevation: 'mobile' as const,
-      borderRadius: 'squircle' as const,
+      borderRadius: data.borderRadius === 'rounded' ? ('squircle' as const) : data.borderRadius,
       aspectRatio: data.aspectRatio === 'auto' ? ('9:16' as const) : data.aspectRatio,
     };
   }
-  if (data.preset === 'cathedral-arch') {
+  if (data.preset === 'cathedral-arch' && data.borderRadius === 'rounded') {
     return {
       ...data,
       borderRadius: 'arch' as const,
       aspectRatio: data.aspectRatio === 'auto' ? ('3:4' as const) : data.aspectRatio,
     };
   }
-  if (data.preset === 'circular-avatar') {
+  if (data.preset === 'circular-avatar' && data.borderRadius === 'rounded') {
     return {
       ...data,
       borderRadius: 'circle' as const,
       aspectRatio: data.aspectRatio === 'auto' ? ('1:1' as const) : data.aspectRatio,
     };
   }
-  if (data.preset === 'floating-elevated') {
+  if (data.preset === 'floating-elevated' && data.elevation === 'hairline') {
     return {
       ...data,
       elevation: 'shadow' as const,
-      borderRadius: 'rounded' as const,
     };
   }
-  if (data.preset === 'interactive-zoom') {
+  if (data.preset === 'interactive-zoom' && data.hoverEffect === 'none') {
     return {
       ...data,
       hoverEffect: 'zoom' as const,
-      borderRadius: 'rounded' as const,
     };
   }
-  if (data.preset === 'neo-brutalist') {
+  if (data.preset === 'neo-brutalist' && data.borderRadius === 'rounded') {
     return {
       ...data,
       borderRadius: 'none' as const,
-      elevation: 'shadow' as const,
+      elevation: data.elevation === 'hairline' ? ('shadow' as const) : data.elevation,
     };
   }
 
@@ -183,7 +180,7 @@ const HOVER_EFFECT_CLASSES: Record<ImageHoverEffect, string> = {
   none: '',
   zoom: 'transition-transform duration-300 ease-out group-hover:scale-105 motion-reduce:transition-none',
   grayscale: 'grayscale group-hover:grayscale-0 transition-all duration-300 ease-out motion-reduce:transition-none',
-  duotone: 'mix-blend-multiply group-hover:mix-blend-normal transition-all duration-300 ease-out motion-reduce:transition-none',
+  duotone: 'contrast-125 sepia-[0.35] hue-rotate-15 group-hover:sepia-0 group-hover:hue-rotate-0 transition-all duration-300 ease-out motion-reduce:transition-none',
 };
 
 const OBJECT_FIT_CLASSES: Record<ImageObjectFit, string> = {
@@ -333,7 +330,7 @@ registerBlock({
       <>
         <div 
           onClick={(e) => { e.stopPropagation(); setLibraryOpen(true); }}
-          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 hover:opacity-100 transition-opacity cursor-pointer z-10"
+          className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer z-10"
         >
           <button
             type="button"
@@ -386,8 +383,8 @@ registerBlock({
               <div className="w-2.5 h-2.5 rounded-full bg-[#ff5f56]" />
               <div className="w-2.5 h-2.5 rounded-full bg-[#ffbd2e]" />
               <div className="w-2.5 h-2.5 rounded-full bg-[#27c93f]" />
-              <div className="mx-auto w-32 h-3.5 rounded-full bg-slate-200/70 dark:bg-zinc-800 flex items-center justify-center px-2">
-                <div className="w-12 h-1 bg-slate-400/60 dark:bg-zinc-600 rounded-full" />
+              <div className="mx-auto w-20 sm:w-32 max-w-[50%] min-w-0 h-3.5 rounded-full bg-slate-200/70 dark:bg-zinc-800 flex items-center justify-center px-2">
+                <div className="w-12 max-w-full h-1 bg-slate-400/60 dark:bg-zinc-600 rounded-full" />
               </div>
             </div>
           )}
@@ -424,6 +421,7 @@ registerBlock({
                 }
               )} 
               loading="lazy" 
+              decoding="async"
             />
             {changeButton}
           </div>

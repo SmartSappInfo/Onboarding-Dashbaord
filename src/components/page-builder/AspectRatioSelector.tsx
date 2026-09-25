@@ -63,19 +63,27 @@ export function AspectRatioSelector({
   className,
 }: AspectRatioSelectorProps) {
   const currentVal = value || 'auto';
+  const buttonRefs = React.useRef<(HTMLButtonElement | null)[]>([]);
+
+  const selectRatio = (val: string, idx?: number) => {
+    onChange(val);
+    if (typeof idx === 'number' && buttonRefs.current[idx]) {
+      buttonRefs.current[idx]?.focus();
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLButtonElement>, currentIndex: number) => {
     if (e.key === ' ' || e.key === 'Enter') {
       e.preventDefault();
-      onChange(options[currentIndex].value);
+      selectRatio(options[currentIndex].value, currentIndex);
     } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
       e.preventDefault();
       const nextIdx = (currentIndex + 1) % options.length;
-      onChange(options[nextIdx].value);
+      selectRatio(options[nextIdx].value, nextIdx);
     } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
       e.preventDefault();
       const prevIdx = (currentIndex - 1 + options.length) % options.length;
-      onChange(options[prevIdx].value);
+      selectRatio(options[prevIdx].value, prevIdx);
     }
   };
 
@@ -92,12 +100,13 @@ export function AspectRatioSelector({
         return (
           <button
             key={opt.value}
+            ref={(el) => { buttonRefs.current[idx] = el; }}
             type="button"
             role="radio"
             aria-label={opt.label}
             aria-checked={isSelected}
             tabIndex={isSelected ? 0 : -1}
-            onClick={() => onChange(opt.value)}
+            onClick={() => selectRatio(opt.value, idx)}
             onKeyDown={(e) => handleKeyDown(e, idx)}
             className={cn(
               "group relative flex flex-col items-center justify-center p-2 rounded-xl border text-center transition-all duration-200 cursor-pointer outline-none min-h-[52px]",
