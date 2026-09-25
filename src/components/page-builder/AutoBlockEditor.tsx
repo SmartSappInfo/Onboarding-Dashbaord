@@ -38,6 +38,7 @@ import { AspectRatioSelector } from './AspectRatioSelector';
 import { DividerStyleSelector } from './DividerStyleSelector';
 import { NumberStepperControl } from './NumberStepperControl';
 import { MediaPlacementSelector } from './MediaPlacementSelector';
+import { ProcedurePresetSelector } from './ProcedurePresetSelector';
 import {
   DividerWidthSelector,
   DividerThicknessSelector,
@@ -252,6 +253,15 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
           return (
             <ListPresetSelector
               value={asString(value) || 'checklist'}
+              options={field.options}
+              onChange={(val) => onChange(val)}
+            />
+          );
+        }
+        if (field.options.some((o) => o.value === 'connected-timeline' || o.value === 'elevated-cards')) {
+          return (
+            <ProcedurePresetSelector
+              value={asString(value) || 'connected-timeline'}
               options={field.options}
               onChange={(val) => onChange(val)}
             />
@@ -671,6 +681,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             const isImagePreset = field.key === 'preset' && block.type === 'image';
             const isVideoPreset = field.key === 'preset' && block.type === 'video';
             const isListPreset = field.key === 'preset' && block.type === 'list';
+            const isProcedurePreset = field.key === 'preset' && block.type === 'procedure_list';
             const isPlayButtonArchetype = field.key === 'playButtonArchetype';
             const isDividerStyle = field.key === 'style' && block.type === 'divider';
             const isMediaPlacement = field.key === 'mediaPosition';
@@ -685,6 +696,7 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
                 !isImagePreset &&
                 !isVideoPreset &&
                 !isListPreset &&
+                !isProcedurePreset &&
                 !isPlayButtonArchetype &&
                 !isDividerStyle &&
                 !isMediaPlacement ? (
