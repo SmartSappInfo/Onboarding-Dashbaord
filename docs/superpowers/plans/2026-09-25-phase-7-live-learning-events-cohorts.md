@@ -385,21 +385,21 @@ export interface ReleaseRule {
   - Modify: `src/app/portal/[slug]/events/[eventSlug]/page.tsx`
   - Create: `src/app/portal/[slug]/events/[eventSlug]/PortalEventDetailClient.tsx`
   - Modify: `src/app/portal/[slug]/learn/[courseId]/page.tsx` (or Course Player)
-- [ ] **Step 1: Upgrade `PortalEventsCatalogClient.tsx`**
+- [x] **Step 1: Upgrade `PortalEventsCatalogClient.tsx`**
   - Add Live Countdown Timer badge with Emil Kowalski animations.
   - Add "Add to Calendar" dropdown (Google Calendar, Outlook, iCal download).
   - Add Zoom / Meet badge indicators.
   - Mobile touch targets $\ge 44\text{px}$ (`min-h-[44px]`).
-- [ ] **Step 2: Implement `PortalEventDetailClient.tsx`**
+- [x] **Step 2: Implement `PortalEventDetailClient.tsx`**
   - Live session header with speaker bio, countdown clock, registered attendee count.
   - Prominent "Join Live Session" button (`min-h-[48px]`, `active:scale-[0.97]`).
   - Completed state showing Replay Video Player, AI Summary accordion, Key Takeaways pill cards, and Action Checklist.
-- [ ] **Step 3: Add Cohort Banner & Upcoming Sessions in Course Player**
+- [x] **Step 3: Add Cohort Banner & Upcoming Sessions in Course Player**
   - In `/portal/[slug]/learn/[courseId]`, render cohort indicator banner ("Spring 2026 Cohort • Starts Oct 1").
   - Show upcoming live sessions scheduled for this cohort.
   - Add "Join Cohort Discussion 💬" button linking to the cohort's private community space.
-- [ ] **Step 4: Run typecheck and linting**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(portal): upgrade live events catalog, event detail replay view, and cohort learner hub"`)
+- [x] **Step 4: Run typecheck and linting**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(portal): upgrade live events catalog, event detail replay view, and cohort learner hub"`)
 
 ---
 
@@ -409,24 +409,24 @@ export interface ReleaseRule {
   - Create: `src/app/admin/portals/components/events/EventAttendanceModal.tsx`
   - Create: `src/app/admin/portals/components/events/CohortRosterModal.tsx`
   - Modify: `src/app/admin/portals/components/curriculum/LessonInspectorPane.tsx`
-- [ ] **Step 1: Create `EventAttendanceModal.tsx`**
+- [x] **Step 1: Create `EventAttendanceModal.tsx`**
   - Table of registered attendees with joinedAt, duration, attendance status (`attended`, `partial`, `no_show`).
   - Manual attendance override toggle switch.
   - Export CSV / attendance report button.
-- [ ] **Step 2: Create `CohortRosterModal.tsx`**
+- [x] **Step 2: Create `CohortRosterModal.tsx`**
   - Roster of enrolled students in the cohort with joinedAt, status, and course progress bar.
   - Add student modal / remove student action.
   - Space binding selector: link or create private community space for the cohort.
-- [ ] **Step 3: Integrate Modals into `PortalEventsManager.tsx`**
+- [x] **Step 3: Integrate Modals into `PortalEventsManager.tsx`**
   - Add "Manage Attendance" button on completed or live events.
   - Add "Manage Roster" button on cohort cards.
   - Add "Attach to Course Lesson" option inside the Replay Publishing modal.
-- [ ] **Step 4: Upgrade `LessonInspectorPane.tsx`**
+- [x] **Step 4: Upgrade `LessonInspectorPane.tsx`**
   - Add `'live_session'` to content type selector.
   - When `'live_session'` is chosen, show live event selector and attendance completion rule.
   - Add `'days_after_cohort_start'` to release schedule dropdown with day delay number stepper.
-- [ ] **Step 5: Run tests, typecheck (`tsc --noEmit`), and lint**
-- [ ] **Step 6: Commit locally** (`git commit -m "feat(studio): add EventAttendanceModal, CohortRosterModal, and curriculum live session controls"`)
+- [x] **Step 5: Run tests, typecheck (`tsc --noEmit`), and lint**
+- [x] **Step 6: Commit locally** (`git commit -m "feat(studio): add EventAttendanceModal, CohortRosterModal, and curriculum live session controls"`)
 
 ---
 
