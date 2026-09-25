@@ -2611,6 +2611,11 @@ service cloud.firestore {
       allow create, update, delete: if isAuthorized();
     }
 
+    match /cohort_members/{memberId} {
+      allow get, list: if isSignedIn() || isAuthorized();
+      allow create, update, delete: if isAuthorized();
+    }
+
     // --- {{Org_name}} Experience Platform — Commerce, Offers & Affiliates ---
     match /portal_offers/{offerId} {
       allow get, list: if true;

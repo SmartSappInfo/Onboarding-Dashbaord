@@ -22,11 +22,19 @@ export type MeetingProvider = 'zoom' | 'google_meet' | 'teams' | 'custom';
 
 export type EventStatus = 'scheduled' | 'live' | 'completed' | 'cancelled';
 
-export type EventRegistrationStatus = 'registered' | 'attended' | 'cancelled' | 'waitlist';
+export type EventRegistrationStatus =
+  | 'registered'
+  | 'attended'
+  | 'partial'
+  | 'no_show'
+  | 'cancelled'
+  | 'waitlist';
 
 export type RegistrationStatus = EventRegistrationStatus;
+export type AttendanceStatus = EventRegistrationStatus;
 
 export type CohortStatus = 'upcoming' | 'in_progress' | 'completed' | 'archived';
+export type CohortMemberStatus = 'active' | 'graduated' | 'dropped';
 
 // ── Core Aggregates ──────────────────────────────────────────────────────────
 
@@ -148,12 +156,15 @@ export interface CohortMember {
   organizationId: string;
   portalId: string;
   cohortId: string;
+  courseId?: string;
   userId: string;
   userName: string;
   userEmail: string;
 
   joinedAt: string;
-  status: 'active' | 'graduated' | 'dropped';
+  status: CohortMemberStatus;
+  progressPercentage?: number;
+  completedLessonCount?: number;
 }
 
 // ── Input DTOs ───────────────────────────────────────────────────────────────

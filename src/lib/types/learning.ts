@@ -15,7 +15,13 @@ export type CourseStatus = 'draft' | 'scheduled' | 'published' | 'archived';
 
 export type CourseLevel = 'beginner' | 'intermediate' | 'advanced' | 'all_levels';
 
-export type LessonContentType = 'video' | 'article' | 'quiz' | 'assignment' | 'interactive';
+export type LessonContentType =
+  | 'video'
+  | 'article'
+  | 'quiz'
+  | 'assignment'
+  | 'interactive'
+  | 'live_session';
 
 export type EnrollmentSource =
   | 'manual_admin'
@@ -31,13 +37,16 @@ export type ReleaseScheduleType =
   | 'specific_date'
   | 'days_after_enrollment'
   | 'days_after_join'
-  | 'sequential_prerequisite';
+  | 'sequential_prerequisite'
+  | 'days_after_cohort_start'
+  | 'cohort_start_date';
 
 export type CompletionRuleType =
   | 'manual_button'
   | 'video_percentage'
   | 'assessment_pass'
-  | 'assignment_approved';
+  | 'assignment_approved'
+  | 'attendance';
 
 export type AssessmentQuestionType =
   | 'multiple_choice'
@@ -55,16 +64,18 @@ export type AssignmentSubmissionStatus =
 
 export interface ReleaseRule {
   type: ReleaseScheduleType;
-  daysDelay?: number; // Days after enrollment or join
-  releaseDate?: string; // ISO date string for specific_date
+  daysDelay?: number; // Days after enrollment, join, or cohort start
+  releaseDate?: string; // ISO date string for specific_date or cohort_start_date
   requiredLessonId?: string; // Must complete this lesson first
   requiredModuleId?: string; // Must complete this entire module first
+  cohortStartDate?: string; // Anchor date for evaluating cohort-relative unlocks
 }
 
 export interface CompletionRule {
   type: CompletionRuleType;
   minVideoPercentage?: number; // e.g. 80
   minAssessmentScore?: number; // e.g. 75
+  minAttendancePercentage?: number; // e.g. 70
 }
 
 export interface LessonAttachment {
