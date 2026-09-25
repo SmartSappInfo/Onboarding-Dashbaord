@@ -31,6 +31,8 @@ import { PlaybackModeSelector } from './PlaybackModeSelector';
 import { AlignmentSelector } from './AlignmentSelector';
 import { SizeSliderControl } from './SizeSliderControl';
 import { PresetStyleSelector } from './PresetStyleSelector';
+import { ImagePresetSelector } from './ImagePresetSelector';
+import { AspectRatioSelector } from './AspectRatioSelector';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
@@ -190,9 +192,27 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
         );
       }
       if (field.key === 'preset') {
+        if (field.options.some((o) => o.value === 'browser-mockup' || o.value === 'clean-card')) {
+          return (
+            <ImagePresetSelector
+              value={asString(value) || 'clean-card'}
+              options={field.options}
+              onChange={(val) => onChange(val)}
+            />
+          );
+        }
         return (
           <PresetStyleSelector
             value={asString(value)}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'aspectRatio') {
+        return (
+          <AspectRatioSelector
+            value={asString(value) || 'auto'}
             options={field.options}
             onChange={(val) => onChange(val)}
           />
@@ -405,10 +425,17 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
 
                     const isItemSizeField = itf.key.endsWith('Size') || itf.key.includes('FontSize');
                     const isItemPlaybackField = itf.key === 'playMode' || itf.key === 'playbackMode';
+                    const isItemImagePreset = itf.key === 'preset';
+                    const isItemAspectRatio = itf.key === 'aspectRatio';
 
                     return (
                       <div key={itf.key} className="space-y-1 text-left">
-                        {itf.kind !== 'video' && itf.kind !== 'image' && !isItemSizeField && !isItemPlaybackField && (
+                        {itf.kind !== 'video' &&
+                        itf.kind !== 'image' &&
+                        !isItemSizeField &&
+                        !isItemPlaybackField &&
+                        !isItemImagePreset &&
+                        !isItemAspectRatio && (
                           <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">{itf.label}</Label>
                         )}
                         <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
@@ -517,10 +544,18 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
 
             const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
             const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
+            const isImagePreset = field.key === 'preset' && block.type === 'image';
+            const isAspectRatio = field.key === 'aspectRatio';
 
             return (
               <div key={field.key} className="space-y-1.5">
-                {field.kind !== 'list' && field.kind !== 'video' && field.kind !== 'image' && !isSizeField && !isPlaybackField ? (
+                {field.kind !== 'list' &&
+                field.kind !== 'video' &&
+                field.kind !== 'image' &&
+                !isSizeField &&
+                !isPlaybackField &&
+                !isImagePreset &&
+                !isAspectRatio ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />
