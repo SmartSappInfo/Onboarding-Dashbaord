@@ -32,6 +32,8 @@ import { AlignmentSelector } from './AlignmentSelector';
 import { SizeSliderControl } from './SizeSliderControl';
 import { PresetStyleSelector } from './PresetStyleSelector';
 import { ImagePresetSelector } from './ImagePresetSelector';
+import { VideoPresetSelector } from './VideoPresetSelector';
+import { PlayButtonArchetypeSelector } from './PlayButtonArchetypeSelector';
 import { AspectRatioSelector } from './AspectRatioSelector';
 
 const INPUT_CLASS =
@@ -193,6 +195,21 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
         );
       }
       if (field.key === 'preset') {
+        if (field.options.some((o) => o.value === 'ambient-loop' || o.value === 'hero-walkthrough')) {
+          return (
+            <VideoPresetSelector
+              value={asString(value) || 'hero-walkthrough'}
+              options={field.options}
+              onChange={(val, bundle) => {
+                if (bundle && onUpdateProps) {
+                  onUpdateProps({ preset: val, ...bundle });
+                } else {
+                  onChange(val);
+                }
+              }}
+            />
+          );
+        }
         if (field.options.some((o) => o.value === 'browser-mockup' || o.value === 'clean-card')) {
           return (
             <ImagePresetSelector
@@ -211,6 +228,15 @@ export function FieldControl({ field, value, resources, workspaceId, onChange, o
         return (
           <PresetStyleSelector
             value={asString(value)}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'playButtonArchetype') {
+        return (
+          <PlayButtonArchetypeSelector
+            value={asString(value) || 'standard'}
             options={field.options}
             onChange={(val) => onChange(val)}
           />
@@ -552,6 +578,8 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
             const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
             const isPlaybackField = field.key === 'playMode' || field.key === 'playbackMode';
             const isImagePreset = field.key === 'preset' && block.type === 'image';
+            const isVideoPreset = field.key === 'preset' && block.type === 'video';
+            const isPlayButtonArchetype = field.key === 'playButtonArchetype';
 
             return (
               <div key={field.key} className="space-y-1.5">
@@ -560,7 +588,9 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
                 field.kind !== 'image' &&
                 !isSizeField &&
                 !isPlaybackField &&
-                !isImagePreset ? (
+                !isImagePreset &&
+                !isVideoPreset &&
+                !isPlayButtonArchetype ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl
