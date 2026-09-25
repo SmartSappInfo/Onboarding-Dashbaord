@@ -123,17 +123,17 @@ registerBlock({
     { kind: 'color', key: 'gradientColor', label: 'Gradient Accent Color' },
     
     // Custom Color Overrides
-    { kind: 'color', key: 'customTitleColor', label: 'Custom Headline Color' },
-    { kind: 'color', key: 'customTaglineColor', label: 'Custom Tagline Color' },
-    { kind: 'color', key: 'customSubheadingColor', label: 'Custom Subheading Color' },
+    { kind: 'color', key: 'customTitleColor', label: 'Headline Color' },
+    { kind: 'color', key: 'customTaglineColor', label: 'Tagline Color' },
+    { kind: 'color', key: 'customSubheadingColor', label: 'Subheading Color' },
     
     // Custom Size Overrides
     {
       kind: 'select',
       key: 'customTitleSize',
-      label: 'Custom Headline Size',
+      label: 'Headline Size',
       options: [
-        { value: 'default', label: 'Default Preset Size' },
+        { value: 'default', label: 'Default' },
         { value: 'text-lg', label: 'Small (lg)' },
         { value: 'text-xl', label: 'Medium (xl)' },
         { value: 'text-2xl', label: 'Large (2xl)' },
@@ -147,9 +147,9 @@ registerBlock({
     {
       kind: 'select',
       key: 'customTaglineSize',
-      label: 'Custom Tagline Size',
+      label: 'Tagline Size',
       options: [
-        { value: 'default', label: 'Default Preset Size' },
+        { value: 'default', label: 'Default' },
         { value: 'text-[9px]', label: 'Micro (9px)' },
         { value: 'text-[10px]', label: 'Mini (10px)' },
         { value: 'text-xs', label: 'Small (xs)' },
@@ -160,9 +160,9 @@ registerBlock({
     {
       kind: 'select',
       key: 'customSubheadingSize',
-      label: 'Custom Subheading Size',
+      label: 'Subheading Size',
       options: [
-        { value: 'default', label: 'Default Preset Size' },
+        { value: 'default', label: 'Default' },
         { value: 'text-[11px]', label: 'Micro (11px)' },
         { value: 'text-xs', label: 'Mini (xs)' },
         { value: 'text-sm', label: 'Small (sm)' },

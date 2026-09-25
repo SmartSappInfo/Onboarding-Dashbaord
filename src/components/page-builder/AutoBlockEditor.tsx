@@ -28,6 +28,9 @@ import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dia
 import { ImageUploader } from '@/components/shared/image-uploader';
 import { VideoUploader, VideoUploaderValue } from '@/components/shared/video-uploader';
 import { PlaybackModeSelector } from './PlaybackModeSelector';
+import { AlignmentSelector } from './AlignmentSelector';
+import { SizeSliderControl } from './SizeSliderControl';
+import { PresetStyleSelector } from './PresetStyleSelector';
 
 const INPUT_CLASS =
   'h-10 rounded-xl bg-white dark:bg-slate-800/90 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:border-primary/60 focus:ring-2 focus:ring-primary/10 dark:focus:ring-primary/20 outline-none transition-all shadow-2xs';
@@ -182,6 +185,34 @@ export function FieldControl({ field, value, resources, workspaceId, onChange }:
         return (
           <PlaybackModeSelector
             value={asString(value) || 'inline'}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'preset') {
+        return (
+          <PresetStyleSelector
+            value={asString(value)}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key === 'alignment' || field.key === 'align' || field.key === 'textAlign') {
+        return (
+          <AlignmentSelector
+            value={asString(value)}
+            options={field.options}
+            onChange={(val) => onChange(val)}
+          />
+        );
+      }
+      if (field.key.endsWith('Size') || field.key.includes('FontSize')) {
+        return (
+          <SizeSliderControl
+            label={field.label}
+            value={asString(value)}
+            options={field.options}
             onChange={(val) => onChange(val)}
           />
         );
@@ -372,9 +403,11 @@ function ListField({ field, value, resources, workspaceId, onChange }: ListField
                       }
                     }
 
+                    const isItemSizeField = itf.key.endsWith('Size') || itf.key.includes('FontSize');
+
                     return (
                       <div key={itf.key} className="space-y-1 text-left">
-                        {itf.kind !== 'video' && itf.kind !== 'image' && (
+                        {itf.kind !== 'video' && itf.kind !== 'image' && !isItemSizeField && (
                           <Label className="text-[9px] font-bold text-slate-600 dark:text-slate-400 uppercase">{itf.label}</Label>
                         )}
                         <FieldControl field={itf} value={item[itf.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => updateItem(idx, { [itf.key]: v })} />
@@ -430,11 +463,12 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
 
   const parsed = def.schema.safeParse({ ...def.defaults, ...block.props });
   const props: Record<string, unknown> = parsed.success ? parsed.data : def.defaults;
+  const displayLabel = def.label.toLowerCase().endsWith('block') ? def.label : `${def.label} Block`;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="flex items-center justify-between pb-1 border-b border-slate-100 dark:border-slate-800">
-        <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{def.label} Block</h4>
+        <h4 className="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-widest">{displayLabel}</h4>
         <Badge variant="outline" className="text-[9px] uppercase bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 font-bold">{block.type}</Badge>
       </div>
 
@@ -452,6 +486,10 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               return true;
             })
             .map((field) => {
+            if (block.type === 'title') {
+              if (field.key === 'gradientColor' && !props.useGradient) return null;
+            }
+
             if (block.type === 'cta') {
               if (field.key === 'url' && props.actionType !== 'url') return null;
               if (field.key === 'formId' && props.actionType !== 'form') return null;
@@ -476,9 +514,11 @@ export function AutoBlockEditor({ block, resources, workspaceId, onUpdateProps }
               if (field.key === 'cardBorderColor' && props.cardBgType === 'default') return null;
             }
 
+            const isSizeField = field.key.endsWith('Size') || field.key.includes('FontSize');
+
             return (
               <div key={field.key} className="space-y-1.5">
-                {field.kind !== 'list' && field.kind !== 'video' && field.kind !== 'image' ? (
+                {field.kind !== 'list' && field.kind !== 'video' && field.kind !== 'image' && !isSizeField ? (
                   <Label className={LABEL_CLASS}>{field.label}</Label>
                 ) : null}
                 <FieldControl field={field} value={props[field.key]} resources={resources} workspaceId={workspaceId} onChange={(v) => onUpdateProps(block.id, { [field.key]: v })} />

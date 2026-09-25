@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import type { PageBlock, BuilderResources } from '@/lib/types';
 
 // The component's import graph transitively reaches @/ai/genkit, whose
@@ -58,5 +58,79 @@ describe('AutoBlockEditor', () => {
     const [, patch] = onUpdateProps.mock.calls[0];
     expect(Array.isArray(patch.items)).toBe(true);
     expect(patch.items).toHaveLength(1);
+  });
+
+  describe('Title Block Enhancements', () => {
+    it('correctly formats the header title without duplicate "Block Block"', () => {
+      const block: PageBlock = { id: 't1', type: 'title', props: { preset: 'section-heading' } };
+      render(<AutoBlockEditor block={block} resources={resources} onUpdateProps={() => {}} />);
+      expect(screen.getByText('Title Block')).toBeInTheDocument();
+      expect(screen.queryByText('Title Block Block')).not.toBeInTheDocument();
+    });
+
+    it('renders miniature visual preset style thumbnails and allows selection', () => {
+      const onUpdateProps = vi.fn();
+      const block: PageBlock = { id: 't1', type: 'title', props: { preset: 'section-heading' } };
+      render(<AutoBlockEditor block={block} resources={resources} onUpdateProps={onUpdateProps} />);
+
+      // Radiogroup for preset styles
+      const presetGroup = screen.getByRole('radiogroup', { name: 'Preset Style' });
+      expect(presetGroup).toBeInTheDocument();
+
+      // Find and click 'Hero Headline'
+      const heroButton = screen.getByRole('radio', { name: /Hero Headline/i });
+      expect(heroButton).toBeInTheDocument();
+      fireEvent.click(heroButton);
+
+      expect(onUpdateProps).toHaveBeenCalledWith('t1', { preset: 'hero-title' });
+    });
+
+    it('renders segmented alignment options and allows selection', () => {
+      const onUpdateProps = vi.fn();
+      const block: PageBlock = { id: 't1', type: 'title', props: { alignment: 'center' } };
+      render(<AutoBlockEditor block={block} resources={resources} onUpdateProps={onUpdateProps} />);
+
+      const alignGroup = screen.getByRole('radiogroup', { name: 'Text Alignment' });
+      expect(alignGroup).toBeInTheDocument();
+
+      const leftButton = within(alignGroup).getByRole('radio', { name: /^Left$/i });
+      fireEvent.click(leftButton);
+
+      expect(onUpdateProps).toHaveBeenCalledWith('t1', { alignment: 'left' });
+    });
+
+    it('renders size sliders for typography sizes and suppresses duplicate outer labels', () => {
+      const block: PageBlock = { id: 't1', type: 'title', props: { customTitleSize: 'default' } };
+      render(<AutoBlockEditor block={block} resources={resources} onUpdateProps={() => {}} />);
+
+      // Should render size sliders with their own internal headers
+      const headlineSliders = screen.getAllByRole('slider');
+      expect(headlineSliders.length).toBeGreaterThan(0);
+      expect(screen.getByText(/headline size/i)).toBeInTheDocument();
+    });
+
+    it('conditionally hides gradientColor when useGradient is false', () => {
+      const blockWithoutGradient: PageBlock = {
+        id: 't1',
+        type: 'title',
+        props: { useGradient: false },
+      };
+      const { rerender } = render(
+        <AutoBlockEditor block={blockWithoutGradient} resources={resources} onUpdateProps={() => {}} />
+      );
+
+      expect(screen.queryByText('Gradient Accent Color')).not.toBeInTheDocument();
+
+      const blockWithGradient: PageBlock = {
+        id: 't1',
+        type: 'title',
+        props: { useGradient: true },
+      };
+      rerender(
+        <AutoBlockEditor block={blockWithGradient} resources={resources} onUpdateProps={() => {}} />
+      );
+
+      expect(screen.getByText('Gradient Accent Color')).toBeInTheDocument();
+    });
   });
 });
