@@ -170,6 +170,24 @@ const VideoEmbed = ({
   const [isMuted, setIsMuted] = React.useState(autoPlay ? true : muted);
   const [thumbUrl, setThumbUrl] = React.useState<string | null>(thumbnailUrl || null);
   const videoRef = React.useRef<HTMLVideoElement>(null);
+  const iframeRef = React.useRef<HTMLIFrameElement>(null);
+
+  // CAUTION: Gate kinetic hover preview behind pointer capability to avoid trapping hover state on mobile touch taps
+  const [supportsHover, setSupportsHover] = React.useState(false);
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && window.matchMedia) {
+      const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+      setSupportsHover(mediaQuery.matches);
+      const handler = (e: MediaQueryListEvent) => {
+        setSupportsHover(e.matches);
+      };
+      if (mediaQuery.addEventListener) {
+        mediaQuery.addEventListener('change', handler);
+        return () => mediaQuery.removeEventListener('change', handler);
+      }
+    }
+  }, []);
+  const effectiveHoverPreview = hoverPreview && supportsHover;
   
   const videoId = extractYouTubeID(safeUrl || undefined);
   const vimeoId = extractVimeoID(safeUrl || undefined);
@@ -207,10 +225,11 @@ const VideoEmbed = ({
     );
   }
 
-  const activePlaying = isPlaying || (hoverPreview && isHovering && !disabled);
+  const activePlaying = isPlaying || (effectiveHoverPreview && isHovering && !disabled);
   const hideControls = controlsTheme === 'minimal-line' || controlsTheme === 'ghost';
   const showControlsParam = hideControls ? 0 : 1;
-  const effectiveMuteParam = isMuted ? 1 : 0;
+  // CAUTION: Initial mute parameter for embed URL. Kept stable during playback to prevent iframe reload on unmute.
+  const embedMuteParam = (autoPlay || muted || disabled) ? 1 : 0;
 
   // Click-to-play thumbnail logic
   if (!activePlaying && (videoId || vimeoId || loomId || isDirectFile)) {
@@ -225,12 +244,12 @@ const VideoEmbed = ({
           setIsPlaying(true);
         }}
         onMouseEnter={() => {
-          if (hoverPreview && !disabled) {
+          if (effectiveHoverPreview && !disabled) {
             setIsHovering(true);
           }
         }}
         onMouseLeave={() => {
-          if (hoverPreview && !disabled) {
+          if (effectiveHoverPreview && !disabled) {
             setIsHovering(false);
           }
         }}
@@ -292,20 +311,46 @@ const VideoEmbed = ({
     );
   }
 
-  // Tap-to-unmute toggle overlay component
+  // Handle seamless in-place unmute without restarting or reloading the video player
+  const handleUnmute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(false);
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+    }
+    if (iframeRef.current?.contentWindow) {
+      try {
+        if (videoId) {
+          // YouTube Player API postMessage: unMute & setVolume to preserve current playback position
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'unMute' }),
+            '*'
+          );
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({ event: 'command', func: 'setVolume', args: [100] }),
+            '*'
+          );
+        } else if (vimeoId) {
+          // Vimeo Player API postMessage: setVolume to un-mute in place
+          iframeRef.current.contentWindow.postMessage(
+            JSON.stringify({ method: 'setVolume', value: 1 }),
+            '*'
+          );
+        }
+      } catch (err) {
+        console.warn('Unable to dispatch unmute postMessage to iframe:', err);
+      }
+    }
+  };
+
+  // Tap-to-unmute toggle overlay component with >= 44px mobile touch target
   const unmuteToggle = activePlaying && isMuted && !disabled && (
     <button
       type="button"
-      onClick={(e) => {
-        e.stopPropagation();
-        setIsMuted(false);
-        if (videoRef.current) {
-          videoRef.current.muted = false;
-        }
-      }}
+      onClick={handleUnmute}
       aria-label="Tap to Unmute"
       data-testid="tap-to-unmute-toggle"
-      className="absolute bottom-3 left-3 z-30 px-3 py-1.5 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-2 shadow-lg transition-transform duration-200 active:scale-95 cursor-pointer pointer-events-auto"
+      className="absolute bottom-3 left-3 z-30 min-h-[44px] px-3.5 py-2 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-md border border-white/20 text-white text-xs font-bold flex items-center gap-2 shadow-lg transition-all duration-200 active:scale-[0.97] focus:outline-hidden focus:ring-2 focus:ring-white/40 cursor-pointer pointer-events-auto"
     >
       <span>Tap to Unmute 🔇</span>
       <div className="flex items-end gap-0.5 h-3">
@@ -344,7 +389,7 @@ const VideoEmbed = ({
           className
         )}
         onMouseLeave={() => {
-          if (hoverPreview && !isPlaying) {
+          if (effectiveHoverPreview && !isPlaying) {
             setIsHovering(false);
           }
         }}
@@ -368,10 +413,10 @@ const VideoEmbed = ({
 
   let embedUrl = "";
   if (videoId) {
-    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${disabled ? 0 : 1}&mute=${disabled ? 1 : effectiveMuteParam}&controls=${showControlsParam}&loop=${loop ? 1 : 0}&playlist=${videoId}&rel=0&modestbranding=1&enablejsapi=1`;
+    embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=${disabled ? 0 : 1}&mute=${disabled ? 1 : embedMuteParam}&controls=${showControlsParam}&loop=${loop ? 1 : 0}&playlist=${videoId}&rel=0&modestbranding=1&enablejsapi=1`;
   }
   if (vimeoId) {
-    embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=${disabled ? 0 : 1}&muted=${disabled ? 1 : effectiveMuteParam}&loop=${loop ? 1 : 0}&background=${hideControls ? 1 : 0}`;
+    embedUrl = `https://player.vimeo.com/video/${vimeoId}?autoplay=${disabled ? 0 : 1}&muted=${disabled ? 1 : embedMuteParam}&loop=${loop ? 1 : 0}&background=${hideControls ? 1 : 0}`;
   }
   if (loomId) {
     embedUrl = `https://www.loom.com/embed/${loomId}?autoplay=${disabled ? 0 : 1}&hide_owner=true&hide_share=true&hide_title=true&hideEmbedTopBar=true`;
@@ -385,12 +430,13 @@ const VideoEmbed = ({
         className
       )}
       onMouseLeave={() => {
-        if (hoverPreview && !isPlaying) {
+        if (effectiveHoverPreview && !isPlaying) {
           setIsHovering(false);
         }
       }}
     >
       <iframe
+        ref={iframeRef}
         width="100%"
         height="100%"
         src={embedUrl}

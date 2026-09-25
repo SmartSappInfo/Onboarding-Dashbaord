@@ -134,25 +134,46 @@ const rawSchema = z.object({
   overlayTint: z.enum(['none', 'dark-30', 'dark-50']).optional(),
 });
 
+// Baseline defaults matching hero-walkthrough used to detect untouched fields during BlockRenderer defaults merging
+const BASELINE_DEFAULTS = VIDEO_PRESET_BUNDLES['hero-walkthrough'];
+
 const schema = rawSchema.transform((val) => {
   const presetKey: VideoPresetArchetypeId = val.preset || 'hero-walkthrough';
   const bundle = VIDEO_PRESET_BUNDLES[presetKey];
 
+  // If preset is explicitly specified and not hero-walkthrough,
+  // we check if attributes match baseline hero-walkthrough defaults (which came from def.defaults in BlockRenderer).
+  // If they match baseline defaults, we adopt the target preset bundle's attributes.
+  const isPresetCustom = Boolean(val.preset && val.preset !== 'hero-walkthrough');
+
+  const resolveAttr = <K extends keyof VideoPresetBundleAttributes>(
+    key: K,
+    valAttr: VideoPresetBundleAttributes[K] | undefined
+  ): VideoPresetBundleAttributes[K] => {
+    if (valAttr === undefined) {
+      return bundle[key];
+    }
+    if (isPresetCustom && valAttr === BASELINE_DEFAULTS[key]) {
+      return bundle[key];
+    }
+    return valAttr;
+  };
+
   return {
     ...val,
     preset: presetKey,
-    aspectRatio: val.aspectRatio ?? bundle.aspectRatio,
-    elevation: val.elevation ?? bundle.elevation,
-    borderRadius: val.borderRadius ?? bundle.borderRadius,
-    playMode: val.playMode ?? bundle.playMode,
-    autoPlay: val.autoPlay ?? bundle.autoPlay,
-    muted: val.muted ?? bundle.muted,
-    loop: val.loop ?? bundle.loop,
-    ambientGlow: val.ambientGlow ?? bundle.ambientGlow,
-    hoverPreview: val.hoverPreview ?? bundle.hoverPreview,
-    playButtonArchetype: val.playButtonArchetype ?? bundle.playButtonArchetype,
-    controlsTheme: val.controlsTheme ?? bundle.controlsTheme,
-    overlayTint: val.overlayTint ?? bundle.overlayTint,
+    aspectRatio: resolveAttr('aspectRatio', val.aspectRatio),
+    elevation: resolveAttr('elevation', val.elevation),
+    borderRadius: resolveAttr('borderRadius', val.borderRadius),
+    playMode: resolveAttr('playMode', val.playMode),
+    autoPlay: resolveAttr('autoPlay', val.autoPlay),
+    muted: resolveAttr('muted', val.muted),
+    loop: resolveAttr('loop', val.loop),
+    ambientGlow: resolveAttr('ambientGlow', val.ambientGlow),
+    hoverPreview: resolveAttr('hoverPreview', val.hoverPreview),
+    playButtonArchetype: resolveAttr('playButtonArchetype', val.playButtonArchetype),
+    controlsTheme: resolveAttr('controlsTheme', val.controlsTheme),
+    overlayTint: resolveAttr('overlayTint', val.overlayTint),
   };
 });
 
@@ -624,7 +645,7 @@ registerBlock({
                 playButtonArchetype={props.playButtonArchetype}
                 controlsTheme={props.controlsTheme}
                 overlayTint={props.overlayTint}
-                className="w-full h-full border-0 rounded-none shadow-none"
+                className="w-full h-full aspect-auto border-0 rounded-none shadow-none"
               />
             ) : (
               <>
@@ -688,7 +709,7 @@ registerBlock({
                         thumbnailUrl={finalThumbnailUrl || undefined}
                         autoPlay={true}
                         disabled={false}
-                        className="w-full h-full border-0 rounded-none shadow-none"
+                        className="w-full h-full aspect-auto border-0 rounded-none shadow-none"
                       />
                     )}
                   </DialogContent>
