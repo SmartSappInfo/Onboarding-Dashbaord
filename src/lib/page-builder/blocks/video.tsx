@@ -12,7 +12,99 @@ import { useToast } from '@/hooks/use-toast';
 import { uploadPageMedia } from '../upload';
 import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dialog';
 
-const schema = z.object({
+export type VideoPresetArchetypeId =
+  | 'ambient-loop'
+  | 'hero-walkthrough'
+  | 'social-reel'
+  | 'micro-demo';
+
+export type VideoPlayButtonArchetype =
+  | 'pulse'
+  | 'glass-pill'
+  | 'minimal-badge'
+  | 'standard';
+
+export type VideoControlsTheme =
+  | 'standard'
+  | 'minimal-line'
+  | 'ghost'
+  | 'floating-island';
+
+export interface VideoPresetBundleAttributes {
+  aspectRatio: '16:9' | '9:16' | '1:1' | '4:3';
+  elevation: 'none' | 'hairline' | 'shadow' | 'browser' | 'mobile';
+  borderRadius: 'none' | 'rounded' | 'squircle';
+  playMode: 'inline' | 'modal';
+  autoPlay: boolean;
+  muted: boolean;
+  loop: boolean;
+  ambientGlow: boolean;
+  hoverPreview: boolean;
+  playButtonArchetype: VideoPlayButtonArchetype;
+  controlsTheme: VideoControlsTheme;
+  overlayTint: 'none' | 'dark-30' | 'dark-50';
+}
+
+export const VIDEO_PRESET_BUNDLES: Record<VideoPresetArchetypeId, VideoPresetBundleAttributes> = {
+  'ambient-loop': {
+    aspectRatio: '16:9',
+    elevation: 'none',
+    borderRadius: 'rounded',
+    playMode: 'inline',
+    autoPlay: true,
+    muted: true,
+    loop: true,
+    ambientGlow: true,
+    hoverPreview: false,
+    playButtonArchetype: 'standard',
+    controlsTheme: 'minimal-line',
+    overlayTint: 'dark-30',
+  },
+  'hero-walkthrough': {
+    aspectRatio: '16:9',
+    elevation: 'browser',
+    borderRadius: 'rounded',
+    playMode: 'inline',
+    autoPlay: false,
+    muted: false,
+    loop: false,
+    ambientGlow: false,
+    hoverPreview: false,
+    playButtonArchetype: 'pulse',
+    controlsTheme: 'standard',
+    overlayTint: 'none',
+  },
+  'social-reel': {
+    aspectRatio: '9:16',
+    elevation: 'mobile',
+    borderRadius: 'squircle',
+    playMode: 'inline',
+    autoPlay: true,
+    muted: true,
+    loop: true,
+    ambientGlow: false,
+    hoverPreview: false,
+    playButtonArchetype: 'minimal-badge',
+    controlsTheme: 'ghost',
+    overlayTint: 'none',
+  },
+  'micro-demo': {
+    aspectRatio: '16:9',
+    elevation: 'hairline',
+    borderRadius: 'rounded',
+    playMode: 'inline',
+    autoPlay: false,
+    muted: true,
+    loop: true,
+    ambientGlow: false,
+    hoverPreview: true,
+    playButtonArchetype: 'glass-pill',
+    controlsTheme: 'minimal-line',
+    overlayTint: 'none',
+  },
+};
+
+const rawSchema = z.object({
   url: z.string().optional(),
   thumbnailUrl: z.string().optional(),
   title: z.string().optional(),
@@ -26,8 +118,43 @@ const schema = z.object({
     titlePosition: z.enum(['top', 'bottom', 'overlay']).default('overlay').optional(),
   }).default({}),
   provider: z.enum(['youtube', 'vimeo', 'loom']).default('youtube'),
-  playMode: z.enum(['inline', 'modal']).default('inline'),
+  preset: z.enum(['ambient-loop', 'hero-walkthrough', 'social-reel', 'micro-demo']).optional(),
+  aspectRatio: z.enum(['16:9', '9:16', '1:1', '4:3']).optional(),
+  elevation: z.enum(['none', 'hairline', 'shadow', 'browser', 'mobile']).optional(),
+  borderRadius: z.enum(['none', 'rounded', 'squircle']).optional(),
+  playMode: z.enum(['inline', 'modal']).optional(),
+  autoPlay: z.boolean().optional(),
+  muted: z.boolean().optional(),
+  loop: z.boolean().optional(),
+  ambientGlow: z.boolean().optional(),
+  hoverPreview: z.boolean().optional(),
+  playButtonArchetype: z.enum(['pulse', 'glass-pill', 'minimal-badge', 'standard']).optional(),
+  controlsTheme: z.enum(['standard', 'minimal-line', 'ghost', 'floating-island']).optional(),
+  overlayTint: z.enum(['none', 'dark-30', 'dark-50']).optional(),
 });
+
+const schema = rawSchema.transform((val) => {
+  const presetKey: VideoPresetArchetypeId = val.preset || 'hero-walkthrough';
+  const bundle = VIDEO_PRESET_BUNDLES[presetKey];
+
+  return {
+    ...val,
+    preset: presetKey,
+    aspectRatio: val.aspectRatio ?? bundle.aspectRatio,
+    elevation: val.elevation ?? bundle.elevation,
+    borderRadius: val.borderRadius ?? bundle.borderRadius,
+    playMode: val.playMode ?? bundle.playMode,
+    autoPlay: val.autoPlay ?? bundle.autoPlay,
+    muted: val.muted ?? bundle.muted,
+    loop: val.loop ?? bundle.loop,
+    ambientGlow: val.ambientGlow ?? bundle.ambientGlow,
+    hoverPreview: val.hoverPreview ?? bundle.hoverPreview,
+    playButtonArchetype: val.playButtonArchetype ?? bundle.playButtonArchetype,
+    controlsTheme: val.controlsTheme ?? bundle.controlsTheme,
+    overlayTint: val.overlayTint ?? bundle.overlayTint,
+  };
+});
+
 type VideoProps = z.infer<typeof schema>;
 
 registerBlock({
@@ -36,7 +163,41 @@ registerBlock({
   category: 'content',
   icon: Film,
   fields: [
+    {
+      kind: 'select',
+      key: 'preset',
+      label: 'Preset Archetype',
+      options: [
+        { value: 'ambient-loop', label: 'Ambient Background Loop' },
+        { value: 'hero-walkthrough', label: 'Hero Walkthrough' },
+        { value: 'social-reel', label: 'Social Reel / Story' },
+        { value: 'micro-demo', label: 'Interactive Micro-Demo' },
+      ],
+    },
     { kind: 'video', key: 'videoData', label: 'Video & Cover Settings' },
+    {
+      kind: 'select',
+      key: 'aspectRatio',
+      label: 'Aspect Ratio',
+      options: [
+        { value: '16:9', label: '16:9 Widescreen' },
+        { value: '9:16', label: '9:16 Vertical (Reel/Story)' },
+        { value: '1:1', label: '1:1 Square' },
+        { value: '4:3', label: '4:3 Classic' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'elevation',
+      label: 'Elevation & Frame',
+      options: [
+        { value: 'none', label: 'None (Flat)' },
+        { value: 'hairline', label: 'Hairline Border' },
+        { value: 'shadow', label: 'Floating Deep Shadow' },
+        { value: 'browser', label: 'Desktop Browser Window' },
+        { value: 'mobile', label: 'Smartphone Chassis' },
+      ],
+    },
     {
       kind: 'select',
       key: 'playMode',
@@ -44,6 +205,48 @@ registerBlock({
       options: [
         { value: 'inline', label: 'Play Inline' },
         { value: 'modal', label: 'Play in Pop-up Modal' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'playButtonArchetype',
+      label: 'Play Button Trigger Style',
+      options: [
+        { value: 'pulse', label: 'Radar / Pulse Waves' },
+        { value: 'glass-pill', label: 'Glassmorphic Pill' },
+        { value: 'minimal-badge', label: 'Minimal Bottom Badge' },
+        { value: 'standard', label: 'Classic Disc' },
+      ],
+    },
+    {
+      kind: 'boolean',
+      key: 'ambientGlow',
+      label: 'Ambient Reactive Glow',
+    },
+    {
+      kind: 'boolean',
+      key: 'hoverPreview',
+      label: 'Kinetic Hover Preview',
+    },
+    {
+      kind: 'select',
+      key: 'controlsTheme',
+      label: 'Control Bar Theme',
+      options: [
+        { value: 'standard', label: 'Standard Controls' },
+        { value: 'minimal-line', label: 'Minimalist Bottom Line' },
+        { value: 'ghost', label: 'Ghost (Reveal on Hover)' },
+        { value: 'floating-island', label: 'Floating Glass Capsule' },
+      ],
+    },
+    {
+      kind: 'select',
+      key: 'overlayTint',
+      label: 'Dark Tint Overlay',
+      options: [
+        { value: 'none', label: 'None' },
+        { value: 'dark-30', label: '30% Dark Tint' },
+        { value: 'dark-50', label: '50% Dark Tint' },
       ],
     },
   ],
