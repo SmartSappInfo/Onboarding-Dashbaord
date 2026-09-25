@@ -80,10 +80,10 @@ function VideoField({ label, value, workspaceId, onChange }: {
   onChange: (value: VideoUploaderValue) => void;
 }) {
   const normalizedValue: VideoUploaderValue = typeof value === 'string'
-    ? { videoUrl: value, thumbnailUrl: '', title: '', description: '' }
+    ? { videoUrl: value, thumbnailUrl: '', title: '', description: '', titlePosition: 'overlay' }
     : (value && typeof value === 'object')
-      ? (value as unknown as VideoUploaderValue)
-      : { videoUrl: '', thumbnailUrl: '', title: '', description: '' };
+      ? { titlePosition: 'overlay', ...(value as unknown as VideoUploaderValue) }
+      : { videoUrl: '', thumbnailUrl: '', title: '', description: '', titlePosition: 'overlay' };
 
   return (
     <div className="space-y-2 animate-in fade-in duration-200">

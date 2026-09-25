@@ -698,11 +698,42 @@ export default function PublicPageClient({
                                                         </div>
                                                     )}
 
-                                                    {block.type === 'video' && block.props.url && (
-                                                        <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm aspect-video bg-black group relative">
-                                                            <VideoEmbed url={block.props.url} thumbnailUrl={block.props.thumbnailUrl} />
-                                                        </div>
-                                                    )}
+                                                    {block.type === 'video' && (block.props.videoData?.videoUrl || block.props.url) && (() => {
+                                                        const videoUrl = block.props.videoData?.videoUrl || block.props.url;
+                                                        const thumbUrl = block.props.videoData?.thumbnailUrl || block.props.thumbnailUrl;
+                                                        const rawTitle = block.props.videoData?.title || block.props.title || '';
+                                                        const rawDesc = block.props.videoData?.description || block.props.description || '';
+                                                        const title = interpolate(rawTitle);
+                                                        const description = interpolate(rawDesc);
+                                                        const position = block.props.videoData?.titlePosition || block.props.titlePosition || 'overlay';
+                                                        const hasText = Boolean(title || description);
+
+                                                        return (
+                                                            <div className="w-full text-left space-y-2">
+                                                                {hasText && position === 'top' && (
+                                                                    <div className="space-y-1 mb-2">
+                                                                        {title && <h3 className="text-base sm:text-lg font-bold text-foreground">{title}</h3>}
+                                                                        {description && <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>}
+                                                                    </div>
+                                                                )}
+                                                                <div className="rounded-2xl overflow-hidden border border-border/20 shadow-sm aspect-video bg-black group relative">
+                                                                    <VideoEmbed 
+                                                                        url={videoUrl} 
+                                                                        thumbnailUrl={thumbUrl} 
+                                                                        title={title} 
+                                                                        description={description} 
+                                                                        showOverlayText={position === 'overlay' && hasText} 
+                                                                    />
+                                                                </div>
+                                                                {hasText && position === 'bottom' && (
+                                                                    <div className="space-y-1 mt-2">
+                                                                        {title && <h3 className="text-base sm:text-lg font-bold text-foreground">{title}</h3>}
+                                                                        {description && <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })()}
 
                                                     {block.type === 'spacer' && (
                                                         <div style={{ height: block.props.height || 48 }} />

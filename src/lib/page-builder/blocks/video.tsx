@@ -15,11 +15,15 @@ import MediaSelectorDialog from '@/app/admin/media/components/media-selector-dia
 const schema = z.object({
   url: z.string().optional(),
   thumbnailUrl: z.string().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+  titlePosition: z.enum(['top', 'bottom', 'overlay']).default('overlay').optional(),
   videoData: z.object({
     videoUrl: z.string().default(''),
     thumbnailUrl: z.string().default(''),
     title: z.string().default(''),
     description: z.string().default(''),
+    titlePosition: z.enum(['top', 'bottom', 'overlay']).default('overlay').optional(),
   }).default({}),
   provider: z.enum(['youtube', 'vimeo', 'loom']).default('youtube'),
   playMode: z.enum(['inline', 'modal']).default('inline'),
@@ -109,6 +113,7 @@ registerBlock({
           thumbnailUrl: derivedThumb,
           title: props.videoData?.title || '',
           description: props.videoData?.description || '',
+          titlePosition: props.videoData?.titlePosition || props.titlePosition || 'overlay',
         }
       });
       setChangeSourceOpen(false);
@@ -138,6 +143,7 @@ registerBlock({
             thumbnailUrl: '', // Reset thumbnail for new file upload
             title: props.videoData?.title || '',
             description: props.videoData?.description || '',
+            titlePosition: props.videoData?.titlePosition || props.titlePosition || 'overlay',
           }
         });
         
@@ -262,6 +268,7 @@ registerBlock({
                 thumbnailUrl: '', // Reset thumbnail for new video selection
                 title: props.videoData?.title || '',
                 description: props.videoData?.description || '',
+                titlePosition: props.videoData?.titlePosition || props.titlePosition || 'overlay',
               }
             });
             setVideoLibraryOpen(false);
@@ -292,57 +299,119 @@ registerBlock({
     }
 
     const playInline = props.playMode === 'inline';
+    const rawTitle = props.videoData?.title?.trim() || props.title?.trim() || '';
+    const rawDescription = props.videoData?.description?.trim() || props.description?.trim() || '';
+    const position = props.videoData?.titlePosition || props.titlePosition || 'overlay';
+
+    const displayTitle = ctx.interpolate ? ctx.interpolate(rawTitle) : rawTitle;
+    const displayDescription = ctx.interpolate ? ctx.interpolate(rawDescription) : rawDescription;
+    const hasText = Boolean(displayTitle || displayDescription);
+    const isOverlay = position === 'overlay';
 
     return (
-      <div className="group rounded-2xl overflow-hidden border border-black/10 shadow-sm aspect-video bg-black relative">
-        {playInline ? (
-          <VideoEmbed
-            url={finalVideoUrl}
-            thumbnailUrl={finalThumbnailUrl || undefined}
-            disabled={ctx.mode === 'edit' || ctx.isThumbnail}
-          />
-        ) : (
-          <>
-            <div 
-              onClick={() => {
-                if (ctx.mode === 'edit' || ctx.isThumbnail) return;
-                setModalOpen(true);
-              }}
-              className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden group shadow-sm transition-all"
-            >
-              {finalThumbnailUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img 
-                  src={finalThumbnailUrl} 
-                  alt="Video thumbnail preview" 
-                  className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
-                />
-              ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-200/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
-                  <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Tutorial</span>
-                </div>
-              )}
-              <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
-            </div>
-            
-            <Dialog open={modalOpen} onOpenChange={setModalOpen}>
-              <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
-                <DialogTitle className="sr-only">Video Player</DialogTitle>
-                {/* CAUTION: Use VideoEmbed instead of raw iframe to transform YouTube watch URLs into embed URLs and render HTML5 video players for hosted MP4 files */}
-                {modalOpen && (
-                  <VideoEmbed
-                    url={finalVideoUrl}
-                    thumbnailUrl={finalThumbnailUrl || undefined}
-                    autoPlay={true}
-                    disabled={false}
-                    className="w-full h-full border-0 rounded-none shadow-none"
-                  />
-                )}
-              </DialogContent>
-            </Dialog>
-          </>
+      <div className="w-full text-left space-y-2">
+        {/* Top Title & Description */}
+        {hasText && position === 'top' && (
+          <div className="space-y-1 mb-2">
+            {displayTitle && (
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-foreground leading-snug tracking-tight">
+                {displayTitle}
+              </h3>
+            )}
+            {displayDescription && (
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                {displayDescription}
+              </p>
+            )}
+          </div>
         )}
-        {changeControls}
+
+        {/* Video Player / Thumbnail Container */}
+        <div className="group rounded-2xl overflow-hidden border border-black/10 shadow-sm aspect-video bg-black relative">
+          {playInline ? (
+            <VideoEmbed
+              url={finalVideoUrl}
+              thumbnailUrl={finalThumbnailUrl || undefined}
+              disabled={ctx.mode === 'edit' || ctx.isThumbnail}
+              title={displayTitle}
+              description={displayDescription}
+              showOverlayText={isOverlay && hasText}
+            />
+          ) : (
+            <>
+              <div 
+                onClick={() => {
+                  if (ctx.mode === 'edit' || ctx.isThumbnail) return;
+                  setModalOpen(true);
+                }}
+                className="absolute inset-0 w-full h-full cursor-pointer overflow-hidden group shadow-sm transition-all"
+              >
+                {finalThumbnailUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img 
+                    src={finalThumbnailUrl} 
+                    alt={displayTitle || "Video thumbnail preview"} 
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" 
+                  />
+                ) : (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-200/50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400">
+                    <span className="text-[10px] font-bold tracking-wider uppercase opacity-60">Watch Video Tutorial</span>
+                  </div>
+                )}
+                <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
+
+                {/* Overlay Title & Description on Thumbnail */}
+                {isOverlay && hasText && (
+                  <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none z-10 text-left">
+                    {displayTitle && (
+                      <h3 className="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow line-clamp-2 leading-snug">
+                        {displayTitle}
+                      </h3>
+                    )}
+                    {displayDescription && (
+                      <p className="text-xs sm:text-sm text-white/85 line-clamp-2 mt-1 leading-snug drop-shadow-xs">
+                        {displayDescription}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+              
+              <Dialog open={modalOpen} onOpenChange={setModalOpen}>
+                <DialogContent className="max-w-3xl aspect-video p-0 overflow-hidden bg-black border border-slate-800 rounded-2xl">
+                  <DialogTitle className="sr-only">Video Player</DialogTitle>
+                  {/* CAUTION: Use VideoEmbed instead of raw iframe to transform YouTube watch URLs into embed URLs and render HTML5 video players for hosted MP4 files */}
+                  {modalOpen && (
+                    <VideoEmbed
+                      url={finalVideoUrl}
+                      thumbnailUrl={finalThumbnailUrl || undefined}
+                      autoPlay={true}
+                      disabled={false}
+                      className="w-full h-full border-0 rounded-none shadow-none"
+                    />
+                  )}
+                </DialogContent>
+              </Dialog>
+            </>
+          )}
+          {changeControls}
+        </div>
+
+        {/* Bottom Title & Description */}
+        {hasText && position === 'bottom' && (
+          <div className="space-y-1 mt-2">
+            {displayTitle && (
+              <h3 className="text-base sm:text-lg md:text-xl font-bold text-foreground leading-snug tracking-tight">
+                {displayTitle}
+              </h3>
+            )}
+            {displayDescription && (
+              <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
+                {displayDescription}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   },

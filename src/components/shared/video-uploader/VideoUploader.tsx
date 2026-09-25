@@ -29,6 +29,7 @@ export interface VideoUploaderValue {
   thumbnailUrl: string;
   title?: string;
   description?: string;
+  titlePosition?: 'top' | 'bottom' | 'overlay';
   fileName?: string;
   fileSize?: string;
 }
@@ -51,7 +52,7 @@ function extractYouTubeID(url?: string): string | null {
 }
 
 export function VideoUploader({
-  value = { videoUrl: '', thumbnailUrl: '', title: '', description: '' },
+  value = { videoUrl: '', thumbnailUrl: '', title: '', description: '', titlePosition: 'overlay' },
   onChange,
   workspaceId: propWorkspaceId,
   label,
@@ -70,9 +71,16 @@ export function VideoUploader({
 
   const normalizedValue: VideoUploaderValue = React.useMemo(() => {
     if (typeof value === 'string') {
-      return { videoUrl: value, thumbnailUrl: '', title: '', description: '' };
+      return { videoUrl: value, thumbnailUrl: '', title: '', description: '', titlePosition: 'overlay' };
     }
-    return value || { videoUrl: '', thumbnailUrl: '', title: '', description: '' };
+    return {
+      titlePosition: 'overlay',
+      ...value,
+      videoUrl: value?.videoUrl || '',
+      thumbnailUrl: value?.thumbnailUrl || '',
+      title: value?.title || '',
+      description: value?.description || '',
+    };
   }, [value]);
 
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -345,6 +353,7 @@ export function VideoUploader({
           thumbnailUrl={normalizedValue.thumbnailUrl}
           title={normalizedValue.title || ''}
           description={normalizedValue.description || ''}
+          titlePosition={normalizedValue.titlePosition || 'overlay'}
           fileName={normalizedValue.fileName}
           fileSize={normalizedValue.fileSize}
           showGallery={Boolean(effectiveWorkspaceId)}
@@ -354,7 +363,7 @@ export function VideoUploader({
           onTriggerGalleryThumbnail={() => setIsThumbnailGalleryOpen(true)}
           onOpenLinkVideo={() => setIsVideoLinkOpen(true)}
           onOpenLinkThumbnail={() => setIsThumbnailLinkOpen(true)}
-          onRemoveVideo={() => onChange({ videoUrl: '', thumbnailUrl: '', title: '', description: '' })}
+          onRemoveVideo={() => onChange({ videoUrl: '', thumbnailUrl: '', title: '', description: '', titlePosition: 'overlay' })}
           onRemoveThumbnail={() => onChange({ ...normalizedValue, thumbnailUrl: '' })}
           onMetadataChange={(meta) => onChange({ ...normalizedValue, ...meta })}
           onOpenAiDesigner={() => setIsAiDesignerOpen(true)}

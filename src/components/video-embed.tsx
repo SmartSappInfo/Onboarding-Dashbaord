@@ -77,9 +77,21 @@ interface VideoEmbedProps {
   className?: string;
   autoPlay?: boolean;
   disabled?: boolean;
+  title?: string;
+  description?: string;
+  showOverlayText?: boolean;
 }
 
-const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled = false }: VideoEmbedProps) => {
+const VideoEmbed = ({ 
+  url, 
+  thumbnailUrl, 
+  className, 
+  autoPlay = false, 
+  disabled = false,
+  title,
+  description,
+  showOverlayText = false,
+}: VideoEmbedProps) => {
   const safeUrl = sanitizeVideoUrl(url);
   const [isPlaying, setIsPlaying] = React.useState(autoPlay && !disabled);
   const [thumbUrl, setThumbUrl] = React.useState<string | null>(thumbnailUrl || null);
@@ -134,7 +146,7 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
         {thumbUrl ? (
           <Image 
             src={thumbUrl} 
-            alt="Video thumbnail"
+            alt={title || "Video thumbnail"}
             fill
             sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
             priority
@@ -156,6 +168,22 @@ const VideoEmbed = ({ url, thumbnailUrl, className, autoPlay = false, disabled =
         )}
         
         <VideoPlayButtonOverlay label="TAP TO WATCH VIDEO" />
+
+        {/* Overlay Title & Description at Bottom of Thumbnail */}
+        {showOverlayText && (title || description) && (
+          <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 bg-gradient-to-t from-black/90 via-black/55 to-transparent pointer-events-none z-10 text-left">
+            {title && (
+              <h3 className="text-sm sm:text-base md:text-lg font-bold text-white drop-shadow line-clamp-2 leading-snug">
+                {title}
+              </h3>
+            )}
+            {description && (
+              <p className="text-xs sm:text-sm text-white/85 line-clamp-2 mt-1 leading-snug drop-shadow-xs">
+                {description}
+              </p>
+            )}
+          </div>
+        )}
       </div>
     );
   }

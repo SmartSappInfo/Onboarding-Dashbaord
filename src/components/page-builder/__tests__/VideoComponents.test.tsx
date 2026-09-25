@@ -202,4 +202,109 @@ describe('Video Components and Autoplay behavior', () => {
       expect(container.querySelector('iframe')).toBeNull();
     });
   });
+
+  describe('Video Block Title and Description Positions', () => {
+    it('renders title and description in top position above video player', () => {
+      const block: PageBlock = {
+        id: 'v-top',
+        type: 'video',
+        props: {
+          videoData: {
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            thumbnailUrl: 'https://example.com/thumb.jpg',
+            title: 'Welcome Video Overview',
+            description: 'Learn how to get started in 5 minutes.',
+            titlePosition: 'top',
+          },
+          playMode: 'inline',
+        },
+      };
+
+      const { getByText } = render(
+        <BlockRenderer block={block} ctx={createCtx('view')} />
+      );
+
+      const titleEl = getByText('Welcome Video Overview');
+      const descEl = getByText('Learn how to get started in 5 minutes.');
+      expect(titleEl).toBeInTheDocument();
+      expect(descEl).toBeInTheDocument();
+    });
+
+    it('renders title and description in bottom position below video player', () => {
+      const block: PageBlock = {
+        id: 'v-bottom',
+        type: 'video',
+        props: {
+          videoData: {
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            thumbnailUrl: 'https://example.com/thumb.jpg',
+            title: 'Bottom Title Feature',
+            description: 'This is displayed underneath the player.',
+            titlePosition: 'bottom',
+          },
+          playMode: 'inline',
+        },
+      };
+
+      const { getByText } = render(
+        <BlockRenderer block={block} ctx={createCtx('view')} />
+      );
+
+      expect(getByText('Bottom Title Feature')).toBeInTheDocument();
+      expect(getByText('This is displayed underneath the player.')).toBeInTheDocument();
+    });
+
+    it('renders title and description in overlay position on the video thumbnail', () => {
+      const block: PageBlock = {
+        id: 'v-overlay',
+        type: 'video',
+        props: {
+          videoData: {
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            thumbnailUrl: 'https://example.com/thumb.jpg',
+            title: 'In-Line Overlay Heading',
+            description: 'Translucent gradient overlay at bottom of thumbnail.',
+            titlePosition: 'overlay',
+          },
+          playMode: 'inline',
+        },
+      };
+
+      const { getByText } = render(
+        <BlockRenderer block={block} ctx={createCtx('edit')} />
+      );
+
+      expect(getByText('In-Line Overlay Heading')).toBeInTheDocument();
+      expect(getByText('Translucent gradient overlay at bottom of thumbnail.')).toBeInTheDocument();
+    });
+
+    it('supports variable interpolation in title and description', () => {
+      const block: PageBlock = {
+        id: 'v-interpolated',
+        type: 'video',
+        props: {
+          videoData: {
+            videoUrl: 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+            thumbnailUrl: 'https://example.com/thumb.jpg',
+            title: 'Hello {{name}}',
+            description: 'Welcome to your onboarding {{name}}',
+            titlePosition: 'top',
+          },
+          playMode: 'inline',
+        },
+      };
+
+      const customCtx = {
+        ...createCtx('view'),
+        interpolate: (str: string) => str.replace(/\{\{name\}\}/g, 'Ada Lovelace'),
+      };
+
+      const { getByText } = render(
+        <BlockRenderer block={block} ctx={customCtx} />
+      );
+
+      expect(getByText('Hello Ada Lovelace')).toBeInTheDocument();
+      expect(getByText('Welcome to your onboarding Ada Lovelace')).toBeInTheDocument();
+    });
+  });
 });

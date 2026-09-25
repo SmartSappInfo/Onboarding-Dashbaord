@@ -1,16 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, FolderHeart, Trash2, Link as LinkIcon, Upload, ArrowLeft, Play, FileVideo, Sparkles } from 'lucide-react';
+import { RefreshCw, FolderHeart, Trash2, Link as LinkIcon, Upload, ArrowLeft, Play, FileVideo, Sparkles, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
+import { cn } from '@/lib/utils';
+
+export type VideoTitlePosition = 'top' | 'bottom' | 'overlay';
 
 interface UploadedStateProps {
   videoUrl: string;
   thumbnailUrl: string;
   title: string;
   description: string;
+  titlePosition?: VideoTitlePosition;
   fileName?: string;
   fileSize?: string;
   showGallery: boolean;
@@ -22,15 +26,65 @@ interface UploadedStateProps {
   onOpenLinkThumbnail: () => void;
   onRemoveVideo: () => void;
   onRemoveThumbnail: () => void;
-  onMetadataChange: (meta: { title: string; description: string }) => void;
+  onMetadataChange: (meta: { title: string; description: string; titlePosition?: VideoTitlePosition }) => void;
   onOpenAiDesigner?: () => void;
 }
+
+const POSITION_OPTIONS: Array<{
+  id: VideoTitlePosition;
+  label: string;
+  desc: string;
+  wireframe: React.ReactNode;
+}> = [
+  {
+    id: 'top',
+    label: 'Top',
+    desc: 'Above video',
+    wireframe: (
+      <div className="w-full h-7 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-1 flex flex-col justify-between overflow-hidden">
+        <div className="w-3/5 h-1 bg-emerald-500/80 dark:bg-emerald-400 rounded-full" />
+        <div className="w-full h-3 rounded bg-slate-300/60 dark:bg-slate-700 flex items-center justify-center">
+          <Play className="w-1.5 h-1.5 text-slate-500 dark:text-slate-400 fill-current" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'overlay',
+    label: 'Overlay',
+    desc: 'On thumbnail',
+    wireframe: (
+      <div className="w-full h-7 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-0 flex flex-col justify-end overflow-hidden relative">
+        <div className="absolute inset-0 bg-slate-300/60 dark:bg-slate-700 flex items-center justify-center">
+          <Play className="w-1.5 h-1.5 text-slate-500 dark:text-slate-400 fill-current mb-1" />
+        </div>
+        <div className="relative w-full h-2.5 bg-gradient-to-t from-black/80 to-transparent p-0.5 flex flex-col justify-end">
+          <div className="w-2/3 h-0.5 bg-white/90 rounded-full" />
+        </div>
+      </div>
+    ),
+  },
+  {
+    id: 'bottom',
+    label: 'Bottom',
+    desc: 'Below video',
+    wireframe: (
+      <div className="w-full h-7 rounded-md bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/60 p-1 flex flex-col justify-between overflow-hidden">
+        <div className="w-full h-3 rounded bg-slate-300/60 dark:bg-slate-700 flex items-center justify-center">
+          <Play className="w-1.5 h-1.5 text-slate-500 dark:text-slate-400 fill-current" />
+        </div>
+        <div className="w-3/5 h-1 bg-emerald-500/80 dark:bg-emerald-400 rounded-full" />
+      </div>
+    ),
+  },
+];
 
 export function UploadedState({
   videoUrl,
   thumbnailUrl,
   title,
   description,
+  titlePosition = 'overlay',
   fileName,
   fileSize,
   showGallery,
@@ -51,6 +105,7 @@ export function UploadedState({
   
   const [localTitle, setLocalTitle] = useState(title);
   const [localDescription, setLocalDescription] = useState(description);
+  const [localTitlePosition, setLocalTitlePosition] = useState<VideoTitlePosition>(titlePosition || 'overlay');
 
   // Sync from props if updated externally
   useEffect(() => {
@@ -61,8 +116,46 @@ export function UploadedState({
     setLocalDescription(description);
   }, [description]);
 
+  useEffect(() => {
+    if (titlePosition) {
+      setLocalTitlePosition(titlePosition);
+    }
+  }, [titlePosition]);
+
+  // Real-time live synchronization for instant canvas & simulator updates
+  const handleTitleChange = (val: string) => {
+    setLocalTitle(val);
+    onMetadataChange({
+      title: val,
+      description: localDescription,
+      titlePosition: localTitlePosition,
+    });
+  };
+
+  const handleDescriptionChange = (val: string) => {
+    setLocalDescription(val);
+    onMetadataChange({
+      title: localTitle,
+      description: val,
+      titlePosition: localTitlePosition,
+    });
+  };
+
+  const handlePositionChange = (pos: VideoTitlePosition) => {
+    setLocalTitlePosition(pos);
+    onMetadataChange({
+      title: localTitle,
+      description: localDescription,
+      titlePosition: pos,
+    });
+  };
+
   const handleBlur = () => {
-    onMetadataChange({ title: localTitle, description: localDescription });
+    onMetadataChange({
+      title: localTitle,
+      description: localDescription,
+      titlePosition: localTitlePosition,
+    });
   };
 
   const getFilenameFromUrl = (url: string): string => {
@@ -72,7 +165,7 @@ export function UploadedState({
       const parts = decoded.split('/');
       const lastPart = parts[parts.length - 1];
       return lastPart.split('?')[0];
-    } catch (_e) {
+    } catch {
       return 'video.mp4';
     }
   };
@@ -295,7 +388,7 @@ export function UploadedState({
               Add Title & Description (Optional)
             </Label>
             <p className="text-[10px] text-muted-foreground font-medium leading-tight">
-              Display overlay headings on landing page or surveys
+              Display title and description across top, bottom, or thumbnail overlay
             </p>
           </div>
           <Switch
@@ -306,14 +399,18 @@ export function UploadedState({
               if (!checked) {
                 setLocalTitle('');
                 setLocalDescription('');
-                onMetadataChange({ title: '', description: '' });
+                onMetadataChange({ 
+                  title: '', 
+                  description: '', 
+                  titlePosition: localTitlePosition 
+                });
               }
             }}
           />
         </div>
 
         {showMetadata && (
-          <div className="space-y-3 mt-4 animate-in slide-in-from-top-3 duration-200 ease-out text-left">
+          <div className="space-y-3.5 mt-4 animate-in slide-in-from-top-3 duration-200 ease-out text-left">
             <div className="space-y-1">
               <Label htmlFor="video-meta-title" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                 Video Title
@@ -323,7 +420,7 @@ export function UploadedState({
                 type="text"
                 placeholder="Enter video title…"
                 value={localTitle}
-                onChange={(e) => setLocalTitle(e.target.value)}
+                onChange={(e) => handleTitleChange(e.target.value)}
                 onBlur={handleBlur}
                 className="h-10 rounded-xl bg-muted/20 border-input text-xs font-semibold focus-visible:ring-emerald-500/30"
               />
@@ -337,10 +434,76 @@ export function UploadedState({
                 id="video-meta-desc"
                 placeholder="Enter video description…"
                 value={localDescription}
-                onChange={(e) => setLocalDescription(e.target.value)}
+                onChange={(e) => handleDescriptionChange(e.target.value)}
                 onBlur={handleBlur}
                 className="min-h-[80px] rounded-xl bg-muted/20 border-input text-xs font-semibold p-3 focus-visible:ring-emerald-500/30"
               />
+            </div>
+
+            {/* Title & Description Position Selector */}
+            <div className="space-y-1.5 pt-1">
+              <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                Title & Description Position
+              </Label>
+              <div 
+                role="radiogroup" 
+                aria-label="Title and description position"
+                className="grid grid-cols-3 gap-2"
+              >
+                {POSITION_OPTIONS.map((option, idx) => {
+                  const isSelected = localTitlePosition === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={isSelected}
+                      tabIndex={isSelected ? 0 : -1}
+                      onClick={() => handlePositionChange(option.id)}
+                      onKeyDown={(e) => {
+                        if (e.key === ' ' || e.key === 'Enter') {
+                          e.preventDefault();
+                          handlePositionChange(option.id);
+                        } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          const nextIdx = (idx + 1) % POSITION_OPTIONS.length;
+                          handlePositionChange(POSITION_OPTIONS[nextIdx].id);
+                        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          const prevIdx = (idx - 1 + POSITION_OPTIONS.length) % POSITION_OPTIONS.length;
+                          handlePositionChange(POSITION_OPTIONS[prevIdx].id);
+                        }
+                      }}
+                      className={cn(
+                        "relative flex flex-col p-2 rounded-xl border text-left transition-all duration-200 cursor-pointer outline-none min-h-[74px]",
+                        "active:scale-[0.97] focus-visible:ring-2 focus-visible:ring-emerald-500/40",
+                        isSelected
+                          ? "bg-emerald-500/[0.08] dark:bg-emerald-500/[0.15] border-emerald-500 text-emerald-950 dark:text-emerald-100 shadow-2xs ring-1 ring-emerald-500/30"
+                          : "bg-muted/20 dark:bg-slate-900 border-border/70 hover:border-border text-muted-foreground hover:text-foreground hover:bg-muted/40"
+                      )}
+                    >
+                      {/* Mini Wireframe */}
+                      {option.wireframe}
+
+                      {/* Title & Check Icon */}
+                      <div className="flex items-center justify-between gap-1 w-full mt-1">
+                        <span className={cn(
+                          "text-xs font-bold leading-tight truncate",
+                          isSelected ? "text-emerald-700 dark:text-emerald-300" : "text-foreground"
+                        )}>
+                          {option.label}
+                        </span>
+                        {isSelected && (
+                          <CheckCircle2 className="w-3 h-3 text-emerald-500 shrink-0" />
+                        )}
+                      </div>
+                      <span className="text-[9px] text-muted-foreground font-medium leading-tight mt-0.5">
+                        {option.desc}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

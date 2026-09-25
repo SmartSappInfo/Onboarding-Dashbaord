@@ -16,6 +16,7 @@ describe('VideoUploader', () => {
     thumbnailUrl: '',
     title: '',
     description: '',
+    titlePosition: 'overlay',
   };
 
   const filledValue: VideoUploaderValue = {
@@ -23,6 +24,7 @@ describe('VideoUploader', () => {
     thumbnailUrl: 'https://example.com/cover.png',
     title: 'Sunflower Debtor Solution',
     description: 'A detailed workflow guide.',
+    titlePosition: 'overlay',
   };
 
   it('renders empty state when value has empty videoUrl', () => {
@@ -47,12 +49,13 @@ describe('VideoUploader', () => {
       thumbnailUrl: '',
       title: '',
       description: '',
+      titlePosition: 'overlay',
       fileName: undefined,
       fileSize: undefined,
     });
   });
 
-  it('updates metadata on title input blur', () => {
+  it('updates metadata on title input change and blur in real time', () => {
     const onChange = vi.fn();
     render(<VideoUploader value={filledValue} onChange={onChange} />);
     
@@ -62,11 +65,45 @@ describe('VideoUploader', () => {
 
     const titleInput = screen.getByPlaceholderText(/Enter video title/i);
     fireEvent.change(titleInput, { target: { value: 'Sunflower Debtor Solution - Updated' } });
-    fireEvent.blur(titleInput);
 
     expect(onChange).toHaveBeenCalledWith({
       ...filledValue,
       title: 'Sunflower Debtor Solution - Updated',
+    });
+
+    fireEvent.blur(titleInput);
+    expect(onChange).toHaveBeenCalledWith({
+      ...filledValue,
+      title: 'Sunflower Debtor Solution - Updated',
+    });
+  });
+
+  it('allows choosing title and description position (top, bottom, overlay)', () => {
+    const onChange = vi.fn();
+    render(<VideoUploader value={filledValue} onChange={onChange} />);
+
+    // Position radio buttons
+    const topButton = screen.getByRole('radio', { name: /Top Above video/i });
+    const bottomButton = screen.getByRole('radio', { name: /Bottom Below video/i });
+    const overlayButton = screen.getByRole('radio', { name: /Overlay On thumbnail/i });
+
+    expect(topButton).toBeInTheDocument();
+    expect(bottomButton).toBeInTheDocument();
+    expect(overlayButton).toBeInTheDocument();
+    expect(overlayButton).toHaveAttribute('aria-checked', 'true');
+
+    // Click Top
+    fireEvent.click(topButton);
+    expect(onChange).toHaveBeenCalledWith({
+      ...filledValue,
+      titlePosition: 'top',
+    });
+
+    // Click Bottom
+    fireEvent.click(bottomButton);
+    expect(onChange).toHaveBeenCalledWith({
+      ...filledValue,
+      titlePosition: 'bottom',
     });
   });
 });
