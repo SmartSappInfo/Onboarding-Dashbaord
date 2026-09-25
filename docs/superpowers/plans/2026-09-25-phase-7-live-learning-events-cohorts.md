@@ -344,19 +344,19 @@ export interface ReleaseRule {
   - Modify: `src/lib/services/event-service.ts`
   - Modify: `src/lib/services/learning-progress-service.ts`
   - Modify: `src/app/actions/event-actions.ts`
-- [ ] **Step 1: Write failing attendance engine tests**
+- [x] **Step 1: Write failing attendance engine tests**
   - Test recording join timestamp (`recordJoinSession`).
   - Test recording leave / heartbeat timestamp (`recordLeaveSession`), computing `attendedDurationSeconds` and `attendancePercentage`.
   - Test automated lesson completion: when `attendancePercentage >= minAttendancePercentage`, verify `LearningProgressService.completeLesson` is called with the correct argument order `(courseId, lessonId, userId, portalId)`.
   - Test gamification points award (+20 pts) and engagement activity logging.
-- [ ] **Step 2: Run tests to verify they fail**
+- [x] **Step 2: Run tests to verify they fail**
   - Command: `npx vitest run src/lib/services/__tests__/attendance-engine.test.ts`
-- [ ] **Step 3: Implement Attendance Engine in `event-service.ts` & `learning-progress-service.ts`**
+- [x] **Step 3: Implement Attendance Engine in `event-service.ts` & `learning-progress-service.ts`**
   - Fix argument order bug in `EventService.recordEventAttendance`.
   - Implement `recordJoinSession(eventId, userId, portalId)` and `recordLeaveSession(eventId, userId, portalId, durationSeconds)`.
   - Add `attendance` completion rule check in `LearningProgressService`.
-- [ ] **Step 4: Run tests and verify they pass**
-- [ ] **Step 5: Commit locally** (`git commit -m "feat(attendance): implement attendance engine with automated LMS completion bridge"`)
+- [x] **Step 4: Run tests and verify they pass**
+- [x] **Step 5: Commit locally** (`git commit -m "feat(attendance): implement attendance engine with automated LMS completion bridge"`)
 
 ---
 

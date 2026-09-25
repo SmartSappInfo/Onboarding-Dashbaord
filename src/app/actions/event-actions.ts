@@ -170,6 +170,58 @@ export async function recordEventAttendanceAction(
   }
 }
 
+export async function recordJoinSessionAction(
+  input: {
+    eventId: string;
+    userId: string;
+    portalId: string;
+    userName?: string;
+    userEmail?: string;
+  },
+  portalSlug?: string,
+  eventSlug?: string
+): Promise<ActionResponse<EventRegistration>> {
+  try {
+    const reg = await EventService.recordJoinSession(input);
+    if (portalSlug) {
+      revalidatePath(`/portal/${portalSlug}/events`);
+      if (eventSlug) revalidatePath(`/portal/${portalSlug}/events/${eventSlug}`);
+    }
+    return { success: true, data: reg };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to record session join.'),
+    };
+  }
+}
+
+export async function recordLeaveSessionAction(
+  input: {
+    eventId: string;
+    userId: string;
+    portalId: string;
+    durationSeconds?: number;
+  },
+  portalSlug?: string,
+  eventSlug?: string
+): Promise<ActionResponse<EventRegistration>> {
+  try {
+    const reg = await EventService.recordLeaveSession(input);
+    if (portalSlug) {
+      revalidatePath(`/portal/${portalSlug}/events`);
+      if (eventSlug) revalidatePath(`/portal/${portalSlug}/events/${eventSlug}`);
+      revalidatePath(`/portal/${portalSlug}/dashboard`);
+    }
+    return { success: true, data: reg };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: toClientErrorMessage('actions.event-actions', err, undefined, 'Failed to record session leave.'),
+    };
+  }
+}
+
 export async function publishEventReplayAction(
   input: PublishReplayInput,
   portalSlug?: string,

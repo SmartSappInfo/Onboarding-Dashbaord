@@ -374,6 +374,36 @@ export class EventService {
     });
   }
 
+  /**
+   * Calculate AttendanceStatus based on ratio of attended duration to scheduled duration.
+   */
+  public static calculateAttendanceStatus(params: {
+    attendedDurationSeconds: number;
+    scheduledDurationMinutes: number;
+    minAttendancePercentage?: number;
+  }): AttendanceStatus {
+    const duration = params.attendedDurationSeconds || 0;
+    if (duration <= 0) return 'no_show';
+
+    const scheduledSeconds = Math.max(1, (params.scheduledDurationMinutes || 60) * 60);
+    const thresholdPercent = params.minAttendancePercentage !== undefined ? params.minAttendancePercentage : 70;
+    const attendancePercentage = (duration / scheduledSeconds) * 100;
+
+    return attendancePercentage >= thresholdPercent ? 'attended' : 'partial';
+  }
+
+  /**
+   * Caps client-reported duration to at most 110% of scheduled event duration to prevent spoofing.
+   */
+  public static capAttendedDuration(
+    durationSeconds: number,
+    scheduledDurationMinutes: number
+  ): number {
+    if (durationSeconds <= 0) return 0;
+    const maxAllowed = Math.round(Math.max(15, scheduledDurationMinutes || 60) * 60 * 1.1);
+    return Math.min(durationSeconds, maxAllowed);
+  }
+
   public static async recordEventAttendance(input: RecordAttendanceInput): Promise<EventRegistration> {
     const regId = `reg_${input.eventId}_${input.userId}`;
     const regRef = adminDb.collection('event_registrations').doc(regId);
@@ -384,13 +414,23 @@ export class EventService {
     const eventSnap = await eventRef.get();
     const eventData = eventSnap.exists ? (eventSnap.data() as LiveEvent) : null;
 
+    const scheduledMins = eventData?.durationMinutes || 60;
+    const attendedDurationSeconds = this.capAttendedDuration(
+      input.attendedDurationSeconds || 1800,
+      scheduledMins
+    );
+    const status = this.calculateAttendanceStatus({
+      attendedDurationSeconds,
+      scheduledDurationMinutes: scheduledMins,
+    });
+
     let reg: EventRegistration;
     if (snap.exists) {
       reg = {
         ...(snap.data() as EventRegistration),
-        status: 'attended',
-        joinedAt: now,
-        attendedDurationSeconds: input.attendedDurationSeconds || 1800,
+        status,
+        joinedAt: (snap.data() as EventRegistration).joinedAt || now,
+        attendedDurationSeconds,
         updatedAt: now,
       };
       await regRef.set(reg, { merge: true });
@@ -403,10 +443,10 @@ export class EventService {
         userId: input.userId,
         userName: 'Member',
         userEmail: '',
-        status: 'attended',
+        status,
         registeredAt: now,
         joinedAt: now,
-        attendedDurationSeconds: input.attendedDurationSeconds || 1800,
+        attendedDurationSeconds,
         updatedAt: now,
       };
       await regRef.set(reg);
@@ -419,33 +459,185 @@ export class EventService {
       });
     }
 
-    // Award Points for Attendance (+20 pts)
-    const membershipSnap = await adminDb
-      .collection('portal_memberships')
-      .where('portalId', '==', input.portalId)
-      .where('userId', '==', input.userId)
-      .limit(1)
-      .get();
+    // Award Points for Attendance (+20 pts) asynchronously without blocking
+    if (status === 'attended') {
+      try {
+        const membershipSnap = await adminDb
+          .collection('portal_memberships')
+          .where('portalId', '==', input.portalId)
+          .where('userId', '==', input.userId)
+          .limit(1)
+          .get();
 
-    if (!membershipSnap.empty) {
-      await PortalMembershipService.awardPoints(
-        membershipSnap.docs[0].id,
-        20,
-        `Attended Live Session: ${eventData?.title || 'Masterclass'}`
-      );
+        if (!membershipSnap.empty) {
+          await PortalMembershipService.awardPoints(
+            membershipSnap.docs[0].id,
+            20,
+            `Attended Live Session: ${eventData?.title || 'Masterclass'}`
+          );
+        }
+      } catch (ptsErr: unknown) {
+        console.warn('[EventService] Points award non-blocking warning:', ptsErr);
+      }
     }
 
-    // If event is linked to a course lesson, automatically satisfy lesson completion
-    if (eventData?.courseId && eventData?.lessonId) {
-      await LearningProgressService.completeLesson(
-        input.portalId,
-        eventData.courseId,
-        eventData.lessonId,
-        input.userId
-      );
+    // If event is linked to a course lesson and status is attended, automatically satisfy lesson completion
+    // CAUTION & ARCHITECTURAL NOTE: LearningProgressService.completeLesson takes
+    // (courseId, lessonId, userId, portalId). Fixed inverted argument order here.
+    if (status === 'attended' && eventData?.courseId && eventData?.lessonId) {
+      try {
+        await LearningProgressService.completeLesson(
+          eventData.courseId,
+          eventData.lessonId,
+          input.userId,
+          input.portalId
+        );
+      } catch (lmsErr: unknown) {
+        console.warn('[EventService] LMS completeLesson non-blocking warning:', lmsErr);
+      }
     }
 
     return reg;
+  }
+
+  public static async recordJoinSession(input: {
+    eventId: string;
+    userId: string;
+    portalId: string;
+    userName?: string;
+    userEmail?: string;
+  }): Promise<EventRegistration> {
+    const regId = `reg_${input.eventId}_${input.userId}`;
+    const regRef = adminDb.collection('event_registrations').doc(regId);
+    const eventRef = adminDb.collection('live_events').doc(input.eventId);
+
+    const now = new Date().toISOString();
+    const [regSnap, eventSnap] = await Promise.all([regRef.get(), eventRef.get()]);
+    const eventData = eventSnap.exists ? (eventSnap.data() as LiveEvent) : null;
+
+    let reg: EventRegistration;
+    if (regSnap.exists) {
+      const current = regSnap.data() as EventRegistration;
+      reg = {
+        ...current,
+        joinedAt: current.joinedAt || now,
+        updatedAt: now,
+      };
+      await regRef.set(reg, { merge: true });
+    } else {
+      reg = {
+        id: regId,
+        organizationId: eventData?.organizationId || 'default-org',
+        portalId: input.portalId,
+        eventId: input.eventId,
+        userId: input.userId,
+        userName: input.userName?.trim() || 'Learner',
+        userEmail: input.userEmail?.trim() || '',
+        status: 'registered',
+        registeredAt: now,
+        joinedAt: now,
+        updatedAt: now,
+      };
+      await regRef.set(reg);
+    }
+
+    if (eventSnap.exists && (!regSnap.exists || !regSnap.data()?.joinedAt)) {
+      await eventRef.update({
+        attendedCount: (eventData?.attendedCount || 0) + 1,
+        updatedAt: now,
+      });
+    }
+
+    return reg;
+  }
+
+  public static async recordLeaveSession(input: {
+    eventId: string;
+    userId: string;
+    portalId: string;
+    durationSeconds?: number;
+  }): Promise<EventRegistration> {
+    const regId = `reg_${input.eventId}_${input.userId}`;
+    const regRef = adminDb.collection('event_registrations').doc(regId);
+    const eventRef = adminDb.collection('live_events').doc(input.eventId);
+
+    const now = new Date().toISOString();
+    const [regSnap, eventSnap] = await Promise.all([regRef.get(), eventRef.get()]);
+    const eventData = eventSnap.exists ? (eventSnap.data() as LiveEvent) : null;
+
+    const current = regSnap.exists ? (regSnap.data() as EventRegistration) : null;
+    const joinedAt = current?.joinedAt || now;
+
+    let rawDuration = input.durationSeconds;
+    if (rawDuration === undefined) {
+      const elapsedMs = new Date(now).getTime() - new Date(joinedAt).getTime();
+      rawDuration = Math.max(0, Math.round(elapsedMs / 1000));
+    }
+
+    const scheduledMins = eventData?.durationMinutes || 60;
+    const attendedDurationSeconds = this.capAttendedDuration(rawDuration, scheduledMins);
+    const status = this.calculateAttendanceStatus({
+      attendedDurationSeconds,
+      scheduledDurationMinutes: scheduledMins,
+    });
+
+    const updatedReg: EventRegistration = {
+      ...(current || {
+        id: regId,
+        organizationId: eventData?.organizationId || 'default-org',
+        portalId: input.portalId,
+        eventId: input.eventId,
+        userId: input.userId,
+        userName: 'Learner',
+        userEmail: '',
+        registeredAt: now,
+      }),
+      status,
+      joinedAt,
+      leftAt: now,
+      attendedDurationSeconds,
+      updatedAt: now,
+    };
+
+    await regRef.set(updatedReg, { merge: true });
+
+    // Non-blocking Points Award (+20 pts)
+    if (status === 'attended') {
+      try {
+        const membershipSnap = await adminDb
+          .collection('portal_memberships')
+          .where('portalId', '==', input.portalId)
+          .where('userId', '==', input.userId)
+          .limit(1)
+          .get();
+
+        if (!membershipSnap.empty) {
+          await PortalMembershipService.awardPoints(
+            membershipSnap.docs[0].id,
+            20,
+            `Attended Live Session: ${eventData?.title || 'Masterclass'}`
+          );
+        }
+      } catch (ptsErr: unknown) {
+        console.warn('[EventService] Points award non-blocking warning:', ptsErr);
+      }
+    }
+
+    // Auto-complete lesson if satisfied
+    if (status === 'attended' && eventData?.courseId && eventData?.lessonId) {
+      try {
+        await LearningProgressService.completeLesson(
+          eventData.courseId,
+          eventData.lessonId,
+          input.userId,
+          input.portalId
+        );
+      } catch (lmsErr: unknown) {
+        console.warn('[EventService] LMS completeLesson non-blocking warning:', lmsErr);
+      }
+    }
+
+    return updatedReg;
   }
 
   public static async publishEventReplay(input: PublishReplayInput): Promise<LiveEvent> {
