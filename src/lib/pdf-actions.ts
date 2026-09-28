@@ -73,7 +73,15 @@ function resolvePdfVariables(text: string, school?: School): string {
  * 
  * Updated to use the Contact Adapter Layer for backward compatibility (Requirement 18)
  */
-export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: string]: any }) {
+/**
+ * ARCHITECTURAL NOTE: Authoritative server-side vector PDF generation engine.
+ * Eliminates client-side html2canvas screenshotting. Preserves exact page dimensions and text selectable glyphs.
+ * CAUTION FOR FUTURE MAINTAINERS:
+ * - Coordinates use percentage-based normalization relative to actual page media boxes.
+ * - Signatures support both Cloud Storage paths (signatures/...) and legacy base64 data URLs.
+ * - Conforms strictly to Rule 4 (Zero any/any[]).
+ */
+export async function generatePdfBuffer(pdfForm: PDFForm, formData: Record<string, unknown>) {
     let school: School | undefined = undefined;
     if (pdfForm.entityId) {
         // Use adapter to resolve contact (Requirement 18)
@@ -99,7 +107,8 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
 
     let pdfDoc: PDFDocument;
     try {
-        pdfDoc = await PDFDocument.load(pdfBuffer, { ignoreEncryption: true });
+        const uint8 = new Uint8Array(pdfBuffer);
+        pdfDoc = await PDFDocument.load(uint8, { ignoreEncryption: true });
     } catch (e: unknown) {
         throw new Error(`Failed to parse PDF template: ${getErrorMessage(e)}`);
     }
@@ -182,10 +191,23 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: { [key: stri
                     });
                 }
             } else {
-                if (typeof rawValue === 'string' && rawValue.includes('base64,')) {
-                    const base64Data = rawValue.split('base64,')[1];
-                    const imageBuffer = Buffer.from(base64Data, 'base64');
-                    const img = await pdfDoc.embedPng(imageBuffer);
+                let imageBuffer: Buffer | null = null;
+                if (typeof rawValue === 'string') {
+                    if (rawValue.includes('base64,')) {
+                        const base64Data = rawValue.split('base64,')[1];
+                        imageBuffer = Buffer.from(base64Data, 'base64');
+                    } else if (rawValue.startsWith('signatures/')) {
+                        try {
+                            const [storedBytes] = await adminStorage.file(rawValue).download();
+                            imageBuffer = storedBytes;
+                        } catch (storageErr: unknown) {
+                            console.warn(`[PDF:GENERATE] Could not load signature from storage path ${rawValue}:`, storageErr);
+                        }
+                    }
+                }
+
+                if (imageBuffer) {
+                    const img = await pdfDoc.embedPng(imageBuffer).catch(async () => await pdfDoc.embedJpg(imageBuffer!));
                     const scale = Math.min(fieldWidth / img.width, fieldHeight / img.height);
                     const drawWidth = img.width * scale;
                     const drawHeight = img.height * scale;
