@@ -35,22 +35,32 @@ describe('SMS Delivery Guard JIT Self-Healing', () => {
   });
 
   it('self-heals cached score 0 for all 5 user reported contact numbers', async () => {
-    const userNumbers = [
-      '233242737120', // Noah International Complex
-      '233244363965', // MY REDEEMER SCHOOL
-      '233242753266', // Bethel Methodist School
-      '233233146361', // The Sanctuary Montessori
-      '0240488218',   // Tulips Hill Academy
+    const bareNumbers = [
+      { phone: '233242737120', e164: '+233242737120', label: 'Noah International Complex' },
+      { phone: '233244363965', e164: '+233244363965', label: 'MY REDEEMER SCHOOL' },
+      { phone: '233242753266', e164: '+233242753266', label: 'Bethel Methodist School' },
+      { phone: '233233146361', e164: '+233233146361', label: 'The Sanctuary Montessori' },
     ];
 
     const engine = new PhoneVerificationEngine();
 
-    for (const phone of userNumbers) {
-      const freshResult = await engine.verify(phone, 'GH');
+    // Bare numbers resolve globally even with NO defaultCountry hint
+    for (const item of bareNumbers) {
+      const freshResult = await engine.verify(item.phone);
       expect(freshResult.valid).toBe(true);
       expect(freshResult.status).toBe('format_valid');
-      expect(freshResult.score).toBeGreaterThanOrEqual(70);
+      expect(freshResult.e164).toBe(item.e164);
+      expect(freshResult.country).toBe('GH');
+      expect(freshResult.score).toBe(85);
     }
+
+    // Domestic number 0240488218 resolves via organization country setting ('GH')
+    const domesticResult = await engine.verify('0240488218', 'GH');
+    expect(domesticResult.valid).toBe(true);
+    expect(domesticResult.status).toBe('format_valid');
+    expect(domesticResult.e164).toBe('+233240488218');
+    expect(domesticResult.country).toBe('GH');
+    expect(domesticResult.score).toBe(85);
   });
 
   it('correctly keeps truly invalid numbers blocked', async () => {
