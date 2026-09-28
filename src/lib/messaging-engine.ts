@@ -809,19 +809,36 @@ export async function sendMessage(input: SendMessageInput): Promise<{ success: b
         }
     }
 
-    // Phase 8 (phone): SMS Hygiene Guard. Deliberately conservative — only
-    // strictly `invalid` numbers are blocked. `format_valid` is never blocked
-    // because libphonenumber line-type/range metadata lags for some countries.
+    // Phase 8 (phone): SMS Hygiene Guard with JIT Self-Healing.
+    // If a cached record says 'invalid' (Score 0), perform a JIT check against the
+    // sender organization's country setting before aborting. If valid, heal the cache
+    // and deliver the SMS.
     if (template.channel === 'sms') {
         const { PhoneHygieneRepository } = await import('./phone-hygiene-repository');
         const hygiene = await PhoneHygieneRepository.getCache(recipient);
 
         if (hygiene && hygiene.status === 'invalid') {
-            console.warn(`>>> [MSG-ENGINE] SMS Delivery Guard aborted dispatch to ${recipient}: Status=${hygiene.status}, Score=${hygiene.score}`);
-            return {
-                success: false,
-                error: `Recipient number is marked as ${hygiene.status} (Hygiene Score: ${hygiene.score}). Delivery blocked to protect sender reputation.`
-            };
+            const orgId = finalOrgId || template.organizationId;
+            const { resolveOrganizationCountryCode } = await import('./organization-country');
+            const orgCountry = await resolveOrganizationCountryCode(orgId);
+
+            const { PhoneVerificationEngine } = await import('./phone-verifier');
+            const engine = new PhoneVerificationEngine();
+            const freshCheck = await engine.verify(recipient, orgCountry, { forceRefresh: true });
+
+            if (freshCheck.valid && freshCheck.status === 'format_valid') {
+                console.log(`>>> [MSG-ENGINE] SMS Delivery Guard: Self-healed recipient ${recipient} with org country ${orgCountry || 'none'}. New score: ${freshCheck.score}`);
+                // Heal cache asynchronously so subsequent dispatches hit clean cache
+                void PhoneHygieneRepository.commitBatch([[recipient, freshCheck]]).catch(err => {
+                    console.warn(`>>> [MSG-ENGINE] Failed to persist self-healed cache for ${recipient}:`, err);
+                });
+            } else {
+                console.warn(`>>> [MSG-ENGINE] SMS Delivery Guard aborted dispatch to ${recipient}: Status=${freshCheck.status}, Score=${freshCheck.score}`);
+                return {
+                    success: false,
+                    error: `Recipient number is marked as ${freshCheck.status} (Hygiene Score: ${freshCheck.score}). Delivery blocked to protect sender reputation.`
+                };
+            }
         }
     }
 
