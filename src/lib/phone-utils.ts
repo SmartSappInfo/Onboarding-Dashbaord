@@ -1,4 +1,4 @@
-import { parsePhoneNumberFromString, CountryCode } from 'libphonenumber-js';
+import { parsePhoneNumberFromString, getCountryCallingCode, CountryCode } from 'libphonenumber-js';
 
 export interface ParsedPhone {
   isValid: boolean;
@@ -8,15 +8,30 @@ export interface ParsedPhone {
   original: string;
 }
 
-const COUNTRY_PREFIX_MAP: Record<string, string> = {
-  GH: '233',
-  NG: '234',
-  KE: '254',
-  US: '1',
-  CA: '1',
-  GB: '44',
-  UK: '44',
-};
+/**
+ * ARCHITECTURAL GUIDANCE FOR MAINTAINERS:
+ *
+ * This module normalizes phone numbers cleanly across all 240+ countries.
+ *
+ * MULTI-TENANT ISOLATION (Rule 1 & Rule 2):
+ * - Never inject a hardcoded 'GH' (Ghana) default!
+ * - When `defaultCountry` is omitted, international numbers (with '+' or bare calling codes like
+ *   '233...', '234...', '44...', '1...') parse accurately without assumptions.
+ * - Domestic/local numbers starting with trunk prefix '0' (e.g. '0240488218') require an organization
+ *   country context. If omitted, they fail safely rather than corrupting into Ghana numbers.
+ *
+ * DYNAMIC CALLING CODES:
+ * - Uses `getCountryCallingCode` from `libphonenumber-js` dynamically instead of a static map.
+ */
+
+function resolveCallingCode(countryCode?: string): string | undefined {
+  if (!countryCode || countryCode.length !== 2) return undefined;
+  try {
+    return getCountryCallingCode(countryCode.toUpperCase() as CountryCode);
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Parses and formats numbers that were converted to scientific notation (e.g. 2.33276E+11).
@@ -70,6 +85,7 @@ export function getPhoneFormats(phone: string, defaultCountry?: string): string[
 /**
  * Normalizes phone numbers by stripping non-digit characters and prepending
  * the target country prefix intelligently if not already present.
+ * Country-agnostic: does NOT inject a Ghana default if no defaultCountry is provided.
  */
 export function normalizePhoneNumber(phone: string, defaultCountry?: string): ParsedPhone {
   if (!phone || phone.trim() === '') {
@@ -78,20 +94,16 @@ export function normalizePhoneNumber(phone: string, defaultCountry?: string): Pa
 
   // 1. Sanitize scientific notation
   const sanitized = sanitizeScientificNotation(phone);
-  
   const startsWithPlus = sanitized.startsWith('+');
   const startsWithDoubleZero = sanitized.startsWith('00');
-
-  // Strip spaces, dashes, parentheses to make it cleaner for parsing
   const cleaned = sanitized.replace(/[\s\-()]/g, '');
 
-  const defaultCountryCode = (defaultCountry?.toUpperCase() as CountryCode) || 'GH';
-  const prefix = COUNTRY_PREFIX_MAP[defaultCountryCode] || '233';
+  const targetCountry = defaultCountry ? (defaultCountry.toUpperCase() as CountryCode) : undefined;
+  const prefix = resolveCallingCode(targetCountry);
 
-  // Helper to construct a ParsedPhone result
-  const attemptParse = (numStr: string): ParsedPhone | null => {
+  const attemptParse = (numStr: string, country?: CountryCode): ParsedPhone | null => {
     try {
-      const parsed = parsePhoneNumberFromString(numStr, defaultCountryCode);
+      const parsed = parsePhoneNumberFromString(numStr, country);
       if (parsed && parsed.isValid()) {
         return {
           isValid: true,
@@ -105,14 +117,19 @@ export function normalizePhoneNumber(phone: string, defaultCountry?: string): Pa
     return null;
   };
 
-  // Try parsing the cleaned original string first
-  let parseResult = attemptParse(cleaned);
+  // Try parsing original string directly with country hint (if any)
+  let parseResult = attemptParse(cleaned, targetCountry);
   if (parseResult) return parseResult;
 
-  // Fallback: If it didn't parse, let's normalize digits and prepend country prefix if needed
   const digits = cleaned.replace(/\D/g, '');
   if (!digits) {
     return { isValid: false, original: phone };
+  }
+
+  // Try parsing bare international numbers without '+' (e.g. '233242737120', '23480...', '447...', '1202...')
+  if (!startsWithPlus && !cleaned.startsWith('0') && digits.length >= 10 && digits.length <= 15) {
+    const intlResult = attemptParse('+' + digits);
+    if (intlResult) return intlResult;
   }
 
   let normalizedDigits = digits;
@@ -120,29 +137,26 @@ export function normalizePhoneNumber(phone: string, defaultCountry?: string): Pa
     if (startsWithDoubleZero && digits.startsWith('00')) {
       normalizedDigits = digits.substring(2);
     }
-    // Already international, try parsing with a '+' prefix
-    parseResult = attemptParse('+' + normalizedDigits);
+    parseResult = attemptParse('+' + normalizedDigits, targetCountry);
     if (parseResult) return parseResult;
-  } else {
-    // If it already starts with the country prefix (and is sufficiently long)
+  } else if (prefix) {
     if (digits.startsWith(prefix) && digits.length >= (prefix.length + 7)) {
       normalizedDigits = digits;
     } else if (digits.startsWith('0')) {
-      // Strips leading zero and prepends prefix
       normalizedDigits = prefix + digits.substring(1);
     } else {
       normalizedDigits = prefix + digits;
     }
 
-    // Try parsing with a '+' prefix
-    parseResult = attemptParse('+' + normalizedDigits);
+    parseResult = attemptParse('+' + normalizedDigits, targetCountry);
     if (parseResult) return parseResult;
   }
 
-  // If even libphonenumber-js says it is invalid, return a best-effort result
+  // When no prefix or default country is supplied and the number starts with '0' (domestic format),
+  // return invalid without assuming a country to prevent data corruption
   return {
     isValid: false,
-    e164: (startsWithPlus || normalizedDigits.startsWith(prefix) ? '+' : '') + normalizedDigits,
+    e164: (startsWithPlus || (prefix && normalizedDigits.startsWith(prefix)) ? '+' : '') + normalizedDigits,
     original: phone,
   };
 }

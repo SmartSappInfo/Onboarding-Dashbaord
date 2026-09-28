@@ -42,5 +42,32 @@ describe('phone-utils', () => {
       expect(normalizePhoneNumber(' 055-904-0002 ', 'GH').e164).toBe('+233559040002');
       expect(normalizePhoneNumber('+233 (55) 904 0002', 'GH').e164).toBe('+233559040002');
     });
+
+    it('does NOT coerce local numbers to Ghana when no default country is provided', () => {
+      // When no country context is given for a domestic number (starts with 0),
+      // it should NOT assume Ghana.
+      const result = normalizePhoneNumber('0244123456');
+      expect(result.countryCode).not.toBe('GH');
+    });
+
+    it('correctly uses dynamic calling codes for any country (e.g. Germany 49, South Africa 27)', () => {
+      const deResult = normalizePhoneNumber('015112345678', 'DE');
+      expect(deResult.isValid).toBe(true);
+      expect(deResult.e164).toBe('+4915112345678');
+      expect(deResult.callingCode).toBe('49');
+
+      const zaResult = normalizePhoneNumber('0825550199', 'ZA');
+      expect(zaResult.isValid).toBe(true);
+      expect(zaResult.e164).toBe('+27825550199');
+      expect(zaResult.callingCode).toBe('27');
+    });
+
+    it('normalizes bare international numbers without needing default country', () => {
+      const result = normalizePhoneNumber('233242737120');
+      expect(result.isValid).toBe(true);
+      expect(result.e164).toBe('+233242737120');
+      expect(result.countryCode).toBe('GH');
+    });
   });
 });
+
