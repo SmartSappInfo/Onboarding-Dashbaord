@@ -183,3 +183,32 @@ describe('Individual validators — short-circuit guards', () => {
     expect(state.parsed.number).toBe('+233244123456');
   });
 });
+
+describe('PhoneVerificationEngine — bare international numbers without + prefix (multi-country SSOT)', () => {
+  const bareInternationalNumbers = [
+    { phone: '233242737120', country: 'GH', callingCode: '233' },
+    { phone: '233244363965', country: 'GH', callingCode: '233' },
+    { phone: '233242753266', country: 'GH', callingCode: '233' },
+    { phone: '233233146361', country: 'GH', callingCode: '233' },
+    { phone: '2348039051234', country: 'NG', callingCode: '234' },
+    { phone: '254722000111', country: 'KE', callingCode: '254' },
+    { phone: '447400123987', country: 'GB', callingCode: '44' },
+    { phone: '12025550123', country: 'US', callingCode: '1' },
+  ];
+
+  it.each(bareInternationalNumbers)(
+    'accepts $phone without leading + and without defaultCountry as format_valid ($country)',
+    async ({ phone, country, callingCode }) => {
+      // Intentionally NOT passing defaultCountry to test country-agnostic parsing
+      const result = await engine.verify(phone);
+      expect(result.status).toBe('format_valid');
+      expect(result.valid).toBe(true);
+      expect(result.country).toBe(country);
+      expect(result.callingCode).toBe(callingCode);
+      expect(result.checks.structure).toBe(true);
+      expect(result.checks.valid).toBe(true);
+      expect(result.score).toBeGreaterThanOrEqual(70);
+    }
+  );
+});
+

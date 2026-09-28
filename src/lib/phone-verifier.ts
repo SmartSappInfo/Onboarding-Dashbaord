@@ -80,10 +80,27 @@ export class StructureValidator implements IPhoneVerificationStrategy {
       parsed = parsePhoneNumberFromString(cleaned, defaultCountry);
     } catch { /* fall through to normalization pre-pass */ }
 
+    // Country-Agnostic International Pre-Pass (Rule 1 & Rule 9):
+    // Numbers entered without a leading '+' (e.g. '233242737120', '23480...', '447...', '1202...').
+    // If digits are between 10 and 15 and do NOT start with trunk prefix '0', test if prepending '+'
+    // yields a valid E.164 number. This allows numbers stored with country calling code to parse
+    // accurately across all 240+ countries without assuming any default country or corrupting tenant data.
+    if (!parsed && !cleaned.startsWith('+') && !cleaned.startsWith('0')) {
+      const digitsOnly = cleaned.replace(/\D/g, '');
+      if (digitsOnly.length >= 10 && digitsOnly.length <= 15) {
+        try {
+          const candidate = parsePhoneNumberFromString('+' + digitsOnly);
+          if (candidate && (candidate.isValid() || candidate.isPossible())) {
+            parsed = candidate;
+          }
+        } catch { /* unparseable as international */ }
+      }
+    }
+
     // Pre-pass for messy legacy input (00-prefix, missing '+', Excel artifacts).
     // Only runs when we have a country hint or the input is already
-    // international — otherwise normalizePhoneNumber would inject its GH default
-    // and a bare local number would be wrongly treated as Ghanaian.
+    // international — otherwise normalizePhoneNumber would inject its fallback
+    // and a bare local number would be wrongly treated.
     if (!parsed && (defaultCountry || looksInternational)) {
       const normalized = normalizePhoneNumber(raw, defaultCountry);
       if (normalized.e164) {
