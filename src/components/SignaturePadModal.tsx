@@ -484,25 +484,25 @@ export default function SignaturePadModal({ open, onClose, onSave, mode = 'signa
                 <DialogFooter className="p-6 bg-muted/30 border-t shrink-0 flex flex-col sm:flex-row gap-3">
                     {step === 'input' ? (
                         <>
-                            {showClearButton && <Button variant="ghost" size="sm" onClick={handleClear} className="font-bold text-[10px] uppercase h-10 px-4"><Eraser className="h-3 w-3 mr-1.5" /> Clear</Button>}
+                            {showClearButton && <Button variant="ghost" size="sm" onClick={handleClear} className="font-bold text-[10px] uppercase min-h-[44px] h-11 px-4 active:scale-[0.97]"><Eraser className="h-3.5 w-3.5 mr-1.5" /> Clear</Button>}
                             <div className="flex-1" />
-                            <Button variant="ghost" onClick={onClose} className="font-bold h-10 px-8 rounded-xl">Discard</Button>
-                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black h-10 px-10 shadow-lg uppercase text-[10px] tracking-widest transition-all active:scale-95">Continue</Button>
+                            <Button variant="ghost" onClick={onClose} className="font-bold min-h-[44px] h-11 px-8 rounded-xl active:scale-[0.97]">Discard</Button>
+                            <Button onClick={handleProceedToConfirm} disabled={!isInputProvided} className="rounded-xl font-black min-h-[44px] h-11 px-10 shadow-lg uppercase text-[10px] tracking-widest transition-all active:scale-[0.97]">Continue</Button>
                         </>
                     ) : step === 'refine' ? (
                         <>
-                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold h-10 px-8 rounded-xl gap-2"><ArrowLeft className="h-3 w-3" /> Start Over</Button>
+                            <Button variant="ghost" onClick={() => setStep('input')} className="font-bold min-h-[44px] h-11 px-8 rounded-xl gap-2 active:scale-[0.97]"><ArrowLeft className="h-4 w-4" /> Start Over</Button>
                             <div className="flex-1" />
-                            <Button onClick={handleProceedToConfirm} disabled={isProcessingPreview} className="rounded-xl font-black h-10 px-10 shadow-lg bg-primary text-white uppercase text-[10px] tracking-widest transition-all active:scale-95">
+                            <Button onClick={handleProceedToConfirm} disabled={isProcessingPreview} className="rounded-xl font-black min-h-[44px] h-11 px-10 shadow-lg bg-primary text-white uppercase text-[10px] tracking-widest transition-all active:scale-[0.97]">
                                 {isProcessingPreview ? <Loader2 className="mr-2 h-4 w-4 animate-spin mr-2" /> : <Check className="mr-2 h-4 w-4 mr-2" />}
                                 Process Final
                             </Button>
                         </>
                     ) : (
                         <>
-                            <Button variant="ghost" onClick={() => setStep('refine')} className="font-bold h-10 px-8 rounded-xl gap-2"><ArrowLeft className="h-3 w-3" /> Back</Button>
+                            <Button variant="ghost" onClick={() => setStep('refine')} className="font-bold min-h-[44px] h-11 px-8 rounded-xl gap-2 active:scale-[0.97]"><ArrowLeft className="h-4 w-4" /> Back</Button>
                             <div className="flex-1" />
-                            <Button onClick={handleFinalSave} disabled={!isConsented || !processedResult} className="rounded-xl font-black h-12 px-12 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-white uppercase tracking-widest text-[10px] gap-3 active:scale-95 transition-all">
+                            <Button onClick={handleFinalSave} disabled={!isConsented || !processedResult} className="rounded-xl font-black min-h-[44px] h-12 px-12 shadow-xl bg-emerald-600 hover:bg-emerald-700 text-white uppercase tracking-widest text-[10px] gap-3 active:scale-[0.97] transition-all">
                                 <ShieldCheck className="h-5 w-5" /> Apply Signature
                             </Button>
                         </>

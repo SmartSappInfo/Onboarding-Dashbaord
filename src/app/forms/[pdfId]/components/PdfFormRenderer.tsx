@@ -85,8 +85,8 @@ const BackgroundPattern = ({ pattern, color }: { pattern?: PDFForm['backgroundPa
     return <div className="absolute inset-0 pointer-events-none text-foreground/20">{patterns[pattern]}</div>;
 };
 
-const DatePicker = ({ value, onChange, disabled, className, style, placeholder }: { value?: any, onChange: (date?: Date) => void, disabled?: boolean, className?: string, style?: React.CSSProperties, placeholder?: string }) => {
-    let dateValue = value && isValid(value instanceof Date ? value : parseISO(value)) ? (value instanceof Date ? value : parseISO(value)) : undefined;
+const DatePicker = ({ value, onChange, disabled, className, style, placeholder }: { value?: unknown, onChange: (date?: Date) => void, disabled?: boolean, className?: string, style?: React.CSSProperties, placeholder?: string }) => {
+    let dateValue = value && isValid(value instanceof Date ? value : parseISO(String(value))) ? (value instanceof Date ? value : parseISO(String(value))) : undefined;
     return (
         <Popover><PopoverTrigger asChild><Button variant="ghost" disabled={disabled} className={cn("w-full h-full min-h-0 p-0.5 border-transparent bg-transparent hover:bg-primary/5 transition-all justify-start text-left font-normal rounded-none", !dateValue && "text-muted-foreground/40", className)} style={style}><span className="truncate">{dateValue ? format(dateValue, "PPP") : (placeholder || 'Pick date')}</span></Button></PopoverTrigger><PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateValue} onSelect={onChange} initialFocus captionLayout="dropdown" /></PopoverContent></Popover>
     );
@@ -130,7 +130,7 @@ export default function PdfFormRenderer({
   const [baseScale, setBaseScale] = React.useState(1.3);
   
   const [showConfirmDialog, setShowConfirmDialog] = React.useState(false);
-  const [pendingFormData, setPendingFormData] = React.useState<any>(null);
+  const [pendingFormData, setPendingFormData] = React.useState<Record<string, unknown> | null>(null);
   const [showMissingFieldsModal, setShowMissingFieldsModal] = React.useState(false);
   const [missingFields, setMissingFields] = React.useState<{ id: string, label: string, pageIndex: number }[]>([]);
 
@@ -260,7 +260,7 @@ export default function PdfFormRenderer({
       setIsSubmitting(false);
   };
 
-  const handlePreSubmit = (data: any) => {
+  const handlePreSubmit = (data: Record<string, unknown>) => {
     if (isPreview) { toast({ title: 'Preview Mode' }); return; }
     const flattenedData = { ...data };
     pdfForm.fields.forEach(field => {
@@ -410,12 +410,12 @@ export default function PdfFormRenderer({
                 <div className="flex-1" />
                 <div className="flex items-center gap-2">
                     {!isFormComplete ? (
-                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !entity} className="rounded-xl font-bold h-10 px-4 flex items-center gap-2 transition-all active:scale-95 border-primary/20 text-primary">
-                            {isSubmitting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-4 w-4" />}
+                        <Button variant="outline" size="sm" onClick={handleSaveProgress} disabled={isSubmitting || isPreview || !entity} className="rounded-xl font-bold min-h-[44px] h-11 px-4 flex items-center gap-2 transition-all active:scale-[0.97] border-primary/20 text-primary">
+                            {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                             {isMobile ? 'Save' : 'Save Progress'}
                         </Button>
                     ) : (
-                        <Button type="button" size="sm" onClick={handleSubmit(handlePreSubmit, onInvalid)} className="rounded-xl font-black shadow-lg px-6 h-10 uppercase text-[10px] tracking-widest gap-2 bg-primary animate-in zoom-in duration-300">
+                        <Button type="button" size="sm" onClick={handleSubmit(handlePreSubmit, onInvalid)} disabled={isSubmitting} className="rounded-xl font-black shadow-lg px-6 min-h-[44px] h-11 uppercase text-[10px] tracking-widest gap-2 bg-primary active:scale-[0.97] transition-all animate-in zoom-in duration-300">
                             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                             {isMobile ? 'Finalize' : 'Finalize Agreement'}
                         </Button>
@@ -470,16 +470,40 @@ export default function PdfFormRenderer({
             <AlertDialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
                 <AlertDialogContent className="rounded-2xl">
                     <AlertDialogHeader><div className="mx-auto bg-primary/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><ShieldAlert className="h-6 w-6 text-primary" /></div><AlertDialogTitle>Execute Final Agreement?</AlertDialogTitle><AlertDialogDescription>This document will be locked from further edits. Electronic signatures are legally binding equivalent to handwritten ones.</AlertDialogDescription></AlertDialogHeader>
-                    <AlertDialogFooter><AlertDialogCancel>Review</AlertDialogCancel><AlertDialogAction onClick={onConfirmSubmission} className="bg-primary">Confirm & Finalize</AlertDialogAction></AlertDialogFooter>
+                    <AlertDialogFooter>
+                        <AlertDialogCancel disabled={isSubmitting} className="min-h-[44px] rounded-xl active:scale-[0.97]">Review</AlertDialogCancel>
+                        <AlertDialogAction onClick={onConfirmSubmission} disabled={isSubmitting} className="bg-primary min-h-[44px] rounded-xl active:scale-[0.97]">
+                            {isSubmitting ? (
+                                <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    <span>Certifying...</span>
+                                </>
+                            ) : (
+                                'Confirm & Finalize'
+                            )}
+                        </AlertDialogAction>
+                    </AlertDialogFooter>
                 </AlertDialogContent>
             </AlertDialog>
             <Dialog open={showMissingFieldsModal} onOpenChange={setShowMissingFieldsModal}>
                 <DialogContent className="sm:max-w-md rounded-2xl">
                     <DialogHeader><div className="mx-auto bg-destructive/10 w-12 h-12 rounded-full flex items-center justify-center mb-4"><AlertCircle className="h-6 w-6 text-destructive" /></div><DialogTitle className="text-center font-black">Missing Required Information</DialogTitle><DialogDescription className="text-center text-sm font-medium">The following fields must be completed before you can finalize this agreement:</DialogDescription></DialogHeader>
                     <ScrollArea className="max-h-[30vh] border rounded-xl my-4"><ul className="p-4 space-y-3">{missingFields.map((field, idx) => (<li key={idx} className="flex items-center gap-3 text-sm font-medium"><div className="h-2 w-2 rounded-full bg-destructive shrink-0" /><span className="font-bold truncate">{field.label}</span><span className="text-[10px] uppercase font-black opacity-40 ml-auto">Page {field.pageIndex + 1}</span></li>))}</ul></ScrollArea>
-                    <DialogFooter><Button onClick={handleOkMissingFields} className="w-full font-bold h-12 rounded-xl text-base shadow-lg">Go Fix These</Button></DialogFooter>
+                    <DialogFooter><Button onClick={handleOkMissingFields} className="w-full font-bold h-12 min-h-[44px] rounded-xl text-base shadow-lg active:scale-[0.97]">Go Fix These</Button></DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {isSubmitting && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex flex-col items-center justify-center gap-4 text-white pointer-events-auto animate-in fade-in duration-200">
+                    <div className="bg-primary/20 p-4 rounded-full border border-primary/30">
+                        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                    </div>
+                    <div className="text-center space-y-1">
+                        <p className="font-black text-base tracking-wide">Executing & Certifying Agreement</p>
+                        <p className="text-xs text-white/70 font-medium">Computing cryptographic SHA-256 digests and audit ledger...</p>
+                    </div>
+                </div>
+            )}
         </div>
     </FormProvider>
   );

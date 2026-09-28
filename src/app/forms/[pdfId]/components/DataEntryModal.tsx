@@ -30,7 +30,7 @@ interface DataEntryModalProps {
 }
 
 const DatePickerInput = ({ value, onChange, placeholder, disabled, hasError }: { 
-    value?: any, 
+    value?: unknown, 
     onChange: (date?: Date) => void, 
     placeholder?: string,
     disabled?: boolean,
@@ -38,7 +38,7 @@ const DatePickerInput = ({ value, onChange, placeholder, disabled, hasError }: {
 }) => {
     let dateValue: Date | undefined = undefined;
     if (value) {
-        const parsed = value instanceof Date ? value : parseISO(value);
+        const parsed = value instanceof Date ? value : parseISO(String(value));
         if (isValid(parsed)) {
             dateValue = parsed;
         }
@@ -128,9 +128,9 @@ export default function DataEntryModal({ open, onOpenChange, pdfForm, activeFiel
                     {field.label || 'Unnamed Field'}
                     {field.required && <span className="text-destructive font-bold">*</span>}
                   </Label>
-                  {errors[field.id] && (
+                  {errors[field.id]?.message && (
                     <span className="text-[10px] font-bold text-destructive uppercase tracking-tighter">
-                      {(errors as any)[field.id]?.message}
+                      {String(errors[field.id]?.message)}
                     </span>
                   )}
                 </div>
