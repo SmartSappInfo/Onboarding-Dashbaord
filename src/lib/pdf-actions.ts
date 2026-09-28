@@ -413,14 +413,13 @@ export async function finalizeAgreementAction(
             preExecutionDigest = calculateSha256Digest(Buffer.from(pdfData.id));
         }
 
-        // 4. Generate Server-Side Vector PDF Buffer (with defensive fallback)
+        // 4. Generate Server-Side Vector PDF Buffer (abort if generation fails)
         let rawPdfBuffer: Uint8Array;
         try {
             rawPdfBuffer = await generatePdfBuffer(pdfData, processedFormData);
-        } catch {
-            const fallbackDoc = await PDFDocument.create();
-            fallbackDoc.addPage([595.28, 841.89]);
-            rawPdfBuffer = await fallbackDoc.save();
+        } catch (e: unknown) {
+            console.error('[finalizeAgreementAction] PDF generation failed:', e);
+            return { success: false, error: `Failed to generate agreement PDF: ${getErrorMessage(e)}` };
         }
         const postExecutionDigest = calculateSha256Digest(rawPdfBuffer);
 
@@ -486,7 +485,10 @@ export async function finalizeAgreementAction(
                     },
                 },
             });
-        } catch {}
+        } catch (e: unknown) {
+            console.error('[finalizeAgreementAction] Failed to persist sealed PDF to Cloud Storage:', e);
+            return { success: false, error: `Failed to persist executed document to Cloud Storage: ${getErrorMessage(e)}` };
+        }
 
         await createEvidenceRecord({
             envelopeId: contractRef.id,
