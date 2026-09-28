@@ -27,6 +27,7 @@ export interface VerificationPanelContact {
 
 interface Props {
   contact: VerificationPanelContact;
+  organizationId?: string;
   /** Optional external recheck hooks; if omitted, the panel calls the trigger APIs itself. */
   onRecheckEmail?: (email: string) => void | Promise<void>;
   onRecheckPhone?: (phone: string) => void | Promise<void>;
@@ -104,7 +105,7 @@ function RecheckButton({ onClick, busy }: { onClick: () => void; busy: boolean }
   );
 }
 
-export function ContactVerificationPanel({ contact, onRecheckEmail, onRecheckPhone }: Props) {
+export function ContactVerificationPanel({ contact, organizationId, onRecheckEmail, onRecheckPhone }: Props) {
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -153,7 +154,10 @@ export function ContactVerificationPanel({ contact, onRecheckEmail, onRecheckPho
         const res = await fetch('/api/verify-phone/trigger', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ phones: [contact.phone] }),
+          body: JSON.stringify({
+            phones: [contact.phone],
+            organizationId: organizationId || undefined,
+          }),
         });
         if (!res.ok) throw new Error('Verification trigger failed');
         toast({ title: 'Phone verification queued', description: `${contact.phone} is being verified.` });

@@ -2,11 +2,13 @@ import { NextResponse, after } from 'next/server';
 import { z } from 'zod';
 import { BulkPhoneVerificationService } from '@/lib/bulk-phone-verifier';
 import { PhoneHygieneRepository } from '@/lib/phone-hygiene-repository';
+import { resolveOrganizationCountryCode } from '@/lib/organization-country';
 import { getErrorMessage } from '@/lib/errors/report-error';
 
 const TriggerSchema = z.object({
   phones: z.array(z.string()).min(1).max(200),
   defaultCountry: z.string().length(2).optional(),
+  organizationId: z.string().optional(),
 });
 
 /**
@@ -31,7 +33,16 @@ export async function POST(req: Request) {
       );
     }
 
-    const { defaultCountry } = parsed.data;
+    let { defaultCountry } = parsed.data;
+    const { organizationId } = parsed.data;
+
+    // Resolve tenant organization country setting if not directly supplied
+    if (!defaultCountry && organizationId) {
+      const resolved = await resolveOrganizationCountryCode(organizationId);
+      if (resolved) {
+        defaultCountry = resolved;
+      }
+    }
     const rawPhones = parsed.data.phones;
 
     // Gracefully filter out empty or blank strings, keeping all actual values to be verified/flagged

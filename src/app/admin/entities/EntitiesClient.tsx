@@ -2153,7 +2153,7 @@ function CompactContactList({
     return (
         <div className="flex -space-x-2 overflow-visible py-1">
             {contacts.slice(0, 4).map((c, i) => (
-                <InteractiveContactAvatar key={i} contact={c} onManualRecheck={onManualRecheck} />
+                <InteractiveContactAvatar key={i} contact={c} organizationId={baseEntity?.organizationId} onManualRecheck={onManualRecheck} />
             ))}
             {contacts.length > 4 && (
                 <div className="flex items-center justify-center h-8 w-8 rounded-full bg-muted text-[10px] font-bold ring-2 ring-background z-0 relative border border-border/50">
@@ -2173,7 +2173,7 @@ function EmailVerificationStatusDot({ email }: { email: string }) {
     const firestore = useFirestore();
     const hashed = useMemo(() => btoa(email.toLowerCase()), [email]);
     const docRef = useMemoFirebase(() => firestore ? doc(firestore, 'verification_cache', hashed) : null, [firestore, hashed]);
-    const { data: cache } = useDoc<any>(docRef);
+    const { data: cache } = useDoc<{ status?: string; score?: number }>(docRef);
 
     const status = cache?.status || 'unchecked';
     
@@ -2190,7 +2190,15 @@ function EmailVerificationStatusDot({ email }: { email: string }) {
     return <span className={cn("absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full ring-2 ring-background", colors[status as keyof typeof colors] || colors.unchecked)} />;
 }
 
-function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, onManualRecheck: (email: string) => void }) {
+function InteractiveContactAvatar({ 
+    contact, 
+    organizationId, 
+    onManualRecheck 
+}: { 
+    contact: EntityContact; 
+    organizationId?: string; 
+    onManualRecheck: (email: string) => void; 
+}) {
     const [isPopoverOpen, setIsPopoverOpen] = useState(false);
     const [isTooltipOpen, setIsTooltipOpen] = useState(false);
     
@@ -2218,7 +2226,7 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
                             <p className="font-bold text-sm tracking-tight">{contact.name}</p>
                             <div className="flex items-center gap-1.5 mt-1 mb-2">
                                 <Badge variant="outline" className="text-[8px] uppercase tracking-tighter">
-                                    {contact.typeLabel || contact.typeKey || contact.type}
+                                    {contact.typeLabel || contact.typeKey || 'Contact'}
                                 </Badge>
                                 {contact.emailStatus === 'archived' && (
                                     <Badge variant="outline" className="text-[8px] bg-slate-800 text-slate-400 border-slate-700 uppercase tracking-tighter flex items-center gap-0.5 font-bold">
@@ -2236,7 +2244,7 @@ function InteractiveContactAvatar({ contact, onManualRecheck }: { contact: any, 
             </PopoverTrigger>
 
             <PopoverContent side="top" className="w-80 p-0 bg-slate-950 border-slate-800 shadow-2xl overflow-hidden z-50 rounded-2xl">
-                <ContactVerificationPanel contact={contact} onRecheckEmail={onManualRecheck} />
+                <ContactVerificationPanel contact={contact} organizationId={organizationId} onRecheckEmail={onManualRecheck} />
             </PopoverContent>
         </Popover>
     );

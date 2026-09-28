@@ -11,9 +11,11 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { saveOrganizationAction } from '@/lib/organization-actions';
-import { Settings, Loader2, Save, X } from 'lucide-react';
+import { Settings, Loader2, Save, X, ShieldCheck, RefreshCw } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { reconcilePhoneHygieneAction } from '@/lib/phone-hygiene-actions';
+import { invalidateOrganizationCountryCache } from '@/lib/organization-country';
 
 const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -28,18 +30,23 @@ const LANGUAGES = [
 ];
 
 const COUNTRIES = [
-  { code: 'GH', name: 'Ghana', flag: '🇬🇭' },
-  { code: 'US', name: 'United States', flag: '🇺🇸' },
-  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧' },
-  { code: 'NG', name: 'Nigeria', flag: '🇳🇬' },
-  { code: 'CA', name: 'Canada', flag: '🇨🇦' },
-  { code: 'AU', name: 'Australia', flag: '🇦🇺' },
-  { code: 'DE', name: 'Germany', flag: '🇩🇪' },
-  { code: 'FR', name: 'France', flag: '🇫🇷' },
-  { code: 'ZA', name: 'South Africa', flag: '🇿🇦' },
-  { code: 'KE', name: 'Kenya', flag: '🇰🇪' },
-  { code: 'IN', name: 'India', flag: '🇮🇳' },
-  { code: 'BR', name: 'Brazil', flag: '🇧🇷' }
+  { code: 'GH', name: 'Ghana', flag: '🇬🇭', dial: '+233' },
+  { code: 'NG', name: 'Nigeria', flag: '🇳🇬', dial: '+234' },
+  { code: 'KE', name: 'Kenya', flag: '🇰🇪', dial: '+254' },
+  { code: 'ZA', name: 'South Africa', flag: '🇿🇦', dial: '+27' },
+  { code: 'GB', name: 'United Kingdom', flag: '🇬🇧', dial: '+44' },
+  { code: 'US', name: 'United States', flag: '🇺🇸', dial: '+1' },
+  { code: 'CA', name: 'Canada', flag: '🇨🇦', dial: '+1' },
+  { code: 'AU', name: 'Australia', flag: '🇦🇺', dial: '+61' },
+  { code: 'DE', name: 'Germany', flag: '🇩🇪', dial: '+49' },
+  { code: 'FR', name: 'France', flag: '🇫🇷', dial: '+33' },
+  { code: 'IN', name: 'India', flag: '🇮🇳', dial: '+91' },
+  { code: 'BR', name: 'Brazil', flag: '🇧🇷', dial: '+55' },
+  { code: 'AE', name: 'United Arab Emirates', flag: '🇦🇪', dial: '+971' },
+  { code: 'EG', name: 'Egypt', flag: '🇪🇬', dial: '+20' },
+  { code: 'RW', name: 'Rwanda', flag: '🇷🇼', dial: '+250' },
+  { code: 'UG', name: 'Uganda', flag: '🇺🇬', dial: '+256' },
+  { code: 'TZ', name: 'Tanzania', flag: '🇹🇿', dial: '+255' },
 ];
 
 const IANA_TIMEZONES: string[] = (() => {
@@ -59,6 +66,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
     const { user } = useUser();
     const { toast } = useToast();
     const [isSaving, setIsSaving] = React.useState(false);
+    const [isReconciling, setIsReconciling] = React.useState(false);
 
     const [defaultLanguage, setDefaultLanguage] = React.useState(organization.settings?.defaultLanguage || 'en');
     const [defaultCountryCode, setDefaultCountryCode] = React.useState(organization.defaultCountryCode || 'GH');
@@ -69,6 +77,10 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
     const [roles, setRoles] = React.useState<{ id: string; name: string }[]>([]);
     const [departments, setDepartments] = React.useState<string[]>(organization.departments && organization.departments.length > 0 ? organization.departments : ['General']);
     const [newDept, setNewDept] = React.useState('');
+
+    const activeCountry = React.useMemo(() => {
+        return COUNTRIES.find(c => c.code === defaultCountryCode) || { code: defaultCountryCode, name: defaultCountryCode, flag: '🌐', dial: '' };
+    }, [defaultCountryCode]);
 
     React.useEffect(() => {
         async function loadRoles() {
@@ -107,6 +119,34 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
         setDepartments(departments.filter(d => d !== deptToRemove));
     };
 
+    const handleReconcileHygiene = async () => {
+        if (!organization.id || isReconciling) return;
+        setIsReconciling(true);
+        try {
+            const result = await reconcilePhoneHygieneAction(organization.id);
+            if (result.success) {
+                toast({
+                    title: 'Phone Hygiene Re-scanned',
+                    description: result.message,
+                });
+            } else {
+                toast({
+                    variant: 'destructive',
+                    title: 'Re-scan Failed',
+                    description: result.error || result.message,
+                });
+            }
+        } catch (err: unknown) {
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: getErrorMessage(err),
+            });
+        } finally {
+            setIsReconciling(false);
+        }
+    };
+
     const handleSave = async () => {
         if (!user) return;
         setIsSaving(true);
@@ -126,6 +166,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
             );
 
             if (result.success) {
+                invalidateOrganizationCountryCache(organization.id);
                 toast({ title: 'Settings Saved', description: 'Regional details updated successfully.' });
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
@@ -178,10 +219,15 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                         >
                             {COUNTRIES.map(c => (
                                 <option key={c.code} value={c.code}>
-                                    {c.flag} {c.name}
+                                    {c.flag} {c.name} ({c.dial})
                                 </option>
                             ))}
                         </select>
+                        <p className="text-[11px] font-medium text-muted-foreground flex items-center gap-1.5 mt-1">
+                            <span>{activeCountry.flag}</span>
+                            <span>Calling Code: <strong className="text-foreground">{activeCountry.dial || 'Universal'}</strong></span>
+                            <span className="text-muted-foreground/60">• Used for domestic contact numbers</span>
+                        </p>
                     </div>
 
                     <div className="space-y-2">
@@ -272,6 +318,42 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                                 </button>
                             </Badge>
                         ))}
+                    </div>
+                </div>
+
+                <Separator className="opacity-50" />
+
+                <div className="rounded-2xl border border-border/60 bg-muted/10 p-5 space-y-3">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div className="space-y-1">
+                            <h4 className="text-sm font-bold flex items-center gap-2">
+                                <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                                Phone Hygiene & Deliverability
+                            </h4>
+                            <p className="text-xs text-muted-foreground">
+                                Re-evaluate contacts whose numbers were marked invalid due to missing country prefixes or stale cache records.
+                            </p>
+                        </div>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={handleReconcileHygiene}
+                            disabled={isReconciling}
+                            className="min-h-[44px] px-4 font-bold rounded-xl border border-border shadow-sm active:scale-[0.97] transition-all shrink-0"
+                        >
+                            {isReconciling ? (
+                                <>
+                                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                                    Scanning Cache...
+                                </>
+                            ) : (
+                                <>
+                                    <RefreshCw className="h-4 w-4 mr-2" />
+                                    Re-scan Phone Hygiene
+                                </>
+                            )}
+                        </Button>
                     </div>
                 </div>
 

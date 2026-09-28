@@ -769,7 +769,7 @@ export interface EntityContact {
   emailVerificationScore?: number;
   score?: number;
   // Email Hygiene
-  emailStatus?: 'valid' | 'bounced' | 'unsubscribed' | 'complained' | 'snoozed' | 'opt-down';
+  emailStatus?: 'valid' | 'bounced' | 'unsubscribed' | 'complained' | 'snoozed' | 'opt-down' | 'archived' | 'invalid';
   bounceReason?: string;
   bouncedAt?: string;
   unsubscribedAt?: string;

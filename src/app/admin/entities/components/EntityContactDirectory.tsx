@@ -277,6 +277,7 @@ export default function EntityContactDirectory({
                                 <ContactRow 
                                     key={contact.id}
                                     contact={contact}
+                                    organizationId={organizationId || entityData.organizationId || undefined}
                                     onEdit={() => setEditingId(contact.id)}
                                     onDelete={() => setContactToDelete(contact.id)}
                                     onInvite={() => {
@@ -356,8 +357,9 @@ export default function EntityContactDirectory({
     );
 }
 
-function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disabled }: { 
+function ContactRow({ contact, organizationId, onEdit, onDelete, onInvite, onAddToCampaign, disabled }: { 
     contact: EntityContact, 
+    organizationId?: string,
     onEdit: () => void, 
     onDelete: () => void,
     onInvite: () => void,
@@ -426,7 +428,10 @@ function ContactRow({ contact, onEdit, onDelete, onInvite, onAddToCampaign, disa
             const res = await fetch('/api/verify-phone/trigger', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ phones: [phone] })
+                body: JSON.stringify({ 
+                    phones: [phone],
+                    organizationId: organizationId || undefined,
+                })
             });
             if (!res.ok) throw new Error('Verification trigger failed');
             toast({ title: 'Verification Queued', description: `${phone} is being verified in the background.` });
