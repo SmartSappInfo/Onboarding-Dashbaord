@@ -243,79 +243,79 @@ Phase 6: Enterprise Readiness & Security Verification
 **Files:**
 - Create: `docs/DocSigning/phase-0/code-path-inventory.md`
 
-- [ ] **Step 1: Document all active routes, server actions, client components, and downstream dependencies.**
+- [x] **Step 1: Document all active routes, server actions, client components, and downstream dependencies.**
   - Catalog template editor, wizard, public viewer, submission endpoints, and download handlers.
   - Map external integrations: `pdf-lib`, `pdfjs-dist`, `react-signature-canvas`, `react-easy-crop`, `messaging-engine`, and `activity-logger`.
-- [ ] **Step 2: Commit inventory document.**
+- [x] **Step 2: Commit inventory document.**
   - Command: `git add docs/DocSigning/phase-0/code-path-inventory.md && git commit -m "docs(docsigning): document P0.1 code-path inventory and call graph"`
 
 #### Task 0.2: Data Schemas, Storage & Security Matrix (P0.2)
 **Files:**
 - Create: `docs/DocSigning/phase-0/data-and-security-inventory.md`
 
-- [ ] **Step 1: Document Firestore collection schemas, storage paths, tenant isolation rules, and threat model.**
+- [x] **Step 1: Document Firestore collection schemas, storage paths, tenant isolation rules, and threat model.**
   - Document `pdfs`, `contracts`, `submissions`, `pdf_sessions`, `activity`.
   - Detail Authorization Matrix (Anonymous, Workspace Member, Admin).
   - Catalog Threat Register (R-01 through R-12).
-- [ ] **Step 2: Commit data and security inventory document.**
+- [x] **Step 2: Commit data and security inventory document.**
   - Command: `git add docs/DocSigning/phase-0/data-and-security-inventory.md && git commit -m "docs(docsigning): document P0.2 data and security inventory"`
 
 #### Task 0.3: Signature Processing Engine Baseline Tests (P0.3)
 **Files:**
 - Create: `src/lib/__tests__/signature-processing.baseline.test.ts`
 
-- [ ] **Step 1: Write baseline tests for `signature-processing.ts`.**
+- [x] **Step 1: Write baseline tests for `signature-processing.ts`.**
   - Verify thresholding, luminance calculation, transparent background removal, crop boundaries, and auto-tighten normalization.
-- [ ] **Step 2: Run test suite to verify baseline passes.**
+- [x] **Step 2: Run test suite to verify baseline passes.**
   - Command: `pnpm test:run src/lib/__tests__/signature-processing.baseline.test.ts`
-- [ ] **Step 3: Commit signature processing tests.**
+- [x] **Step 3: Commit signature processing tests.**
   - Command: `git add src/lib/__tests__/signature-processing.baseline.test.ts && git commit -m "test(docsigning): add P0.3 signature processing baseline tests"`
 
 #### Task 0.4: Dynamic Variable Resolution Baseline Tests (P0.3)
 **Files:**
 - Create: `src/lib/__tests__/pdf-variable-resolution.baseline.test.ts`
 
-- [ ] **Step 1: Write baseline tests for template variable substitution in `pdf-actions.ts`.**
+- [x] **Step 1: Write baseline tests for template variable substitution in `pdf-actions.ts`.**
   - Verify `{{entity_name}}`, `{{entity_location}}`, and FER-01 contact dynamic variables.
   - Verify unknown tokens remain untouched without throwing exceptions.
-- [ ] **Step 2: Run test suite to verify pass.**
+- [x] **Step 2: Run test suite to verify pass.**
   - Command: `pnpm test:run src/lib/__tests__/pdf-variable-resolution.baseline.test.ts`
-- [ ] **Step 3: Commit variable resolution tests.**
+- [x] **Step 3: Commit variable resolution tests.**
   - Command: `git add src/lib/__tests__/pdf-variable-resolution.baseline.test.ts && git commit -m "test(docsigning): add P0.3 variable resolution baseline tests"`
 
 #### Task 0.5: Contract Actions & Dispatch Baseline Tests (P0.3)
 **Files:**
 - Create: `src/lib/__tests__/contract-actions.baseline.test.ts`
 
-- [ ] **Step 1: Write baseline tests for contract lifecycle actions.**
+- [x] **Step 1: Write baseline tests for contract lifecycle actions.**
   - Verify `upsertContractAction`: RBAC checks, draft upsert logic.
   - Verify `sendContractAction`: dual Email/SMS dispatch, variable interpolation, status update to `'sent'`.
   - Verify `deleteContractAction`: atomic deletion of contract and linked submission record.
-- [ ] **Step 2: Run contract actions test suite.**
+- [x] **Step 2: Run contract actions test suite.**
   - Command: `pnpm test:run src/lib/__tests__/contract-actions.baseline.test.ts`
-- [ ] **Step 3: Commit contract actions tests.**
+- [x] **Step 3: Commit contract actions tests.**
   - Command: `git add src/lib/__tests__/contract-actions.baseline.test.ts && git commit -m "test(docsigning): add P0.3 contract actions baseline tests"`
 
 #### Task 0.6: PDF Actions & Finalization Lifecycle Baseline Tests (P0.3)
 **Files:**
 - Create: `src/lib/__tests__/pdf-actions.baseline.test.ts`
 
-- [ ] **Step 1: Write baseline tests for PDF signing actions.**
+- [x] **Step 1: Write baseline tests for PDF signing actions.**
   - Verify `saveAgreementProgressAction`: partial submission write, contract status update to `'partially_signed'`.
   - Verify `finalizeAgreementAction`: final submission write, contract status update to `'signed'`, confirmation dispatch, team alert.
-- [ ] **Step 2: Run PDF actions test suite.**
+- [x] **Step 2: Run PDF actions test suite.**
   - Command: `pnpm test:run src/lib/__tests__/pdf-actions.baseline.test.ts`
-- [ ] **Step 3: Commit PDF actions tests.**
+- [x] **Step 3: Commit PDF actions tests.**
   - Command: `git add src/lib/__tests__/pdf-actions.baseline.test.ts && git commit -m "test(docsigning): add P0.3 PDF actions baseline tests"`
 
 #### Task 0.7: Operational Baseline & Known-Gap Register (P0.4)
 **Files:**
 - Create: `docs/DocSigning/phase-0/operational-baseline-and-rehearsal.md`
 
-- [ ] **Step 1: Document Known-Gap Register, Backup Procedures, and Phase 0 Gate Checklist.**
+- [x] **Step 1: Document Known-Gap Register, Backup Procedures, and Phase 0 Gate Checklist.**
   - Document Gaps: `html2canvas` raster download, missing SHA-256 hashes, missing Certificate of Completion, base64 signature storage, single-signer limitation.
   - Document Firestore backup commands and Phase 1 rollback steps.
-- [ ] **Step 2: Commit operational baseline document.**
+- [x] **Step 2: Commit operational baseline document.**
   - Command: `git add docs/DocSigning/phase-0/operational-baseline-and-rehearsal.md && git commit -m "docs(docsigning): document P0.4 operational baseline and known-gap register"`
 
 ---
