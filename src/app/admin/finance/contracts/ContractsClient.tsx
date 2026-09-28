@@ -491,10 +491,18 @@ export default function AgreementsClient() {
  <span className="font-bold text-sm">Download Signed PDF</span>
                                                                         </DropdownMenuItem>
                                                                         {contract?.submissionId && (
- <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
+                                                                            <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
                                                                                 <Link href={`/admin/pdfs/${contract.pdfId}/submissions/${contract.submissionId}`}>
- <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-4 w-4" /></div>
- <span className="font-bold text-sm">View Legal Record</span>
+                                                                                    <div className="p-1.5 bg-primary/10 rounded-lg text-primary"><Eye className="h-4 w-4" /></div>
+                                                                                    <span className="font-bold text-sm">View Legal Record</span>
+                                                                                </Link>
+                                                                            </DropdownMenuItem>
+                                                                        )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
+                                                                                <Link href={`/verify/${contract.id}`} target="_blank" rel="noopener noreferrer">
+                                                                                    <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><ShieldCheck className="h-4 w-4" /></div>
+                                                                                    <span className="font-bold text-sm">Verify Certificate</span>
                                                                                 </Link>
                                                                             </DropdownMenuItem>
                                                                         )}
@@ -519,6 +527,19 @@ export default function AgreementsClient() {
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Copy className="h-4 w-4" /></div>
  <span className="font-bold text-sm">Copy Link</span>
                                                                         </DropdownMenuItem>
+                                                                        {status === 'signed' && contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => {
+                                                                                    const verifyUrl = `${window.location.origin}/verify/${contract.id}`;
+                                                                                    navigator.clipboard.writeText(verifyUrl);
+                                                                                    toast({ title: 'Verification Link Copied', description: 'Public audit URL copied to clipboard.' });
+                                                                                }}
+                                                                            >
+                                                                                <div className="p-1.5 bg-indigo-500/10 rounded-lg text-indigo-600 dark:text-indigo-400"><ShieldCheck className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Copy Verify URL</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
  <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
                                                                             <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
