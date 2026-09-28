@@ -84,9 +84,14 @@ describe('Import Data Cleaner - Title Case Transformation', () => {
     });
 
     it('should clean phone fields with normalization', () => {
-      // Strips spaces and dashes, normalizes to E.164 if valid GH number
-      expect(cleanValueByKey('contact_0_phone', '024 123 4567')).toBe('+233241234567');
+      // With country code provided (e.g. Ghana)
+      expect(cleanValueByKey('contact_0_phone', '024 123 4567', 'GH')).toBe('+233241234567');
+      // With country code provided (e.g. Nigeria)
+      expect(cleanValueByKey('contact_0_phone', '0803 123 4567', 'NG')).toBe('+2348031234567');
+      // International number with '+' cleans cleanly regardless of default country
       expect(cleanValueByKey('primaryPhone', '  +233 24-123-4567 ')).toBe('+233241234567');
+      // Without default country, local number safely strips formatting without corrupting into Ghana
+      expect(cleanValueByKey('contact_0_phone', '024 123 4567')).toBe('0241234567');
     });
 
     it('should clean email fields with lowercase and trim', () => {

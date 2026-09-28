@@ -22,6 +22,7 @@ import { calculateExpectedCloseDate } from '../app/admin/pipeline/utils/deal-exp
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import { SenderProfileService } from './services/sender-profile-service';
+import { resolveOrganizationCountryCode } from './organization-country';
 
 /**
  * @fileOverview Entity-aware Batch Ingestion Engine.
@@ -181,14 +182,17 @@ export async function ingestBatchAction(
 
     // 1. Workspace metadata (needed for data cleaning)
     let workspaceIndustry = 'SaaS';
-    let defaultCountryCode = 'GH';
+    let defaultCountryCode: string | undefined = undefined;
     try {
-        const [wsSnap, orgSnap] = await Promise.all([
+        const [wsSnap, orgCountry] = await Promise.all([
             adminDb.collection('workspaces').doc(workspaceId).get(),
-            adminDb.collection('organizations').doc(organizationId).get()
+            resolveOrganizationCountryCode(organizationId)
         ]);
-        if (wsSnap.exists) workspaceIndustry = (wsSnap.data() as any)?.industry || 'SaaS';
-        if (orgSnap.exists) defaultCountryCode = (orgSnap.data() as any)?.defaultCountryCode || 'GH';
+        if (wsSnap.exists) {
+            const data = wsSnap.data();
+            if (typeof data?.industry === 'string') workspaceIndustry = data.industry;
+        }
+        defaultCountryCode = orgCountry;
     } catch { /* Non-critical */ }
 
     // 2. Data cleaning — run synchronously so rows are clean before storage
@@ -347,7 +351,7 @@ export async function processImportChunkBackground(importLogId: string): Promise
         automationId = null as string | null,
         manualTagNames = [] as string[],
         workspaceIndustry = 'SaaS',
-        defaultCountryCode = 'GH',
+        defaultCountryCode = undefined as string | undefined,
         enableTitleCase = false,
     } = cfg;
 
@@ -732,7 +736,7 @@ async function processRow(
     globalTagIds: string[] = [],
     automationId?: string,
     manualTagNames: string[] = [],
-    defaultCountryCode: string = 'GH',
+    defaultCountryCode?: string,
     enableTitleCase: boolean = false,
     isRestricted: boolean = false,
     uploaderUser: any = null
@@ -757,11 +761,11 @@ async function processRow(
 
     const mappedCountryVal = String(getValue('locationCountry') || '').trim();
     let selectedCountry = fuzzyMatchCountry(context.countries, mappedCountryVal);
-    if (!selectedCountry) {
+    if (!selectedCountry && defaultCountryCode) {
         selectedCountry = context.countries.find(c => c.code.toLowerCase() === defaultCountryCode.toLowerCase()) || null;
     }
     if (!selectedCountry && defaultCountryCode) {
-        selectedCountry = { id: defaultCountryCode, name: defaultCountryCode === 'GH' ? 'Ghana' : defaultCountryCode, code: defaultCountryCode, flag: defaultCountryCode === 'GH' ? '🇬🇭' : '' };
+        selectedCountry = { id: defaultCountryCode, name: defaultCountryCode, code: defaultCountryCode, flag: '' };
     }
     
     const locationObj = {
@@ -1339,7 +1343,7 @@ export async function resolveDuplicatesAction(
         automationId = null as string | null,
         manualTagNames = [] as string[],
         workspaceIndustry = 'SaaS',
-        defaultCountryCode = 'GH',
+        defaultCountryCode = undefined as string | undefined,
         enableTitleCase = false,
     } = cfg;
 

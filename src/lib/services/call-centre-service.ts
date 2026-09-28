@@ -18,7 +18,8 @@ import { PortalInvitationService } from './portal-invitation-service';
 import { applyTagsAction, removeTagsAction } from '../tag-actions';
 import { MEETING_TYPES } from '../types';
 import { parseGraph, getOutcomeAutomations } from '../call-centre-graph';
-import { createTaskAction } from '../task-server-actions';
+// Server engine (webhook/session-less paths): task core with an explicit system actor.
+import { createTaskCore } from '../tasks/task-core';
 import { sendSms } from '../mnotify-service';
 import { sendEmail } from '../resend-service';
 import { logActivity } from '../activity-logger';
@@ -805,6 +806,8 @@ export class CallCentreService {
         includeLogic: campaign.audienceDefinition?.tagLogic === 'all' ? 'AND' : 'OR',
         selectedContacts: campaign.audienceDefinition?.selectedContacts,
         audienceMode: campaign.audienceDefinition?.mode,
+        groups: campaign.audienceDefinition?.groups,
+        contactScope: campaign.audienceDefinition?.contactScope,
         channel: 'call',
         limit: 5000,
       });
@@ -1392,7 +1395,7 @@ export class CallCentreService {
             ? await FieldsVariablesService.resolveTemplateVariables(params.taskDescription, varContext)
             : '';
 
-          await createTaskAction({
+          await createTaskCore({
             organizationId,
             workspaceId,
             title: resolvedTitle,
@@ -1406,7 +1409,7 @@ export class CallCentreService {
             dueDate: params.taskDueDate || new Date(Date.now() + 2 * 24 * 60 * 60 * 1000).toISOString(), // + 2 days default
             reminders: [],
             reminderSent: false,
-          }, systemActor);
+          }, { kind: 'system', source: systemActor });
           return { success: true };
         }
 
@@ -2010,8 +2013,8 @@ export class CallCentreService {
               let phone = contactPhone;
               try {
                 const { normalizePhoneNumber } = await import('../phone-utils');
-                const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-                const defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
+                const { resolveOrganizationCountryCode } = await import('../organization-country');
+                const defaultCountryCode = await resolveOrganizationCountryCode(organizationId);
                 const parsed = normalizePhoneNumber(phone, defaultCountryCode);
                 phone = parsed.e164 || phone;
                 if (parsed.countryCode) targetContact.countryCode = parsed.countryCode;
@@ -2047,8 +2050,8 @@ export class CallCentreService {
               let phone = contactPhone;
               try {
                 const { normalizePhoneNumber } = await import('../phone-utils');
-                const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-                const defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
+                const { resolveOrganizationCountryCode } = await import('../organization-country');
+                const defaultCountryCode = await resolveOrganizationCountryCode(organizationId);
                 const parsed = normalizePhoneNumber(phone, defaultCountryCode);
                 phone = parsed.e164 || phone;
                 if (parsed.countryCode) targetContact.countryCode = parsed.countryCode;

@@ -23,6 +23,7 @@ import type {
   ExecutionSummary,
 } from '@/app/admin/contacts/import/types';
 import { normalizePhoneNumber } from '../phone-utils';
+import { resolveOrganizationCountryCode } from '../organization-country';
 import { requireAuth } from '@/lib/auth/require-auth';
 import { getErrorMessage, getErrorStack } from '@/lib/errors/report-error';
 
@@ -90,14 +91,11 @@ export async function validateImportBatch(
 
   // 1. ScopeGuard & Org Config
   let contactPolicy: ContactIdentifierPolicy = 'phone_or_email';
-  let defaultCountryCode = 'GH';
+  let defaultCountryCode: string | undefined = undefined;
   
   const orgId = organizationId || 'smartsapp-hq';
   try {
-    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-    if (orgSnap.exists) {
-      defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
-    }
+    defaultCountryCode = await resolveOrganizationCountryCode(orgId);
   } catch (_err) {}
 
   if (workspaceId) {
@@ -308,12 +306,9 @@ export async function executeImportBatch(
   const wsId = workspaceId || '';
   const orgId = organizationId || 'smartsapp-hq';
 
-  let defaultCountryCode = 'GH';
+  let defaultCountryCode: string | undefined = undefined;
   try {
-    const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-    if (orgSnap.exists) {
-      defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
-    }
+    defaultCountryCode = await resolveOrganizationCountryCode(orgId);
   } catch (_err) {}
 
   let successCount = 0;
@@ -492,7 +487,7 @@ export async function executeImportBatch(
 function buildEntityPayload(
   mapped: Record<string, string>,
   entityType: EntityType,
-  defaultCountryCode: string,
+  defaultCountryCode?: string,
   _pipelineId?: string,
   _stageId?: string
 ): any | null {

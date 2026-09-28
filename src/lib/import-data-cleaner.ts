@@ -92,7 +92,7 @@ export function toTitleCase(value: string): string {
  * using `libphonenumber-js` with the provided default country code.
  * Returns the E.164 formatted number, or the best-effort cleaned string.
  */
-export function cleanPhone(value: string, defaultCountryCode: string = 'GH'): string {
+export function cleanPhone(value: string, defaultCountryCode?: string): string {
   if (!value) return value;
   const raw = String(value).trim();
   if (!raw) return '';
@@ -250,11 +250,11 @@ export interface CleaningStats {
  * @returns The cleaned row (mutated in-place for performance) and stats.
  */
 export function cleanRow(
-  row: Record<string, any>,
+  row: Record<string, unknown>,
   mapping: Record<string, string>,
-  defaultCountryCode: string = 'GH',
+  defaultCountryCode?: string,
   enableTitleCase: boolean = false
-): { row: Record<string, any>; stats: CleaningStats } {
+): { row: Record<string, unknown>; stats: CleaningStats } {
   // Remove empty keys to prevent Firestore payload errors
   for (const key of Object.keys(row)) {
     if (!key || key.trim() === '') {
@@ -350,11 +350,11 @@ export function cleanRow(
  * Returns the cleaned rows (mutated in-place) and aggregate stats.
  */
 export function cleanBatch(
-  rows: Record<string, any>[],
+  rows: Record<string, unknown>[],
   mapping: Record<string, string>,
-  defaultCountryCode: string = 'GH',
+  defaultCountryCode?: string,
   enableTitleCase: boolean = false
-): { rows: Record<string, any>[]; stats: CleaningStats } {
+): { rows: Record<string, unknown>[]; stats: CleaningStats } {
   const aggregate: CleaningStats = {
     trimmed: 0,
     titleCased: 0,
@@ -385,7 +385,7 @@ export function cleanBatch(
 export function cleanValueByKey(
   key: string,
   value: string,
-  defaultCountryCode: string = 'GH',
+  defaultCountryCode?: string,
   enableTitleCase: boolean = false
 ): string {
   if (value === null || value === undefined) return '';

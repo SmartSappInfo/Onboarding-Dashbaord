@@ -436,12 +436,10 @@ export async function handleCreateContactForEntity(
 
   // 3. Resolve default country code for phone normalization
   const organizationId = await resolveOrgId(context);
-  let defaultCountryCode = 'GH';
+  let defaultCountryCode: string | undefined = undefined;
   try {
-    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-    if (orgSnap.exists) {
-      defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
-    }
+    const { resolveOrganizationCountryCode } = await import('../../organization-country');
+    defaultCountryCode = await resolveOrganizationCountryCode(organizationId);
   } catch (_err) {}
 
   const crypto = await import('crypto');
@@ -563,12 +561,10 @@ export async function handleUpdateContact(
 
   // 1. Resolve organization default country code for phone normalization
   const organizationId = await resolveOrgId(context);
-  let defaultCountryCode = 'GH';
+  let defaultCountryCode: string | undefined = undefined;
   try {
-    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-    if (orgSnap.exists) {
-      defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
-    }
+    const { resolveOrganizationCountryCode } = await import('../../organization-country');
+    defaultCountryCode = await resolveOrganizationCountryCode(organizationId);
   } catch (_err) {}
 
   const { normalizePhoneNumber } = await import('../../phone-utils');
@@ -1011,12 +1007,10 @@ export async function handleFindContact(
 
   // 2. Resolve country code for phone normalization
   const organizationId = await resolveOrgId(context);
-  let defaultCountryCode = 'GH';
+  let defaultCountryCode: string | undefined = undefined;
   try {
-    const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-    if (orgSnap.exists) {
-      defaultCountryCode = (orgSnap.data()?.defaultCountryCode as string) || 'GH';
-    }
+    const { resolveOrganizationCountryCode } = await import('../../organization-country');
+    defaultCountryCode = await resolveOrganizationCountryCode(organizationId);
   } catch (_err) {}
 
   const { normalizePhoneNumber } = await import('../../phone-utils');
