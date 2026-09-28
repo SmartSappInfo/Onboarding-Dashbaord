@@ -8,27 +8,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveVariableValue } from '../utils';
 import type { PDFFormField } from '../types';
-import * as z from 'zod';
-
-// Replicated validation schema generator from PdfFormRenderer.tsx to verify contract
-const generateValidationSchema = (fields: PDFFormField[]) => {
-  const schemaObject = fields.reduce<Record<string, z.ZodTypeAny>>((acc, field) => {
-    if (field.type === 'static-text' || field.type === 'variable') return acc;
-    let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
-    if (field.type === 'email') {
-      const emailSchema = z.string().email({ message: 'Invalid email.' });
-      fieldSchema = field.required ? emailSchema : emailSchema.optional().or(z.literal(''));
-    } else if (field.type === 'phone') {
-      const phoneSchema = z.string().min(10, 'Phone required.');
-      fieldSchema = field.required ? phoneSchema : phoneSchema.optional().or(z.literal(''));
-    } else if (field.required) {
-      fieldSchema = z.string({ required_error: 'Required.' }).min(1, { message: 'Required.' });
-    }
-    acc[field.id] = fieldSchema;
-    return acc;
-  }, {});
-  return z.object(schemaObject);
-};
+import { generateValidationSchema } from '../documents/form-validation';
 
 describe('P0.3 Baseline: PDF Variable Resolution & Schema Contract', () => {
   const mockSchool = {

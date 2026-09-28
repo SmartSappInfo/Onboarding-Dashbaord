@@ -3,7 +3,6 @@
 import * as React from 'react';
 import { useForm, Controller, FormProvider } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import * as z from 'zod';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -55,35 +54,18 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { saveAgreementProgressAction, finalizeAgreementAction } from '@/lib/pdf-actions';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { generateValidationSchema } from '@/lib/documents/form-validation';
 
 const _pdfjsPromise = import('pdfjs-dist');
 
-const generateValidationSchema = (fields: PDFFormField[]) => {
-    const schemaObject = fields.reduce((acc, field) => {
-        if (field.type === 'static-text' || field.type === 'variable') return acc;
-        let fieldSchema: z.ZodTypeAny = z.string().optional().nullable().or(z.literal(''));
-        if (field.type === 'email') {
-            const emailSchema = z.string().email({ message: "Invalid email." });
-            fieldSchema = field.required ? emailSchema : emailSchema.optional().or(z.literal(''));
-        } else if (field.type === 'phone') {
-            const phoneSchema = z.string().min(10, "Phone required.");
-            fieldSchema = field.required ? phoneSchema : phoneSchema.optional().or(z.literal(''));
-        } else if (field.required) {
-            fieldSchema = z.string({ required_error: "Required." }).min(1, { message: "Required." });
-        }
-        acc[field.id] = fieldSchema;
-        return acc;
-    }, {} as Record<string, z.ZodTypeAny>);
-    return z.object(schemaObject);
-}
-
-const isValueEmpty = (value: any, questionType: string): boolean => {
+const isValueEmpty = (value: unknown, questionType: string): boolean => {
     if (value === undefined || value === null || value === '') return true;
     if (Array.isArray(value)) return value.length === 0;
     if (questionType === 'rating' && (value === 0 || value === '0')) return true;
-    if (questionType === 'checkboxes' && typeof value === 'object') {
-        const options = (value as any).options;
-        const other = (value as any).other;
+    if (questionType === 'checkboxes' && typeof value === 'object' && value !== null) {
+        const valObj = value as { options?: unknown[]; other?: unknown };
+        const options = valObj.options;
+        const other = valObj.other;
         if (options !== undefined || other !== undefined) {
             return (!options || options.length === 0) && !other;
         }
