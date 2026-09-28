@@ -14,6 +14,13 @@ import {
 } from '../pdf-actions';
 import type { Activity } from '../types';
 
+const { mockBlankPdfBytes } = vi.hoisted(() => {
+  const minimalPdfBase64 =
+    'JVBERi0xLjcKJYGBgYEKCjUgMCBvYmoKPDwKL0ZpbHRlciAvRmxhdGVEZWNvZGUKL1R5cGUgL09ialN0bQovTiA0Ci9GaXJzdCAyMAovTGVuZ3RoIDI2OAo+PgpzdHJlYW0KeJzVkktLxDAQx+/5FHPUy2Y6TdtESmHt4yLCsnhy8RC2YSnIZukD9Ns7aVbFg3iW8CeP+U1e/0kAgUApSKHQoCBLCcpSyKf3iwO5syc3Cfkw9BMcOIqwhxcha7+cZ0hEVYlvtrazffUnEZMgCfAnsRt9vxzdCGXXdh1igYi5YuWI1HBfswyLeM4x0jxmFeoqXitSxHTLsS4qL2JOiK9sds1vuWc2D0wTWaXj/OvccFYb96C/7mMqIR9939jZwU1zR0g5GtJESmX6+Za/Y3R29v/3cev9B3/+9YU/fA72BpNHF2pgdVnu3eSX8ci2M1eF/3L9YO/9G1cNcstMtiENWiUbbbiCGPkArpqPPwplbmRzdHJlYW0KZW5kb2JqCgo2IDAgb2JqCjw8Ci9TaXplIDcKL1Jvb3QgMiAwIFIKL0luZm8gMyAwIFIKL0ZpbHRlciAvRmxhdGVEZWNvZGUKL1R5cGUgL1hSZWYKL0xlbmd0aCAzNAovVyBbIDEgMiAyIF0KL0luZGV4IFsgMCA3IF0KPj4Kc3RyZWFtCnicFcQxDgAgCASwHsbdN/txCB2K7nLZstV24pF8BkOhArYKZW5kc3RyZWFtCmVuZG9iagoKc3RhcnR4cmVmCjM4NgolJUVPRg==';
+  return {
+    mockBlankPdfBytes: Buffer.from(minimalPdfBase64, 'base64'),
+  };
+});
 
 const mockPdfsStore: Record<string, Record<string, unknown>> = {};
 const mockContractsStore: Record<string, Record<string, unknown>> = {};
@@ -132,6 +139,12 @@ vi.mock('../firebase-admin', () => ({
         };
       }
 
+      if (colName === 'signing_evidence') {
+        return {
+          add: vi.fn().mockResolvedValue({ id: 'ev_baseline_test' }),
+        };
+      }
+
       return {
         doc: (id: string) => ({
           id,
@@ -142,7 +155,8 @@ vi.mock('../firebase-admin', () => ({
   },
   adminStorage: {
     file: () => ({
-      download: vi.fn().mockResolvedValue([Buffer.from('%PDF-1.4 Mock Binary')]),
+      download: vi.fn().mockResolvedValue([mockBlankPdfBytes]),
+      save: vi.fn().mockResolvedValue(true),
     }),
   },
 }));
