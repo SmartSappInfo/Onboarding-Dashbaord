@@ -169,8 +169,8 @@ graph LR
 ```
 
 1. **CRM Deals (`src/lib/deals/deal-event-bus.ts`, `src/app/actions/deal-actions.ts`)**:
-   - `emitDealDomainEvent('deal.contract.signed')` is triggered upon contract execution.
-   - Automatically sets parent deal probability to 100%, `contractStatus: 'signed'`, and stamps `contractSignedAt`.
+   - `deal.contract.signed` is defined as a domain event enum in `deal-event-bus.ts:45`, which advances deal probability to 100% and sets `contractStatus: 'signed'`.
+   - *Audit finding:* This event is currently dormant/unwired in `pdf-actions.ts:finalizeAgreementAction` and `POST /api/pdfs/submit`. Phase 1 Task 1.2 will formally wire `emitDealDomainEvent('deal.contract.signed')` upon successful envelope execution.
 2. **Automations Engine (`src/lib/automations/payload-enricher.ts`)**:
    - Lines 220–240 read `adminDb.collection('pdfs').doc(pId).collection('submissions')` to evaluate `form_field` condition nodes.
    - Any schema changes must preserve `subData.formData` access.

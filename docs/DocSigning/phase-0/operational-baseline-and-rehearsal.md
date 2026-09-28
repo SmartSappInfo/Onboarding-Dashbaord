@@ -86,9 +86,7 @@ If an unhandled exception or breaking regression occurs during Phase 1 deploymen
 
 The following downstream dependencies were mapped in Task 0.1 and must remain 100% operational through all phases:
 
-| Subsystem | Integration Point | Critical Dependency | Safeguard Mechanism |
-| :--- | :--- | :--- | :--- |
-| **CRM Deals** | `src/lib/deals/deal-event-bus.ts` | Emits `deal.contract.signed` on contract completion, automatically advancing deal probability to 100% and setting `contractStatus: 'signed'`. | Finalization server actions must guarantee this event is emitted exactly once upon final envelope completion. |
+| **CRM Deals** | `src/lib/deals/deal-event-bus.ts` | Defines `deal.contract.signed` to automatically advance deal probability to 100% and set `contractStatus: 'signed'`. | Currently unwired in legacy finalization actions. Phase 1 Task 1.2 will explicitly invoke `emitDealDomainEvent('deal.contract.signed')` upon final envelope execution. |
 | **Automation Engine** | `src/lib/automations/payload-enricher.ts` (L220–240) | Queries `pdfs/{pdfId}/submissions` where `entityId == targetId` to evaluate automation condition triggers and template field values. | All submission records must preserve `entityId`, `pdfId`, and `formData` keys regardless of vector PDF refactoring. |
 | **Link Shortener** | `src/app/go/[linkId]/route.ts` | Resolves short URLs (`/go/[linkId]`) and redirects to `/forms/[pdfId]?entityId=...`. | Public signing URLs must maintain backwards compatibility for existing query parameter conventions. |
 | **Messaging Engine** | `src/lib/messaging-actions.ts` | Dispatches SMS and Email notifications with sign tokens and completion links. | Dispatch payload schema must support both legacy string tokens and modern hashed JWT/HMAC envelope tokens. |

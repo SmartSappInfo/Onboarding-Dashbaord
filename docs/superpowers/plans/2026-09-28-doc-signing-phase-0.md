@@ -322,26 +322,31 @@ Phase 6: Enterprise Readiness & Security Verification
 
 ### PHASE 1 — Integrity, Unified Vector PDF & Idempotent Finalization
 
-**Goal:** Eliminate `html2canvas` client screenshotting, build authoritative server-side vector PDF generation with SHA-256 digests, implement transactional idempotent finalization, and issue verifiable Certificates of Completion.
+**Goal:** Eliminate `html2canvas` client screenshotting, build authoritative server-side vector PDF generation with SHA-256 digests, implement transactional idempotent finalization, wire CRM domain events, and issue verifiable Certificates of Completion.
 
-#### Task 1.1: Unified Vector PDF Engine (P1.1)
+#### Task 1.1: Unified Vector PDF Engine & Form Validation Extraction (P1.1)
+- Extract `generateValidationSchema` from `PdfFormRenderer.tsx` into a pure domain utility `src/lib/documents/form-validation.ts` to enforce SSOT across client forms and automated test suites.
 - Refactor `generatePdfBuffer` in `src/lib/pdf-actions.ts`:
   - Preserve exact page dimensions for A4, Letter, Legal, and landscape pages.
   - Embed true OpenType font subsets to support unicode names and cursive scripts.
   - Replace `html2canvas` downloads in `SharedSubmissionView.tsx` and `SubmissionsPage.tsx` with direct streaming from `/api/pdfs/[pdfId]/generate/[submissionId]`.
   - Delete `html2canvas` dependency to reduce client bundle size by ~180KB.
+  - Eliminate legacy `any` parameter casts in `pdf-actions.ts:76, 285` (enforce Rule 4 Zero-Tolerance Typing).
 
-#### Task 1.2: Idempotent Finalization Command & Transaction Lock (P1.2)
+#### Task 1.2: Idempotent Finalization Command & CRM Event Wiring (P1.2)
 - Refactor `finalizeAgreementAction` and `POST /api/pdfs/submit`:
   - Add client-generated `idempotencyKey: string`.
-  - Wrap database execution in a Firestore transaction: check if contract is already signed.
+  - Wrap database execution in a Firestore transaction (`adminDb.runTransaction`): enforce precondition `contract.status !== 'signed'` to prevent race-condition re-executions.
+  - Formally wire `emitDealDomainEvent('deal.contract.signed', ...)` in `finalizeAgreementAction` so CRM deal probability and deal contract status advance to 100% on signature completion.
+  - Remove silent error catch around `generatePdfBuffer` (replace with structured error logging and transactional rollback).
   - Offload base64 signature images to Firebase Storage (`signatures/{contractId}/{signerId}.png`) and store clean storage references.
 
 #### Task 1.3: Cryptographic Integrity & Evidence Record (P1.3)
 - Create `src/lib/documents/evidence-service.ts`:
-  - Calculate `crypto.createHash('sha256')` on template bytes and final signed PDF bytes.
+  - Calculate `crypto.createHash('sha256')` on template bytes and final signed PDF bytes (`preSignDigest` and `finalDigest`).
   - Record client IP address (from headers `x-forwarded-for`) and User-Agent.
   - Create append-only evidence events in `signing_evidence` collection.
+  - Provide a valid minimal PDF binary fixture for unit tests to ensure `generatePdfBuffer` has 100% vector engine execution coverage.
 
 #### Task 1.4: Certificate of Completion Generator (P1.4)
 - Create `src/lib/documents/audit-certificate-service.ts`:
