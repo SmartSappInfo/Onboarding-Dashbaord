@@ -15,6 +15,7 @@ interface ImportPreviewStepProps {
     rawData: any[];
     mapping: Record<string, string>;
     targetFields: any[];
+    defaultCountry?: string;
     onBack: () => void;
     onExecute: () => void;
     stepperMarkup?: React.ReactNode;
@@ -25,6 +26,7 @@ export function ImportPreviewStep({
     rawData,
     mapping,
     targetFields,
+    defaultCountry,
     onBack,
     onExecute,
     stepperMarkup,
@@ -92,7 +94,6 @@ export function ImportPreviewStep({
                                                 displayVal = colVal;
                                             }
                                             if (displayVal && f.key.includes('phone')) {
-                                                const defaultCountry = 'GH';
                                                 const parsed = normalizePhoneNumber(String(displayVal), defaultCountry);
                                                 displayVal = parsed.e164 || displayVal;
                                             }

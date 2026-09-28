@@ -15,6 +15,7 @@ import { canUser } from './workspace-permissions';
 import { getWorkspaceIndustry, invalidateWorkspaceCache } from './industry-cache';
 import { validateIndustryData } from './industry-schemas';
 import { normalizePhoneNumber } from './phone-utils';
+import { resolveOrganizationCountryCode } from './organization-country';
 import { after } from 'next/server';
 import { BulkVerificationService } from './bulk-verifier';
 import { BulkPhoneVerificationService } from './bulk-phone-verifier';
@@ -226,12 +227,9 @@ export async function createEntityAction(
       validateIndustryData(data.industryData, workspaceIndustry);
     }
 
-    let defaultCountryCode = 'GH';
+    let defaultCountryCode: string | undefined = undefined;
     try {
-      const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-      if (orgSnap.exists) {
-        defaultCountryCode = orgSnap.data()?.defaultCountryCode || 'GH';
-      }
+      defaultCountryCode = await resolveOrganizationCountryCode(organizationId);
     } catch (_err) {}
 
     const timestamp = new Date().toISOString();
@@ -834,8 +832,7 @@ export async function updateEntityAction(
           let defaultCountry: string | undefined;
           if (updatedPrimaryPhone) {
             try {
-              const orgSnap = await adminDb.collection('organizations').doc(organizationId).get();
-              defaultCountry = orgSnap.data()?.defaultCountryCode || undefined;
+              defaultCountry = await resolveOrganizationCountryCode(organizationId);
             } catch {
               // No default country — E.164-stored numbers still verify fine
             }

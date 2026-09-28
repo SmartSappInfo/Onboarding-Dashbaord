@@ -173,6 +173,11 @@ export default function BulkUploadClient() {
     }, [firestore, activeWorkspace?.id]);
     const { data: appFieldsList } = useCollection<any>(appFieldsQuery);
 
+    const orgDocRef = useMemoFirebase(() => 
+        firestore && orgId ? doc(firestore, 'organizations', orgId) : null,
+    [firestore, orgId]);
+    const { data: orgData } = useDoc<{ defaultCountryCode?: string }>(orgDocRef);
+
     // States
     const [currentStep, setCurrentStep] = React.useState<StepName>('UPLOAD');
     const [fileName, setFileName] = React.useState('');
@@ -528,6 +533,7 @@ export default function BulkUploadClient() {
                             rawData={rawData}
                             mapping={mapping}
                             targetFields={TARGET_FIELDS}
+                            defaultCountry={orgData?.defaultCountryCode}
                             onBack={() => setCurrentStep('SETTINGS')}
                             onExecute={() => startExecution()}
                             stepperMarkup={stepperMarkup}

@@ -42,8 +42,11 @@ vi.mock('../entity-contact-helpers', () => ({
   enforceContactConstraints: vi.fn((contacts) => contacts),
 }));
 
+import { clearOrganizationCountryCache } from '../organization-country';
+
 describe('handleUpdateContact', () => {
   beforeEach(() => {
+    clearOrganizationCountryCache();
     mockGet.mockReset();
     mockWhere.mockClear();
     mockDoc.mockClear();

@@ -174,11 +174,8 @@ export async function handleSendMessage(
           const wsSnap = await adminDb.collection('workspaces').doc(context.workspaceId).get();
           const orgId = wsSnap.data()?.organizationId || context.organizationId;
           if (orgId) {
-            const orgSnap = await adminDb.collection('organizations').doc(orgId).get();
-            const code = orgSnap.data()?.defaultCountryCode;
-            if (typeof code === 'string' && code.length === 2) {
-              defaultCountryCode = code;
-            }
+            const { resolveOrganizationCountryCode } = await import('../../organization-country');
+            defaultCountryCode = await resolveOrganizationCountryCode(orgId);
           }
         } catch (orgErr) {
           console.warn(`[MessageActionInlineVerify] Could not resolve org country hint:`, orgErr);
