@@ -1,5 +1,5 @@
 
-import { adminDb } from '@/lib/firebase-admin';
+import { adminDb, adminStorage } from '@/lib/firebase-admin';
 import { generatePdfBuffer } from '@/lib/pdf-actions';
 import type { PDFForm, Submission } from '@/lib/types';
 // SECURITY (audit F9): report the detail server-side, return an opaque message.
@@ -29,7 +29,17 @@ export async function GET(
     const pdfForm = { id: pdfSnap.id, ...pdfSnap.data() } as PDFForm;
     const submission = subSnap.data() as Submission;
 
-    const pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
+    let pdfBytes: Buffer | Uint8Array;
+    if (submission.storagePath) {
+      try {
+        const [downloaded] = await adminStorage.file(submission.storagePath).download();
+        pdfBytes = downloaded;
+      } catch {
+        pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
+      }
+    } else {
+      pdfBytes = await generatePdfBuffer(pdfForm, submission.formData);
+    }
 
     return new Response(Buffer.from(pdfBytes), {
       headers: {

@@ -4587,6 +4587,8 @@ export interface Submission {
   status: 'submitted' | 'partial';
   entityId?: string | null; // Unified entity reference
   entityType?: EntityType; // Type of entity
+  storagePath?: string;
+  documentDigest?: string;
 }
 
 export interface Contract {
@@ -4604,6 +4606,9 @@ export interface Contract {
   emailTemplateId?: string;
   smsTemplateId?: string;
   recipients: { name: string; email?: string; phone?: string; type: string }[];
+  storagePath?: string;
+  documentDigest?: string;
+  dealId?: string;
 }
 
 export type ContractStatus = 'no_contract' | 'draft' | 'sent' | 'partially_signed' | 'signed' | 'expired';

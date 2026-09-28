@@ -4,7 +4,7 @@ import * as React from 'react';
 import type { PDFForm, Submission, PDFFormField, School } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ArrowLeft, Download, Loader2, Lock } from 'lucide-react';
+import { ArrowLeft, Download, Loader2, Lock, ShieldCheck } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { format } from 'date-fns';
 import type { PDFDocumentProxy } from 'pdfjs-dist';
@@ -103,57 +103,30 @@ export default function SharedSubmissionView({ pdfForm, submission, school }: { 
   const handleDownload = async () => {
     setIsDownloading(true);
     try {
-        const html2canvas = (await import('html2canvas')).default;
-        const { PDFDocument } = await import('pdf-lib');
-        
-        const pdfBundle = await PDFDocument.create();
-        const pageElements = pageContainerRef.current?.querySelectorAll('.page-capture-wrapper');
-        
-        if (!pageElements || !pageElements.length) {
-            throw new Error("No pages found to capture. Please ensure the document is fully loaded.");
-        }
+      toast({ title: 'Preparing Download', description: 'Retrieving authoritative vector PDF...' });
 
-        toast({ title: 'Preparing Download', description: 'Generating high-fidelity PDF...' });
+      const response = await fetch(`/api/pdfs/${pdfForm.id}/generate/${submission.id}`);
+      if (!response.ok) {
+        throw new Error('Server returned error while generating document.');
+      }
 
-        for (let i = 0; i < pageElements.length; i++) {
-            const el = pageElements[i] as HTMLElement;
-            
-            const canvas = await html2canvas(el, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff'
-            });
-            
-            const imgData = canvas.toDataURL('image/jpeg', 0.9);
-            const imgBytes = await fetch(imgData).then(res => res.arrayBuffer());
-            const image = await pdfBundle.embedJpg(imgBytes);
-            
-            const page = pdfBundle.addPage([595.28, 841.89]);
-            page.drawImage(image, {
-                x: 0,
-                y: 0,
-                width: 595.28,
-                height: 841.89,
-            });
-        }
-
-        const pdfBytes = await pdfBundle.save();
-        const blob = new Blob([new Uint8Array(pdfBytes)], { type: 'application/pdf' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); 
-        a.href = url; 
-        a.download = `${pdfForm.name}-signed.pdf`; 
-        document.body.appendChild(a); 
-        a.click(); 
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a'); 
+      a.href = url; 
+      a.download = `${pdfForm.name}-executed.pdf`; 
+      document.body.appendChild(a); 
+      a.click(); 
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
         
-        toast({ title: 'Download Successful' });
+      toast({ title: 'Download Successful', description: 'Cryptographically certified vector PDF saved.' });
     } catch (e: unknown) {
-        console.error("Download error:", e);
-        toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not generate the signed document.' });
-    } finally { setIsDownloading(false); }
+      console.error("Download error:", e);
+      toast({ variant: 'destructive', title: 'Download Failed', description: 'Could not retrieve the executed document.' });
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   if (isInitializing) {
@@ -240,8 +213,17 @@ export default function SharedSubmissionView({ pdfForm, submission, school }: { 
                     </div>
                 </div>
             </div>
-            <div className="flex items-center gap-1.5 shrink-0">
-                <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest active:scale-95 transition-all">
+            <div className="flex items-center gap-2 shrink-0">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => router.push(`/verify/${submission.id}`)}
+                    className="hidden md:flex h-9 rounded-xl font-bold border-emerald-500/30 text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 px-3 text-xs gap-1.5 transition-all active:scale-[0.97]"
+                >
+                    <ShieldCheck className="h-4 w-4 text-emerald-600" />
+                    <span>Cryptographically Verified</span>
+                </Button>
+                <Button size="sm" onClick={handleDownload} disabled={isDownloading} className="h-9 rounded-xl font-black shadow-lg px-6 uppercase text-[10px] tracking-widest active:scale-[0.97] transition-all">
                     {isDownloading ? <Loader2 className="sm:mr-2 h-4 w-4 animate-spin" /> : <Download className="sm:mr-2 h-4 w-4" />}
                     <span className="hidden sm:inline">Download Signed Copy</span>
                     <span className="sm:hidden">Download</span>
@@ -284,7 +266,18 @@ export default function SharedSubmissionView({ pdfForm, submission, school }: { 
   );
 }
 
-function PageRenderer({ pdf, pageNumber, fields, formData, school }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: { [key: string]: any }, school?: School }) {
+function resolveMediaSrc(src: unknown): string {
+    if (typeof src !== 'string' || !src) return '';
+    if (src.startsWith('data:image/') || src.startsWith('http://') || src.startsWith('https://')) {
+        return src;
+    }
+    if (src.startsWith('signatures/')) {
+        return `/api/documents/signature?path=${encodeURIComponent(src)}`;
+    }
+    return src;
+}
+
+function PageRenderer({ pdf, pageNumber, fields, formData, school }: { pdf: PDFDocumentProxy; pageNumber: number; fields: PDFFormField[], formData: Record<string, unknown>, school?: School }) {
     const canvasRef = React.useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = React.useState({ width: 0, height: 0 });
     const [isRendering, setIsRendering] = React.useState(true);
@@ -363,13 +356,13 @@ function PageRenderer({ pdf, pageNumber, fields, formData, school }: { pdf: PDFD
                                 }}
                             >
                                 {field.type === 'signature' || field.type === 'photo' ? (
-                                    <img src={val} alt="Media" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
+                                    <img src={resolveMediaSrc(val)} alt="Media" className="w-full h-full object-contain object-left-top" crossOrigin="anonymous" />
                                 ) : (
                                     <span 
                                         className={cn("px-1 whitespace-nowrap bg-transparent", field.bold ? "font-bold text-black" : "font-medium text-black/80")}
                                         style={{ fontSize: dynamicFontSize, textAlign: field.alignment || 'left' }}
                                     >
-                                        {field.type === 'date' ? format(new Date(val), 'PPP') : applyTransform(String(val))}
+                                        {field.type === 'date' ? format(new Date(String(val)), 'PPP') : applyTransform(String(val))}
                                     </span>
                                 )}
                             </div>
