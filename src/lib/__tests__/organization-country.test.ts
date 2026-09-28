@@ -64,4 +64,30 @@ describe('resolveOrganizationCountryCode', () => {
     const code = await resolveOrganizationCountryCode('org_no_country');
     expect(code).toBeUndefined();
   });
+
+  it('coalesces concurrent requests during cold start to a single Firestore fetch (stampede protection)', async () => {
+    let callCount = 0;
+    const mockGet = vi.fn().mockImplementation(async () => {
+      callCount++;
+      // Artificial delay to simulate network latency
+      await new Promise(resolve => setTimeout(resolve, 20));
+      return {
+        exists: true,
+        data: () => ({ defaultCountryCode: 'KE' }),
+      };
+    });
+
+    vi.mocked(adminDb.collection).mockReturnValue({
+      doc: vi.fn().mockReturnValue({ get: mockGet }),
+    } as unknown as ReturnType<typeof adminDb.collection>);
+
+    // Fire 20 simultaneous concurrent calls
+    const results = await Promise.all(
+      Array.from({ length: 20 }, () => resolveOrganizationCountryCode('org_kenya'))
+    );
+
+    expect(results).toEqual(Array(20).fill('KE'));
+    expect(callCount).toBe(1);
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
 });

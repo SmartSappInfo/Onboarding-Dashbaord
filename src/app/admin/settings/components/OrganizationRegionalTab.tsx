@@ -15,7 +15,6 @@ import { Settings, Loader2, Save, X, ShieldCheck, RefreshCw } from 'lucide-react
 import { Separator } from '@/components/ui/separator';
 import { getErrorMessage } from '@/lib/errors/report-error';
 import { reconcilePhoneHygieneAction } from '@/lib/phone-hygiene-actions';
-import { invalidateOrganizationCountryCache } from '@/lib/organization-country';
 
 const LANGUAGES = [
   { code: 'en', name: 'English', flag: '🇺🇸' },
@@ -166,7 +165,6 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
             );
 
             if (result.success) {
-                invalidateOrganizationCountryCache(organization.id);
                 toast({ title: 'Settings Saved', description: 'Regional details updated successfully.' });
             } else {
                 toast({ variant: 'destructive', title: 'Update Failed', description: result.error });
@@ -358,7 +356,7 @@ export default function OrganizationRegionalTab({ organization }: OrganizationRe
                 </div>
 
                 <div className="flex justify-end pt-4">
-                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10">
+                    <Button onClick={handleSave} disabled={isSaving} className="rounded-xl font-bold h-11 px-8 shadow-lg shadow-primary/10 active:scale-[0.97] transition-all">
                         {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                         Save Settings
                     </Button>

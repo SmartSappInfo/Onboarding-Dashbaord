@@ -26,12 +26,14 @@ interface CachedCountry {
 
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const orgCountryCache = new Map<string, CachedCountry>();
+const inFlightResolvers = new Map<string, Promise<CountryCode | undefined>>();
 
 /**
  * Clears the in-memory cache (primarily for tests and cache-busting).
  */
 export function clearOrganizationCountryCache(): void {
   orgCountryCache.clear();
+  inFlightResolvers.clear();
 }
 
 /**
@@ -39,7 +41,9 @@ export function clearOrganizationCountryCache(): void {
  */
 export function invalidateOrganizationCountryCache(organizationId: string): void {
   if (organizationId) {
-    orgCountryCache.delete(organizationId.trim());
+    const cleanId = organizationId.trim();
+    orgCountryCache.delete(cleanId);
+    inFlightResolvers.delete(cleanId);
   }
 }
 
@@ -67,26 +71,39 @@ export async function resolveOrganizationCountryCode(
     return cached.countryCode;
   }
 
-  try {
-    const orgSnap = await adminDb.collection('organizations').doc(cleanOrgId).get();
-    if (!orgSnap.exists) {
+  // Stampede protection: if a lookup for this organization is already in flight, reuse its promise
+  const inFlight = inFlightResolvers.get(cleanOrgId);
+  if (inFlight) {
+    return inFlight;
+  }
+
+  const lookupPromise = (async (): Promise<CountryCode | undefined> => {
+    try {
+      const orgSnap = await adminDb.collection('organizations').doc(cleanOrgId).get();
+      if (!orgSnap.exists) {
+        orgCountryCache.set(cleanOrgId, { countryCode: undefined, expiresAt: now + CACHE_TTL_MS });
+        return undefined;
+      }
+
+      const data = orgSnap.data();
+      const rawCode = data?.defaultCountryCode;
+
+      if (typeof rawCode === 'string' && rawCode.trim().length === 2) {
+        const countryCode = rawCode.trim().toUpperCase() as CountryCode;
+        orgCountryCache.set(cleanOrgId, { countryCode, expiresAt: now + CACHE_TTL_MS });
+        return countryCode;
+      }
+
       orgCountryCache.set(cleanOrgId, { countryCode: undefined, expiresAt: now + CACHE_TTL_MS });
       return undefined;
+    } catch (err) {
+      console.warn(`[OrganizationCountry] Failed to resolve country for org "${cleanOrgId}":`, err);
+      return undefined;
+    } finally {
+      inFlightResolvers.delete(cleanOrgId);
     }
+  })();
 
-    const data = orgSnap.data();
-    const rawCode = data?.defaultCountryCode;
-
-    if (typeof rawCode === 'string' && rawCode.trim().length === 2) {
-      const countryCode = rawCode.trim().toUpperCase() as CountryCode;
-      orgCountryCache.set(cleanOrgId, { countryCode, expiresAt: now + CACHE_TTL_MS });
-      return countryCode;
-    }
-
-    orgCountryCache.set(cleanOrgId, { countryCode: undefined, expiresAt: now + CACHE_TTL_MS });
-    return undefined;
-  } catch (err) {
-    console.warn(`[OrganizationCountry] Failed to resolve country for org "${cleanOrgId}":`, err);
-    return undefined;
-  }
+  inFlightResolvers.set(cleanOrgId, lookupPromise);
+  return lookupPromise;
 }

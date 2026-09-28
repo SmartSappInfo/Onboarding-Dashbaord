@@ -20,11 +20,11 @@ describe('SMS Delivery Guard JIT Self-Healing', () => {
   });
 
   it('self-heals cached score 0 when bare international number is valid', async () => {
-    (PhoneHygieneRepository.getCache as any).mockResolvedValue({
+    vi.mocked(PhoneHygieneRepository.getCache).mockResolvedValue({
       status: 'invalid',
       score: 0,
-    });
-    (resolveOrganizationCountryCode as any).mockResolvedValue('GH');
+    } as unknown as Awaited<ReturnType<typeof PhoneHygieneRepository.getCache>>);
+    vi.mocked(resolveOrganizationCountryCode).mockResolvedValue('GH');
 
     const engine = new PhoneVerificationEngine();
     const freshResult = await engine.verify('233242737120', 'GH');

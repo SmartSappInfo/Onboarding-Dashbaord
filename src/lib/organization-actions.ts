@@ -8,6 +8,7 @@ import { assertUserTenantPermission } from './organization-utils';
 import { requireAuth } from './auth/require-auth';
 import { encryptToken } from './crypto';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import { invalidateOrganizationCountryCache } from './organization-country';
 
 /**
  * Generate a random 4-character hex string for slug entropy
@@ -72,6 +73,9 @@ export async function saveOrganizationAction(
                 updatedAt: timestamp,
                 updatedBy: userId
             });
+
+            // Invalidate server in-memory country cache
+            invalidateOrganizationCountryCache(organizationId);
 
             return { success: true, organizationId };
         } else {

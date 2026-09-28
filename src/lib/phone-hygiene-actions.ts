@@ -46,44 +46,57 @@ export async function reconcilePhoneHygieneAction(
     const orgCountry = await resolveOrganizationCountryCode(cleanOrgId);
     const engine = new PhoneVerificationEngine();
 
-    // Query records in phone_verification_cache that have score === 0
-    const cacheSnap = await adminDb.collection('phone_verification_cache')
-      .where('score', '==', 0)
+    // 1. Fetch workspace_entities scoped strictly to this tenant organization (Rule 8)
+    const entitiesSnap = await adminDb.collection('workspace_entities')
+      .where('organizationId', '==', cleanOrgId)
       .limit(500)
       .get();
 
-    if (cacheSnap.empty) {
+    if (entitiesSnap.empty) {
       return {
         success: true,
         unblockedCount: 0,
-        message: 'All contact phones in cache are already healthy.',
+        message: 'No contacts registered in this organization.',
       };
     }
 
+    // 2. Extract unique candidate phone numbers from primaryPhone and entityContacts
+    const candidatePhones = new Set<string>();
+    for (const doc of entitiesSnap.docs) {
+      const data = doc.data();
+      if (typeof data.primaryPhone === 'string' && data.primaryPhone.trim()) {
+        candidatePhones.add(data.primaryPhone.trim());
+      }
+      if (Array.isArray(data.entityContacts)) {
+        for (const c of data.entityContacts) {
+          if (c && typeof c.phone === 'string' && c.phone.trim()) {
+            candidatePhones.add(c.phone.trim());
+          }
+        }
+      }
+    }
+
+    if (candidatePhones.size === 0) {
+      return {
+        success: true,
+        unblockedCount: 0,
+        message: 'No contact phone numbers found in this organization.',
+      };
+    }
+
+    // 3. For each phone, re-verify stale or invalid records with the organization country setting
     const updates: [string, VerifyPhoneResult][] = [];
     let unblockedCount = 0;
 
-    for (const doc of cacheSnap.docs) {
-      const data = doc.data();
-      let rawPhone = typeof data.e164 === 'string' ? data.e164.trim() : '';
-
-      // Decode base64 document ID if rawPhone is missing from payload
-      if (!rawPhone) {
-        try {
-          rawPhone = Buffer.from(doc.id, 'base64').toString('utf-8').trim();
-        } catch {
-          continue;
+    for (const phone of candidatePhones) {
+      const cached = await PhoneHygieneRepository.getCache(phone);
+      // Re-verify if not cached, or marked invalid / score 0
+      if (!cached || cached.status === 'invalid' || (cached.score || 0) < 40) {
+        const result = await engine.verify(phone, orgCountry, { forceRefresh: true });
+        if (result.valid && result.status === 'format_valid') {
+          updates.push([phone, result]);
+          unblockedCount++;
         }
-      }
-
-      if (!rawPhone) continue;
-
-      // Re-evaluate number with universal calling code pre-pass and tenant country setting
-      const result = await engine.verify(rawPhone, orgCountry, { forceRefresh: true });
-
-      if (result.valid && result.status === 'format_valid') {
-        updates.push([rawPhone, result]);
-        unblockedCount++;
       }
     }
 
@@ -96,7 +109,7 @@ export async function reconcilePhoneHygieneAction(
       unblockedCount,
       message: unblockedCount > 0
         ? `Successfully re-verified and unblocked ${unblockedCount} contact number(s).`
-        : 'All re-scanned numbers were confirmed invalid.',
+        : 'All contact numbers for this organization are healthy and verified.',
     };
   } catch (error: unknown) {
     console.error('[reconcilePhoneHygieneAction] Error:', error);
