@@ -63,6 +63,10 @@ describe('P1.1 Authoritative Vector PDF Engine', () => {
     const mockForm: PDFForm = {
       id: 'pdf_test_agreement',
       name: 'Enrollment Agreement',
+      publicTitle: 'Enrollment Agreement',
+      slug: 'enrollment-agreement',
+      downloadUrl: 'https://example.com/templates/enrollment.pdf',
+      status: 'published',
       storagePath: 'templates/enrollment.pdf',
       workspaceIds: ['ws_main_01'],
       entityId: 'ent_acme_school',

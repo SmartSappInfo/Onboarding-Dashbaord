@@ -222,7 +222,7 @@ export async function generatePdfBuffer(pdfForm: PDFForm, formData: Record<strin
                     });
                 }
             }
-        } catch (_err) {}
+        } catch {}
     }
 
     return await pdfDoc.save();
@@ -389,7 +389,7 @@ export async function finalizeAgreementAction(
                         filename: `${pdfData.name}-Executed.pdf`,
                         type: 'application/pdf'
                     });
-                } catch (_err) {}
+                } catch {}
 
                 const baseUrl = getBaseUrl();
                 const result_url = `${baseUrl}/forms/results/${pdfData.slug || pdfData.id}/${submissionId}`;
@@ -605,7 +605,7 @@ export async function deletePdfForm(pdfId: string, storagePath: string, _userId:
   await requireAuth();
 
     await adminDb.collection('pdfs').doc(pdfId).delete();
-    try { if (storagePath) await adminStorage.file(storagePath).delete(); } catch (_e) {}
+    try { if (storagePath) await adminStorage.file(storagePath).delete(); } catch {}
     revalidatePath('/admin/pdfs');
     return { success: true };
 }

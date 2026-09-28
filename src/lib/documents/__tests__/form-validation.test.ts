@@ -13,12 +13,12 @@ import type { PDFFormField } from '@/lib/types';
 describe('P1.1 Form Validation Schema Generator (SSOT)', () => {
   it('generates a schema requiring mandatory text fields and validating email and phone formats', () => {
     const fields: PDFFormField[] = [
-      { id: 'full_name', type: 'text', label: 'Full Name', required: true, page: 1, x: 0, y: 0, width: 100, height: 20 },
-      { id: 'signer_email', type: 'email', label: 'Signer Email', required: true, page: 1, x: 0, y: 0, width: 100, height: 20 },
-      { id: 'signer_phone', type: 'phone', label: 'Signer Phone', required: false, page: 1, x: 0, y: 0, width: 100, height: 20 },
-      { id: 'optional_notes', type: 'text', label: 'Notes', required: false, page: 1, x: 0, y: 0, width: 100, height: 20 },
-      { id: 'static_notice', type: 'static-text', label: 'Notice', required: false, page: 1, x: 0, y: 0, width: 100, height: 20 },
-      { id: 'var_company', type: 'variable', label: 'Company', required: false, page: 1, x: 0, y: 0, width: 100, height: 20 },
+      { id: 'full_name', type: 'text', label: 'Full Name', required: true, pageNumber: 1, position: { x: 0, y: 0 }, dimensions: { width: 100, height: 20 } },
+      { id: 'signer_email', type: 'email', label: 'Signer Email', required: true, pageNumber: 1, position: { x: 0, y: 0 }, dimensions: { width: 100, height: 20 } },
+      { id: 'signer_phone', type: 'phone', label: 'Signer Phone', required: false, pageNumber: 1, position: { x: 0, y: 0 }, dimensions: { width: 100, height: 20 } },
+      { id: 'optional_notes', type: 'text', label: 'Notes', required: false, pageNumber: 1, position: { x: 0, y: 0 }, dimensions: { width: 100, height: 20 } },
+      { id: 'static_notice', type: 'static-text', label: 'Notice', required: false, pageNumber: 1, position: { x: 0, y: 0 }, dimensions: { width: 100, height: 20 } },
+      { id: 'var_company', type: 'variable', label: 'Company', required: false, pageNumber: 1, position: { x: 0, y: 0 }, dimensions: { width: 100, height: 20 } },
     ];
 
     const schema = generateValidationSchema(fields);
