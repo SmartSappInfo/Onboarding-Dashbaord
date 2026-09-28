@@ -14,18 +14,6 @@ import {
 } from '../pdf-actions';
 import type { Activity } from '../types';
 
-interface MockDocumentReference {
-  id: string;
-  get: () => Promise<{ exists: boolean; data: () => Record<string, unknown> | undefined }>;
-  update: (updates: Record<string, unknown>) => Promise<void>;
-  collection?: (subName: string) => {
-    add: (data: Record<string, unknown>) => Promise<{ id: string }>;
-    doc: (subId: string) => {
-      get: () => Promise<{ exists: boolean; data: () => Record<string, unknown> | undefined }>;
-      update: (updates: Record<string, unknown>) => Promise<void>;
-    };
-  };
-}
 
 const mockPdfsStore: Record<string, Record<string, unknown>> = {};
 const mockContractsStore: Record<string, Record<string, unknown>> = {};
@@ -75,7 +63,7 @@ vi.mock('../firebase-admin', () => ({
             update: vi.fn().mockImplementation(async (updates: Record<string, unknown>) => {
               if (mockPdfsStore[id]) Object.assign(mockPdfsStore[id], updates);
             }),
-            collection: (subName: string) => ({
+            collection: (_subName: string) => ({
               add: vi.fn().mockImplementation(async (data: Record<string, unknown>) => {
                 const subId = `sub_${Date.now()}_${Math.random()}`;
                 mockSubmissionsStore[subId] = { ...data, id: subId };

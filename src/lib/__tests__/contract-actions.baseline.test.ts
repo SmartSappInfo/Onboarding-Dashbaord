@@ -7,7 +7,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { upsertContractAction, sendContractAction, deleteContractAction } from '../contract-actions';
-import type { Contract, Activity } from '../types';
+import type { Activity } from '../types';
 
 interface MockDocSnapshot {
   exists: boolean;
