@@ -178,14 +178,14 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Modify: `src/app/forms/[pdfId]/components/PdfFormRenderer.tsx:61-78`
 - Modify: `src/lib/__tests__/pdf-variable-resolution.baseline.test.ts:13-31`
 
-- [ ] **Step 1: Write unit test for `generateValidationSchema` in `form-validation.test.ts`**
+- [x] **Step 1: Write unit test for `generateValidationSchema` in `form-validation.test.ts`**
   - Verify mandatory text fields, optional text fields, email validation, phone minimum length (10 chars), and omission of static/variable fields.
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/form-validation.test.ts`
   - Expected: FAIL (`form-validation` not found).
 
-- [ ] **Step 3: Implement `src/lib/documents/form-validation.ts`**
+- [x] **Step 3: Implement `src/lib/documents/form-validation.ts`**
   - Pure function `generateValidationSchema(fields: PDFFormField[]): z.ZodObject<Record<string, z.ZodTypeAny>>`.
   - Add inline documentation:
     ```typescript
@@ -196,14 +196,14 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
      */
     ```
 
-- [ ] **Step 4: Update `PdfFormRenderer.tsx` and `pdf-variable-resolution.baseline.test.ts` to import `generateValidationSchema`**
+- [x] **Step 4: Update `PdfFormRenderer.tsx` and `pdf-variable-resolution.baseline.test.ts` to import `generateValidationSchema`**
   - Remove duplicate inline declarations.
 
-- [ ] **Step 5: Run tests to verify pass**
+- [x] **Step 5: Run tests to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/form-validation.test.ts src/lib/__tests__/pdf-variable-resolution.baseline.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 6: Commit changes**
+- [x] **Step 6: Commit changes**
   - Command: `git add src/lib/documents/form-validation.ts src/lib/documents/__tests__/form-validation.test.ts src/app/forms/[pdfId]/components/PdfFormRenderer.tsx src/lib/__tests__/pdf-variable-resolution.baseline.test.ts && git commit -m "refactor(docsigning): extract generateValidationSchema to SSOT domain utility"`
 
 ---
@@ -214,15 +214,15 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Create: `src/lib/documents/signature-storage-service.ts`
 - Create: `src/lib/documents/__tests__/signature-storage-service.test.ts`
 
-- [ ] **Step 1: Write unit test in `signature-storage-service.test.ts`**
+- [x] **Step 1: Write unit test in `signature-storage-service.test.ts`**
   - Test `isBase64DataUrl` detection.
   - Test base64 parsing, buffer conversion, Cloud Storage upload call, and SHA-256 digest calculation.
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/signature-storage-service.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement `src/lib/documents/signature-storage-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/signature-storage-service.ts`**
   - Stream image buffer to `signatures/${workspaceId}/${contractId}/${recipientId}.${extension}` using `adminStorage.file().save()`.
   - Calculate `crypto.createHash('sha256').update(buffer).digest('hex')`.
   - Return `{ storagePath, sha256, byteSize }`.
@@ -234,11 +234,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
      */
     ```
 
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/signature-storage-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/signature-storage-service.ts src/lib/documents/__tests__/signature-storage-service.test.ts && git commit -m "feat(docsigning): implement signature storage offloading with sha256 digests"`
 
 ---
@@ -249,15 +249,15 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Modify: `src/lib/pdf-actions.ts:76-200`
 - Create: `src/lib/__tests__/vector-pdf-engine.test.ts`
 
-- [ ] **Step 1: Write vector PDF engine test with valid minimal PDF fixture**
+- [x] **Step 1: Write vector PDF engine test with valid minimal PDF fixture**
   - Create a valid minimal PDF buffer using `PDFDocument.create()`.
   - Assert that `generatePdfBuffer` overlays fields, respects dynamic coordinates, preserves page dimensions (A4, Letter), and returns a loadable vector `Buffer`.
 
-- [ ] **Step 2: Run test to verify failure or current state**
+- [x] **Step 2: Run test to verify failure or current state**
   - Command: `pnpm test:run src/lib/__tests__/vector-pdf-engine.test.ts`
   - Expected: FAIL or PASS depending on fixture alignment.
 
-- [ ] **Step 3: Refactor `generatePdfBuffer` in `src/lib/pdf-actions.ts`**
+- [x] **Step 3: Refactor `generatePdfBuffer` in `src/lib/pdf-actions.ts`**
   - Replace `formData: { [key: string]: any }` with strict `Record<string, unknown>`.
   - Replace `(school as any)` with explicit `School & Record<string, unknown>`.
   - Calculate exact page geometry dynamically per page:
@@ -277,11 +277,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
      */
     ```
 
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/__tests__/vector-pdf-engine.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/pdf-actions.ts src/lib/__tests__/vector-pdf-engine.test.ts && git commit -m "feat(docsigning): modernize vector PDF engine with strict typing and exact geometry"`
 
 ---
@@ -292,15 +292,15 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Create: `src/lib/documents/evidence-service.ts`
 - Create: `src/lib/documents/__tests__/evidence-service.test.ts`
 
-- [ ] **Step 1: Write unit test in `evidence-service.test.ts`**
+- [x] **Step 1: Write unit test in `evidence-service.test.ts`**
   - Test `calculateSha256Digest` with known binary buffers.
   - Test `createEvidenceRecord` writing append-only entry to `signing_evidence` collection.
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/evidence-service.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement `src/lib/documents/evidence-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/evidence-service.ts`**
   - Compute SHA-256 using Node.js `crypto`.
   - Write immutable audit entries: `{ envelopeId, action, recipientId, recipientEmail, ipAddress, userAgent, documentDigest, timestamp }`.
   - Add inline architectural comment:
@@ -311,11 +311,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
      */
     ```
 
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/evidence-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/evidence-service.ts src/lib/documents/__tests__/evidence-service.test.ts && git commit -m "feat(docsigning): implement cryptographic evidence ledger and sha256 digests"`
 
 ---
@@ -326,16 +326,16 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Create: `src/lib/documents/audit-certificate-service.ts`
 - Create: `src/lib/documents/__tests__/audit-certificate-service.test.ts`
 
-- [ ] **Step 1: Write unit test in `audit-certificate-service.test.ts`**
+- [x] **Step 1: Write unit test in `audit-certificate-service.test.ts`**
   - Test appending a Certificate of Completion to an existing PDF buffer.
   - Verify page count increases from $N$ to $N + 1$.
   - Verify QR code and certificate metadata are drawn.
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/audit-certificate-service.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement `src/lib/documents/audit-certificate-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/audit-certificate-service.ts`**
   - Use `pdf-lib` and `qrcode.toDataURL` to create an elegant, high-contrast, professional A4 Certificate of Completion.
   - Render Envelope ID, Document Name, Status (Executed), Signatory Name/Email, Timestamp (UTC), IP Address, SHA-256 pre-sign digest, SHA-256 final digest, and verification QR code.
   - Add inline architectural comment:
@@ -346,11 +346,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
      */
     ```
 
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/audit-certificate-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/audit-certificate-service.ts src/lib/documents/__tests__/audit-certificate-service.test.ts && git commit -m "feat(docsigning): implement vector certificate of completion generator with QR code"`
 
 ---
@@ -361,16 +361,16 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Modify: `src/lib/pdf-actions.ts:280-435`
 - Create: `src/lib/__tests__/idempotent-finalization.test.ts`
 
-- [ ] **Step 1: Write concurrency and idempotency unit tests in `idempotent-finalization.test.ts`**
+- [x] **Step 1: Write concurrency and idempotency unit tests in `idempotent-finalization.test.ts`**
   - Assert that `finalizeAgreementAction` executes atomically via `adminDb.runTransaction()`.
   - Assert that `emitDealDomainEvent('deal.contract.signed', ...)` is called.
   - Assert that subsequent parallel calls for an already signed contract return `{ success: true, submissionId, isIdempotentReplay: true }` without re-dispatching side effects.
 
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/__tests__/idempotent-finalization.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Refactor `finalizeAgreementAction` in `src/lib/pdf-actions.ts`**
+- [x] **Step 3: Refactor `finalizeAgreementAction` in `src/lib/pdf-actions.ts`**
   - Wrap database execution in `adminDb.runTransaction()`.
   - Enforce status precondition: if contract status is already `'signed'`, return idempotently.
   - Offload signatures to Cloud Storage using `uploadSignatureImage`.
@@ -379,11 +379,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
   - Remove silent error swallowing: log errors with structured logging context and fail gracefully.
   - Add inline architectural comments explaining concurrency lock and transactional boundaries.
 
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/__tests__/idempotent-finalization.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/pdf-actions.ts src/lib/__tests__/idempotent-finalization.test.ts && git commit -m "feat(docsigning): transactional idempotent finalization with CRM deal event wiring"`
 
 ---
@@ -394,11 +394,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Modify: `src/app/forms/results/components/SharedSubmissionView.tsx`
 - Modify: `src/app/api/pdfs/[pdfId]/generate/[submissionId]/route.ts`
 
-- [ ] **Step 1: Harden API route `/api/pdfs/[pdfId]/generate/[submissionId]/route.ts`**
+- [x] **Step 1: Harden API route `/api/pdfs/[pdfId]/generate/[submissionId]/route.ts`**
   - Validate authorization and return streaming vector PDF with appended Certificate of Completion.
   - Set caching headers: `Cache-Control: private, no-cache, no-store, must-revalidate`.
 
-- [ ] **Step 2: Refactor `SharedSubmissionView.tsx`**
+- [x] **Step 2: Refactor `SharedSubmissionView.tsx`**
   - Completely remove `html2canvas` DOM screenshot loops and JPEG slicing.
   - Download directly from `/api/pdfs/${pdfForm.id}/generate/${submission.id}` via native browser stream.
   - Add an evidentiary "Certificate of Completion" verification card in the UI:
@@ -407,11 +407,11 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
     - Timestamp & Signer IP
     - QR Code verification button
 
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/forms/results/components/SharedSubmissionView.tsx'`
   - Expected: 0 errors.
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/forms/results/components/SharedSubmissionView.tsx src/app/api/pdfs/[pdfId]/generate/[submissionId]/route.ts && git commit -m "refactor(docsigning): replace html2canvas with direct server vector PDF download and certificate badge"`
 
 ---
@@ -422,7 +422,7 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Modify: `src/app/forms/[pdfId]/components/PdfFormRenderer.tsx`
 - Modify: `src/components/SignaturePadModal.tsx`
 
-- [ ] **Step 1: Update `PdfFormRenderer.tsx`**
+- [x] **Step 1: Update `PdfFormRenderer.tsx`**
   - Implement affirmative submission lock state (`isSubmitting: boolean`).
   - Add Emil Kowalski micro-interactions:
     - Finalize button active press feedback (`active:scale-[0.97]`).
@@ -431,16 +431,16 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
   - Enforce `min-h-[44px]` touch target sizing across all mobile form inputs, date selectors, checkmarks, and signature action buttons.
   - Add viewport zoom protection (`text-base` / `16px` font size on all form inputs).
 
-- [ ] **Step 2: Update `SignaturePadModal.tsx`**
+- [x] **Step 2: Update `SignaturePadModal.tsx`**
   - Optimize canvas and camera drawing surfaces for mobile portrait viewports (`touch-pan-y` without scroll conflicts).
   - Preserve camera "Scan" mode with luminance thresholding and transparent background isolation.
   - Eliminate all `any` types.
 
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/forms/[pdfId]/components/PdfFormRenderer.tsx' 'src/components/SignaturePadModal.tsx'`
   - Expected: 0 errors.
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/forms/[pdfId]/components/PdfFormRenderer.tsx src/components/SignaturePadModal.tsx && git commit -m "feat(docsigning): mobile touch target hardening and double-submission protection in signing portal"`
 
 ---
@@ -452,20 +452,20 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Create: `src/app/verify/[envelopeId]/components/DocumentVerificationClient.tsx`
 - Modify: `src/app/admin/contracts/ContractsClient.tsx` (Add Envelope Operations Dock: Resend, Void, Extend)
 
-- [ ] **Step 1: Create public verification portal `/verify/[envelopeId]`**
+- [x] **Step 1: Create public verification portal `/verify/[envelopeId]`**
   - Displays document authenticity, SHA-256 digests, UTC timestamps, and signer timeline.
   - Read-only, public-safe (redacts private CRM details, shows only verification evidence).
 
-- [ ] **Step 2: Add Envelope Operations Dock to `ContractsClient.tsx`**
+- [x] **Step 2: Add Envelope Operations Dock to `ContractsClient.tsx`**
   - One-click **Resend Link**: dispatches fresh token via SMS/Email.
   - One-click **Void Contract**: marks status as `voided` with audit justification.
   - One-click **Extend Expiry**: extends contract validity by 7, 14, 30 days.
 
-- [ ] **Step 3: Run unit and integration tests**
+- [x] **Step 3: Run unit and integration tests**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass.
 
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/verify/ src/app/admin/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement backoffice operations dock and public verification portal"`
 
 ---
@@ -476,17 +476,17 @@ export type CertificateData = z.infer<typeof CertificateDataSchema>;
 - Verify: Full test suite across baseline and Phase 1 tests.
 - Update: `docs/superpowers/plans/2026-09-28-doc-signing-phase-1.md` (Check off tasks)
 
-- [ ] **Step 1: Run all baseline and Phase 1 unit tests**
+- [x] **Step 1: Run all baseline and Phase 1 unit tests**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
 
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
 
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings within 670 budget.
 
-- [ ] **Step 4: Commit completed Phase 1 plan status**
+- [x] **Step 4: Commit completed Phase 1 plan status**
   - Command: `git add docs/superpowers/plans/2026-09-28-doc-signing-phase-1.md && git commit -m "docs(docsigning): mark Phase 1 tasks completed"`
