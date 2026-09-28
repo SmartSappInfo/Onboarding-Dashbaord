@@ -12,12 +12,10 @@
  */
 
 import { Metadata } from 'next';
-import { notFound } from 'next/navigation';
 import { adminDb } from '@/lib/firebase-admin';
 import { getEvidenceAuditTrail } from '@/lib/documents/evidence-service';
 import VerificationConsoleClient from './components/VerificationConsoleClient';
 import type { Contract } from '@/lib/types';
-import type { EvidenceAuditLogEntry } from '@/lib/types/document-signing';
 
 interface PageProps {
   params: Promise<{ envelopeId: string }>;

@@ -23,14 +23,11 @@ import {
   Copy, 
   Check, 
   Upload, 
-  FileText, 
-  Download, 
+  Download,
   Clock, 
-  ExternalLink,
-  Lock,
-  Calendar,
-  User,
-  Globe
+  Lock, 
+  User, 
+  Globe 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -147,16 +144,31 @@ export default function VerificationConsoleClient({
                 </p>
               </div>
             </div>
-            <Badge
-              variant="outline"
-              className={
-                isCompleted
-                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-3 py-1 font-bold text-xs self-start sm:self-auto'
-                  : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 px-3 py-1 font-bold text-xs self-start sm:self-auto'
-              }
-            >
-              {isCompleted ? 'Cryptographically Sealed' : 'Execution In Progress'}
-            </Badge>
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              {downloadUrl && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="rounded-xl h-8 px-3 text-xs font-bold gap-1.5 active:scale-[0.97]"
+                >
+                  <a href={downloadUrl} target="_blank" rel="noopener noreferrer">
+                    <Download className="h-3.5 w-3.5" />
+                    <span>Download PDF</span>
+                  </a>
+                </Button>
+              )}
+              <Badge
+                variant="outline"
+                className={
+                  isCompleted
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 px-3 py-1 font-bold text-xs'
+                    : 'border-amber-500/30 bg-amber-500/10 text-amber-700 dark:text-amber-400 px-3 py-1 font-bold text-xs'
+                }
+              >
+                {isCompleted ? 'Cryptographically Sealed' : 'Execution In Progress'}
+              </Badge>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-4 border-t border-slate-100 dark:border-slate-800/80">
@@ -171,9 +183,11 @@ export default function VerificationConsoleClient({
               </span>
             </div>
             <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Created Date</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                {completedAt ? 'Completed Date' : 'Created Date'}
+              </span>
               <span className="text-xs font-semibold block text-slate-600 dark:text-slate-300">
-                {format(new Date(createdAt), 'MMM d, yyyy HH:mm')} UTC
+                {format(new Date(completedAt || createdAt), 'MMM d, yyyy HH:mm')} UTC
               </span>
             </div>
             <div>
