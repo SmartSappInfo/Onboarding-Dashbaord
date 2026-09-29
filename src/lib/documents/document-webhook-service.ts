@@ -26,6 +26,11 @@ import {
   WebhookDeliveryLogSchema,
 } from '@/lib/types/document-signing';
 import { createHmac, timingSafeEqual, randomUUID } from 'crypto';
+import {
+  checkCircuitBreakerStatus,
+  recordCircuitBreakerSuccess,
+  recordCircuitBreakerFailure,
+} from './resilient-outbox-service';
 
 /**
  * Calculates exponential backoff delay in milliseconds based on attempt count.
@@ -181,6 +186,24 @@ export async function dispatchWebhookDelivery(
   const nowIso = new Date().toISOString();
   const retryLimit = subscription.retryLimit ?? 5;
 
+  // Circuit breaker pre-check (FM-P6-05 / RSK-02)
+  const circuit = await checkCircuitBreakerStatus(deliveryLog.workspaceId, subscription.url);
+  if (!circuit.canExecute) {
+    const cooldownDelay = Math.max(30000, circuit.remainingCooldownMs);
+    const updatedLog: WebhookDeliveryLog = {
+      ...deliveryLog,
+      status: 'failed',
+      lastAttemptAt: nowIso,
+      nextRetryAt: new Date(Date.now() + cooldownDelay).toISOString(),
+      errorMessage: `Circuit breaker OPEN for ${subscription.url}. Cooldown active.`,
+    };
+    await adminDb
+      .collection(`workspaces/${deliveryLog.workspaceId}/webhook_deliveries`)
+      .doc(deliveryLog.id)
+      .set(updatedLog, { merge: true });
+    return updatedLog;
+  }
+
   let responseStatus: number | null = null;
   let responseBody: string | null = null;
   let errorMsg: string | null = null;
@@ -215,14 +238,18 @@ export async function dispatchWebhookDelivery(
   let nextRetryAt: string | null = null;
 
   if (isSuccess) {
+    await recordCircuitBreakerSuccess(deliveryLog.workspaceId, subscription.url);
     nextStatus = 'delivered';
-  } else if (attempt >= retryLimit) {
-    nextStatus = 'dead_letter';
-    errorMsg = errorMsg ?? `HTTP ${responseStatus}: Exceeded maximum retry limit (${retryLimit})`;
   } else {
-    nextStatus = 'failed';
-    const delay = calculateBackoffDelayMs(attempt - 1);
-    nextRetryAt = delay > 0 ? new Date(Date.now() + delay).toISOString() : null;
+    await recordCircuitBreakerFailure(deliveryLog.workspaceId, subscription.url);
+    if (attempt >= retryLimit) {
+      nextStatus = 'dead_letter';
+      errorMsg = errorMsg ?? `HTTP ${responseStatus}: Exceeded maximum retry limit (${retryLimit})`;
+    } else {
+      nextStatus = 'failed';
+      const delay = calculateBackoffDelayMs(attempt - 1);
+      nextRetryAt = delay > 0 ? new Date(Date.now() + delay).toISOString() : null;
+    }
   }
 
   const updatedLog: WebhookDeliveryLog = {

@@ -892,3 +892,16 @@ export const WorkspaceBrandingSchema = z.object({
 });
 export type WorkspaceBranding = z.infer<typeof WorkspaceBrandingSchema>;
 
+export const CircuitBreakerStateSchema = z.object({
+  workspaceId: z.string(),
+  serviceKey: z.string(),
+  state: z.enum(['closed', 'open', 'half_open']),
+  failureCount: z.number().int().nonnegative().default(0),
+  successCount: z.number().int().nonnegative().default(0),
+  lastFailureAt: z.string().nullable().optional(),
+  nextAllowedAttemptAt: z.string().nullable().optional(),
+  updatedAt: z.string(),
+});
+export type CircuitBreakerState = z.infer<typeof CircuitBreakerStateSchema>;
+
+

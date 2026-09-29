@@ -98,9 +98,9 @@ export function evaluateFormula(
     case 'tax': {
       const base = sourceValues[0] ?? 0;
       const rate = sourceValues[1] ?? 0;
-      // If rate > 1 (e.g. 15 for 15%), convert to fraction
-      const effectiveRate = rate > 1 ? rate / 100 : rate;
-      result = base * effectiveRate;
+      // Tax rates are strictly standardized as percentage numbers (e.g. 15 for 15%, 0.75 for 0.75%).
+      // Uniformly dividing by 100 eliminates ambiguity for sub-1% municipal rates.
+      result = (base * rate) / 100;
       break;
     }
     case 'custom_expression': {

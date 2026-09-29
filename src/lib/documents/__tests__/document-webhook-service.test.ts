@@ -33,6 +33,7 @@ describe('Self-Healing Webhook Dispatch & Dead-Letter Queue (Phase 6)', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    mockGet.mockResolvedValue({ exists: false, data: () => ({}) });
   });
 
   describe('calculateBackoffDelayMs (FM-P6-02)', () => {

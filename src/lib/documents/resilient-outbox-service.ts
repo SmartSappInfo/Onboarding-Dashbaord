@@ -18,6 +18,7 @@
  */
 
 import { adminDb } from '@/lib/firebase-admin';
+import { CircuitBreakerStateSchema } from '@/lib/types/document-signing';
 
 export type CircuitBreakerMode = 'closed' | 'open' | 'half_open';
 
@@ -50,7 +51,7 @@ export async function checkCircuitBreakerStatus(
     .doc(serviceKey);
 
   const snap = await docRef.get();
-  if (!snap.exists) {
+  if (!snap || !snap.exists) {
     return {
       canExecute: true,
       state: 'closed',
@@ -58,7 +59,16 @@ export async function checkCircuitBreakerStatus(
     };
   }
 
-  const data = snap.data() as CircuitBreakerState;
+  const parseResult = CircuitBreakerStateSchema.safeParse(snap.data());
+  if (!parseResult.success) {
+    return {
+      canExecute: true,
+      state: 'closed',
+      remainingCooldownMs: 0,
+    };
+  }
+
+  const data = parseResult.data;
   const now = Date.now();
 
   if (data.state === 'closed') {
