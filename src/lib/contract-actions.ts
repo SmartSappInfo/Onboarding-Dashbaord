@@ -7,6 +7,7 @@ import { sendMessage } from './messaging-engine';
 import type { ContractStatus } from './types';
 import { canUser } from './workspace-permissions';
 import { requireAuth, requireWorkspace } from '@/lib/auth/require-auth';
+import { assertContractNotUnderLegalHold } from '@/lib/documents/legal-hold-service';
 
 /**
  * @fileOverview Server actions for the Contract Lifecycle.
@@ -229,6 +230,14 @@ export async function deleteContractAction(
         const contractSnap = await adminDb.collection('contracts').doc(contractId).get();
         if (!contractSnap.exists) throw new Error('Contract not found.');
         const workspaceId = contractSnap.data()?.workspaceId;
+
+        // Legal Hold Deletion Guard (FM-P9-05)
+        try {
+            await assertContractNotUnderLegalHold(contractId);
+        } catch (holdErr: unknown) {
+            const msg = holdErr instanceof Error ? holdErr.message : 'Contract is protected under active Legal Hold.';
+            return { success: false, error: msg };
+        }
 
         const permission = await canUser(userId, 'finance', 'agreements', 'delete', workspaceId);
         if (!permission.granted) {
