@@ -165,18 +165,18 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Modify: `src/lib/types/document-signing.ts`
 - Create: `src/lib/documents/__tests__/ai-intelligence-schemas.test.ts`
 
-- [ ] **Step 1: Write schema validation unit tests in `ai-intelligence-schemas.test.ts`**
+- [x] **Step 1: Write schema validation unit tests in `ai-intelligence-schemas.test.ts`**
   - Test valid and invalid payloads for `AiFieldSuggestionSchema`, `AiDocumentQaRequestSchema`, `AiDocumentQaResponseSchema`, `SemanticClauseDiffSchema`, `AiObligationCandidateSchema`, and `DocumentAiAnalysisLogSchema`.
   - Test coordinate boundary checks (`leftPct`, `topPct`, `widthPct`, `heightPct` within $[0, 100]$).
   - Test citation validation (`pageNumber >= 1`, non-empty `textSnippet`).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/ai-intelligence-schemas.test.ts`
-- [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Update `src/lib/types/document-signing.ts`**
   - Implement all Phase 5 schemas and exported TypeScript types.
   - Strictly zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/ai-intelligence-schemas.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/ai-intelligence-schemas.test.ts && git commit -m "feat(docsigning): implement strict domain schemas for AI intelligence, Q&A, redlining, and obligations"`
 
 ---
@@ -186,21 +186,21 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/lib/documents/document-ai-copilot-service.ts`
 - Create: `src/lib/documents/__tests__/document-ai-copilot-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `document-ai-copilot-service.test.ts`**
+- [x] **Step 1: Write unit tests in `document-ai-copilot-service.test.ts`**
   - Test generating executive summary from multi-page document text.
   - Test grounded Q&A answering questions with exact page citations (`pageNumber`, `textSnippet`).
   - Test anti-hallucination abstention: returns `"Not mentioned in the document"` when query topic is missing.
   - Test tenant isolation: throws error if requested document belongs to another workspace.
   - Test graceful fallback when LLM API returns HTTP 429 or network timeout.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-ai-copilot-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/document-ai-copilot-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/document-ai-copilot-service.ts`**
   - Grounded RAG search across document page buffers with prompt injection defense (`<untrusted_document_content>`).
   - Integration with Gemini 2.0 Flash via `@genkit-ai/google-genai` / AI gateway with deterministic fallback.
   - Inline maintainer comments explaining grounding invariants (Rule 10).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-ai-copilot-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/document-ai-copilot-service.ts src/lib/documents/__tests__/document-ai-copilot-service.test.ts && git commit -m "feat(docsigning): implement grounded document Q&A and executive summary service"`
 
 ---
@@ -210,19 +210,19 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/lib/documents/template-ai-field-detector.ts`
 - Create: `src/lib/documents/__tests__/template-ai-field-detector.test.ts`
 
-- [ ] **Step 1: Write unit tests in `template-ai-field-detector.test.ts`**
+- [x] **Step 1: Write unit tests in `template-ai-field-detector.test.ts`**
   - Test detecting signature blocks, signer names, initials, dates, and form text fields from page text and geometry.
   - Test output coordinate normalization: verifies all `leftPct`, `topPct`, `widthPct`, `heightPct` are strictly within $[0, 100]$.
   - Test mapping detected fields to recipient roles (`signer`, `countersigner`).
   - Test confidence score assignment and filtering threshold (e.g. discard candidates with confidence $< 0.70$).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-ai-field-detector.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/template-ai-field-detector.ts`**
+- [x] **Step 3: Implement `src/lib/documents/template-ai-field-detector.ts`**
   - Hybrid layout analysis combining keyword pattern heuristics and LLM vision/text structuring.
   - Returns array of `AiFieldSuggestion` objects with confidence, page number, and normalized coordinates.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-ai-field-detector.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/template-ai-field-detector.ts src/lib/documents/__tests__/template-ai-field-detector.test.ts && git commit -m "feat(docsigning): implement in-editor AI field detection and geometry engine"`
 
 ---
@@ -232,18 +232,18 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/lib/documents/contract-semantic-diff-service.ts`
 - Create: `src/lib/documents/__tests__/contract-semantic-diff-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `contract-semantic-diff-service.test.ts`**
+- [x] **Step 1: Write unit tests in `contract-semantic-diff-service.test.ts`**
   - Test comparing Version A and Version B of a contract/template.
   - Test categorizing changes into `addedClauses`, `removedClauses`, `modifiedClauses`.
   - Test generating everyday English summaries of material commercial changes (e.g. indemnity caps, payment terms, renewal notice periods).
   - Test immutable version invariant: rejects diff apply requests if target version is not in `'draft'` state.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-semantic-diff-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/contract-semantic-diff-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/contract-semantic-diff-service.ts`**
   - Combines structured AST diffs with LLM semantic synthesis to produce clean, executive-ready redline reports.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-semantic-diff-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/contract-semantic-diff-service.ts src/lib/documents/__tests__/contract-semantic-diff-service.test.ts && git commit -m "feat(docsigning): implement semantic redlining and clause difference engine"`
 
 ---
@@ -253,19 +253,19 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/lib/documents/contract-obligation-extraction-service.ts`
 - Create: `src/lib/documents/__tests__/contract-obligation-extraction-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `contract-obligation-extraction-service.test.ts`**
+- [x] **Step 1: Write unit tests in `contract-obligation-extraction-service.test.ts`**
   - Test extracting candidate obligations from executed contract text (payment milestones, SLA reports, audit reviews, renewal deadlines).
   - Test storing extracted obligations in `'review_required'` state.
   - Test human approval action (`approveObligationCandidate`): converts candidate into official `ContractObligation` and invokes `createTaskCore`.
   - Test dismissal/rejection action (`dismissObligationCandidate`).
   - Test tenant isolation: rejects extraction or approval across different workspaces.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-obligation-extraction-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/contract-obligation-extraction-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/contract-obligation-extraction-service.ts`**
   - Asynchronous extraction worker, candidate storage in Firestore subcollection, and approval server action.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-obligation-extraction-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/contract-obligation-extraction-service.ts src/lib/documents/__tests__/contract-obligation-extraction-service.test.ts && git commit -m "feat(docsigning): implement post-execution obligation extraction and approval service"`
 
 ---
@@ -275,18 +275,18 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/lib/documents/document-ai-governance-service.ts`
 - Create: `src/lib/documents/__tests__/document-ai-governance-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `document-ai-governance-service.test.ts`**
+- [x] **Step 1: Write unit tests in `document-ai-governance-service.test.ts`**
   - Test recording AI run execution metrics in `document_ai_analyses` collection.
   - Test prompt injection detector: flags suspicious prompt manipulation sequences in input text.
   - Test quota tracker & circuit breaker: tracks token consumption and trips breaker on sustained 429 errors.
   - Test telemetry query helper: aggregates daily AI cost, latency, and error counts by workspace.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-ai-governance-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/document-ai-governance-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/document-ai-governance-service.ts`**
   - Logging, prompt sanitization, rate-limit defense, and administrative telemetry methods.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-ai-governance-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/document-ai-governance-service.ts src/lib/documents/__tests__/document-ai-governance-service.test.ts && git commit -m "feat(docsigning): implement AI governance, prompt defense, and quota telemetry service"`
 
 ---
@@ -296,17 +296,17 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/app/admin/documents/components/DocumentAiCopilotDrawer.tsx`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Build `DocumentAiCopilotDrawer.tsx`**
+- [x] **Step 1: Build `DocumentAiCopilotDrawer.tsx`**
   - Slide-over sheet drawer with header, Executive Summary accordion, and interactive chat feed.
   - Grounded answer bubbles with clickable page citation badges (`[Page X]`).
   - Mobile virtual keyboard zoom prevention (`text-base` input font, 16px).
   - Tactile micro-interactions (`active:scale-[0.97]`).
   - Empty, loading, and rate-limit degraded states.
-- [ ] **Step 2: Integrate into `ContractsClient.tsx`**
+- [x] **Step 2: Integrate into `ContractsClient.tsx`**
   - Mount AI Copilot trigger button in table actions and header.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/documents/components/DocumentAiCopilotDrawer.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/documents/components/DocumentAiCopilotDrawer.tsx src/app/admin/finance/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement grounded AI copilot drawer and citation navigation UI"`
 
 ---
@@ -316,39 +316,39 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Create: `src/app/admin/documents/templates/components/TemplateAiFieldSuggester.tsx`
 - Modify: `src/app/admin/documents/templates/components/TemplateEditorToolbar.tsx` (or template studio parent)
 
-- [ ] **Step 1: Build `TemplateAiFieldSuggester.tsx`**
+- [x] **Step 1: Build `TemplateAiFieldSuggester.tsx`**
   - "Auto-Detect Fields" button in toolbar with sparkle icon and loading animation.
   - Renders dashed bounding boxes over canvas with field type icons and confidence badges.
   - 1-Click "Apply All" or individual "Accept / Dismiss" action buttons.
   - Accessible keyboard focus and mobile touch controls.
-- [ ] **Step 2: Integrate into Template Studio canvas overlay**
+- [x] **Step 2: Integrate into Template Studio canvas overlay**
   - Wires suggested field application into template draft state without mutating published versions.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/documents/templates/components/TemplateAiFieldSuggester.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/documents/templates/components/TemplateAiFieldSuggester.tsx && git commit -m "feat(docsigning): implement template studio AI field placement assistant UI"`
 
 ---
 
-### Task 5: Semantic Clause Diff Inspector & Obligation Review Modal (P5.2 & P5.4 UI)
+### Task 9: Semantic Clause Diff Inspector & Obligation Review Modal (P5.2 & P5.4 UI)
 **Files:**
 - Create: `src/app/admin/finance/contracts/components/ContractClauseDiffModal.tsx`
 - Create: `src/app/admin/finance/contracts/components/ObligationReviewModal.tsx`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Build `ContractClauseDiffModal.tsx`**
+- [x] **Step 1: Build `ContractClauseDiffModal.tsx`**
   - Version selector (Compare Version A vs Version B).
   - Side-by-side or unified view with color-coded additions (emerald), removals (rose), and modifications (amber).
   - Plain-English change summary header.
-- [ ] **Step 2: Build `ObligationReviewModal.tsx`**
+- [x] **Step 2: Build `ObligationReviewModal.tsx`**
   - Lists candidate obligations with confidence badges, due dates, source excerpts, and responsible parties.
   - 1-Click "Approve & Create CRM Task" button with pending state feedback.
   - "Reject" button to dismiss false positives.
-- [ ] **Step 3: Integrate modals into `ContractsClient.tsx`**
+- [x] **Step 3: Integrate modals into `ContractsClient.tsx`**
   - Wires action buttons into contract row context menus.
-- [ ] **Step 4: Verify TypeScript compiler and lint**
+- [x] **Step 4: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/ContractClauseDiffModal.tsx' 'src/app/admin/finance/contracts/components/ObligationReviewModal.tsx'`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/ContractClauseDiffModal.tsx src/app/admin/finance/contracts/components/ObligationReviewModal.tsx src/app/admin/finance/contracts/ContractsClient.tsx && git commit -m "feat(docsigning): implement semantic clause diff inspector and obligation review modals"`
 
 ---
@@ -358,16 +358,16 @@ To ensure seamless usability for non-technical operations staff, legal reviewers
 - Verify: Full test suite across baseline, Phase 1, Phase 2, Phase 3, Phase 4, and Phase 5 tests.
 - Update: `docs/superpowers/plans/2026-09-29-doc-signing-phase-5.md`
 
-- [ ] **Step 1: Run all unit and integration test suites**
+- [x] **Step 1: Run all unit and integration test suites**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings $\le 670$.
-- [ ] **Step 4: Commit completed Phase 5 master plan status**
+- [x] **Step 4: Commit completed Phase 5 master plan status**
   - Command: `git add docs/superpowers/plans/2026-09-29-doc-signing-phase-5.md && git commit -m "docs(docsigning): mark Phase 5 tasks completed"`
 
 ---
