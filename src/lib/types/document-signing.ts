@@ -1179,6 +1179,154 @@ export const DeveloperWebhookSubscriptionSchema = z.object({
 });
 export type DeveloperWebhookSubscription = z.infer<typeof DeveloperWebhookSubscriptionSchema>;
 
+/* =========================================================================
+   PHASE 9: ENTERPRISE BULK DISPATCH CAMPAIGNS, BATCH MERGE & E-DISCOVERY
+   =========================================================================
+   Maintainer Note (Rule 10 Maintainer Guidance):
+   These schemas govern high-throughput bulk document dispatch campaigns,
+   item-level recipient state machines, pre-flight merge validation,
+   statutory retention schedules, litigation legal holds, and court-admissible
+   e-Discovery archival packages with Merkle root hash verification.
+   Strict validation ensures zero un-narrowed external payloads and zero `any`.
+*/
+
+export const BulkCampaignStatusSchema = z.enum([
+  'draft',
+  'validating',
+  'ready',
+  'dispatching',
+  'active',
+  'paused',
+  'completed',
+  'failed',
+]);
+export type BulkCampaignStatus = z.infer<typeof BulkCampaignStatusSchema>;
+
+export const BulkCampaignRecipientStatusSchema = z.enum([
+  'queued',
+  'dispatched',
+  'delivered',
+  'signed',
+  'failed',
+]);
+export type BulkCampaignRecipientStatus = z.infer<typeof BulkCampaignRecipientStatusSchema>;
+
+export const BulkCampaignRecipientSchema = z.object({
+  id: z.string().min(1),
+  campaignId: z.string().min(1),
+  rowIndex: z.number().int().min(1),
+  name: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  variables: z.record(z.string(), z.string()).default({}),
+  status: BulkCampaignRecipientStatusSchema.default('queued'),
+  envelopeId: z.string().optional(),
+  error: z.string().optional(),
+  dispatchedAt: z.string().optional(),
+  signedAt: z.string().optional(),
+  idempotencyKey: z.string().min(1),
+});
+export type BulkCampaignRecipient = z.infer<typeof BulkCampaignRecipientSchema>;
+
+export const BulkCampaignRoutingModeSchema = z.enum([
+  'single_signer',
+  'sequential_countersign',
+]);
+export type BulkCampaignRoutingMode = z.infer<typeof BulkCampaignRoutingModeSchema>;
+
+export const BulkCampaignSchema = z.object({
+  id: z.string().min(1),
+  workspaceId: z.string().min(1),
+  title: z.string().min(1).max(120),
+  templateId: z.string().min(1),
+  templateVersionId: z.string().optional(),
+  status: BulkCampaignStatusSchema,
+  totalCount: z.number().int().min(0),
+  dispatchedCount: z.number().int().min(0),
+  signedCount: z.number().int().min(0),
+  failedCount: z.number().int().min(0),
+  routingMode: BulkCampaignRoutingModeSchema.default('single_signer'),
+  countersignerEmail: z.string().email().optional(),
+  countersignerName: z.string().optional(),
+  createdBy: z.string().min(1),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+  completedAt: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+});
+export type BulkCampaign = z.infer<typeof BulkCampaignSchema>;
+
+export const CreateBulkCampaignRecipientInputSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  phone: z.string().optional(),
+  variables: z.record(z.string(), z.string()).default({}),
+});
+export type CreateBulkCampaignRecipientInput = z.infer<typeof CreateBulkCampaignRecipientInputSchema>;
+
+export const CreateBulkCampaignRequestSchema = z.object({
+  title: z.string().min(1).max(120),
+  templateId: z.string().min(1),
+  templateVersionId: z.string().optional(),
+  routingMode: BulkCampaignRoutingModeSchema.default('single_signer'),
+  countersignerEmail: z.string().email().optional(),
+  countersignerName: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  recipients: z.array(CreateBulkCampaignRecipientInputSchema).min(1).max(5000),
+});
+export type CreateBulkCampaignRequest = z.infer<typeof CreateBulkCampaignRequestSchema>;
+
+export const EDiscoveryFileEntrySchema = z.object({
+  path: z.string().min(1),
+  description: z.string().min(1),
+  sha256: z.string().length(64),
+  sizeBytes: z.number().int().min(0),
+  mimeType: z.string().min(1),
+});
+export type EDiscoveryFileEntry = z.infer<typeof EDiscoveryFileEntrySchema>;
+
+export const EDiscoveryManifestSchema = z.object({
+  manifestVersion: z.literal('1.0.0'),
+  contractId: z.string().min(1),
+  envelopeId: z.string().min(1),
+  workspaceId: z.string().min(1),
+  title: z.string().min(1),
+  exportedAt: z.string(),
+  exportedByUserId: z.string().min(1),
+  files: z.array(EDiscoveryFileEntrySchema).min(1),
+  merkleRootSha256: z.string().length(64),
+  legalHoldActive: z.boolean(),
+  legalHoldDetails: z.object({
+    matterId: z.string().optional(),
+    reason: z.string().optional(),
+    placedAt: z.string().optional(),
+  }).optional(),
+});
+export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
+
+export const BulkCsvMergePreviewItemSchema = z.object({
+  rowIndex: z.number().int().min(1),
+  recipientName: z.string(),
+  recipientEmail: z.string(),
+  mappedVariables: z.record(z.string(), z.string()),
+  missingVariables: z.array(z.string()),
+  isValid: z.boolean(),
+  errors: z.array(z.string()),
+});
+export type BulkCsvMergePreviewItem = z.infer<typeof BulkCsvMergePreviewItemSchema>;
+
+export const BulkCsvMergePreviewResultSchema = z.object({
+  totalRows: z.number().int().min(0),
+  validRows: z.number().int().min(0),
+  invalidRows: z.number().int().min(0),
+  detectedColumns: z.array(z.string()),
+  templateVariables: z.array(z.string()),
+  unmappedVariables: z.array(z.string()),
+  previewSample: z.array(BulkCsvMergePreviewItemSchema),
+});
+export type BulkCsvMergePreviewResult = z.infer<typeof BulkCsvMergePreviewResultSchema>;
+
+
 
 
 
