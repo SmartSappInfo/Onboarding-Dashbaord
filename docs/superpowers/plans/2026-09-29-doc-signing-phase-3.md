@@ -387,17 +387,17 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Modify: `src/lib/types/document-signing.ts`
 - Create: `src/lib/documents/__tests__/template-contract-schemas.test.ts`
 
-- [ ] **Step 1: Write schema validation unit tests in `template-contract-schemas.test.ts`**
+- [x] **Step 1: Write schema validation unit tests in `template-contract-schemas.test.ts`**
   - Test valid and invalid payloads for `TemplateVersionSchema`, `DocumentTemplateSchema`, `ContractRecordSchema`, `ContractObligationSchema`, `ContractRelationshipSchema`.
   - Test monotonic version number constraints, `cadence` validation on `contractValue`, and obligation status transitions.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-contract-schemas.test.ts`
-- [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Update `src/lib/types/document-signing.ts`**
   - Implement all Phase 3 schemas and exported TypeScript types.
   - Guarantee zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-contract-schemas.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/template-contract-schemas.test.ts && git commit -m "feat(docsigning): implement strict domain schemas for template versions, contracts, and obligations"`
 
 ---
@@ -407,20 +407,20 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/lib/documents/template-version-service.ts`
 - Create: `src/lib/documents/__tests__/template-version-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `template-version-service.test.ts`**
+- [x] **Step 1: Write unit tests in `template-version-service.test.ts`**
   - Test creating initial template with `v1` draft version.
   - Test publishing draft version: status becomes `published`, prior published version becomes `superseded`.
   - Test editing published template: automatically creates a new incremental draft version (`v2-draft`) without mutating `v1`.
   - Test immutability guard: rejecting modifications to any version with status `published` or `superseded`.
   - Test `diffTemplateVersions(vOld, vNew)` helper: returns added, removed, and updated fields for visual publication review.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-version-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/template-version-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/template-version-service.ts`**
   - Pure state-machine functions and Firestore transaction helpers: `publishTemplateVersion`, `createDraftVersion`, `validateTemplateVersionImmutability`, `diffTemplateVersions`.
   - Add inline architectural comments on immutability invariants (Rule 10).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-version-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/template-version-service.ts src/lib/documents/__tests__/template-version-service.test.ts && git commit -m "feat(docsigning): implement immutable template versioning engine"`
 
 ---
@@ -430,18 +430,18 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/lib/documents/contract-lifecycle-service.ts`
 - Create: `src/lib/documents/__tests__/contract-lifecycle-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `contract-lifecycle-service.test.ts`**
+- [x] **Step 1: Write unit tests in `contract-lifecycle-service.test.ts`**
   - Test advancing contract from `proposed` $\to$ `pending_execution` $\to$ `executed` $\to$ `active`.
   - Test creating an amendment relationship: creates new contract record with `relationshipType: 'amendment'` and `parentContractId`, while prior contract transitions to `amended` without mutating historical executed PDF.
   - Test creating a renewal relationship: updates `renewalAt` and links to new agreement.
   - Test calculating renewal countdown and expiry urgency flags.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-lifecycle-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/contract-lifecycle-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/contract-lifecycle-service.ts`**
   - Deterministic state machine functions: `transitionContractStatus`, `createContractRelationship`, `calculateRenewalUrgency`.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-lifecycle-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/contract-lifecycle-service.ts src/lib/documents/__tests__/contract-lifecycle-service.test.ts && git commit -m "feat(docsigning): implement post-signing contract lifecycle and relationship engine"`
 
 ---
@@ -451,19 +451,19 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/lib/documents/contract-obligation-service.ts`
 - Create: `src/lib/documents/__tests__/contract-obligation-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `contract-obligation-service.test.ts`**
+- [x] **Step 1: Write unit tests in `contract-obligation-service.test.ts`**
   - Test creating obligation with linked SmartSapp task creation via `createTaskCore`.
   - Test obligation fulfillment: marks obligation `fulfilled` and updates linked task to completed.
   - Test bi-directional reverse hook: completing linked task in CRM advances obligation status to `fulfilled`.
   - Test overdue obligation calculation and reminder schedule evaluation.
   - Test idempotency: fulfilling already-fulfilled obligation returns success without duplicate side effects.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-obligation-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/contract-obligation-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/contract-obligation-service.ts`**
   - Functions: `createContractObligation`, `fulfillObligation`, `getUpcomingObligations`, `syncObligationWithTask`.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-obligation-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/contract-obligation-service.ts src/lib/documents/__tests__/contract-obligation-service.test.ts && git commit -m "feat(docsigning): implement contract obligations and task synchronization engine"`
 
 ---
@@ -473,20 +473,20 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/lib/documents/contract-actions.ts`
 - Create: `src/lib/documents/__tests__/contract-actions.test.ts`
 
-- [ ] **Step 1: Write integration tests in `contract-actions.test.ts`**
+- [x] **Step 1: Write integration tests in `contract-actions.test.ts`**
   - Test `publishTemplateVersionAction`: publishes draft version and records audit event.
   - Test `createContractRecordAction`: creates contract with tenant isolation checks.
   - Test `createContractAmendmentAction`: creates linked amendment with non-destructive history.
   - Test `createContractObligationAction`: creates obligation and triggers task core integration.
   - Test `fulfillContractObligationAction`: updates status and logs evidence record.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-actions.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/contract-actions.ts`**
+- [x] **Step 3: Implement `src/lib/documents/contract-actions.ts`**
   - Authoritative Next.js Server Actions with strict workspace session checks (`requireAuth()`, `requireWorkspace(workspaceId)`).
   - Transactional updates via `adminDb.runTransaction()` (addressing Senior Code Reviewer Guardrail 1).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/contract-actions.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/contract-actions.ts src/lib/documents/__tests__/contract-actions.test.ts && git commit -m "feat(docsigning): implement authoritative contract and template versioning server actions"`
 
 ---
@@ -498,17 +498,17 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/app/admin/pdfs/[id]/edit/components/PublishVersionModal.tsx`
 - Create: `src/app/admin/pdfs/[id]/edit/components/VersionHistoryDrawer.tsx`
 
-- [ ] **Step 1: Build `TemplateVersionBar.tsx`**
+- [x] **Step 1: Build `TemplateVersionBar.tsx`**
   - Displays current template version badge (`v1.0 (Published)` or `v2.0-draft`), change status, and action buttons.
   - Incorporates Emil Kowalski micro-interactions (`active:scale-[0.97]`).
-- [ ] **Step 2: Build `PublishVersionModal.tsx` & `VersionHistoryDrawer.tsx`**
+- [x] **Step 2: Build `PublishVersionModal.tsx` & `VersionHistoryDrawer.tsx`**
   - Form capturing change summary, showing field diffs via `diffTemplateVersions`, validating that required fields exist, and calling `publishTemplateVersionAction`.
   - Drawer displaying historical versions with published dates, author, and view buttons.
-- [ ] **Step 3: Integrate into PDF Studio Editor**
+- [x] **Step 3: Integrate into PDF Studio Editor**
   - Wire versioning bar to top navigation of `/admin/pdfs/[id]/edit`.
-- [ ] **Step 4: Verify TypeScript compiler and lint**
+- [x] **Step 4: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/pdfs/[id]/edit/**/*.tsx'`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/app/admin/pdfs/[id]/edit/ && git commit -m "feat(docsigning): implement template studio versioning bar and publication workflow"`
 
 ---
@@ -518,17 +518,17 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/app/admin/finance/contracts/components/ContractLifecycleDetailModal.tsx`
 - Create: `src/app/admin/finance/contracts/components/CreateAmendmentModal.tsx`
 
-- [ ] **Step 1: Build `ContractLifecycleDetailModal.tsx`**
+- [x] **Step 1: Build `ContractLifecycleDetailModal.tsx`**
   - Displays contract header (Status badge, Value with cadence, Effective Date, Expiry Date, Renewal Urgency pill).
   - Executed PDF & Vector Certificate download buttons.
   - Linked signing envelopes timeline.
   - Party links rail (Signatories, Entity contacts).
   - Relationship tree showing parent contracts, amendments, and renewals.
-- [ ] **Step 2: Build `CreateAmendmentModal.tsx`**
+- [x] **Step 2: Build `CreateAmendmentModal.tsx`**
   - Form allowing operations user to draft an amendment with description and updated terms, calling `createContractAmendmentAction`.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/ContractLifecycleDetailModal.tsx' 'src/app/admin/finance/contracts/components/CreateAmendmentModal.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/ContractLifecycleDetailModal.tsx src/app/admin/finance/contracts/components/CreateAmendmentModal.tsx && git commit -m "feat(docsigning): implement contract lifecycle detail modal and amendment workflow"`
 
 ---
@@ -538,19 +538,19 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/app/admin/finance/contracts/components/CreateObligationModal.tsx`
 - Create: `src/app/admin/finance/contracts/components/ObligationsListRail.tsx`
 
-- [ ] **Step 1: Build `CreateObligationModal.tsx`**
+- [x] **Step 1: Build `CreateObligationModal.tsx`**
   - Form with Obligation Title, Description, Type selector (Deliverable, Payment, Compliance, Renewal Notice).
   - Due Date picker with quick presets (+30d, +60d, +90d, End of Quarter).
   - Responsible Party toggle (Internal vs Counterparty).
   - "Sync to SmartSapp Task Queue" checkbox.
   - Calls `createContractObligationAction`.
-- [ ] **Step 2: Build `ObligationsListRail.tsx`**
+- [x] **Step 2: Build `ObligationsListRail.tsx`**
   - Interactive obligations list with status pills (Pending, In Progress, Fulfilled, Overdue).
   - One-click fulfillment checkbox with Emil Kowalski spring micro-interaction.
   - Direct link to view the synced task in `/admin/tasks`.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/components/CreateObligationModal.tsx' 'src/app/admin/finance/contracts/components/ObligationsListRail.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/components/CreateObligationModal.tsx src/app/admin/finance/contracts/components/ObligationsListRail.tsx && git commit -m "feat(docsigning): implement contract obligations rail and task creation modal"`
 
 ---
@@ -561,17 +561,17 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/app/admin/finance/contracts/components/TemplateCatalogTab.tsx`
 - Create: `src/app/admin/finance/contracts/components/ObligationsSummaryTab.tsx`
 
-- [ ] **Step 1: Build `TemplateCatalogTab.tsx`**
+- [x] **Step 1: Build `TemplateCatalogTab.tsx`**
   - Visual grid/table of reusable templates with version pills (`v1.0 (Published)`), category tags via `<TagSelector>`, and one-click "Issue Agreement".
-- [ ] **Step 2: Build `ObligationsSummaryTab.tsx`**
+- [x] **Step 2: Build `ObligationsSummaryTab.tsx`**
   - Cross-contract obligations overview with urgency filter (Upcoming 7 Days, Upcoming 30 Days, Overdue).
-- [ ] **Step 3: Update `ContractsClient.tsx`**
+- [x] **Step 3: Update `ContractsClient.tsx`**
   - Integrate 3-tab navigation (`Contracts & Lifecycle`, `Document Templates`, `Obligations & Milestones`).
   - Wire `ContractLifecycleDetailModal`, `CreateAmendmentModal`, and `CreateObligationModal`.
   - Fix legacy `StatCard` typing to `icon: React.ComponentType<{ className?: string }>` (Senior Code Reviewer Guardrail 3).
-- [ ] **Step 4: Verify TypeScript compiler and lint**
+- [x] **Step 4: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/finance/contracts/**/*.{ts,tsx}'`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/app/admin/finance/contracts/ && git commit -m "feat(docsigning): implement unified 3-tab document workspace and obligations dashboard"`
 
 ---
@@ -581,16 +581,16 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Verify: Full test suite across baseline, Phase 1, Phase 2, and Phase 3 tests.
 - Update: `docs/superpowers/plans/2026-09-29-doc-signing-phase-3.md`
 
-- [ ] **Step 1: Run all unit and integration test suites**
+- [x] **Step 1: Run all unit and integration test suites**
   - Command: `pnpm test:run src/lib/__tests__/*.test.ts src/lib/documents/__tests__/*.test.ts`
   - Expected: 100% pass across all suites.
-- [ ] **Step 2: Run TypeScript compiler**
+- [x] **Step 2: Run TypeScript compiler**
   - Command: `pnpm typecheck`
   - Expected: 0 errors.
-- [ ] **Step 3: Run ESLint**
+- [x] **Step 3: Run ESLint**
   - Command: `pnpm lint`
   - Expected: 0 errors, warnings $\le 670$.
-- [ ] **Step 4: Commit completed Phase 3 master plan status**
+- [x] **Step 4: Commit completed Phase 3 master plan status**
   - Command: `git add docs/superpowers/plans/2026-09-29-doc-signing-phase-3.md && git commit -m "docs(docsigning): mark Phase 3 tasks completed"`
 
 ---
