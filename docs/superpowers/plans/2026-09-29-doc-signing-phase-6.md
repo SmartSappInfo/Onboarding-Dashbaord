@@ -83,6 +83,59 @@ flowchart TD
 | **FM-P6-08** | **Cross-Tenant Webhook Leak** | **Critical** | Webhook delivery worker picks up events across workspaces, leaking confidential deal payloads. | Outbox delivery jobs strictly query by `workspaceId`. Webhook secrets are encrypted per tenant using workspace-scoped KMS keys. |
 | **FM-P6-09** | **Custom Branding XSS** | **High** | Workspace admin enters malicious JavaScript in custom branding primary color or portal URL. | Zod schema strictly validates colors with `^#([A-Fa-f0-9]{6})$`, logo URLs with `z.string().url()`, and escapes all HTML entities in email/SMS templates. |
 | **FM-P6-10** | **Webhook Outbox Stampede** | **Medium** | Re-enabling a recovered webhook endpoint floods the destination server with thousands of backlog events. | The outbox worker implements token-bucket rate limiting (max 50 dispatches/sec per endpoint) with randomized jitter to prevent destination server collapse. |
+| **FM-P6-11** | **Batch Overload & Memory Exhaustion** | **High** | Exporting bulk evidence packages or scanning 100+ documents at once causes node process out-of-memory. | Streams evidence files directly to Cloud Storage signed URLs; caps bulk operations to batches of 25 with backpressure. |
+| **FM-P6-12** | **No-Code Branding Reversion** | **Low** | Admin accidentally inputs broken logo URL, breaking the signer interface. | Automatic fallback to default workspace identity if image fails to render or load via client error boundaries. |
+
+---
+
+## 2.1 10 Golden Rules Compliance & Verification Protocol
+
+1. **Strict Sub-Skill Alignment:**
+   Conforms to `next-best-practices` (Next.js 15 Server Actions, Route Handlers), `vercel-react-best-practices` (minimal re-renders, reactive state scoping), `emilkowal-animations` (`active:scale-[0.97]` tactile press feedback, smooth transition springs), `backend-design` (idempotent mutations, outbox pattern, circuit breakers), and `frontend-design` (accessible, institution-grade UI).
+2. **Failure Modes & Clean Code Guarantee:**
+   All 12 failure modes (FM-P6-01 to FM-P6-12) have concrete code-level mitigations and corresponding unit test assertions. Every step is verified with `pnpm test:run`, `pnpm typecheck`, and `pnpm lint` before committing locally.
+3. **Downstream Feature & Backoffice Continuity:**
+   Preserves zero breaking changes across CRM Deals, Automations Event Bus, Link Shortener, and Public Verification Consoles.
+4. **Zero-Tolerance Typing (Rule 4):**
+   Strictly zero `any` or `any[]` or unchecked casts in domain models, service layers, and UI components. All inputs from external boundaries are parsed with Zod schemas.
+5. **Staging & Policy Verification:**
+   All Firestore paths (`assurance_profiles`, `webhook_subscriptions`, `webhook_deliveries`, `system_circuit_breaker`, `retention_policies`) are scoped under `workspaces/{workspaceId}/` ensuring tenant isolation.
+6. **Dependency & Documentation Hygiene:**
+   Standard cryptographic primitives (`crypto.createHmac`, `crypto.createHash`, `crypto.timingSafeEqual`) and Radix UI components utilized.
+7. **Mobile-First & Everyday UI English:**
+   Every button and input enforces `min-h-[44px]` touch targets. Form inputs enforce `text-base sm:text-sm` to prevent iOS Safari auto-zoom. UI copy uses clear, everyday English ("Save Formula", "Place on Legal Hold", "Retry Delivery") avoiding cluttered or cryptic jargon.
+8. **High Security Standards:**
+   Cryptographic HMAC-SHA256 signatures (`X-DocSigning-Signature`), strict URL and Hex regex validation, replay window defenses (5-minute timestamp tolerance), and atomic pre-delete verification against active litigation holds.
+9. **Load & Scale Protection:**
+   Token-bucket rate-limiting, exponential retry backoff, Dead-Letter Queue (DLQ) routing after 5 attempts, and Firestore-backed distributed circuit breakers preventing downstream service exhaustion.
+10. **Maintainer Guidance Comments:**
+    Every newly created file begins with an authoritative architectural docstring explaining design rationale, security boundaries, and testability pointers for future developers.
+
+---
+
+## 2.2 Downstream Affected Features & Backoffice Enhancement Architecture (No-Code Operations)
+
+### Affected Subsystems & Integration Strategy:
+1. **Contract Finalization (`finalizeAgreementAction` & `pdf-actions.ts`)**:
+   - *Impact*: When a contract with computed fields is completed, server-side recomputation (`recomputeAllFormulasAuthoritative`) executes authoritatively before rendering the vector PDF buffer and stamping evidence SHA-256 hashes.
+   - *Protection*: Client-submitted totals are overwritten; formulas are evaluated in topological order, rejecting cycles.
+2. **Contract Deletion (`deleteContractAction`)**:
+   - *Impact*: Before executing delete operations on Firestore or Cloud Storage, `checkContractDeletionEligibility` checks `!contract.isUnderLegalHold`.
+   - *Protection*: Throws `LegalHoldActiveError` immediately if an active litigation hold exists, preventing accidental destruction of legal discovery materials.
+3. **CRM Deals & Pipeline Federation**:
+   - *Impact*: Contract execution events (`document.completed`, `obligation.created`) dispatched to the canonical event bus now automatically feed the Webhook Outbox engine.
+   - *Protection*: Downstream ERPs (SAP, NetSuite, Salesforce) receive HMAC-signed real-time webhooks with automated retries.
+4. **Public Signer Portal (`/sign/[token]`)**:
+   - *Impact*: Loads workspace branding (`WorkspaceBrandingDrawer`) to display the customer's custom primary color, company display name, custom invite note, and logo instead of generic platform branding.
+   - *Protection*: Falls back seamlessly to system default theme if branding is not configured or image fails to load.
+
+### Backoffice Enhancement Architecture (No-Code Operations):
+Administrators and Legal Operations teams can manage all Phase 6 enterprise capabilities entirely through the Agreements Hub UI without writing or deploying code:
+- **No-Code Assurance Tier Configuration**: Switch template compliance requirements between SES, AES, and QES with 1 click.
+- **Self-Healing Webhook Outbox Console**: View endpoint delivery health, inspect HTTP error responses, and trigger 1-click retries for dead-lettered payloads.
+- **Litigation Legal Hold Preserver**: Instantly freeze any contract from deletion or retention cleanup by entering the contract ID and litigation matter reference.
+- **Tamper-Proof Evidence Exporter**: Generate and download complete cryptographic evidence packages with validated SHA-256 manifests on demand.
+- **Live White-Labeling Drawer**: Edit brand hex colors with real-time accessibility contrast feedback and live signer portal mockup previews.
 
 ---
 
@@ -140,20 +193,20 @@ graph TD
 - Modify: `src/lib/types/document-signing.ts`
 - Create: `src/lib/documents/__tests__/enterprise-governance-schemas.test.ts`
 
-- [ ] **Step 1: Write schema validation unit tests in `enterprise-governance-schemas.test.ts`**
+- [x] **Step 1: Write schema validation unit tests in `enterprise-governance-schemas.test.ts`**
   - Test valid and invalid payloads for `AssuranceProfileSchema`, `AssuranceLevelSchema` (`simple`, `advanced`, `qualified`).
   - Test `WebhookSubscriptionSchema`, `WebhookDeliveryLogSchema`, `WebhookDeliveryStatusSchema` (`pending`, `delivered`, `failed`, `dead_letter`).
   - Test `LegalHoldStatusSchema`, `ContractRetentionPolicySchema`, `EvidencePackageManifestSchema`.
   - Test `ComputedFieldFormulaSchema` (`type`, `expression`, `sourceFieldIds`, `decimalPlaces`).
   - Test `WorkspaceBrandingSchema` (strict hex color validation, logo URL, custom portal slug).
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/enterprise-governance-schemas.test.ts`
-- [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Update `src/lib/types/document-signing.ts`**
   - Implement all Phase 6 enterprise schemas and exported TypeScript types.
   - Strictly zero `any` or `any[]` (Rule 4).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/enterprise-governance-schemas.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/enterprise-governance-schemas.test.ts && git commit -m "feat(docsigning): implement strict schemas for assurance profiles, webhooks, legal hold, and computed fields"`
 
 ---
@@ -163,19 +216,19 @@ graph TD
 - Create: `src/lib/documents/assurance-profile-service.ts`
 - Create: `src/lib/documents/__tests__/assurance-profile-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `assurance-profile-service.test.ts`**
+- [x] **Step 1: Write unit tests in `assurance-profile-service.test.ts`**
   - Test creating and fetching workspace assurance profiles (SES vs AES vs QES).
   - Test validating recipient verification requirements against profile rules (e.g. QES requires SMS OTP + ID confirmation; SES requires email link).
   - Test policy compliance check on envelope dispatch (`validateEnvelopeAssuranceCompliance`): throws error if envelope recipients lack required verification channels.
   - Test tenant isolation: prevents applying assurance profiles belonging to other workspaces.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/assurance-profile-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/assurance-profile-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/assurance-profile-service.ts`**
   - CRUD for assurance profiles, validation rules, and recipient verification matrix.
   - Strict typing, inline maintainer documentation (Rule 10).
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/assurance-profile-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/assurance-profile-service.ts src/lib/documents/__tests__/assurance-profile-service.test.ts && git commit -m "feat(docsigning): implement assurance profile and jurisdictional policy engine"`
 
 ---
@@ -185,18 +238,18 @@ graph TD
 - Create: `src/lib/documents/computed-field-service.ts`
 - Create: `src/lib/documents/__tests__/computed-field-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `computed-field-service.test.ts`**
+- [x] **Step 1: Write unit tests in `computed-field-service.test.ts`**
   - Test evaluating arithmetic formulas: `SUM(a, b)`, `MULTIPLY(price, qty)`, `SUBTRACT(total, discount)`, `PERCENTAGE(base, rate)`.
   - Test circular reference detection: throws `CircularFormulaError` when Field A references Field B and vice versa.
   - Test precision and decimal rounding (e.g. currency rounded to 2 decimal places).
   - Test server-side authoritative recomputation: verifies client-submitted values are overwritten by deterministic evaluation before vector PDF rendering.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/computed-field-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/computed-field-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/computed-field-service.ts`**
   - AST formula evaluator, dependency topological sorter, and server-side PDF value stamping.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/computed-field-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/computed-field-service.ts src/lib/documents/__tests__/computed-field-service.test.ts && git commit -m "feat(docsigning): implement deterministic computed field formula engine"`
 
 ---
@@ -206,19 +259,19 @@ graph TD
 - Create: `src/lib/documents/document-webhook-service.ts`
 - Create: `src/lib/documents/__tests__/document-webhook-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `document-webhook-service.test.ts`**
+- [x] **Step 1: Write unit tests in `document-webhook-service.test.ts`**
   - Test scheduling webhook outbox record from canonical domain events (`document.completed`, `obligation.created`, `signing.recipient_completed`).
   - Test HMAC-SHA256 signature generation (`X-DocSigning-Signature: t=...,v1=...`).
   - Test exponential backoff retry calculation: retry delays at 1m, 5m, 15m, 1h, 6h.
   - Test moving to `'dead_letter'` state after 5 failed attempts.
   - Test manual replay action (`replayDeadLetterWebhook`): resets delivery status and triggers immediate dispatch attempt.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-webhook-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/document-webhook-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/document-webhook-service.ts`**
   - Outbox manager, HMAC signing, fetch dispatcher with 10s timeout, and dead-letter handler.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-webhook-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/document-webhook-service.ts src/lib/documents/__tests__/document-webhook-service.test.ts && git commit -m "feat(docsigning): implement self-healing webhook dispatch and dead-letter recovery service"`
 
 ---
@@ -228,19 +281,19 @@ graph TD
 - Create: `src/lib/documents/document-governance-service.ts`
 - Create: `src/lib/documents/__tests__/document-governance-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `document-governance-service.test.ts`**
+- [x] **Step 1: Write unit tests in `document-governance-service.test.ts`**
   - Test applying Legal Hold to a contract (`setContractLegalHold`): sets `isUnderLegalHold: true` and logs hold reason and actor.
   - Test release Legal Hold: restores contract to standard lifecycle.
   - Test deletion prevention: `canDeleteContract` returns `false` with explicit reason when contract is on legal hold.
   - Test statutory retention period evaluation: calculates expiration date based on contract category (financial: 7 years, standard: 3 years).
   - Test generating Evidence Package Manifest: produces cryptographic manifest containing SHA-256 digests of document, certificate, and evidence events.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-governance-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/document-governance-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/document-governance-service.ts`**
   - Legal hold manager, retention calculator, and evidence bundle manifest builder.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/document-governance-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/document-governance-service.ts src/lib/documents/__tests__/document-governance-service.test.ts && git commit -m "feat(docsigning): implement legal hold governance and evidence package exporter"`
 
 ---
@@ -250,18 +303,18 @@ graph TD
 - Create: `src/lib/documents/resilient-outbox-service.ts`
 - Create: `src/lib/documents/__tests__/resilient-outbox-service.test.ts`
 
-- [ ] **Step 1: Write unit tests in `resilient-outbox-service.test.ts`**
+- [x] **Step 1: Write unit tests in `resilient-outbox-service.test.ts`**
   - Test storing and retrieving circuit breaker failure counts from Firestore subcollection (`workspaces/{id}/system/circuit_breaker`).
   - Test cross-container sync: simulates 2 separate worker instances updating and checking the shared breaker state.
   - Test automatic reset after cooldown expiration.
   - Test tenant isolation: breaker state strictly partitioned by workspace ID.
-- [ ] **Step 2: Run test to verify failure**
+- [x] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/resilient-outbox-service.test.ts`
-- [ ] **Step 3: Implement `src/lib/documents/resilient-outbox-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/resilient-outbox-service.ts`**
   - Distributed state persistence resolving Senior Reviewer recommendation RSK-02.
-- [ ] **Step 4: Run test to verify pass**
+- [x] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/resilient-outbox-service.test.ts`
-- [ ] **Step 5: Commit changes**
+- [x] **Step 5: Commit changes**
   - Command: `git add src/lib/documents/resilient-outbox-service.ts src/lib/documents/__tests__/resilient-outbox-service.test.ts && git commit -m "feat(docsigning): implement distributed circuit breaker and resilient outbox persistence"`
 
 ---
@@ -271,16 +324,16 @@ graph TD
 - Modify: `src/app/admin/pdfs/[id]/edit/components/FieldMapper.tsx`
 - Create: `src/app/admin/pdfs/[id]/edit/components/ComputedFormulaPopover.tsx`
 
-- [ ] **Step 1: Build `ComputedFormulaPopover.tsx`**
+- [x] **Step 1: Build `ComputedFormulaPopover.tsx`**
   - Popover attached to field property sidebar allowing authors to define dynamic formulas.
   - Quick formula presets: `Subtotal * Tax Rate`, `Sum of Line Items`, `Discount Calculation`.
   - Live syntax validation and dependency cycle warnings.
-- [ ] **Step 2: Connect AI Field Detector into `FieldMapper.tsx`**
+- [x] **Step 2: Connect AI Field Detector into `FieldMapper.tsx`**
   - Connect `detectTemplateFieldsFromPages` directly into the "AI Detect Fields" vertical toolbar button, replacing the legacy flow (resolves RSK-01).
   - Renders normalized bounding boxes with primary signer vs countersigner badge colors.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/pdfs/[id]/edit/components/FieldMapper.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/pdfs/[id]/edit/components/FieldMapper.tsx src/app/admin/pdfs/[id]/edit/components/ComputedFormulaPopover.tsx && git commit -m "feat(docsigning): implement template studio AI canvas integration and formula builder UI"`
 
 ---
@@ -290,16 +343,16 @@ graph TD
 - Create: `src/app/admin/documents/components/WorkspaceBrandingDrawer.tsx`
 - Create: `src/app/actions/workspace-branding-actions.ts`
 
-- [ ] **Step 1: Implement `workspace-branding-actions.ts`**
+- [x] **Step 1: Implement `workspace-branding-actions.ts`**
   - Server actions to get and update workspace signing branding (logo, primary color, email sender display name, custom invite message, and custom domain backhalf).
   - Strict hex color regex validation and SSRF/URL validation on logos.
-- [ ] **Step 2: Build `WorkspaceBrandingDrawer.tsx`**
+- [x] **Step 2: Build `WorkspaceBrandingDrawer.tsx`**
   - Slide-over sheet drawer with live signing portal preview mockup.
   - Color picker with accessibility contrast preview (checking WCAG AA contrast against white text).
   - Mobile ergonomics: `min-h-[44px]` touch targets, `active:scale-[0.97]` tactile press.
-- [ ] **Step 3: Verify TypeScript compiler and lint**
+- [x] **Step 3: Verify TypeScript compiler and lint**
   - Command: `pnpm typecheck && pnpm eslint 'src/app/admin/documents/components/WorkspaceBrandingDrawer.tsx'`
-- [ ] **Step 4: Commit changes**
+- [x] **Step 4: Commit changes**
   - Command: `git add src/app/admin/documents/components/WorkspaceBrandingDrawer.tsx src/app/actions/workspace-branding-actions.ts && git commit -m "feat(docsigning): implement workspace branding and white-labeling drawer UI"`
 
 ---
