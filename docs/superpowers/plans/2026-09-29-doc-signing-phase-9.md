@@ -2,16 +2,16 @@
 
 > **Initiative:** SmartSapp Document & Contract Intelligence Platform  
 > **Phase:** 9 of Modernization Roadmap  
-> **Status:** Planned & Ready for Implementation  
-> **Author:** Antigravity Systems & UI/UX Architect  
+> **Status:** Reviewed, Hardened & Ready for Execution  
+> **Architectural Review:** Senior Systems & Code Reviewer  
 > **Dependencies:** Phases 0 through 8 Complete (`5cfb9e9e`)  
-> **Primary Rule Compliance:** Strict Zero-Tolerance Typing (0 `any` / 0 `any[]`), Fields & Variables SSOT (`FieldsVariablesService`), Tag Selection SSOT (`<TagSelector>`), Mobile-First Ergonomics (`min-h-[44px]`, `active:scale-[0.97]`), Next.js 15 Async APIs, Vercel React Best Practices, and Emil Kowalski UI micro-interactions.
+> **Rule Compliance:** Zero-Tolerance Strict Typing (0 `any` / 0 `any[]`), Fields & Variables SSOT (`FieldsVariablesService`), Tag Selection SSOT (`<TagSelector>`), Mobile Ergonomics (`min-h-[44px]`, `active:scale-[0.97]`), Next.js 15 Async APIs, Vercel React Best Practices, and Emil Kowalski micro-interactions.
 
 ---
 
 ## 1. Executive Summary & Strategic Objectives
 
-With Phases 0 through 8 successfully delivered (100% GA readiness score, 75 test files passed, 464/464 green tests, 0 TypeScript compile errors), the SmartSapp Document Signing platform boasts an authoritative vector PDF generation engine, multi-party sequential/parallel routing, an append-only evidence ledger, CRM deal federation, grounded AI document copilot, self-healing webhooks, live zero-downtime migration, public developer REST APIs, and embedded partner SDK with offline biometric captures.
+With Phases 0 through 8 successfully delivered (100% GA readiness score, 75 test files passed, 464/464 green tests, 0 TypeScript compile errors), the SmartSapp Document Signing platform features an authoritative vector PDF generation engine, multi-party sequential/parallel routing, an append-only evidence ledger, CRM deal federation, grounded AI document copilot, self-healing webhooks, live zero-downtime migration, public developer REST APIs, and embedded partner SDK with offline biometric captures.
 
 **Phase 9** elevates the platform into a true enterprise contender (competing directly with DocuSign Enterprise, Adobe Acrobat Sign, and Ironclad CLM) by delivering:
 1. **High-Throughput Bulk Dispatch Campaigns**: Programmatically issuing a single approved template to hundreds or thousands of recipients simultaneously via CSV upload or CRM roster ingestion with rate-limited, chunked dispatch queues.
@@ -23,45 +23,47 @@ With Phases 0 through 8 successfully delivered (100% GA readiness score, 75 test
 
 ---
 
-## 2. Foundational Principles & Non-Negotiable Golden Rules
+## 2. Senior Architectural Review & Codebase Findings
 
-1. **Rule 1 — Absolute Type Safety & Schema Validation**:
-   - Zero `any` or `any[]` typing across all schemas, services, server actions, and UI components.
-   - All bulk CSV rows, campaign payloads, legal hold actions, and e-Discovery manifests must parse through strict Zod schemas with complete error formatting.
+A comprehensive audit of the codebase against Phase 9 requirements identified key architectural constraints that have been integrated into this master plan:
 
-2. **Rule 2 — Single Source of Truth for Variables & Tags**:
-   - Variable interpolation must route exclusively through `FieldsVariablesService.resolveTemplateVariables`.
-   - Contact and campaign tags must exclusively use `<TagSelector>` in client/draft mode.
+### 2.1 File Location Grounding
+- **Contract Actions**: `deleteContractAction`, `upsertContractAction`, and `sendContractAction` reside in [`src/lib/contract-actions.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/contract-actions.ts) (not `src/app/actions/contract-actions.ts`). Task 4 correctly hooks the Legal Hold deletion guard into `src/lib/contract-actions.ts:deleteContractAction`.
+- **Existing Dependencies**: The repository already includes `jszip` (`^3.10.1`) and `papaparse` (`^5.7.0` + `@types/papaparse`) in `package.json`. No external dependencies need to be installed.
 
-3. **Rule 3 — Idempotent Bulk Dispatch & Deduplication Invariant**:
-   - Every bulk campaign item derives an idempotency key: `idemp_${campaignId}_${recipientEmail}_${rowHash}`.
-   - Double-clicking dispatch or resuming an interrupted campaign job will never emit duplicate envelopes.
+### 2.2 Fields & Variables SSOT (Rule Enforcement)
+- Any CSV column mapping, template placeholder inspection, or token interpolation must route strictly through [`FieldsVariablesService.resolveTemplateVariables`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/services/fields-variables-service.ts). No regex `.replace(/\{\{.*?\}\}/g)` is permitted in the bulk merge service.
 
-4. **Rule 4 — Non-Blocking Chunked Processing & Serverless Safety**:
-   - Bulk dispatches are broken into chunks of 25–50 envelopes with 100ms pacing delays.
-   - Heavy tasks run asynchronously with Firestore outbox queueing to prevent Cloud Run / Serverless 60s request timeouts.
+### 2.3 Tag Selection SSOT (Rule Enforcement)
+- Any tagging of bulk campaigns or generated envelopes in UI components must exclusively use [`<TagSelector>`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/components/tags/TagSelector.tsx) in client/draft mode (omitting `contactId`/`contactType` and using `currentTagIds` and `onTagsChange`).
 
-5. **Rule 5 — Immutable Legal Hold Barrier**:
-   - Any contract or envelope marked `legalHold.isUnderLegalHold === true` is completely immutable to deletion, purging, or TTL archival.
-   - Calling `deleteContractAction` on a held contract throws an immediate `LOCKED_UNDER_LEGAL_HOLD` exception.
+### 2.4 Firestore Security Rules Alignment
+- Querying `bulk_campaigns` in client components via `useCollection` will trigger `permission-denied` unless matched in `firestore.rules`.
+- As mandated by workspace rules, authoring rules for `bulk_campaigns/{campaignId}` and its subcollections will be performed via the `firestore-rules-author` subagent.
 
-6. **Rule 6 — CSV Injection & Data Sanitization Defense**:
-   - CSV inputs are sanitized against formula injection (`=`, `+`, `-`, `@`, `\t`, `\r` stripped or escaped with leading single quotes).
-   - Recipient emails are normalized (`toLowerCase().trim()`) and strictly validated with regex.
-
-7. **Rule 7 — Mobile-First Ergonomics & Emil Kowalski Animations**:
-   - Touch targets must be `min-h-[44px]`.
-   - Micro-interactions must use `active:scale-[0.97]` tactile feedback and ease-out transitions (`transition-all duration-200 ease-out`).
-   - Mobile table views collapse into card lists with swipe/tap actions on viewports `< 640px`.
-   - Text inputs enforce `text-base sm:text-sm` to prevent iOS Safari auto-zoom.
-
-8. **Rule 8 — Cryptographic e-Discovery Merkle Verification**:
-   - Every artifact in an e-Discovery ZIP bundle has its SHA-256 hash calculated and embedded into `manifest.json`.
-   - A Merkle root hash is generated and verified to guarantee zero post-export tampering.
+### 2.5 Downstream Feature Impact & Protection
+- **Contract Purge Flow**: In [`ContractsClient.tsx`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/app/admin/finance/contracts/ContractsClient.tsx), the contract row action menu includes "Purge Agreement". When a contract is under active Legal Hold, the UI will display a locked shield badge, disable the purge button with a tooltip ("Protected under active Legal Hold"), and prevent user frustration before the server action rejection.
+- **Email/SMS Gateway Quota Protection**: Firing 1,000 envelopes in seconds would trigger external rate limits (SendGrid / Twilio / WhatsApp). The bulk campaign dispatcher leverages chunked batching (slices of 25) with 100ms pacing and token-bucket throttling.
 
 ---
 
-## 3. Failure Modes & Mitigations Analysis (12 Failure Modes)
+## 3. Failure Modes & Mitigations Matrix (12 Failure Modes)
+
+```mermaid
+flowchart TD
+    CSV[Upload Bulk CSV] --> Sanitize[Sanitize Cells - Escape Formulas FM-P9-07]
+    Sanitize --> DryRun[Dry-Run Variable Linting FM-P9-04]
+    DryRun -->|Missing Fields| Reject[Halt with Line & Column Error Map]
+    DryRun -->|Valid| Stage[Stage Recipients in bulk_campaign_recipients]
+    Stage --> SliceQueue[Chunked Dispatch Queue - Bounded 25 Slices FM-P9-01]
+    SliceQueue --> RateLimit[Token Bucket Rate Limiter 20/sec FM-P9-08]
+    RateLimit --> IdempCheck{Check Idempotency Key FM-P9-02}
+    IdempCheck -->|Already Exists| Skip[Skip Duplicate]
+    IdempCheck -->|New| Issue[Create Envelope & Dispatch Message]
+    Issue -->|Success| MarkDispatched[Status: dispatched]
+    Issue -->|Fail| MarkFailed[Status: failed - Isolated FM-P9-03]
+    MarkFailed --> Retry[Retry Failed Only - Zero Resend Storm]
+```
 
 | Failure Mode ID | Failure Mode Description | Root Cause | Preventive Architecture & Mitigation |
 |---|---|---|---|
@@ -69,11 +71,11 @@ With Phases 0 through 8 successfully delivered (100% GA readiness score, 75 test
 | **FM-P9-02** | Duplicate Issuance on Double-Click or Resume | Network retry or operator re-triggering campaign dispatch. | Deterministic idempotency key per recipient (`idemp_${campaignId}_${email}_${hash}`). Checked before envelope document creation. |
 | **FM-P9-03** | Resend Storm on Partial Failure Retry | Operator clicking "Retry" resends the campaign to all recipients including those already signed. | Granular item-level status tracking (`queued`, `dispatched`, `delivered`, `signed`, `failed`). Retry action queries strictly `status == 'failed'`. |
 | **FM-P9-04** | Variable Null Injection / Missing Merge Fields | CSV contains empty cells for mandatory template fields. | Pre-flight dry-run validator checks all required variables against template schema, reporting row numbers and blocking dispatch until resolved. |
-| **FM-P9-05** | Accidental Destruction under Active Legal Hold | User or automated cron job purges an expired agreement currently under litigation. | Hard invariant check in `deleteContractAction`, `archiveContractAction`, and `purgeContractAction`. Aborts with HTTP 423 (Locked). |
+| **FM-P9-05** | Accidental Destruction under Active Legal Hold | User or automated cron job purges an expired agreement currently under litigation. | Hard invariant check in [`deleteContractAction`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/contract-actions.ts#L214). Aborts with HTTP 423 (Locked) and logs audit event. |
 | **FM-P9-06** | e-Discovery Manifest Hash Tampering / Divergence | Files inside the export bundle corrupted or altered during transport. | Compute SHA-256 for each exported file, build a deterministic `manifest.json` with Merkle root hash, and include `verify-manifest.sh`. |
-| **FM-P9-07** | CSV Formula Injection (DDE Attack) | Malicious CSV cells starting with `=CMD` or `+` execute commands when opened in Excel. | Sanitize all text fields upon CSV parse by escaping formula operators (`=`, `+`, `-`, `@`) with a leading `'`. |
-| **FM-P9-08** | Email Gateway Quota Saturation (HTTP 429) | Firing 1,000 email invitations in 2 seconds triggers SendGrid / Postmark / WhatsApp rate limits. | Rate-limited token bucket throttle (20 dispatches/sec) with exponential backoff on provider HTTP 429 responses. |
-| **FM-P9-09** | Large Zip Memory Exhaustion in e-Discovery Export | Generating a multi-gigabyte ZIP archive entirely in Node.js buffer memory causes OOM crash. | Stream ZIP generation using chunked buffer streaming (`archiver` or chunked zip generator) with maximum bundle size bounds. |
+| **FM-P9-07** | CSV Formula Injection (DDE Attack) | Malicious CSV cells starting with `=CMD` or `+` execute commands when opened in Excel. | Sanitize all text fields upon CSV parse by escaping formula operators (`=`, `+`, `-`, `@`, `\t`, `\r`) with a leading `'`. |
+| **FM-P9-08** | Email Gateway Quota Saturation (HTTP 429) | Firing 1,000 invitations simultaneously triggers provider rate limits. | Rate-limited token bucket throttle (20 dispatches/sec) with exponential backoff on provider HTTP 429 responses. |
+| **FM-P9-09** | Large Zip Memory Exhaustion in e-Discovery Export | Generating a multi-gigabyte ZIP archive entirely in Node.js buffer memory causes OOM crash. | Stream ZIP generation using chunked buffer streaming via `JSZip` with bounds checking. For bundles > 25MB, upload to Cloud Storage and return download URL. |
 | **FM-P9-10** | Mobile Viewport Layout Breakage in Campaign Tables | Wide 10-column data tables causing horizontal scrolling and unclickable buttons on mobile. | Responsive data table with auto-collapse into mobile card layouts (`hidden md:table` vs `md:hidden flex flex-col gap-3`). |
 | **FM-P9-11** | Unverified CRM Roster Desynchronization | CRM contacts modified or deleted between campaign staging and dispatch execution. | Pre-dispatch snapshot locks recipient data into campaign manifest; dispatches against immutable snapshot rather than live mutable contacts. |
 | **FM-P9-12** | Premature Disposal on Statutory Retention Expiry | Retention countdown deletes contract without notifying compliance officer. | Configurable 30-day and 7-day disposal warning alerts emitted over deal/notification bus; requires human sign-off before actual disposal. |
@@ -82,7 +84,7 @@ With Phases 0 through 8 successfully delivered (100% GA readiness score, 75 test
 
 ## 4. Architectural Domain Model & Schema Specifications
 
-### Data Structures (`src/lib/types/document-signing.ts`):
+### Data Structures in [`src/lib/types/document-signing.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/types/document-signing.ts)
 
 ```ts
 // 1. Bulk Campaign Status
@@ -101,6 +103,7 @@ export type BulkCampaignStatus = z.infer<typeof BulkCampaignStatusSchema>;
 // 2. Bulk Campaign Recipient Item
 export const BulkCampaignRecipientSchema = z.object({
   id: z.string().min(1),
+  campaignId: z.string().min(1),
   rowIndex: z.number().int().min(1),
   name: z.string().min(1),
   email: z.string().email(),
@@ -138,7 +141,25 @@ export const BulkCampaignSchema = z.object({
 });
 export type BulkCampaign = z.infer<typeof BulkCampaignSchema>;
 
-// 4. e-Discovery Archival Manifest
+// 4. Create Bulk Campaign Request Schema
+export const CreateBulkCampaignRequestSchema = z.object({
+  title: z.string().min(1).max(120),
+  templateId: z.string().min(1),
+  templateVersionId: z.string().optional(),
+  routingMode: z.enum(['single_signer', 'sequential_countersign']).default('single_signer'),
+  countersignerEmail: z.string().email().optional(),
+  countersignerName: z.string().optional(),
+  tags: z.array(z.string()).default([]),
+  recipients: z.array(z.object({
+    name: z.string().min(1),
+    email: z.string().email(),
+    phone: z.string().optional(),
+    variables: z.record(z.string(), z.string()).default({}),
+  })).min(1).max(5000),
+});
+export type CreateBulkCampaignRequest = z.infer<typeof CreateBulkCampaignRequestSchema>;
+
+// 5. e-Discovery Archival Manifest
 export const EDiscoveryFileEntrySchema = z.object({
   path: z.string(),
   description: z.string(),
@@ -146,6 +167,7 @@ export const EDiscoveryFileEntrySchema = z.object({
   sizeBytes: z.number().int().min(0),
   mimeType: z.string(),
 });
+export type EDiscoveryFileEntry = z.infer<typeof EDiscoveryFileEntrySchema>;
 
 export const EDiscoveryManifestSchema = z.object({
   manifestVersion: z.literal('1.0.0'),
@@ -173,20 +195,18 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 
 ### Task 1: Domain Schemas & Validation Contracts
 **Files:**
-- Modify: `src/lib/types/document-signing.ts`
+- Modify: [`src/lib/types/document-signing.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/types/document-signing.ts)
 - Create: `src/lib/documents/__tests__/bulk-campaign-schemas.test.ts`
 
 - [ ] **Step 1: Define Phase 9 schemas in `document-signing.ts`**
   - Add `BulkCampaignStatusSchema`, `BulkCampaignRecipientSchema`, `BulkCampaignSchema`, `CreateBulkCampaignRequestSchema`, `EDiscoveryFileEntrySchema`, and `EDiscoveryManifestSchema`.
-  - Export inferred TypeScript types.
-  - Ensure zero `any` or `any[]` typing.
-
+  - Export all inferred TypeScript types.
+  - Maintain zero `any` or `any[]` typing.
 - [ ] **Step 2: Write domain schema test suite**
   - Verify valid payload validation, invalid email rejection, CSV formula sanitization schema checks, and Merkle manifest integrity.
-
 - [ ] **Step 3: Verify and commit**
-  - `pnpm test:run src/lib/documents/__tests__/bulk-campaign-schemas.test.ts`
-  - `git commit -m "feat(docsigning): implement strict domain schemas for bulk campaigns, legal hold, and e-discovery manifests"`
+  - Run `pnpm test:run src/lib/documents/__tests__/bulk-campaign-schemas.test.ts`
+  - Commit: `feat(docsigning): implement strict domain schemas for bulk campaigns, legal hold, and e-discovery manifests`
 
 ---
 
@@ -196,19 +216,15 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/lib/documents/__tests__/bulk-csv-merge-service.test.ts`
 
 - [ ] **Step 1: Implement `bulk-csv-merge-service.ts`**
-  - Functions:
-    - `parseBulkRecipientCsv(csvContent: string): Promise<ParsedCsvResult>`
-    - `sanitizeCsvCell(val: string): string` (strips formula injection `=`, `+`, `-`, `@`, `\t`, `\r` per FM-P9-07)
-    - `validateTemplateVariableMapping(templateVariables: string[], rows: ParsedRow[]): VariableLintResult` (FM-P9-04)
-    - `generateDryRunMergePreview(templateId: string, rows: ParsedRow[], sampleLimit = 5): Promise<MergePreviewResult>`
-  - Route through `FieldsVariablesService.resolveTemplateVariables` (Rule 2).
-
+  - Use `papaparse` for robust RFC 4180 parsing.
+  - Implement `sanitizeCsvCell(val: string): string`: prefixes cells starting with `[=+\-@\t\r]` with `'` (FM-P9-07).
+  - Implement `validateTemplateVariableMapping(templateVariables: string[], rows: ParsedRow[]): VariableLintResult` using `FieldsVariablesService.resolveTemplateVariables` (FM-P9-04).
+  - Implement `generateDryRunMergePreview(templateId: string, rows: ParsedRow[], sampleLimit = 5): Promise<MergePreviewResult>`.
 - [ ] **Step 2: Write test suite**
   - Verify RFC 4180 CSV parsing, formula injection sanitization, missing variable detection, and dry-run preview formatting.
-
 - [ ] **Step 3: Verify and commit**
-  - `pnpm test:run src/lib/documents/__tests__/bulk-csv-merge-service.test.ts`
-  - `git commit -m "feat(docsigning): implement bulk csv merge parser with dry-run linting and formula sanitization"`
+  - Run `pnpm test:run src/lib/documents/__tests__/bulk-csv-merge-service.test.ts`
+  - Commit: `feat(docsigning): implement bulk csv merge parser with dry-run linting and formula sanitization`
 
 ---
 
@@ -219,46 +235,41 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 
 - [ ] **Step 1: Implement `bulk-campaign-dispatcher-service.ts`**
   - Functions:
-    - `createBulkCampaign(workspaceId: string, input: CreateBulkCampaignInput): Promise<BulkCampaign>`
+    - `createBulkCampaign(workspaceId: string, input: CreateBulkCampaignRequest, userId: string): Promise<BulkCampaign>`
     - `stageBulkRecipients(campaignId: string, recipients: BulkCampaignRecipientInput[]): Promise<void>`
     - `dispatchCampaignBatchSlice(campaignId: string, batchSize = 25): Promise<DispatchSliceResult>` (FM-P9-01)
     - `retryFailedCampaignRecipients(campaignId: string): Promise<RetryResult>` (FM-P9-03)
     - `getCampaignProgress(campaignId: string): Promise<BulkCampaignProgress>`
   - Integrate token-bucket rate limiter (`api-rate-limiter-service.ts`) to cap gateway dispatch to 20/sec (FM-P9-08).
-  - Use deterministic idempotency key per recipient (`idemp_${campaignId}_${email}_${hash}`) (FM-P9-02).
-
+  - Derive deterministic idempotency key per recipient (`idemp_${campaignId}_${email}_${hash}`) (FM-P9-02).
 - [ ] **Step 2: Write test suite**
   - Test batch slicing, idempotency deduplication on resume, partial failure isolation, and retry targeting only failed rows.
-
 - [ ] **Step 3: Verify and commit**
-  - `pnpm test:run src/lib/documents/__tests__/bulk-campaign-dispatcher-service.test.ts`
-  - `git commit -m "feat(docsigning): implement chunked bulk campaign dispatcher with partial-failure isolation and rate limiting"`
+  - Run `pnpm test:run src/lib/documents/__tests__/bulk-campaign-dispatcher-service.test.ts`
+  - Commit: `feat(docsigning): implement chunked bulk campaign dispatcher with partial-failure isolation and rate limiting`
 
 ---
 
 ### Task 4: Enterprise Legal Hold & Statutory Retention Guard Engine
 **Files:**
 - Create: `src/lib/documents/legal-hold-service.ts`
-- Modify: `src/app/actions/contract-actions.ts`
+- Modify: [`src/lib/contract-actions.ts`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/lib/contract-actions.ts#L214)
 - Create: `src/lib/documents/__tests__/legal-hold-service.test.ts`
 
 - [ ] **Step 1: Implement `legal-hold-service.ts`**
   - Functions:
-    - `placeContractLegalHold(workspaceId: string, contractId: string, input: PlaceHoldInput): Promise<LegalHoldResult>`
-    - `releaseContractLegalHold(workspaceId: string, contractId: string, input: ReleaseHoldInput): Promise<LegalHoldResult>`
+    - `placeContractLegalHold(workspaceId: string, contractId: string, input: PlaceHoldInput, userId: string): Promise<LegalHoldResult>`
+    - `releaseContractLegalHold(workspaceId: string, contractId: string, input: ReleaseHoldInput, userId: string): Promise<LegalHoldResult>`
     - `assertContractNotUnderLegalHold(contractId: string): Promise<void>` (Throws `LOCKED_UNDER_LEGAL_HOLD` if true)
     - `calculateRetentionSchedule(category: RetentionCategory, executedAt: string): RetentionSchedule`
   - Append immutable audit record to `signing_evidence` on hold toggle.
-
-- [ ] **Step 2: Hook deletion guard into `deleteContractAction`**
-  - In `src/app/actions/contract-actions.ts:deleteContractAction`, call `assertContractNotUnderLegalHold(contractId)` before deleting documents or Cloud Storage objects (FM-P9-05).
-
+- [ ] **Step 2: Hook deletion guard into `src/lib/contract-actions.ts:deleteContractAction`**
+  - Call `await assertContractNotUnderLegalHold(contractId)` before executing batch deletes (FM-P9-05).
 - [ ] **Step 3: Write test suite**
   - Test placing hold, releasing hold, deletion block when hold is active, and retention schedule calculation.
-
 - [ ] **Step 4: Verify and commit**
-  - `pnpm test:run src/lib/documents/__tests__/legal-hold-service.test.ts`
-  - `git commit -m "feat(docsigning): implement enterprise legal hold enforcement and deletion guard"`
+  - Run `pnpm test:run src/lib/documents/__tests__/legal-hold-service.test.ts`
+  - Commit: `feat(docsigning): implement enterprise legal hold enforcement and deletion guard`
 
 ---
 
@@ -271,22 +282,20 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
   - Functions:
     - `buildEDiscoveryManifest(contractId: string, artifacts: ArtifactPayload[]): EDiscoveryManifest`
     - `computeMerkleRootSha256(leafDigests: string[]): string` (FM-P9-06)
-    - `assembleEDiscoveryZipBundle(workspaceId: string, contractId: string): Promise<{ zipBuffer: Buffer; manifest: EDiscoveryManifest }>`
+    - `assembleEDiscoveryZipBundle(workspaceId: string, contractId: string, userId: string): Promise<{ zipBase64: string; manifest: EDiscoveryManifest }>`
   - Manifest bundle includes:
-    1. `completed-contract.pdf` (vector signed PDF)
+    1. `completed-contract.pdf` (authoritative vector signed PDF)
     2. `pre-execution-document.pdf` (original template PDF)
-    3. `certificate-of-completion.pdf` (Phase 1 vector certificate)
-    4. `evidence-ledger.json` (Phase 1 append-only evidence)
-    5. `biometric-telemetry.json` (Phase 8 stroke entropy data if present)
+    3. `certificate-of-completion.pdf` (vector certificate)
+    4. `evidence-ledger.json` (append-only evidence events)
+    5. `biometric-telemetry.json` (stroke entropy data if present)
     6. `manifest.json` (SHA-256 digests and Merkle root)
-    7. `verify-manifest.sh` (standalone verification shell script)
-
+    7. `verify-manifest.sh` (standalone POSIX shell script to verify bundle integrity)
 - [ ] **Step 2: Write test suite**
   - Test SHA-256 calculation, Merkle root tree hashing, tamper detection (corrupted file causes verification failure), and bundle assembly.
-
 - [ ] **Step 3: Verify and commit**
-  - `pnpm test:run src/lib/documents/__tests__/ediscovery-archival-service.test.ts`
-  - `git commit -m "feat(docsigning): implement cryptographic e-discovery archival package and merkle manifest generator"`
+  - Run `pnpm test:run src/lib/documents/__tests__/ediscovery-archival-service.test.ts`
+  - Commit: `feat(docsigning): implement cryptographic e-discovery archival package and merkle manifest generator`
 
 ---
 
@@ -297,25 +306,16 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/lib/documents/__tests__/phase9-server-actions.test.ts`
 
 - [ ] **Step 1: Implement `bulk-campaign-actions.ts`**
-  - `createBulkCampaignAction(input: unknown)`
-  - `previewBulkCsvMergeAction(input: unknown)`
-  - `dispatchBulkCampaignSliceAction(campaignId: string)`
-  - `retryFailedCampaignRecipientsAction(campaignId: string)`
-  - `getBulkCampaignProgressAction(campaignId: string)`
+  - Actions: `createBulkCampaignAction`, `previewBulkCsvMergeAction`, `dispatchBulkCampaignSliceAction`, `retryFailedCampaignRecipientsAction`, `getBulkCampaignProgressAction`.
   - Enforce `requireAuth()` and `requireWorkspace()`.
-
 - [ ] **Step 2: Implement `compliance-archival-actions.ts`**
-  - `toggleContractLegalHoldAction(input: unknown)`
-  - `updateRetentionCategoryAction(input: unknown)`
-  - `generateEDiscoveryPackageAction(contractId: string)`
+  - Actions: `toggleContractLegalHoldAction`, `updateRetentionCategoryAction`, `generateEDiscoveryPackageAction`.
   - Enforce `requireAuth()` and `requireWorkspace()`.
-
 - [ ] **Step 3: Write server action test suite**
   - Test authentication guards, workspace isolation, Zod input validation, and standardized error envelopes.
-
 - [ ] **Step 4: Verify and commit**
-  - `pnpm test:run src/lib/documents/__tests__/phase9-server-actions.test.ts`
-  - `git commit -m "feat(docsigning): implement server actions for bulk campaigns, legal hold, and e-discovery compliance"`
+  - Run `pnpm test:run src/lib/documents/__tests__/phase9-server-actions.test.ts`
+  - Commit: `feat(docsigning): implement server actions for bulk campaigns, legal hold, and e-discovery compliance`
 
 ---
 
@@ -324,7 +324,7 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - Create: `src/app/admin/finance/contracts/components/BulkCampaignsTab.tsx`
 - Create: `src/app/admin/finance/contracts/components/BulkCampaignWizardModal.tsx`
 - Create: `src/app/admin/finance/contracts/components/LegalHoldManagerModal.tsx`
-- Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
+- Modify: [`src/app/admin/finance/contracts/ContractsClient.tsx`](file:///Users/josephaidoo/Desktop/Codes/vibe%20Coding/Onboarding-Dashbaord-main/src/app/admin/finance/contracts/ContractsClient.tsx)
 
 - [ ] **Step 1: Implement `BulkCampaignWizardModal.tsx`**
   - 4-Step Stepper:
@@ -333,23 +333,22 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
     3. Map Variables & Pre-Flight Lint (table showing CSV columns -> Template variables, dry-run preview)
     4. Confirm & Schedule Dispatch (review summary, countersigner option, dispatch confirmation)
   - Mobile ergonomics: touch targets `min-h-[44px]`, `active:scale-[0.97]`.
-
+  - Variable insertion: routes through `FieldsVariablesService`.
+  - Tag selector: routes through `<TagSelector>` in client/draft mode.
 - [ ] **Step 2: Implement `LegalHoldManagerModal.tsx`**
   - View current legal hold status, matter reference, reason input, place/release buttons with confirm step.
-
 - [ ] **Step 3: Implement `BulkCampaignsTab.tsx`**
   - Sub-views:
     - **Active Campaigns**: List of bulk campaigns with live progress bar, metrics (queued, dispatched, signed, failed), "Retry Failed" button.
     - **Compliance & Legal Hold**: Table of executed contracts with Legal Hold status badge, retention schedule, "Place Hold" / "Release Hold" trigger.
     - **e-Discovery Compliance Vault**: One-click "Export e-Discovery Package" with download loading spinner and verification summary.
-
 - [ ] **Step 4: Mount 8th Tab in `ContractsClient.tsx`**
   - Add 8th tab: "Bulk Campaigns & Compliance" (`Layers` icon) alongside all existing 7 tabs.
   - Update `activeTab` state union: `'contracts' | 'templates' | 'obligations' | 'analytics' | 'governance' | 'migration' | 'developer' | 'campaigns'`.
+  - Lock Purge action when contract has active Legal Hold.
   - Preserve all existing 7 tabs and modals completely intact.
-
 - [ ] **Step 5: Verify and commit**
-  - `git commit -m "feat(docsigning): implement agreements hub bulk campaigns and compliance vault console ui"`
+  - Commit: `feat(docsigning): implement agreements hub bulk campaigns and compliance vault console ui`
 
 ---
 
@@ -367,13 +366,11 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
   - Test 7: e-Discovery ZIP bundle assembly and Merkle root calculation (FM-P9-06).
   - Test 8: Merkle manifest tamper verification test (detecting altered files).
   - Test 9: End-to-end multi-tenant isolation across bulk campaigns and legal holds.
-
 - [ ] **Step 2: Run test suite**
-  - `pnpm test:run src/lib/__tests__/document-phase9.test.ts`
+  - Run: `pnpm test:run src/lib/__tests__/document-phase9.test.ts`
   - Expected: PASS (9/9 tests green).
-
 - [ ] **Step 3: Verify and commit**
-  - `git commit -m "test(docsigning): implement dedicated Phase 9 end-to-end integration test suite"`
+  - Commit: `test(docsigning): implement dedicated Phase 9 end-to-end integration test suite`
 
 ---
 
@@ -384,15 +381,12 @@ export type EDiscoveryManifest = z.infer<typeof EDiscoveryManifestSchema>;
 - [ ] **Step 1: Run comprehensive document test suite across all phases (Phases 0 through 9)**
   - Run: `pnpm test:run src/lib/documents/__tests__/*.test.ts src/lib/__tests__/document-phase*.test.ts src/lib/__tests__/*baseline.test.ts`
   - Expected: 80+ test files passed, 500+ tests green.
-
 - [ ] **Step 2: Run strict TypeScript compiler verification**
   - Run: `NODE_OPTIONS='--max-old-space-size=8192' pnpm typecheck`
   - Expected: 0 errors (`tsc --noEmit`).
-
 - [ ] **Step 3: Run repository linter**
   - Run: `pnpm lint`
   - Expected: 0 errors, warnings within ceiling.
-
 - [ ] **Step 4: Update Master Plan and mark tasks completed**
   - Commit final verification state to local git branch `main`.
 
@@ -405,5 +399,5 @@ Before Phase 9 is declared complete and ready for production, the following crit
 2. **Chunked Asynchronous Scalability**: Large recipient batches (500–5,000) execute in bounded slices (25–50) with token-bucket rate limiting without serverless timeouts.
 3. **Partial-Failure Isolation**: Failed campaign rows are isolated and retryable without resending signed or delivered envelopes.
 4. **Litigation Defense & Legal Hold**: Contracts under active legal hold cannot be deleted or purged under any circumstance.
-5. **Cryptographic e-Discovery Completeness**: Export bundles include all 6 requisite artifacts with SHA-256 Merkle root verification.
+5. **Cryptographic e-Discovery Completeness**: Export bundles include all 7 requisite artifacts with SHA-256 Merkle root verification and standalone bash verifier.
 6. **Continuous Quality Gate**: `pnpm typecheck` (0 errors), `pnpm test:run` (100% green across all 80+ suites), and zero uncommitted files.
