@@ -84,6 +84,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import dynamic from 'next/dynamic';
 import EntityNotesTab from '../../entities/components/EntityNotesTab';
 import DealLineItemsTab from './components/DealLineItemsTab';
+import DealContractsCard from './components/DealContractsCard';
 import DealAiIntelligencePanel from './components/DealAiIntelligencePanel';
 import DealQuickActions from './components/DealQuickActions';
 import { DealStageStepper } from './components/DealStageStepper';
@@ -400,7 +401,7 @@ export default function DealDetailsPage() {
                 reminders: []
             };
 
-            const res = await createTaskAction(taskData, currentUser.uid);
+            const res = await createTaskAction(taskData);
             if (res.success) {
                 toast({ title: 'Task Initialized', description: 'New operational task has been registered.' });
                 setTaskTitle('');
@@ -429,7 +430,7 @@ export default function DealDetailsPage() {
                 ...task, 
                 status: newStatus,
                 workspaceId: deal.workspaceId 
-            }, currentUser.uid);
+            });
             if (res.success) {
                 toast({ title: newStatus === 'done' ? 'Task completed' : 'Task reopened' });
             } else {
@@ -445,7 +446,7 @@ export default function DealDetailsPage() {
         if (!currentUser) return;
         if (!(await confirm({ title: 'Delete task?', description: 'This task will be permanently deleted.', confirmText: 'Delete', variant: 'destructive' }))) return;
         try {
-            const res = await deleteTaskAction(taskId, currentUser.uid);
+            const res = await deleteTaskAction(taskId);
             if (res.success) {
                 toast({ title: 'Task deleted successfully' });
             } else {
@@ -1504,6 +1505,9 @@ export default function DealDetailsPage() {
 
                                 {/* Deal Line Items & Commercials */}
                                 <DealLineItemsTab deal={deal} />
+
+                                {/* Contracts & Signing Workflows (Phase 4 / P4.2) */}
+                                <DealContractsCard deal={deal} />
 
                                 {/* AI Intelligence & Next-Best-Actions */}
                                 <DealAiIntelligencePanel deal={deal} />
