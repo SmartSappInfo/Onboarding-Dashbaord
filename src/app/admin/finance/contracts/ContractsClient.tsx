@@ -30,7 +30,10 @@ import {
     RotateCcw,
     ShieldAlert,
     History,
-    Users
+    Users,
+    GitBranch,
+    FileText,
+    CheckSquare
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -38,6 +41,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -76,6 +80,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { useWorkspace } from '@/context/WorkspaceContext';
 import { getErrorMessage } from '@/lib/errors/report-error';
+import ContractLifecycleDetailModal from './components/ContractLifecycleDetailModal';
+import CreateAmendmentModal from './components/CreateAmendmentModal';
+import CreateObligationModal from './components/CreateObligationModal';
+import TemplateCatalogTab from './components/TemplateCatalogTab';
+import ObligationsSummaryTab from './components/ObligationsSummaryTab';
+import type { ContractRecord } from '@/lib/types/document-signing';
 
 /**
  * @fileOverview Agreements Hub Client.
@@ -87,6 +97,7 @@ export default function AgreementsClient() {
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
     
+    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations'>('contracts');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
@@ -94,6 +105,11 @@ export default function AgreementsClient() {
     const [withdrawingEntity, setWithdrawingEntity] = React.useState<WorkspaceEntity | null>(null);
     const [downloadingId, setDownloadingId] = React.useState<string | null>(null);
     const [trackingEnvelopeId, setTrackingEnvelopeId] = React.useState<string | null>(null);
+
+    // Contract Lifecycle & Modal State (Phase 3)
+    const [lifecycleContractId, setLifecycleContractId] = React.useState<string | null>(null);
+    const [amendmentParentContract, setAmendmentParentContract] = React.useState<ContractRecord | null>(null);
+    const [isCreateObligationOpen, setIsCreateObligationOpen] = React.useState(false);
 
     // Single Contract Deletion State
     const [contractToPurge, setContractToPurge] = React.useState<{ contract: Contract, entity: WorkspaceEntity } | null>(null);
@@ -283,12 +299,30 @@ export default function AgreementsClient() {
                                 Agreements Hub
                             </h1>
                             <p className="text-muted-foreground text-sm mt-1">
-                                Institutional legal contracts and compliance records for the {activeWorkspaceId} track
+                                Institutional legal contracts, templates, and post-signing obligations for {activeWorkspaceId || 'this workspace'}
                             </p>
                         </div>
                     </div>
 
-                    {/* Dashboard Metrics */}
+                    {/* Unified 3-Tab Workspace Navigation */}
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations')} className="w-full space-y-6">
+                        <TabsList className="bg-muted/60 p-1 rounded-xl border border-border">
+                            <TabsTrigger value="contracts" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <FileCheck className="h-3.5 w-3.5" />
+                                Contracts & Lifecycle
+                            </TabsTrigger>
+                            <TabsTrigger value="templates" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <FileText className="h-3.5 w-3.5" />
+                                Document Templates
+                            </TabsTrigger>
+                            <TabsTrigger value="obligations" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <CheckSquare className="h-3.5 w-3.5" />
+                                Obligations & Milestones
+                            </TabsTrigger>
+                        </TabsList>
+
+                        <TabsContent value="contracts" className="space-y-6 mt-0">
+                            {/* Dashboard Metrics */}
  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <StatCard 
                             label="% Signed" 
@@ -552,6 +586,15 @@ export default function AgreementsClient() {
                                                                                 <span className="font-bold text-sm">Track Signatories</span>
                                                                             </DropdownMenuItem>
                                                                         )}
+                                                                        {contract?.id && (
+                                                                            <DropdownMenuItem 
+                                                                                className="gap-3 rounded-xl p-2.5" 
+                                                                                onClick={() => setLifecycleContractId(contract.id)}
+                                                                            >
+                                                                                <div className="p-1.5 bg-emerald-500/10 rounded-lg text-emerald-600 dark:text-emerald-400"><GitBranch className="h-4 w-4" /></div>
+                                                                                <span className="font-bold text-sm">Contract Lifecycle</span>
+                                                                            </DropdownMenuItem>
+                                                                        )}
  <DropdownMenuItem className="gap-3 rounded-xl p-2.5" asChild>
                                                                             <a href={`/forms/${contract.pdfId}?entityId=${item.entityId}`} target="_blank" rel="noopener noreferrer">
  <div className="p-1.5 bg-muted rounded-lg text-muted-foreground"><Globe className="h-4 w-4" /></div>
@@ -618,6 +661,24 @@ export default function AgreementsClient() {
                             </div>
                         )}
                     </div>
+                        </TabsContent>
+
+                        <TabsContent value="templates" className="mt-0">
+                            <TemplateCatalogTab
+                                workspaceId={activeWorkspaceId || ''}
+                                onIssueAgreement={() => {
+                                    setIsWizardOpen(true);
+                                }}
+                            />
+                        </TabsContent>
+
+                        <TabsContent value="obligations" className="mt-0">
+                            <ObligationsSummaryTab
+                                workspaceId={activeWorkspaceId || ''}
+                                onOpenCreateObligation={() => setIsCreateObligationOpen(true)}
+                            />
+                        </TabsContent>
+                    </Tabs>
                 </div>
 
                 {/* Bulk Actions Floating Bar */}
@@ -716,12 +777,58 @@ export default function AgreementsClient() {
                         </AlertDialogFooter>
                     </AlertDialogContent>
                 </AlertDialog>
+
+                {/* Contract Lifecycle Detail Modal (Phase 3) */}
+                <ContractLifecycleDetailModal
+                    isOpen={!!lifecycleContractId}
+                    onClose={() => setLifecycleContractId(null)}
+                    contractId={lifecycleContractId}
+                    workspaceId={activeWorkspaceId || ''}
+                    onOpenAmendment={(contractRecord) => {
+                        setAmendmentParentContract(contractRecord);
+                    }}
+                    onOpenRenewal={(_contractRecord) => {
+                        setIsWizardOpen(true);
+                    }}
+                />
+
+                {/* Create Amendment Modal (Phase 3) */}
+                {amendmentParentContract && (
+                    <CreateAmendmentModal
+                        isOpen={!!amendmentParentContract}
+                        onClose={() => setAmendmentParentContract(null)}
+                        parentContract={amendmentParentContract}
+                        workspaceId={activeWorkspaceId || ''}
+                        onSuccess={({ amendmentContract }) => {
+                            setAmendmentParentContract(null);
+                            setLifecycleContractId(amendmentContract.id);
+                            toast({
+                                title: 'Amendment Initialized',
+                                description: `Draft amendment "${amendmentContract.title}" created.`
+                            });
+                        }}
+                    />
+                )}
+
+                {/* Create Obligation Modal (Phase 3) */}
+                <CreateObligationModal
+                    isOpen={isCreateObligationOpen}
+                    onClose={() => setIsCreateObligationOpen(false)}
+                    workspaceId={activeWorkspaceId || ''}
+                    onSuccess={() => {
+                        setIsCreateObligationOpen(false);
+                        toast({
+                            title: 'Obligation Scheduled',
+                            description: 'New deliverable obligation added to the workspace ledger.'
+                        });
+                    }}
+                />
             </div>
         </TooltipProvider>
     );
 }
 
-function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label: string, value: string | number, sub: string, icon: any, color: string, bg: string, onClick?: () => void }) {
+function StatCard({ label, value, sub, icon: Icon, color, bg, onClick }: { label: string, value: string | number, sub: string, icon: React.ComponentType<{ className?: string }>, color: string, bg: string, onClick?: () => void }) {
     return (
         <Card 
             className={cn(
