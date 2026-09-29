@@ -3,15 +3,19 @@
 
 import * as React from 'react';
 import { useParams, useRouter, useSearchParams, usePathname } from 'next/navigation';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
 import { useTenant } from '@/context/TenantContext';
 import { useLiveAiModel } from '@/hooks/use-live-ai-model';
-import { doc } from 'firebase/firestore';
+import { doc, collection, query, where } from 'firebase/firestore';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { 
-    Check, Loader2, Sparkles, RefreshCcw, Play, ArrowLeft, ArrowRight, Palette, Layout, Eye, Save, Mail, Send, AlertCircle, ShieldAlert, Globe, Lock, ShieldCheck, Zap, FileText, Settings2, Share2, PlusCircle
+    Loader2, Sparkles, ArrowLeft, ArrowRight, Palette, Layout, Save, Globe, ShieldCheck, FileText, Settings2, Share2
 } from 'lucide-react';
+import { TemplateVersionBar } from './components/TemplateVersionBar';
+import { PublishVersionModal } from './components/PublishVersionModal';
+import { VersionHistoryDrawer } from './components/VersionHistoryDrawer';
+import type { TemplateVersion, DocumentFieldDefinition } from '@/lib/types/document-signing';
 import { type PDFForm, type PDFFormField, type SeoConfig } from '@/lib/types';
 import { SeoSettingsCard } from '@/components/seo/SeoSettingsCard';
 import { savePdfForm } from '@/lib/pdf-actions';
@@ -179,6 +183,83 @@ export default function EditPdfPage() {
   
   useSetBreadcrumb(pdf?.name, `/admin/pdfs/${pdfId}`);
 
+  const [isPublishOpen, setIsPublishOpen] = React.useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = React.useState(false);
+
+  const versionsQuery = useMemoFirebase(() => {
+    if (!firestore || !pdfId) return null;
+    return query(collection(firestore, 'template_versions'), where('templateId', '==', pdfId));
+  }, [firestore, pdfId]);
+  const { data: rawVersions } = useCollection<TemplateVersion>(versionsQuery);
+  const allVersions = React.useMemo(() => rawVersions || [], [rawVersions]);
+
+  const latestPublishedVersion = React.useMemo(() => {
+    return (
+      allVersions
+        .filter((v) => v.status === 'published')
+        .sort((a, b) => b.versionNumber - a.versionNumber)[0] || null
+    );
+  }, [allVersions]);
+
+  const latestDraftVersion = React.useMemo(() => {
+    return allVersions.find((v) => v.status === 'draft') || null;
+  }, [allVersions]);
+
+  const activeDraftVersion: TemplateVersion = React.useMemo(() => {
+    if (latestDraftVersion) {
+      return {
+        ...latestDraftVersion,
+        fields: fields.map(
+          (f): DocumentFieldDefinition => ({
+            id: f.id,
+            key: f.key || f.name,
+            label: f.label || f.name,
+            type: (f.type as DocumentFieldDefinition['type']) || 'text',
+            page: f.page || 1,
+            x: f.x || 0,
+            y: f.y || 0,
+            width: f.width || 20,
+            height: f.height || 5,
+            required: !!f.required,
+            assignedRole: (f.assignedRole as DocumentFieldDefinition['assignedRole']) || 'signer',
+          })
+        ),
+      };
+    }
+    return {
+      id: `draft_${pdfId}`,
+      workspaceId: activeWorkspaceId,
+      templateId: pdfId,
+      versionNumber: latestPublishedVersion ? latestPublishedVersion.versionNumber + 1 : 1,
+      status: 'draft',
+      contentSnapshot: {
+        storagePath: pdf?.storagePath || '',
+        sha256: pdf?.originalDocumentDigest || '',
+      },
+      fields: fields.map(
+        (f): DocumentFieldDefinition => ({
+          id: f.id,
+          key: f.key || f.name,
+          label: f.label || f.name,
+          type: (f.type as DocumentFieldDefinition['type']) || 'text',
+          page: f.page || 1,
+          x: f.x || 0,
+          y: f.y || 0,
+          width: f.width || 20,
+          height: f.height || 5,
+          required: !!f.required,
+          assignedRole: (f.assignedRole as DocumentFieldDefinition['assignedRole']) || 'signer',
+        })
+      ),
+      variableSchemaVersion: '1.0',
+      createdBy: _user?.uid || 'user',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }, [latestDraftVersion, latestPublishedVersion, pdfId, activeWorkspaceId, pdf, fields, _user]);
+
+  const currentDisplayVersion = latestPublishedVersion || latestDraftVersion || activeDraftVersion;
+
   React.useEffect(() => {
     if (pdf && !hasInitialized) {
       const initialFields = JSON.parse(JSON.stringify(pdf.fields || []));
@@ -253,7 +334,7 @@ export default function EditPdfPage() {
             else setFields(prev => [...prev, ...newSuggestions]);
             toast({ title: 'AI Detection Complete', description: `${result.fields.length} potential fields found.` });
         }
-    } catch (_error: unknown) { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
+    } catch { toast({ variant: 'destructive', title: 'AI Detection Failed' }); } finally { setIsDetecting(false); }
   };
 
  if (isLoading) return <div className="flex h-full items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
@@ -261,10 +342,18 @@ export default function EditPdfPage() {
 
   return (
     <FormProvider {...form}>
- <div className="h-full flex flex-col">
- <div className="flex-1 overflow-y-auto ">
- <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl p-8">
-                    <Stepper currentStep={step} onStepClick={handleStepChange} />
+      <div className="h-full flex flex-col">
+        <TemplateVersionBar
+          currentVersion={currentDisplayVersion}
+          isDraft={!latestPublishedVersion || !!latestDraftVersion}
+          hasUnsavedChanges={form.formState.isDirty}
+          isSaving={isSaving}
+          onOpenHistory={() => setIsHistoryOpen(true)}
+          onOpenPublish={() => setIsPublishOpen(true)}
+        />
+        <div className="flex-1 overflow-y-auto ">
+          <div className="w-full md:w-[95%] lg:w-[90%] mx-auto max-w-7xl p-8">
+            <Stepper currentStep={step} onStepClick={handleStepChange} />
  <form onSubmit={form.handleSubmit((d) => performSave(d, true))} className="pb-12">
                         <AnimatePresence mode="wait">
                             {step === 1 && (
@@ -432,6 +521,25 @@ export default function EditPdfPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
+
+        <PublishVersionModal
+          open={isPublishOpen}
+          onOpenChange={setIsPublishOpen}
+          workspaceId={activeWorkspaceId}
+          templateId={pdfId}
+          currentDraftVersion={activeDraftVersion}
+          previousPublishedVersion={latestPublishedVersion}
+          onSuccess={() => {
+            // Document successfully published
+          }}
+        />
+
+        <VersionHistoryDrawer
+          open={isHistoryOpen}
+          onOpenChange={setIsHistoryOpen}
+          versions={allVersions}
+          currentVersionId={currentDisplayVersion?.id}
+        />
     </FormProvider>
   );
 }
