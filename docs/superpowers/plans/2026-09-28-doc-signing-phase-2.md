@@ -6,7 +6,7 @@
 
 ---
 
-## 1. Executive Architecture & System Design
+## 1. Executive Architecture & Strategic Foresight
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -31,20 +31,20 @@
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-1. **Target Domain Model**: Decoupled domain collections aligned with workspace tenancy:
-   - `document_templates` & `template_versions`: Immutable snapshots of content, fields, and CRM variable schemas. Editing a template creates a new `draft` version; issued envelopes remain permanently locked to their published version snapshot (`contentSnapshot.sha256`).
-   - `signing_envelopes` & `envelope_recipients`: Multi-party routing, sequential steps, parallel cohorts, role gates, capability tokens, and recipient-level state machines.
-   - `document_instances` & `document_artifacts`: Issued instances with frozen `resolvedVariablesSnapshot`, vector PDF binaries, and multi-page Certificates of Completion.
-2. **Compatibility Adapter (`DocumentAdapter`)**: Bi-directional translation layer mapping legacy `PDFForm`, `Contract`, and `Submission` records into modern `DocumentTemplate`, `SigningEnvelope`, and `DocumentInstance` representations without altering legacy database shapes or breaking active public links.
-3. **Multi-Party Envelope State Machine & Routing Engine**: Server-side deterministic transitions enforcing sequential routing (recipient $N+1$ cannot access or sign until all recipients with order $N$ complete), parallel cohorts ($routingOrder = 1$), approval gates, countersignatures, decline, void, and expiration.
-4. **Recipient Capability Sessions & Dynamic Signing Tokens**: Ephemeral, high-entropy 32-byte tokens hashed via SHA-256 (`tokenHash = SHA256(rawToken)`) bound strictly to the envelope and specific recipient role.
-5. **UI/UX Multi-Party Sender & Signing Suite**:
-   - **Sender Routing Wizard**: Drag-and-drop recipient ordering, role assignments (Signer, Approver, Countersigner, CC/Viewer), custom delivery channels (Email/SMS), and field ownership tagging.
-   - **Template Studio Field Assignment**: In the PDF editor inspector, assign each interactive field to a designated recipient role with distinct color-coded bounding boxes.
-   - **Adaptive Mobile Signing Portal**: Role-aware signing interface displaying remaining required signers, turn-aware headers, "Waiting for Turn" state, and affirmative progress saving.
-6. **Zero-Any Strict Typing & Zod Validation (Rule 4)**: 100% strict TypeScript types and runtime Zod schemas.
-
-**Tech Stack:** Next.js 15 (App Router), React 19, TypeScript (Strict), `pdf-lib`, Firebase Admin Firestore & Cloud Storage, Vitest, Zod, Tailwind CSS, Framer Motion, Lucide React, `FieldsVariablesService`.
+### 1.1 How Phase 2 Integrates with Past & Future Phases:
+- **Phase 0 & 1 Continuity**:
+  - Reuses Phase 1's authoritative `generatePdfBuffer` vector engine for final sealing.
+  - Reuses Phase 1's Cloud Storage signature offloading (`uploadSignatureImage`) to prevent 1MB Firestore document limits when handling envelopes with 3–5 recipients.
+  - Extends the append-only `signing_evidence` ledger to record per-recipient intermediate actions (`opened`, `signed`, `approved`, `declined`).
+- **Phase 3 Foresight (Contract Lifecycle, Template Studio & Obligations)**:
+  - Establishes `TemplateVersion` immutability (`contentSnapshot.sha256`), guaranteeing that future template studio revisions never alter an issued, in-flight envelope.
+  - Encapsulates structured form data so Phase 3's obligation tracker can extract deliverables (e.g. payment dates, renewal terms) without OCR parsing.
+- **Phase 4 Foresight (CRM Analytics & Funnel Automation)**:
+  - Recipient timestamps (`invitedAt`, `openedAt`, `signedAt`) feed signing turnaround metrics and trigger automated reminder workflows on stalled signers.
+- **Phase 5 Foresight (AI Multimodal Intelligence)**:
+  - Structured `formData` maps paired with clean vector text glyphs allow Gemini 2.0 to extract obligations and analyze risk without raster noise.
+- **Phase 6 Foresight (Enterprise eIDAS Assurance & Audit)**:
+  - Multi-party Certificates of Completion with per-signer SHA-256 fingerprints provide legal enforceability and independent proof.
 
 ---
 
@@ -52,7 +52,7 @@
 
 | Risk ID | Potential Failure Mode | Root Cause | Impact | Engineering Mitigation in Phase 2 |
 | :--- | :--- | :--- | :--- | :--- |
-| **FM-P2-01** | **Out-of-Order Multi-Party Signing Race** | Recipient 2 guesses or receives public link and signs before Recipient 1 completes. | Legal execution order invalidated; Recipient 2 signs an un-executed draft; audit trail invalid. | **Resolution:** `EnvelopeRoutingService` enforces sequential locking. Signer session token validation verifies: `min(routingOrder of all pending recipients) === currentRecipient.routingOrder`. Unauthorized attempts receive an informative "Waiting for Previous Signatory" screen. |
+| **FM-P2-01** | **Out-of-Order Multi-Party Signing Race** | Recipient 2 guesses or receives public link and signs before Recipient 1 completes. | Legal execution order invalidated; Recipient 2 signs an un-executed draft; audit trail corrupted. | **Resolution:** `EnvelopeRoutingService` enforces sequential locking. Signer session token validation verifies: `min(routingOrder of all pending recipients) === currentRecipient.routingOrder`. Unauthorized attempts receive an informative "Waiting for Previous Signatory" screen. |
 | **FM-P2-02** | **Simultaneous Parallel Signer Finalization Overwrite** | Two recipients in a parallel routing cohort ($routingOrder = 1$) sign at the exact same second. | Race condition overwrites intermediate field values or produces diverged vector PDFs. | **Resolution:** Firestore transaction with field-level merging in `signing_envelopes/{envelopeId}/recipients/{recipientId}`. Intermediate signatures offloaded to Cloud Storage immediately; master vector PDF generated only upon transition to terminal `completed` state. |
 | **FM-P2-03** | **Legacy Contract & Submission Disruption** | New envelope schema causes existing single-recipient contracts or `/forms/[pdfId]` links to break. | Customer onboarding stops; existing active links return 404 or schema parsing errors. | **Resolution:** `DocumentAdapter` transparently bridges legacy records. If `envelopeId` is not found, adapter queries `contracts/{id}` and synthesizes a virtual single-signer envelope in-memory. Legacy routes remain 100% functional. |
 | **FM-P2-04** | **Recipient Decline Deadlock** | Recipient 2 in a 3-party chain clicks "Decline to Sign", but envelope status remains pending. | Other signers left in limbo; CRM deal never updates; sender not notified. | **Resolution:** Atomic `declineEnvelopeAction` transitions envelope to `declined`, cancels pending recipient tokens, writes audit event with mandatory decline reason, dispatches internal alerts, and emits `deal.contract.declined` on the CRM event bus. |
@@ -60,14 +60,16 @@
 | **FM-P2-06** | **Template Mutation After Dispatch** | Admin edits PDF template fields or text after envelope is dispatched to signers. | Signers sign modified document terms; legal enforceability compromised. | **Resolution:** Immutability rule: Envelopes bind strictly to a published `TemplateVersion` snapshot (`contentSnapshot.storagePath` and `sha256`). Edits to templates create a new `draft` version; issued envelopes never re-read draft templates. |
 | **FM-P2-07** | **Variable Desynchronization at Execution Time** | CRM contact details (e.g. signer name, address) update during a 14-day multi-party signing window. | Document variables mutate between Recipient 1 and Recipient 2 signing, corrupting executed text. | **Resolution:** `DocumentInstance` captures a frozen `resolvedVariablesSnapshot` at issue time via `FieldsVariablesService`. All subsequent vector renderings reference the frozen snapshot. |
 | **FM-P2-08** | **Mobile Touch Target Fatigue on Multi-Signer Documents** | Recipient cannot easily locate the 4 fields assigned to them amongst 20 fields assigned to others. | High drop-off rate, user frustration on mobile devices. | **Resolution:** Role-based field filtering. Mobile signing viewport dynamically highlights only fields assigned to `currentRecipient.role` / `currentRecipient.id`, rendering other fields in read-only dimmed state, with a floating "Next Required Field" FAB. |
+| **FM-P2-09** | **Certificate Canvas Vertical Overflow with 3+ Signers** | Certificate of Completion hardcoded to 1 page overflows when 4 signers and 10 audit logs are appended. | Text clips below bottom margin; verification QR code displaced or unreadable. | **Resolution:** Implement dynamic vertical height budgeting in `audit-certificate-service.ts`. If signers $> 2$ or audit entries $> 5$, dynamically paginate across multiple vector certificate pages. |
+| **FM-P2-10** | **Batch Processing Resource Exhaustion during Bulk Dispatch** | User bulk-dispatches envelopes to 50 entities simultaneously, exhausting server memory or hitting Firestore batch write limits (500 ops). | Timeouts, partial failure states, and un-notified signatories. | **Resolution:** Implement chunked batch dispatching ($10$ entities per batch) with concurrency throttling, individual error recovery, and transactional outbox recording. |
 
 ---
 
-## 3. Downstream Systems & Subsystems Matrix
+## 3. Subsystem Impacts & No-Code Backoffice Enhancements
 
-### 3.1 Affected Subsystems
+### 3.1 Subsystem Impact Matrix
 - **CRM Deals (`src/lib/deals/deal-event-bus.ts`, `src/app/actions/deal-actions.ts`)**:
-  - Emits `deal.contract.in_progress` when first recipient signs in a multi-party chain.
+  - Emits `deal.contract.in_progress` when Recipient 1 signs in a multi-party chain.
   - Advances to `deal.contract.signed` (100% win probability) only when final recipient signs and envelope transitions to `completed`.
   - Emits `deal.contract.declined` or `deal.contract.voided` upon rejection.
 - **Messaging Engine (`src/lib/messaging-actions.ts`, `messaging-engine.ts`)**:
@@ -80,26 +82,46 @@
   - Displays multi-party timeline with all signers, roles, IP addresses, signing timestamps, and individual signature SHA-256 digests.
 
 ### 3.2 Backoffice Operations Capabilities (No Code Required)
-Compliance, operations, and sales managers can control envelopes directly from the UI:
-1. **Multi-Party Envelope Status Board**: Visual status tags per recipient (*Invited*, *Delivered*, *Opened*, *Signed*, *Declined*).
+Compliance, operations, and sales managers can manage contracts directly from the UI without code:
+1. **Multi-Party Envelope Status Board**: Real-time status tags per recipient (*Invited*, *Delivered*, *Opened*, *Signed*, *Declined*).
 2. **One-Click Reassign Recipient**: Replace an unavailable signer/counsel with a new name and email without voiding the entire agreement. Reissues a fresh capability token.
 3. **One-Click Skip Optional Approver**: Authorized managers can approve on behalf of an internal reviewer.
 4. **One-Click Resend Recipient Reminder**: Send targeted reminder to the specific stalled recipient currently holding up the routing order.
 5. **Envelope Void & Audit Ledger**: Void envelope with mandatory reason, auto-notifying all parties and rendering void watermarks across all draft artifacts.
+6. **One-Click Expiry Extension**: Extend envelope validity by 7, 14, or 30 days via a simple dropdown.
 
 ---
 
-## 4. UI/UX Architecture & Viewport Specifications
+## 4. Comprehensive UI/UX Architect Specifications
 
 Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `vercel-react-best-practices`:
 
-### 4.1 Sender Experience: Recipient Routing Editor (`ContractWizard.tsx`)
-- **Stepper Navigation**: Upgraded from 3 to 4 steps: `1. Template` $\to$ `2. Recipients & Routing` $\to$ `3. Simulation` $\to$ `4. Dispatch`.
+```
+┌──────────────────────────────────────────────────────────────────────────────────────┐
+│                            UI/UX INTERFACE TOUCHPOINTS                               │
+│                                                                                      │
+│  1. SENDER EXPERIENCE          2. TEMPLATE STUDIO        3. SIGNING PORTAL           │
+│     [ContractWizard.tsx]          [Inspector.tsx]           [/sign/[envelopeId]]     │
+│     • Recipient Matrix            • Field Role Assignment   • Turn-Aware Stepper     │
+│     • Drag & Drop Stepper         • Color-Coded Outlines    • Sequential Lockout     │
+│     • High-Contrast Badges        • Signer 1 / Signer 2     • Role-Filtered Inputs   │
+│     • Channel (Email/SMS)         • Countersign Tags        • Mobile FAB Navigator   │
+│                                                                                      │
+│                                4. OPERATIONS DOCK                                    │
+│                                   [ContractsClient.tsx]                              │
+│                                   • Multi-Party Status Rails                         │
+│                                   • One-Click Reassignment                           │
+│                                   • Void / Cancel Modal                              │
+└──────────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### 4.1 Sender UI: Recipient Routing Editor (`ContractWizard.tsx`)
+- **Stepper Navigation**: Upgrades from 3 to 4 steps: `1. Template` $\to$ `2. Recipients & Routing` $\to$ `3. Simulation` $\to$ `4. Dispatch`.
 - **Routing Mode Toggle**:
   - **Sequential (Linear Chain)**: Signers complete in numbered order ($1 \to 2 \to 3$).
   - **Parallel (Simultaneous Cohort)**: All signers receive invitations simultaneously and can sign concurrently.
-  - **Mixed Routing**: Parallel cohorts followed by sequential approval or countersigning.
-- **Recipient Card Components**:
+  - **Mixed Routing**: Parallel cohort followed by sequential approval or countersigning.
+- **Recipient Card Components (`@dnd-kit/sortable`)**:
   - Reorderable list with drag handles and stepper arrows (`min-h-[44px]` touch targets).
   - Role pill selector with high-contrast color coding:
     - **Signer**: Indigo (`bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 border-indigo-500/20`)
@@ -121,7 +143,7 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
   - Countersigner: Emerald outline (`border-emerald-500 bg-emerald-500/10`)
   - Sender/Pre-filled: Slate outline (`border-slate-500 bg-slate-500/10`)
 
-### 4.3 Multi-Party Public Signing Viewport (`/sign/[envelopeId]` and `PdfFormRenderer.tsx`)
+### 4.3 Multi-Party Public Signing Viewport (`/sign/[envelopeId]` & `PdfFormRenderer.tsx`)
 - **Turn-Aware Progress Header**:
   - Breadcrumb: `Step 1 of 2: Signatory (You) ➔ Step 2: Countersign (Management)`.
   - Floating badge displaying current signer role.
@@ -328,7 +350,7 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-routing-service.test.ts`
 - [ ] **Step 3: Implement `src/lib/documents/envelope-routing-service.ts`**
   - Pure deterministic functions: `canRecipientAct(envelope, recipientId)`, `advanceEnvelopeRouting(envelope, completedRecipientId)`.
-  - Add inline architectural comments on state invariants.
+  - Add inline architectural comments on state invariants (Rule 10).
 - [ ] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-routing-service.test.ts`
 - [ ] **Step 5: Commit changes**
@@ -400,7 +422,7 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 
 ---
 
-### Task 6: Multi-Party Step Signing & Optimistic Lock Action (P2.4 & P1.2)
+### Task 6: Multi-Party Step Signing & Dynamic Height Certificate Action (P2.4 & P1.2)
 **Files:**
 - Modify: `src/lib/documents/envelope-actions.ts`
 - Modify: `src/lib/documents/audit-certificate-service.ts` (Implement dynamic multi-page certificate height budgeting)
@@ -409,6 +431,7 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - [ ] **Step 1: Write unit tests in `envelope-step-finalization.test.ts`**
   - Test intermediate step signing (Recipient 1 signs: status `signed`, envelope advances, Recipient 2 invited).
   - Test terminal step signing (Recipient 2 signs: envelope completed, final vector PDF + certificate sealed, CRM `deal.contract.signed` emitted).
+  - Test dynamic multi-page certificate when 3+ signers are present.
   - Test idempotent replay (re-submitting intermediate step returns success without double advancement).
 - [ ] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/envelope-step-finalization.test.ts`
@@ -430,8 +453,7 @@ export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
 - Create: `src/app/admin/finance/contracts/components/RecipientRoutingEditor.tsx`
 
 - [ ] **Step 1: Build `RecipientRoutingEditor.tsx`**
-  - Visual recipient list with order badges, role dropdown (Signer, Approver, Countersigner, Viewer), email/phone inputs, and delete/add buttons.
-  - Drag-and-drop or stepper reordering.
+  - Visual recipient list using `@dnd-kit/sortable` with order badges, role dropdown (Signer, Approver, Countersigner, Viewer), email/phone inputs, and delete/add buttons.
   - High-contrast role badges and accessible `min-h-[44px]` touch targets.
 - [ ] **Step 2: Integrate into `ContractWizard.tsx`**
   - Toggle between "Single Signer (Quick)" and "Multi-Party Routing".
