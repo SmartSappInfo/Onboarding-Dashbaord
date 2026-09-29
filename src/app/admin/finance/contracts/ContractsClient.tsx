@@ -85,7 +85,9 @@ import CreateAmendmentModal from './components/CreateAmendmentModal';
 import CreateObligationModal from './components/CreateObligationModal';
 import TemplateCatalogTab from './components/TemplateCatalogTab';
 import ObligationsSummaryTab from './components/ObligationsSummaryTab';
+import ContractsAnalyticsTab from './components/ContractsAnalyticsTab';
 import type { ContractRecord } from '@/lib/types/document-signing';
+import { BarChart3 } from 'lucide-react';
 
 /**
  * @fileOverview Agreements Hub Client.
@@ -97,7 +99,7 @@ export default function AgreementsClient() {
     const { assignedUserId, isLoading: isLoadingFilter } = useGlobalFilter();
     const { activeWorkspaceId } = useWorkspace();
     
-    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations'>('contracts');
+    const [activeTab, setActiveTab] = React.useState<'contracts' | 'templates' | 'obligations' | 'analytics'>('contracts');
     const [searchTerm, setSearchTerm] = React.useState('');
     const [statusFilter, setStatusFilter] = React.useState('all');
     const [selectedEntities, setSelectedEntities] = React.useState<WorkspaceEntity[]>([]);
@@ -304,8 +306,8 @@ export default function AgreementsClient() {
                         </div>
                     </div>
 
-                    {/* Unified 3-Tab Workspace Navigation */}
-                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations')} className="w-full space-y-6">
+                    {/* Unified 4-Tab Workspace Navigation */}
+                    <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as 'contracts' | 'templates' | 'obligations' | 'analytics')} className="w-full space-y-6">
                         <TabsList className="bg-muted/60 p-1 rounded-xl border border-border">
                             <TabsTrigger value="contracts" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <FileCheck className="h-3.5 w-3.5" />
@@ -318,6 +320,10 @@ export default function AgreementsClient() {
                             <TabsTrigger value="obligations" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
                                 <CheckSquare className="h-3.5 w-3.5" />
                                 Obligations & Milestones
+                            </TabsTrigger>
+                            <TabsTrigger value="analytics" className="rounded-lg text-xs font-semibold gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                                <BarChart3 className="h-3.5 w-3.5" />
+                                Analytics & Reports
                             </TabsTrigger>
                         </TabsList>
 
@@ -677,6 +683,10 @@ export default function AgreementsClient() {
                                 workspaceId={activeWorkspaceId || ''}
                                 onOpenCreateObligation={() => setIsCreateObligationOpen(true)}
                             />
+                        </TabsContent>
+
+                        <TabsContent value="analytics" className="mt-0">
+                            <ContractsAnalyticsTab workspaceId={activeWorkspaceId || ''} />
                         </TabsContent>
                     </Tabs>
                 </div>
