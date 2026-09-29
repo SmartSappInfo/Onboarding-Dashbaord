@@ -166,6 +166,7 @@ export const SigningEnvelopeSchema = z.object({
   originalDocumentDigest: z.string().optional(),
   finalDocumentDigest: z.string().optional(),
   certificateStoragePath: z.string().optional(),
+  idempotencyKey: z.string().optional(),
   metadata: z.record(z.unknown()).optional(),
 });
 export type SigningEnvelope = z.infer<typeof SigningEnvelopeSchema>;
