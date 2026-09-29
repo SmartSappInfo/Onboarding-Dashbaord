@@ -51,7 +51,7 @@
   - Unifies templates, contracts, and obligations into a high-performance, mobile-first Document Workspace.
 - **Phase 4 Foresight (CRM Analytics, Funnel & Reminders)**:
   - Obligation due dates feed automated notification reminders (30, 60, 90 days before expiry) via `messaging-actions.ts`.
-  - Contract commercial values (`contractValue.amount`) aggregate into CRM pipeline win attribution.
+  - Contract commercial values (`contractValue.amount` and `cadence`) aggregate into CRM pipeline win attribution.
 - **Phase 5 Foresight (AI Multimodal Intelligence)**:
   - Structured `ContractObligation` schema provides target ground-truth for Gemini 2.0 clause extraction and obligation suggestions.
   - Immutable `TemplateVersion` snapshots allow automated clause diffing between revisions.
@@ -77,12 +77,12 @@
 
 ---
 
-## 3. Subsystem Impacts & Downstream Enhancements
+## 3. Subsystem Impacts & No-Code Backoffice Enhancements
 
 ### 3.1 Subsystem Impact Matrix
 - **Task Infrastructure (`src/lib/tasks/task-core.ts`, `src/lib/task-server-actions.ts`)**:
   - Contract obligations create real tasks in the `tasks` collection with `entityId`, `dealId`, and `metadata.contractId`.
-  - When an agent marks a task done in `/admin/tasks`, task hooks automatically advance the obligation status to `fulfilled`.
+  - Bi-directional Reverse Hook: When an agent marks a task done in `/admin/tasks`, task hooks automatically advance the obligation status to `fulfilled`.
 - **CRM Deals (`src/lib/deals/deal-event-bus.ts`, `src/app/actions/deal-actions.ts`)**:
   - Deal detail page (`/admin/deals/[id]`) gains an active "Contracts & Lifecycle" card displaying active agreement status, commercial value, renewal countdown, and outstanding obligations.
 - **FieldsVariablesService (`src/lib/services/fields-variables-service.ts`)**:
@@ -91,6 +91,28 @@
   - Document templates and contracts utilize `<TagSelector>` for categorizing agreements (e.g. `NDA`, `Master Services`, `Enterprise`, `Vendor`, `Tier-1`).
 - **Messaging Engine (`src/lib/messaging-actions.ts`)**:
   - Provides notification triggers for upcoming renewal milestones (30-day, 60-day, 90-day notices) and deliverable reminders.
+
+### 3.2 Backoffice Operations Capabilities (No-Code Operations Console)
+Compliance, operations, and account managers can manage the entire document and contract lifecycle directly from the UI without touching code:
+1. **One-Click Renewal Wizard**:
+   - Operations managers can initiate an agreement renewal directly from the contract drawer in 1 click.
+   - Automatically pre-populates the new agreement with updated effective and expiry dates, carries forward party links, and links to the parent contract for complete continuity.
+2. **One-Click Amendment Dispatch**:
+   - Launch an amendment to add terms, change liability limits, or adjust pricing.
+   - Links the new draft envelope to the parent agreement without overwriting the original signed PDF.
+3. **Visual Version History & Historical Preview**:
+   - Browse past template versions in a dedicated drawer.
+   - Preview historical PDF field mappings and see exact visual diffs between revisions.
+4. **Manual Obligation Overrides & Waiver**:
+   - Mark contractual deliverables fulfilled or waived with a mandatory reason note, without database surgery.
+5. **Cross-Contract Milestone Calendar & Task Assignment**:
+   - View all upcoming deliverables, payments, and compliance milestones across all client agreements in a unified calendar.
+   - Reassign internal responsibility to specific CRM users and configure automated notification intervals (30/60/90 days).
+6. **One-Click Agreement Termination & Archival**:
+   - Terminate breached or cancelled contracts with an immutable audit reason.
+   - Automatically updates CRM deal probabilities and archives active obligations in the agent's task queue.
+7. **Batch Expiry & Renewal Alerts Configuration**:
+   - Workspace-level settings allowing non-technical managers to define default notice periods (e.g. 30 days vs 60 days) and alert channels (Email, SMS, In-App).
 
 ---
 
@@ -117,30 +139,44 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 └────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 4.1 Unified Document & Contract Workspace (`ContractsClient.tsx`)
+### 4.1 Microcopy & Everyday English Dictionary (Rule 7 Minimal Text)
+All UI interfaces must use common, simple everyday English with minimal copy, avoiding technical jargon:
+
+| Technical Concept | Everyday UI English Label | Context & Tooltip |
+| :--- | :--- | :--- |
+| `SigningEnvelope` | **Signing Workflow** / **Agreement** | "The process of collecting signatures." |
+| `TemplateVersion` | **Version 1.0 (Published)** | "The current approved version used for contracts." |
+| `ContractObligation` | **Deliverable** / **To-Do** | "A required milestone or payment for this agreement." |
+| `Fulfill Obligation` | **Mark Done** | "Confirm this milestone has been completed." |
+| `ContractRelationship` (Amendment) | **Contract Amendment** | "An update or modification linked to the original agreement." |
+| `ContractRelationship` (Renewal) | **Contract Renewal** | "A renewed agreement extending the contract term." |
+| `Sequential Lockout` | **Waiting for [Name] to sign** | "You'll get an alert when it's your turn to review." |
+| `Immutable Digest` | **Verified File** | "This document cannot be altered." |
+
+### 4.2 Unified Document & Contract Workspace (`ContractsClient.tsx`)
 - **Tabbed Layout**:
-  - **Contracts & Lifecycle**: Active, Pending Execution, Executed, Renewal Due, Expired, Terminated. Displays commercial value, renewal countdown badge, primary counterparty, and obligations progress.
-  - **Document Templates**: Reusable template library with Version pills (`v1.0 (Published)`, `v2.0-draft`), category tags, and one-click "Issue Agreement" action.
+  - **Contracts & Lifecycle**: Active, Pending Execution, Executed, Renewal Due, Expired, Terminated. Displays commercial value, renewal countdown badge (`Renews in 42 days`), primary counterparty, and obligations progress.
+  - **Document Templates**: Reusable template library with Version pills (`v1.0 (Published)`, `v2.0-draft`), category tags via `<TagSelector>`, and one-click "Issue Agreement" action.
   - **Obligations & Milestones**: Cross-contract calendar and list view of all upcoming deliverables, payments, and compliance milestones with responsible party badges.
 - **Mobile Ergonomics**: Responsive card layout on `< 768px` viewports, sticky filters, `min-h-[44px]` touch targets.
 
-### 4.2 Template Studio Maturity (`src/app/admin/pdfs/[id]/edit`)
+### 4.3 Template Studio Maturity (`src/app/admin/pdfs/[id]/edit`)
 - **Version Control Status Bar**:
   - Fixed at top of studio: `Document: Master Services Agreement` | Badge: `v2.0 (Published)` or `v3.0-draft (Unpublished changes)`.
-  - "Publish New Version" button triggers modal prompting for a brief change summary (e.g. "Updated liability cap to $1M and added countersigner role").
+  - "Publish New Version" button triggers modal prompting for a brief change summary (e.g. "Updated liability cap to $1M and added countersigner role") with automated field diff preview (`diffTemplateVersions`).
   - "Version History" drawer displaying past versions with published timestamps, author, and preview.
 - **Strict Variables & Tags Integration**:
   - Incorporates standardized `<VariablesPanel>` for drag-and-drop CRM variable tokens.
   - Uses `<TagSelector>` in client/draft mode for template tagging.
 
-### 4.3 Contract Lifecycle Detail Modal (`ContractLifecycleDetailModal.tsx`)
+### 4.4 Contract Lifecycle Detail Modal (`ContractLifecycleDetailModal.tsx`)
 - **Agreement Overview Header**: Commercial value (`$50,000 USD`), Effective Date, Expiration Date, Renewal Countdown pill (`Renews in 42 days`), Primary Signatory Contact.
 - **Authoritative Artifacts Rail**: One-click download of executed vector PDF, Certificate of Completion, and link to Public Verification Portal (`/verify/[envelopeId]`).
 - **Amendment & Renewal Workflows**:
   - "Create Amendment": clones contract metadata, creates a linked draft envelope referencing the latest template version, and links to parent contract.
   - "Initiate Renewal": pre-populates a renewal agreement with updated effective and expiry dates.
 
-### 4.4 Obligations & Milestones Operations Rail (`CreateObligationModal.tsx`)
+### 4.5 Obligations & Milestones Operations Rail (`CreateObligationModal.tsx`)
 - **Obligation Creator Form**:
   - Title, Obligation Type (Deliverable, Payment, Renewal Notice, Compliance Audit, Report).
   - Due Date picker with quick presets (+30 days, +60 days, +90 days, End of Quarter).
@@ -150,12 +186,14 @@ Conforming to `frontend-design`, `ui-ux-pro-max`, `emilkowal-animations`, and `v
 
 ---
 
-## 5. Strict Type Contracts & Zod Schemas (Rule 4: Zero `any`)
+## 5. Strict Type Contracts, Zod Schemas & Security Rules (Rule 4 & 5)
 
-All Phase 3 domain models will live in `src/lib/types/document-signing.ts`:
+All domain models will live in `src/lib/types/document-signing.ts`:
 
 ```typescript
 // Additions to: src/lib/types/document-signing.ts
+
+import { z } from 'zod';
 
 export const DocumentTypeSchema = z.enum([
   'contract',
@@ -308,6 +346,7 @@ export const ContractRecordSchema = z.object({
   contractValue: z.object({
     amount: z.number().min(0),
     currency: z.string().default('USD'),
+    cadence: z.enum(['one_off', 'monthly', 'quarterly', 'annually']).default('one_off'),
   }).optional(),
   effectiveAt: z.string().optional(),
   expiresAt: z.string().optional(),
@@ -325,6 +364,20 @@ export const ContractRecordSchema = z.object({
 export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 ```
 
+### 5.1 Firestore Security Rules & Composite Index Specifications
+1. **Security Rules (`firestore.rules`)**:
+   - `match /contracts/{contractId}`: read/write requires `isAuthenticated()` and `request.resource.data.workspaceId in userWorkspaces()`.
+   - `match /document_templates/{templateId}`: read/write requires workspace membership.
+   - `match /template_versions/{versionId}`: update/delete denied if `resource.data.status in ['published', 'superseded']` (server-side immutability guard).
+   - `match /contract_obligations/{obligationId}`: read/write requires workspace membership.
+2. **Composite Indexes**:
+   - `contracts`: `workspaceId` (ASC) + `status` (ASC) + `updatedAt` (DESC)
+   - `contracts`: `workspaceId` (ASC) + `dealId` (ASC) + `updatedAt` (DESC)
+   - `contract_obligations`: `workspaceId` (ASC) + `status` (ASC) + `dueDate` (ASC)
+   - `contract_obligations`: `workspaceId` (ASC) + `contractId` (ASC) + `dueDate` (ASC)
+   - `document_templates`: `workspaceId` (ASC) + `status` (ASC) + `updatedAt` (DESC)
+   - `template_versions`: `workspaceId` (ASC) + `templateId` (ASC) + `versionNumber` (DESC)
+
 ---
 
 ## 6. Phase 3 Trackable Task Breakdown (TDD)
@@ -336,7 +389,7 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 
 - [ ] **Step 1: Write schema validation unit tests in `template-contract-schemas.test.ts`**
   - Test valid and invalid payloads for `TemplateVersionSchema`, `DocumentTemplateSchema`, `ContractRecordSchema`, `ContractObligationSchema`, `ContractRelationshipSchema`.
-  - Test monotonic version number constraints and obligation status transitions.
+  - Test monotonic version number constraints, `cadence` validation on `contractValue`, and obligation status transitions.
 - [ ] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-contract-schemas.test.ts`
 - [ ] **Step 3: Update `src/lib/types/document-signing.ts`**
@@ -359,10 +412,11 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
   - Test publishing draft version: status becomes `published`, prior published version becomes `superseded`.
   - Test editing published template: automatically creates a new incremental draft version (`v2-draft`) without mutating `v1`.
   - Test immutability guard: rejecting modifications to any version with status `published` or `superseded`.
+  - Test `diffTemplateVersions(vOld, vNew)` helper: returns added, removed, and updated fields for visual publication review.
 - [ ] **Step 2: Run test to verify failure**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-version-service.test.ts`
 - [ ] **Step 3: Implement `src/lib/documents/template-version-service.ts`**
-  - Pure state-machine functions and Firestore transaction helpers: `publishTemplateVersion`, `createDraftVersion`, `validateTemplateVersionImmutability`.
+  - Pure state-machine functions and Firestore transaction helpers: `publishTemplateVersion`, `createDraftVersion`, `validateTemplateVersionImmutability`, `diffTemplateVersions`.
   - Add inline architectural comments on immutability invariants (Rule 10).
 - [ ] **Step 4: Run test to verify pass**
   - Command: `pnpm test:run src/lib/documents/__tests__/template-version-service.test.ts`
@@ -400,6 +454,7 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - [ ] **Step 1: Write unit tests in `contract-obligation-service.test.ts`**
   - Test creating obligation with linked SmartSapp task creation via `createTaskCore`.
   - Test obligation fulfillment: marks obligation `fulfilled` and updates linked task to completed.
+  - Test bi-directional reverse hook: completing linked task in CRM advances obligation status to `fulfilled`.
   - Test overdue obligation calculation and reminder schedule evaluation.
   - Test idempotency: fulfilling already-fulfilled obligation returns success without duplicate side effects.
 - [ ] **Step 2: Run test to verify failure**
@@ -447,7 +502,7 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
   - Displays current template version badge (`v1.0 (Published)` or `v2.0-draft`), change status, and action buttons.
   - Incorporates Emil Kowalski micro-interactions (`active:scale-[0.97]`).
 - [ ] **Step 2: Build `PublishVersionModal.tsx` & `VersionHistoryDrawer.tsx`**
-  - Form capturing change summary, validating that required fields exist, and calling `publishTemplateVersionAction`.
+  - Form capturing change summary, showing field diffs via `diffTemplateVersions`, validating that required fields exist, and calling `publishTemplateVersionAction`.
   - Drawer displaying historical versions with published dates, author, and view buttons.
 - [ ] **Step 3: Integrate into PDF Studio Editor**
   - Wire versioning bar to top navigation of `/admin/pdfs/[id]/edit`.
@@ -464,7 +519,7 @@ export type ContractRecord = z.infer<typeof ContractRecordSchema>;
 - Create: `src/app/admin/finance/contracts/components/CreateAmendmentModal.tsx`
 
 - [ ] **Step 1: Build `ContractLifecycleDetailModal.tsx`**
-  - Displays contract header (Status badge, Value, Effective Date, Expiry Date, Renewal Urgency pill).
+  - Displays contract header (Status badge, Value with cadence, Effective Date, Expiry Date, Renewal Urgency pill).
   - Executed PDF & Vector Certificate download buttons.
   - Linked signing envelopes timeline.
   - Party links rail (Signatories, Entity contacts).
