@@ -208,18 +208,18 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - `OfflineSyncRecordSchema` (id, workspaceId, envelopeId, recipientId, status: `pending` | `synced` | `conflict`, payload, error, syncedAt)
     - `RateLimitConfigSchema` (windowMs, maxRequests)
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/developer-platform-schemas.test.ts`
   - Expected: FAIL with missing exports in `document-signing.ts`.
 
-- [ ] **Step 3: Implement domain schemas in `src/lib/types/document-signing.ts`**
+- [x] **Step 3: Implement domain schemas in `src/lib/types/document-signing.ts`**
   - Append schemas and export inferred TypeScript types without using `any` or `any[]`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/developer-platform-schemas.test.ts`
   - Expected: PASS (all schema tests green).
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/lib/types/document-signing.ts src/lib/documents/__tests__/developer-platform-schemas.test.ts`
   - `git commit -m "feat(docsigning): implement strict domain schemas for developer platform, api keys, embed sdk, and offline biometrics"`
 
@@ -230,7 +230,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/lib/documents/api-key-auth-service.ts`
 - Create: `src/lib/documents/__tests__/api-key-auth-service.test.ts`
 
-- [ ] **Step 1: Write failing test for API Key Auth Service**
+- [x] **Step 1: Write failing test for API Key Auth Service**
   - Test `generateApiKey(workspaceId, name, scopes, tier)`:
     - Returns `{ rawKey: 'sapp_live_...', keyRecord: ApiKeyRecord }`
     - Formats key with `sapp_live_${prefix8}_${secret32}`
@@ -242,21 +242,21 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - Updates `lastUsedAt` asynchronously
   - Test `revokeApiKey(workspaceId, keyId)` and `rotateApiKey(workspaceId, keyId)`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/api-key-auth-service.test.ts`
   - Expected: FAIL with module not found.
 
-- [ ] **Step 3: Implement `src/lib/documents/api-key-auth-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/api-key-auth-service.ts`**
   - Cryptographically secure key generation via `crypto.randomBytes`.
   - SHA-256 digest creation and timing-safe comparison (`crypto.timingSafeEqual`).
   - Scoped permission validation and workspace binding.
   - Zero `any` typing.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/api-key-auth-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/lib/documents/api-key-auth-service.ts src/lib/documents/__tests__/api-key-auth-service.test.ts`
   - `git commit -m "feat(docsigning): implement scoped api key authentication and timing-safe verification engine"`
 
@@ -267,7 +267,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/lib/documents/api-rate-limiter-service.ts`
 - Create: `src/lib/documents/__tests__/api-rate-limiter-service.test.ts`
 
-- [ ] **Step 1: Write failing test for API Rate Limiter**
+- [x] **Step 1: Write failing test for API Rate Limiter**
   - Test sliding-window token bucket:
     - Standard tier: 60 requests / 60 seconds
     - Enterprise tier: 300 requests / 60 seconds
@@ -275,20 +275,20 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
   - Test headers generation: `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`, `Retry-After`
   - Test rejection with `isAllowed: false` and accurate `retryAfterSeconds` when quota exceeded
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/api-rate-limiter-service.test.ts`
   - Expected: FAIL with module not found.
 
-- [ ] **Step 3: Implement `src/lib/documents/api-rate-limiter-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/api-rate-limiter-service.ts`**
   - Sliding-window token bucket tracker with automatic window expiration.
   - Generates typed rate limit response headers.
   - Strict typing without `any`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/api-rate-limiter-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/lib/documents/api-rate-limiter-service.ts src/lib/documents/__tests__/api-rate-limiter-service.test.ts`
   - `git commit -m "feat(docsigning): implement token-bucket api rate limiter and security guard"`
 
@@ -302,7 +302,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/app/api/v1/templates/route.ts`
 - Create: `src/lib/documents/__tests__/developer-rest-api.test.ts`
 
-- [ ] **Step 1: Write failing test for Developer REST API routes**
+- [x] **Step 1: Write failing test for Developer REST API routes**
   - Test `GET /api/v1/envelopes`:
     - Enforces `Authorization: Bearer sapp_live_...` with `envelopes:read` scope
     - Returns paginated envelopes matching caller's workspace
@@ -318,20 +318,20 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - Enforces `templates:read` scope, returns published templates and variable keys
   - Test 401 Unauthorized, 403 Forbidden (missing scope), and 429 Too Many Requests responses
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/developer-rest-api.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement Route Handlers in `src/app/api/v1/...`**
+- [x] **Step 3: Implement Route Handlers in `src/app/api/v1/...`**
   - Wire authentication helper `authenticateApiKeyHeader(request, scope)`.
   - Wire rate limiter `checkApiRateLimit(keyRecord.id, keyRecord.rateLimitTier)`.
   - Return standardized response envelope and error format.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/developer-rest-api.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/app/api/v1/ src/lib/documents/__tests__/developer-rest-api.test.ts`
   - `git commit -m "feat(docsigning): implement public developer rest api route handlers with scoped auth and rate limiting"`
 
@@ -343,7 +343,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/app/embed/sign/[token]/page.tsx`
 - Create: `src/lib/documents/__tests__/embedded-signing-service.test.ts`
 
-- [ ] **Step 1: Write failing test for Embedded Signing Service**
+- [x] **Step 1: Write failing test for Embedded Signing Service**
   - Test `validateEmbedOrigin(workspaceId, origin)`:
     - Rejects unauthorized origins
     - Allows registered origins from workspace `allowedEmbedOrigins`
@@ -354,21 +354,21 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - Clamps heights between 500px and 2400px, enforces 8px deadband
   - Test CSP frame-ancestors header generator `generateEmbedCspHeader(allowedOrigins)`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/embedded-signing-service.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement `embedded-signing-service.ts` and `/embed/sign/[token]/page.tsx`**
+- [x] **Step 3: Implement `embedded-signing-service.ts` and `/embed/sign/[token]/page.tsx`**
   - Zero-chrome iframe container rendering the core signing interaction.
   - Client-side postMessage listener with strict `event.origin` verification.
   - ResizeObserver posting `RESIZE_REQUEST` to parent window.
   - Mobile responsiveness (`min-h-[44px]` touch targets, zoom lock).
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/embedded-signing-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/lib/documents/embedded-signing-service.ts src/app/embed/sign/ src/lib/documents/__tests__/embedded-signing-service.test.ts`
   - `git commit -m "feat(docsigning): implement embedded signing sdk and secure iframe postmessage host"`
 
@@ -379,7 +379,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/lib/documents/offline-signing-service.ts`
 - Create: `src/lib/documents/__tests__/offline-signing-service.test.ts`
 
-- [ ] **Step 1: Write failing test for Offline Signing Service**
+- [x] **Step 1: Write failing test for Offline Signing Service**
   - Test biometric stroke recording:
     - Captures pressure, velocity, timestamp array per point
     - Computes stroke bounding box and biometric entropy score
@@ -391,20 +391,20 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - Quarantines payload to `offline_sync_conflicts` if envelope was voided or expired during offline period
     - Prevents double-sign if recipient was signed online in the interim
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/offline-signing-service.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement `src/lib/documents/offline-signing-service.ts`**
+- [x] **Step 3: Implement `src/lib/documents/offline-signing-service.ts`**
   - Biometric stroke normalization and entropy calculation.
   - Sync queue processor with atomic transaction checking and conflict isolation.
   - Zero `any` typing.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/offline-signing-service.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/lib/documents/offline-signing-service.ts src/lib/documents/__tests__/offline-signing-service.test.ts`
   - `git commit -m "feat(docsigning): implement offline pwa signing engine and biometric evidence sync queue"`
 
@@ -415,7 +415,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/app/actions/developer-platform-actions.ts`
 - Create: `src/lib/documents/__tests__/developer-platform-actions.test.ts`
 
-- [ ] **Step 1: Write failing test for developer platform server actions**
+- [x] **Step 1: Write failing test for developer platform server actions**
   - Test `createApiKeyAction(workspaceId, data)`:
     - Enforces workspace authorization, returns raw key once
   - Test `listApiKeysAction(workspaceId)`:
@@ -428,20 +428,20 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - Dispatches HMAC-signed test webhook and reports status/latency
   - Test `getOfflineSyncQueueStatusAction(workspaceId)`
 
-- [ ] **Step 2: Run test to verify it fails**
+- [x] **Step 2: Run test to verify it fails**
   - Run: `pnpm test:run src/lib/documents/__tests__/developer-platform-actions.test.ts`
   - Expected: FAIL.
 
-- [ ] **Step 3: Implement Server Actions in `src/app/actions/developer-platform-actions.ts`**
+- [x] **Step 3: Implement Server Actions in `src/app/actions/developer-platform-actions.ts`**
   - Strict input validation with Zod schemas.
   - Workspace auth guard `await requireWorkspace(workspaceId)`.
   - Discriminated union return `ActionResponse<T>`.
 
-- [ ] **Step 4: Run test to verify it passes**
+- [x] **Step 4: Run test to verify it passes**
   - Run: `pnpm test:run src/lib/documents/__tests__/developer-platform-actions.test.ts`
   - Expected: PASS.
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
   - `git add src/app/actions/developer-platform-actions.ts src/lib/documents/__tests__/developer-platform-actions.test.ts`
   - `git commit -m "feat(docsigning): implement server actions for developer platform and embedded sdk management"`
 
@@ -452,7 +452,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 - Create: `src/app/admin/finance/contracts/components/DeveloperPlatformTab.tsx`
 - Modify: `src/app/admin/finance/contracts/ContractsClient.tsx`
 
-- [ ] **Step 1: Implement `DeveloperPlatformTab.tsx`**
+- [x] **Step 1: Implement `DeveloperPlatformTab.tsx`**
   - Sub-views / Sections:
     - **API Keys Manager**: Key list with status badge, scopes chip group, last-used timestamp, "Create Key" dialog, and 1-time secret copy modal with warning.
     - **Embed Origins Whitelist**: Domain list input (`https://partner.example.com`), add/remove buttons, CSP frame-ancestors status indicator.
@@ -461,15 +461,15 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
     - **Offline Sync Queue Health**: Live indicator showing synced vs pending vs conflicted offline packages.
   - Conform to Rule 7: Touch targets `min-h-[44px]`, `active:scale-[0.97]` tactile press, form inputs `text-base sm:text-sm` zoom lock.
 
-- [ ] **Step 2: Mount Developer Platform Tab in `ContractsClient.tsx`**
+- [x] **Step 2: Mount Developer Platform Tab in `ContractsClient.tsx`**
   - Add 7th tab: "Developer & Embedded SDK" with `Code2` icon.
   - Preserve all existing 6 tabs (Overview, Templates, Contracts, Lifecycle & Obligations, Enterprise Governance, GA Cutover & Migration).
 
-- [ ] **Step 3: Verify build and types**
+- [x] **Step 3: Verify build and types**
   - Run: `pnpm typecheck`
   - Expected: 0 errors.
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
   - `git add src/app/admin/finance/contracts/components/DeveloperPlatformTab.tsx src/app/admin/finance/contracts/ContractsClient.tsx`
   - `git commit -m "feat(docsigning): implement agreements hub developer platform and embedded sdk console ui"`
 
@@ -479,7 +479,7 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 **Files:**
 - Create: `src/lib/__tests__/document-phase8.test.ts`
 
-- [ ] **Step 1: Write comprehensive Phase 8 integration test suite**
+- [x] **Step 1: Write comprehensive Phase 8 integration test suite**
   - Test 1: API key generation, prefix indexing, and constant-time SHA-256 verification.
   - Test 2: Token-bucket rate limiter under heavy burst traffic and HTTP 429 generation.
   - Test 3: Public REST API `POST /api/v1/envelopes` with idempotency key deduplication.
@@ -491,11 +491,11 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
   - Test 9: Offline biometric stroke entropy evaluation and signature package assembly.
   - Test 10: Offline replay sync transaction with atomic compare-and-set and conflict quarantine.
 
-- [ ] **Step 2: Run test suite**
+- [x] **Step 2: Run test suite**
   - Run: `pnpm test:run src/lib/__tests__/document-phase8.test.ts`
   - Expected: PASS (10/10 tests green).
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
   - `git add src/lib/__tests__/document-phase8.test.ts`
   - `git commit -m "feat(docsigning): implement dedicated Phase 8 end-to-end integration test suite"`
 
@@ -505,19 +505,19 @@ The Agreements Hub backoffice dock (`ContractsClient.tsx`) is extended with a de
 **Files:**
 - Verification only
 
-- [ ] **Step 1: Run comprehensive document test suite across all phases**
+- [x] **Step 1: Run comprehensive document test suite across all phases**
   - Run: `pnpm test:run src/lib/documents/__tests__/*.test.ts src/lib/__tests__/document-phase7.test.ts src/lib/__tests__/document-phase8.test.ts`
   - Expected: All test suites green (over 380+ tests passing).
 
-- [ ] **Step 2: Run strict TypeScript compiler verification**
+- [x] **Step 2: Run strict TypeScript compiler verification**
   - Run: `pnpm typecheck`
   - Expected: 0 errors (`tsc --noEmit`).
 
-- [ ] **Step 3: Run repository linter**
+- [x] **Step 3: Run repository linter**
   - Run: `pnpm lint`
   - Expected: 0 errors, warnings within ceiling.
 
-- [ ] **Step 4: Update Master Plan and mark tasks completed**
+- [x] **Step 4: Update Master Plan and mark tasks completed**
   - Commit final verification state to git branch `main`.
 
 ---
