@@ -703,7 +703,7 @@ Status: ☐ not started · ◐ in progress · ☑ done (with evidence link).
 
 | PR | Title | Status | Gate evidence (A/B/C) | Notes |
 | :--- | :--- | :--- | :--- | :--- |
-| PR-0 | Branch split + sweep test + PR template (A20) + lint enforcement (A2) | ☐ | | |
+| PR-0 | Branch split + sweep test + PR template (A20) + lint enforcement (A2) | ☑ 2026-09-29 | Local branches (not pushed): `agentic/pr0a-ssrf-guard` → `pr0b-phase0-platform` → `pr0c-portal-task-auth-hotfix` → `pr0d-guardrails`; `pr0e-content-items-rule` branches off (c). Clean-checkout checks: (a)/(b) no new tsc errors vs the `main` baseline, baseline 444; (c) tsc 0, vitest 712 files / 5,370 tests; (d) sweep test mutation-checked both ways, full lint 0 errors / 657 warnings. `git merge-tree` onto current `main`: clean. | See PR-0 notes below |
 | PR-1 | 1.1b CRM + MCP-governance hotfix | ☐ | | Critical: N1, N2 |
 | PR-2 | 1.0 Phase 0 closure + OTel/auth deps governance (A10) | ☐ | | Secret rotation needs approval |
 | PR-3 | 1.1 portal permission ids + lint | ☐ | | FER dry-run first |
@@ -720,6 +720,13 @@ Status: ☐ not started · ◐ in progress · ☑ done (with evidence link).
 | PR-14 | Context Action System v1 (A16, A17) | ☐ | | |
 | PR-15 | Wave C portals | ☐ | | |
 | PR-16 | Generated docs, fingerprints (A4), telemetry, exit evidence | ☐ | | |
+
+**PR-0 notes (2026-09-29):**
+- **`main` does not build from a clean checkout today.** DocSigning commits (`contract-obligation-service.ts`, and `call-centre-service.ts` via `cd0555bd`) import `@/lib/tasks/task-core`, which only exists in branch (c) and in the uncommitted working tree. Merging (c) fixes it; until then CI typecheck on `main` fails.
+- **Rules auto-deploy.** `.github/workflows/deploy-firestore.yml` publishes `firestore.rules` on any push to `staging` or `deployment` that touches it. The `content_items` rule therefore lives in its own branch (e), merged only after the app release containing (c) is live.
+- **`docs/agentic/inventory.json`** (2 MB, generated) is gitignored; the matrix `.md` is committed.
+- **Sweep baseline.** 517 unguarded exports in 175 files under the strict definition, plus 9 public-by-design actions. The scanner's older `GUARD_CALLS` also counts caller-trusting helpers (`canUser`, `verifyPermission`, `verifyBackofficeAdmin`, …) and should be aligned with `VERIFIED_IDENTITY_GUARDS` in PR-2.
+- **Missing skill.** The `backend-design` skill named in the rules preamble doesn't exist; `backend-patterns` is used instead.
 
 **A18 — affected-features matrix** (fill in per PR):
 
